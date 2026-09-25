@@ -13,6 +13,7 @@ export const PLACES = {
   chest: [458, 702],
   gold: [640, 560],
   hideout: [104, 850],
+  wolves: [256, 700],
 } satisfies Record<string, Point>;
 
 const LOCATIONS: Location[] = [
@@ -30,7 +31,14 @@ const LOCATIONS: Location[] = [
     name: 'Grimsby\u2019s Patrol',
     at: PLACES.patrol,
     done: false,
-    enemy: { lines: ['About **18 swordsmen** and **12 archers**.', 'They have goose feathers in their helmets.'], power: 90, reward: 300 },
+    enemy: {
+      lines: ['About **18 swordsmen** and **12 archers**.', 'They have goose feathers in their helmets.'],
+      power: 90,
+      reward: 300,
+      threat: 'They level their spears.',
+      flees: 'Grimsby\u2019s patrol breaks and runs for Darkwood.',
+      loot: 'You find {gold} on the road.',
+    },
   },
   {
     id: 'hideout',
@@ -38,7 +46,29 @@ const LOCATIONS: Location[] = [
     name: 'Grimsby\u2019s Hideout',
     at: PLACES.hideout,
     done: false,
-    enemy: { lines: ['A muddy stockade deep in Darkwood. Someone inside is honking.', 'About **40 swordsmen**, **20 archers** and one Baron.'], power: 200, reward: 2000 },
+    enemy: {
+      lines: ['A muddy stockade deep in Darkwood. Someone inside is honking.', 'About **40 swordsmen**, **20 archers** and one Baron.'],
+      power: 200,
+      reward: 2000,
+      threat: 'The Baron shouts from the palisade: *"I have the goose AND the walls!"*',
+      flees: 'The stockade gate falls open.',
+      loot: 'The Crown pays {gold}.',
+    },
+  },
+  {
+    id: 'wolves',
+    kind: 'patrol',
+    name: 'Wolf Pack',
+    at: PLACES.wolves,
+    done: false,
+    enemy: {
+      lines: ['About **20 wolves** are sitting on the path like they own it.', 'Your archers are pretending not to have seen them.'],
+      power: 45,
+      reward: 150,
+      threat: 'They bare their teeth. One of them yawns, which is somehow worse.',
+      flees: 'The pack scatters into Darkwood.',
+      loot: 'You find {gold} the wolves were, somehow, guarding.',
+    },
   },
 ];
 

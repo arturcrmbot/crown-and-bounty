@@ -53,7 +53,7 @@ window.addEventListener('resize', fit);
 fit();
 
 let state = newGame();
-const { view, grid, hero, hitboxes, pickups } = buildLookTest();
+const { view, grid, hero, hitboxes, pickups, blockers } = buildLookTest();
 paintHud(view.frame, state);
 const query = new URLSearchParams(window.location.search);
 if (query.has('x')) view.centreOn(Number(query.get('x')), Number(query.get('y') ?? 480));
@@ -77,6 +77,22 @@ let tiredShown = false;
 let hudMovement = Math.floor(state.movement);
 
 const PICKUP_IDS = new Set(pickups.keys());
+const label = document.createElement('div');
+label.className = 'kc-label';
+label.hidden = true;
+document.body.append(label);
+
+/** The place (or hero) under a map point, front-most first. */
+function under([x, y]: Point): { id: string | 'hero'; name: string; box?: (typeof hitboxes)[number] } | null {
+  const h = hero.object;
+  if (x >= h.x + 6 && x < h.x + width - 6 && y >= h.y + 4 && y < h.y + hero.foot + 4) return { id: 'hero', name: 'Sir Aldric' };
+  const gone = (id: string) => PICKUP_IDS.has(id) && !pickups.has(id);
+  const hits = hitboxes.filter((b) => x >= b.x0 && x < b.x1 && y >= b.y0 && y < b.y1 && !gone(b.id));
+  if (hits.length === 0) return null;
+  const box = hits.reduce((front, b) => (b.y1 > front.y1 ? b : front));
+  const fogged = view.isFogged((box.x0 + box.x1) / 2, box.y1 - 4);
+  return { id: box.id, name: fogged ? 'Unexplored' : locationById(state, box.id).name, box };
+}
 const cards = new CardView(choose);
 /** Map point the open card hangs above, or null to centre it on the map. */
 let cardAnchor: Point | null = null;
@@ -93,6 +109,7 @@ function setState(next: GameState) {
     if (locationById(state, id).done) {
       view.remove(object);
       pickups.delete(id);
+      for (const { index, cost } of blockers.get(id) ?? []) grid.cost[index] = cost;
     }
   }
   hudMovement = Math.floor(state.movement);
@@ -254,16 +271,14 @@ function ride(dt: number) {
 /** A click on the map: the hero, a place, or open ground to ride to. */
 function clickMap([x, y]: Point) {
   if (state.over) return;
-  const h = hero.object;
-  if (x >= h.x + 6 && x < h.x + width - 6 && y >= h.y + 4 && y < h.y + hero.foot + 4) {
-    showCard(describeHero(state), [position.x, h.y + 6]);
+  const thing = under([x, y]);
+  if (thing?.id === 'hero') {
+    showCard(describeHero(state), [position.x, hero.object.y + 6]);
     return;
   }
-  const gone = (id: string) => PICKUP_IDS.has(id) && !pickups.has(id);
-  const hits = hitboxes.filter((b) => x >= b.x0 && x < b.x1 && y >= b.y0 && y < b.y1 && !gone(b.id));
-  if (hits.length > 0) {
-    const box = hits.reduce((front, b) => (b.y1 > front.y1 ? b : front));
-    if (view.isFogged((box.x0 + box.x1) / 2, box.y1 - 4)) {
+  if (thing?.box) {
+    const box = thing.box;
+    if (thing.name === 'Unexplored') {
       showCard(
         { title: 'Unexplored', lines: ['You cannot see what lies there.'], choices: [{ label: 'Ride there', action: { type: 'go', id: box.id } }, { label: 'Close', action: { type: 'close' } }] },
         anchorOf(box.id),
@@ -293,7 +308,20 @@ canvas.addEventListener('pointerdown', (e) => {
   canvas.setPointerCapture(e.pointerId);
 });
 canvas.addEventListener('pointermove', (e) => {
-  if (!press) return;
+  if (!press) {
+    const rect = canvas.getBoundingClientRect();
+    const point = view.toMap((e.clientX - rect.left) / scale, (e.clientY - rect.top) / scale);
+    const thing = point ? under(point) : null;
+    label.hidden = !thing;
+    canvas.style.cursor = thing ? 'pointer' : 'default';
+    if (thing) {
+      label.textContent = thing.name;
+      label.style.left = `${e.clientX + 14}px`;
+      label.style.top = `${e.clientY + 16}px`;
+    }
+    return;
+  }
+  label.hidden = true;
   const dx = e.clientX - press.x;
   const dy = e.clientY - press.y;
   if (!press.dragged && Math.hypot(dx, dy) < 5) return;
@@ -303,6 +331,7 @@ canvas.addEventListener('pointermove', (e) => {
   press.x = e.clientX;
   press.y = e.clientY;
 });
+canvas.addEventListener('pointerleave', () => (label.hidden = true));
 canvas.addEventListener('pointerup', (e) => {
   if (press && !press.dragged) {
     const rect = canvas.getBoundingClientRect();

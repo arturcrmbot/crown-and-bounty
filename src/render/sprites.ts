@@ -681,3 +681,26 @@ export function hideout(phase = 0): Bitmap {
   castShadow(shaped, 7, 3, 44);
   return shaped;
 }
+
+/** One grey wolf, side-on, facing left. */
+function wolf(sprite: Bitmap, x0: number, y0: number, tail: number) {
+  const px = (x: number, y: number, c: number) => sprite.set(x0 + x, y0 + y, c);
+  for (let y = 3; y < 8; y++) for (let x = 3; x < 13; x++) if (Math.hypot((x - 8) / 5, (y - 5.2) / 2.4) <= 1) px(x, y, flat(COAT4, 0.55 - (y - 3) * 0.08 + (x < 7 ? 0.1 : 0), x, y));
+  for (let y = 1; y < 6; y++) for (let x = 0; x < 5; x++) if (Math.hypot((x - 2.2) / 2.4, (y - 3.2) / 1.9) <= 1) px(x, y, flat(COAT4, 0.62, x, y));
+  px(2, 0, NEUTRAL[4]);
+  px(4, 0, NEUTRAL[4]);
+  px(1, 3, GOLD[5]);
+  px(0, 4, INK);
+  for (const lx of [4, 6, 10, 12]) for (let y = 7; y < 10; y++) px(lx, y, y === 9 ? INK : NEUTRAL[3]);
+  for (let i = 0; i < 4; i++) px(13 + i, 4 - Math.round(i * tail), NEUTRAL[4]);
+}
+
+export function wolfPack(phase = 0): Bitmap {
+  const sprite = new Bitmap(46, 30);
+  wolf(sprite, 20, 4, 0.4 + Math.sin(phase) * 0.3);
+  wolf(sprite, 2, 10, 0.4 + Math.sin(phase + 2) * 0.3);
+  wolf(sprite, 24, 16, 0.4 + Math.sin(phase + 4) * 0.3);
+  const shaped = outline(sprite, INK);
+  shadowOval(shaped, 25, 27, 18, 2.4);
+  return shaped;
+}

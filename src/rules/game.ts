@@ -21,7 +21,15 @@ export const LAST_DAY = 100;
 
 export type LocationKind = 'castle' | 'tower' | 'mine' | 'village' | 'mill' | 'chest' | 'gold' | 'patrol' | 'hideout' | 'signpost';
 
-export type Enemy = { lines: string[]; power: number; reward: number };
+export type Enemy = {
+  lines: string[];
+  power: number;
+  reward: number;
+  /** What they do when you ride up, how they lose, and where the gold was. */
+  threat: string;
+  flees: string;
+  loot: string;
+};
 
 export type Location = {
   id: string;
@@ -247,7 +255,7 @@ export function visit(state: GameState, id: string): Result {
         state,
         card: {
           title: place.name,
-          lines: [...(place.kind === 'hideout' ? ['The Baron shouts from the palisade: *"I have the goose AND the walls!"*'] : ['They level their spears.']), hint],
+          lines: [place.enemy!.threat, hint],
           choices: [{ label: place.kind === 'hideout' ? 'Storm the stockade' : 'Fight', action: { type: 'fight', id } }, { label: 'Retreat', action: { type: 'close' } }],
         },
       };
@@ -307,7 +315,7 @@ export function fight(state: GameState, id: string): Result {
         },
       };
     }
-    return { state: next, card: { title: 'Victory!', lines: [`${place.name} breaks and runs.`, lostLine, `You find **${coins(enemy.reward)} gold** on the road.`], choices: [close] } };
+    return { state: next, card: { title: 'Victory!', lines: [enemy.flees, lostLine, enemy.loot.replace('{gold}', `**${coins(enemy.reward)} gold**`)], choices: [close] } };
   }
   const { army, lost } = takeLosses(state.army, armyPower(state.army) * 0.25);
   return {

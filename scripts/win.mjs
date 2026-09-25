@@ -64,6 +64,10 @@ await choose('Close');
 await go('village', 'Visit');
 await choose('Recruit');
 await choose('Close');
+await go('wolves', 'Approach');
+await choose('Fight');
+console.log(`  wolves: "${await title()}" ${await lines()}`);
+await choose('Close');
 await page.screenshot({ path: 'screenshots/win-1-before-hideout.png' });
 for (let attempt = 1; attempt <= 3; attempt++) {
   await go('hideout', 'Approach');

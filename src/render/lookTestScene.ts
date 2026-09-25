@@ -3,12 +3,12 @@ import { AdventureScreen, type Placed } from './adventureScreen';
 import { Bitmap, blit, SHADOW } from './bitmap';
 import {
   CASTLE, CHEST, CRAGS, EXPLORED, forestAmount, GOLD_PILE, HERO, HIDEOUT, MAP_HEIGHT, MAP_WIDTH, MILL, MINE, PATHS, PATROL,
-  ROCKS, SIGNPOST, TOWER, TREES, VILLAGE, type Point,
+  ROCKS, SIGNPOST, TOWER, TREES, VILLAGE, WOLVES, type Point,
 } from './lookTestMap';
 import { bayer, hash } from './noise';
 import { SILHOUETTE } from './palette';
 import {
-  boulder, castle, chest, crag, goldPile, hero, hideout, hut, mill, mine, mirror, oak, patrol, pine, signpost, stoneBridge, watchtower, well,
+  boulder, castle, chest, crag, goldPile, hero, hideout, hut, mill, mine, mirror, oak, patrol, pine, signpost, stoneBridge, watchtower, well, wolfPack,
 } from './sprites';
 import { distanceField, Ground, paintTerrain, smooth, type Terrain } from './terrain';
 
@@ -45,8 +45,10 @@ export type LookTest = {
   grid: Grid;
   hero: HeroRig;
   hitboxes: Hitbox[];
-  /** Objects that vanish once their location is done: pickups and the patrol. */
+  /** Objects that vanish once their location is done: pickups and enemies. */
   pickups: Map<string, Placed>;
+  /** Walk-grid cells an enemy stands on, with the cost to restore once it's beaten. */
+  blockers: Map<string, { index: number; cost: number }[]>;
 };
 
 export function buildLookTest(): LookTest {
@@ -116,7 +118,9 @@ export function buildLookTest(): LookTest {
   const patrolObject = { ...place(patrolFrames[0], PATROL, 40), frames: patrolFrames };
   const chestObject = place(chest(), CHEST, 13);
   const goldObject = place(goldPile(), GOLD_PILE, 12);
-  for (const o of [castleObject, millObject, patrolObject, chestObject, goldObject]) view.animate(o);
+  const wolfFrames = animation((t) => wolfPack(t * Math.PI * 2));
+  const wolvesObject = { ...place(wolfFrames[0], WOLVES, 27), frames: wolfFrames };
+  for (const o of [castleObject, millObject, patrolObject, chestObject, goldObject, wolvesObject]) view.animate(o);
 
   const idle = animation((t) => hero(t * Math.PI * 2));
   const walk = animation((t) => hero(t, true, true));
@@ -135,9 +139,24 @@ export function buildLookTest(): LookTest {
   const hitboxes = [
     box('castle', castleObject), box('tower', tower), box('mine', mineSite), box('village', ...huts, wellSite), box('mill', millObject),
     box('signpost', post), box('chest', chestObject), box('gold', goldObject), box('patrol', patrolObject), box('hideout', stockade),
+    box('wolves', wolvesObject),
   ];
-  const pickups = new Map<string, Placed>([['chest', chestObject], ['gold', goldObject], ['patrol', patrolObject]]);
-  return { view, grid, hero: rig, hitboxes, pickups };
+  const pickups = new Map<string, Placed>([['chest', chestObject], ['gold', goldObject], ['patrol', patrolObject], ['wolves', wolvesObject]]);
+  const blockers = new Map<string, { index: number; cost: number }[]>();
+  for (const [id, o] of [['patrol', patrolObject], ['wolves', wolvesObject]] as const) {
+    const cells = new Map<number, number>();
+    for (let y = Math.floor(o.sprite.height * 0.5); y < o.sprite.height; y++) {
+      for (let x = 0; x < o.sprite.width; x++) {
+        const v = o.sprite.get(x, y);
+        if (v === 0 || v === SHADOW) continue;
+        const index = Math.floor((o.y + y) / CELL) * grid.width + Math.floor((o.x + x) / CELL);
+        if (!cells.has(index)) cells.set(index, grid.cost[index]);
+      }
+    }
+    for (const index of cells.keys()) grid.cost[index] = Infinity;
+    blockers.set(id, [...cells].map(([index, cost]) => ({ index, cost })));
+  }
+  return { view, grid, hero: rig, hitboxes, pickups, blockers };
 }
 
 /**

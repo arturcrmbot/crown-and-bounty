@@ -21,6 +21,7 @@ King's Commission (working title) is a browser game: King's Bounty (1990) rebuil
 
 Change, run the tests, open the game in the browser panel, screenshot, fix.
 
-- `npm run dev`: dev server on http://127.0.0.1:5188 (5173 is often taken on this machine). Scroll with arrows, WASD or drag; click to move.
-- `npm run typecheck` and `npm run build`.
-- `npm run shots`: with the dev server running, saves `screenshots/look.png` through headless Edge.
+- `npm run dev`: dev server on http://127.0.0.1:5188 (5173 is often taken on this machine). Scroll with arrows, WASD or drag; click to ride; E ends the day.
+- `npm test`: Vitest for `src/rules/`. `npm run typecheck` and `npm run build`.
+- `npm run shots`: with the dev server running, saves `screenshots/look.png` (env: `QUERY`, `RIDE=x,y`, `OUT`).
+- `npm run play` and `node scripts/win.mjs`: scripted play-throughs; the second plays the whole contract at `?speed=8`.

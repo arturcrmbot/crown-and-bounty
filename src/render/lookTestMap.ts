@@ -43,6 +43,7 @@ export const SIGNPOST: Point = PLACES.signpost;
 export const CHEST: Point = PLACES.chest;
 export const GOLD_PILE: Point = PLACES.gold;
 export const HIDEOUT: Point = PLACES.hideout;
+export const WOLVES: Point = PLACES.wolves;
 
 /** Crags forming the north-west range, the cliff rim and the eastern ridge: x, foot y, width, height. */
 export const CRAGS: [number, number, number, number][] = [

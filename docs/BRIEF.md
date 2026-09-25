@@ -26,6 +26,11 @@ Working title. A small browser game, not commercial. The goal is quirky and fun,
 
 TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dialogs. Vitest for the game rules and Playwright for screenshots.
 
+## Status (25 Sep 2026)
+
+- **Look test:** done in 2D. A hand-authored 40 x 30 tile map, drawn in code: forests, a mountain range, a river and waterfall, landmarks, restrained fog of war and paper grain.
+- **First playable loop:** in. Click to ride (pathfinding, daily movement, red marks for tomorrow), parchment cards for the hero and every place, a chest (gold or leadership), recruiting, the mill, payday every 7 days, two enemy types and Baron Grimsby's hideout. Fights auto-resolve for now.
+
 ## Build order
 
 1. **Look test:** one small 2D scene in the HoMM2 style. Artur judges it by eye.
@@ -42,5 +47,5 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
 ## Open questions
 
 - **Battle format:** a hex battlefield with stacks, as in HoMM2, or King's Bounty's simpler grid?
-- **Adventure map tiles:** square, as in HoMM2 (the look test assumes this), or hex?
+- **Adventure map tiles:** the prototype rides freely over an 8 px walk grid on a hand-painted map, with 32 px tiles only for authoring. Keep that, or snap to HoMM2-style square tiles?
 - **Adventure map pacing:** turn-based days or real time?
