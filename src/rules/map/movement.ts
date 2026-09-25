@@ -3,7 +3,7 @@ import { heroStats } from '../hero';
 import { revealDisc } from './fog';
 import type { Point } from './geometry';
 import { cellCentre, cellIndex, gridWithEnemies, type MapModel } from './model';
-import { findPath, nearestPassable } from './pathfinding';
+import { findPath, nearestPassable, reachableNear } from './pathfinding';
 
 /** How far the hero sees as he rides, in pixels. */
 export const SIGHT = 150;
@@ -14,11 +14,18 @@ const cellXY = (map: MapModel, i: number) => ({ x: i % map.width, y: Math.floor(
 const standingGrid = (state: GameState, map: MapModel) =>
   gridWithEnemies(map, (id) => !state.locations.find((l) => l.id === id)?.done);
 
-/** The cells from the hero to `target` (excluding his own), or null if there is no way. */
-export function planRoute(state: GameState, map: MapModel, target: Point): number[] | null {
+/** How close (in cells) the hero rides up to an enemy he is going to face. */
+export const APPROACH = 6;
+
+/**
+ * The cells from the hero to `target` (excluding his own), or null if there is no way. With
+ * `approach`, he rides up to it from his own side, for enemies that block their own road.
+ */
+export function planRoute(state: GameState, map: MapModel, target: Point, approach = false): number[] | null {
   const grid = standingGrid(state, map);
   const start = nearestPassable(grid, cellXY(map, cellIndex(map, state.hero.at[0], state.hero.at[1])));
-  const goal = nearestPassable(grid, cellXY(map, cellIndex(map, target[0], target[1])), 16);
+  const aim = cellXY(map, cellIndex(map, target[0], target[1]));
+  const goal = approach ? start && reachableNear(grid, start, aim, APPROACH) : nearestPassable(grid, aim, 16);
   if (!start || !goal) return null;
   const cells = findPath(grid, start, goal);
   if (!cells) return null;

@@ -13,7 +13,7 @@ export const BASE_MOVEMENT = 150;
 export const BASE_SIGHT = 150;
 
 /** XP needed for each level, from level 1. */
-export const LEVELS = [0, 0, 150, 400, 750, 1200, 1800, 2500, 3400, 4500, 6000, 8000];
+export const LEVELS = [0, 0, 150, 400, 750, 1200, 1800, 2500, 3400, 4500, 6000, 8000, 10500, 13500, 17000, 21000];
 export const levelFor = (xp: number) => {
   let level = 1;
   while (level + 1 < LEVELS.length && xp >= LEVELS[level + 1]) level++;

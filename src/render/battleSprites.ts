@@ -35,6 +35,7 @@ const LOOKS: Record<Exclude<TroopId, 'wolves'>, Look> = {
   goblins: { body: DIRT4, legs: GOBLIN4, head: 'ears', weapon: 'spear', skin: GOBLIN4, scale: 1.05 },
   trolls: { body: DIRT4, legs: TROLL4, head: 'brute', weapon: 'club', skin: TROLL4, scale: 1.95 },
   witch: { body: PLUM4, legs: PLUM4, head: 'witchhat', weapon: 'ladle', scale: 1.5 },
+  bramble: { body: GOBLIN4, legs: PLUM4, head: 'witchhat', weapon: 'ladle', scale: 1.65 },
 };
 
 /**

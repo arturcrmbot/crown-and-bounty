@@ -10,8 +10,8 @@ describe('the bot', () => {
     }
   });
 
-  it('wins the whole campaign, court and Fenmarch included', () => {
-    for (const { seed, runs } of simulateCampaign([1, 2, 3], 'wizard')) {
+  it('wins Aldmoor and the Fenmarch, court included', () => {
+    for (const { seed, runs } of simulateCampaign([1, 2, 3], 'wizard', 1)) {
       const last = runs.at(-1)!;
       expect(last.state.campaign.chapter, `seed ${seed}`).toBe(1);
       expect(last.won, `seed ${seed}: ${last.log.join(', ')}`).toBe(true);

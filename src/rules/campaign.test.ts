@@ -3,7 +3,7 @@ import { ALDMOOR } from '../content/aldmoor';
 import { COMMISSIONS } from '../content/campaign';
 import { FENMARCH } from '../content/fenmarch';
 import {
-  apply, briefingCard, courtCard, heroStats, leadershipUsed, levelUpCard, nextArmy, provinceOf, veterans, visit, type GameState,
+  apply, briefingCard, CAMPAIGN_LENGTH, courtCard, heroStats, leadershipUsed, levelUpCard, nextArmy, provinceOf, veterans, visit, type GameState,
 } from './game';
 import { equip, gainXp, giveArtifact, learn } from './hero';
 import { buildMap, CELL } from './map/model';
@@ -147,7 +147,7 @@ describe('the campaign', () => {
   });
 
   it('ends after the last commission, with no court to go to', () => {
-    const last = { ...beginCommission(FENMARCH, 3, newGame().campaign.start, COMMISSIONS.length - 1, []), over: 'won' as const };
+    const last = { ...beginCommission(FENMARCH, 3, newGame().campaign.start, CAMPAIGN_LENGTH - 1, []), over: 'won' as const };
     expect(apply(last, { type: 'court' })).toBeNull();
   });
 
@@ -223,5 +223,13 @@ describe('parleys', () => {
     expect(paid.state.hero.xp).toBe(0);
     expect(paid.state.locations.find((l) => l.id === 'patrol')!.done).toBe(true);
     expect(paid.events[0]).toEqual({ type: 'removed', id: 'patrol' });
+  });
+});
+
+describe('the end of a commission', () => {
+  it('stops the days: no paydays once it is won or lost', () => {
+    const won = wonAldmoor();
+    expect(apply(won, { type: 'endDay' })).toBeNull();
+    expect(apply({ ...won, over: 'lost' }, { type: 'endDay' })).toBeNull();
   });
 });

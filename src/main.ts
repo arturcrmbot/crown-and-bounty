@@ -1,4 +1,3 @@
-import { COMMISSIONS } from './content/campaign';
 import { Game } from './game/game';
 import { Display } from './game/display';
 import { Input } from './game/input';
@@ -6,7 +5,7 @@ import { failedCard, welcomeBackCard } from './game/intro';
 import { loadGame, saveGame, stopSaving } from './game/save';
 import { SCREEN } from './render/frame';
 import { paletteWords } from './render/palette';
-import { beginCommission, hasNextCommission, newGame, startFight, type GameState } from './rules/game';
+import { beginCommission, commissionAt, hasNextCommission, newGame, startFight, type GameState } from './rules/game';
 
 declare global {
   interface Window {
@@ -33,7 +32,7 @@ function debugStart(): GameState {
   const chapter = Number(query.get('commission') ?? 1) - 1;
   if (query.get('court') === '1') return { ...first, opening: undefined, over: 'won', bounty: 'paid' };
   const { hero, gold, leadership, army } = first;
-  const base = chapter > 0 ? beginCommission(COMMISSIONS[chapter].province, first.seed, { hero, gold, leadership, army }, chapter, [{ chapter: 0, days: 10, level: 1 }]) : first;
+  const base = chapter > 0 ? beginCommission(commissionAt(first.campaign, chapter).province, first.seed, { hero, gold, leadership, army }, chapter, [{ chapter: 0, days: 10, level: 1 }]) : first;
   // ?battle=patrol opens straight onto a fight, for checking the battle screen.
   const fightAt = query.get('battle');
   return fightAt ? startFight({ ...base, opening: undefined }, fightAt).state : base;

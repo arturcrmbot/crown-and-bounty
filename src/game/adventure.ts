@@ -11,7 +11,7 @@ import { CardView } from '../ui/card';
 import { HoverLabel } from '../ui/label';
 import type { Display } from './display';
 import type { Input } from './input';
-import { backgroundCard, storyCard } from './intro';
+import { backgroundCard, endCard, storyCard } from './intro';
 import { clearSave, saveGame } from './save';
 
 /** Map pixels per second. */
@@ -75,7 +75,7 @@ export class AdventureController {
     this.drawn = { x: state.hero.at[0], y: state.hero.at[1] };
     const tower = state.locations.find((l) => l.kind === 'tower');
     if (tower) this.scene.view.effects.addFlock([tower.at[0], tower.at[1] - 84], 6, 1);
-    this.scene.view.effects.addFlock([1010, 90], 5, 4);
+    for (const [i, home] of (map.province.flocks ?? []).entries()) this.scene.view.effects.addFlock(home, 5, 4 + i);
     this.scene.view.centreOn(state.hero.at[0] + 40, state.hero.at[1] - 70);
     this.repaintHud();
   }
@@ -200,7 +200,8 @@ export class AdventureController {
 
   /** Plots a route to `target`. With `visitId`, the hero visits that place when he gets there. */
   plan(target: Point, visitId: string | null) {
-    const route = planRoute(this.state, this.map, target);
+    const facing = visitId ? locationById(this.state, visitId) : null;
+    const route = planRoute(this.state, this.map, target, Boolean(facing?.enemy && !facing.done));
     if (!route) {
       this.showCard({ title: 'No way through', lines: ['Not even a goat could get there from here.'], choices: [] }, target);
       return;
@@ -220,10 +221,13 @@ export class AdventureController {
 
   // --- Each frame -------------------------------------------------------------------------
 
-  /** Choices that must be made wait on screen: the hero's background first, then any level-ups. */
+  /**
+   * Choices that must be made wait on screen: the hero's background first, then any level-ups.
+   * Once a commission is over, what comes next (court, or trying again) comes back if hidden.
+   */
   private promptPending() {
-    if (this.cards.isOpen || this.state.over) return;
-    const card = this.state.opening ? backgroundCard() : levelUpCard(this.state);
+    if (this.cards.isOpen) return;
+    const card = this.state.over ? endCard(this.state) : this.state.opening ? backgroundCard() : levelUpCard(this.state);
     if (card) this.showCard(card, null);
   }
 
@@ -375,7 +379,7 @@ export class AdventureController {
   readonly input = {
     click: (x: number, y: number) => {
       const onHourglass = x >= HOURGLASS_AT.x - 3 && x < HOURGLASS_AT.x + HOURGLASS.width + 3 && y >= HOURGLASS_AT.y - 3 && y < HOURGLASS_AT.y + HOURGLASS.height + 3;
-      if (onHourglass && !this.state.opening) return this.choose({ type: 'endDay' });
+      if (onHourglass && !this.state.opening && !this.state.over) return this.choose({ type: 'endDay' });
       const point = this.view.toMap(x, y);
       if (point) this.clickMap(point);
     },
@@ -393,7 +397,7 @@ export class AdventureController {
     leave: () => this.label.hide(),
     key: (key: string) => {
       if (this.state.opening) return;
-      if (key === 'e') this.choose({ type: 'endDay' });
+      if (key === 'e' && !this.state.over) this.choose({ type: 'endDay' });
       else if (key === 'escape') this.hideCard();
       else if (key.startsWith('arrow') || 'wasd'.includes(key)) this.follow = false;
     },
@@ -404,7 +408,7 @@ export class AdventureController {
     return {
       click: (x: number, y: number) => this.clickMap([x, y]),
       choose: (label: string) => {
-        const button = [...document.querySelectorAll<HTMLButtonElement>('.kc-card button')].find((b) => b.textContent?.startsWith(label));
+        const button = [...document.querySelectorAll<HTMLButtonElement>('.kc-card-wrap:not([hidden]) .kc-card button')].find((b) => b.textContent?.startsWith(label));
         button?.click();
         return Boolean(button);
       },

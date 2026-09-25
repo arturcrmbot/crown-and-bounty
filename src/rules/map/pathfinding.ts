@@ -31,6 +31,39 @@ export function nearestPassable(grid: Grid, cell: Cell, radius = 12): Cell | nul
 }
 
 /**
+ * The cell within `radius` of `target` that can actually be reached from `start`, nearest the
+ * target, with the same steps as A*. For riding up to an enemy who stands on his own road: the
+ * passable cell nearest to him may be on his far side.
+ */
+export function reachableNear(grid: Grid, start: Cell, target: Cell, radius: number): Cell | null {
+  const { width } = grid;
+  if (!passable(grid, start.x, start.y)) return null;
+  const seen = new Uint8Array(width * grid.height);
+  const queue = [start.y * width + start.x];
+  seen[queue[0]] = 1;
+  let best: Cell | null = null;
+  let bestD = Infinity;
+  for (let k = 0; k < queue.length; k++) {
+    const x = queue[k] % width;
+    const y = (queue[k] - x) / width;
+    const d = Math.hypot(x - target.x, y - target.y);
+    if (d <= radius && d < bestD) {
+      bestD = d;
+      best = { x, y };
+    }
+    for (const [dx, dy] of DIRS) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (!passable(grid, nx, ny) || seen[ny * width + nx]) continue;
+      if (dx && dy && (!passable(grid, x + dx, y) || !passable(grid, x, y + dy))) continue;
+      seen[ny * width + nx] = 1;
+      queue.push(ny * width + nx);
+    }
+  }
+  return best;
+}
+
+/**
  * A* over the 8-connected grid. Diagonal steps cost √2 times the cell cost and may not cut
  * the corner of an impassable cell. Returns the cells from start to goal, or null.
  */

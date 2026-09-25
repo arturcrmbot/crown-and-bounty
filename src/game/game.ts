@@ -59,6 +59,7 @@ export class Game {
   }
 
   private openCourt() {
+    if (this.court) return;
     // A save made just after the win may not have reached court yet.
     const now = this.adventure.state;
     const state = now.campaign.court ? now : (toCourt(now)?.state ?? now);

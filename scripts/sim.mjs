@@ -12,14 +12,14 @@ try {
       const all = simulateCampaign(Array.from({ length: count }, (_, i) => i + 1), background);
       const ms = performance.now() - started;
       const line = [`${background.padEnd(9)}`];
-      for (const chapter of [0, 1]) {
+      for (const chapter of [0, 1, 2, 3, 4]) {
         const runs = all.map((c) => c.runs.filter((r) => r.state.campaign.chapter === chapter));
         const reached = runs.filter((r) => r.length > 0);
         const won = reached.filter((r) => r.some((x) => x.won));
         const days = won.map((r) => r.find((x) => x.won).day).sort((a, b) => a - b);
         const retried = reached.filter((r) => r.length > 1).length;
         const levels = won.map((r) => r.find((x) => x.won).level);
-        line.push(`C${chapter + 1}: won ${won.length}/${reached.length}${retried ? ` (${retried} retried)` : ''} median day ${days[Math.floor(days.length / 2)] ?? '-'} p90 ${days[Math.floor(days.length * 0.9)] ?? '-'} level ${levels.length ? (levels.reduce((a, b) => a + b, 0) / levels.length).toFixed(1) : '-'}`);
+        line.push(`C${chapter + 1} ${won.length}/${reached.length}${retried ? `(${retried}r)` : ''} d${days[Math.floor(days.length / 2)] ?? '-'}/${days[Math.floor(days.length * 0.9)] ?? '-'} L${levels.length ? (levels.reduce((a, b) => a + b, 0) / levels.length).toFixed(1) : '-'}`);
       }
       console.log(`${line.join('   ')}  (${Math.round(ms / count)} ms each)`);
       for (const c of all.filter((x) => !x.runs.at(-1).won).slice(0, 2)) console.log(`  LOST seed ${c.seed} in C${c.runs.at(-1).state.campaign.chapter + 1}: ${c.runs.at(-1).log.slice(-8).join(', ')}`);

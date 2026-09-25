@@ -24,6 +24,8 @@ export type Province = {
   woods?: { pine: number; willow: number };
   /** Fen country: the grass is wetter and full of sedge. */
   fen?: boolean;
+  /** Where flocks of birds wheel over the map. */
+  flocks?: Point[];
   /** Rock outcrops: x, foot y, width, height. */
   crags: [number, number, number, number][];
   /** Lone trees placed on purpose: x, y, pine or not. */

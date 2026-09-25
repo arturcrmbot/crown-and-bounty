@@ -27,7 +27,7 @@ export type Perk = { id: PerkId; name: string; note: string; bonus: Bonus };
 export const PERKS: Record<PerkId, Perk> = {
   quartermaster: { id: 'quartermaster', name: 'Quartermaster', note: 'Wages cost a fifth less. The troops have noticed.', bonus: { wages: -0.2 } },
   nightRider: { id: 'nightRider', name: 'Night Rider', note: '+35 movement a day. The horse has opinions about this.', bonus: { movement: 35 } },
-  gooseWhisperer: { id: 'gooseWhisperer', name: 'Goose Whisperer', note: 'The royal goose likes you. Baron Grimsby starts every battle slowed, and knows why.', bonus: { slows: ['baron'] } },
+  gooseWhisperer: { id: 'gooseWhisperer', name: 'Goose Whisperer', note: 'The royal goose likes you, and word gets round. Every villain starts a battle slowed, looking over their shoulder.', bonus: { slows: ['baron', 'witch', 'bramble'] } },
   treasureHunter: { id: 'treasureHunter', name: 'Treasure Hunter', note: 'Chests, piles and old mines give half as much again.', bonus: { loot: 0.5 } },
   drillSergeant: { id: 'drillSergeant', name: 'Drill Sergeant', note: 'Peasants fight like militia: +3 attack, +2 defence.', bonus: { troops: { peasants: { attack: 3, defence: 2 } } } },
   warchest: { id: 'warchest', name: 'War Chest', note: 'Every payday brings 400 more gold.', bonus: { payday: 400 } },

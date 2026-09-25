@@ -111,7 +111,7 @@ Each milestone ends with tests green, screenshots in the side panel, and a playt
 | M5 | **Story choices and captains.** Dialogue options gated by background and skills, reputation, and 2–3 captains with quirks. | Choices change outcomes you can notice. |
 | M6 | **Polish.** Animation, portraits, sound, then music. | Later. |
 
-**Progress:** M0, M1, M2 and M3 are done. M4 is next.
+**Progress:** M0 to M3 are done, and most of M4: generated provinces for commissions III to V, two recurring villains, and parleys (a first taste of M5). Map pieces and the dig are still to come.
 
 ## Still open
 

@@ -1,12 +1,32 @@
 import { BACKGROUNDS } from '../content/backgrounds';
-import { BOON_IDS, BOONS, COMMISSIONS } from '../content/campaign';
+import { BOON_IDS, BOONS, COMMISSIONS, type Commission } from '../content/campaign';
+import { VILLAINS } from '../content/villains';
+import { generateCommission } from './generate';
 import { heroStats } from './hero';
 import { beginCommission } from './scenario';
-import { addTroops, armyLine, close, coins, leadershipUsed, roll, roman, show, TROOPS, type Army, type BoonId, type Card, type GameState, type Result } from './state';
+import { addTroops, armyLine, close, coins, leadershipUsed, roll, roman, show, TROOPS, type Army, type BoonId, type Campaign, type Card, type GameState, type Result } from './state';
 
-export const commissionOf = (state: GameState) => COMMISSIONS[state.campaign.chapter];
+/** Commissions in a campaign: the hand-made ones, then provinces generated for this campaign. */
+export const CAMPAIGN_LENGTH = 5;
+
+const generated = new Map<string, Commission>();
+
+/** The commission for a chapter: hand-made, or generated from the campaign's seed (once, then kept). */
+export function commissionAt(campaign: Pick<Campaign, 'seed'>, chapter: number): Commission {
+  if (chapter < COMMISSIONS.length) return COMMISSIONS[chapter];
+  const seed = ((campaign.seed ?? 1066) * 31 + chapter * 977) >>> 0;
+  const key = `${seed}/${chapter}`;
+  let c = generated.get(key);
+  if (!c) {
+    c = generateCommission(seed, VILLAINS[(chapter - COMMISSIONS.length) % VILLAINS.length], chapter);
+    generated.set(key, c);
+  }
+  return c;
+}
+
+export const commissionOf = (state: GameState) => commissionAt(state.campaign, state.campaign.chapter);
 export const provinceOf = (state: GameState) => commissionOf(state).province;
-export const hasNextCommission = (state: GameState) => state.campaign.chapter + 1 < COMMISSIONS.length;
+export const hasNextCommission = (state: GameState) => state.campaign.chapter + 1 < CAMPAIGN_LENGTH;
 
 /** The share of every stack that stays on between commissions. */
 export const VETERANS = 0.25;
@@ -95,7 +115,7 @@ function grant(state: GameState, id: BoonId): GameState {
 /** The next commission, read out at court, with the army that will ride out for it. */
 export function briefingCard(state: GameState): Card {
   const chapter = state.campaign.chapter + 1;
-  const c = COMMISSIONS[chapter];
+  const c = commissionAt(state.campaign, chapter);
   const kept = nextArmy(state).filter((s) => !BACKGROUNDS[state.hero.background].army.some((l) => l.troop === s.troop && l.count === s.count));
   return {
     title: `Commission ${roman(chapter + 1)}: ${c.province.name.replace(/^the /, 'The ')}`,
@@ -112,15 +132,15 @@ export function nextCommission(state: GameState): Result | null {
   if (!state.campaign.court?.chosen || !hasNextCommission(state)) return null;
   const chapter = state.campaign.chapter + 1;
   const start = { hero: state.hero, gold: state.gold, leadership: state.leadership, army: nextArmy(state) };
-  const next = beginCommission(COMMISSIONS[chapter].province, roll(state.seed)[1], start, chapter, state.campaign.record);
+  const next = beginCommission(commissionAt(state.campaign, chapter).province, roll(state.seed)[1], start, chapter, state.campaign.record, state.campaign.seed);
   return { state: next, events: [{ type: 'commission' }, show(arrivalCard(next))] };
 }
 
 /** After a lost commission: the same one again, from how it began. */
 export function retry(state: GameState): Result | null {
   if (state.over !== 'lost') return null;
-  const { chapter, start, record } = state.campaign;
-  const next = beginCommission(provinceOf(state), roll(state.seed)[1], start, chapter, record);
+  const { chapter, start, record, seed } = state.campaign;
+  const next = beginCommission(provinceOf(state), roll(state.seed)[1], start, chapter, record, seed);
   return { state: next, events: [{ type: 'commission' }, show(arrivalCard(next))] };
 }
 
@@ -138,6 +158,6 @@ export function campaignLines(state: GameState): string[] {
   const record = [...state.campaign.record, { chapter: state.campaign.chapter, days: state.day, level: state.hero.level }];
   return [
     '**The campaign is complete!**',
-    ...record.map((r) => `Commission ${roman(r.chapter + 1)}, ${COMMISSIONS[r.chapter].province.name}: ${r.days} ${r.days === 1 ? 'day' : 'days'}.`),
+    ...record.map((r) => `Commission ${roman(r.chapter + 1)}, ${commissionAt(state.campaign, r.chapter).province.name}: ${r.days} ${r.days === 1 ? 'day' : 'days'}.`),
   ];
 }

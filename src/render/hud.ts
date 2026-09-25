@@ -41,6 +41,7 @@ const TROOP_ICONS: Record<TroopId, Bitmap> = {
   goblins: FORK,
   trolls: SWORD,
   witch: BOW,
+  bramble: BOW,
 };
 
 /** The hourglass: click it (or press E) to end the day. */

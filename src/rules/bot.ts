@@ -52,7 +52,7 @@ export function playCommission(start: GameState, map: MapModel, maxSteps = 20000
     for (const l of state.locations) {
       const value = worth(state, l);
       if (value === null) continue;
-      const route = planRoute(state, map, l.at);
+      const route = planRoute(state, map, l.at, Boolean(l.enemy));
       if (!route) continue;
       const cost = route.length ? routeCosts(state, map, route).at(-1)! : 0;
       const score = value / (cost + 15);
@@ -102,10 +102,10 @@ function pickBoon(state: GameState): BoonId {
  * Plays every commission in turn: each province on its own map, then court, a boon and on to the
  * next. A lost commission is tried once more from its start, as a player would.
  */
-export function playCampaign(start: GameState): BotRun[] {
+export function playCampaign(start: GameState, lastChapter = Infinity): BotRun[] {
   const runs: BotRun[] = [];
   let state = start;
-  for (let tries = 0; tries < 8; tries++) {
+  for (let tries = 0; tries < 12; tries++) {
     const run = playCommission(state, buildMap(provinceOf(state)));
     runs.push(run);
     if (run.state.over === 'lost') {
@@ -113,7 +113,7 @@ export function playCampaign(start: GameState): BotRun[] {
       state = apply(run.state, { type: 'retry' })!.state;
       continue;
     }
-    if (!hasNextCommission(run.state)) break;
+    if (!hasNextCommission(run.state) || run.state.campaign.chapter >= lastChapter) break;
     let next = apply(run.state, { type: 'court' })!.state;
     while (next.hero.offers.length > 0) next = learn(next, next.hero.offers[0].options[0])!.state;
     next = apply(next, { type: 'boon', id: pickBoon(next) })!.state;

@@ -88,6 +88,8 @@ export type PlaceLook = 'abbey' | 'peathut' | 'windmill' | 'stilthut';
 export type Campaign = {
   /** Index into the list of commissions, from 0. */
   chapter: number;
+  /** Seeds the provinces generated after the hand-made ones, so each campaign gets its own. */
+  seed?: number;
   record: { chapter: number; days: number; level: number }[];
   /** The hero, purse and army as this commission began, for trying it again. */
   start: { hero: Hero; gold: number; leadership: number; army: Army };

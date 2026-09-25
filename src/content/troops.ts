@@ -1,5 +1,5 @@
 /** Every kind of troop, with HoMM2-style numbers. Troops are just numbers: 400 peasants are 400 peasants. */
-export type TroopId = 'peasants' | 'archers' | 'knights' | 'swordsmen' | 'crossbowmen' | 'wolves' | 'baron' | 'goblins' | 'trolls' | 'witch';
+export type TroopId = 'peasants' | 'archers' | 'knights' | 'swordsmen' | 'crossbowmen' | 'wolves' | 'baron' | 'goblins' | 'trolls' | 'witch' | 'bramble';
 
 export type TroopDef = {
   id: TroopId;
@@ -41,6 +41,7 @@ export const TROOPS: Record<TroopId, TroopDef> = {
   goblins: { id: 'goblins', name: 'Bog Goblins', one: 'Bog Goblin', hp: 5, attack: 4, defence: 2, damage: [1, 3], speed: 6, leadership: 1, wage: 1, note: 'Small, green and in a tremendous hurry.' },
   trolls: { id: 'trolls', name: 'Trolls', one: 'Troll', hp: 70, attack: 9, defence: 7, damage: [8, 12], speed: 3, leadership: 12, wage: 20, note: 'Big, slow, and very attached to their bridge.', ability: 'regenerates' },
   witch: { id: 'witch', name: 'Mother Mirrow', one: 'Mother Mirrow', hp: 140, attack: 8, defence: 8, damage: [6, 10], speed: 4, shots: 8, leadership: 99, wage: 0, note: 'Throws hexes, and the occasional ladle.', ability: 'hexes' },
+  bramble: { id: 'bramble', name: 'Aunt Bramble', one: 'Aunt Bramble', hp: 170, attack: 9, defence: 9, damage: [7, 11], speed: 4, shots: 10, leadership: 99, wage: 0, note: 'Mother Mirrow\u2019s big sister. Bigger hat, worse temper.', ability: 'hexes' },
 };
 
 /**

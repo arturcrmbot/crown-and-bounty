@@ -26,6 +26,6 @@ export function endDay(state: GameState): Result {
     events.push({ type: 'over', result: 'lost' });
   }
   const tryAgain = { label: 'Try this commission again', action: { type: 'retry' } } as const;
-  events.push(show({ title: `Day ${roman(day)}`, lines: lines.length ? lines : ['The sun comes up over the province. Your horse looks rested.'], choices: next.over ? [tryAgain, again] : [close] }));
+  events.push(show({ title: `Day ${roman(day)}`, lines: lines.length ? lines : ['The sun comes up over the province. Your horse looks rested.'], choices: next.over === 'lost' ? [tryAgain, again] : [close] }));
   return { state: next, events };
 }

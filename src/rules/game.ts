@@ -11,7 +11,7 @@ import { locationById, show, type Action, type GameState, type Result } from './
 export * from './state';
 export { armouryCard, buy, describe, describeHero, DISCOVERY_XP, openChest, priceOf, recruit, recruitable, visit } from './places';
 export { endDay } from './days';
-export { briefingCard, campaignLines, chooseBoon, commissionOf, courtCard, hasNextCommission, nextArmy, nextCommission, provinceOf, retry, toCourt, veterans, VETERANS } from './campaign';
+export { briefingCard, CAMPAIGN_LENGTH, campaignLines, chooseBoon, commissionAt, commissionOf, courtCard, hasNextCommission, nextArmy, nextCommission, provinceOf, retry, toCourt, veterans, VETERANS } from './campaign';
 export { beginCommission, chooseBackground, newGame } from './scenario';
 export { battleXp, fight, finishFight, heroInBattle, lossesLine, startFight, winChance } from './fight';
 export { equip, gainXp, gearCard, giveArtifact, heroStats, learn, levelFor, levelUpCard, LEVELS } from './hero';
@@ -28,7 +28,8 @@ export function apply(state: GameState, action: Action): Result | null {
     case 'autofight':
       return fight(state, action.id);
     case 'endDay':
-      return endDay(state);
+      // Once a commission is won or lost, no more days pass: the next step is court, or trying again.
+      return state.over ? null : endDay(state);
     case 'learn':
       return learn(state, action.option);
     case 'equip':

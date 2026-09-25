@@ -64,6 +64,7 @@ export const ALDMOOR: Province = {
     [478, 694, false], [612, 520, false], [872, 604, true], [884, 522, true], [380, 420, false],
   ],
   rocks: [[258, 244, 8], [320, 250, 6], [270, 276, 5], [188, 222, 7], [206, 236, 5], [620, 610, 5], [960, 540, 6], [1062, 300, 5]],
+  flocks: [[1010, 90]],
   decor: [
     { sprite: 'hut', at: [968, 772], place: 'village', seed: 3 },
     { sprite: 'hut', at: [1016, 818], place: 'village', seed: 4 },

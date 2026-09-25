@@ -80,6 +80,7 @@ export const FENMARCH: Province = {
     [1000, 170, false], [1180, 250, true], [1030, 700, false], [1200, 720, false], [380, 580, false],
   ],
   rocks: [[250, 300, 6], [700, 360, 5], [1150, 300, 6], [500, 650, 5], [1100, 760, 6]],
+  flocks: [[620, 170], [1180, 620]],
   decor: [
     { sprite: 'hut', at: [566, 432], place: 'village', seed: 11 },
     { sprite: 'hut', at: [652, 452], place: 'village', seed: 12 },
@@ -153,7 +154,7 @@ export const FENMARCH: Province = {
       text: {
         about: ['It pumps the fen dry, one bucket at a time.'],
         done: ['"Come back next week, officer. The fen came back first."'],
-        visit: ['"Dry lanes for the King\u2019s men!" The miller opens every sluice, and your troops march on firm ground.', 'She found a goblin charm in the pump, and is glad to be rid of it.'],
+        visit: ['"Dry lanes for the King\u2019s men!" The miller opens every sluice, and your troops march on firm ground.'],
       },
     },
     {

@@ -1,0 +1,254 @@
+import type { Commission } from '../content/campaign';
+import type { Band, VillainTemplate } from '../content/villains';
+import { troopPower, type TroopId } from '../content/troops';
+import type { Province } from '../content/types';
+import { buildMap, CELL, gridWithEnemies, poolDistance } from './map/model';
+import { nearest, smooth, type Point } from './map/geometry';
+import { APPROACH } from './map/movement';
+import { findPath, nearestPassable, reachableNear } from './map/pathfinding';
+import { rng } from './noise';
+import type { Army, Enemy, Location } from './state';
+
+const W = 40 * 32;
+const H = 30 * 32;
+
+/** How much stronger each generated commission is than the Fenmarch: a fifth again, and again. */
+export const strengthFor = (chapter: number) => 1.2 ** (chapter - 1);
+
+/** Enemy strength in the Fenmarch, which generated commissions scale from. */
+const BASE = { band: 760, guardian: 860, hideout: 1900 };
+
+/** An army of about `power` fighting worth, split between troops by share; a boss is one troop on top. */
+function armyOf(troops: [TroopId, number][], power: number, boss?: TroopId): Army {
+  const army: Army = troops.map(([troop, share]) => ({ troop, count: Math.max(1, Math.round((power * share) / troopPower(troop))) }));
+  return boss ? [...army, { troop: boss, count: 1 }] : army;
+}
+
+type Rand = () => number;
+const pick = <T>(random: Rand, list: readonly T[]) => list[Math.floor(random() * list.length)];
+const between = (random: Rand, a: number, b: number) => a + random() * (b - a);
+const dist = (a: Point, b: Point) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+
+/** A road from a to b that wanders a little. */
+function road(random: Rand, a: Point, b: Point): Point[] {
+  const steps = Math.max(2, Math.round(dist(a, b) / 90));
+  const [nx, ny] = [-(b[1] - a[1]) / (dist(a, b) || 1), (b[0] - a[0]) / (dist(a, b) || 1)];
+  const bend = between(random, -0.18, 0.18) * dist(a, b);
+  const points: Point[] = [a];
+  for (let i = 1; i < steps; i++) {
+    const t = i / steps;
+    const sway = Math.sin(t * Math.PI) * bend + between(random, -12, 12);
+    points.push([a[0] + (b[0] - a[0]) * t + nx * sway, a[1] + (b[1] - a[1]) * t + ny * sway]);
+  }
+  points.push(b);
+  return points;
+}
+
+/** A point `share` of the way along a road, by length. */
+function along(path: Point[], share: number): Point {
+  const fine = smooth(path);
+  const lengths = fine.slice(1).map((p, i) => dist(p, fine[i]));
+  let left = lengths.reduce((a, b) => a + b, 0) * share;
+  for (let i = 0; i < lengths.length; i++) {
+    if (left <= lengths[i]) {
+      const t = left / lengths[i];
+      return [Math.round(fine[i][0] + (fine[i + 1][0] - fine[i][0]) * t), Math.round(fine[i][1] + (fine[i + 1][1] - fine[i][1]) * t)];
+    }
+    left -= lengths[i];
+  }
+  return fine[fine.length - 1];
+}
+
+function enemy(band: Band, power: number, reward: number, boss?: TroopId): Enemy {
+  const words: Enemy = { look: band.look, lines: band.lines, threat: band.threat, flees: band.flees, loot: band.loot, army: armyOf(band.troops, power, boss), reward };
+  if (band.charge) words.charge = band.charge;
+  return words;
+}
+
+/** One attempt at a province; the caller checks it can be played and tries again if not. */
+function attempt(seed: number, v: VillainTemplate, chapter: number): Province {
+  const random = rng(seed);
+  const flipX = random() < 0.5;
+  const flipY = random() < 0.5;
+  const P = ([x, y]: Point): Point => [Math.round(flipX ? W - x : x), Math.round(flipY ? H - y : y)];
+  const s = strengthFor(chapter);
+
+  // Laid out with the hero top left and the villain bottom right, then flipped.
+  const hero: Point = [between(random, 130, 230), between(random, 120, 200)];
+  const hideout: Point = [between(random, W - 230, W - 150), between(random, H - 200, H - 150)];
+  const castleNorth = random() < 0.5;
+  const castle: Point = castleNorth ? [between(random, 760, 1080), between(random, 150, 260)] : [between(random, 150, 280), between(random, 560, 760)];
+  const village: Point = castleNorth ? [between(random, 200, 460), between(random, 560, 800)] : [between(random, 700, 1000), between(random, 170, 300)];
+  const tower: Point = [between(random, 520, 760), between(random, 380, 560)];
+  const mine: Point = castleNorth ? [between(random, 1020, 1160), between(random, 360, 520)] : [between(random, 420, 620), between(random, 140, 240)];
+  const mill: Point = [village[0] + between(random, -140, 140), village[1] + (village[1] > 480 ? -1 : 1) * between(random, 90, 150)];
+
+  // Roads: each place joins the nearest one already on the network; the hideout comes last, as a spur.
+  const nodes: Point[] = [hero, castle, village, tower, mine, mill];
+  const joined: Point[] = [nodes[0]];
+  const paths: Point[][] = [];
+  for (const node of nodes.slice(1).sort((a, b) => dist(a, hero) - dist(b, hero))) {
+    const from = joined.reduce((best, p) => (dist(p, node) < dist(best, node) ? p : best));
+    paths.push(road(random, from, node));
+    joined.push(node);
+  }
+  const gateFrom = joined.filter((p) => p !== hero).reduce((best, p) => (dist(p, hideout) < dist(best, hideout) ? p : best));
+  const hideoutRoad = road(random, gateFrom, hideout);
+  paths.push(hideoutRoad);
+
+  const signpost = along(paths[0], 0.35);
+  const guardianAt = along(hideoutRoad, Math.max(0.55, 1 - 150 / dist(gateFrom, hideout)));
+  const bandSpots = paths.slice(0, -1).filter((p) => dist(p[0], p[p.length - 1]) > 260).map((p) => along(p, between(random, 0.45, 0.6)));
+  const bands = bandSpots.filter((p) => dist(p, hero) > 200).slice(0, v.bands.length);
+
+  const taken: Point[] = [hero, castle, village, tower, mine, mill, hideout, signpost, guardianAt, ...bands];
+  const free = (p: Point, gap: number) => taken.every((q) => dist(p, q) > gap) && paths.every((path) => nearest(smooth(path), p[0], p[1]).d > 30);
+  const spot = (gap: number): Point => {
+    for (let i = 0; i < 60; i++) {
+      const p: Point = [between(random, 80, W - 80), between(random, 90, H - 80)];
+      if (free(p, gap) && dist(p, hideout) > 260) {
+        taken.push(p);
+        return p;
+      }
+    }
+    return [between(random, 80, W - 80), between(random, 90, H - 80)];
+  };
+  const chests = [spot(130), spot(130), spot(130)];
+  const piles = [spot(120), spot(120)];
+
+  // A river runs down the middle about half the time; roads that cross it get bridges.
+  const hasRiver = random() < 0.55;
+  const riverX = between(random, 560, 760);
+  const river: Point[] = hasRiver ? Array.from({ length: 12 }, (_, i) => [riverX + Math.sin(i * 0.9 + random() * 0.6) * 50 + between(random, -18, 18), -20 + i * 92] as Point) : [[-400, -400], [-400, -399]];
+
+  // A wood rings the hideout, so the gatekeepers' road is the only way in.
+  const forests: [number, number, number, number][] = [[hideout[0], hideout[1], 230, 200]];
+  for (let i = 0; i < 6; i++) {
+    const c = spot(160);
+    forests.push([c[0], c[1], between(random, 60, 140), between(random, 50, 110)]);
+  }
+  const fen = v.land === 'fen';
+  const pools: [number, number, number, number][] = [];
+  if (fen) {
+    for (let i = 0; i < 40 && pools.length < 9; i++) {
+      const c: Point = [between(random, 80, W - 80), between(random, 80, H - 80)];
+      const size: [number, number] = [between(random, 45, 120), between(random, 26, 60)];
+      const pool: [number, number, number, number] = [c[0], c[1], size[0], size[1]];
+      const probe: Province = { pools: [pool] } as Province;
+      const clear = taken.every((q) => poolDistance(probe, q[0], q[1]) > 40) && paths.every((path) => smooth(path).every(([x, y]) => poolDistance(probe, x, y) > 16));
+      if (clear) pools.push(pool);
+    }
+  }
+  // Sprites are drawn in whole pixels.
+  const crags: [number, number, number, number][] = [];
+  if (!fen) {
+    for (let i = 0; i < 4; i++) {
+      const c = spot(120);
+      crags.push([Math.round(c[0]), Math.round(c[1] + 20), Math.round(between(random, 50, 110)), Math.round(between(random, 36, 70))]);
+    }
+  }
+  // Lone trees and boulders on the open ground, off the roads.
+  const trees: [number, number, boolean][] = [];
+  const rocks: [number, number, number][] = [];
+  for (let i = 0; i < 26; i++) {
+    const p: Point = [Math.round(between(random, 40, W - 40)), Math.round(between(random, 50, H - 30))];
+    if (!free(p, 50)) continue;
+    if (i % 3 === 0) rocks.push([p[0], p[1], Math.round(between(random, 5, 9))]);
+    else trees.push([p[0], p[1], !fen && random() < 0.4]);
+  }
+
+  const names = v.names;
+  const at = (p: Point) => P(p);
+  const bandLocations: Location[] = bands.map((p, i) => ({
+    id: `band${i}`,
+    kind: 'patrol',
+    name: v.bands[i].name,
+    at: at(p),
+    done: false,
+    enemy: enemy(v.bands[i], BASE.band * s * (0.9 + i * 0.2), Math.round(400 * s)),
+  }));
+  const locations: Location[] = [
+    { id: 'castle', kind: 'castle', name: pick(random, names.castle), at: at(castle), done: false, recruits: { troop: 'knights', count: 6, price: 110 }, wares: [...(['harrowgateMail', 'fenBanner', 'astrolabe', 'swordOfAldmoor', 'breastplate', 'luckyHorseshoe'] as const)].sort(() => random() - 0.5).slice(0, 3) },
+    { id: 'village', kind: 'village', name: pick(random, names.village), at: at(village), done: false, recruits: { ...v.village } },
+    { id: 'tower', kind: 'tower', ...(fen ? { look: 'abbey' as const } : {}), name: pick(random, names.tower), at: at(tower), done: false, reveals: at(hideout), text: { visit: [v.towerClue] } },
+    { id: 'mine', kind: 'mine', ...(fen ? { look: 'peathut' as const } : {}), name: pick(random, names.mine), at: at(mine), done: false, gold: Math.round(500 * s) },
+    { id: 'mill', kind: 'mill', look: 'windmill', name: pick(random, names.mill), at: at(mill), done: false },
+    { id: 'signpost', kind: 'signpost', name: 'Signpost', at: at(signpost), done: false, text: { about: [`**THIS WAY:** ${v.villain}, probably. Somebody has added *"DON\u2019T"* in charcoal.`] } },
+    ...chests.map((p, i): Location => ({ id: `chest${i}`, kind: 'chest', name: 'Treasure Chest', at: at(p), done: false, gold: Math.round((500 + i * 150) * s) })),
+    ...piles.map((p, i): Location => ({ id: `gold${i}`, kind: 'gold', name: 'Pile of Gold', at: at(p), done: false, gold: Math.round((300 + i * 150) * s) })),
+    ...bandLocations,
+    { id: 'guardian', kind: 'patrol', name: v.guardian.name, at: at(guardianAt), done: false, enemy: { ...enemy(v.guardian, BASE.guardian * s, Math.round(600 * s)), ...(v.parleys?.guardian ? { parleys: v.parleys.guardian } : {}) } },
+    {
+      id: 'hideout',
+      kind: 'hideout',
+      ...(v.hideout.placeLook ? { look: v.hideout.placeLook } : {}),
+      name: v.hideout.name,
+      at: at(hideout),
+      done: false,
+      enemy: { ...enemy(v.hideout, BASE.hideout * s, Math.round(3000 * s), v.hideout.boss), ...(v.parleys?.hideout ? { parleys: v.parleys.hideout } : {}) },
+      text: { done: v.hideout.done },
+    },
+  ];
+  const huts = [0, 1, 2, 3].map((i) => ({ sprite: 'hut' as const, at: at([village[0] + Math.cos(i * 1.7) * 48, village[1] + Math.sin(i * 1.7) * 28 - 6]), place: 'village', seed: 30 + i }));
+
+  const flip = (list: Point[]) => list.map(at);
+  const provinceName = pick(random, names.province);
+  return {
+    id: `generated-${chapter}-${seed}`,
+    name: provinceName,
+    width: W,
+    height: H,
+    river: flipY ? flip(river).reverse() : flip(river),
+    cliff: null,
+    paths: paths.map(flip),
+    forests: forests.map(([x, y, rx, ry]) => [...at([x, y]), rx, ry] as [number, number, number, number]),
+    pools: pools.map(([x, y, rx, ry]) => [...at([x, y]), rx, ry] as [number, number, number, number]),
+    woods: fen ? { pine: 0.3, willow: 0.6 } : { pine: 0.7, willow: 0 },
+    fen,
+    crags: crags.map(([x, y, w, h]) => [...at([x, y]), w, h] as [number, number, number, number]),
+    trees: trees.map(([x, y, pine]) => [...at([x, y]), pine] as [number, number, boolean]),
+    rocks: rocks.map(([x, y, size]) => [...at([x, y]), size] as [number, number, number]),
+    decor: huts,
+    hero: at(hero),
+    explored: { trails: [flip(paths[0])], trailRadius: 120, discs: [[...at(hero), 190], [...at(castle), 150]] },
+    locations,
+  };
+}
+
+/**
+ * Whether a province can be played: the castle and village are open from the start, everything
+ * else once the bands are beaten, and the hideout only past its gatekeepers.
+ */
+export function playable(province: Province): boolean {
+  const map = buildMap(province);
+  const cell = ([x, y]: Point) => ({ x: Math.floor(x / CELL), y: Math.floor(y / CELL) });
+  const start = nearestPassable(map.grid, cell(province.hero), 2);
+  if (!start) return false;
+  // As the hero rides: places by the nearest open cell, enemies from his own side of them.
+  const reach = (standing: Set<string>, place: Location) => {
+    const grid = gridWithEnemies(map, (id) => standing.has(id));
+    const goal = place.enemy ? reachableNear(grid, start, cell(place.at), APPROACH) : nearestPassable(grid, cell(place.at), 16);
+    return goal !== null && findPath(grid, start, goal) !== null;
+  };
+  const enemies = province.locations.filter((l) => l.enemy && l.kind !== 'hideout').map((l) => l.id);
+  const all = new Set(enemies);
+  const onlyGuardian = new Set(['guardian']);
+  const hideout = province.locations.find((l) => l.kind === 'hideout')!;
+  for (const l of province.locations) {
+    if (l.kind === 'hideout') continue;
+    if ((l.kind === 'castle' || l.kind === 'village') && !reach(all, l)) return false;
+    if (!reach(onlyGuardian, l)) return false;
+  }
+  return !reach(onlyGuardian, hideout) && reach(new Set(), hideout);
+}
+
+/** A commission in a generated province: the villain's words, with a map that has been checked. */
+export function generateCommission(seed: number, v: VillainTemplate, chapter: number): Commission {
+  for (let tries = 0; tries < 60; tries++) {
+    const province = attempt(seed + tries * 7919, v, chapter);
+    if (playable(province)) {
+      return { province, villain: v.villain, brief: v.brief, surrender: v.surrender, homecoming: v.homecoming, timeout: v.timeout, praise: v.praise, arrival: v.arrival, reward: Math.round(2500 * strengthFor(chapter)) };
+    }
+  }
+  throw new Error(`No playable province for seed ${seed}`);
+}

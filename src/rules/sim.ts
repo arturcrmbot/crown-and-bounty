@@ -14,6 +14,6 @@ export function simulate(seeds: number[], background: BackgroundId = 'knight'): 
 }
 
 /** Plays the whole campaign once per seed: one entry per commission played, retries included. */
-export function simulateCampaign(seeds: number[], background: BackgroundId = 'knight') {
-  return seeds.map((seed) => ({ seed, runs: playCampaign(newGame(seed, ALDMOOR, background)) }));
+export function simulateCampaign(seeds: number[], background: BackgroundId = 'knight', lastChapter = Infinity) {
+  return seeds.map((seed) => ({ seed, runs: playCampaign(newGame(seed, ALDMOOR, background), lastChapter) }));
 }

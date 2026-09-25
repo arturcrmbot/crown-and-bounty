@@ -59,7 +59,7 @@ export class BattleController {
   }
 
   dispose() {
-    this.cards.hide();
+    this.cards.dispose();
   }
 
   private name(id: number, count?: number) {

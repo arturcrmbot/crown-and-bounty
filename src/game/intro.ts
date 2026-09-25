@@ -2,7 +2,7 @@ import { BACKGROUNDS, type BackgroundId } from '../content/backgrounds';
 import { COMMISSIONS } from '../content/campaign';
 import { SPELLS } from '../content/spells';
 import { troops } from '../content/troops';
-import { commissionOf, roman, type Card, type GameState } from '../rules/game';
+import { campaignLines, commissionOf, hasNextCommission, roman, type Card, type GameState } from '../rules/game';
 
 /** The very first card: who Aldric was before the King found him. Wide, so all four fit on a small screen. */
 export function backgroundCard(): Card {
@@ -41,3 +41,10 @@ export const failedCard = (state: GameState): Card => ({
   lines: [commissionOf(state).timeout],
   choices: [{ label: 'Try this commission again', action: { type: 'retry' } }, { label: 'Start a new campaign', action: { type: 'restart' } }],
 });
+
+/** After a commission ends, if its card was put away: what comes next. */
+export function endCard(state: GameState): Card {
+  if (state.over === 'lost') return failedCard(state);
+  if (hasNextCommission(state)) return { title: 'The bounty is paid!', lines: [`${commissionOf(state).villain} is on the way to the King.`], choices: [{ label: 'Ride to the King\u2019s court', action: { type: 'court' } }] };
+  return { title: 'The campaign is won!', lines: campaignLines(state).slice(1), choices: [{ label: 'Start a new campaign', action: { type: 'restart' } }] };
+}
