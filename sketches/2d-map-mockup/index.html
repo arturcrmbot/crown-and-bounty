@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>King's Commission - vibe mockup</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#120b05;color:#e9d6a6;font-family:"Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;overflow:hidden;user-select:none}
+#wrap{display:flex;height:100vh;padding:8px;gap:8px}
+#left{flex:1;display:flex;flex-direction:column;gap:6px;min-width:0}
+#frame{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;background:#000;border:3px solid #d8b25a;box-shadow:0 0 0 3px #5a3e14,0 0 0 5px #d8b25a}
+canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
+#map{cursor:pointer}
+#status{height:30px;line-height:26px;padding:0 12px;border:2px solid #8a6a2a;background:linear-gradient(#3a2a16,#24180c);color:#f0dca0;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#panel{width:236px;flex:none;display:flex;flex-direction:column;gap:8px;padding:10px;border:3px solid #d8b25a;box-shadow:0 0 0 3px #5a3e14;background:repeating-linear-gradient(90deg,#3b2713 0 7px,#432c16 7px 9px,#3a2512 9px 17px);overflow:auto}
+h1{margin:0;text-align:center;font-size:20px;letter-spacing:3px;color:#f2d27a;text-shadow:2px 2px 0 #000;line-height:1.1}
+.sub{text-align:center;font-size:12px;color:#b89a5a;font-style:italic;margin-top:-4px}
+.box{border:2px solid #8a6a2a;background:rgba(10,6,2,.55);padding:7px 9px}
+.box h2{margin:0 0 5px;font-size:12px;letter-spacing:2px;color:#d8b25a;text-transform:uppercase}
+.row{display:flex;justify-content:space-between;font-size:15px;margin:2px 0}
+.row b,#army b{color:#fff2c0}
+.mp{height:8px;border:1px solid #8a6a2a;background:#1a1008;margin-top:6px}
+#mpbar{height:100%;width:100%;background:linear-gradient(#7ee07a,#2f8a2a);transition:width .15s}
+#army{list-style:none;margin:0;padding:0;font-size:15px}
+#army li{display:flex;justify-content:space-between;padding:1px 0;border-bottom:1px dotted #5a4420}
+.wanted{background:linear-gradient(#ecdcad,#d6bd86);color:#2a1a08;border-color:#5a3e14;text-align:center}
+.wanted h2{color:#7a1a10;font-size:17px;letter-spacing:5px;margin-bottom:4px}
+.wanted canvas{width:64px;height:64px;border:2px solid #5a3e14;background:#b89868;margin:0 auto 4px}
+.wanted .nm{font-weight:bold;font-size:15px}
+.wanted .cr{font-size:12.5px;font-style:italic;margin:2px 0}
+.wanted .rw{font-size:13px;font-weight:bold;color:#7a1a10}
+#mini{width:168px;height:120px;align-self:center;border:2px solid #8a6a2a;background:#000}
+.btns{display:flex;gap:6px}
+button{flex:1;font:inherit;font-size:14px;padding:7px 4px;color:#f6e2a8;background:linear-gradient(#6e5a3e,#3e3020);border:2px solid #d8b25a;box-shadow:inset 0 0 0 1px #000;cursor:pointer;text-shadow:1px 1px 0 #000}
+button:hover{filter:brightness(1.2)}
+#dlg{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.35)}
+#dlg.on{display:flex}
+#card{width:min(430px,90vw);padding:16px 20px 14px;color:#2a1a08;background:radial-gradient(ellipse at center,#f3e4bb,#d6bc82);border:3px solid #5a3e14;box-shadow:0 0 0 3px #d8b25a,0 0 0 6px #3a2810,0 10px 30px #000;text-align:center}
+#card h3{margin:0 0 8px;font-size:20px;color:#5a1a0a}
+#card p{margin:0 0 14px;font-size:16px;line-height:1.4}
+#card .ch{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+#card button{flex:0 1 auto;min-width:130px}
+@media (max-width:760px){#wrap{flex-direction:column}#panel{width:auto;max-height:40vh;flex-direction:row;flex-wrap:wrap}#panel>*{flex:1 1 180px}}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="left">
+    <div id="frame"><canvas id="map"></canvas></div>
+    <div id="status">Click a tile to plot a route, click it again to ride.</div>
+  </div>
+  <aside id="panel">
+    <h1>KING'S<br>COMMISSION</h1>
+    <div class="sub">vibe mockup, drawn in code</div>
+    <div class="box">
+      <div class="row"><span>Day</span><span><b id="day">1</b> of 100</span></div>
+      <div class="row"><span>Gold</span><b id="gold">0</b></div>
+      <div class="row"><span>Leadership</span><b id="lead">0</b></div>
+      <div class="mp"><div id="mpbar"></div></div>
+    </div>
+    <div class="box"><h2>Army</h2><ul id="army"></ul></div>
+    <div class="box wanted">
+      <h2>WANTED</h2>
+      <canvas id="portrait" width="16" height="16"></canvas>
+      <div class="nm">Baron Grimsby</div>
+      <div class="cr">Stole the royal goose. Also three years of taxes.</div>
+      <div class="rw">5,000 gold + a torn map piece</div>
+    </div>
+    <canvas id="mini"></canvas>
+    <div class="btns"><button id="endday">End day</button><button id="music">&#9834; Off</button></div>
+  </aside>
+</div>
+<div id="dlg"><div id="card"><h3 id="dt"></h3><p id="dp"></p><div class="ch" id="dc"></div></div></div>
+<script src="art.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
