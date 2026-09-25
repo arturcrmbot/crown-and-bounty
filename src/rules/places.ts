@@ -1,5 +1,6 @@
+import { winChance } from './fight';
 import { revealDisc } from './map/fog';
-import { addTroops, armyLine, armyPower, close, coins, LAST_DAY, leadershipUsed, locationById, roman, show, TROOPS, troops, update, type Card, type Choice, type GameState, type Result } from './state';
+import { addTroops, armyLine, close, coins, LAST_DAY, leadershipUsed, locationById, roman, show, TROOPS, troops, update, type Card, type Choice, type GameState, type Result } from './state';
 
 /** The card for a place before the hero rides there. */
 export function describe(state: GameState, id: string): Card {
@@ -115,8 +116,8 @@ export function visit(state: GameState, id: string): Result {
     case 'patrol':
     case 'hideout': {
       if (place.done) return say(state, { title: place.name, lines: ['Nobody here but a few goose feathers.'], choices: [close] });
-      const odds = armyPower(state.army) / armyPower(place.enemy!.army);
-      const hint = odds > 1.35 ? 'They look nervous.' : odds > 0.95 ? 'It will be close.' : 'Your army looks at you. Then at them. Then at you.';
+      const chance = winChance(state, id);
+      const hint = chance >= 0.9 ? 'They look nervous.' : chance >= 0.55 ? 'It will be close.' : 'Your army looks at you. Then at them. Then at you.';
       return say(state, {
         title: place.name,
         lines: [place.enemy!.threat, hint],

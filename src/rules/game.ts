@@ -7,7 +7,7 @@ import type { Action, GameState, Result } from './state';
 export * from './state';
 export { describe, describeHero, openChest, recruit, recruitable, visit } from './places';
 export { endDay } from './days';
-export { fight, finishFight, heroInBattle, lossesLine, startFight } from './fight';
+export { fight, finishFight, heroInBattle, lossesLine, startFight, winChance } from './fight';
 
 /** Applies a card choice. `go`, `close` and `restart` are for the screens, so they return null here. */
 export function apply(state: GameState, action: Action): Result | null {

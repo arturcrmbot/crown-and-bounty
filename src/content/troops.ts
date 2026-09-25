@@ -23,13 +23,13 @@ export type TroopDef = {
 };
 
 export const TROOPS: Record<TroopId, TroopDef> = {
-  peasants: { id: 'peasants', name: 'Peasants', one: 'Peasant', hp: 2, attack: 1, defence: 1, damage: [1, 1], speed: 3, leadership: 1, wage: 1, note: 'Pitchforks, enthusiasm, not much else.' },
-  archers: { id: 'archers', name: 'Archers', one: 'Archer', hp: 10, attack: 5, defence: 3, damage: [2, 3], speed: 4, shots: 12, leadership: 2, wage: 3, note: 'Shoot from anywhere, unless something is chewing on them.' },
-  knights: { id: 'knights', name: 'Knights', one: 'Knight', hp: 30, attack: 8, defence: 8, damage: [5, 8], speed: 5, leadership: 5, wage: 8, note: 'Heavy, loyal and very pleased with their armour.' },
-  swordsmen: { id: 'swordsmen', name: 'Swordsmen', one: 'Swordsman', hp: 16, attack: 6, defence: 6, damage: [3, 5], speed: 4, leadership: 3, wage: 4, note: 'Grimsby\u2019s men. Goose feathers in every helmet.' },
-  crossbowmen: { id: 'crossbowmen', name: 'Crossbowmen', one: 'Crossbowman', hp: 10, attack: 5, defence: 4, damage: [2, 4], speed: 3, shots: 8, leadership: 2, wage: 3, note: 'Slow to reload, slower to smile.' },
-  wolves: { id: 'wolves', name: 'Wolves', one: 'Wolf', hp: 8, attack: 5, defence: 2, damage: [2, 4], speed: 7, leadership: 2, wage: 0, note: 'Fast, hungry, and not interested in your commission.' },
-  baron: { id: 'baron', name: 'Baron Grimsby', one: 'Baron Grimsby', hp: 110, attack: 11, defence: 10, damage: [9, 14], speed: 4, leadership: 99, wage: 0, note: 'Carries the royal goose under one arm, and a very large sword in the other.' },
+  peasants: { id: 'peasants', name: 'Peasants', one: 'Peasant', hp: 3, attack: 1, defence: 1, damage: [1, 1], speed: 3, leadership: 1, wage: 1, note: 'Pitchforks, enthusiasm, not much else.' },
+  archers: { id: 'archers', name: 'Archers', one: 'Archer', hp: 14, attack: 5, defence: 3, damage: [2, 3], speed: 4, shots: 12, leadership: 2, wage: 3, note: 'Shoot from anywhere, unless something is chewing on them.' },
+  knights: { id: 'knights', name: 'Knights', one: 'Knight', hp: 42, attack: 8, defence: 8, damage: [5, 8], speed: 5, leadership: 5, wage: 8, note: 'Heavy, loyal and very pleased with their armour.' },
+  swordsmen: { id: 'swordsmen', name: 'Swordsmen', one: 'Swordsman', hp: 24, attack: 6, defence: 6, damage: [3, 5], speed: 4, leadership: 3, wage: 4, note: 'Grimsby\u2019s men. Goose feathers in every helmet.' },
+  crossbowmen: { id: 'crossbowmen', name: 'Crossbowmen', one: 'Crossbowman', hp: 14, attack: 5, defence: 4, damage: [2, 4], speed: 3, shots: 8, leadership: 2, wage: 3, note: 'Slow to reload, slower to smile.' },
+  wolves: { id: 'wolves', name: 'Wolves', one: 'Wolf', hp: 12, attack: 7, defence: 3, damage: [3, 5], speed: 7, leadership: 2, wage: 0, note: 'Fast, hungry, and not interested in your commission.' },
+  baron: { id: 'baron', name: 'Baron Grimsby', one: 'Baron Grimsby', hp: 160, attack: 11, defence: 10, damage: [9, 14], speed: 4, leadership: 99, wage: 0, note: 'Carries the royal goose under one arm, and a very large sword in the other.' },
 };
 
 /**

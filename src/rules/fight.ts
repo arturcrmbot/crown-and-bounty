@@ -78,6 +78,21 @@ export function finishFight(state: GameState): Result {
   };
 }
 
+/**
+ * The sergeants' estimate: how often the army wins this fight when both sides play it out by the
+ * AI, over a few fixed seeds. Honest about tactics in a way raw troop numbers aren't.
+ */
+export function winChance(state: GameState, id: string, samples = 8): number {
+  const place = locationById(state, id);
+  if (!place.enemy || state.army.length === 0) return 0;
+  let wins = 0;
+  for (let i = 1; i <= samples; i++) {
+    const battle = createBattle({ place: id, seed: i * 7919, player: state.army, enemy: place.enemy.army, hero: heroInBattle(state), obstacles: place.kind === 'hideout' ? 3 : 5 });
+    if (autoResolve(battle).result === 'won') wins++;
+  }
+  return wins / samples;
+}
+
 /** A whole battle at once: both sides play by the same rules and AI as a hand-fought one. */
 export function fight(state: GameState, id: string): Result {
   const started = startFight(state, id).state;

@@ -43,7 +43,8 @@ describe('a battle', () => {
   it('works out wounds on the top troop', () => {
     const b = battle(['knights'], [1], ['swordsmen'], [10]);
     const swordsmen = b.fighters[1];
-    expect(wound(swordsmen, 40)).toEqual({ count: 8, hp: 8, killed: 2 });
+    expect(wound(swordsmen, 40)).toEqual({ count: 9, hp: 8, killed: 1 });
+    expect(wound(swordsmen, 48)).toEqual({ count: 8, hp: 24, killed: 2 });
     expect(wound(swordsmen, 1000).count).toBe(0);
   });
 

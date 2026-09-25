@@ -93,8 +93,8 @@ export const ALDMOOR: Province = {
       done: false,
       enemy: {
         look: 'soldiers',
-        lines: ['About **18 swordsmen** and **12 crossbowmen**.', 'They have goose feathers in their helmets.'],
-        army: [{ troop: 'swordsmen', count: 18 }, { troop: 'crossbowmen', count: 12 }],
+        lines: ['About **24 swordsmen** and **16 crossbowmen**.', 'They have goose feathers in their helmets.'],
+        army: [{ troop: 'swordsmen', count: 24 }, { troop: 'crossbowmen', count: 16 }],
         reward: 300,
         threat: 'They level their spears.',
         flees: 'Grimsby\u2019s patrol breaks and runs for Darkwood.',
@@ -109,8 +109,8 @@ export const ALDMOOR: Province = {
       done: false,
       enemy: {
         look: 'stockade',
-        lines: ['A muddy stockade deep in Darkwood. Someone inside is honking.', 'About **30 swordsmen**, **15 crossbowmen** and one Baron.'],
-        army: [{ troop: 'swordsmen', count: 30 }, { troop: 'crossbowmen', count: 15 }, { troop: 'baron', count: 1 }],
+        lines: ['A muddy stockade deep in Darkwood. Someone inside is honking.', 'About **36 swordsmen**, **18 crossbowmen** and one Baron.'],
+        army: [{ troop: 'swordsmen', count: 36 }, { troop: 'crossbowmen', count: 18 }, { troop: 'baron', count: 1 }],
         reward: 2000,
         threat: 'The Baron shouts from the palisade: *"I have the goose AND the walls!"*',
         flees: 'The stockade gate falls open.',
@@ -125,8 +125,8 @@ export const ALDMOOR: Province = {
       done: false,
       enemy: {
         look: 'wolves',
-        lines: ['About **20 wolves** are sitting on the path like they own it.', 'Your archers are pretending not to have seen them.'],
-        army: [{ troop: 'wolves', count: 20 }],
+        lines: ['About **32 wolves** are sitting on the path like they own it.', 'Your archers are pretending not to have seen them.'],
+        army: [{ troop: 'wolves', count: 32 }],
         reward: 150,
         threat: 'They bare their teeth. One of them yawns, which is somehow worse.',
         flees: 'The pack scatters into Darkwood.',

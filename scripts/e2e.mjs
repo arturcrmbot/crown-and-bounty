@@ -98,18 +98,28 @@ try {
   check((await kc.title()) === 'Victory!', 'the sergeants beat the wolves');
   await kc.choose('Close');
 
+  // Storm the hideout when the sergeants like the odds; otherwise wait for payday and recruit.
   let result = null;
-  for (let attempt = 1; attempt <= 3 && result !== 'The bounty is paid!'; attempt++) {
+  for (let attempt = 1; attempt <= 6 && result !== 'The bounty is paid!'; attempt++) {
     await go('hideout', 'Approach');
-    await kc.choose('Let the sergeants');
-    result = await kc.title();
-    if (result === 'The bounty is paid!') break;
-    await kc.choose('Close');
-    while ((await kc.state()).day % 7 !== 1) await page.keyboard.press('e');
-    await kc.choose('Close');
-    await go('castle', 'Visit');
-    await kc.choose('Recruit');
-    await kc.choose('Close');
+    const odds = await kc.lines();
+    if (odds.includes('nervous') || attempt >= 5) {
+      await kc.choose('Let the sergeants');
+      result = await kc.title();
+      if (result === 'The bounty is paid!') break;
+    }
+    await kc.choose(result === 'Retreat!' || result === 'Defeat' ? 'Close' : 'Retreat');
+    result = null;
+    do {
+      await page.keyboard.press('e');
+      await page.waitForTimeout(40);
+      await kc.choose('Close');
+    } while ((await kc.state()).day % 7 !== 1);
+    for (const [place, verb] of [['castle', 'Visit'], ['village', 'Visit']]) {
+      await go(place, verb);
+      await kc.choose('Recruit');
+      await kc.choose('Close');
+    }
   }
   const final = await kc.state();
   check(final.over === 'won' && final.bounty === 'paid', `the commission is won on day ${final.day}`);

@@ -81,7 +81,7 @@ suite('fights', () => {
     const result = fight(newGame(), 'patrol');
     expect(cardOf(result).title).toBe('Victory!');
     expect(result.events).toContainEqual({ type: 'removed', id: 'patrol' });
-    expect(countOf(result.state.army, 'knights')).toBeGreaterThanOrEqual(8);
+    expect(countOf(result.state.army, 'knights')).toBeGreaterThanOrEqual(4);
     expect(armyPower(result.state.army)).toBeLessThan(armyPower(newGame().army));
     expect(locationById(result.state, 'patrol').done).toBe(true);
     expect(result.state.battle).toBeUndefined();
