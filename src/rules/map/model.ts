@@ -1,6 +1,6 @@
 import type { Province } from '../../content/types';
 import { fbm, hash, noise } from '../noise';
-import { lineAt, nearest, smooth, type Point } from './geometry';
+import { lineAt, smooth, type Point } from './geometry';
 import type { Grid } from './pathfinding';
 
 /** Walk-grid cells are 8 map pixels square. */
@@ -84,6 +84,45 @@ export function forestAmount(province: Province, x: number, y: number): number {
   return amount;
 }
 
+/**
+ * Distance from each cell's centre to the nearest of some polylines, and the distance along it
+ * there, for cells within `radius` pixels (Infinity beyond). The same sums as `nearest`, done
+ * segment by segment over the cells near each one, which is far quicker than every cell by every line.
+ */
+function cellField(lines: readonly Point[][], radius: number, width: number, height: number): { d: Float64Array; s: Float64Array } {
+  const d = new Float64Array(width * height).fill(Infinity);
+  const s = new Float64Array(width * height);
+  for (const path of lines) {
+    let along = 0;
+    for (let i = 0; i < path.length - 1; i++) {
+      const [ax, ay] = path[i];
+      const [bx, by] = path[i + 1];
+      const dx = bx - ax;
+      const dy = by - ay;
+      const length = Math.hypot(dx, dy) || 1e-6;
+      const x0 = Math.max(0, Math.floor((Math.min(ax, bx) - radius) / CELL));
+      const x1 = Math.min(width - 1, Math.floor((Math.max(ax, bx) + radius) / CELL));
+      const y0 = Math.max(0, Math.floor((Math.min(ay, by) - radius) / CELL));
+      const y1 = Math.min(height - 1, Math.floor((Math.max(ay, by) + radius) / CELL));
+      for (let cy = y0; cy <= y1; cy++) {
+        for (let cx = x0; cx <= x1; cx++) {
+          const x = cx * CELL + CELL / 2;
+          const y = cy * CELL + CELL / 2;
+          const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (length * length)));
+          const distance = Math.hypot(x - (ax + t * dx), y - (ay + t * dy));
+          const k = cy * width + cx;
+          if (distance < d[k]) {
+            d[k] = distance;
+            s[k] = along + t * length;
+          }
+        }
+      }
+      along += length;
+    }
+  }
+  return { d, s };
+}
+
 export function buildMap(province: Province): MapModel {
   const width = Math.ceil(province.width / CELL);
   const height = Math.ceil(province.height / CELL);
@@ -91,21 +130,17 @@ export function buildMap(province: Province): MapModel {
   const paths = province.paths.map((p) => smooth(p));
   const cliff = province.cliff ? smooth(province.cliff.line, 6) : null;
   const terrain = new Uint8Array(width * height);
-  const pathNear = (x: number, y: number) => {
-    let best = { d: Infinity, s: 0 };
-    for (const path of paths) {
-      const n = nearest(path, x, y);
-      if (n.d < best.d) best = n;
-    }
-    return best;
-  };
+  // Only nearness matters here: the river is at most ~17 px wide with its bank, roads block forest within 9 px.
+  const riverField = cellField([river], 28, width, height);
+  const pathField = cellField(paths, 28, width, height);
 
   for (let cy = 0; cy < height; cy++) {
     for (let cx = 0; cx < width; cx++) {
       const x = cx * CELL + CELL / 2;
       const y = cy * CELL + CELL / 2;
-      const r = nearest(river, x, y);
-      const p = pathNear(x, y);
+      const k = cy * width + cx;
+      const r = { d: riverField.d[k], s: riverField.s[k] };
+      const p = { d: pathField.d[k], s: pathField.s[k] };
       const onPath = p.d < pathHalfWidth(p.s) + 1.5;
       const top = cliff ? lineAt(cliff, x) : undefined;
       const face = top === undefined ? -99 : y - top;
