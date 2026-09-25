@@ -31,7 +31,7 @@ export function storyCard(background: BackgroundId): Card {
 
 export const welcomeBackCard = (state: GameState): Card => ({
   title: 'Welcome back',
-  lines: [`Day ${roman(state.day)} of Commission ${roman(state.campaign.chapter + 1)}. ${commissionOf(state).villain} is still at large.`],
+  lines: [`Day ${roman(state.day)} of Commission ${roman(state.campaign.chapter + 1)}. ${state.bounty === 'paid' ? 'The map is whole, and the X is waiting.' : `${commissionOf(state).villain} is still at large.`}`],
   choices: [{ label: 'Ride on', action: { type: 'close' } }, { label: 'Start a new campaign', action: { type: 'restart' } }],
 });
 
