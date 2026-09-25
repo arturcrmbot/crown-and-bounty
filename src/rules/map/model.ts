@@ -1,0 +1,173 @@
+import type { Province } from '../../content/types';
+import { fbm, hash, noise } from '../noise';
+import { lineAt, nearest, smooth, type Point } from './geometry';
+import type { Grid } from './pathfinding';
+
+/** Walk-grid cells are 8 map pixels square. */
+export const CELL = 8;
+
+export const Terrain = { Grass: 0, Road: 1, Water: 2, Cliff: 3, Forest: 4, Rock: 5, Building: 6, Bridge: 7 } as const;
+export type Terrain = (typeof Terrain)[keyof typeof Terrain];
+
+/** Half-width of the river in pixels, a distance `s` along it. The painter uses the same numbers. */
+export const riverHalfWidth = (s: number) => 10 + (noise(s / 60, 0.5, 11) - 0.5) * 6;
+export const pathHalfWidth = (s: number) => 3.4 + (noise(s / 25, 3, 21) - 0.5) * 1.6;
+
+/** Blocked ground around a building's foot point: width, and height above the foot, in pixels. */
+const FOOTPRINTS: Record<string, [number, number]> = {
+  castle: [104, 48],
+  tower: [22, 14],
+  mine: [56, 24],
+  mill: [40, 18],
+  village: [18, 8],
+  signpost: [4, 4],
+  hideout: [72, 28],
+  hut: [24, 12],
+  enemy: [36, 14],
+};
+
+/** A tree the painter should draw: its foot, and which kind and variant. */
+export type Tree = { x: number; y: number; pine: boolean; variant: number };
+
+/** The land as the rules see it: terrain per cell, the walk grid, trees, and cells each enemy stands on. */
+export type MapModel = {
+  province: Province;
+  width: number;
+  height: number;
+  terrain: Uint8Array;
+  /** Movement cost per cell: 1 on roads and the bridge, 2 on grass, Infinity where nothing can pass. */
+  grid: Grid;
+  river: Point[];
+  paths: Point[][];
+  cliff: Point[] | null;
+  trees: Tree[];
+  enemyCells: Map<string, number[]>;
+};
+
+/** How much forest wants to grow at a point: above one half means woodland. Landmarks keep a clearing. */
+export function forestAmount(province: Province, x: number, y: number): number {
+  let amount = 0;
+  for (const [cx, cy, rx, ry] of province.forests) {
+    const d = Math.hypot((x - cx) / rx, (y - cy) / ry);
+    amount = Math.max(amount, 1.05 - d * 0.55);
+  }
+  amount += (fbm(x / 40, y / 40, 2, 61) - 0.5) * 0.3;
+  const clearings: [number, number, number][] = [
+    ...province.locations.map((l) => [l.at[0], l.at[1] - 10, 38] as [number, number, number]),
+    [province.hero[0], province.hero[1] - 10, 38],
+    ...province.locations.filter((l) => l.kind === 'hideout').map((l) => [l.at[0], l.at[1] - 20, 64] as [number, number, number]),
+  ];
+  for (const [cx, cy, r] of clearings) {
+    const d = Math.hypot(x - cx, y - cy) / r;
+    if (d < 1) amount -= (1 - d) * 0.8;
+  }
+  return amount;
+}
+
+export function buildMap(province: Province): MapModel {
+  const width = Math.ceil(province.width / CELL);
+  const height = Math.ceil(province.height / CELL);
+  const river = smooth(province.river);
+  const paths = province.paths.map((p) => smooth(p));
+  const cliff = province.cliff ? smooth(province.cliff.line, 6) : null;
+  const terrain = new Uint8Array(width * height);
+  const pathNear = (x: number, y: number) => {
+    let best = { d: Infinity, s: 0 };
+    for (const path of paths) {
+      const n = nearest(path, x, y);
+      if (n.d < best.d) best = n;
+    }
+    return best;
+  };
+
+  for (let cy = 0; cy < height; cy++) {
+    for (let cx = 0; cx < width; cx++) {
+      const x = cx * CELL + CELL / 2;
+      const y = cy * CELL + CELL / 2;
+      const r = nearest(river, x, y);
+      const p = pathNear(x, y);
+      const onPath = p.d < pathHalfWidth(p.s) + 1.5;
+      const top = cliff ? lineAt(cliff, x) : undefined;
+      const face = top === undefined ? -99 : y - top;
+      let t: Terrain = Terrain.Grass;
+      if (province.cliff && face >= -3 && face < province.cliff.height + 3) t = Terrain.Cliff;
+      else if (r.d < riverHalfWidth(r.s) + 4) t = onPath ? Terrain.Bridge : Terrain.Water;
+      else if (onPath) t = Terrain.Road;
+      else if (p.d > 9 && forestAmount(province, x, y) > 0.5) t = Terrain.Forest;
+      terrain[cy * width + cx] = t;
+    }
+  }
+
+  const index = (x: number, y: number) => {
+    const cx = Math.floor(x / CELL);
+    const cy = Math.floor(y / CELL);
+    return cx >= 0 && cy >= 0 && cx < width && cy < height ? cy * width + cx : -1;
+  };
+  /** Marks the cells under a rectangle standing on (x, footY). Roads and the bridge stay open. */
+  const cellsUnder = (x: number, footY: number, w: number, h: number) => {
+    const cells: number[] = [];
+    for (let y = footY - h; y <= footY; y += CELL / 2) {
+      for (let px = x - w / 2; px <= x + w / 2; px += CELL / 2) {
+        const i = index(px, y);
+        if (i >= 0 && !cells.includes(i)) cells.push(i);
+      }
+    }
+    return cells;
+  };
+  const block = (cells: number[], as: Terrain) => {
+    for (const i of cells) if (terrain[i] !== Terrain.Road && terrain[i] !== Terrain.Bridge) terrain[i] = as;
+  };
+
+  for (const [x, y, w, h] of province.crags) block(cellsUnder(x, y, w * 0.9, h * 0.45), Terrain.Rock);
+  for (const [x, y, size] of province.rocks) block(cellsUnder(x, y, size, 2), Terrain.Rock);
+  for (const [x, y] of province.trees) block(cellsUnder(x, y, 2, 2), Terrain.Forest);
+  for (const d of province.decor) block(cellsUnder(d.at[0], d.at[1], ...FOOTPRINTS[d.sprite]), Terrain.Building);
+  for (const l of province.locations) {
+    const footprint = FOOTPRINTS[l.kind];
+    if (footprint && !l.enemy) block(cellsUnder(l.at[0], l.at[1], ...footprint), Terrain.Building);
+    if (l.kind === 'hideout') block(cellsUnder(l.at[0], l.at[1], ...FOOTPRINTS.hideout), Terrain.Building);
+  }
+
+  // Trees for the painter: packed on a jittered grid wherever forest grows, kept off roads and water.
+  const trees: Tree[] = [];
+  const clear = (x: number, y: number) => {
+    const own = index(x, y);
+    if (own < 0 || terrain[own] !== Terrain.Forest) return false;
+    return [[-8, 0], [8, 0], [0, -8], [0, 8], [-6, -6], [6, -6], [-6, 6], [6, 6]].every(([dx, dy]) => {
+      const i = index(x + dx, y + dy);
+      return i >= 0 && (terrain[i] === Terrain.Forest || terrain[i] === Terrain.Grass);
+    });
+  };
+  for (let gy = 0; gy < province.height; gy += 5) {
+    for (let gx = (gy / 5) % 2 === 0 ? 0 : 3.5; gx < province.width; gx += 7) {
+      const x = gx + (hash(gx, gy, 1) - 0.5) * 5;
+      const y = gy + (hash(gx, gy, 2) - 0.5) * 4;
+      const f = forestAmount(province, x, y);
+      if (f < 0.5 || hash(gx, gy, 3) > (f > 0.56 ? 0.95 : 0.55) || !clear(x, y)) continue;
+      trees.push({ x, y, pine: hash(gx, gy, 4) < 0.75, variant: hash(gx, gy, 5) });
+    }
+  }
+
+  const cost = new Float32Array(width * height);
+  for (let i = 0; i < cost.length; i++) {
+    const t = terrain[i];
+    cost[i] = t === Terrain.Road || t === Terrain.Bridge ? 1 : t === Terrain.Grass ? 2 : Infinity;
+  }
+
+  const enemyCells = new Map<string, number[]>();
+  for (const l of province.locations) {
+    if (l.enemy && l.kind !== 'hideout') enemyCells.set(l.id, cellsUnder(l.at[0], l.at[1], ...FOOTPRINTS.enemy));
+  }
+
+  return { province, width, height, terrain, grid: { width, height, cost }, river, paths, cliff, trees, enemyCells };
+}
+
+/** The walk grid with enemies that are still standing marked as impassable. */
+export function gridWithEnemies(map: MapModel, standing: (id: string) => boolean): Grid {
+  const cost = map.grid.cost.slice();
+  for (const [id, cells] of map.enemyCells) if (standing(id)) for (const i of cells) cost[i] = Infinity;
+  return { width: map.width, height: map.height, cost };
+}
+
+export const cellIndex = (map: MapModel, x: number, y: number) => Math.floor(y / CELL) * map.width + Math.floor(x / CELL);
+export const cellCentre = (map: MapModel, i: number): Point => [(i % map.width) * CELL + CELL / 2, Math.floor(i / map.width) * CELL + CELL / 2];

@@ -56,7 +56,7 @@ export function paintHud(frame: Bitmap, state: GameState) {
   drawText(frame, bounty, BAR.x + BAR_DIVIDERS[0] + 16, text, state.bounty === 'paid' ? GOLD[6] : GOLD[5], INK);
   x = BAR.x + BAR_DIVIDERS[1] + 14;
   blit(frame, HORSESHOE, x, Math.round(mid - 3));
-  drawText(frame, String(Math.floor(state.movement)), x + 12, text, state.movement > 0 ? PARCHMENT[6] : RED[5], INK);
+  drawText(frame, String(Math.floor(state.movement)), x + 12, text, state.movement >= 2 ? PARCHMENT[6] : RED[5], INK);
   drawText(frame, `DAY  ${roman(state.day)}`, x + 54, text, PARCHMENT[6], INK);
   blit(frame, HOURGLASS, HOURGLASS_AT.x, HOURGLASS_AT.y);
 }

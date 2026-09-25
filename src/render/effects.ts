@@ -1,5 +1,5 @@
 import type { Bitmap } from './bitmap';
-import type { Point } from './lookTestMap';
+import type { Point } from '../rules/map/geometry';
 import { DIRT, INK, NEUTRAL } from './palette';
 
 type Mote = { x: number; y: number; vx: number; vy: number; age: number; life: number };

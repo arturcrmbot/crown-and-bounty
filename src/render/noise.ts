@@ -1,39 +1,4 @@
-/** Integer hash to [0, 1). */
-export function hash(x: number, y: number, seed = 0): number {
-  let h = (Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263) + Math.imul(seed | 0, 1442695041)) | 0;
-  h = Math.imul(h ^ (h >>> 13), 1274126177);
-  h ^= h >>> 16;
-  return (h >>> 0) / 4294967296;
-}
-
-/** Smooth value noise in [0, 1) with features about one unit apart. */
-export function noise(x: number, y: number, seed = 0): number {
-  const xi = Math.floor(x);
-  const yi = Math.floor(y);
-  const u = x - xi;
-  const v = y - yi;
-  const su = u * u * (3 - 2 * u);
-  const sv = v * v * (3 - 2 * v);
-  const a = hash(xi, yi, seed);
-  const b = hash(xi + 1, yi, seed);
-  const c = hash(xi, yi + 1, seed);
-  const d = hash(xi + 1, yi + 1, seed);
-  return a + (b - a) * su + (c - a) * sv + (a - b - c + d) * su * sv;
-}
-
-export function fbm(x: number, y: number, octaves: number, seed = 0): number {
-  let sum = 0;
-  let amp = 0.5;
-  let norm = 0;
-  for (let i = 0; i < octaves; i++) {
-    sum += noise(x, y, seed + i * 31) * amp;
-    norm += amp;
-    amp *= 0.5;
-    x *= 2.03;
-    y *= 2.03;
-  }
-  return sum / norm;
-}
+export { fbm, hash, noise, rng } from '../rules/noise';
 
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 
@@ -45,14 +10,4 @@ export function shade(ramp: readonly number[], level: number, x: number, y: numb
   const v = Math.min(Math.max(level, 0), 1) * (ramp.length - 1);
   const base = Math.floor(v);
   return ramp[Math.min(ramp.length - 1, base + (v - base > bayer(x, y) ? 1 : 0))];
-}
-
-/** Deterministic RNG (mulberry32). */
-export function rng(seed: number): () => number {
-  return () => {
-    seed = (seed + 0x6d2b79f5) | 0;
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
 }

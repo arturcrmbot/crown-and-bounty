@@ -1,8 +1,9 @@
 import { Bitmap, blit } from './bitmap';
 import { Effects } from './effects';
 import { MAP_VIEW, paintFrame, SCREEN } from './frame';
-import { MAP_HEIGHT, MAP_WIDTH, type Point } from './lookTestMap';
-import { bayer, hash, noise } from './noise';
+import type { Point } from '../rules/map/geometry';
+import type { FogMask } from './fog';
+import { hash, noise } from './noise';
 import { FOG_LUT, GOLD, GRAIN_LUT, INK, RED } from './palette';
 
 /**
@@ -29,9 +30,9 @@ export class AdventureScreen {
   route: { at: Point; today: boolean }[] = [];
   private readonly map: Bitmap;
   private readonly wild: Bitmap;
-  readonly fog: Uint8Array;
+  private readonly fog: FogMask;
 
-  constructor(map: Bitmap, wild: Bitmap, fog: Uint8Array) {
+  constructor(map: Bitmap, wild: Bitmap, fog: FogMask) {
     const { frame, overlay } = paintFrame();
     this.frame = frame;
     this.overlay = overlay;
@@ -57,26 +58,12 @@ export class AdventureScreen {
   }
 
   isFogged(x: number, y: number) {
-    const i = Math.round(y) * MAP_WIDTH + Math.round(x);
-    return i >= 0 && i < this.fog.length && this.fog[i] === 1;
-  }
-
-  /** Lifts the fog in a circle, with the same dithered edge as the starting fog. */
-  reveal(cx: number, cy: number, radius: number) {
-    const edge = 30;
-    for (let y = Math.max(0, Math.floor(cy - radius - edge)); y < Math.min(MAP_HEIGHT, cy + radius + edge); y++) {
-      for (let x = Math.max(0, Math.floor(cx - radius - edge)); x < Math.min(MAP_WIDTH, cx + radius + edge); x++) {
-        const i = y * MAP_WIDTH + x;
-        if (!this.fog[i]) continue;
-        const fog = Math.min(1, Math.max(0, (Math.hypot(x - cx, y - cy) - radius + 12) / edge));
-        if (fog <= bayer(x, y)) this.fog[i] = 0;
-      }
-    }
+    return this.fog.isFogged(x, y);
   }
 
   scrollTo(x: number, y: number) {
-    this.camera.x = Math.max(0, Math.min(MAP_WIDTH - MAP_VIEW.width, x));
-    this.camera.y = Math.max(0, Math.min(MAP_HEIGHT - MAP_VIEW.height, y));
+    this.camera.x = Math.max(0, Math.min(this.map.width - MAP_VIEW.width, x));
+    this.camera.y = Math.max(0, Math.min(this.map.height - MAP_VIEW.height, y));
   }
 
   centreOn(x: number, y: number) {
@@ -92,7 +79,9 @@ export class AdventureScreen {
   }
 
   compose(tick: number): Bitmap {
-    const { screen, fog } = this;
+    const { screen } = this;
+    const fog = this.fog.mask;
+    const MAP_WIDTH = this.map.width;
     const map = this.map.data;
     const wild = this.wild.data;
     screen.data.set(this.frame.data);
