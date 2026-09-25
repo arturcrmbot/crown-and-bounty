@@ -305,10 +305,10 @@ export function castle(phase = 0): Bitmap {
  * The hero: a knight in a red cape on a white horse, carrying the player's blue banner with a gold
  * star. `phase` animates the banner, a gentle bob and the tail; `selected` adds a gold ring.
  */
-export function hero(phase = 0, selected = true): Bitmap {
+export function hero(phase = 0, selected = true, walking = false): Bitmap {
   const S = 1.4;
   const sprite = new Bitmap(Math.ceil(40 * S), Math.ceil(46 * S));
-  const bob = Math.sin(phase * 2) > 0.3 ? 1 : 0;
+  const bob = walking ? (Math.sin(phase * 4) > 0 ? 1 : 0) : Math.sin(phase * 2) > 0.3 ? 1 : 0;
   const inEllipse = (x: number, y: number, cx: number, cy: number, rx: number, ry: number, a = 0) => {
     const dx = (x + 0.5) / S - cx;
     const dy = (y + 0.5 - bob) / S - cy;
@@ -328,18 +328,23 @@ export function hero(phase = 0, selected = true): Bitmap {
   each(3, 21, 10, 34, (x, y) => {
     if (inEllipse(x, y, 7.6 - ((y / S - 22) * (0.18 + swish * 0.3)), 27.5, 1.7, 6, 0.25 + swish)) sprite.set(x, y, COAT4[0]);
   });
-  const leg = (x0: number, far: boolean) =>
-    each(x0, 30, x0 + 2, 40, (x, y) => {
-      if (y / S > 40) return;
-      sprite.set(x, y, y / S > 38 ? INK : flat(COAT4, far ? 0.3 : 0.75 - ((x / S - x0) / 2) * 0.4, x, y));
+  // Legs trot in diagonal pairs when walking: each swings and lifts in turn.
+  const leg = (x0: number, far: boolean, shift: number) => {
+    const swing = walking ? Math.sin(phase * Math.PI * 2 + shift) : 0;
+    const lift = swing > 0.35 ? 1.2 : 0;
+    each(x0 - 3, 30, x0 + 5, 40, (x, y) => {
+      const u = x / S - swing * 1.5 * ((y / S - 30) / 10);
+      if (u < x0 || u >= x0 + 2 || y / S > 40 - lift) return;
+      sprite.set(x, y, y / S > 38 - lift ? INK : flat(COAT4, far ? 0.3 : 0.75 - ((u - x0) / 2) * 0.4, x, y));
     });
-  leg(11, true);
-  leg(24, true);
+  };
+  leg(11, true, 0);
+  leg(24, true, Math.PI);
   each(6, 18, 30, 34, (x, y) => {
     if (inEllipse(x, y, 18, 27, 10.5, 5.2)) sprite.set(x, y, flat(COAT4, lit(x, y, 16, 24, 12), x, y));
   });
-  leg(14, false);
-  leg(27, false);
+  leg(14, false, Math.PI);
+  leg(27, false, 0);
   each(21, 11, 37, 28, (x, y) => {
     const neck = inEllipse(x, y, 27.2, 20.5, 3.4, 6.5, -0.55);
     const head = inEllipse(x, y, 31.5, 15.2, 4.1, 2.4, 0.5);
@@ -397,6 +402,15 @@ export function hero(phase = 0, selected = true): Bitmap {
   }
   shadowOval(shaped, 21 * S, footY, 12 * S, 2.6 * S);
   return shaped;
+}
+
+/** A left-right mirror image, for heroes riding west. */
+export function mirror(sprite: Bitmap): Bitmap {
+  const out = new Bitmap(sprite.width, sprite.height);
+  for (let y = 0; y < sprite.height; y++) {
+    for (let x = 0; x < sprite.width; x++) out.data[y * sprite.width + x] = sprite.data[y * sprite.width + sprite.width - 1 - x];
+  }
+  return out;
 }
 
 /** Wooden plank bridge running east to west. */
