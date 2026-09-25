@@ -87,7 +87,7 @@ export function playCommission(start: GameState, map: MapModel, maxSteps = 20000
     } else if (place.enemy && !place.done) {
       fights++;
       const before = locationById(state, place.id).done;
-      state = fight(state, place.id).state;
+      state = fight(state, place.id)?.state ?? state;
       if (locationById(state, place.id).done === before) retreats++;
     }
     while (state.hero.offers.length > 0) state = learn(state, state.hero.offers[0].options[0])!.state;

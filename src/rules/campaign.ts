@@ -11,10 +11,13 @@ export const CAMPAIGN_LENGTH = 5;
 
 const generated = new Map<string, Commission>();
 
+/** The campaign's seed, with the one old saves had without knowing it. */
+export const campaignSeed = (campaign: Pick<Campaign, 'seed'>) => campaign.seed ?? 1066;
+
 /** The commission for a chapter: hand-made, or generated from the campaign's seed (once, then kept). */
 export function commissionAt(campaign: Pick<Campaign, 'seed'>, chapter: number): Commission {
   if (chapter < COMMISSIONS.length) return COMMISSIONS[chapter];
-  const seed = ((campaign.seed ?? 1066) * 31 + chapter * 977) >>> 0;
+  const seed = (campaignSeed(campaign) * 31 + chapter * 977) >>> 0;
   const key = `${seed}/${chapter}`;
   let c = generated.get(key);
   if (!c) {
@@ -132,15 +135,15 @@ export function nextCommission(state: GameState): Result | null {
   if (!state.campaign.court?.chosen || !hasNextCommission(state)) return null;
   const chapter = state.campaign.chapter + 1;
   const start = { hero: state.hero, gold: state.gold, leadership: state.leadership, army: nextArmy(state) };
-  const next = beginCommission(commissionAt(state.campaign, chapter).province, roll(state.seed)[1], start, chapter, state.campaign.record, state.campaign.seed);
+  const next = beginCommission(commissionAt(state.campaign, chapter).province, roll(state.seed)[1], start, chapter, state.campaign.record, campaignSeed(state.campaign));
   return { state: next, events: [{ type: 'commission' }, show(arrivalCard(next))] };
 }
 
 /** After a lost commission: the same one again, from how it began. */
 export function retry(state: GameState): Result | null {
   if (state.over !== 'lost') return null;
-  const { chapter, start, record, seed } = state.campaign;
-  const next = beginCommission(provinceOf(state), roll(state.seed)[1], start, chapter, record, seed);
+  const { chapter, start, record } = state.campaign;
+  const next = beginCommission(provinceOf(state), roll(state.seed)[1], start, chapter, record, campaignSeed(state.campaign));
   return { state: next, events: [{ type: 'commission' }, show(arrivalCard(next))] };
 }
 

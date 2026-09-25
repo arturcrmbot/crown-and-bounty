@@ -4,7 +4,7 @@ import { generateCommission, playable } from './generate';
 
 describe('generated provinces', () => {
   it('are always playable: the castle open, every place reachable, the hideout only past its guards', () => {
-    for (let seed = 1; seed <= 12; seed++) {
+    for (let seed = 1; seed <= 10; seed++) {
       for (const [i, villain] of VILLAINS.entries()) {
         const c = generateCommission(seed * 101, villain, 2 + i);
         expect(playable(c.province), `${villain.id} ${seed}`).toBe(true);

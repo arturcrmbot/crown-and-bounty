@@ -156,6 +156,7 @@ export function visit(state: GameState, id: string): Result {
     case 'patrol':
     case 'hideout': {
       if (place.done) return say(state, { title: place.name, lines: words(place, 'done'), choices: [close] });
+      if (state.army.length === 0) return say(state, { title: place.name, lines: [place.enemy!.threat, 'You have no troops to fight with. Recruit some first.'], choices: [...parleyChoices(state, id), { label: 'Retreat', action: { type: 'close' } }] });
       const chance = winChance(state, id);
       const hint = chance >= 0.9 ? 'They look nervous.' : chance >= 0.55 ? 'It will be close.' : 'Your army looks at you. Then at them. Then at you.';
       return say(state, {

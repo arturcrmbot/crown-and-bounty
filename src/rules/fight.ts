@@ -39,8 +39,9 @@ export function lossesLine(before: Army, after: Army): string {
 }
 
 /** Lines the armies up. The battle lives in the state until it's over. */
-export function startFight(state: GameState, id: string): Result {
+export function startFight(state: GameState, id: string): Result | null {
   const place = locationById(state, id);
+  if (state.army.length === 0 || !place.enemy || place.done) return null;
   const [, seed] = roll(state.seed);
   const battle = createBattle({ place: id, seed: state.seed, player: state.army, enemy: place.enemy!.army, hero: heroInBattle(state), obstacles: place.kind === 'hideout' ? 3 : 5, ground: provinceOf(state).fen ? 'fen' : 'meadow' });
   return { state: { ...state, seed, battle }, events: [{ type: 'battle', place: id }] };
@@ -143,7 +144,7 @@ export function winChance(state: GameState, id: string, samples = 8): number {
 }
 
 /** A whole battle at once: both sides play by the same rules and AI as a hand-fought one. */
-export function fight(state: GameState, id: string): Result {
-  const started = startFight(state, id).state;
-  return finishFight({ ...started, battle: autoResolve(started.battle!) });
+export function fight(state: GameState, id: string): Result | null {
+  const started = startFight(state, id)?.state;
+  return started ? finishFight({ ...started, battle: autoResolve(started.battle!) }) : null;
 }

@@ -2,7 +2,7 @@ import type { Commission } from '../content/campaign';
 import type { Band, VillainTemplate } from '../content/villains';
 import { troopPower, type TroopId } from '../content/troops';
 import type { Province } from '../content/types';
-import { buildMap, CELL, gridWithEnemies, poolDistance } from './map/model';
+import { buildMap, CELL, gridWithEnemies, poolDistance, Terrain } from './map/model';
 import { nearest, smooth, type Point } from './map/geometry';
 import { APPROACH } from './map/movement';
 import { findPath, nearestPassable, reachableNear } from './map/pathfinding';
@@ -46,15 +46,23 @@ const WORDS = {
 /** Enemy strength in the Fenmarch, which generated commissions scale from. */
 const BASE = { band: 760, guardian: 860, hideout: 1900 };
 
-/** An army of about `power` fighting worth, split between troops by share; a boss is one troop on top. */
-function armyOf(troops: [TroopId, number][], power: number, boss?: TroopId): Army {
-  const army: Army = troops.map(([troop, share]) => ({ troop, count: Math.max(1, Math.round((power * share) / troopPower(troop))) }));
-  return boss ? [...army, { troop: boss, count: 1 }] : army;
+/** An army of about `power` fighting worth, split between troops by share. */
+function armyOf(troops: [TroopId, number][], power: number): Army {
+  return troops.map(([troop, share]) => ({ troop, count: Math.max(1, Math.round((power * share) / troopPower(troop))) }));
 }
 
 type Rand = () => number;
 const pick = <T>(random: Rand, list: readonly T[]) => list[Math.floor(random() * list.length)];
 const between = (random: Rand, a: number, b: number) => a + random() * (b - a);
+/** Fisher-Yates, so the same seed gives the same order in every browser. */
+function shuffle<T>(random: Rand, list: readonly T[]): T[] {
+  const out = [...list];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
 const dist = (a: Point, b: Point) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 
 /** A road from a to b that wanders a little. */
@@ -87,8 +95,8 @@ function along(path: Point[], share: number): Point {
   return fine[fine.length - 1];
 }
 
-function enemy(band: Band, power: number, reward: number, boss?: TroopId): Enemy {
-  const words: Enemy = { look: band.look, lines: band.lines, threat: band.threat, flees: band.flees, loot: band.loot, army: armyOf(band.troops, power, boss), reward };
+function enemy(band: Band, power: number, reward: number, bosses: TroopId[] = []): Enemy {
+  const words: Enemy = { look: band.look, lines: band.lines, threat: band.threat, flees: band.flees, loot: band.loot, army: [...armyOf(band.troops, power), ...bosses.map((troop) => ({ troop, count: 1 }))], reward };
   if (band.charge) words.charge = band.charge;
   return words;
 }
@@ -101,15 +109,29 @@ function attempt(seed: number, v: VillainTemplate, chapter: number): Province {
   const P = ([x, y]: Point): Point => [Math.round(flipX ? W - x : x), Math.round(flipY ? H - y : y)];
   const s = strengthFor(chapter);
 
+  // A river runs down the middle about half the time; roads that cross it get bridges.
+  const hasRiver = random() < 0.55;
+  const riverX = between(random, 560, 760);
+  const river: Point[] = hasRiver ? Array.from({ length: 12 }, (_, i) => [riverX + Math.sin(i * 0.9 + random() * 0.6) * 50 + between(random, -18, 18), -20 + i * 92] as Point) : [[-400, -400], [-400, -399]];
+  const riverLine = smooth(river);
+  const wet = (p: Point) => (hasRiver ? nearest(riverLine, p[0], p[1]).d : Infinity);
+  /** Moves a place sideways, away from the river, if it stands too close. The river runs north to south, so a negative side is its east bank. */
+  const dry = (p: Point): Point => {
+    const d = wet(p);
+    if (d >= 70) return p;
+    const east = nearest(riverLine, p[0], p[1]).side < 0;
+    return [Math.min(W - 90, Math.max(90, p[0] + (east ? 1 : -1) * (80 - d))), p[1]];
+  };
+
   // Laid out with the hero top left and the villain bottom right, then flipped.
   const hero: Point = [between(random, 130, 230), between(random, 120, 200)];
   const hideout: Point = [between(random, W - 230, W - 150), between(random, H - 200, H - 150)];
   const castleNorth = random() < 0.5;
-  const castle: Point = castleNorth ? [between(random, 760, 1080), between(random, 150, 260)] : [between(random, 150, 280), between(random, 560, 760)];
-  const village: Point = castleNorth ? [between(random, 200, 460), between(random, 560, 800)] : [between(random, 700, 1000), between(random, 170, 300)];
-  const tower: Point = [between(random, 520, 760), between(random, 380, 560)];
-  const mine: Point = castleNorth ? [between(random, 1020, 1160), between(random, 360, 520)] : [between(random, 420, 620), between(random, 140, 240)];
-  const mill: Point = [village[0] + between(random, -140, 140), village[1] + (village[1] > 480 ? -1 : 1) * between(random, 90, 150)];
+  const castle: Point = dry(castleNorth ? [between(random, 760, 1080), between(random, 150, 260)] : [between(random, 150, 280), between(random, 560, 760)]);
+  const village: Point = dry(castleNorth ? [between(random, 200, 460), between(random, 560, 800)] : [between(random, 700, 1000), between(random, 170, 300)]);
+  const tower: Point = dry([between(random, 520, 760), between(random, 380, 560)]);
+  const mine: Point = dry(castleNorth ? [between(random, 1020, 1160), between(random, 360, 520)] : [between(random, 420, 620), between(random, 140, 240)]);
+  const mill: Point = dry([village[0] + between(random, -140, 140), village[1] + (village[1] > 480 ? -1 : 1) * between(random, 90, 150)]);
 
   // Roads: each place joins the nearest one already on the network; the hideout comes last, as a spur.
   const nodes: Point[] = [hero, castle, village, tower, mine, mill];
@@ -127,10 +149,10 @@ function attempt(seed: number, v: VillainTemplate, chapter: number): Province {
   const signpost = along(paths[0], 0.35);
   const guardianAt = along(hideoutRoad, Math.max(0.55, 1 - 150 / dist(gateFrom, hideout)));
   const bandSpots = paths.slice(0, -1).filter((p) => dist(p[0], p[p.length - 1]) > 260).map((p) => along(p, between(random, 0.45, 0.6)));
-  const bands = bandSpots.filter((p) => dist(p, hero) > 200).slice(0, v.bands.length);
+  const bands = bandSpots.filter((p) => dist(p, hero) > 200 && wet(p) > 40).slice(0, v.bands.length);
 
   const taken: Point[] = [hero, castle, village, tower, mine, mill, hideout, signpost, guardianAt, ...bands];
-  const free = (p: Point, gap: number) => taken.every((q) => dist(p, q) > gap) && paths.every((path) => nearest(smooth(path), p[0], p[1]).d > 30);
+  const free = (p: Point, gap: number) => taken.every((q) => dist(p, q) > gap) && wet(p) > 50 && paths.every((path) => nearest(smooth(path), p[0], p[1]).d > 30);
   const spot = (gap: number): Point => {
     for (let i = 0; i < 60; i++) {
       const p: Point = [between(random, 80, W - 80), between(random, 90, H - 80)];
@@ -144,11 +166,6 @@ function attempt(seed: number, v: VillainTemplate, chapter: number): Province {
   const chests = [spot(130), spot(130), spot(130)];
   const sceptre = spot(150);
   const piles = [spot(120), spot(120)];
-
-  // A river runs down the middle about half the time; roads that cross it get bridges.
-  const hasRiver = random() < 0.55;
-  const riverX = between(random, 560, 760);
-  const river: Point[] = hasRiver ? Array.from({ length: 12 }, (_, i) => [riverX + Math.sin(i * 0.9 + random() * 0.6) * 50 + between(random, -18, 18), -20 + i * 92] as Point) : [[-400, -400], [-400, -399]];
 
   // A wood rings the hideout, so the gatekeepers' road is the only way in.
   const forests: [number, number, number, number][] = [[hideout[0], hideout[1], 230, 200]];
@@ -181,7 +198,7 @@ function attempt(seed: number, v: VillainTemplate, chapter: number): Province {
   const rocks: [number, number, number][] = [];
   for (let i = 0; i < 26; i++) {
     const p: Point = [Math.round(between(random, 40, W - 40)), Math.round(between(random, 50, H - 30))];
-    if (!free(p, 50)) continue;
+    if (!free(p, 50) || poolDistance({ pools } as Province, p[0], p[1]) < 14) continue;
     if (i % 3 === 0) rocks.push([p[0], p[1], Math.round(between(random, 5, 9))]);
     else trees.push([p[0], p[1], !fen && random() < 0.4]);
   }
@@ -198,7 +215,7 @@ function attempt(seed: number, v: VillainTemplate, chapter: number): Province {
     enemy: enemy(v.bands[i], BASE.band * s * (0.9 + i * 0.2), Math.round(400 * s)),
   }));
   const locations: Location[] = [
-    { id: 'castle', kind: 'castle', name: pick(random, names.castle), at: at(castle), done: false, text: { about: pick(random, words.castle) }, recruits: { troop: 'knights', count: 6, price: 110 }, wares: [...(['harrowgateMail', 'fenBanner', 'astrolabe', 'swordOfAldmoor', 'breastplate', 'luckyHorseshoe'] as const)].sort(() => random() - 0.5).slice(0, 3) },
+    { id: 'castle', kind: 'castle', name: pick(random, names.castle), at: at(castle), done: false, text: { about: pick(random, words.castle) }, recruits: { troop: 'knights', count: 6, price: 110 }, wares: shuffle(random, ['harrowgateMail', 'fenBanner', 'astrolabe', 'swordOfAldmoor', 'breastplate', 'luckyHorseshoe'] as const).slice(0, 3) },
     { id: 'village', kind: 'village', name: pick(random, names.village), at: at(village), done: false, recruits: { ...v.village }, text: { about: pick(random, words.village) } },
     { id: 'tower', kind: 'tower', ...(fen ? { look: 'abbey' as const } : {}), name: pick(random, names.tower), at: at(tower), done: false, reveals: at(hideout), text: { about: pick(random, words.tower), done: words.towerDone, visit: [v.towerClue] } },
     { id: 'mine', kind: 'mine', ...(fen ? { look: 'peathut' as const } : {}), name: pick(random, names.mine), at: at(mine), done: false, gold: Math.round(500 * s), text: { about: pick(random, words.mine), visit: words.mineVisit, done: words.mineDone } },
@@ -215,11 +232,18 @@ function attempt(seed: number, v: VillainTemplate, chapter: number): Province {
       name: v.hideout.name,
       at: at(hideout),
       done: false,
-      enemy: { ...enemy(v.hideout, BASE.hideout * s, Math.round(3000 * s), v.hideout.boss), ...(v.parleys?.hideout ? { parleys: v.parleys.hideout } : {}) },
+      enemy: { ...enemy(v.hideout, BASE.hideout * s, Math.round(3000 * s), v.hideout.bosses), ...(v.parleys?.hideout ? { parleys: v.parleys.hideout } : {}) },
       text: { done: v.hideout.done },
     },
   ];
-  const huts = [0, 1, 2, 3].map((i) => ({ sprite: 'hut' as const, at: at([village[0] + Math.cos(i * 1.7) * 48, village[1] + Math.sin(i * 1.7) * 28 - 6]), place: 'village', seed: 30 + i }));
+  const hutSpots: Point[] = [];
+  for (let k = 0; k < 24 && hutSpots.length < 4; k++) {
+    const a = k * 0.83 + random() * 0.3;
+    const p: Point = [village[0] + Math.cos(a) * (40 + (k % 3) * 8), village[1] + Math.sin(a) * (24 + (k % 3) * 6) - 6];
+    const clear = paths.every((path) => nearest(smooth(path), p[0], p[1]).d > 16) && wet(p) > 30 && poolDistance({ pools } as Province, p[0], p[1]) > 16 && hutSpots.every((q) => dist(p, q) > 26);
+    if (clear) hutSpots.push(p);
+  }
+  const huts = hutSpots.map((p, i) => ({ sprite: 'hut' as const, at: at(p), place: 'village', seed: 30 + i }));
 
   const flip = (list: Point[]) => list.map(at);
   const provinceName = pick(random, names.province);
@@ -270,6 +294,22 @@ export function playable(province: Province): boolean {
     if ((l.kind === 'castle' || l.kind === 'village') && !reach(all, l)) return false;
     if (!reach(onlyGuardian, l)) return false;
   }
+  // A bridge is where a road crosses water, not a road that runs along it.
+  const bridges = new Set([...map.terrain.keys()].filter((i) => map.terrain[i] === Terrain.Bridge));
+  for (const first of bridges) {
+    const group = [first];
+    bridges.delete(first);
+    for (let k = 0; k < group.length; k++) {
+      for (const n of [group[k] - 1, group[k] + 1, group[k] - map.width, group[k] + map.width, group[k] - map.width - 1, group[k] - map.width + 1, group[k] + map.width - 1, group[k] + map.width + 1]) {
+        if (bridges.delete(n)) group.push(n);
+      }
+    }
+    const xs = group.map((i) => i % map.width);
+    const ys = group.map((i) => Math.floor(i / map.width));
+    if (Math.max(...ys) - Math.min(...ys) > 4 || Math.max(...xs) - Math.min(...xs) > 9) return false;
+  }
+  // Nothing stands in the water.
+  for (const l of province.locations) if (map.terrain[Math.floor(l.at[1] / CELL) * map.width + Math.floor(l.at[0] / CELL)] === Terrain.Water) return false;
   const sceptre: Location | null = province.sceptre ? { id: 'sceptre', kind: 'dig', name: 'X', at: province.sceptre, done: false } : null;
   if (sceptre && !reach(new Set(), sceptre)) return false;
   return !reach(onlyGuardian, hideout) && reach(new Set(), hideout);

@@ -78,7 +78,7 @@ suite('places', () => {
 
 suite('fights', () => {
   it('beats the patrol with the starting army, with some losses', () => {
-    const result = fight(newGame(), 'patrol');
+    const result = fight(newGame(), 'patrol')!;
     expect(cardOf(result).title).toBe('Victory!');
     expect(result.events).toContainEqual({ type: 'removed', id: 'patrol' });
     expect(countOf(result.state.army, 'knights')).toBeGreaterThanOrEqual(4);
@@ -88,13 +88,13 @@ suite('fights', () => {
   });
 
   it('is repeatable for the same seed', () => {
-    expect(fight(newGame(7), 'hideout')).toEqual(fight(newGame(7), 'hideout'));
+    expect(fight(newGame(7), 'hideout')!).toEqual(fight(newGame(7), 'hideout')!);
   });
 
   it('wins the commission by taking the hideout with a big enough army', () => {
     const strong = { ...newGame(), army: [{ troop: 'knights' as const, count: 40 }, { troop: 'archers' as const, count: 40 }] };
     expect(armyPower(strong.army)).toBeGreaterThan(armyPower(locationById(strong, 'hideout').enemy!.army) * 1.2);
-    const result = fight(strong, 'hideout');
+    const result = fight(strong, 'hideout')!;
     expect(result.state.over).toBe('won');
     expect(result.events).toContainEqual({ type: 'over', result: 'won' });
     expect(result.state.bounty).toBe('paid');
@@ -102,7 +102,7 @@ suite('fights', () => {
 
   it('sends a beaten hero home to his castle with no army', () => {
     const weak = { ...newGame(), army: [{ troop: 'archers' as const, count: 10 }, { troop: 'peasants' as const, count: 10 }] };
-    const result = fight(weak, 'hideout');
+    const result = fight(weak, 'hideout')!;
     expect(cardOf(result).title).toBe('Defeat');
     expect(result.state.army).toEqual([]);
     expect(result.state.hero.at[1]).toBeGreaterThan(locationById(result.state, 'castle').at[1]);

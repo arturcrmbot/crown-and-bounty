@@ -260,3 +260,39 @@ describe('the end of the campaign', () => {
     expect(card?.type === 'card' && card.card.lines.some((l) => l.includes('**1 of 5**'))).toBe(true);
   });
 });
+
+describe('parleys, carefully', () => {
+  it('turn up the place\u2019s artifact when they count as a win', () => {
+    const courtier = { ...newGame(1, ALDMOOR, 'courtier'), opening: undefined };
+    const won = apply(courtier, { type: 'parley', id: 'hideout', parley: 'pardon' })!;
+    expect(Object.values(won.state.hero.gear).concat(won.state.hero.pack)).toContain('goldenFeather');
+  });
+
+  it('never take a whole army as a toll, and nobody fights with no army', () => {
+    const state = beginCommission(FENMARCH, 1, newGame().campaign.start, 1, []);
+    const two = { ...state, army: [{ troop: 'knights' as const, count: 2 }] };
+    expect(apply(two, { type: 'parley', id: 'troll', parley: 'toll' })).toBeNull();
+    const none = { ...state, army: [] };
+    expect(apply(none, { type: 'autofight', id: 'goblins' })).toBeNull();
+    expect(apply(none, { type: 'fight', id: 'goblins' })).toBeNull();
+    const card = visit(none, 'goblins').events.find((e) => e.type === 'card');
+    expect(card?.type === 'card' && card.card.lines.some((l) => l.includes('no troops'))).toBe(true);
+  });
+});
+
+describe('the campaign seed', () => {
+  it('builds the province read out at court, even for an old save without a seed', () => {
+    const court = act({ ...wonAldmoor(), campaign: { ...wonAldmoor().campaign, chapter: 1 } }, { type: 'court' });
+    const old = { ...court, campaign: { ...court.campaign, seed: undefined } };
+    const briefed = act(old, { type: 'boon', id: old.campaign.court!.boons[0] });
+    const next = act(briefed, { type: 'nextCommission' });
+    expect(provinceOf(next).name).toBe(commissionAt(old.campaign, 2).province.name);
+    expect(next.hero.at).toEqual(provinceOf(next).hero);
+  });
+
+  it('gives each campaign its own later provinces', () => {
+    const a = commissionAt(newGame(1).campaign, 2).province;
+    const b = commissionAt(newGame(2).campaign, 2).province;
+    expect(a.hero).not.toEqual(b.hero);
+  });
+});

@@ -44,6 +44,7 @@ function guardPost(b: BattleState, f: Fighter, moves: ReadonlyMap<number, unknow
 export function chooseAction(b: BattleState): BattleAction {
   const f = activeFighter(b)!;
   const foes = b.fighters.filter((o) => o.count > 0 && o.side !== f.side);
+  if (foes.length === 0) return { type: 'defend' };
 
   if (f.side === 'player' && canCast(b, 'bolt')) {
     const target = foes.reduce((best, o) => (payoff(o, boltDamage(b)) > payoff(best, boltDamage(b)) ? o : best));

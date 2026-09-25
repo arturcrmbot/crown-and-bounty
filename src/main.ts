@@ -26,9 +26,12 @@ const saved = frozen || query.get('fresh') === '1' ? null : loadGame();
 const resume = saved && !(saved.over === 'won' && !hasNextCommission(saved)) ? saved : null;
 if (frozen) stopSaving();
 
+// Every new campaign gets its own seed, so its later provinces are its own. ?seed=N (or ?freeze=1) fixes it.
+const seed = query.has('seed') ? Number(query.get('seed')) : frozen ? 1066 : crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000;
+
 /** Debug starts: ?commission=2 rides into the second province, ?court=1 opens the court after the first. */
 function debugStart(): GameState {
-  const first = newGame();
+  const first = newGame(seed);
   const court = Number(query.get('court') ?? 0);
   const chapter = court > 0 ? court - 1 : Number(query.get('commission') ?? 1) - 1;
   const { hero, gold, leadership, army } = first;
@@ -40,7 +43,7 @@ function debugStart(): GameState {
   if (query.get('sceptre') === '1' && x) return { ...base, bounty: 'paid', locations: [...base.locations, { id: 'sceptre', kind: 'dig', name: 'X Marks the Spot', at: x, done: false }] };
   // ?battle=patrol opens straight onto a fight, for checking the battle screen.
   const fightAt = query.get('battle');
-  return fightAt ? startFight({ ...base, opening: undefined }, fightAt).state : base;
+  return fightAt ? (startFight({ ...base, opening: undefined }, fightAt)?.state ?? base) : base;
 }
 
 // ?reveal=1 lifts the fog, for looking the whole map over.

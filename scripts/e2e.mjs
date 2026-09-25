@@ -49,7 +49,7 @@ async function go(id, action) {
 }
 
 try {
-  await page.goto(`${server.url}?fresh=1&speed=8`);
+  await page.goto(`${server.url}?fresh=1&speed=8&seed=1066`);
   await kc.ready();
   check((await kc.title()) === 'Who were you, before the King found you?', 'the first card asks who the hero was');
   check(await kc.choose('Knight of the Realm'), 'the knight can be chosen');

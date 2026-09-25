@@ -1,7 +1,8 @@
 import { BACKGROUNDS } from '../content/backgrounds';
 import { SKILLS } from '../content/skills';
 import { bountyPaid } from './fight';
-import { gainXp, heroStats } from './hero';
+import { ARTIFACTS } from '../content/artifacts';
+import { foundNote, gainXp, giveArtifact, heroStats } from './hero';
 import { close, coins, countOf, locationById, show, troops, update, VANISHES, type Choice, type GameEvent, type GameState, type Needs, type Result } from './state';
 
 /** Whether the hero is the right sort, knows enough, and can spare what it costs. */
@@ -11,6 +12,8 @@ export function meets(state: GameState, needs: Needs): boolean {
   if (needs.spellPower && heroStats(state).spellPower < needs.spellPower) return false;
   if (needs.gold && state.gold < needs.gold) return false;
   if (needs.troop && countOf(state.army, needs.troop) < (needs.count ?? 1)) return false;
+  // Nobody pays a toll with his whole army.
+  if (needs.troop && state.army.reduce((n, s) => n + s.count, 0) <= (needs.count ?? 1)) return false;
   return true;
 }
 
@@ -46,6 +49,11 @@ export function parley(state: GameState, id: string, parleyId: string): Result |
   let next = update({ ...state, gold: state.gold - gold + (p.outcome === 'win' ? (p.reward ?? 0) : 0), army }, id, { done: true });
   const events: GameEvent[] = VANISHES.has(place.kind) ? [{ type: 'removed', id }] : [];
   const lines = [...p.lines];
+  // Beating them by other means still turns up whatever they were keeping.
+  if (p.outcome === 'win' && place.artifact) {
+    next = giveArtifact(next, place.artifact);
+    lines.push(`Among the spoils: **${ARTIFACTS[place.artifact].name}**. ${foundNote(next, place.artifact)}`);
+  }
   if (p.xp) {
     const grown = gainXp(next, p.xp);
     next = grown.state;

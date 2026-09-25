@@ -24,7 +24,7 @@ export type VillainTemplate = {
   bands: Band[];
   /** Guards the only way to the hideout. */
   guardian: Band;
-  hideout: Band & { placeLook?: PlaceLook; boss: TroopId; done: string[] };
+  hideout: Band & { placeLook?: PlaceLook; bosses: TroopId[]; done: string[] };
   village: NonNullable<Location['recruits']>;
   names: { province: string[]; castle: string[]; village: string[]; tower: string[]; mine: string[]; mill: string[] };
   towerClue: string;
@@ -61,7 +61,7 @@ export const VILLAINS: VillainTemplate[] = [
     hideout: {
       name: 'Grimsby\u2019s New Hideout',
       look: 'stockade',
-      boss: 'baron',
+      bosses: ['baron'],
       troops: [['swordsmen', 0.6], ['crossbowmen', 0.4]],
       lines: ['Another muddy stockade. The Baron is nothing if not consistent.'],
       threat: 'The Baron shouts from the palisade: *"This time I have TWO walls!"* He has one wall.',
@@ -124,7 +124,7 @@ export const VILLAINS: VillainTemplate[] = [
       name: 'Aunt Bramble\u2019s Hut',
       look: 'stockade',
       placeLook: 'stilthut',
-      boss: 'bramble',
+      bosses: ['bramble'],
       troops: [['trolls', 0.45], ['goblins', 0.55]],
       lines: ['A hut on chicken legs, bigger than her sister\u2019s. The croaking is coming from inside.'],
       threat: 'Aunt Bramble leans out: *"Frogs are happier, dearie. They told me so."*',
@@ -153,6 +153,78 @@ export const VILLAINS: VillainTemplate[] = [
           reward: 2500,
           xp: 1500,
           lines: ['It takes all afternoon and most of your eyebrows, but your counter-hex holds. Aunt Bramble admits, grudgingly, that you are nearly as good as her sister said.'],
+        },
+      ],
+    },
+  },
+  {
+    id: 'eloped',
+    villain: 'Grimsby and Bramble',
+    land: 'heath',
+    brief: [
+      'Baron Grimsby and Aunt Bramble have eloped, and taken the Crown Jewels as a wedding present.',
+      '"I don\u2019t mind the wedding," says the King. "I mind the jewels."',
+    ],
+    surrender: 'The happy couple surrender together, after a portrait. The Baron is wearing the crown. It suits him, which is the worst part.',
+    homecoming: 'The Crown Jewels are going home, covered in confetti.',
+    timeout: 'The couple have opened a tea shop, with the Crown Jewels in the window. The King is beside himself.',
+    praise: '"The jewels back, and those two in irons!" says King Osric. "I shall need a bigger Tower."',
+    arrival: ['The hills ring with wedding bells, goblin music and a great deal of honking.', 'Somebody has strung bunting between the trees.'],
+    bands: [
+      { name: 'Wedding Guests', look: 'soldiers', troops: [['swordsmen', 0.55], ['goblins', 0.45]], lines: ['Grimsby\u2019s men and Bramble\u2019s goblins, singing, a little drunk.'], threat: 'They stop singing and pick up their weapons.', flees: 'The wedding guests stagger off to find the next party.', loot: 'In a hat passed round for the couple: {gold}.' },
+      { name: 'The Best Man', look: 'troll', troops: [['trolls', 0.7], ['wolves', 0.3]], lines: ['A troll in a borrowed waistcoat, with the Baron\u2019s hounds for groomsmen.'], threat: 'He clears his throat to make a speech. It is a threat.', flees: 'The best man wanders off, still practising his speech.', loot: 'In his waistcoat pocket: {gold} and the rings.' },
+    ],
+    guardian: {
+      name: 'The Bridesmaids',
+      look: 'goblins',
+      troops: [['goblins', 0.55], ['crossbowmen', 0.25], ['trolls', 0.2]],
+      lines: ['Goblin bridesmaids with crossbows, holding the only road to the honeymoon hut.', 'They are wearing a lot of lace, and all of it is sharp.'],
+      threat: 'They throw confetti. Some of it is arrows.',
+      flees: 'The bridesmaids scatter, catching the bouquet as they go.',
+      loot: 'Among the confetti: {gold}.',
+    },
+    hideout: {
+      name: 'The Honeymoon Hut',
+      look: 'stockade',
+      placeLook: 'stilthut',
+      bosses: ['baron', 'bramble'],
+      troops: [['swordsmen', 0.35], ['trolls', 0.3], ['goblins', 0.35]],
+      lines: ['A hut on chicken legs, with a wedding bell on the roof and a stockade round its feet.'],
+      threat: 'Two voices from the window: *"Go away! We\u2019re on our honeymoon!"*',
+      charge: 'Storm the hut',
+      flees: 'The hut kneels down with a sigh.',
+      loot: 'The Crown pays {gold}.',
+      done: ['Confetti, and nothing else.'],
+    },
+    village: { troop: 'archers', count: 16, price: 40 },
+    names: {
+      province: ['Honeycombe', 'the High Wold', 'Weddington', 'Bellbury Downs'],
+      castle: ['Castle Wold', 'Bellbury Keep', 'Honeycombe Hall'],
+      village: ['Little Wedding', 'Confetti Cross', 'Hiccup'],
+      tower: ['The Bell Tower', 'Old Signal Tower'],
+      mine: ['Old Silver Mine', 'Ring Hollow'],
+      mill: ['Wold Mill', 'Bellbury Mill'],
+    },
+    towerClue: 'The bell-ringer shows you a wedding invitation. The address is circled, with a little heart.',
+    parleys: {
+      hideout: [
+        {
+          id: 'speech',
+          label: 'Make a best-man speech',
+          needs: { background: 'courtier' },
+          outcome: 'win',
+          reward: 3000,
+          xp: 1500,
+          lines: ['You make a speech so moving that both of them weep, and hand over the Crown Jewels just to make you stop.'],
+        },
+        {
+          id: 'present',
+          label: 'Give them a wedding present',
+          needs: { gold: 6000 },
+          outcome: 'win',
+          reward: 2000,
+          xp: 600,
+          lines: ['Six thousand gold, in a nice box with a ribbon. Touched, the couple hand over the Crown Jewels and wave you off.'],
         },
       ],
     },
