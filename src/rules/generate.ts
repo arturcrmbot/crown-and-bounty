@@ -15,6 +15,34 @@ const H = 30 * 32;
 /** How much stronger each generated commission is than the Fenmarch: a fifth again, and again. */
 export const strengthFor = (chapter: number) => 1.2 ** (chapter - 1);
 
+/** Words for generated places, by the lie of the land: a few of each to pick from. */
+const WORDS = {
+  heath: {
+    castle: [['The King\u2019s castle in these parts, draughty but loyal.', 'Knights to recruit, and an armoury.'], ['The steward bows so low his hat falls off.', 'Knights to recruit, and an armoury.']],
+    village: [['Shepherds, gossip, and a pie shop.'], ['Everyone here has an opinion about the Baron.']],
+    tower: [['An old tower on a rise, full of pigeons.', '*The pigeons look like they know something.*']],
+    towerDone: ['Pigeons, and nothing else.'],
+    mine: [['The rails lead down into the dark. Something is clanking.']],
+    mineVisit: ['A cart of ore nobody came back for: **{gold} gold**.'],
+    mineDone: ['Nothing down there now but echoes.'],
+    mill: [['The sails creak round. The miller is singing, badly.']],
+    millVisit: ['"Bread for the King\u2019s men!" Your troops eat well and march on.'],
+    millDone: ['"Next week, officer. The wind has to rest too."'],
+  },
+  fen: {
+    castle: [['The King\u2019s keep, sinking a little every year.', 'Knights to recruit, and an armoury.'], ['The castellan hands you a towel before you ask.', 'Knights to recruit, and an armoury.']],
+    village: [['A village on stilts. The ducks outnumber the people.'], ['Eel pie, eel soup, and eel on toast.']],
+    tower: [['A ruin on a hump of dry ground. Frogs sing in the cloister.', '*One of the frogs is humming a hymn.*']],
+    towerDone: ['Just frogs now, and not very tuneful ones.'],
+    mine: [['Peat stacked high, and a door off its hinges.']],
+    mineVisit: ['A tin box of wages nobody came back for: **{gold} gold**.'],
+    mineDone: ['The peat stacks lean in the wind.'],
+    mill: [['It pumps the fen dry, one bucket at a time.']],
+    millVisit: ['The miller opens every sluice, and your troops march on firm ground.'],
+    millDone: ['"Come back next week. The fen came back first."'],
+  },
+};
+
 /** Enemy strength in the Fenmarch, which generated commissions scale from. */
 const BASE = { band: 760, guardian: 860, hideout: 1900 };
 
@@ -159,6 +187,7 @@ function attempt(seed: number, v: VillainTemplate, chapter: number): Province {
   }
 
   const names = v.names;
+  const words = WORDS[v.land];
   const at = (p: Point) => P(p);
   const bandLocations: Location[] = bands.map((p, i) => ({
     id: `band${i}`,
@@ -169,11 +198,11 @@ function attempt(seed: number, v: VillainTemplate, chapter: number): Province {
     enemy: enemy(v.bands[i], BASE.band * s * (0.9 + i * 0.2), Math.round(400 * s)),
   }));
   const locations: Location[] = [
-    { id: 'castle', kind: 'castle', name: pick(random, names.castle), at: at(castle), done: false, recruits: { troop: 'knights', count: 6, price: 110 }, wares: [...(['harrowgateMail', 'fenBanner', 'astrolabe', 'swordOfAldmoor', 'breastplate', 'luckyHorseshoe'] as const)].sort(() => random() - 0.5).slice(0, 3) },
-    { id: 'village', kind: 'village', name: pick(random, names.village), at: at(village), done: false, recruits: { ...v.village } },
-    { id: 'tower', kind: 'tower', ...(fen ? { look: 'abbey' as const } : {}), name: pick(random, names.tower), at: at(tower), done: false, reveals: at(hideout), text: { visit: [v.towerClue] } },
-    { id: 'mine', kind: 'mine', ...(fen ? { look: 'peathut' as const } : {}), name: pick(random, names.mine), at: at(mine), done: false, gold: Math.round(500 * s) },
-    { id: 'mill', kind: 'mill', look: 'windmill', name: pick(random, names.mill), at: at(mill), done: false },
+    { id: 'castle', kind: 'castle', name: pick(random, names.castle), at: at(castle), done: false, text: { about: pick(random, words.castle) }, recruits: { troop: 'knights', count: 6, price: 110 }, wares: [...(['harrowgateMail', 'fenBanner', 'astrolabe', 'swordOfAldmoor', 'breastplate', 'luckyHorseshoe'] as const)].sort(() => random() - 0.5).slice(0, 3) },
+    { id: 'village', kind: 'village', name: pick(random, names.village), at: at(village), done: false, recruits: { ...v.village }, text: { about: pick(random, words.village) } },
+    { id: 'tower', kind: 'tower', ...(fen ? { look: 'abbey' as const } : {}), name: pick(random, names.tower), at: at(tower), done: false, reveals: at(hideout), text: { about: pick(random, words.tower), done: words.towerDone, visit: [v.towerClue] } },
+    { id: 'mine', kind: 'mine', ...(fen ? { look: 'peathut' as const } : {}), name: pick(random, names.mine), at: at(mine), done: false, gold: Math.round(500 * s), text: { about: pick(random, words.mine), visit: words.mineVisit, done: words.mineDone } },
+    { id: 'mill', kind: 'mill', look: 'windmill', name: pick(random, names.mill), at: at(mill), done: false, text: { about: pick(random, words.mill), visit: words.millVisit, done: words.millDone } },
     { id: 'signpost', kind: 'signpost', name: 'Signpost', at: at(signpost), done: false, text: { about: [`**THIS WAY:** ${v.villain}, probably. Somebody has added *"DON\u2019T"* in charcoal.`] } },
     ...chests.map((p, i): Location => ({ id: `chest${i}`, kind: 'chest', name: 'Treasure Chest', at: at(p), done: false, gold: Math.round((500 + i * 150) * s) })),
     ...piles.map((p, i): Location => ({ id: `gold${i}`, kind: 'gold', name: 'Pile of Gold', at: at(p), done: false, gold: Math.round((300 + i * 150) * s) })),
