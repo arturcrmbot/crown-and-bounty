@@ -1,35 +1,48 @@
-/** Pixel coordinates on the 14 x 14 tile look-test map (32 px tiles, so 448 x 448). */
+import { fbm } from './noise';
+
+/** Pixel coordinates on the look-test map: 40 x 30 tiles of 32 px. */
 export type Point = readonly [number, number];
 
 export const TILE = 32;
-export const MAP_TILES = 14;
-export const MAP_PX = TILE * MAP_TILES;
+export const MAP_WIDTH = 40 * TILE;
+export const MAP_HEIGHT = 30 * TILE;
 
-/** Control points, smoothed into a curve. Runs north to south, off both edges. */
+/** North to south, off both edges. It drops over the cliff as a waterfall. */
 export const RIVER: Point[] = [
-  [300, -16], [292, 40], [308, 92], [332, 140], [322, 190], [302, 236],
-  [296, 282], [312, 330], [328, 378], [314, 420], [302, 470],
+  [900, -20], [872, 70], [904, 170], [880, 270], [848, 350], [828, 420], [812, 480],
+  [786, 548], [748, 620], [712, 700], [690, 780], [660, 860], [640, 990],
 ];
 
-/** From the castle gate east over the bridge and off the right edge. */
-export const ROAD: Point[] = [
-  [110, 256], [150, 266], [200, 262], [252, 258], [300, 258], [348, 262], [398, 250], [466, 244],
+/** A south-facing rock step across the map; the path from the castle comes down through its gap. */
+export const CLIFF: Point[] = [[640, 452], [700, 440], [760, 436], [830, 440], [900, 432], [952, 420]];
+export const CLIFF_HEIGHT = 24;
+
+/** Thin winding paths: tower to village over the bridge, castle to village, and a branch south-west. */
+export const PATHS: Point[][] = [
+  [[292, 236], [330, 300], [380, 362], [440, 430], [500, 510], [540, 590], [592, 660], [650, 706], [700, 724], [762, 742], [842, 772], [930, 800]],
+  [[1112, 214], [1080, 282], [1030, 334], [992, 404], [970, 480], [954, 580], [944, 680], [936, 790]],
+  [[500, 512], [432, 560], [344, 622], [254, 700], [172, 780], [80, 862]],
 ];
 
-/** Bottom-centre anchors. */
-export const CASTLE: Point = [108, 252];
-export const HERO: Point = [240, 266];
-export const MOUNTAINS = [
-  { at: [92, 128] as Point, width: 150, height: 104, seed: 3 },
-  { at: [210, 84] as Point, width: 96, height: 68, seed: 8 },
+export const CASTLE: Point = [1120, 212];
+export const TOWER: Point = [290, 226];
+export const MILL: Point = [874, 566];
+export const HUTS: Point[] = [[968, 772], [1012, 820], [904, 836]];
+export const HERO: Point = [546, 612];
+export const CHEST: Point = [420, 700];
+export const GOLD_PILE: Point = [640, 560];
+
+/** Clearings kept free of forest: centre and radius. */
+const CLEARINGS: [number, number, number][] = [
+  [546, 600, 170], [1120, 200, 120], [290, 220, 80], [874, 560, 70], [960, 800, 110], [420, 700, 60],
 ];
-/** Tree clusters: centre, radius, count and kind. */
-export const FORESTS = [
-  { at: [400, 70] as Point, radius: 62, count: 30, pine: false, seed: 1 },
-  { at: [420, 380] as Point, radius: 56, count: 22, pine: true, seed: 2 },
-  { at: [70, 390] as Point, radius: 64, count: 26, pine: false, seed: 4 },
-  { at: [236, 150] as Point, radius: 22, count: 4, pine: false, seed: 5 },
-  { at: [186, 400] as Point, radius: 20, count: 3, pine: true, seed: 6 },
-];
-export const CHEST: Point = [196, 336];
-export const GOLD_PILE: Point = [406, 300];
+
+/** How much forest wants to grow here, 0 to 1. Trees go where this is above one half. */
+export function forestAmount(x: number, y: number): number {
+  let amount = fbm(x / 150, y / 150, 3, 61) * 1.25 - 0.1;
+  for (const [cx, cy, r] of CLEARINGS) {
+    const d = Math.hypot(x - cx, y - cy) / r;
+    if (d < 1.4) amount -= (1.4 - d) * 0.7;
+  }
+  return amount;
+}

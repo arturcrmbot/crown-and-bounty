@@ -1,18 +1,15 @@
 import { Bitmap } from './bitmap';
-import { noise, shade } from './noise';
-import { GOLD, INK, STONE, WOOD } from './palette';
+import { hash, noise, shade } from './noise';
+import { GOLD, INK, PARCHMENT, SLATE, WOOD } from './palette';
 
 export type Rect = { x: number; y: number; width: number; height: number };
 
-export const SCREEN = { width: 640, height: 480 };
-export const MAP_VIEW: Rect = { x: 16, y: 16, width: 448, height: 448 };
-export const MINIMAP: Rect = { x: 480, y: 16, width: 144, height: 144 };
-export const HERO_BOX: Rect = { x: 480, y: 176, width: 144, height: 60 };
-export const BUTTONS: Rect = { x: 480, y: 252, width: 144, height: 64 };
-export const STATUS: Rect = { x: 480, y: 332, width: 144, height: 132 };
+export const SCREEN = { width: 960, height: 540 };
+export const MAP_VIEW: Rect = { x: 16, y: 16, width: 928, height: 464 };
+export const BAR: Rect = { x: 16, y: 498, width: 928, height: 28 };
 
-/** A carved gold moulding drawn just outside a rectangle: lit from the top left. */
-export function trim(screen: Bitmap, { x, y, width, height }: Rect) {
+/** A carved gold moulding just outside a rectangle, lit from the top left. */
+export function trim(screen: Bitmap, { x, y, width, height }: Rect, inset = 0) {
   const ring = (d: number, light: number, dark: number) => {
     for (let i = x - d; i < x + width + d; i++) {
       screen.set(i, y - d, light);
@@ -23,53 +20,58 @@ export function trim(screen: Bitmap, { x, y, width, height }: Rect) {
       screen.set(x + width - 1 + d, j, dark);
     }
   };
-  ring(1, INK, INK);
-  ring(2, GOLD[2], GOLD[5]);
-  ring(3, GOLD[4], GOLD[3]);
-  ring(4, GOLD[6], GOLD[1]);
-  ring(5, INK, INK);
+  ring(1 + inset, INK, INK);
+  ring(2 + inset, GOLD[2], GOLD[5]);
+  ring(3 + inset, GOLD[4], GOLD[3]);
+  ring(4 + inset, GOLD[6], GOLD[1]);
+  ring(5 + inset, INK, INK);
 }
 
-/** Raised stone button with a bevel. */
-export function button({ x, y, width, height }: Rect, screen: Bitmap) {
-  for (let j = 0; j < height; j++) {
-    for (let i = 0; i < width; i++) {
-      const edge = i === 0 || j === 0 ? 7 : i === width - 1 || j === height - 1 ? 0 : -1;
-      const level = edge >= 0 ? edge / 7 : 0.45 + (noise((x + i) / 4, (y + j) / 4, 41) - 0.5) * 0.3 - j * 0.004;
-      screen.set(x + i, y + j, edge === 7 ? STONE[6] : edge === 0 ? INK : shade(STONE, level, x + i, y + j));
+/**
+ * The static interface: dark slate around everything, a parchment band round the map with a
+ * torn inner edge, gold trims and the bottom bar. Returns the frame and an overlay with the torn
+ * parchment that is drawn over the map every frame.
+ */
+export function paintFrame(): { frame: Bitmap; overlay: Bitmap } {
+  const { width, height } = SCREEN;
+  const frame = new Bitmap(width, height);
+  const overlay = new Bitmap(width, height);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const grain = noise(x / 3, y / 3, 51) * 0.5 + noise(x / 11, y / 11, 52) * 0.5;
+      frame.set(x, y, shade(SLATE, 0.18 + grain * 0.4, x, y));
     }
   }
-}
-
-/** Paints the static interface: carved wood around everything, gold trims and the panel boxes. */
-export function paintFrame(screen: Bitmap) {
-  for (let y = 0; y < screen.height; y++) {
-    for (let x = 0; x < screen.width; x++) {
-      const plank = Math.floor((x + 3) / 26);
-      const seam = (x + 3) % 26 === 0;
-      const grain = noise(x / 2.5, y / 34 + plank * 7.3, 31) * 0.55 + noise(x / 1.2, y / 8, 32) * 0.25;
-      screen.set(x, y, seam ? WOOD[0] : shade(WOOD, 0.12 + grain * 0.62, x, y));
+  // Parchment: a band outside the map view, plus a torn fringe reaching into it.
+  const band = 7;
+  const v = MAP_VIEW;
+  for (let y = v.y - band; y < v.y + v.height + band; y++) {
+    for (let x = v.x - band; x < v.x + v.width + band; x++) {
+      const inside = Math.min(x - v.x, y - v.y, v.x + v.width - 1 - x, v.y + v.height - 1 - y);
+      const along = x - v.x < 12 || v.x + v.width - x < 12 ? y : x;
+      const tear = 2 + noise(along / 7, inside < 0 ? 1 : 2, 53) * 4 + (hash(along, 0, 54) < 0.12 ? 2 : 0);
+      if (inside >= tear) continue;
+      const depth = inside + band;
+      const stain = noise(x / 9, y / 9, 55) * 0.35 + noise(x / 2, y / 2, 56) * 0.18;
+      let level = 0.35 + stain + depth * 0.02;
+      if (inside >= tear - 1) level -= 0.35;
+      const color = shade(PARCHMENT, level, x, y);
+      if (inside >= 0) overlay.set(x, y, inside >= tear - 1 ? PARCHMENT[1] : color);
+      else frame.set(x, y, color);
     }
   }
-  // Outer bevel of the whole screen.
-  for (let x = 0; x < screen.width; x++) {
-    screen.set(x, 0, GOLD[4]);
-    screen.set(x, 1, GOLD[2]);
-    screen.set(x, screen.height - 1, INK);
-    screen.set(x, screen.height - 2, GOLD[1]);
-  }
-  for (let y = 0; y < screen.height; y++) {
-    screen.set(0, y, GOLD[4]);
-    screen.set(1, y, GOLD[2]);
-    screen.set(screen.width - 1, y, INK);
-    screen.set(screen.width - 2, y, GOLD[1]);
-  }
-  for (const rect of [MAP_VIEW, MINIMAP, HERO_BOX, BUTTONS, STATUS]) trim(screen, rect);
-  screen.fill(HERO_BOX.x, HERO_BOX.y, HERO_BOX.width, HERO_BOX.height, WOOD[0]);
-  screen.fill(STATUS.x, STATUS.y, STATUS.width, STATUS.height, WOOD[0]);
-  for (let row = 0; row < 2; row++) {
-    for (let col = 0; col < 4; col++) {
-      button({ x: BUTTONS.x + col * 36, y: BUTTONS.y + row * 32, width: 36, height: 32 }, screen);
+  trim(frame, { x: v.x - band, y: v.y - band, width: v.width + band * 2, height: v.height + band * 2 });
+  trim(frame, BAR);
+  for (let y = BAR.y; y < BAR.y + BAR.height; y++) {
+    for (let x = BAR.x; x < BAR.x + BAR.width; x++) {
+      frame.set(x, y, shade(SLATE, 0.32 + (noise(x / 4, y / 4, 57) - 0.5) * 0.2 - (y - BAR.y) * 0.008, x, y));
     }
   }
+  for (const divider of [300, 560, 760]) {
+    for (let y = BAR.y + 3; y < BAR.y + BAR.height - 3; y++) {
+      frame.set(BAR.x + divider, y, WOOD[0]);
+      frame.set(BAR.x + divider + 1, y, GOLD[2]);
+    }
+  }
+  return { frame, overlay };
 }

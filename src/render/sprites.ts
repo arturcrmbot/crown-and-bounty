@@ -1,6 +1,6 @@
 import { Bitmap, outline, SHADOW } from './bitmap';
 import { hash, noise, rng, shade } from './noise';
-import { BLUE, DIRT, GOLD, INK, LEAF, NEUTRAL, RED, ROCK, SKIN, STONE, WOOD } from './palette';
+import { BLUE, DIRT, GOLD, INK, LEAF, NEUTRAL, PARCHMENT, PINE, RED, ROCK, SKIN, STONE, WATER, WOOD } from './palette';
 
 /** Light comes from the top left and a little towards the viewer, as on the painted HoMM2 maps. */
 const L = (() => {
@@ -48,9 +48,9 @@ function castShadow(sprite: Bitmap, dx: number, dy: number, fromY: number) {
 }
 
 /** Round broadleaf tree: a few leafy blobs lit from the top left, a trunk and a shadow. */
-export function oak(seed: number): Bitmap {
+export function oak(seed: number, size = 30): Bitmap {
   const random = rng(seed);
-  const size = 30 + Math.floor(random() * 6);
+  size += Math.floor(random() * size * 0.2);
   const sprite = new Bitmap(size + 8, size + 6);
   const cx = sprite.width / 2 - 2;
   const top = 4;
@@ -62,9 +62,10 @@ export function oak(seed: number): Bitmap {
   }
   const trunkTop = top + r * 1.7;
   const foot = sprite.height - 6;
+  const trunk = size < 20 ? 1 : 2;
   for (let y = Math.floor(trunkTop); y < foot; y++) {
-    for (let x = Math.floor(cx - 2); x < cx + 2; x++) {
-      const t = (x + 0.5 - (cx - 2)) / 4;
+    for (let x = Math.floor(cx - trunk); x < cx + trunk; x++) {
+      const t = (x + 0.5 - (cx - trunk)) / (trunk * 2);
       sprite.set(x, y, shade(WOOD, 0.75 - t * 0.6 + (hash(x, y, seed) - 0.5) * 0.2, x, y));
     }
   }
@@ -78,37 +79,59 @@ export function oak(seed: number): Bitmap {
     }
   }
   const shaped = outline(sprite, LEAF[0]);
-  shadowOval(shaped, cx + 5, foot, r * 1.05, 3.2);
+  shadowOval(shaped, cx + size * 0.16, foot, r * 1.05, Math.max(1.6, size * 0.1));
   return shaped;
 }
 
 /** Conifer: stacked jagged tiers, lit on the left. */
-export function pine(seed: number): Bitmap {
+export function pine(seed: number, height = 34): Bitmap {
   const random = rng(seed);
-  const height = 34 + Math.floor(random() * 8);
-  const sprite = new Bitmap(28, height + 4);
-  const cx = 12.5;
+  height += Math.floor(random() * height * 0.25);
+  const scale = height / 38;
+  const sprite = new Bitmap(Math.ceil(28 * scale) + 4, height + 4);
+  const cx = sprite.width / 2 - 1.5;
   const foot = height - 1;
-  for (let y = foot - 5; y < foot; y++) {
-    for (let x = 11; x < 14; x++) sprite.set(x, y, shade(WOOD, 0.6 - (x - 11) * 0.2, x, y));
+  const trunkLength = Math.max(2, Math.round(5 * scale));
+  for (let y = foot - trunkLength; y < foot; y++) {
+    for (let x = Math.floor(cx - 1); x < cx + 1; x++) sprite.set(x, y, shade(WOOD, 0.6 - (x - cx + 1) * 0.3, x, y));
   }
-  const tiers = 4;
+  const tiers = height < 22 ? 3 : 4;
   for (let t = 0; t < tiers; t++) {
-    const tierTop = 2 + t * (height - 10) * 0.2;
-    const tierBottom = tierTop + (height - 10) * 0.42;
-    const halfBase = 5 + t * 2.3;
+    const tierTop = 1 + t * (height - trunkLength - 4) * (0.8 / tiers);
+    const tierBottom = tierTop + (height - trunkLength - 4) * (1.7 / tiers);
+    const halfBase = (5 + t * 2.3) * scale + 1;
     for (let y = Math.floor(tierTop); y < tierBottom; y++) {
       const k = (y - tierTop) / (tierBottom - tierTop);
       const half = halfBase * k + (hash(Math.floor(y), t, seed) - 0.5) * 1.6;
       for (let x = Math.floor(cx - half); x <= cx + half; x++) {
         const u = (x + 0.5 - cx) / Math.max(half, 1);
         const light = 0.62 - u * 0.42 - (1 - k) * 0.05 + k * 0.08 - (k > 0.85 ? 0.28 : 0);
-        sprite.set(x, y, shade(LEAF, clamp01(light + (hash(x, y, seed + t) - 0.5) * 0.3 - 0.12), x, y));
+        sprite.set(x, y, shade(PINE, clamp01(light + (hash(x, y, seed + t) - 0.5) * 0.3 - 0.08), x, y));
       }
     }
   }
-  const shaped = outline(sprite, LEAF[0]);
-  shadowOval(shaped, cx + 5, foot, 9, 2.6);
+  const shaped = outline(sprite, PINE[0]);
+  shadowOval(shaped, cx + 5 * scale, foot, 8 * scale + 1, Math.max(1.4, 2.4 * scale));
+  return shaped;
+}
+
+/** A lone boulder. */
+export function boulder(seed: number, size: number): Bitmap {
+  const random = rng(seed);
+  const sprite = new Bitmap(size + 6, Math.ceil(size * 0.8) + 4);
+  const cx = size / 2 + 1;
+  const cy = size * 0.45 + 1;
+  const squash = 0.75 + random() * 0.2;
+  for (let y = 0; y < sprite.height; y++) {
+    for (let x = 0; x < sprite.width; x++) {
+      const light = sphere(x, (y - cy) / squash + cy, cx, cy, size / 2);
+      if (light === OUTSIDE) continue;
+      const facets = (noise(x / 2, y / 2, seed) - 0.5) * 0.4;
+      sprite.set(x, y, shade(ROCK, clamp01(0.25 + light * 0.75 + facets), x, y));
+    }
+  }
+  const shaped = outline(sprite, ROCK[0]);
+  castShadow(shaped, 3, 1, cy);
   return shaped;
 }
 
@@ -390,4 +413,110 @@ export function goldPile(): Bitmap {
   return shaped;
 }
 
-export const MINIMAP_COLOURS = { forest: LEAF[3], mountain: ROCK[5], castle: BLUE[4], hero: BLUE[6], road: DIRT[5] };
+/** Timber-framed walls: white plaster between dark beams, lit on the left. */
+function timber(x: number, y: number, x0: number, x1: number, light: number): number {
+  const beam = x === x0 || x === x1 - 1 || (x - x0) % 7 === 0 || y % 6 === 0;
+  return beam ? shade(WOOD, 0.3, x, y) : shade(PARCHMENT, clamp01(light), x, y);
+}
+
+/** Steep roof: thatch or slate, drawn as a gable seen from the south. */
+function roof(sprite: Bitmap, x0: number, x1: number, top: number, bottom: number, ramp: readonly number[]) {
+  for (let y = top; y < bottom; y++) {
+    const k = (y - top) / (bottom - top);
+    for (let x = x0 - 2; x < x1 + 2; x++) {
+      const u = (x - x0) / (x1 - x0);
+      const straw = (noise(x / 1.5, y / 4, 81) - 0.5) * 0.3 + (y % 3 === 0 ? -0.1 : 0);
+      const level = 0.75 - u * 0.35 - k * 0.2 + straw - (y === bottom - 1 ? 0.3 : 0);
+      sprite.set(x, y, shade(ramp, clamp01(level), x, y));
+    }
+  }
+}
+
+export function hut(seed: number): Bitmap {
+  const sprite = new Bitmap(34, 32);
+  const random = rng(seed);
+  const wallTop = 14 + Math.floor(random() * 2);
+  for (let y = wallTop; y < 28; y++) for (let x = 5; x < 27; x++) sprite.set(x, y, timber(x, y, 5, 27, 0.8 - (x - 5) * 0.012));
+  for (let y = 20; y < 28; y++) for (let x = 14; x < 19; x++) sprite.set(x, y, y === 20 ? WOOD[1] : shade(WOOD, 0.45, x, y));
+  for (const wx of [8, 22]) for (let y = 18; y < 22; y++) for (let x = wx; x < wx + 3; x++) sprite.set(x, y, y === 18 ? WOOD[2] : GOLD[5]);
+  roof(sprite, 5, 27, 3, wallTop + 1, DIRT);
+  const shaped = outline(sprite, INK);
+  castShadow(shaped, 5, 2, 20);
+  return shaped;
+}
+
+/** The watermill with its wheel turned to `turn` (0 to 1 round). */
+export function mill(turn: number): Bitmap {
+  const sprite = new Bitmap(56, 50);
+  for (let y = 20; y < 44; y++) for (let x = 16; x < 48; x++) sprite.set(x, y, timber(x, y, 16, 48, 0.8 - (x - 16) * 0.01));
+  for (let y = 32; y < 44; y++) for (let x = 36; x < 42; x++) sprite.set(x, y, y === 32 ? WOOD[1] : shade(WOOD, 0.4, x, y));
+  roof(sprite, 16, 48, 4, 21, WOOD);
+  // Wheel on the west wall, facing the river.
+  const cx = 12;
+  const cy = 36;
+  for (let y = cy - 12; y <= cy + 12; y++) {
+    for (let x = cx - 7; x <= cx + 7; x++) {
+      const u = (x - cx) / 7;
+      const v = (y - cy) / 12;
+      const r = Math.hypot(u, v);
+      if (r > 1) continue;
+      const angle = Math.atan2(v, u) / (Math.PI * 2) + turn;
+      const spoke = Math.abs(((angle * 8) % 1 + 1) % 1 - 0.5) < 0.12;
+      if (r > 0.82) sprite.set(x, y, shade(WOOD, 0.55 - u * 0.3, x, y));
+      else if (spoke || r < 0.2) sprite.set(x, y, shade(WOOD, 0.4 - u * 0.2, x, y));
+      else if (y > cy + 5) sprite.set(x, y, WATER[8]);
+    }
+  }
+  for (let x = cx - 6; x <= cx + 6; x++) sprite.set(x, cy + 13, WATER[9]);
+  const shaped = outline(sprite, INK);
+  castShadow(shaped, 6, 2, 30);
+  return shaped;
+}
+
+/** Square stone watchtower with battlements and a blue flag, on a rocky knoll. */
+export function watchtower(phase = 0): Bitmap {
+  const sprite = new Bitmap(40, 84);
+  const x0 = 10;
+  const x1 = 30;
+  for (let y = 18; y < 74; y++) {
+    for (let x = x0; x < x1; x++) {
+      const u = (x - x0) / (x1 - x0);
+      sprite.set(x, y, masonry(x, y, 0.78 - u * 0.4 - (y > 64 ? 0.1 : 0), 13));
+    }
+  }
+  for (let x = x0 - 2; x < x1 + 2; x++) {
+    for (let y = 12; y < 18; y++) {
+      const merlon = Math.floor((x - x0 + 2) / 3) % 2 === 0;
+      if (y < 15 && !merlon) continue;
+      sprite.set(x, y, masonry(x, y, 0.85 - ((x - x0) / (x1 - x0)) * 0.4, 14));
+    }
+  }
+  for (const [x, y] of [[15, 28], [23, 42], [15, 54]]) for (let j = 0; j < 5; j++) sprite.set(x, y + j, INK);
+  for (let y = 64; y < 74; y++) for (let x = 17; x < 23; x++) sprite.set(x, y, y === 64 ? STONE[6] : shade(WOOD, 0.35, x, y));
+  pennant(sprite, 20, 12, phase);
+  const shaped = outline(sprite, INK);
+  castShadow(shaped, 10, 3, 40);
+  return shaped;
+}
+
+/** Grey stone bridge with a parapet on each side, running east to west. */
+export function stoneBridge(length: number): Bitmap {
+  const sprite = new Bitmap(length, 24);
+  for (let y = 4; y < 20; y++) {
+    for (let x = 0; x < length; x++) {
+      const u = x / length;
+      const arch = y > 15 && Math.abs(u - 0.5) < 0.3;
+      if (arch) {
+        sprite.set(x, y, WATER[1]);
+        continue;
+      }
+      const light = y < 7 || y > 15 ? 0.78 - (y > 15 ? 0.3 : 0) : 0.52 + (hash(x >> 2, y >> 1, 91) - 0.5) * 0.2;
+      sprite.set(x, y, y < 7 || y > 15 ? masonry(x, y, light, 92) : shade(DIRT, light, x, y));
+    }
+  }
+  const shaped = outline(sprite, INK);
+  for (let x = 2; x < length; x++) for (let y = 21; y < 24; y++) shaped.under(x, y, SHADOW);
+  return shaped;
+}
+
+export const MINIMAP_COLOURS = { forest: PINE[4], mountain: ROCK[5], castle: BLUE[4], hero: BLUE[6], road: DIRT[5] };

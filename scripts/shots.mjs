@@ -3,8 +3,8 @@ import { mkdirSync } from 'node:fs';
 import { chromium } from 'playwright';
 
 const url = process.env.URL ?? 'http://localhost:5173/';
-const width = Number(process.env.W ?? 1280);
-const height = Number(process.env.H ?? 960);
+const width = Number(process.env.W ?? 960);
+const height = Number(process.env.H ?? 540);
 mkdirSync('screenshots', { recursive: true });
 
 const browser = await chromium.launch({ channel: process.env.CHANNEL ?? 'msedge', args: ['--ignore-gpu-blocklist'] });

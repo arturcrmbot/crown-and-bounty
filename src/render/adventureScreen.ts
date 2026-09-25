@@ -1,78 +1,63 @@
 import { Bitmap, blit } from './bitmap';
-import { MAP_VIEW, MINIMAP, paintFrame, SCREEN } from './frame';
-import { MAP_PX, RIVER, ROAD } from './lookTestMap';
-import { DIRT, GRASS, SAND, WATER } from './palette';
-import { Ground, paintTerrain, type Terrain } from './terrain';
+import { MAP_VIEW, paintFrame, SCREEN } from './frame';
+import { MAP_HEIGHT, MAP_WIDTH } from './lookTestMap';
 
-/** `frames` animate the object (waving flags); `sprite` is the first frame. */
-export type Placed = { sprite: Bitmap; frames?: Bitmap[]; x: number; y: number; minimap?: number };
+/** `x` and `y` are the sprite's top-left in map pixels. `frames` animate it (flags, wheels). */
+export type Placed = { sprite: Bitmap; frames?: Bitmap[]; x: number; y: number };
 
-const GROUND_COLOURS = [GRASS[4], WATER[5], SAND[3], DIRT[5]];
+const footY = (o: Placed) => o.y + o.sprite.height;
 
-/** The HoMM2-style adventure screen: static frame, painted terrain and y-sorted objects. */
+/**
+ * The adventure screen. Static objects are baked into the map once, back to front, and only the
+ * animated ones are drawn each frame, so scrolling is just copying rows.
+ */
 export class AdventureScreen {
   readonly screen = new Bitmap(SCREEN.width, SCREEN.height);
-  private readonly frame = new Bitmap(SCREEN.width, SCREEN.height);
-  private readonly terrain: Terrain;
-  private readonly objects: Placed[] = [];
+  readonly frame: Bitmap;
+  private readonly overlay: Bitmap;
+  private readonly map: Bitmap;
+  private readonly animated: Placed[] = [];
+  readonly camera = { x: 0, y: 0 };
 
-  constructor() {
-    this.terrain = paintTerrain(RIVER, ROAD);
-    paintFrame(this.frame);
-    this.paintMinimap();
+  constructor(map: Bitmap) {
+    const { frame, overlay } = paintFrame();
+    this.frame = frame;
+    this.overlay = overlay;
+    this.map = map;
   }
 
-  /** `x` and `y` are the sprite's top-left in map pixels. */
-  add(object: Placed) {
-    this.objects.push(object);
-    this.objects.sort((a, b) => a.y + a.sprite.height - (b.y + b.sprite.height));
-    this.paintMinimap();
+  bake(objects: Placed[]) {
+    for (const o of [...objects].sort((a, b) => footY(a) - footY(b))) blit(this.map, o.sprite, Math.round(o.x), Math.round(o.y));
   }
 
-  private paintMinimap() {
-    const scale = MAP_PX / MINIMAP.width;
-    for (let y = 0; y < MINIMAP.height; y++) {
-      for (let x = 0; x < MINIMAP.width; x++) {
-        const mx = Math.floor((x + 0.5) * scale);
-        const my = Math.floor((y + 0.5) * scale);
-        this.frame.set(MINIMAP.x + x, MINIMAP.y + y, GROUND_COLOURS[this.terrain.ground[my * MAP_PX + mx]]);
-      }
-    }
-    for (const { sprite, x, y, minimap } of this.objects) {
-      if (minimap === undefined) continue;
-      const x0 = Math.floor(x / scale);
-      const y0 = Math.floor((y + sprite.height * 0.45) / scale);
-      const x1 = Math.ceil((x + sprite.width) / scale);
-      const y1 = Math.ceil((y + sprite.height) / scale);
-      for (let j = y0; j < y1; j++) {
-        for (let i = x0; i < x1; i++) {
-          const sx = Math.floor(i * scale - x);
-          const sy = Math.floor(j * scale - y);
-          const v = sprite.get(sx, sy);
-          if (v !== 0 && v !== 255 && i >= 0 && j >= 0 && i < MINIMAP.width && j < MINIMAP.height) {
-            this.frame.set(MINIMAP.x + i, MINIMAP.y + j, minimap);
-          }
-        }
-      }
-    }
+  animate(object: Placed) {
+    this.animated.push(object);
+    this.animated.sort((a, b) => footY(a) - footY(b));
+  }
+
+  scrollTo(x: number, y: number) {
+    this.camera.x = Math.max(0, Math.min(MAP_WIDTH - MAP_VIEW.width, x));
+    this.camera.y = Math.max(0, Math.min(MAP_HEIGHT - MAP_VIEW.height, y));
+  }
+
+  centreOn(x: number, y: number) {
+    this.scrollTo(x - MAP_VIEW.width / 2, y - MAP_VIEW.height / 2);
   }
 
   compose(tick: number): Bitmap {
-    const { screen } = this;
+    const { screen, map } = this;
     screen.data.set(this.frame.data);
-    const map = this.terrain.bitmap.data;
-    for (let y = 0; y < MAP_PX; y++) {
-      screen.data.set(map.subarray(y * MAP_PX, (y + 1) * MAP_PX), (MAP_VIEW.y + y) * SCREEN.width + MAP_VIEW.x);
+    const cx = Math.round(this.camera.x);
+    const cy = Math.round(this.camera.y);
+    for (let y = 0; y < MAP_VIEW.height; y++) {
+      const from = (cy + y) * MAP_WIDTH + cx;
+      screen.data.set(map.data.subarray(from, from + MAP_VIEW.width), (MAP_VIEW.y + y) * SCREEN.width + MAP_VIEW.x);
     }
-    for (const { sprite, frames, x, y } of this.objects) {
+    for (const { sprite, frames, x, y } of this.animated) {
       const image = frames ? frames[tick % frames.length] : sprite;
-      blit(screen, image, MAP_VIEW.x + Math.round(x), MAP_VIEW.y + Math.round(y), MAP_VIEW);
+      blit(screen, image, MAP_VIEW.x + Math.round(x) - cx, MAP_VIEW.y + Math.round(y) - cy, MAP_VIEW);
     }
+    blit(screen, this.overlay, 0, 0);
     return screen;
-  }
-
-  groundAt(x: number, y: number): number {
-    if (x < 0 || y < 0 || x >= MAP_PX || y >= MAP_PX) return Ground.Water;
-    return this.terrain.ground[Math.floor(y) * MAP_PX + Math.floor(x)];
   }
 }
