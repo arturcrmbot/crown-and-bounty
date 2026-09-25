@@ -2,11 +2,12 @@ import { ARTIFACTS, type ArtifactId } from '../content/artifacts';
 import { BACKGROUNDS } from '../content/backgrounds';
 import { PERKS, RANKS, SKILLS, type SkillId } from '../content/skills';
 import { winChance } from './fight';
+import { CAMPAIGN_LENGTH, campaignLines } from './campaign';
 import { parleyChoices } from './parley';
 import { foundNote, gainXp, giveArtifact, heroStats, LEVELS } from './hero';
 import { revealDisc } from './map/fog';
 import {
-  addTroops, armyLine, close, coins, LAST_DAY, leadershipUsed, locationById, roman, show, TROOPS, troops, update,
+  addTroops, again, armyLine, close, coins, LAST_DAY, leadershipUsed, locationById, roman, show, TROOPS, troops, update,
   type Army, type Card, type Choice, type GameEvent, type GameState, type Location, type PlaceText, type Result,
 } from './state';
 
@@ -30,6 +31,7 @@ const USUAL: Record<Location['kind'], PlaceText> = {
   patrol: { done: ['Nobody here now.'] },
   hideout: { done: ['Nobody here now.'] },
   signpost: { about: ['The arms point every way at once.'] },
+  dig: { about: ['The map says here. Your horse is not convinced.'] },
 };
 
 /** A place's words: the province's own if it has them, else the usual ones for its kind. */
@@ -61,6 +63,8 @@ export function describe(state: GameState, id: string): Card {
       return { title: place.name, lines: [...place.enemy!.lines, `About ${forceLine(place.enemy!.army)}.`], choices: [go('Approach'), close] };
     case 'signpost':
       return { title: place.name, lines: words(place, 'about'), choices: [close] };
+    case 'dig':
+      return { title: place.name, lines: words(place, 'about'), choices: [go('Ride there'), close] };
   }
 }
 
@@ -167,7 +171,37 @@ export function visit(state: GameState, id: string): Result {
     }
     case 'signpost':
       return found(state, describe(state, id));
+    case 'dig':
+      return say(state, { title: place.name, lines: ['Five torn pieces of map, and one very large X.', 'Your men look at the shovel, then at you.'], choices: [{ label: 'Dig here', action: { type: 'dig', id } }, close] });
   }
+}
+
+/** Digs up the lost sceptre: the end of the campaign. */
+export function dig(state: GameState, id: string): Result | null {
+  const place = locationById(state, id);
+  if (place.kind !== 'dig' || place.done || state.over) return null;
+  const next: GameState = { ...update(state, id, { done: true }), over: 'won' };
+  const hero = BACKGROUNDS[state.hero.background].short;
+  return {
+    state: next,
+    events: [
+      { type: 'over', result: 'won' },
+      show(
+        {
+          title: 'The Sceptre of Order!',
+          lines: [
+            'Three feet down, the shovel rings on iron. Inside the box, wrapped for some reason in a goose-feather quilt: the Sceptre of Order, lost since the old King\u2019s day.',
+            `King Osric weeps openly. *"Five commissions, and the Sceptre besides! ${hero}, you shall have a castle of your own."*`,
+            ...campaignLines(next),
+          ],
+          choices: [again],
+          wide: true,
+        },
+        place.at,
+        place.id,
+      ),
+    ],
+  };
 }
 
 /** How many of a recruiter's troops the hero can take now: capped by the offer, leadership and gold. */
@@ -242,6 +276,7 @@ export function describeHero(state: GameState): Card {
       `Leadership **${leadershipUsed(state.army)} / ${s.leadership}** \u00b7 **${Math.floor(state.movement)}** movement left today`,
       skills.length ? `Skills: ${skills.join(', ')}` : 'Skills: none yet',
       `Perks: ${perks.join(', ')}`,
+      `Pieces of the old map: **${state.campaign.record.length + (state.bounty === 'paid' ? 1 : 0)} of ${CAMPAIGN_LENGTH}**`,
     ],
     choices: [{ label: 'Equipment', action: { type: 'gear' } }, { label: 'End the day', action: { type: 'endDay' } }, close],
   };

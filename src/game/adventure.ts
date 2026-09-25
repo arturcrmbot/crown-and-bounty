@@ -1,5 +1,5 @@
 import { BACKGROUNDS } from '../content/backgrounds';
-import { buildAdventureScene, type AdventureScene, type Hitbox } from '../render/adventureScene';
+import { addPlace, buildAdventureScene, type AdventureScene, type Hitbox } from '../render/adventureScene';
 import { MAP_VIEW } from '../render/frame';
 import { HOURGLASS, HOURGLASS_AT, paintHud } from '../render/hud';
 import type { BattleState } from '../rules/battle/battle';
@@ -129,6 +129,9 @@ export class AdventureController {
           break;
         case 'reveal':
           this.scene.fog.reveal(this.state.explored, e.at[0], e.at[1], e.radius);
+          break;
+        case 'added':
+          addPlace(this.scene, locationById(this.state, e.id));
           break;
         case 'removed': {
           const object = this.scene.pickups.get(e.id);

@@ -114,6 +114,7 @@ function attempt(seed: number, v: VillainTemplate, chapter: number): Province {
     return [between(random, 80, W - 80), between(random, 90, H - 80)];
   };
   const chests = [spot(130), spot(130), spot(130)];
+  const sceptre = spot(150);
   const piles = [spot(120), spot(120)];
 
   // A river runs down the middle about half the time; roads that cross it get bridges.
@@ -210,6 +211,7 @@ function attempt(seed: number, v: VillainTemplate, chapter: number): Province {
     rocks: rocks.map(([x, y, size]) => [...at([x, y]), size] as [number, number, number]),
     decor: huts,
     hero: at(hero),
+    sceptre: at(sceptre),
     explored: { trails: [flip(paths[0])], trailRadius: 120, discs: [[...at(hero), 190], [...at(castle), 150]] },
     locations,
   };
@@ -239,6 +241,8 @@ export function playable(province: Province): boolean {
     if ((l.kind === 'castle' || l.kind === 'village') && !reach(all, l)) return false;
     if (!reach(onlyGuardian, l)) return false;
   }
+  const sceptre: Location | null = province.sceptre ? { id: 'sceptre', kind: 'dig', name: 'X', at: province.sceptre, done: false } : null;
+  if (sceptre && !reach(new Set(), sceptre)) return false;
   return !reach(onlyGuardian, hideout) && reach(new Set(), hideout);
 }
 

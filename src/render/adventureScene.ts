@@ -7,7 +7,7 @@ import { FogMask } from './fog';
 import { SILHOUETTE } from './palette';
 import {
   abbey, boulder, castle, chest, crag, goblinBand, goldPile, hero, hideout, hut, mill, mine, mirror, oak, patrol, peatHut, pine, signpost, stiltHut,
-  stoneBridge, troll, watchtower, well, willow, windmill, wolfPack,
+  stoneBridge, troll, watchtower, well, willow, windmill, wolfPack, xMark,
 } from './sprites';
 import { paintTerrain } from './terrain';
 
@@ -72,6 +72,8 @@ function landmark(l: Location): { frames: Bitmap[]; foot: number; animated: bool
       return { frames: animation((t) => mill(t / 8)), foot: 44, animated: true };
     case 'signpost':
       return { frames: [signpost()], foot: 23, animated: false };
+    case 'dig':
+      return { frames: animation((t) => xMark(t * Math.PI * 2)), foot: 30, animated: true };
     case 'chest':
       return { frames: [chest()], foot: 13, animated: true };
     case 'gold':
@@ -90,6 +92,16 @@ function landmark(l: Location): { frames: Bitmap[]; foot: number; animated: bool
           return { frames: animation((t) => patrol(t * Math.PI * 2)), foot: 40, animated: true };
       }
   }
+}
+
+/** Puts a place on the map after the scene was built, like the X once the map is whole. */
+export function addPlace(scene: AdventureScene, l: Location) {
+  const look = landmark(l);
+  if (!look) return;
+  const o: Placed = { ...place(look.frames[0], l.at, look.foot), frames: look.frames.length > 1 ? look.frames : undefined };
+  scene.view.animate(o);
+  scene.pickups.set(l.id, o);
+  scene.hitboxes.push({ id: l.id, x0: o.x, y0: o.y, x1: o.x + o.sprite.width, y1: o.y + o.sprite.height });
 }
 
 /** Paints the province and sets out everything on it, as the rules state has it right now. */

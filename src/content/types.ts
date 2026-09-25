@@ -26,6 +26,8 @@ export type Province = {
   fen?: boolean;
   /** Where flocks of birds wheel over the map. */
   flocks?: Point[];
+  /** Where the lost sceptre is buried, if this is where the campaign ends. */
+  sceptre?: Point;
   /** Rock outcrops: x, foot y, width, height. */
   crags: [number, number, number, number][];
   /** Lone trees placed on purpose: x, y, pine or not. */

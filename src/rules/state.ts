@@ -23,7 +23,7 @@ export const PAYDAY_EVERY = 7;
 export const COMMISSION = 1000;
 export const LAST_DAY = 100;
 
-export type LocationKind = 'castle' | 'tower' | 'mine' | 'village' | 'mill' | 'chest' | 'gold' | 'patrol' | 'hideout' | 'signpost';
+export type LocationKind = 'castle' | 'tower' | 'mine' | 'village' | 'mill' | 'chest' | 'gold' | 'patrol' | 'hideout' | 'signpost' | 'dig';
 
 export type Enemy = {
   /** How the enemy is drawn on the map. */
@@ -165,6 +165,8 @@ export type Action =
   | { type: 'background'; id: BackgroundId }
   /** Deals with an enemy some other way than a fight. */
   | { type: 'parley'; id: string; parley: string }
+  /** Digs where the map's X is, at the end of the campaign. */
+  | { type: 'dig'; id: string }
   /** After a won commission: ride to the King. */
   | { type: 'court' }
   | { type: 'boon'; id: BoonId }
@@ -184,6 +186,8 @@ export type GameEvent =
   | { type: 'card'; card: Card; at: Point | null; place?: string }
   | { type: 'reveal'; at: Point; radius: number }
   | { type: 'removed'; id: string }
+  /** A new place appears on the map, like the X once the map is whole. */
+  | { type: 'added'; id: string }
   | { type: 'moved'; at: Point; facing: 1 | -1 }
   | { type: 'day'; day: number; payday: boolean }
   | { type: 'battle'; place: string }

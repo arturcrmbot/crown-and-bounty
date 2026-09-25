@@ -913,6 +913,25 @@ export function goblinBand(phase = 0): Bitmap {
   return shaped;
 }
 
+/** A big red X painted on the ground, with a shovel stuck in beside it. */
+export function xMark(phase = 0): Bitmap {
+  const sprite = new Bitmap(40, 34);
+  const glow = Math.sin(phase) > 0 ? RED[5] : RED[4];
+  for (let t = 0; t < 1; t += 0.02) {
+    for (const [ax, ay, bx, by] of [[6, 14, 32, 28], [32, 14, 6, 28]]) {
+      const x = ax + (bx - ax) * t;
+      const y = ay + (by - ay) * t;
+      for (let d = -1.4; d <= 1.4; d += 0.7) sprite.set(Math.round(x + d), Math.round(y), glow);
+    }
+  }
+  for (let y = 0; y < 22; y++) sprite.set(34, y, WOOD[3]);
+  for (let y = 20; y < 27; y++) for (let x = 32; x < 37; x++) sprite.set(x, y, STONE[5]);
+  for (let x = 31; x < 38; x++) sprite.set(x, 1, WOOD[2]);
+  const shaped = outline(sprite, INK);
+  shadowOval(shaped, 20, 30, 16, 2.4);
+  return shaped;
+}
+
 /** The bridge troll: grey-green, hunched, leaning on a club, blinking slowly. */
 export function troll(phase = 0): Bitmap {
   const sprite = new Bitmap(46, 52);

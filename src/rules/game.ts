@@ -4,7 +4,7 @@ import { endDay } from './days';
 import { fight, startFight } from './fight';
 import { equip, gearCard, learn } from './hero';
 import { parley } from './parley';
-import { armouryCard, buy, openChest, recruit } from './places';
+import { armouryCard, buy, dig, openChest, recruit } from './places';
 import { chooseBackground } from './scenario';
 import { locationById, show, type Action, type GameState, type Result } from './state';
 
@@ -44,6 +44,8 @@ export function apply(state: GameState, action: Action): Result | null {
       return { state: chooseBackground(state, action.id), events: [] };
     case 'parley':
       return parley(state, action.id, action.parley);
+    case 'dig':
+      return dig(state, action.id);
     case 'court':
       return toCourt(state);
     case 'boon':

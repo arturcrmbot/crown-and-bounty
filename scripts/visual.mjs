@@ -17,6 +17,7 @@ const SCENES = {
   fenbattle: { query: '&commission=2&battle=troll', keepCard: true },
   heath: { query: '&commission=3&reveal=1&x=640&y=480', keepCard: true },
   mere: { query: '&commission=4&reveal=1&x=700&y=560', keepCard: true },
+  sceptre: { query: '&commission=5&reveal=1&sceptre=1', keepCard: true },
 };
 const approve = process.argv.includes('--approve');
 const file = 'test/visual.json';

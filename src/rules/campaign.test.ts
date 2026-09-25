@@ -3,7 +3,7 @@ import { ALDMOOR } from '../content/aldmoor';
 import { COMMISSIONS } from '../content/campaign';
 import { FENMARCH } from '../content/fenmarch';
 import {
-  apply, briefingCard, CAMPAIGN_LENGTH, courtCard, heroStats, leadershipUsed, levelUpCard, nextArmy, provinceOf, veterans, visit, type GameState,
+  apply, briefingCard, CAMPAIGN_LENGTH, commissionAt, courtCard, heroStats, leadershipUsed, levelUpCard, nextArmy, provinceOf, veterans, visit, type GameState,
 } from './game';
 import { equip, gainXp, giveArtifact, learn } from './hero';
 import { buildMap, CELL } from './map/model';
@@ -231,5 +231,32 @@ describe('the end of a commission', () => {
     const won = wonAldmoor();
     expect(apply(won, { type: 'endDay' })).toBeNull();
     expect(apply({ ...won, over: 'lost' }, { type: 'endDay' })).toBeNull();
+  });
+});
+
+describe('the end of the campaign', () => {
+  it('turns the last bounty into an X on the map, and digging there wins the campaign', () => {
+    const start = newGame(5, ALDMOOR, 'knight');
+    const province = commissionAt(start.campaign, CAMPAIGN_LENGTH - 1).province;
+    const last = beginCommission(province, 5, start.campaign.start, CAMPAIGN_LENGTH - 1, [], start.campaign.seed);
+    const hideout = last.locations.find((l) => l.kind === 'hideout')!;
+    const strong = { ...last, army: [{ troop: 'knights' as const, count: 4000 }] };
+    const won = apply(strong, { type: 'autofight', id: hideout.id })!;
+    expect(won.state.bounty).toBe('paid');
+    expect(won.state.over).toBeUndefined();
+    expect(won.events.some((e) => e.type === 'added' && e.id === 'sceptre')).toBe(true);
+    const x = won.state.locations.find((l) => l.id === 'sceptre')!;
+    expect(x.at).toEqual(province.sceptre);
+    const dug = apply(won.state, { type: 'dig', id: 'sceptre' })!;
+    expect(dug.state.over).toBe('won');
+    const card = dug.events.find((e) => e.type === 'card');
+    expect(card?.type === 'card' && card.card.title).toBe('The Sceptre of Order!');
+    expect(apply(dug.state, { type: 'dig', id: 'sceptre' })).toBeNull();
+  });
+
+  it('gives a piece of the map with every bounty', () => {
+    const won = apply({ ...newGame(), opening: undefined, army: [{ troop: 'knights', count: 4000 }] }, { type: 'autofight', id: 'hideout' })!;
+    const card = won.events.find((e) => e.type === 'card');
+    expect(card?.type === 'card' && card.card.lines.some((l) => l.includes('**1 of 5**'))).toBe(true);
   });
 });

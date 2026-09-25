@@ -31,6 +31,8 @@ function worth(state: GameState, l: Location): number | null {
       return odds >= 0.99 || (state.day > 60 && odds >= 0.6) ? 5000 : null;
     case 'signpost':
       return null;
+    case 'dig':
+      return 100000;
   }
 }
 
@@ -80,6 +82,8 @@ export function playCommission(start: GameState, map: MapModel, maxSteps = 20000
       for (const ware of locationById(state, place.id).wares ?? []) {
         if (state.gold >= (ARTIFACTS[ware].price ?? 0) + 600) state = apply(state, { type: 'buy', id: place.id, artifact: ware })?.state ?? state;
       }
+    } else if (place.kind === 'dig') {
+      state = apply(state, { type: 'dig', id: place.id })?.state ?? state;
     } else if (place.enemy && !place.done) {
       fights++;
       const before = locationById(state, place.id).done;

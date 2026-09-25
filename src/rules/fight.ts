@@ -1,10 +1,11 @@
 import { BACKGROUNDS } from '../content/backgrounds';
 import { ARTIFACTS, type ArtifactId } from '../content/artifacts';
 import { autoResolve } from './battle/ai';
-import { campaignLines, commissionOf, hasNextCommission, provinceOf } from './campaign';
+import { CAMPAIGN_LENGTH, campaignLines, commissionOf, hasNextCommission, provinceOf } from './campaign';
+import { revealDisc } from './map/fog';
 import { createBattle, survivors, type BattleHero } from './battle/battle';
 import { foundNote, gainXp, giveArtifact, heroStats } from './hero';
-import { again, armyLine, armyPower, close, coins, locationById, roll, roman, show, troops, update, VANISHES, type Army, type GameEvent, type GameState, type Result } from './state';
+import { again, armyLine, armyPower, close, coins, locationById, roll, roman, show, troops, update, VANISHES, type Army, type GameEvent, type GameState, type Location, type Result } from './state';
 
 export function heroInBattle(state: GameState): BattleHero {
   const s = heroStats(state);
@@ -51,12 +52,27 @@ export function startFight(state: GameState, id: string): Result {
  */
 export function bountyPaid(state: GameState, id: string, opening: string[], reward: number, spoils: string[]): Result {
   const place = locationById(state, id);
+  const c = commissionOf(state);
+  const piece = state.campaign.chapter + 1;
+  const sceptre = provinceOf(state).sceptre;
+  const lines = [...opening, `The Crown pays **${coins(reward)} gold**. ${c.homecoming}`, ...spoils];
+  if (!hasNextCommission(state) && sceptre) {
+    // The last piece of the map: the commission goes on until the hero digs where the X is.
+    const x: Location = { id: 'sceptre', kind: 'dig', name: 'X Marks the Spot', at: sceptre, done: false };
+    const seen = revealDisc(state.explored, state.world, sceptre[0], sceptre[1], 110).bits;
+    const next: GameState = { ...state, bounty: 'paid', explored: seen, locations: [...state.locations, x] };
+    const card = {
+      title: 'The last piece of the map!',
+      lines: [...lines, `Among ${c.villain}\u2019s things: the last torn piece of an old map. Laid together, the ${piece} pieces show an **X**, right here in ${provinceOf(state).name}.`],
+      choices: [close],
+    };
+    return { state: next, events: [{ type: 'added', id: 'sceptre' }, { type: 'reveal', at: sceptre, radius: 110 }, show(card, place.at, place.id)] };
+  }
   const next: GameState = { ...state, bounty: 'paid', over: 'won' };
-  const c = commissionOf(next);
   const more = hasNextCommission(next);
   const card = {
     title: 'The bounty is paid!',
-    lines: [...opening, `The Crown pays **${coins(reward)} gold**. ${c.homecoming}`, ...spoils, `*Commission complete on day ${roman(next.day)}.*`, ...(more ? [] : campaignLines(next))],
+    lines: [...lines, `Among ${c.villain}\u2019s things: a torn piece of an old map (**${piece} of ${CAMPAIGN_LENGTH}**).`, `*Commission complete on day ${roman(next.day)}.*`, ...(more ? [] : campaignLines(next))],
     choices: more ? [{ label: 'Ride to the King\u2019s court', action: { type: 'court' as const } }] : [again, close],
   };
   return { state: next, events: [{ type: 'over', result: 'won' }, show(card, place.at, place.id)] };
