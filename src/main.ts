@@ -5,6 +5,7 @@ import { failedCard, welcomeBackCard } from './game/intro';
 import { loadGame, saveGame, stopSaving } from './game/save';
 import { SCREEN } from './render/frame';
 import { paletteWords } from './render/palette';
+import { toggleMute, wakeSound } from './ui/sound';
 import { beginCommission, commissionAt, hasNextCommission, newGame, startFight, type GameState } from './rules/game';
 
 declare global {
@@ -55,6 +56,11 @@ if (query.has('x')) game.adventure.view.centreOn(Number(query.get('x')), Number(
 const dig = start.locations.find((l) => l.kind === 'dig');
 if (query.get('sceptre') === '1' && dig) game.adventure.view.centreOn(dig.at[0], dig.at[1]);
 window.__kc = game.debug();
+// Sound may only start once the player has done something; M turns it off and on.
+for (const type of ['pointerdown', 'keydown'] as const) window.addEventListener(type, wakeSound, { once: true });
+window.addEventListener('keydown', (e) => {
+  if (e.key.toLowerCase() === 'm') toggleMute();
+});
 window.addEventListener('pagehide', () => saveGame(game.state));
 
 if (!game.battle && !game.court && resume && !resume.opening) game.adventure.showCard(resume.over === 'lost' ? failedCard(resume) : welcomeBackCard(resume), null);

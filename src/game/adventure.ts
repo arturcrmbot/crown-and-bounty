@@ -8,6 +8,7 @@ import type { Point } from '../rules/map/geometry';
 import { cellCentre, type MapModel } from '../rules/map/model';
 import { planRoute, routeCosts, stepAlong } from '../rules/map/movement';
 import { CardView } from '../ui/card';
+import { play } from '../ui/sound';
 import { HoverLabel } from '../ui/label';
 import type { Display } from './display';
 import type { Input } from './input';
@@ -103,7 +104,9 @@ export class AdventureController {
 
   private run(result: Result | null) {
     if (!result) return;
+    const gold = this.state.gold;
     this.state = result.state;
+    if (this.state.gold > gold) play('coins');
     this.handle(result.events);
     saveGame(this.state);
   }
@@ -141,6 +144,10 @@ export class AdventureController {
         }
         case 'day':
           this.tiredShown = false;
+          play('day');
+          break;
+        case 'levelUp':
+          play('levelUp');
           break;
         case 'battle':
           this.hideCard();
@@ -151,6 +158,7 @@ export class AdventureController {
           this.drawn.y = e.at[1];
           break;
         case 'over':
+          play(e.result === 'won' ? 'victory' : 'defeat');
           break;
       }
     }

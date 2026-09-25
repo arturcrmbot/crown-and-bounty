@@ -23,7 +23,7 @@ export function storyCard(background: BackgroundId): Card {
       `${b.title}: ${COMMISSIONS[0].brief.join(' ')}`,
       `You ride out with ${b.army.map((s) => troops(s.troop, s.count)).join(' and ')}${b.spells.length ? `, and ${b.spells.map((s) => SPELLS[s].name).join(', ')} in your spellbook` : ''}.`,
       'Click the map to ride, and click anything that looks interesting. Red marks on your route are for tomorrow.',
-      `The hourglass (or **E**) ends the day. Every seventh day is payday. Click ${b.short} to see what he has learned.`,
+      `The hourglass (or **E**) ends the day. Every seventh day is payday. Click ${b.short} to see what he has learned. **M** turns the sound off.`,
     ],
     choices: [{ label: 'Ride out', action: { type: 'close' } }],
   };

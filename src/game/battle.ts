@@ -6,6 +6,7 @@ import { BattleScreen, BUTTONS, hexAt, hexCentre, type BattleView } from '../ren
 import { MAP_VIEW } from '../render/frame';
 import { BLUE, GOLD, NEUTRAL, RED } from '../render/palette';
 import { CardView } from '../ui/card';
+import { play } from '../ui/sound';
 import type { Display } from './display';
 
 type Step = { duration: number; elapsed: number; started: boolean; start?: () => void; tick?: (t: number) => void; end?: () => void };
@@ -118,7 +119,14 @@ export class BattleController {
           const [tx, ty] = hexCentre(target.at);
           if (e.ranged) {
             const shot = { from: [ax, ay - 20] as [number, number], to: [tx, ty - 18] as [number, number], t: 0, kind: 'arrow' as const };
-            this.step(0.3, { start: () => v.shots.push(shot), tick: (t) => (shot.t = t), end: () => v.shots.splice(v.shots.indexOf(shot), 1) });
+            this.step(0.3, {
+              start: () => {
+                v.shots.push(shot);
+                play('shoot');
+              },
+              tick: (t) => (shot.t = t),
+              end: () => v.shots.splice(v.shots.indexOf(shot), 1),
+            });
           } else {
             const len = Math.hypot(tx - ax, ty - ay) || 1;
             this.step(0.18, {
@@ -136,6 +144,7 @@ export class BattleController {
           this.step(0.2, {
             start: () => {
               v.flashing.add(e.target);
+              if (!e.ranged) play('hit');
               this.float(e.target, `-${e.damage}`, RED[5]);
               v.log = `${this.name(e.attacker)} ${e.ranged ? 'shoot' : e.retaliation ? 'strike back at' : 'hit'} ${this.name(e.target).replace(/^(Your|Their) /, (m) => m.toLowerCase())} for ${e.damage}${e.killed ? `. ${e.killed} perish.` : '.'}${e.hexed ? ' The hex slows them down.' : ''}`;
             },
@@ -162,6 +171,7 @@ export class BattleController {
           this.step(0.4, {
             start: () => {
               v.shots.push(shot);
+              play(e.spell === 'bolt' ? 'bolt' : 'spell');
               v.log = `${this.battle.hero.name ?? 'Aldric'} casts ${SPELLS[e.spell].name} on ${this.name(e.target).toLowerCase()}${e.damage ? `: ${e.damage} damage${e.killed ? `, ${e.killed} perish` : ''}` : ''}.`;
               if (e.damage) {
                 v.flashing.add(e.target);
@@ -191,7 +201,10 @@ export class BattleController {
           break;
         case 'end':
           this.step(1.1, {
-            start: () => (v.log = e.result === 'won' ? 'Victory! The field is yours.' : e.result === 'lost' ? 'Your army breaks and scatters.' : 'You sound the retreat.'),
+            start: () => {
+              v.log = e.result === 'won' ? 'Victory! The field is yours.' : e.result === 'lost' ? 'Your army breaks and scatters.' : 'You sound the retreat.';
+              if (e.result !== 'fled') play(e.result === 'won' ? 'victory' : 'defeat');
+            },
           });
           break;
         case 'turn':

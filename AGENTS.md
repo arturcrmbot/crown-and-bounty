@@ -23,7 +23,7 @@ King's Commission (working title) is a browser game: King's Bounty (1990) rebuil
 
 Change, run the tests, open the game in the browser panel, screenshot, fix.
 
-- `npm run dev`: dev server on http://127.0.0.1:5188 (5173 is often taken on this machine). Scroll with arrows, WASD or drag; click to ride; E ends the day. `?fresh=1` ignores the save, `?freeze=1` stops the clock (and doesn't save), `?speed=8` rides faster, `?x=&y=` centres the camera, `?battle=patrol` opens that fight, `?court=N` opens the court after commission N, `?commission=2` starts in the Fenmarch (3 to 5 are generated), `?reveal=1` lifts the fog.
+- `npm run dev`: dev server on http://127.0.0.1:5188 (5173 is often taken on this machine). Scroll with arrows, WASD or drag; click to ride; E ends the day; M mutes the sound. `?fresh=1` ignores the save, `?freeze=1` stops the clock (and doesn't save), `?speed=8` rides faster, `?x=&y=` centres the camera, `?battle=patrol` opens that fight, `?court=N` opens the court after commission N, `?commission=2` starts in the Fenmarch (3 to 5 are generated), `?reveal=1` lifts the fog.
 - `npm test`: Vitest (rules, map, movement, bot). `npm run typecheck` and `npm run build`.
 - `npm run sim [-- 50]`: the bot plays the commission for many seeds, per background, and prints a balance report. `npm run sim -- 10 --campaign` plays both commissions, court included. `npm run sim:battles` prints win chances for each fight.
 - `npm run e2e`: plays the whole commission through the real UI on its own server; exit code 1 on failure.
