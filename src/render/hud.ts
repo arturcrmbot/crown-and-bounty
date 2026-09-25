@@ -1,4 +1,4 @@
-import { roman, type GameState } from '../rules/game';
+import { roman, type GameState, type TroopId } from '../rules/game';
 import { Bitmap, blit } from './bitmap';
 import { BAR, BAR_DIVIDERS, paintBarBackground } from './frame';
 import { GOLD, INK, NEUTRAL, PARCHMENT, RED, STONE, WOOD } from './palette';
@@ -30,6 +30,16 @@ const HORSESHOE = icon(
   ['.oooooo.', 'oiiooiio', 'oio..oio', 'oio..oio', 'oio..oio', 'oo....oo'],
   { o: INK, i: STONE[6] },
 );
+const TROOP_ICONS: Record<TroopId, Bitmap> = {
+  knights: SWORD,
+  swordsmen: SWORD,
+  baron: SWORD,
+  archers: BOW,
+  crossbowmen: BOW,
+  peasants: FORK,
+  wolves: FORK,
+};
+
 /** The hourglass: click it (or press E) to end the day. */
 export const HOURGLASS = icon(
   ['wwwwwww', '.oyyyo.', '..oyo..', '...o...', '..o.o..', '.oyyyo.', 'wwwwwww'],
@@ -49,9 +59,7 @@ export function paintHud(frame: Bitmap, state: GameState) {
     x += drawText(frame, label, x, text, color, INK) + 26;
   };
   item(COIN, state.gold.toLocaleString('en-GB'), GOLD[6]);
-  item(SWORD, String(state.army.knights));
-  item(BOW, String(state.army.archers));
-  if (state.army.peasants > 0) item(FORK, String(state.army.peasants));
+  for (const stack of state.army) item(TROOP_ICONS[stack.troop], String(stack.count));
   const bounty = state.bounty === 'paid' ? 'BOUNTY PAID' : 'BOUNTY:  BARON GRIMSBY';
   drawText(frame, bounty, BAR.x + BAR_DIVIDERS[0] + 16, text, state.bounty === 'paid' ? GOLD[6] : GOLD[5], INK);
   x = BAR.x + BAR_DIVIDERS[1] + 14;

@@ -1,11 +1,11 @@
 import { ALDMOOR } from './content/aldmoor';
-import { AdventureController } from './game/adventure';
+import { Game } from './game/game';
 import { Display } from './game/display';
 import { Input } from './game/input';
-import { loadGame, saveGame } from './game/save';
+import { loadGame, saveGame, stopSaving } from './game/save';
 import { SCREEN } from './render/frame';
 import { paletteWords } from './render/palette';
-import { roman, type Card } from './rules/game';
+import { roman, startFight, type Card } from './rules/game';
 import { buildMap } from './rules/map/model';
 import { newGame } from './rules/scenario';
 
@@ -13,7 +13,7 @@ declare global {
   interface Window {
     /** Set once the first frame is on screen. Used by the scripts in `scripts/`. */
     __ready?: boolean;
-    __kc?: ReturnType<AdventureController['debug']>;
+    __kc?: ReturnType<Game['debug']>;
   }
 }
 
@@ -25,13 +25,18 @@ const query = new URLSearchParams(window.location.search);
 const frozen = query.get('freeze') === '1';
 const saved = frozen || query.get('fresh') === '1' ? null : loadGame();
 const resume = saved && !saved.over ? saved : null;
+if (frozen) stopSaving();
+
+// ?battle=patrol opens straight onto a fight, for checking the battle screen.
+const fightAt = query.get('battle');
+const start = resume ?? (fightAt ? startFight(newGame(), fightAt).state : newGame());
 
 const display = new Display(SCREEN.width, SCREEN.height);
-const game = new AdventureController(display, buildMap(ALDMOOR), resume ?? newGame(), Math.max(1, Number(query.get('speed') ?? 1)));
+const game = new Game(display, buildMap(ALDMOOR), start, Math.max(1, Number(query.get('speed') ?? 1)));
 const input = new Input(display, game.input);
-if (query.has('x')) game.view.centreOn(Number(query.get('x')), Number(query.get('y') ?? 480));
+if (query.has('x')) game.adventure.view.centreOn(Number(query.get('x')), Number(query.get('y') ?? 480));
 window.__kc = game.debug();
-window.addEventListener('pagehide', () => saveGame(game.state));
+window.addEventListener('pagehide', () => saveGame(game.adventure.state));
 
 const intro: Card = {
   title: 'The King\u2019s Commission',
@@ -47,7 +52,7 @@ const welcomeBack = (day: number): Card => ({
   lines: [`Day ${roman(day)} of your commission. Baron Grimsby is still at large.`],
   choices: [{ label: 'Ride on', action: { type: 'close' } }, { label: 'Start a new commission', action: { type: 'restart' } }],
 });
-game.showCard(resume ? welcomeBack(resume.day) : intro, null);
+if (!game.battle) game.adventure.showCard(resume ? welcomeBack(resume.day) : intro, null);
 
 let last = performance.now();
 requestAnimationFrame(function frame(now) {
@@ -55,8 +60,8 @@ requestAnimationFrame(function frame(now) {
   last = now;
   game.update(dt, input.held);
   const tick = frozen ? 0 : Math.floor(now / TICK_MS);
-  display.present(game.view.compose(tick).data, paletteWords(tick));
-  game.placeCard();
+  display.present(game.frame(tick), paletteWords(tick));
+  game.placeCards();
   window.__ready = true;
   requestAnimationFrame(frame);
 });

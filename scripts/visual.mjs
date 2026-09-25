@@ -10,6 +10,7 @@ const SCENES = {
   watchtower: { query: '&x=300&y=220' },
   castle: { query: '&x=1000&y=300' },
   darkwood: { query: '&x=200&y=780' },
+  battle: { query: '&battle=patrol', keepCard: true },
 };
 const approve = process.argv.includes('--approve');
 const file = 'test/visual.json';

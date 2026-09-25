@@ -704,3 +704,5 @@ export function wolfPack(phase = 0): Bitmap {
   shadowOval(shaped, 25, 27, 18, 2.4);
   return shaped;
 }
+
+export { BLUE4, castShadow, COAT4, DIRT4, flat, GOLD4, OAK4, PLASTER4, RED4, shadowOval, sphere, STONE4, WOOD4 };

@@ -1,6 +1,9 @@
 import { describe as suite, expect, it } from 'vitest';
-import { apply, armyPower, endDay, fight, leadershipUsed, locationById, roman, visit, type Result } from './game';
+import { apply, armyPower, countOf, endDay, fight, leadershipUsed, locationById, roman, visit, type Result } from './game';
+import { isExplored } from './map/fog';
+import { buildMap, cellIndex } from './map/model';
 import { newGame } from './scenario';
+import { ALDMOOR } from '../content/aldmoor';
 
 const cardOf = (result: Result) => {
   const event = result.events.find((e) => e.type === 'card');
@@ -56,7 +59,7 @@ suite('places', () => {
     const state = newGame();
     const room = state.leadership - leadershipUsed(state.army);
     const joined = apply(state, { type: 'recruit', id: 'village' })!.state;
-    expect(joined.army.peasants).toBe(Math.min(20, room));
+    expect(countOf(joined.army, 'peasants')).toBe(Math.min(20, room));
     expect(leadershipUsed(joined.army)).toBeLessThanOrEqual(joined.leadership);
     const broke = { ...state, gold: 0 };
     expect(apply(broke, { type: 'recruit', id: 'village' })).toBeNull();
@@ -65,18 +68,23 @@ suite('places', () => {
   it('points the way to the hideout from the watchtower', () => {
     const result = visit(newGame(), 'tower');
     expect(result.events).toContainEqual({ type: 'reveal', at: locationById(result.state, 'hideout').at, radius: 90 });
+    const map = buildMap(ALDMOOR);
+    const [hx, hy] = locationById(result.state, 'hideout').at;
+    expect(isExplored(newGame().explored, cellIndex(map, hx, hy))).toBe(false);
+    expect(isExplored(result.state.explored, cellIndex(map, hx, hy))).toBe(true);
     expect(result.state.leadership).toBe(140);
   });
 });
 
 suite('fights', () => {
-  it('beats the patrol with the starting army, losing the weakest troops first', () => {
+  it('beats the patrol with the starting army, with some losses', () => {
     const result = fight(newGame(), 'patrol');
     expect(cardOf(result).title).toBe('Victory!');
     expect(result.events).toContainEqual({ type: 'removed', id: 'patrol' });
-    expect(result.state.army.knights).toBe(12);
-    expect(result.state.army.archers).toBeLessThan(25);
+    expect(countOf(result.state.army, 'knights')).toBeGreaterThanOrEqual(8);
+    expect(armyPower(result.state.army)).toBeLessThan(armyPower(newGame().army));
     expect(locationById(result.state, 'patrol').done).toBe(true);
+    expect(result.state.battle).toBeUndefined();
   });
 
   it('is repeatable for the same seed', () => {
@@ -84,18 +92,20 @@ suite('fights', () => {
   });
 
   it('wins the commission by taking the hideout with a big enough army', () => {
-    const strong = { ...newGame(), army: { knights: 30, archers: 30, peasants: 0 } };
-    expect(armyPower(strong.army)).toBeGreaterThan(200 * 1.2);
+    const strong = { ...newGame(), army: [{ troop: 'knights' as const, count: 40 }, { troop: 'archers' as const, count: 40 }] };
+    expect(armyPower(strong.army)).toBeGreaterThan(armyPower(locationById(strong, 'hideout').enemy!.army) * 1.2);
     const result = fight(strong, 'hideout');
     expect(result.state.over).toBe('won');
     expect(result.events).toContainEqual({ type: 'over', result: 'won' });
     expect(result.state.bounty).toBe('paid');
   });
 
-  it('sends a weak army home with losses', () => {
-    const weak = { ...newGame(), army: { knights: 0, archers: 10, peasants: 10 } };
+  it('sends a beaten hero home to his castle with no army', () => {
+    const weak = { ...newGame(), army: [{ troop: 'archers' as const, count: 10 }, { troop: 'peasants' as const, count: 10 }] };
     const result = fight(weak, 'hideout');
-    expect(cardOf(result).title).toBe('Retreat!');
-    expect(armyPower(result.state.army)).toBeLessThan(armyPower(weak.army));
+    expect(cardOf(result).title).toBe('Defeat');
+    expect(result.state.army).toEqual([]);
+    expect(result.state.hero.at[1]).toBeGreaterThan(locationById(result.state, 'castle').at[1]);
+    expect(locationById(result.state, 'hideout').done).toBe(false);
   });
 });

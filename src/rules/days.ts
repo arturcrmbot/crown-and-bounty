@@ -4,7 +4,7 @@ import { again, close, COMMISSION, coins, LAST_DAY, MOVEMENT_PER_DAY, PAYDAY_EVE
 export function endDay(state: GameState): Result {
   const day = state.day + 1;
   const payday = (day - 1) % PAYDAY_EVERY === 0;
-  let next: GameState = { ...state, day, movement: MOVEMENT_PER_DAY };
+  let next: GameState = { ...state, day, movement: MOVEMENT_PER_DAY, hero: { ...state.hero, mana: state.hero.knowledge * 10 } };
   const lines: string[] = [];
   if (payday) {
     const pay = wages(state.army);

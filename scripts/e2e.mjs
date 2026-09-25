@@ -58,7 +58,28 @@ try {
 
   await go('patrol', 'Approach');
   await kc.choose('Fight');
-  check((await kc.title()) === 'Victory!', 'the patrol is beaten');
+  await page.waitForTimeout(200);
+  check((await kc.call(() => window.__kc.screen())) === 'battle', 'fighting the patrol opens the battlefield');
+  // Wait for our first turn, then move the acting stack by clicking a hex it can reach.
+  await page.waitForFunction(() => {
+    const b = window.__kc.battle();
+    const s = b.battle();
+    const f = s.fighters.find((x) => x.id === s.order[0]);
+    return !b.busy() && f.side === 'player';
+  }, null, { timeout: 20_000 });
+  const moved = await kc.call(() => {
+    const b = window.__kc.battle();
+    const s = b.battle();
+    const f = s.fighters.find((x) => x.id === s.order[0]);
+    const target = b.moves().sort((x, y) => (y % 11) - (x % 11))[0];
+    const action = b.intent(target);
+    return action && action.type === 'move' ? { id: f.id, target, ok: b.act(action) } : null;
+  });
+  const field = await kc.call(() => window.__kc.battle().battle());
+  check(!!moved && field.fighters.find((f) => f.id === moved.id).at === moved.target, 'a stack moves where you point it');
+  await kc.call(() => window.__kc.battle().auto());
+  await page.waitForFunction(() => window.__kc.screen() === 'adventure', null, { timeout: 60_000 });
+  check((await kc.title()) === 'Victory!', 'the patrol is beaten on the battlefield');
   await kc.choose('Close');
 
   const tower = await go('tower', 'Enter');
@@ -73,14 +94,14 @@ try {
   check(await kc.choose('Recruit'), 'Westmere offers peasants');
   await kc.choose('Close');
   await go('wolves', 'Approach');
-  await kc.choose('Fight');
-  check((await kc.title()) === 'Victory!', 'the wolves are beaten');
+  await kc.choose('Let the sergeants');
+  check((await kc.title()) === 'Victory!', 'the sergeants beat the wolves');
   await kc.choose('Close');
 
   let result = null;
   for (let attempt = 1; attempt <= 3 && result !== 'The bounty is paid!'; attempt++) {
     await go('hideout', 'Approach');
-    await kc.choose('Storm the stockade');
+    await kc.choose('Let the sergeants');
     result = await kc.title();
     if (result === 'The bounty is paid!') break;
     await kc.choose('Close');

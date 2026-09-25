@@ -1,4 +1,5 @@
-import { apply, armyPower, endDay, leadershipUsed, locationById, recruitable, TROOPS, visit, type GameState, type Location } from './game';
+import { troopPower } from '../content/troops';
+import { apply, armyPower, endDay, fight, leadershipUsed, locationById, recruitable, visit, type GameState, type Location } from './game';
 import type { MapModel } from './map/model';
 import { planRoute, routeCosts, stepAlong } from './map/movement';
 
@@ -7,7 +8,7 @@ export type BotRun = { won: boolean; day: number; gold: number; power: number; f
 /** How much the bot wants a place right now, or null if it isn't worth riding to. */
 function worth(state: GameState, l: Location): number | null {
   if (l.done && l.kind !== 'castle' && l.kind !== 'village') return null;
-  const odds = l.enemy ? armyPower(state.army) / l.enemy.power : 0;
+  const odds = l.enemy ? armyPower(state.army) / armyPower(l.enemy.army) : 0;
   switch (l.kind) {
     case 'chest':
       return 500;
@@ -21,7 +22,7 @@ function worth(state: GameState, l: Location): number | null {
     case 'castle':
     case 'village': {
       const n = recruitable(state, l.id);
-      return n > 0 ? n * TROOPS[l.recruits!.troop].power * 12 : null;
+      return n > 0 ? n * troopPower(l.recruits!.troop) * 3 : null;
     }
     case 'patrol':
       return odds >= 1.3 ? l.enemy!.reward + 200 : null;
@@ -78,7 +79,7 @@ export function playCommission(start: GameState, map: MapModel, maxSteps = 20000
     } else if (place.enemy && !place.done) {
       fights++;
       const before = locationById(state, place.id).done;
-      state = apply(state, { type: 'fight', id: place.id })!.state;
+      state = fight(state, place.id).state;
       if (locationById(state, place.id).done === before) retreats++;
     }
     log.push(`day ${state.day}: ${place.name}`);

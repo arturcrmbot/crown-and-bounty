@@ -1,7 +1,8 @@
 import { buildAdventureScene, type AdventureScene, type Hitbox } from '../render/adventureScene';
 import { MAP_VIEW } from '../render/frame';
 import { HOURGLASS, HOURGLASS_AT, paintHud } from '../render/hud';
-import { apply, describe, describeHero, locationById, visit, type Action, type Card, type GameEvent, type GameState, type Result } from '../rules/game';
+import type { BattleState } from '../rules/battle/battle';
+import { apply, describe, describeHero, finishFight, locationById, visit, type Action, type Card, type GameEvent, type GameState, type Result } from '../rules/game';
 import type { Point } from '../rules/map/geometry';
 import { cellCentre, type MapModel } from '../rules/map/model';
 import { planRoute, routeCosts, stepAlong } from '../rules/map/movement';
@@ -55,6 +56,8 @@ export class AdventureController {
   private cardAnchor: Point | null = null;
   private hudMovement = -1;
   private readonly speed: number;
+  /** Called when the rules start a battle; the game switches screens. */
+  onBattle: (() => void) | null = null;
 
   constructor(display: Display, map: MapModel, state: GameState, speed = 1) {
     this.display = display;
@@ -97,7 +100,7 @@ export class AdventureController {
     for (const e of events) {
       switch (e.type) {
         case 'card':
-          this.showCard(e.card, e.at);
+          this.showCard(e.card, e.place ? this.anchorOf(e.place) : e.at);
           break;
         case 'reveal':
           this.scene.fog.reveal(this.state.explored, e.at[0], e.at[1], e.radius);
@@ -111,7 +114,14 @@ export class AdventureController {
         case 'day':
           this.tiredShown = false;
           break;
+        case 'battle':
+          this.hideCard();
+          this.onBattle?.();
+          break;
         case 'moved':
+          this.drawn.x = e.at[0];
+          this.drawn.y = e.at[1];
+          break;
         case 'over':
           break;
       }
@@ -122,6 +132,18 @@ export class AdventureController {
   private repaintHud() {
     this.hudMovement = Math.floor(this.state.movement);
     paintHud(this.view.frame, this.state);
+  }
+
+  /** Keeps the battle in the saved state as it goes. */
+  updateBattle(battle: BattleState) {
+    this.state = { ...this.state, battle };
+    saveGame(this.state);
+  }
+
+  /** Back from the battlefield: the rules settle survivors and rewards, and the card says how it went. */
+  finishBattle(battle: BattleState) {
+    this.run(finishFight({ ...this.state, battle }));
+    this.follow = true;
   }
 
   choose(action: Action) {
@@ -195,9 +217,10 @@ export class AdventureController {
     if (Math.floor(this.state.movement) !== this.hudMovement) this.repaintHud();
   }
 
+  /** Trotting only while the drawn hero is actually on the move, not while a tired route waits. */
   private isRiding() {
     const [x, y] = this.state.hero.at;
-    return this.route.length > 0 || Math.hypot(x - this.drawn.x, y - this.drawn.y) > 0.5;
+    return Math.hypot(x - this.drawn.x, y - this.drawn.y) > 0.5;
   }
 
   /** Moves the drawn hero towards his cell, and steps the rules on as soon as he gets close. */
@@ -285,7 +308,8 @@ export class AdventureController {
   }
 
   private anchorOf(id: string): Point {
-    const box = this.scene.hitboxes.find((b) => b.id === id)!;
+    const box = this.scene.hitboxes.find((b) => b.id === id);
+    if (!box) return locationById(this.state, id).at;
     return [(box.x0 + box.x1) / 2, box.y0 + 4];
   }
 

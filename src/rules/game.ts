@@ -1,13 +1,13 @@
 /** The rules in one place: state, places, days and fights, plus `apply` for anything a card can do. */
 import { endDay } from './days';
-import { fight } from './fight';
+import { fight, startFight } from './fight';
 import { openChest, recruit } from './places';
 import type { Action, GameState, Result } from './state';
 
 export * from './state';
 export { describe, describeHero, openChest, recruit, recruitable, visit } from './places';
 export { endDay } from './days';
-export { fight } from './fight';
+export { fight, finishFight, heroInBattle, lossesLine, startFight } from './fight';
 
 /** Applies a card choice. `go`, `close` and `restart` are for the screens, so they return null here. */
 export function apply(state: GameState, action: Action): Result | null {
@@ -17,6 +17,8 @@ export function apply(state: GameState, action: Action): Result | null {
     case 'recruit':
       return recruit(state, action.id);
     case 'fight':
+      return startFight(state, action.id);
+    case 'autofight':
       return fight(state, action.id);
     case 'endDay':
       return endDay(state);

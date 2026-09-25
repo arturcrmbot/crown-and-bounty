@@ -46,6 +46,8 @@ export const ALDMOOR: Province = {
     [1010, 110, 100, 90],
     [1140, 670, 170, 170],
     [420, 930, 250, 100],
+    // Joins Darkwood to the south wood, so the road past the wolves is the only way to Grimsby.
+    [300, 810, 120, 70],
     [700, 300, 78, 56],
     [1236, 150, 70, 90],
   ],
@@ -91,8 +93,8 @@ export const ALDMOOR: Province = {
       done: false,
       enemy: {
         look: 'soldiers',
-        lines: ['About **18 swordsmen** and **12 archers**.', 'They have goose feathers in their helmets.'],
-        power: 90,
+        lines: ['About **18 swordsmen** and **12 crossbowmen**.', 'They have goose feathers in their helmets.'],
+        army: [{ troop: 'swordsmen', count: 18 }, { troop: 'crossbowmen', count: 12 }],
         reward: 300,
         threat: 'They level their spears.',
         flees: 'Grimsby\u2019s patrol breaks and runs for Darkwood.',
@@ -107,8 +109,8 @@ export const ALDMOOR: Province = {
       done: false,
       enemy: {
         look: 'stockade',
-        lines: ['A muddy stockade deep in Darkwood. Someone inside is honking.', 'About **40 swordsmen**, **20 archers** and one Baron.'],
-        power: 200,
+        lines: ['A muddy stockade deep in Darkwood. Someone inside is honking.', 'About **30 swordsmen**, **15 crossbowmen** and one Baron.'],
+        army: [{ troop: 'swordsmen', count: 30 }, { troop: 'crossbowmen', count: 15 }, { troop: 'baron', count: 1 }],
         reward: 2000,
         threat: 'The Baron shouts from the palisade: *"I have the goose AND the walls!"*',
         flees: 'The stockade gate falls open.',
@@ -124,7 +126,7 @@ export const ALDMOOR: Province = {
       enemy: {
         look: 'wolves',
         lines: ['About **20 wolves** are sitting on the path like they own it.', 'Your archers are pretending not to have seen them.'],
-        power: 45,
+        army: [{ troop: 'wolves', count: 20 }],
         reward: 150,
         threat: 'They bare their teeth. One of them yawns, which is somehow worse.',
         flees: 'The pack scatters into Darkwood.',

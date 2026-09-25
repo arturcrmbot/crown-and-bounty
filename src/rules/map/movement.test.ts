@@ -48,10 +48,11 @@ describe('riding', () => {
     expect(isExplored(s.explored, far)).toBe(true);
   });
 
-  it('cannot ride through an enemy that is still standing', () => {
+  it('cannot get past the wolves to the hideout until they are beaten', () => {
     const state = newGame();
-    const cells = map.enemyCells.get('wolves')!;
-    const route = planRoute(state, map, [104, 850]);
-    expect(route === null || route.every((c) => !cells.includes(c))).toBe(true);
+    expect(planRoute(state, map, [104, 850])).toBeNull();
+    expect(planRoute(state, map, [256, 690])).not.toBeNull();
+    const beaten = { ...state, locations: state.locations.map((l) => (l.id === 'wolves' ? { ...l, done: true } : l)) };
+    expect(planRoute(beaten, map, [104, 850])).not.toBeNull();
   });
 });

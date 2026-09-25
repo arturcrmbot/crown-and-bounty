@@ -96,6 +96,13 @@ export const FOG_LUT = new Uint8Array(256).map((_, i) => {
   return nearest(mix(r), mix(g), mix(b) + 6, cycling);
 });
 
+/** Highlight: the same colour a little brighter and warmer, for reachable hexes. */
+export const LIGHT_LUT = new Uint8Array(256).map((_, i) => {
+  if (i >= COLORS.length || cycling.has(i)) return i;
+  const [r, g, b] = COLORS[i];
+  return nearest(Math.min(255, r * 1.22 + 14), Math.min(255, g * 1.22 + 12), Math.min(255, b * 1.12 + 4), cycling);
+});
+
 /** Paper grain: a slightly darker, warmer speck of the same colour. */
 export const GRAIN_LUT = new Uint8Array(256).map((_, i) => {
   if (i >= COLORS.length || cycling.has(i)) return i;

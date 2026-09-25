@@ -1,20 +1,18 @@
 /** Pure game rules: no DOM, no timers. Every change returns a new state plus events, and dice come from `seed`. */
+import type { SpellId } from '../content/spells';
+import { TROOPS, troopPower, troops, type TroopId } from '../content/troops';
+import type { BattleState } from './battle/battle';
 import type { Explored } from './map/fog';
 import type { Point } from './map/geometry';
 
-export type { Point };
+export type { Point, TroopId };
+export { TROOPS, troops };
 
-export type Troop = 'peasants' | 'archers' | 'knights';
-export type Army = Record<Troop, number>;
-
-export const TROOPS: Record<Troop, { name: string; leadership: number; power: number; wage: number }> = {
-  peasants: { name: 'Peasants', leadership: 1, power: 1, wage: 1 },
-  archers: { name: 'Archers', leadership: 2, power: 3, wage: 3 },
-  knights: { name: 'Knights', leadership: 5, power: 8, wage: 8 },
-};
-
-/** Weakest first: the order in which a battle's losses fall. */
-export const LOSS_ORDER: Troop[] = ['peasants', 'archers', 'knights'];
+/** One company in an army: a kind of troop and how many. */
+export type Stack = { troop: TroopId; count: number };
+/** Up to five stacks, as in HoMM2. */
+export type Army = Stack[];
+export const MAX_STACKS = 5;
 
 export const MOVEMENT_PER_DAY = 150;
 export const PAYDAY_EVERY = 7;
@@ -27,7 +25,7 @@ export type Enemy = {
   /** How the enemy is drawn on the map. */
   look: 'soldiers' | 'wolves' | 'stockade';
   lines: string[];
-  power: number;
+  army: Army;
   reward: number;
   /** What they do when you ride up, how they lose, and where the gold was. */
   threat: string;
@@ -43,7 +41,7 @@ export type Location = {
   /** One-off places are used up; the mill and recruiters reopen on payday. */
   done: boolean;
   gold?: number;
-  recruits?: { troop: Troop; count: number; price: number };
+  recruits?: { troop: TroopId; count: number; price: number };
   enemy?: Enemy;
   /** A map point the visit reveals (the tower's journal points at the hideout). */
   reveals?: Point;
@@ -59,8 +57,25 @@ export type GameState = {
   locations: Location[];
   bounty: 'open' | 'paid';
   over?: 'won' | 'lost';
-  hero: { at: Point; facing: 1 | -1 };
+  hero: Hero;
+  /** The province's size in pixels, for fog and anything else that needs the map's shape. */
+  world: { width: number; height: number };
   explored: Explored;
+  /** A battle in progress, so a save can be made mid-fight. */
+  battle?: BattleState;
+};
+
+/** Sir Aldric: where he is, and the skills he brings to every battle. */
+export type Hero = {
+  at: Point;
+  facing: 1 | -1;
+  attack: number;
+  defence: number;
+  spellPower: number;
+  /** Ten mana per point of knowledge, refilled every morning. */
+  knowledge: number;
+  mana: number;
+  spells: SpellId[];
 };
 
 /** What the player can do from a card. `go` rides to a location and visits it on arrival. */
@@ -69,9 +84,12 @@ export type Action =
   | { type: 'chest'; id: string; take: 'gold' | 'leadership' }
   | { type: 'recruit'; id: string }
   | { type: 'fight'; id: string }
+  | { type: 'autofight'; id: string }
   | { type: 'endDay' }
   | { type: 'restart' }
-  | { type: 'close' };
+  | { type: 'close' }
+  /** Picked from the spellbook in battle: the screen then asks for a target. */
+  | { type: 'spell'; spell: SpellId };
 
 export type Choice = { label: string; action: Action };
 
@@ -80,11 +98,13 @@ export type Card = { title: string; lines: string[]; choices: Choice[] };
 
 /** What happened, for the screens to show. The rules never draw anything themselves. */
 export type GameEvent =
-  | { type: 'card'; card: Card; at: Point | null }
+  /** A card to show, anchored over `place` if given, else over `at`, else centred. */
+  | { type: 'card'; card: Card; at: Point | null; place?: string }
   | { type: 'reveal'; at: Point; radius: number }
   | { type: 'removed'; id: string }
   | { type: 'moved'; at: Point; facing: 1 | -1 }
   | { type: 'day'; day: number; payday: boolean }
+  | { type: 'battle'; place: string }
   | { type: 'over'; result: 'won' | 'lost' };
 
 export type Result = { state: GameState; events: GameEvent[] };
@@ -93,7 +113,7 @@ export const close: Choice = { label: 'Close', action: { type: 'close' } };
 export const again: Choice = { label: 'Ride again', action: { type: 'restart' } };
 
 /** A card event anchored above a map point, or centred when `at` is null. */
-export const show = (card: Card, at: Point | null = null): GameEvent => ({ type: 'card', card, at });
+export const show = (card: Card, at: Point | null = null, place?: string): GameEvent => ({ type: 'card', card, at, place });
 
 /** Gold amounts as written on a card: 2,000 not 2000. */
 export const coins = (n: number) => Math.round(n).toLocaleString('en-GB');
@@ -110,13 +130,20 @@ export function roman(n: number): string {
   return out;
 }
 
-export const armyPower = (army: Army) => LOSS_ORDER.reduce((sum, t) => sum + army[t] * TROOPS[t].power, 0);
-export const leadershipUsed = (army: Army) => LOSS_ORDER.reduce((sum, t) => sum + army[t] * TROOPS[t].leadership, 0);
-export const wages = (army: Army) => LOSS_ORDER.reduce((sum, t) => sum + army[t] * TROOPS[t].wage, 0);
+export const armyPower = (army: Army) => army.reduce((sum, s) => sum + s.count * troopPower(s.troop), 0);
+export const leadershipUsed = (army: Army) => army.reduce((sum, s) => sum + s.count * TROOPS[s.troop].leadership, 0);
+export const wages = (army: Army) => army.reduce((sum, s) => sum + s.count * TROOPS[s.troop].wage, 0);
+export const countOf = (army: Army, troop: TroopId) => army.find((s) => s.troop === troop)?.count ?? 0;
 
 export function armyLine(army: Army): string {
-  const parts = (['knights', 'archers', 'peasants'] as Troop[]).filter((t) => army[t] > 0).map((t) => `${army[t]} ${TROOPS[t].name}`);
+  const parts = army.filter((s) => s.count > 0).map((s) => troops(s.troop, s.count));
   return parts.length ? parts.join(' · ') : 'No army at all';
+}
+
+/** Adds troops to the stack of the same kind, or a free slot. Null when all five slots are taken. */
+export function addTroops(army: Army, troop: TroopId, count: number): Army | null {
+  if (army.some((s) => s.troop === troop)) return army.map((s) => (s.troop === troop ? { ...s, count: s.count + count } : s));
+  return army.length < MAX_STACKS ? [...army, { troop, count }] : null;
 }
 
 /** mulberry32, one step: returns a number in [0, 1) and the next seed. */

@@ -8,7 +8,8 @@ import { CELL } from './model';
  */
 export type Explored = number[];
 
-export const gridSize = (province: Province) => ({ width: Math.ceil(province.width / CELL), height: Math.ceil(province.height / CELL) });
+/** The walk grid's size in cells for a map `size` pixels big. */
+export const gridSize = (size: { width: number; height: number }) => ({ width: Math.ceil(size.width / CELL), height: Math.ceil(size.height / CELL) });
 
 export const isExplored = (bits: Explored, i: number) => ((bits[i >>> 5] >>> (i & 31)) & 1) === 1;
 
@@ -17,8 +18,8 @@ function setBit(bits: Explored, i: number) {
 }
 
 /** Marks every cell whose centre is within `radius` pixels of (x, y). Returns new bits and whether anything changed. */
-export function revealDisc(bits: Explored, province: Province, x: number, y: number, radius: number): { bits: Explored; changed: boolean } {
-  const { width, height } = gridSize(province);
+export function revealDisc(bits: Explored, world: { width: number; height: number }, x: number, y: number, radius: number): { bits: Explored; changed: boolean } {
+  const { width, height } = gridSize(world);
   const next = bits.slice();
   let changed = false;
   const c0 = Math.max(0, Math.floor((x - radius) / CELL));

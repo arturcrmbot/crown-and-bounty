@@ -23,8 +23,10 @@ const FOOTPRINTS: Record<string, [number, number]> = {
   signpost: [4, 4],
   hideout: [72, 28],
   hut: [24, 12],
-  enemy: [36, 14],
 };
+
+/** An enemy stack holds the ground this far round it, so it can close a road. */
+const ENEMY_REACH = 22;
 
 /** A tree the painter should draw: its foot, and which kind and variant. */
 export type Tree = { x: number; y: number; pine: boolean; variant: number };
@@ -53,7 +55,8 @@ export function forestAmount(province: Province, x: number, y: number): number {
   }
   amount += (fbm(x / 40, y / 40, 2, 61) - 0.5) * 0.3;
   const clearings: [number, number, number][] = [
-    ...province.locations.map((l) => [l.at[0], l.at[1] - 10, 38] as [number, number, number]),
+    // Enemies stand on roads that are clear already; a clearing round them would open a way past.
+    ...province.locations.filter((l) => !l.enemy).map((l) => [l.at[0], l.at[1] - 10, 38] as [number, number, number]),
     [province.hero[0], province.hero[1] - 10, 38],
     ...province.locations.filter((l) => l.kind === 'hideout').map((l) => [l.at[0], l.at[1] - 20, 64] as [number, number, number]),
   ];
@@ -156,7 +159,14 @@ export function buildMap(province: Province): MapModel {
 
   const enemyCells = new Map<string, number[]>();
   for (const l of province.locations) {
-    if (l.enemy && l.kind !== 'hideout') enemyCells.set(l.id, cellsUnder(l.at[0], l.at[1], ...FOOTPRINTS.enemy));
+    if (!l.enemy || l.kind === 'hideout') continue;
+    const cells: number[] = [];
+    for (let cy = 0; cy < height; cy++) {
+      for (let cx = 0; cx < width; cx++) {
+        if (Math.hypot(cx * CELL + CELL / 2 - l.at[0], cy * CELL + CELL / 2 - (l.at[1] - 6)) <= ENEMY_REACH) cells.push(cy * width + cx);
+      }
+    }
+    enemyCells.set(l.id, cells);
   }
 
   return { province, width, height, terrain, grid: { width, height, cost }, river, paths, cliff, trees, enemyCells };

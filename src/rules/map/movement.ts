@@ -54,8 +54,8 @@ export function stepAlong(state: GameState, map: MapModel, route: number[]): { s
   if (!Number.isFinite(cost) || state.movement < cost) return null;
   const at = cellCentre(map, route[0]);
   const facing = at[0] > state.hero.at[0] ? 1 : at[0] < state.hero.at[0] ? -1 : state.hero.facing;
-  const sight = revealDisc(state.explored, map.province, at[0], at[1], SIGHT);
-  const next: GameState = { ...state, movement: state.movement - cost, hero: { at, facing }, explored: sight.bits };
+  const sight = revealDisc(state.explored, state.world, at[0], at[1], SIGHT);
+  const next: GameState = { ...state, movement: state.movement - cost, hero: { ...state.hero, at, facing }, explored: sight.bits };
   const events: GameEvent[] = [{ type: 'moved', at, facing }];
   if (sight.changed) events.push({ type: 'reveal', at, radius: SIGHT });
   return { state: next, events };

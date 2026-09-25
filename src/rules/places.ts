@@ -1,4 +1,5 @@
-import { close, coins, leadershipUsed, locationById, LAST_DAY, armyLine, armyPower, roman, show, TROOPS, update, type Card, type Choice, type GameState, type Result } from './state';
+import { revealDisc } from './map/fog';
+import { addTroops, armyLine, armyPower, close, coins, LAST_DAY, leadershipUsed, locationById, roman, show, TROOPS, troops, update, type Card, type Choice, type GameState, type Result } from './state';
 
 /** The card for a place before the hero rides there. */
 export function describe(state: GameState, id: string): Card {
@@ -42,7 +43,7 @@ export function describe(state: GameState, id: string): Card {
 /** What happens when the hero arrives. */
 export function visit(state: GameState, id: string): Result {
   const place = locationById(state, id);
-  const say = (next: GameState, card: Card, ...extra: Result['events']): Result => ({ state: next, events: [...extra, show(card, place.at)] });
+  const say = (next: GameState, card: Card, ...extra: Result['events']): Result => ({ state: next, events: [...extra, show(card, place.at, place.id)] });
   switch (place.kind) {
     case 'chest': {
       if (place.done) return say(state, { title: place.name, lines: ['Empty. You check twice anyway.'], choices: [close] });
@@ -72,7 +73,10 @@ export function visit(state: GameState, id: string): Result {
         ],
         choices: [close],
       };
-      return place.reveals ? say(next, card, { type: 'reveal', at: place.reveals, radius: 90 }) : say(next, card);
+      if (!place.reveals) return say(next, card);
+      const [rx, ry] = place.reveals;
+      const seen = { ...next, explored: revealDisc(next.explored, next.world, rx, ry, 90).bits };
+      return say(seen, card, { type: 'reveal', at: place.reveals, radius: 90 });
     }
     case 'mine': {
       if (place.done) return say(state, describe(state, id));
@@ -99,7 +103,7 @@ export function visit(state: GameState, id: string): Result {
       }
       const count = recruitable(state, id);
       const room = Math.floor((state.leadership - leadershipUsed(state.army)) / TROOPS[offer.troop].leadership);
-      const lines = [`**${offer.count} ${TROOPS[offer.troop].name}** will join you for **${coins(offer.price)} gold** each.`];
+      const lines = [`**${troops(offer.troop, offer.count)}** will join you for **${coins(offer.price)} gold** each.`];
       if (room < offer.count) lines.push(room > 0 ? `You can only lead ${room} more.` : 'You can\u2019t lead any more troops. Find some leadership first.');
       if (count <= 0) return say(state, { title: place.name, lines, choices: [close] });
       return say(state, {
@@ -111,12 +115,16 @@ export function visit(state: GameState, id: string): Result {
     case 'patrol':
     case 'hideout': {
       if (place.done) return say(state, { title: place.name, lines: ['Nobody here but a few goose feathers.'], choices: [close] });
-      const odds = armyPower(state.army) / place.enemy!.power;
+      const odds = armyPower(state.army) / armyPower(place.enemy!.army);
       const hint = odds > 1.35 ? 'They look nervous.' : odds > 0.95 ? 'It will be close.' : 'Your army looks at you. Then at them. Then at you.';
       return say(state, {
         title: place.name,
         lines: [place.enemy!.threat, hint],
-        choices: [{ label: place.kind === 'hideout' ? 'Storm the stockade' : 'Fight', action: { type: 'fight', id } }, { label: 'Retreat', action: { type: 'close' } }],
+        choices: [
+          { label: place.kind === 'hideout' ? 'Storm the stockade' : 'Fight', action: { type: 'fight', id } },
+          { label: 'Let the sergeants handle it', action: { type: 'autofight', id } },
+          { label: 'Retreat', action: { type: 'close' } },
+        ],
       });
     }
     case 'signpost':
@@ -128,6 +136,7 @@ export function visit(state: GameState, id: string): Result {
 export function recruitable(state: GameState, id: string): number {
   const offer = locationById(state, id).recruits;
   if (!offer) return 0;
+  if (!addTroops(state.army, offer.troop, 1)) return 0;
   const room = Math.floor((state.leadership - leadershipUsed(state.army)) / TROOPS[offer.troop].leadership);
   return Math.max(0, Math.min(offer.count, room, Math.floor(state.gold / offer.price)));
 }
@@ -138,10 +147,10 @@ export function openChest(state: GameState, id: string, take: 'gold' | 'leadersh
   const opened = update(state, id, { done: true });
   const removed = { type: 'removed', id } as const;
   return take === 'gold'
-    ? { state: { ...opened, gold: state.gold + gold }, events: [removed, show({ title: place.name, lines: [`**+${coins(gold)} gold.** The villagers will never know.`], choices: [close] }, place.at)] }
+    ? { state: { ...opened, gold: state.gold + gold }, events: [removed, show({ title: place.name, lines: [`**+${coins(gold)} gold.** The villagers will never know.`], choices: [close] }, place.at, place.id)] }
     : {
         state: { ...opened, leadership: state.leadership + gold / 20 },
-        events: [removed, show({ title: place.name, lines: [`The villagers cheer. **+${gold / 20} leadership.**`, 'Somebody starts a song about you. It rhymes \u201cAldric\u201d with \u201cbald trick\u201d.'], choices: [close] }, place.at)],
+        events: [removed, show({ title: place.name, lines: [`The villagers cheer. **+${gold / 20} leadership.**`, 'Somebody starts a song about you. It rhymes \u201cAldric\u201d with \u201cbald trick\u201d.'], choices: [close] }, place.at, place.id)],
       };
 }
 
@@ -149,10 +158,10 @@ export function recruit(state: GameState, id: string): Result | null {
   const place = locationById(state, id);
   const offer = place.recruits!;
   const count = recruitable(state, id);
-  if (count <= 0) return null;
-  const army = { ...state.army, [offer.troop]: state.army[offer.troop] + count };
+  const army = count > 0 ? addTroops(state.army, offer.troop, count) : null;
+  if (!army) return null;
   const next = update({ ...state, gold: state.gold - count * offer.price, army }, id, { recruits: { ...offer, count: offer.count - count } });
-  return { state: next, events: [show({ title: place.name, lines: [`**${count} ${TROOPS[offer.troop].name}** join your army.`], choices: [close] }, place.at)] };
+  return { state: next, events: [show({ title: place.name, lines: [`**${troops(offer.troop, count)}** join your army.`], choices: [close] }, place.at, place.id)] };
 }
 
 export function describeHero(state: GameState): Card {
