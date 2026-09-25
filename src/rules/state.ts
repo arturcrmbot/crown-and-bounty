@@ -89,7 +89,9 @@ export type Action =
   | { type: 'restart' }
   | { type: 'close' }
   /** Picked from the spellbook in battle: the screen then asks for a target. */
-  | { type: 'spell'; spell: SpellId };
+  | { type: 'spell'; spell: SpellId }
+  /** Confirmed from the battle card: the army falls back. */
+  | { type: 'retreat' };
 
 export type Choice = { label: string; action: Action };
 

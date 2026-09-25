@@ -55,6 +55,10 @@ export type BattleView = {
   log: string;
   /** Whose turn it is, for the bar. */
   active: number | null;
+  /** A stack under the pointer: the bar shows it instead of the acting one. */
+  inspect: number | null;
+  /** What the pointed-at action would do, shown instead of the log. */
+  preview: string | null;
   targeting: string | null;
 };
 
@@ -171,7 +175,7 @@ export class BattleScreen {
     }
     for (const s of view.shots) this.shot(s);
     for (const t of view.floaters) drawText(screen, t.text, Math.round(t.x - t.text.length * 3.5), Math.round(t.y - t.age * 26), t.color, INK, 13);
-    this.logLine(view.log);
+    this.logLine(view.preview ?? view.log);
     this.bar(b, view);
     blit(screen, this.overlay, 0, 0);
     return screen;
@@ -221,11 +225,13 @@ export class BattleScreen {
     const { screen } = this;
     paintBarBackground(screen);
     const text = BAR.y + 5;
-    const f = view.active === null ? null : b.fighters.find((x) => x.id === view.active);
+    const shownId = view.inspect ?? view.active;
+    const f = shownId === null ? null : b.fighters.find((x) => x.id === shownId && x.count > 0);
     if (view.targeting) drawText(screen, `Cast ${view.targeting}: pick a target (Esc to cancel)`, BAR.x + 12, text, GOLD[6], INK);
     else if (f) {
       const t = TROOPS[f.troop];
-      const info = `${f.count} ${t.name}  ·  Att ${t.attack} Def ${t.defence} Dmg ${t.damage[0]}-${t.damage[1]} HP ${f.hp}/${t.hp} Spd ${speedOf(f)}${f.shots ? ` Shots ${f.shots}` : ''}`;
+      const tags = [f.blessed ? ' Blessed' : '', f.slowed ? ' Slowed' : '', f.defending ? ' Defending' : ''].join('');
+      const info = `${f.count} ${f.count === 1 ? t.one : t.name}  ·  Att ${t.attack} Def ${t.defence} Dmg ${t.damage[0]}-${t.damage[1]} HP ${f.hp}/${t.hp} Spd ${speedOf(f)}${f.shots ? ` Shots ${f.shots}` : ''}${tags}`;
       drawText(screen, info, BAR.x + 12, text, f.side === 'player' ? PARCHMENT[6] : RED[6], INK);
     }
     const mana = `Mana ${b.hero.mana}`;

@@ -1,7 +1,7 @@
 import { SPELLS, type SpellId } from '../content/spells';
 import { TROOPS, troops } from '../content/troops';
 import { chooseAction } from '../rules/battle/ai';
-import { activeFighter, battleAct, canCast, fighterById, options, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
+import { activeFighter, battleAct, boltDamage, canCast, fighterById, options, strike, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
 import { BattleScreen, BUTTONS, hexAt, hexCentre, type BattleView } from '../render/battleScreen';
 import { BLUE, GOLD, NEUTRAL, RED } from '../render/palette';
 import { CardView } from '../ui/card';
@@ -38,6 +38,7 @@ export class BattleController {
     this.cards = new CardView((action) => {
       this.cards.hide();
       if (action.type === 'spell') this.view.targeting = action.spell;
+      else if (action.type === 'retreat') this.perform({ type: 'retreat' });
     });
     this.view = {
       positions: new Map(),
@@ -50,6 +51,8 @@ export class BattleController {
       shots: [],
       log: 'To battle! Click a hex to move, or an enemy to attack.',
       active: activeFighter(battle)?.id ?? null,
+      inspect: null,
+      preview: null,
       targeting: null,
     };
   }
@@ -229,7 +232,10 @@ export class BattleController {
     const mine = !!f && f.side === 'player' && !this.auto && this.queue.length === 0;
     v.reach = mine && !v.targeting ? new Set(options(this.battle).moves.keys()) : new Set();
     if (this.pointer && mine) this.hoverAt(...this.pointer);
-    else if (!mine) v.hover = null;
+    else if (!mine) {
+      v.hover = null;
+      v.preview = null;
+    }
   }
 
   render(): Uint8Array {
@@ -276,7 +282,29 @@ export class BattleController {
     const hex = hexAt(x, y);
     const intent = hex === null ? null : this.intent(hex, x, y);
     this.view.hover = intent && hex !== null ? { hex, kind: intent.kind } : null;
+    this.view.inspect = hex === null ? null : (this.battle.fighters.find((f) => f.count > 0 && f.at === hex)?.id ?? null);
+    this.view.preview = intent ? this.forecast(intent.action) : null;
     this.display.canvas.style.cursor = intent ? 'pointer' : 'default';
+  }
+
+  /** What an attack would probably do: average damage, how many fall, and whether they strike back. */
+  private forecast(action: BattleAction): string | null {
+    const f = activeFighter(this.battle);
+    if (!f) return null;
+    const target = 'target' in action ? fighterById(this.battle, action.target) : null;
+    if (!target) return null;
+    const name = TROOPS[target.troop].name.toLowerCase();
+    if (action.type === 'cast') {
+      if (action.spell !== 'bolt') return `${SPELLS[action.spell].name} on their ${name}.`;
+      return `Lightning Bolt: ${boltDamage(this.battle)} damage, ${wound(target, boltDamage(this.battle)).killed} of their ${name} perish.`;
+    }
+    if (action.type !== 'melee' && action.type !== 'shoot') return null;
+    const ranged = action.type === 'shoot';
+    const from = action.type === 'melee' ? { ...f, at: action.from } : f;
+    const damage = strike(this.battle, from, target, ranged).damage;
+    const left = wound(target, damage);
+    const back = !ranged && left.count > 0 && !target.retaliated ? ' They will strike back.' : '';
+    return `${ranged ? 'Shoot' : 'Attack'} their ${name}: about ${damage} damage, ${left.killed} perish.${back}`;
   }
 
   private button(id: (typeof BUTTONS)[number]['id']) {
@@ -290,8 +318,19 @@ export class BattleController {
     if (!mine || this.auto) return;
     if (id === 'wait') this.perform({ type: 'wait' });
     else if (id === 'defend') this.perform({ type: 'defend' });
-    else if (id === 'retreat') this.perform({ type: 'retreat' });
+    else if (id === 'retreat') this.confirmRetreat();
     else this.openSpellbook();
+  }
+
+  private confirmRetreat() {
+    this.cards.show({
+      title: 'Sound the retreat?',
+      lines: ['Your men fall back to the map, and every company loses a quarter of its number on the way.', 'The enemy stays where it is.'],
+      choices: [
+        { label: 'Retreat', action: { type: 'retreat' } },
+        { label: 'Stay and fight', action: { type: 'close' } },
+      ],
+    });
   }
 
   private openSpellbook() {
@@ -323,6 +362,8 @@ export class BattleController {
     leave: () => {
       this.pointer = null;
       this.view.hover = null;
+      this.view.inspect = null;
+      this.view.preview = null;
     },
     key: (key: string) => {
       if (key === 'escape') {
