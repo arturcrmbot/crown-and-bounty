@@ -29,10 +29,12 @@ if (frozen) stopSaving();
 /** Debug starts: ?commission=2 rides into the second province, ?court=1 opens the court after the first. */
 function debugStart(): GameState {
   const first = newGame();
-  const chapter = Number(query.get('commission') ?? 1) - 1;
-  if (query.get('court') === '1') return { ...first, opening: undefined, over: 'won', bounty: 'paid' };
+  const court = Number(query.get('court') ?? 0);
+  const chapter = court > 0 ? court - 1 : Number(query.get('commission') ?? 1) - 1;
   const { hero, gold, leadership, army } = first;
-  const base = chapter > 0 ? beginCommission(commissionAt(first.campaign, chapter).province, first.seed, { hero, gold, leadership, army }, chapter, [{ chapter: 0, days: 10, level: 1 }]) : first;
+  const record = Array.from({ length: chapter }, (_, i) => ({ chapter: i, days: 10, level: 1 }));
+  const base = chapter > 0 ? beginCommission(commissionAt(first.campaign, chapter).province, first.seed, { hero, gold, leadership, army }, chapter, record, first.seed) : first;
+  if (court > 0) return { ...base, opening: undefined, over: 'won', bounty: 'paid' };
   // ?sceptre=1 (with ?commission=5): the last bounty is paid and the X is on the map.
   const x = commissionAt(first.campaign, chapter).province.sceptre;
   if (query.get('sceptre') === '1' && x) return { ...base, bounty: 'paid', locations: [...base.locations, { id: 'sceptre', kind: 'dig', name: 'X Marks the Spot', at: x, done: false }] };
