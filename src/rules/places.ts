@@ -5,7 +5,7 @@ import { winChance } from './fight';
 import { foundNote, gainXp, giveArtifact, heroStats, LEVELS } from './hero';
 import { revealDisc } from './map/fog';
 import {
-  addTroops, armyLine, close, coins, LAST_DAY, leadershipUsed, locationById, roman, show, TROOPS, troops, update,
+  addTroops, armyLine, close, coins, countOf, LAST_DAY, leadershipUsed, locationById, roman, show, TROOPS, troops, update,
   type Army, type Card, type Choice, type GameEvent, type GameState, type Location, type PlaceText, type Result,
 } from './state';
 
@@ -153,12 +153,15 @@ export function visit(state: GameState, id: string): Result {
       if (place.done) return say(state, { title: place.name, lines: words(place, 'done'), choices: [close] });
       const chance = winChance(state, id);
       const hint = chance >= 0.9 ? 'They look nervous.' : chance >= 0.55 ? 'It will be close.' : 'Your army looks at you. Then at them. Then at you.';
+      const toll = place.enemy!.toll;
+      const canPay = toll && countOf(state.army, toll.troop) >= toll.count;
       return say(state, {
         title: place.name,
         lines: [place.enemy!.threat, hint],
         choices: [
           { label: place.enemy!.charge ?? 'Fight', action: { type: 'fight', id } },
           { label: 'Let the sergeants handle it', action: { type: 'autofight', id } },
+          ...(canPay ? [{ label: `Pay the toll (${troops(toll.troop, toll.count)})`, action: { type: 'toll' as const, id } }] : []),
           { label: 'Retreat', action: { type: 'close' } },
         ],
       });
@@ -166,6 +169,16 @@ export function visit(state: GameState, id: string): Result {
     case 'signpost':
       return found(state, describe(state, id));
   }
+}
+
+/** Pays an enemy's toll: the troops stay behind, the enemy lets you pass, and nobody gets experience. */
+export function payToll(state: GameState, id: string): Result | null {
+  const place = locationById(state, id);
+  const toll = place.enemy?.toll;
+  if (!toll || place.done || countOf(state.army, toll.troop) < toll.count) return null;
+  const army = state.army.map((s) => (s.troop === toll.troop ? { ...s, count: s.count - toll.count } : s)).filter((s) => s.count > 0);
+  const next = update({ ...state, army }, id, { done: true });
+  return { state: next, events: [{ type: 'removed', id }, show({ title: place.name, lines: [toll.paid], choices: [close] }, place.at, place.id)] };
 }
 
 /** How many of a recruiter's troops the hero can take now: capped by the offer, leadership and gold. */

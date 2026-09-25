@@ -3,7 +3,7 @@ import { chooseBoon, nextCommission, retry, toCourt } from './campaign';
 import { endDay } from './days';
 import { fight, startFight } from './fight';
 import { equip, gearCard, learn } from './hero';
-import { armouryCard, buy, openChest, recruit } from './places';
+import { armouryCard, buy, openChest, payToll, recruit } from './places';
 import { chooseBackground } from './scenario';
 import { locationById, show, type Action, type GameState, type Result } from './state';
 
@@ -40,6 +40,8 @@ export function apply(state: GameState, action: Action): Result | null {
       return buy(state, action.id, action.artifact);
     case 'background':
       return { state: chooseBackground(state, action.id), events: [] };
+    case 'toll':
+      return payToll(state, action.id);
     case 'court':
       return toCourt(state);
     case 'boon':

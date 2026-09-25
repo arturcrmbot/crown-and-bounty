@@ -137,7 +137,7 @@ export class BattleController {
             start: () => {
               v.flashing.add(e.target);
               this.float(e.target, `-${e.damage}`, RED[5]);
-              v.log = `${this.name(e.attacker)} ${e.ranged ? 'shoot' : e.retaliation ? 'strike back at' : 'hit'} ${this.name(e.target).replace(/^(Your|Their) /, (m) => m.toLowerCase())} for ${e.damage}${e.killed ? `. ${e.killed} perish.` : '.'}`;
+              v.log = `${this.name(e.attacker)} ${e.ranged ? 'shoot' : e.retaliation ? 'strike back at' : 'hit'} ${this.name(e.target).replace(/^(Your|Their) /, (m) => m.toLowerCase())} for ${e.damage}${e.killed ? `. ${e.killed} perish.` : '.'}${e.hexed ? ' The hex slows them down.' : ''}`;
             },
             end: () => {
               v.flashing.delete(e.target);
@@ -146,6 +146,14 @@ export class BattleController {
           });
           break;
         }
+        case 'regen':
+          this.step(0.3, {
+            start: () => {
+              this.float(e.fighter, `+${e.healed}`, GOLD[6]);
+              v.log = `${this.name(e.fighter)} regenerate: the wounds close up.`;
+            },
+          });
+          break;
         case 'spell': {
           const target = fighterById(this.battle, e.target);
           if (target.count === 0) v.dying.add(e.target);

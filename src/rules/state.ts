@@ -30,6 +30,8 @@ export type Enemy = {
   look: 'soldiers' | 'wolves' | 'stockade' | 'goblins' | 'troll';
   /** The button that starts the fight, if not just "Fight". */
   charge?: string;
+  /** Troops they will take to let you pass without a fight, and what happens when you pay. */
+  toll?: { troop: TroopId; count: number; paid: string };
   lines: string[];
   army: Army;
   reward: number;
@@ -144,6 +146,8 @@ export type Action =
   | { type: 'armoury'; id: string }
   | { type: 'buy'; id: string; artifact: ArtifactId }
   | { type: 'background'; id: BackgroundId }
+  /** Pays an enemy's toll to pass without a fight. */
+  | { type: 'toll'; id: string }
   /** After a won commission: ride to the King. */
   | { type: 'court' }
   | { type: 'boon'; id: BoonId }

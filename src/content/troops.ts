@@ -20,6 +20,14 @@ export type TroopDef = {
   wage: number;
   /** A one-line description for cards. */
   note: string;
+  /** Something only this troop does in battle. */
+  ability?: Ability;
+};
+
+export type Ability = 'regenerates' | 'hexes';
+export const ABILITIES: Record<Ability, { name: string; note: string }> = {
+  regenerates: { name: 'Regenerates', note: 'The top troll heals all its wounds at the start of each turn.' },
+  hexes: { name: 'Hexes', note: 'Her shots slow whatever they hit.' },
 };
 
 export const TROOPS: Record<TroopId, TroopDef> = {
@@ -31,8 +39,8 @@ export const TROOPS: Record<TroopId, TroopDef> = {
   wolves: { id: 'wolves', name: 'Wolves', one: 'Wolf', hp: 12, attack: 7, defence: 3, damage: [3, 5], speed: 7, leadership: 2, wage: 0, note: 'Fast, hungry, and not interested in your commission.' },
   baron: { id: 'baron', name: 'Baron Grimsby', one: 'Baron Grimsby', hp: 160, attack: 11, defence: 10, damage: [9, 14], speed: 4, leadership: 99, wage: 0, note: 'Carries the royal goose under one arm, and a very large sword in the other.' },
   goblins: { id: 'goblins', name: 'Bog Goblins', one: 'Bog Goblin', hp: 5, attack: 4, defence: 2, damage: [1, 3], speed: 6, leadership: 1, wage: 1, note: 'Small, green and in a tremendous hurry.' },
-  trolls: { id: 'trolls', name: 'Trolls', one: 'Troll', hp: 70, attack: 9, defence: 7, damage: [8, 12], speed: 3, leadership: 12, wage: 20, note: 'Big, slow, and very attached to their bridge.' },
-  witch: { id: 'witch', name: 'Mother Mirrow', one: 'Mother Mirrow', hp: 140, attack: 8, defence: 8, damage: [6, 10], speed: 4, shots: 8, leadership: 99, wage: 0, note: 'Throws hexes, and the occasional ladle.' },
+  trolls: { id: 'trolls', name: 'Trolls', one: 'Troll', hp: 70, attack: 9, defence: 7, damage: [8, 12], speed: 3, leadership: 12, wage: 20, note: 'Big, slow, and very attached to their bridge.', ability: 'regenerates' },
+  witch: { id: 'witch', name: 'Mother Mirrow', one: 'Mother Mirrow', hp: 140, attack: 8, defence: 8, damage: [6, 10], speed: 4, shots: 8, leadership: 99, wage: 0, note: 'Throws hexes, and the occasional ladle.', ability: 'hexes' },
 };
 
 /**

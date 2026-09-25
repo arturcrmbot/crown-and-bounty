@@ -68,6 +68,24 @@ describe('a battle', () => {
     expect(options(pinned).shoot).toEqual([]);
   });
 
+  it('lets trolls heal the top troll\u2019s wounds at the start of their turn', () => {
+    const b = battle(['archers'], [20], ['trolls'], [3]);
+    const ready = { ...b, order: [0, 1] };
+    const shot = battleAct(ready, { type: 'shoot', target: 1 });
+    const troll = fighterById(shot.battle, 1);
+    expect(shot.battle.order[0]).toBe(1);
+    expect(troll.hp).toBe(70);
+    expect(shot.events.some((e) => e.type === 'regen' && e.fighter === 1)).toBe(true);
+  });
+
+  it('lets the witch\u2019s hexes slow whatever they hit', () => {
+    const b = battle(['knights'], [10], ['witch'], [1]);
+    const ready = { ...b, order: [1, 0] };
+    const hexed = battleAct(ready, { type: 'shoot', target: 0 });
+    expect(fighterById(hexed.battle, 0).slowed).toBe(true);
+    expect(hexed.events.some((e) => e.type === 'hit' && e.hexed)).toBe(true);
+  });
+
   it('makes defenders harder to hurt, and lets a stack wait until last', () => {
     const b = battle(['knights'], [10], ['swordsmen'], [10]);
     const target = b.fighters[1];

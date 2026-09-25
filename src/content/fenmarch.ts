@@ -203,6 +203,11 @@ export const FENMARCH: Province = {
         army: [{ troop: 'trolls', count: 12 }, { troop: 'goblins', count: 60 }],
         reward: 600,
         threat: 'The troll stands up. It keeps standing up for a while.',
+        toll: {
+          troop: 'knights',
+          count: 2,
+          paid: 'Two of your knights agree to stay and help collect tolls. They seem to like the hours. The trolls wave you across, and the bridge is yours to use.',
+        },
         flees: 'The trolls wade off downstream, grumbling about the toll.',
         loot: 'Under the bridge: {gold} in old tolls.',
       },

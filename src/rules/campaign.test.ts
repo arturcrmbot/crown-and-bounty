@@ -48,6 +48,19 @@ describe('the Fenmarch', () => {
     expect(bridges).toBeLessThan(24);
   });
 
+  it('lets you pay the troll\u2019s toll in knights instead of fighting', () => {
+    const state = beginCommission(FENMARCH, 1, newGame().campaign.start, 1, []);
+    const card = apply(state, { type: 'go', id: 'troll' });
+    expect(card).toBeNull();
+    const paid = act(state, { type: 'toll', id: 'troll' });
+    expect(paid.army.find((s) => s.troop === 'knights')!.count).toBe(8);
+    expect(paid.locations.find((l) => l.id === 'troll')!.done).toBe(true);
+    expect(paid.hero.xp).toBe(state.hero.xp);
+    expect(planRoute(paid, fen, [1160, 880])).not.toBeNull();
+    const noKnights = { ...state, army: [{ troop: 'archers' as const, count: 30 }] };
+    expect(apply(noKnights, { type: 'toll', id: 'troll' })).toBeNull();
+  });
+
   it('cannot get past the troll to Mother Mirrow until he is beaten', () => {
     const state = beginCommission(FENMARCH, 1, newGame().campaign.start, 1, []);
     expect(planRoute(state, fen, [1160, 880])).toBeNull();

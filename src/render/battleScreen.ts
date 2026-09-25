@@ -1,4 +1,4 @@
-import { TROOPS } from '../content/troops';
+import { ABILITIES, TROOPS } from '../content/troops';
 import { SPELLS } from '../content/spells';
 import { spellCost, speedOf, statsOf, type BattleState } from '../rules/battle/battle';
 import { COLS, colOf, HEXES, ROWS, rowOf } from '../rules/battle/hex';
@@ -6,8 +6,8 @@ import { Bitmap, blit } from './bitmap';
 import { flashSprite, FIGHTER_FOOT, troopSprite, type Pose } from './battleSprites';
 import { BAR, MAP_VIEW, paintBarBackground, paintFrame, SCREEN, type Rect } from './frame';
 import { hash, noise, shade } from './noise';
-import { BLUE, GOLD, GRASS, INK, LIGHT_LUT, NEUTRAL, PARCHMENT, RED, SHADOW_LUT, STONE } from './palette';
-import { boulder, oak, pine } from './sprites';
+import { BLUE, CYCLE_BOG, EARTH, GOLD, GRASS, INK, LIGHT_LUT, NEUTRAL, PARCHMENT, RED, REED, SHADOW_LUT, STONE } from './palette';
+import { boulder, oak, pine, willow } from './sprites';
 import { drawText } from './text';
 
 /** Pointy-top hexes, squashed for HoMM2's oblique view: 64 wide, rows 44 apart. */
@@ -68,14 +68,17 @@ export const BUTTONS: { id: 'spells' | 'wait' | 'defend' | 'auto' | 'retreat'; l
   rect: { x: BAR.x + BAR.width - 5 * 66 - 6 + i * 66, y: BAR.y + 3, width: 62, height: BAR.height - 6 },
 }));
 
-function paintField(obstacles: number[], seed: number): Bitmap {
+function paintField(obstacles: number[], seed: number, fen: boolean): Bitmap {
   const field = new Bitmap(SCREEN.width, SCREEN.height);
   for (let y = MAP_VIEW.y; y < MAP_VIEW.y + MAP_VIEW.height; y++) {
     for (let x = MAP_VIEW.x; x < MAP_VIEW.x + MAP_VIEW.width; x++) {
       const inField = x > X0 - 10 && x < X0 + FIELD_W + 10 && y > Y0 - 4 && y < Y0 + (ROWS - 1) * ROW_H + HALF_H * 2 + 6;
       let level = 0.56 + (noise(x / 40, y / 40, seed) - 0.5) * 0.35 + (noise(x / 7, y / 7, seed + 1) - 0.5) * 0.24 + (hash(x, y, seed + 2) - 0.5) * 0.15;
       if (!inField) level -= 0.18;
-      field.set(x, y, shade(GRASS, level, x, y));
+      // The fen: sedge through the grass, and puddles out beyond the field.
+      const sedge = fen && noise(x / 30, y / 30, seed + 3) + (noise(x / 5, y / 5, seed + 4) - 0.5) * 0.3 > 0.62;
+      const puddle = fen && !inField && noise(x / 26, y / 18, seed + 5) > 0.66;
+      field.set(x, y, puddle ? CYCLE_BOG[Math.floor(noise(x / 9, y / 9, seed + 6) * 12) % 6] : sedge ? shade(REED, level + 0.05, x, y) : shade(GRASS, level - (fen ? 0.06 : 0), x, y));
     }
   }
   for (let n = 0; n < 900; n++) {
@@ -88,7 +91,7 @@ function paintField(obstacles: number[], seed: number): Bitmap {
   }
   // A few trees along the top and sides frame the field.
   for (let i = 0; i < 16; i++) {
-    const t = i % 3 === 0 ? oak(900 + i, 26) : pine(930 + i, 30);
+    const t = fen ? (i % 3 === 0 ? pine(930 + i, 30) : willow(960 + i, 26)) : i % 3 === 0 ? oak(900 + i, 26) : pine(930 + i, 30);
     const x = MAP_VIEW.x + 10 + ((i * 61 + 13) % (MAP_VIEW.width - 40));
     const top = i % 2 === 0;
     const y = top ? MAP_VIEW.y - t.height + 26 + (i % 3) * 3 : MAP_VIEW.y + MAP_VIEW.height - 18;
@@ -108,10 +111,30 @@ function paintField(obstacles: number[], seed: number): Bitmap {
   }
   for (const [n, i] of obstacles.entries()) {
     const [cx, cy] = hexCentre(i);
-    const rock = n % 2 === 0 ? boulder(600 + n, 22) : oak(620 + n, 30);
+    if (fen && n % 2 === 0) {
+      bogHole(field, cx, cy);
+      continue;
+    }
+    const rock = fen ? pine(640 + n, 34) : n % 2 === 0 ? boulder(600 + n, 22) : oak(620 + n, 30);
     blit(field, rock, Math.round(cx - rock.width / 2), Math.round(cy + 10 - rock.height + (n % 2 === 0 ? 4 : 6)));
   }
   return field;
+}
+
+/** A hex of black bog water with a reed fringe: nobody stands there. */
+function bogHole(field: Bitmap, cx: number, cy: number) {
+  for (let y = Math.floor(cy - 13); y <= cy + 13; y++) {
+    for (let x = Math.floor(cx - 21); x <= cx + 21; x++) {
+      const d = Math.hypot((x - cx) / 20, (y - cy) / 12) + (noise(x / 4, y / 4, 81) - 0.5) * 0.25;
+      if (d < 0.86) field.set(x, y, CYCLE_BOG[(Math.floor(x / 5) + Math.floor(y / 3)) % 6]);
+      else if (d < 1) field.set(x, y, EARTH[1]);
+    }
+  }
+  for (let k = 0; k < 11; k++) {
+    const x = Math.round(cx - 20 + k * 4 + (hash(k, 1, 82) - 0.5) * 3);
+    const top = Math.round(cy + (k % 2 === 0 ? -10 : 9) - 3 - hash(k, 2, 82) * 5);
+    for (let y = top; y < top + 7; y++) field.set(x, y, y === top ? EARTH[2] : REED[3]);
+  }
 }
 
 function fillHex(screen: Bitmap, i: number, lut: Uint8Array, every: number) {
@@ -144,7 +167,7 @@ export class BattleScreen {
     const { frame, overlay } = paintFrame();
     this.frame = frame;
     this.overlay = overlay;
-    this.field = paintField(battle.obstacles, (battle.seed >>> 8) & 1023);
+    this.field = paintField(battle.obstacles, (battle.seed >>> 8) & 1023, battle.ground === 'fen');
   }
 
   draw(b: BattleState, view: BattleView): Bitmap {
@@ -230,7 +253,7 @@ export class BattleScreen {
     if (view.targeting) drawText(screen, `Cast ${view.targeting}: pick a target (Esc to cancel)`, BAR.x + 12, text, GOLD[6], INK);
     else if (f) {
       const t = TROOPS[f.troop];
-      const tags = [f.blessed ? ' Blessed' : '', f.slowed ? ' Slowed' : '', f.defending ? ' Defending' : ''].join('');
+      const tags = [t.ability ? ` ${ABILITIES[t.ability].name}` : '', f.blessed ? ' Blessed' : '', f.slowed ? ' Slowed' : '', f.defending ? ' Defending' : ''].join('');
       const { attack, defence } = statsOf(b, f);
       const info = `${f.count} ${f.count === 1 ? t.one : t.name}  ·  Att ${attack} Def ${defence} Dmg ${t.damage[0]}-${t.damage[1]} HP ${f.hp}/${t.hp} Spd ${speedOf(f)}${f.shots ? ` Shots ${f.shots}` : ''}${tags}`;
       drawText(screen, info, BAR.x + 12, text, f.side === 'player' ? PARCHMENT[6] : RED[6], INK);

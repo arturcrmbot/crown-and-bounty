@@ -1,7 +1,7 @@
 import { BACKGROUNDS } from '../content/backgrounds';
 import { ARTIFACTS, type ArtifactId } from '../content/artifacts';
 import { autoResolve } from './battle/ai';
-import { campaignLines, commissionOf, hasNextCommission } from './campaign';
+import { campaignLines, commissionOf, hasNextCommission, provinceOf } from './campaign';
 import { createBattle, survivors, type BattleHero } from './battle/battle';
 import { foundNote, gainXp, giveArtifact, heroStats } from './hero';
 import { again, armyLine, armyPower, close, coins, locationById, roll, roman, show, troops, update, VANISHES, type Army, type GameEvent, type GameState, type Result } from './state';
@@ -41,7 +41,7 @@ export function lossesLine(before: Army, after: Army): string {
 export function startFight(state: GameState, id: string): Result {
   const place = locationById(state, id);
   const [, seed] = roll(state.seed);
-  const battle = createBattle({ place: id, seed: state.seed, player: state.army, enemy: place.enemy!.army, hero: heroInBattle(state), obstacles: place.kind === 'hideout' ? 3 : 5 });
+  const battle = createBattle({ place: id, seed: state.seed, player: state.army, enemy: place.enemy!.army, hero: heroInBattle(state), obstacles: place.kind === 'hideout' ? 3 : 5, ground: provinceOf(state).fen ? 'fen' : 'meadow' });
   return { state: { ...state, seed, battle }, events: [{ type: 'battle', place: id }] };
 }
 

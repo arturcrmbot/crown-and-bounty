@@ -32,13 +32,11 @@ function debugStart(): GameState {
   const first = newGame();
   const chapter = Number(query.get('commission') ?? 1) - 1;
   if (query.get('court') === '1') return { ...first, opening: undefined, over: 'won', bounty: 'paid' };
-  if (chapter > 0) {
-    const { hero, gold, leadership, army } = first;
-    return beginCommission(COMMISSIONS[chapter].province, first.seed, { hero, gold, leadership, army }, chapter, [{ chapter: 0, days: 10, level: 1 }]);
-  }
+  const { hero, gold, leadership, army } = first;
+  const base = chapter > 0 ? beginCommission(COMMISSIONS[chapter].province, first.seed, { hero, gold, leadership, army }, chapter, [{ chapter: 0, days: 10, level: 1 }]) : first;
   // ?battle=patrol opens straight onto a fight, for checking the battle screen.
   const fightAt = query.get('battle');
-  return fightAt ? startFight({ ...first, opening: undefined }, fightAt).state : first;
+  return fightAt ? startFight({ ...base, opening: undefined }, fightAt).state : base;
 }
 
 // ?reveal=1 lifts the fog, for looking the whole map over.

@@ -55,6 +55,8 @@ export type BattleState = {
   seed: number;
   hero: BattleHero;
   result?: 'won' | 'lost' | 'fled';
+  /** What the field looks like: Aldmoor's meadows or the Fenmarch's reeds. It changes nothing else. */
+  ground?: 'meadow' | 'fen';
 };
 
 export type BattleAction =
@@ -68,7 +70,9 @@ export type BattleAction =
 
 export type BattleEvent =
   | { type: 'move'; fighter: number; path: number[] }
-  | { type: 'hit'; attacker: number; target: number; damage: number; killed: number; ranged: boolean; retaliation: boolean }
+  | { type: 'hit'; attacker: number; target: number; damage: number; killed: number; ranged: boolean; retaliation: boolean; hexed?: boolean }
+  /** A troll's wounds close up at the start of its turn. */
+  | { type: 'regen'; fighter: number; healed: number }
   | { type: 'spell'; spell: SpellId; target: number; damage: number; killed: number }
   | { type: 'wait' | 'defend'; fighter: number }
   | { type: 'turn'; fighter: number }
@@ -96,7 +100,7 @@ function turnOrder(fighters: Fighter[]): number[] {
     .map((f) => f.id);
 }
 
-export function createBattle(args: { place: string; seed: number; player: Army; enemy: Army; hero: BattleHero; obstacles?: number }): BattleState {
+export function createBattle(args: { place: string; seed: number; player: Army; enemy: Army; hero: BattleHero; obstacles?: number; ground?: BattleState['ground'] }): BattleState {
   const fighters: Fighter[] = [];
   const add = (army: Army, side: Side, col: number) =>
     army.forEach((s, i) =>
@@ -129,7 +133,7 @@ export function createBattle(args: { place: string; seed: number; player: Army; 
     const i = hexIndex(2 + Math.floor(a * (COLS - 4)), Math.floor(b * 9));
     if (!obstacles.includes(i)) obstacles.push(i);
   }
-  return { place: args.place, round: 1, fighters, order: turnOrder(fighters), obstacles, seed, hero: args.hero };
+  return { place: args.place, round: 1, fighters, order: turnOrder(fighters), obstacles, seed, hero: args.hero, ...(args.ground === 'fen' ? { ground: 'fen' as const } : {}) };
 }
 
 /** Whether a hex is taken by a rock or by a living stack (other than `except`). */
@@ -260,7 +264,12 @@ export function battleAct(b: BattleState, action: BattleAction): BattleResult {
     case 'shoot': {
       if (!opts.shoot.includes(action.target)) return { battle: b, events: [] };
       me.shots -= 1;
-      hit(me, fighterById(next, action.target), true, false);
+      const target = fighterById(next, action.target);
+      hit(me, target, true, false);
+      if (TROOPS[me.troop].ability === 'hexes' && alive(target) && !target.slowed) {
+        target.slowed = true;
+        (events[events.length - 1] as Extract<BattleEvent, { type: 'hit' }>).hexed = true;
+      }
       break;
     }
     case 'wait': {
@@ -321,6 +330,11 @@ function settle(b: BattleState, events: BattleEvent[], endTurn: boolean): Battle
   }
   const acting = fighterById(next, next.order[0]);
   if (acting.defending) next = { ...next, fighters: next.fighters.map((f) => (f.id === acting.id ? { ...f, defending: false } : f)) };
+  const full = TROOPS[acting.troop].hp;
+  if (TROOPS[acting.troop].ability === 'regenerates' && acting.hp < full) {
+    next = { ...next, fighters: next.fighters.map((f) => (f.id === acting.id ? { ...f, hp: full } : f)) };
+    events.push({ type: 'regen', fighter: acting.id, healed: full - acting.hp });
+  }
   events.push({ type: 'turn', fighter: acting.id });
   return { battle: next, events };
 }
