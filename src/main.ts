@@ -33,6 +33,8 @@ window.addEventListener('resize', fit);
 fit();
 
 const view = buildLookTest();
+const query = new URLSearchParams(window.location.search);
+if (query.has('x')) view.centreOn(Number(query.get('x')), Number(query.get('y') ?? 480));
 const held = new Set<string>();
 window.addEventListener('keydown', (e) => held.add(e.key.toLowerCase()));
 window.addEventListener('keyup', (e) => held.delete(e.key.toLowerCase()));

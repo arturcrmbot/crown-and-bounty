@@ -67,7 +67,7 @@ export function paintFrame(): { frame: Bitmap; overlay: Bitmap } {
       frame.set(x, y, shade(SLATE, 0.32 + (noise(x / 4, y / 4, 57) - 0.5) * 0.2 - (y - BAR.y) * 0.008, x, y));
     }
   }
-  for (const divider of [300, 560, 760]) {
+  for (const divider of [540, 820]) {
     for (let y = BAR.y + 3; y < BAR.y + BAR.height - 3; y++) {
       frame.set(BAR.x + divider, y, WOOD[0]);
       frame.set(BAR.x + divider + 1, y, GOLD[2]);

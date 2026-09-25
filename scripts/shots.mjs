@@ -12,7 +12,7 @@ const page = await browser.newPage({ viewport: { width, height }, deviceScaleFac
 page.on('console', (m) => m.type() !== 'debug' && console.log(`[${m.type()}] ${m.text()}`));
 page.on('pageerror', (e) => console.log(`[pageerror] ${e.message}`));
 
-await page.goto(url);
+await page.goto(`${url}${process.env.QUERY ?? ''}`);
 await page.waitForFunction(() => window.__ready === true, null, { timeout: 60_000 });
 await page.waitForTimeout(300);
 const path = process.env.OUT ?? 'screenshots/look.png';

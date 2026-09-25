@@ -27,6 +27,10 @@ export const BLUE = ramp('#0d1546', '#15226a', '#1f3390', '#2b48b4', '#3f64d2', 
 export const RED = ramp('#340808', '#581010', '#82191a', '#ab291f', '#d2432b', '#ec6f48', '#f8a276');
 export const GOLD = ramp('#482c06', '#6e460c', '#986612', '#c28a1c', '#e0ae2c', '#f2ce50', '#fbea96');
 export const SKIN = ramp('#5c3220', '#8c5234', '#ba7a4e', '#dea878', '#f4d0a4');
+/** Muted, darkened greens and greys for land not yet explored. */
+export const FOG = ramp('#161a17', '#1f2520', '#29302a', '#343c33', '#40493d', '#4c5647', '#5a6452', '#69735e', '#7a836c');
+/** Landmarks under fog are drawn as flat shapes in this colour. */
+export const SILHOUETTE = ramp('#1b2021')[0];
 export const WATER = ramp('#0a1a44', '#10265e', '#173478', '#1f4392', '#2856ac', '#3569c2', '#4a80d4', '#6a9ae2', '#9cc0ee', '#e2eef8');
 
 /** Colours that rotate every tick. Water pixels use them to shimmer and flow, like HoMM2's palette cycling. */
@@ -82,6 +86,20 @@ export const SHADOW_LUT = new Uint8Array(256).map((_, i) => {
   return nearest(r * 0.52, g * 0.56, b * 0.7 + 8, cycling);
 });
 
-/** The palette colour closest to an RGB value, for the minimap. */
-export const nearestColor = (r: number, g: number, b: number) => nearest(r, g, b, cycling);
-export const colorOf = (index: number) => COLORS[index];
+/** Unexplored land: desaturated, darker and a touch blue. */
+export const FOG_LUT = new Uint8Array(256).map((_, i) => {
+  if (i >= COLORS.length) return i;
+  if (i === SILHOUETTE) return i;
+  const [r, g, b] = cycling.has(i) ? COLORS[WATER[3]] : COLORS[i];
+  const luma = 0.3 * r + 0.59 * g + 0.11 * b;
+  const mix = (c: number) => (c * 0.45 + luma * 0.55) * 0.78;
+  return nearest(mix(r), mix(g), mix(b) + 6, cycling);
+});
+
+/** Paper grain: a slightly darker, warmer speck of the same colour. */
+export const GRAIN_LUT = new Uint8Array(256).map((_, i) => {
+  if (i >= COLORS.length || cycling.has(i)) return i;
+  const [r, g, b] = COLORS[i];
+  const next = nearest(r * 0.84 + 4, g * 0.84 + 2, b * 0.8, cycling);
+  return next === i ? SHADOW_LUT[i] : next;
+});

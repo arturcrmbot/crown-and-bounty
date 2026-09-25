@@ -27,7 +27,7 @@ export function smooth(points: readonly Point[], steps = 10): Point[] {
 /** Distance to the nearest of some polylines, distance along it, and which side of it, per pixel. */
 export type Field = { d: Float32Array; s: Float32Array; side: Int8Array };
 
-function distanceField(paths: readonly Point[][], radius: number): Field {
+export function distanceField(paths: readonly Point[][], radius: number): Field {
   const size = MAP_WIDTH * MAP_HEIGHT;
   const field: Field = { d: new Float32Array(size).fill(1e6), s: new Float32Array(size), side: new Int8Array(size) };
   for (const path of paths) {
@@ -77,12 +77,14 @@ const TUFTS = [
   ['.l', 'md'],
 ];
 
-export type Terrain = { bitmap: Bitmap; ground: Uint8Array; river: Field; paths: Field; riverLine: Point[] };
+/** `wild` is the same land with no roads, shown under the fog of war. */
+export type Terrain = { bitmap: Bitmap; wild: Bitmap; ground: Uint8Array; river: Field; paths: Field; riverLine: Point[] };
 
 export function paintTerrain(): Terrain {
   const W = MAP_WIDTH;
   const H = MAP_HEIGHT;
   const bitmap = new Bitmap(W, H);
+  const wild = new Bitmap(W, H);
   const ground = new Uint8Array(W * H);
   const riverLine = smooth(RIVER);
   const cliffLine = smooth(CLIFF, 6);
@@ -138,6 +140,7 @@ export function paintTerrain(): Terrain {
       if (forest > 0.44) level -= Math.min(0.3, (forest - 0.44) * 1.4);
       if (top !== undefined && face >= CLIFF_HEIGHT && face < CLIFF_HEIGHT + 8) level -= 0.28 - (face - CLIFF_HEIGHT) * 0.03;
 
+      wild.data[i] = shade(GRASS, level, x, y);
       const p = paths.d[i];
       const pathHalf = 3.4 + (noise(paths.s[i] / 25, 3, 21) - 0.5) * 1.6 + (noise(x / 3, y / 3, 22) - 0.5) * 1.2;
       if (p < pathHalf) {
@@ -155,21 +158,26 @@ export function paintTerrain(): Terrain {
     }
   }
 
+  for (let i = 0; i < W * H; i++) if (ground[i] !== Ground.Grass && ground[i] !== Ground.Road) wild.data[i] = bitmap.data[i];
+
   const random = rng(5);
   const grassAt = (x: number, y: number) => ground[y * W + x] === Ground.Grass;
+  const wildGrassAt = (x: number, y: number) => ground[y * W + x] === Ground.Grass || ground[y * W + x] === Ground.Road;
   for (let n = 0; n < 9000; n++) {
     const x = 2 + Math.floor(random() * (W - 6));
     const y = 2 + Math.floor(random() * (H - 6));
-    if (!grassAt(x, y) || !grassAt(x + 3, y + 2)) continue;
     const tuft = TUFTS[Math.floor(random() * TUFTS.length)];
-    const tone = GRASS.indexOf(bitmap.data[y * W + x]);
-    tuft.forEach((row, dy) =>
-      [...row].forEach((ch, dx) => {
-        if (ch === '.') return;
-        const shift = ch === 'l' ? 2 : ch === 'm' ? 1 : -2;
-        bitmap.set(x + dx, y + dy, GRASS[Math.max(0, Math.min(GRASS.length - 1, tone + shift))]);
-      }),
-    );
+    for (const [layer, ok] of [[bitmap, grassAt], [wild, wildGrassAt]] as const) {
+      if (!ok(x, y) || !ok(x + 3, y + 2)) continue;
+      const tone = GRASS.indexOf(layer.data[y * W + x]);
+      tuft.forEach((row, dy) =>
+        [...row].forEach((ch, dx) => {
+          if (ch === '.') return;
+          const shift = ch === 'l' ? 2 : ch === 'm' ? 1 : -2;
+          layer.set(x + dx, y + dy, GRASS[Math.max(0, Math.min(GRASS.length - 1, tone + shift))]);
+        }),
+      );
+    }
   }
   const petals = [GOLD[5], NEUTRAL[7], RED[5], GOLD[6]];
   for (let n = 0; n < 700; n++) {
@@ -179,5 +187,5 @@ export function paintTerrain(): Terrain {
     bitmap.set(x, y, petals[n % petals.length]);
     bitmap.set(x, y + 1, GRASS[1]);
   }
-  return { bitmap, ground, river, paths, riverLine };
+  return { bitmap, wild, ground, river, paths, riverLine };
 }

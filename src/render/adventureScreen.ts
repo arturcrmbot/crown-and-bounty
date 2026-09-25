@@ -1,6 +1,8 @@
 import { Bitmap, blit } from './bitmap';
 import { MAP_VIEW, paintFrame, SCREEN } from './frame';
 import { MAP_HEIGHT, MAP_WIDTH } from './lookTestMap';
+import { hash, noise } from './noise';
+import { GRAIN_LUT } from './palette';
 
 /** `x` and `y` are the sprite's top-left in map pixels. `frames` animate it (flags, wheels). */
 export type Placed = { sprite: Bitmap; frames?: Bitmap[]; x: number; y: number };
@@ -19,11 +21,21 @@ export class AdventureScreen {
   private readonly animated: Placed[] = [];
   readonly camera = { x: 0, y: 0 };
 
+  /** Screen pixels that get a speck of paper grain, fixed to the screen like the page itself. */
+  private readonly grain: Uint32Array;
+
   constructor(map: Bitmap) {
     const { frame, overlay } = paintFrame();
     this.frame = frame;
     this.overlay = overlay;
     this.map = map;
+    const specks: number[] = [];
+    for (let y = MAP_VIEW.y; y < MAP_VIEW.y + MAP_VIEW.height; y++) {
+      for (let x = MAP_VIEW.x; x < MAP_VIEW.x + MAP_VIEW.width; x++) {
+        if (hash(x, y, 201) < 0.035 + noise(x / 26, y / 26, 202) * 0.07) specks.push(y * SCREEN.width + x);
+      }
+    }
+    this.grain = Uint32Array.from(specks);
   }
 
   bake(objects: Placed[]) {
@@ -57,6 +69,7 @@ export class AdventureScreen {
       const image = frames ? frames[tick % frames.length] : sprite;
       blit(screen, image, MAP_VIEW.x + Math.round(x) - cx, MAP_VIEW.y + Math.round(y) - cy, MAP_VIEW);
     }
+    for (const i of this.grain) screen.data[i] = GRAIN_LUT[screen.data[i]];
     blit(screen, this.overlay, 0, 0);
     return screen;
   }
