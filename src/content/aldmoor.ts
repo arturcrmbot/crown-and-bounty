@@ -173,7 +173,7 @@ export const ALDMOOR: Province = {
         look: 'stockade',
         charge: 'Storm the stockade',
         lines: ['A muddy stockade deep in Darkwood. Someone inside is honking.'],
-        army: [{ troop: 'swordsmen', count: 36 }, { troop: 'crossbowmen', count: 18 }, { troop: 'baron', count: 1 }],
+        army: [{ troop: 'swordsmen', count: 40 }, { troop: 'crossbowmen', count: 20 }, { troop: 'baron', count: 1 }],
         reward: 2000,
         threat: 'The Baron shouts from the palisade: *"I have the goose AND the walls!"*',
         flees: 'The stockade gate falls open.',
