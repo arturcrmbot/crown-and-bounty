@@ -1,18 +1,16 @@
 import type { Grid } from '../rules/pathfinding';
 import { AdventureScreen, type Placed } from './adventureScreen';
 import { Bitmap, blit, SHADOW } from './bitmap';
-import { BAR } from './frame';
 import {
-  CASTLE, CHEST, CRAGS, EXPLORED, forestAmount, GOLD_PILE, HERO, MAP_HEIGHT, MAP_WIDTH, MILL, MINE, PATHS, PATROL,
+  CASTLE, CHEST, CRAGS, EXPLORED, forestAmount, GOLD_PILE, HERO, HIDEOUT, MAP_HEIGHT, MAP_WIDTH, MILL, MINE, PATHS, PATROL,
   ROCKS, SIGNPOST, TOWER, TREES, VILLAGE, type Point,
 } from './lookTestMap';
 import { bayer, hash } from './noise';
-import { GOLD, INK, NEUTRAL, PARCHMENT, SILHOUETTE, STONE, WOOD } from './palette';
+import { SILHOUETTE } from './palette';
 import {
-  boulder, castle, chest, crag, goldPile, hero, hut, mill, mine, mirror, oak, patrol, pine, signpost, stoneBridge, watchtower, well,
+  boulder, castle, chest, crag, goldPile, hero, hideout, hut, mill, mine, mirror, oak, patrol, pine, signpost, stoneBridge, watchtower, well,
 } from './sprites';
 import { distanceField, Ground, paintTerrain, smooth, type Terrain } from './terrain';
-import { drawText } from './text';
 
 const FRAMES = 8;
 const animation = <T>(make: (t: number) => T) => Array.from({ length: FRAMES }, (_, i) => make(i / FRAMES));
@@ -39,7 +37,17 @@ export type HeroRig = {
   foot: number;
 };
 
-export type LookTest = { view: AdventureScreen; grid: Grid; hero: HeroRig };
+/** A clickable area in map pixels, for one location of the rules. */
+export type Hitbox = { id: string; x0: number; y0: number; x1: number; y1: number };
+
+export type LookTest = {
+  view: AdventureScreen;
+  grid: Grid;
+  hero: HeroRig;
+  hitboxes: Hitbox[];
+  /** Objects that vanish once their location is done: pickups and the patrol. */
+  pickups: Map<string, Placed>;
+};
 
 export function buildLookTest(): LookTest {
   const terrain = paintTerrain();
@@ -86,13 +94,13 @@ export function buildLookTest(): LookTest {
   const crags = CRAGS.map(([x, y, w, h], i) => place(crag(w, h, 40 + i), [x, y], h));
   scenery.push(...crags);
 
-  landmarks.push(place(watchtower(0.2), TOWER, 74));
-  landmarks.push(place(mine(), MINE, 44));
-  VILLAGE.huts.forEach((p, i) => landmarks.push(place(hut(i + 3), p, 28)));
-  landmarks.push(place(well(), VILLAGE.well, 23));
-  landmarks.push(place(signpost(), SIGNPOST, 23));
-  landmarks.push(place(chest(), CHEST, 13));
-  landmarks.push(place(goldPile(), GOLD_PILE, 12));
+  const tower = place(watchtower(0.2), TOWER, 74);
+  const mineSite = place(mine(), MINE, 44);
+  const huts = VILLAGE.huts.map((p, i) => place(hut(i + 3), p, 28));
+  const wellSite = place(well(), VILLAGE.well, 23);
+  const post = place(signpost(), SIGNPOST, 23);
+  const stockade = place(hideout(0.4), HIDEOUT, 64);
+  landmarks.push(tower, mineSite, ...huts, wellSite, post, stockade);
   const crossing = smooth(PATHS[0]).reduce((best, p) => (terrain.river.d[at(p[0], p[1])] < terrain.river.d[at(best[0], best[1])] ? p : best));
   const bridge = place(stoneBridge(46), crossing, 12);
   landmarks.push(bridge);
@@ -106,7 +114,9 @@ export function buildLookTest(): LookTest {
   const millObject = { ...place(millFrames[0], MILL, 44), frames: millFrames };
   const patrolFrames = animation((t) => patrol(t * Math.PI * 2));
   const patrolObject = { ...place(patrolFrames[0], PATROL, 40), frames: patrolFrames };
-  for (const o of [castleObject, millObject, patrolObject]) view.animate(o);
+  const chestObject = place(chest(), CHEST, 13);
+  const goldObject = place(goldPile(), GOLD_PILE, 12);
+  for (const o of [castleObject, millObject, patrolObject, chestObject, goldObject]) view.animate(o);
 
   const idle = animation((t) => hero(t * Math.PI * 2));
   const walk = animation((t) => hero(t, true, true));
@@ -114,9 +124,20 @@ export function buildLookTest(): LookTest {
   view.animate(rig.object);
   view.centreOn(HERO[0] + 40, HERO[1] - 70);
 
-  const grid = walkGrid(terrain, trunks, [...landmarks.filter((o) => o !== bridge), ...crags, castleObject, millObject, patrolObject], bridge);
-  paintBar(view);
-  return { view, grid, hero: rig };
+  const grid = walkGrid(terrain, trunks, [...landmarks.filter((o) => o !== bridge), ...crags, castleObject, millObject], bridge);
+  const box = (id: string, ...objects: Placed[]): Hitbox => ({
+    id,
+    x0: Math.min(...objects.map((o) => o.x)),
+    y0: Math.min(...objects.map((o) => o.y)),
+    x1: Math.max(...objects.map((o) => o.x + o.sprite.width)),
+    y1: Math.max(...objects.map((o) => o.y + o.sprite.height)),
+  });
+  const hitboxes = [
+    box('castle', castleObject), box('tower', tower), box('mine', mineSite), box('village', ...huts, wellSite), box('mill', millObject),
+    box('signpost', post), box('chest', chestObject), box('gold', goldObject), box('patrol', patrolObject), box('hideout', stockade),
+  ];
+  const pickups = new Map<string, Placed>([['chest', chestObject], ['gold', goldObject], ['patrol', patrolObject]]);
+  return { view, grid, hero: rig, hitboxes, pickups };
 }
 
 /**
@@ -190,40 +211,4 @@ function bake(terrain: Terrain, scenery: Placed[], landmarks: Placed[]): Uint8Ar
     }
   }
   return fogMask;
-}
-
-function icon(rows: string[], colours: Record<string, number>): Bitmap {
-  const sprite = new Bitmap(rows[0].length, rows.length);
-  rows.forEach((row, y) => [...row].forEach((ch, x) => colours[ch] && sprite.set(x, y, colours[ch])));
-  return sprite;
-}
-
-const COIN = icon(
-  ['..oooo..', '.oyyYYo.', 'oyyyyYYo', 'oyddyyYo', 'oydyyyyo', 'oyyyyydo', '.oyyddo.', '..oooo..'],
-  { o: INK, y: GOLD[4], Y: GOLD[6], d: GOLD[2] },
-);
-const SWORD = icon(
-  ['.......ss', '......sWs', '.....sWs.', '....sWs..', '.g.sWs...', '..gWs....', '..bg.....', '.b..g....', 'o........'],
-  { s: INK, W: STONE[6], g: GOLD[4], b: WOOD[3], o: GOLD[5] },
-);
-const BOW = icon(
-  ['..bb.....', '.b..w....', 'b....w...', 'b..aaaaaT', 'b....w...', '.b..w....', '..bb.....'],
-  { b: WOOD[4], w: NEUTRAL[6], a: WOOD[2], T: STONE[6] },
-);
-
-function paintBar(view: AdventureScreen) {
-  const { frame } = view;
-  const y = BAR.y + 5;
-  const mid = BAR.y + BAR.height / 2;
-  let x = BAR.x + 14;
-  const item = (sprite: Bitmap, text: string) => {
-    blit(frame, sprite, x, Math.round(mid - sprite.height / 2));
-    x += sprite.width + 6;
-    x += drawText(frame, text, x, y, PARCHMENT[6], INK) + 30;
-  };
-  item(COIN, '1,250');
-  item(SWORD, '12');
-  item(BOW, '25');
-  drawText(frame, 'BOUNTY:  BARON GRIMSBY', BAR.x + 560, y, GOLD[5], INK);
-  drawText(frame, 'DAY  III', BAR.x + BAR.width - 84, y, PARCHMENT[6], INK);
 }

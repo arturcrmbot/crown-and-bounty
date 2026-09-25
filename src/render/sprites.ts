@@ -655,3 +655,29 @@ export function well(): Bitmap {
   castShadow(shaped, 4, 1, 18);
   return shaped;
 }
+
+/** Baron Grimsby's hideout: a muddy log stockade round a timber keep, under his red banner. */
+export function hideout(phase = 0): Bitmap {
+  const sprite = new Bitmap(76, 70);
+  for (let y = 12; y < 44; y++) for (let x = 22; x < 50; x++) sprite.set(x, y, timber(x, y, 22, 50, 0.72 - (x - 22) * 0.012));
+  roof(sprite, 22, 50, 0, 14, DIRT4);
+  pennant(sprite, 36, 1, phase);
+  for (let y = 18; y < 23; y++) for (let x = 33; x < 38; x++) sprite.set(x, y, y === 18 ? WOOD[1] : GOLD[5]);
+  // Palisade: sharpened logs, lit on the left, with a gate in the middle.
+  for (let x = 2; x < 74; x += 4) {
+    const top = 36 + Math.floor(hash(x, 1, 51) * 4);
+    const gate = x >= 30 && x < 42;
+    for (let y = top; y < 64; y++) {
+      for (let i = 0; i < 4; i++) {
+        const point = y - top < 2 && (i === 0 || i === 3);
+        if (point) continue;
+        const color = gate && y > 46 ? (i === 0 ? WOOD[2] : WOOD[1]) : flat(WOOD4, 0.8 - i * 0.18 - (y - top) * 0.005, x + i, y);
+        sprite.set(x + i, y, color);
+      }
+    }
+  }
+  for (let x = 30; x < 42; x++) sprite.set(x, 46, WOOD[3]);
+  const shaped = outline(sprite, INK);
+  castShadow(shaped, 7, 3, 44);
+  return shaped;
+}

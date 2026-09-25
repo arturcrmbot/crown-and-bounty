@@ -2,7 +2,7 @@ import { Bitmap, blit } from './bitmap';
 import { MAP_VIEW, paintFrame, SCREEN } from './frame';
 import { MAP_HEIGHT, MAP_WIDTH, type Point } from './lookTestMap';
 import { bayer, hash, noise } from './noise';
-import { FOG_LUT, GOLD, GRAIN_LUT, INK } from './palette';
+import { FOG_LUT, GOLD, GRAIN_LUT, INK, RED } from './palette';
 
 /**
  * `x` and `y` are the sprite's top-left in map pixels. `frames` animate it (flags, wheels);
@@ -23,8 +23,8 @@ export class AdventureScreen {
   private readonly grain: Uint32Array;
   private readonly animated: Placed[] = [];
   readonly camera = { x: 0, y: 0 };
-  /** The route still ahead of the hero, drawn as a trail of gold dots. */
-  route: Point[] = [];
+  /** The route still ahead of the hero: gold dots for today, red for later days. */
+  route: { at: Point; today: boolean }[] = [];
   private readonly map: Bitmap;
   private readonly wild: Bitmap;
   readonly fog: Uint8Array;
@@ -47,6 +47,15 @@ export class AdventureScreen {
 
   animate(object: Placed) {
     this.animated.push(object);
+  }
+
+  remove(object: Placed) {
+    const i = this.animated.indexOf(object);
+    if (i >= 0) this.animated.splice(i, 1);
+  }
+
+  isFogged(x: number, y: number) {
+    return this.fog[Math.round(y) * MAP_WIDTH + Math.round(x)] === 1;
   }
 
   /** Lifts the fog in a circle, with the same dithered edge as the starting fog. */
@@ -94,13 +103,14 @@ export class AdventureScreen {
         screen.data[o] = fog[i] ? FOG_LUT[wild[i]] : map[i];
       }
     }
-    for (const [x, y] of this.route) {
+    for (const { at: [x, y], today } of this.route) {
       const sx = MAP_VIEW.x + x - cx;
       const sy = MAP_VIEW.y + y - cy;
-      for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) this.dot(sx + i, sy + j, i === 0 && j === 0 ? GOLD[6] : INK);
+      for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) this.dot(sx + i, sy + j, i === 0 && j === 0 ? (today ? GOLD[6] : RED[4]) : INK);
     }
     this.animated.sort((a, b) => footY(a) - footY(b));
     for (const o of this.animated) {
+      if (this.isFogged(o.x + o.sprite.width / 2, footY(o) - 2)) continue;
       const image = o.frames ? o.frames[(o.frame ?? tick) % o.frames.length] : o.sprite;
       blit(screen, image, MAP_VIEW.x + Math.round(o.x) - cx, MAP_VIEW.y + Math.round(o.y) - cy, MAP_VIEW);
     }

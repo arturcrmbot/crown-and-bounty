@@ -62,16 +62,23 @@ export function paintFrame(): { frame: Bitmap; overlay: Bitmap } {
   }
   trim(frame, { x: v.x - band, y: v.y - band, width: v.width + band * 2, height: v.height + band * 2 });
   trim(frame, BAR);
+  paintBarBackground(frame);
+  return { frame, overlay };
+}
+
+/** Where the dividers of the bottom bar sit, from the bar's left edge. */
+export const BAR_DIVIDERS = [470, 760];
+
+export function paintBarBackground(frame: Bitmap) {
   for (let y = BAR.y; y < BAR.y + BAR.height; y++) {
     for (let x = BAR.x; x < BAR.x + BAR.width; x++) {
       frame.set(x, y, shade(SLATE, 0.32 + (noise(x / 4, y / 4, 57) - 0.5) * 0.2 - (y - BAR.y) * 0.008, x, y));
     }
   }
-  for (const divider of [540, 820]) {
+  for (const divider of BAR_DIVIDERS) {
     for (let y = BAR.y + 3; y < BAR.y + BAR.height - 3; y++) {
       frame.set(BAR.x + divider, y, WOOD[0]);
       frame.set(BAR.x + divider + 1, y, GOLD[2]);
     }
   }
-  return { frame, overlay };
 }

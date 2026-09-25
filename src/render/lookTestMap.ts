@@ -1,3 +1,4 @@
+import { PLACES } from '../rules/scenario';
 import { fbm } from './noise';
 
 /**
@@ -31,16 +32,17 @@ export const PATHS: Point[][] = [
   [[330, 300], [262, 250], [200, 214], [150, 196]],
 ];
 
-export const CASTLE: Point = [1120, 212];
-export const TOWER: Point = [290, 226];
-export const MINE: Point = [150, 196];
-export const MILL: Point = [818, 566];
-export const VILLAGE = { huts: [[968, 772], [1016, 818], [904, 838], [1050, 770]] as Point[], well: [966, 822] as Point };
-export const HERO: Point = [546, 612];
-export const PATROL: Point = [404, 586];
-export const SIGNPOST: Point = [520, 520];
-export const CHEST: Point = [458, 702];
-export const GOLD_PILE: Point = [640, 560];
+export const CASTLE: Point = PLACES.castle;
+export const TOWER: Point = PLACES.tower;
+export const MINE: Point = PLACES.mine;
+export const MILL: Point = PLACES.mill;
+export const VILLAGE = { huts: [[968, 772], [1016, 818], [904, 838], [1050, 770]] as Point[], well: PLACES.village };
+export const HERO: Point = PLACES.hero;
+export const PATROL: Point = PLACES.patrol;
+export const SIGNPOST: Point = PLACES.signpost;
+export const CHEST: Point = PLACES.chest;
+export const GOLD_PILE: Point = PLACES.gold;
+export const HIDEOUT: Point = PLACES.hideout;
 
 /** Crags forming the north-west range, the cliff rim and the eastern ridge: x, foot y, width, height. */
 export const CRAGS: [number, number, number, number][] = [
@@ -73,6 +75,12 @@ export const ROCKS: [number, number, number][] = [
   [258, 244, 8], [320, 250, 6], [270, 276, 5], [188, 222, 7], [206, 236, 5], [620, 610, 5], [960, 540, 6], [1062, 300, 5],
 ];
 
+/** Trees keep clear of every landmark: centre and radius. */
+const CLEARINGS: [number, number, number][] = [
+  ...Object.values(PLACES).map(([x, y]) => [x, y - 10, 38] as [number, number, number]),
+  [PLACES.hideout[0], PLACES.hideout[1] - 20, 64],
+];
+
 /** How much forest wants to grow here: above one half means woodland. */
 export function forestAmount(x: number, y: number): number {
   let amount = 0;
@@ -80,7 +88,12 @@ export function forestAmount(x: number, y: number): number {
     const d = Math.hypot((x - cx) / rx, (y - cy) / ry);
     amount = Math.max(amount, 1.05 - d * 0.55);
   }
-  return amount + (fbm(x / 40, y / 40, 2, 61) - 0.5) * 0.3;
+  amount += (fbm(x / 40, y / 40, 2, 61) - 0.5) * 0.3;
+  for (const [cx, cy, r] of CLEARINGS) {
+    const d = Math.hypot(x - cx, y - cy) / r;
+    if (d < 1) amount -= (1 - d) * 0.8;
+  }
+  return amount;
 }
 
 /** Where the hero has already been: along the roads from the castle, and around him. */

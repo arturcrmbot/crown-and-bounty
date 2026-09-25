@@ -1,0 +1,58 @@
+/* A torn parchment note: flat colours, hard edges, no blur, no rounded corners. */
+.kc-card-wrap {
+  position: fixed;
+  z-index: 10;
+  filter: drop-shadow(3px 3px 0 rgba(12, 8, 3, 0.75));
+  pointer-events: none;
+}
+.kc-card {
+  pointer-events: auto;
+  width: 250px;
+  padding: 14px 18px 12px;
+  color: #2a1a08;
+  font: 15px/1.38 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  background-color: #e4d0a2;
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(122, 92, 44, 0.16) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 70% 80%, rgba(122, 92, 44, 0.12) 0 1px, transparent 1.5px),
+    linear-gradient(#ead9b0, #d9c290);
+  background-size: 7px 9px, 11px 7px, 100% 100%;
+  border: 2px solid #5a3e14;
+  clip-path: polygon(0 3px, 7% 0, 18% 2px, 33% 0, 52% 3px, 70% 0, 86% 2px, 100% 0, 100% 97%, 91% 100%, 76% 98%, 60% 100%, 41% 97%, 24% 100%, 9% 98%, 0 100%);
+}
+.kc-card h3 {
+  margin: 0 0 6px;
+  font-size: 19px;
+  font-variant: small-caps;
+  letter-spacing: 1px;
+  color: #6e1a0c;
+}
+.kc-card p {
+  margin: 0 0 5px;
+}
+.kc-card b {
+  color: #3a1206;
+}
+.kc-card .choices {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 9px;
+  padding-top: 7px;
+  border-top: 1px solid #a88652;
+}
+.kc-card button {
+  all: unset;
+  cursor: pointer;
+  font-weight: bold;
+  color: #4a1a08;
+}
+.kc-card button::before {
+  content: '\25C6\00a0';
+  color: #9a7a3a;
+}
+.kc-card button:hover,
+.kc-card button:focus-visible {
+  color: #a42a10;
+  text-decoration: underline;
+}
