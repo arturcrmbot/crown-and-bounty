@@ -1,20 +1,31 @@
 import { ALDMOOR } from '../content/aldmoor';
+import { BACKGROUNDS, type BackgroundId } from '../content/backgrounds';
 import type { Province } from '../content/types';
+import { heroStats, newHero } from './hero';
 import { startingExplored } from './map/fog';
-import { MOVEMENT_PER_DAY, type GameState } from './state';
+import type { GameState } from './state';
 
-export function newGame(seed = 1066, province: Province = ALDMOOR): GameState {
-  return {
+/** A new commission in `province`, for a hero of `background`. */
+export function newGame(seed = 1066, province: Province = ALDMOOR, background: BackgroundId = 'knight'): GameState {
+  const b = BACKGROUNDS[background];
+  const state: GameState = {
     day: 1,
-    gold: 1250,
-    leadership: 120,
-    army: [{ troop: 'knights', count: 12 }, { troop: 'archers', count: 25 }],
-    movement: MOVEMENT_PER_DAY,
+    gold: b.gold,
+    leadership: b.leadership,
+    army: b.army.map((s) => ({ ...s })),
+    movement: 0,
     seed,
     locations: structuredClone(province.locations),
     bounty: 'open',
-    hero: { at: province.hero, facing: 1, attack: 1, defence: 1, spellPower: 2, knowledge: 2, mana: 20, spells: ['bolt', 'bless', 'slow'] },
+    hero: newHero(background, province.hero),
     world: { width: province.width, height: province.height },
     explored: startingExplored(province),
   };
+  return { ...state, movement: heroStats(state).movement };
+}
+
+/** Starts the same commission again with a different background (from the opening card). */
+export function chooseBackground(state: GameState, background: BackgroundId): GameState {
+  const fresh = newGame(state.seed, ALDMOOR, background);
+  return { ...fresh, explored: state.explored, locations: state.locations };
 }

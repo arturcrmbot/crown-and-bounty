@@ -1,6 +1,6 @@
 import { TROOPS } from '../content/troops';
 import { SPELLS } from '../content/spells';
-import { speedOf, type BattleState } from '../rules/battle/battle';
+import { spellCost, speedOf, statsOf, type BattleState } from '../rules/battle/battle';
 import { COLS, colOf, HEXES, ROWS, rowOf } from '../rules/battle/hex';
 import { Bitmap, blit } from './bitmap';
 import { flashSprite, FIGHTER_FOOT, troopSprite, type Pose } from './battleSprites';
@@ -231,14 +231,15 @@ export class BattleScreen {
     else if (f) {
       const t = TROOPS[f.troop];
       const tags = [f.blessed ? ' Blessed' : '', f.slowed ? ' Slowed' : '', f.defending ? ' Defending' : ''].join('');
-      const info = `${f.count} ${f.count === 1 ? t.one : t.name}  ·  Att ${t.attack} Def ${t.defence} Dmg ${t.damage[0]}-${t.damage[1]} HP ${f.hp}/${t.hp} Spd ${speedOf(f)}${f.shots ? ` Shots ${f.shots}` : ''}${tags}`;
+      const { attack, defence } = statsOf(b, f);
+      const info = `${f.count} ${f.count === 1 ? t.one : t.name}  ·  Att ${attack} Def ${defence} Dmg ${t.damage[0]}-${t.damage[1]} HP ${f.hp}/${t.hp} Spd ${speedOf(f)}${f.shots ? ` Shots ${f.shots}` : ''}${tags}`;
       drawText(screen, info, BAR.x + 12, text, f.side === 'player' ? PARCHMENT[6] : RED[6], INK);
     }
     const mana = `Mana ${b.hero.mana}`;
     drawText(screen, mana, BUTTONS[0].rect.x - 70, text, BLUE[6], INK);
     for (const button of BUTTONS) {
       const { x, y, width, height } = button.rect;
-      const disabled = button.id === 'spells' && !Object.values(SPELLS).some((s) => b.hero.spells.includes(s.id) && b.hero.mana >= s.mana && b.hero.castRound < b.round);
+      const disabled = button.id === 'spells' && !Object.values(SPELLS).some((s) => b.hero.spells.includes(s.id) && b.hero.mana >= spellCost(b, s.id) && b.hero.castRound < b.round);
       for (let j = 0; j < height; j++) {
         for (let i = 0; i < width; i++) {
           const edge = i === 0 || j === 0 ? GOLD[4] : i === width - 1 || j === height - 1 ? INK : -1;

@@ -10,7 +10,6 @@ const format = (text: string) => escape(text).replace(/\*\*(.+?)\*\*/g, '<b>$1</
 export class CardView {
   private readonly wrap = document.createElement('div');
   private readonly card = document.createElement('div');
-  private anchor: ScreenPoint | null = null;
   private onChoice: (action: Action) => void;
 
   constructor(onChoice: (action: Action) => void) {
@@ -50,14 +49,22 @@ export class CardView {
     this.wrap.hidden = true;
   }
 
-  /** Puts the card's bottom edge just above `point` (page pixels), kept inside the window. */
-  place(point: ScreenPoint | null) {
-    this.anchor = point ?? this.anchor;
-    if (this.wrap.hidden || !this.anchor) return;
+  /**
+   * Puts the card's bottom edge just above `point` (page pixels), or just below it when there is no
+   * room above, kept between `top` and `bottom`. With no point, the card sits in the middle.
+   */
+  place(point: ScreenPoint | null, top: number, bottom: number) {
+    if (this.wrap.hidden) return;
     const { offsetWidth: w, offsetHeight: h } = this.wrap;
-    const x = Math.min(window.innerWidth - w - 8, Math.max(8, this.anchor.x - w / 2));
-    const above = this.anchor.y - h - 10;
-    const y = above >= 8 ? above : Math.min(window.innerHeight - h - 8, this.anchor.y + 30);
+    const [minY, maxY] = [top + 8, Math.max(top + 8, bottom - h - 8)];
+    const clampY = (y: number) => Math.min(maxY, Math.max(minY, y));
+    const x = Math.min(window.innerWidth - w - 8, Math.max(8, (point ? point.x : window.innerWidth / 2) - w / 2));
+    let y: number;
+    if (!point) y = clampY((top + bottom - h) / 2);
+    else {
+      const above = point.y - h - 10;
+      y = above >= minY ? above : clampY(point.y + 30);
+    }
     this.wrap.style.left = `${Math.round(x)}px`;
     this.wrap.style.top = `${Math.round(y)}px`;
   }

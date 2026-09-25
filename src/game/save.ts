@@ -1,6 +1,7 @@
 import type { GameState } from '../rules/game';
 
-const KEY = 'kings-commission/save/v1';
+/** Bump the version whenever the state's shape changes, so old saves are dropped rather than half-loaded. */
+const KEY = 'kings-commission/save/v2';
 /** Off once a restart has begun (or for frozen test pages), so nothing writes the old game back. */
 let saving = true;
 
@@ -23,8 +24,7 @@ export function loadGame(): GameState | null {
     const text = localStorage.getItem(KEY);
     if (!text) return null;
     const state = JSON.parse(text) as GameState;
-    // Saves from before a rules change are dropped rather than half-loaded.
-    return state && Array.isArray(state.explored) && Array.isArray(state.army) && typeof state.hero?.mana === 'number' ? state : null;
+    return state && Array.isArray(state.explored) && Array.isArray(state.army) && typeof state.hero?.level === 'number' ? state : null;
   } catch {
     return null;
   }

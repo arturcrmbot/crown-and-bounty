@@ -26,7 +26,10 @@ try {
   for (const [name, scene] of Object.entries(SCENES)) {
     await page.goto(`${server.url}?freeze=1${scene.query}`);
     await kc.ready();
-    if (!scene.keepCard) await kc.choose('Ride out');
+    if (!scene.keepCard) {
+      await kc.choose('Knight of the Realm');
+      await kc.choose('Ride out');
+    }
     await page.waitForTimeout(120);
     now[name] = await kc.frameHash();
     await page.screenshot({ path: `screenshots/visual/${name}.png` });

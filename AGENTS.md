@@ -12,7 +12,7 @@ King's Commission (working title) is a browser game: King's Bounty (1990) rebuil
 
 ## Architecture
 
-- `src/content/`: typed game data. Provinces (land, places, decor), later troops, perks and villains.
+- `src/content/`: typed game data. Provinces (land, places, decor), troops, spells, backgrounds, skills, perks and artifacts.
 - `src/rules/`: the game rules in plain TypeScript, with no Three.js, DOM or timers. Every change is `(state, action) → { state, events }`, and dice come from the seed in the state. The rules own the logical map (`map/`: 8 px walk grid, pathfinding, movement, fog). Tested with Vitest.
 - `src/game/`: screen controllers (input, riding animation, events into cards and HUD), save/load. `main.ts` only boots.
 - `src/render/`: 2D pixel-art drawing into an indexed 960×540 framebuffer. It reads the rules state and never changes it.
@@ -23,9 +23,9 @@ King's Commission (working title) is a browser game: King's Bounty (1990) rebuil
 
 Change, run the tests, open the game in the browser panel, screenshot, fix.
 
-- `npm run dev`: dev server on http://127.0.0.1:5188 (5173 is often taken on this machine). Scroll with arrows, WASD or drag; click to ride; E ends the day. `?fresh=1` ignores the save, `?freeze=1` stops the clock, `?speed=8` rides faster.
+- `npm run dev`: dev server on http://127.0.0.1:5188 (5173 is often taken on this machine). Scroll with arrows, WASD or drag; click to ride; E ends the day. `?fresh=1` ignores the save, `?freeze=1` stops the clock (and doesn't save), `?speed=8` rides faster, `?x=&y=` centres the camera, `?battle=patrol` opens that fight.
 - `npm test`: Vitest (rules, map, movement, bot). `npm run typecheck` and `npm run build`.
-- `npm run sim [-- 50]`: the bot plays the commission for many seeds and prints a balance report.
+- `npm run sim [-- 50]`: the bot plays the commission for many seeds, per background, and prints a balance report. `npm run sim:battles` prints win chances for each fight.
 - `npm run e2e`: plays the whole commission through the real UI on its own server; exit code 1 on failure.
 - `npm run visual [-- --approve]`: frozen scenes, exact frame hashes against `test/visual.json`, PNGs in `screenshots/visual/`.
 - `npm run shots`: ad-hoc screenshot of the running dev server (env: `QUERY`, `RIDE=x,y`, `OUT`).

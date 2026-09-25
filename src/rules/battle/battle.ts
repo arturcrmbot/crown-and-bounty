@@ -20,10 +20,30 @@ export type Fighter = {
   waited: boolean;
   blessed: boolean;
   slowed: boolean;
+  hasted: boolean;
 };
 
 /** The player's hero, watching from the edge of the field: skills for every stack, and spells. */
-export type BattleHero = { attack: number; defence: number; spellPower: number; mana: number; spells: SpellId[]; castRound: number };
+export type BattleHero = {
+  /** What the battle log calls him. */
+  name?: string;
+  attack: number;
+  defence: number;
+  spellPower: number;
+  mana: number;
+  spells: SpellId[];
+  castRound: number;
+  /** Damage multipliers from skills and gear, as fractions (0.15 is 15% more). */
+  melee?: number;
+  ranged?: number;
+  /** Fraction of damage the hero's troops shrug off. */
+  armour?: number;
+  manaDiscount?: number;
+  /** Extra attack, defence and shots for kinds of troop. */
+  troops?: Partial<Record<TroopId, { attack: number; defence: number; shots: number }>>;
+  /** Enemy troops that start slowed. */
+  slows?: TroopId[];
+};
 
 export type BattleState = {
   place: string;
@@ -63,7 +83,10 @@ const LINE_UP = [4, 2, 6, 0, 8];
 const alive = (f: Fighter) => f.count > 0;
 export const fighterById = (b: BattleState, id: number) => b.fighters.find((f) => f.id === id)!;
 export const activeFighter = (b: BattleState): Fighter | null => (b.result || b.order.length === 0 ? null : fighterById(b, b.order[0]));
-export const speedOf = (f: Fighter) => (f.slowed ? Math.ceil(TROOPS[f.troop].speed / 2) : TROOPS[f.troop].speed);
+export const speedOf = (f: Fighter) => {
+  const base = TROOPS[f.troop].speed + (f.hasted ? 2 : 0);
+  return f.slowed ? Math.ceil(base / 2) : base;
+};
 export const isRanged = (f: Fighter) => f.shots > 0;
 
 function turnOrder(fighters: Fighter[]): number[] {
@@ -85,12 +108,13 @@ export function createBattle(args: { place: string; seed: number; player: Army; 
         startCount: s.count,
         hp: TROOPS[s.troop].hp,
         at: hexIndex(col, LINE_UP[i % LINE_UP.length]),
-        shots: TROOPS[s.troop].shots ?? 0,
+        shots: TROOPS[s.troop].shots ? TROOPS[s.troop].shots! + (side === 'player' ? (args.hero.troops?.[s.troop]?.shots ?? 0) : 0) : 0,
         retaliated: false,
         defending: false,
         waited: false,
         blessed: false,
-        slowed: false,
+        slowed: side === 'enemy' && (args.hero.slows ?? []).includes(s.troop),
+        hasted: false,
       }),
     );
   add(args.player.filter((s) => s.count > 0), 'player', 0);
@@ -131,7 +155,19 @@ export function options(b: BattleState): Options {
   return { moves, melee, shoot };
 }
 
-const heroFor = (b: BattleState, side: Side) => (side === 'player' ? b.hero : { attack: 0, defence: 0 });
+/** A stack's attack and defence as they stand, with the hero's help. */
+export function statsOf(b: BattleState, f: Fighter): { attack: number; defence: number } {
+  const t = TROOPS[f.troop];
+  const help = heroSkill(b, f);
+  return { attack: t.attack + help.attack, defence: t.defence + help.defence };
+}
+
+/** Attack and defence the hero adds to a stack: his own, plus any bonus for that kind of troop. */
+function heroSkill(b: BattleState, f: Fighter): { attack: number; defence: number } {
+  if (f.side !== 'player') return { attack: 0, defence: 0 };
+  const troop = b.hero.troops?.[f.troop];
+  return { attack: b.hero.attack + (troop?.attack ?? 0), defence: b.hero.defence + (troop?.defence ?? 0) };
+}
 
 /** The attack-against-defence multiplier, HoMM2 style. */
 export function skillFactor(attack: number, defence: number): number {
@@ -141,8 +177,8 @@ export function skillFactor(attack: number, defence: number): number {
 /** Damage one stack deals another. With `seed` it rolls; without, it's the average. */
 export function strike(b: BattleState, attacker: Fighter, target: Fighter, ranged: boolean, seed?: number): { damage: number; seed?: number } {
   const t = TROOPS[attacker.troop];
-  const attack = t.attack + heroFor(b, attacker.side).attack;
-  let defence = TROOPS[target.troop].defence + heroFor(b, target.side).defence;
+  const attack = t.attack + heroSkill(b, attacker).attack;
+  let defence = TROOPS[target.troop].defence + heroSkill(b, target).defence;
   if (target.defending) defence = Math.round(defence * 1.3);
   const [min, max] = t.damage;
   let perTroop: number;
@@ -159,7 +195,9 @@ export function strike(b: BattleState, attacker: Fighter, target: Fighter, range
     perTroop = sum / rolls;
   }
   const inMelee = !ranged && t.shots ? 0.5 : 1;
-  const damage = Math.max(1, Math.round(attacker.count * perTroop * skillFactor(attack, defence) * inMelee));
+  const skill = attacker.side === 'player' ? 1 + ((ranged ? b.hero.ranged : b.hero.melee) ?? 0) : 1;
+  const armour = target.side === 'player' ? 1 - (b.hero.armour ?? 0) : 1;
+  const damage = Math.max(1, Math.round(attacker.count * perTroop * skillFactor(attack, defence) * inMelee * skill * armour));
   return { damage, seed };
 }
 
@@ -172,8 +210,10 @@ export function wound(target: Fighter, damage: number): { count: number; hp: num
   return { count, hp: remaining - (count - 1) * full, killed: target.count - count };
 }
 
-export const canCast = (b: BattleState, spell: SpellId) => b.hero.spells.includes(spell) && b.hero.castRound < b.round && b.hero.mana >= SPELLS[spell].mana;
-export const boltDamage = (b: BattleState) => 25 * b.hero.spellPower;
+/** Mana a spell costs this hero. */
+export const spellCost = (b: BattleState, spell: SpellId) => Math.max(1, SPELLS[spell].mana - (b.hero.manaDiscount ?? 0));
+export const canCast = (b: BattleState, spell: SpellId) => b.hero.spells.includes(spell) && b.hero.castRound < b.round && b.hero.mana >= spellCost(b, spell);
+export const boltDamage = (b: BattleState) => 20 * b.hero.spellPower;
 
 /** Applies one action for the acting stack (or the hero's spell) and moves the battle on. */
 export function battleAct(b: BattleState, action: BattleAction): BattleResult {
@@ -238,7 +278,7 @@ export function battleAct(b: BattleState, action: BattleAction): BattleResult {
       const spell = SPELLS[action.spell];
       const target = fighters.find((x) => x.id === action.target && alive(x));
       if (!target || !canCast(b, action.spell) || (spell.on === 'enemy') !== (target.side === 'enemy')) return { battle: b, events: [] };
-      next.hero.mana -= spell.mana;
+      next.hero.mana -= spellCost(b, action.spell);
       next.hero.castRound = b.round;
       let damage = 0;
       let killed = 0;
@@ -249,6 +289,7 @@ export function battleAct(b: BattleState, action: BattleAction): BattleResult {
         target.count = w.count;
         target.hp = w.hp;
       } else if (action.spell === 'bless') target.blessed = true;
+      else if (action.spell === 'haste') target.hasted = true;
       else target.slowed = true;
       events.push({ type: 'spell', spell: action.spell, target: target.id, damage, killed });
       return settle(next, events, false);

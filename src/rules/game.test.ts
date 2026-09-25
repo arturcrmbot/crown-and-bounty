@@ -1,5 +1,5 @@
 import { describe as suite, expect, it } from 'vitest';
-import { apply, armyPower, countOf, endDay, fight, leadershipUsed, locationById, roman, visit, type Result } from './game';
+import { apply, armyPower, countOf, endDay, fight, leadershipUsed, locationById, roman, visit, wages, type Result } from './game';
 import { isExplored } from './map/fog';
 import { buildMap, cellIndex } from './map/model';
 import { newGame } from './scenario';
@@ -29,7 +29,7 @@ suite('days', () => {
     const before = state.gold;
     const payday = endDay(state);
     expect(payday.state.day).toBe(8);
-    expect(payday.state.gold).toBe(before + 1000 - (12 * 8 + 25 * 3));
+    expect(payday.state.gold).toBe(before + 1000 - wages(state.army));
     expect(cardOf(payday).lines[0]).toContain('Payday');
     expect(payday.events).toContainEqual({ type: 'day', day: 8, payday: true });
   });
@@ -57,7 +57,7 @@ suite('places', () => {
 
   it('caps recruiting by leadership and gold', () => {
     const state = newGame();
-    const room = state.leadership - leadershipUsed(state.army);
+    const room = 140 - leadershipUsed(state.army);
     const joined = apply(state, { type: 'recruit', id: 'village' })!.state;
     expect(countOf(joined.army, 'peasants')).toBe(Math.min(20, room));
     expect(leadershipUsed(joined.army)).toBeLessThanOrEqual(joined.leadership);
@@ -72,7 +72,7 @@ suite('places', () => {
     const [hx, hy] = locationById(result.state, 'hideout').at;
     expect(isExplored(newGame().explored, cellIndex(map, hx, hy))).toBe(false);
     expect(isExplored(result.state.explored, cellIndex(map, hx, hy))).toBe(true);
-    expect(result.state.leadership).toBe(140);
+    expect(result.state.hero.gear.banner).toBe('oldBanner');
   });
 });
 

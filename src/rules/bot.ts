@@ -1,9 +1,10 @@
 import { troopPower } from '../content/troops';
-import { apply, armyPower, endDay, fight, leadershipUsed, locationById, recruitable, visit, winChance, type GameState, type Location } from './game';
+import { ARTIFACTS } from '../content/artifacts';
+import { apply, armyPower, endDay, fight, heroStats, leadershipUsed, learn, locationById, recruitable, visit, winChance, type GameState, type Location } from './game';
 import type { MapModel } from './map/model';
 import { planRoute, routeCosts, stepAlong } from './map/movement';
 
-export type BotRun = { won: boolean; day: number; gold: number; power: number; fights: number; retreats: number; log: string[] };
+export type BotRun = { won: boolean; day: number; gold: number; power: number; fights: number; retreats: number; level: number; log: string[] };
 
 /** How much the bot wants a place right now, or null if it isn't worth riding to. */
 function worth(state: GameState, l: Location): number | null {
@@ -72,17 +73,21 @@ export function playCommission(start: GameState, map: MapModel, maxSteps = 20000
     const place = locationById(state, best.id);
     state = visit(state, best.id).state;
     if (place.kind === 'chest' && !place.done) {
-      const short = state.leadership - leadershipUsed(state.army) < 40;
+      const short = heroStats(state).leadership - leadershipUsed(state.army) < 40;
       state = apply(state, { type: 'chest', id: place.id, take: short ? 'leadership' : 'gold' })!.state;
-    } else if ((place.kind === 'castle' || place.kind === 'village') && recruitable(state, place.id) > 0) {
-      state = apply(state, { type: 'recruit', id: place.id })!.state;
+    } else if (place.kind === 'castle' || place.kind === 'village') {
+      if (recruitable(state, place.id) > 0) state = apply(state, { type: 'recruit', id: place.id })!.state;
+      for (const ware of locationById(state, place.id).wares ?? []) {
+        if (state.gold >= (ARTIFACTS[ware].price ?? 0) + 600) state = apply(state, { type: 'buy', id: place.id, artifact: ware })!.state;
+      }
     } else if (place.enemy && !place.done) {
       fights++;
       const before = locationById(state, place.id).done;
       state = fight(state, place.id).state;
       if (locationById(state, place.id).done === before) retreats++;
     }
+    while (state.hero.offers.length > 0) state = learn(state, state.hero.offers[0].options[0])!.state;
     log.push(`day ${state.day}: ${place.name}`);
   }
-  return { won: state.over === 'won', day: state.day, gold: state.gold, power: armyPower(state.army), fights, retreats, log };
+  return { won: state.over === 'won', day: state.day, gold: state.gold, power: armyPower(state.army), fights, retreats, level: state.hero.level, log };
 }

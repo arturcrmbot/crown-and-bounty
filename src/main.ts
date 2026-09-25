@@ -2,10 +2,11 @@ import { ALDMOOR } from './content/aldmoor';
 import { Game } from './game/game';
 import { Display } from './game/display';
 import { Input } from './game/input';
+import { backgroundCard, welcomeBackCard } from './game/intro';
 import { loadGame, saveGame, stopSaving } from './game/save';
 import { SCREEN } from './render/frame';
 import { paletteWords } from './render/palette';
-import { roman, startFight, type Card } from './rules/game';
+import { startFight } from './rules/game';
 import { buildMap } from './rules/map/model';
 import { newGame } from './rules/scenario';
 
@@ -38,21 +39,7 @@ if (query.has('x')) game.adventure.view.centreOn(Number(query.get('x')), Number(
 window.__kc = game.debug();
 window.addEventListener('pagehide', () => saveGame(game.adventure.state));
 
-const intro: Card = {
-  title: 'The King\u2019s Commission',
-  lines: [
-    'Baron Grimsby owes the Crown three years of taxes and one goose. Bring him in.',
-    'Click the map to ride, and click anything that looks interesting. Red marks on your route are for tomorrow.',
-    'The hourglass (or **E**) ends the day. Every seventh day is payday.',
-  ],
-  choices: [{ label: 'Ride out', action: { type: 'close' } }],
-};
-const welcomeBack = (day: number): Card => ({
-  title: 'Welcome back',
-  lines: [`Day ${roman(day)} of your commission. Baron Grimsby is still at large.`],
-  choices: [{ label: 'Ride on', action: { type: 'close' } }, { label: 'Start a new commission', action: { type: 'restart' } }],
-});
-if (!game.battle) game.adventure.showCard(resume ? welcomeBack(resume.day) : intro, null);
+if (!game.battle) game.adventure.showCard(resume ? welcomeBackCard(resume.day) : backgroundCard(), null);
 
 let last = performance.now();
 requestAnimationFrame(function frame(now) {

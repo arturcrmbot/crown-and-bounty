@@ -1,15 +1,31 @@
+import { BACKGROUNDS } from '../content/backgrounds';
+import { ARTIFACTS, type ArtifactId } from '../content/artifacts';
 import { autoResolve } from './battle/ai';
 import { createBattle, survivors, type BattleHero } from './battle/battle';
-import { again, armyLine, close, coins, locationById, roll, roman, show, troops, update, VANISHES, type Army, type GameEvent, type GameState, type Result } from './state';
+import { foundNote, gainXp, giveArtifact, heroStats } from './hero';
+import { again, armyLine, armyPower, close, coins, locationById, roll, roman, show, troops, update, VANISHES, type Army, type GameEvent, type GameState, type Result } from './state';
 
-export const heroInBattle = (state: GameState): BattleHero => ({
-  attack: state.hero.attack,
-  defence: state.hero.defence,
-  spellPower: state.hero.spellPower,
-  mana: state.hero.mana,
-  spells: state.hero.spells,
-  castRound: 0,
-});
+export function heroInBattle(state: GameState): BattleHero {
+  const s = heroStats(state);
+  return {
+    name: BACKGROUNDS[state.hero.background].short,
+    attack: s.attack,
+    defence: s.defence,
+    spellPower: s.spellPower,
+    mana: state.hero.mana,
+    spells: state.hero.spells,
+    castRound: 0,
+    melee: s.melee,
+    ranged: s.ranged,
+    armour: s.armour,
+    manaDiscount: s.manaDiscount,
+    troops: s.troops,
+    slows: s.slows,
+  };
+}
+
+/** Experience for a won battle: the fighting worth of what was beaten. */
+export const battleXp = (enemy: Army) => Math.round(armyPower(enemy));
 
 /** "You lost 3 Knights and 7 Archers." */
 export function lossesLine(before: Army, after: Army): string {
@@ -40,6 +56,16 @@ export function finishFight(state: GameState): Result {
   if (battle.result === 'won') {
     let next = update({ ...base, gold: base.gold + enemy.reward }, place.id, { done: true });
     if (VANISHES.has(place.kind)) events.push({ type: 'removed', id: place.id });
+    const spoils: string[] = [];
+    if (place.artifact) {
+      next = giveArtifact(next, place.artifact as ArtifactId);
+      spoils.push(`Among the spoils: **${ARTIFACTS[place.artifact as ArtifactId].name}**. ${foundNote(next, place.artifact as ArtifactId)}`);
+    }
+    const xp = battleXp(enemy.army);
+    const grown = gainXp(next, xp);
+    next = grown.state;
+    events.push(...grown.events);
+    spoils.push(`**+${xp} experience.**`);
     if (place.kind === 'hideout') {
       next = { ...next, bounty: 'paid', over: 'won' };
       events.push({ type: 'over', result: 'won' });
@@ -47,7 +73,7 @@ export function finishFight(state: GameState): Result {
         show(
           {
             title: 'The bounty is paid!',
-            lines: ['Baron Grimsby surrenders, still clutching the goose.', lost, `The Crown pays **${coins(enemy.reward)} gold**. The royal goose is going home.`, `*Commission complete on day ${roman(next.day)}.*`],
+            lines: ['Baron Grimsby surrenders, still clutching the goose.', lost, `The Crown pays **${coins(enemy.reward)} gold**. The royal goose is going home.`, ...spoils, `*Commission complete on day ${roman(next.day)}.*`],
             choices: [again, close],
           },
           place.at,
@@ -56,7 +82,7 @@ export function finishFight(state: GameState): Result {
       );
       return { state: next, events };
     }
-    events.push(show({ title: 'Victory!', lines: [enemy.flees, lost, enemy.loot.replace('{gold}', `**${coins(enemy.reward)} gold**`)], choices: [close] }, place.at, place.id));
+    events.push(show({ title: 'Victory!', lines: [enemy.flees, lost, enemy.loot.replace('{gold}', `**${coins(enemy.reward)} gold**`), ...spoils], choices: [close] }, place.at, place.id));
     return { state: next, events };
   }
   if (battle.result === 'fled') {

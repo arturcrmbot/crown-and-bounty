@@ -1,8 +1,9 @@
+import { BACKGROUNDS } from '../content/backgrounds';
 import { buildAdventureScene, type AdventureScene, type Hitbox } from '../render/adventureScene';
 import { MAP_VIEW } from '../render/frame';
 import { HOURGLASS, HOURGLASS_AT, paintHud } from '../render/hud';
 import type { BattleState } from '../rules/battle/battle';
-import { apply, describe, describeHero, finishFight, locationById, visit, type Action, type Card, type GameEvent, type GameState, type Result } from '../rules/game';
+import { apply, describe, describeHero, finishFight, levelUpCard, locationById, visit, type Action, type Card, type GameEvent, type GameState, type Result } from '../rules/game';
 import type { Point } from '../rules/map/geometry';
 import { cellCentre, type MapModel } from '../rules/map/model';
 import { planRoute, routeCosts, stepAlong } from '../rules/map/movement';
@@ -10,6 +11,7 @@ import { CardView } from '../ui/card';
 import { HoverLabel } from '../ui/label';
 import type { Display } from './display';
 import type { Input } from './input';
+import { storyCard } from './intro';
 import { clearSave, saveGame } from './save';
 
 /** Map pixels per second. */
@@ -160,10 +162,15 @@ export class AdventureController {
         this.plan(locationById(this.state, action.id).at, action.id);
         return;
       }
+      case 'background': {
+        this.run(apply(this.state, action));
+        this.showCard(storyCard(action.id), null);
+        return;
+      }
       default: {
-        const result = apply(this.state, action);
-        if (!result) this.hideCard();
-        this.run(result);
+        // Whatever the action shows replaces this card; if it shows nothing, the card is done.
+        this.hideCard();
+        this.run(apply(this.state, action));
       }
     }
   }
@@ -190,7 +197,15 @@ export class AdventureController {
 
   // --- Each frame -------------------------------------------------------------------------
 
+  /** Level-ups wait for a choice: offer the next one whenever nothing else is on the table. */
+  private promptLevelUp() {
+    if (this.cards.isOpen || this.state.over) return;
+    const card = levelUpCard(this.state);
+    if (card) this.showCard(card, null);
+  }
+
   update(dt: number, held: Set<string>) {
+    this.promptLevelUp();
     const dx = (held.has('arrowright') || held.has('d') ? 1 : 0) - (held.has('arrowleft') || held.has('a') ? 1 : 0);
     const dy = (held.has('arrowdown') || held.has('s') ? 1 : 0) - (held.has('arrowup') || held.has('w') ? 1 : 0);
     if (dx || dy) {
@@ -285,8 +300,9 @@ export class AdventureController {
 
   /** Keeps the open card hanging above whatever it describes. */
   placeCard() {
-    const anchor = this.cardAnchor ?? [this.view.camera.x + MAP_VIEW.width / 2, this.view.camera.y + MAP_VIEW.height / 2 + 60];
-    this.cards.place(this.display.toPage(MAP_VIEW.x + anchor[0] - this.view.camera.x, MAP_VIEW.y + anchor[1] - this.view.camera.y));
+    const a = this.cardAnchor;
+    const point = a && this.display.toPage(MAP_VIEW.x + a[0] - this.view.camera.x, MAP_VIEW.y + a[1] - this.view.camera.y);
+    this.cards.place(point, this.display.toPage(0, MAP_VIEW.y).y, this.display.toPage(0, MAP_VIEW.y + MAP_VIEW.height).y);
   }
 
   // --- Input ------------------------------------------------------------------------------
@@ -295,7 +311,7 @@ export class AdventureController {
   private under([x, y]: Point): { id: string; name: string; box?: Hitbox; fogged?: boolean } | null {
     const h = this.scene.hero.object;
     const width = this.scene.hero.idle[0].width;
-    if (x >= h.x + 6 && x < h.x + width - 6 && y >= h.y + 4 && y < h.y + this.scene.hero.foot + 4) return { id: 'hero', name: 'Sir Aldric' };
+    if (x >= h.x + 6 && x < h.x + width - 6 && y >= h.y + 4 && y < h.y + this.scene.hero.foot + 4) return { id: 'hero', name: BACKGROUNDS[this.state.hero.background].short };
     const gone = (id: string) => {
       const l = this.state.locations.find((p) => p.id === id);
       return !!l && l.done && (l.kind === 'chest' || l.kind === 'gold' || l.kind === 'patrol');

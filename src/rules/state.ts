@@ -1,7 +1,11 @@
 /** Pure game rules: no DOM, no timers. Every change returns a new state plus events, and dice come from `seed`. */
+import type { ArtifactId, Slot } from '../content/artifacts';
+import type { BackgroundId } from '../content/backgrounds';
+import type { PerkId, SkillId } from '../content/skills';
 import type { SpellId } from '../content/spells';
 import { TROOPS, troopPower, troops, type TroopId } from '../content/troops';
 import type { BattleState } from './battle/battle';
+import type { Offer } from './hero';
 import type { Explored } from './map/fog';
 import type { Point } from './map/geometry';
 
@@ -45,6 +49,12 @@ export type Location = {
   enemy?: Enemy;
   /** A map point the visit reveals (the tower's journal points at the hideout). */
   reveals?: Point;
+  /** Visited at least once, for the discovery experience. */
+  seen?: boolean;
+  /** What the place gives the first time: an artifact for the hero. */
+  artifact?: ArtifactId;
+  /** For sale here (the castle armoury). */
+  wares?: ArtifactId[];
 };
 
 export type GameState = {
@@ -65,10 +75,14 @@ export type GameState = {
   battle?: BattleState;
 };
 
-/** Sir Aldric: where he is, and the skills he brings to every battle. */
+/** Sir Aldric: where he is, who he was, and what he has learned. Derived numbers come from `heroStats`. */
 export type Hero = {
   at: Point;
   facing: 1 | -1;
+  background: BackgroundId;
+  level: number;
+  xp: number;
+  /** Primary stats before skills and gear: the background's, plus level-ups. */
   attack: number;
   defence: number;
   spellPower: number;
@@ -76,6 +90,12 @@ export type Hero = {
   knowledge: number;
   mana: number;
   spells: SpellId[];
+  skills: Partial<Record<SkillId, number>>;
+  perks: PerkId[];
+  gear: Partial<Record<Slot, ArtifactId>>;
+  pack: ArtifactId[];
+  /** Level-ups still waiting for a choice. */
+  offers: Offer[];
 };
 
 /** What the player can do from a card. `go` rides to a location and visits it on arrival. */
@@ -91,7 +111,13 @@ export type Action =
   /** Picked from the spellbook in battle: the screen then asks for a target. */
   | { type: 'spell'; spell: SpellId }
   /** Confirmed from the battle card: the army falls back. */
-  | { type: 'retreat' };
+  | { type: 'retreat' }
+  | { type: 'learn'; option: string }
+  | { type: 'equip'; artifact: ArtifactId }
+  | { type: 'gear' }
+  | { type: 'armoury'; id: string }
+  | { type: 'buy'; id: string; artifact: ArtifactId }
+  | { type: 'background'; id: BackgroundId };
 
 export type Choice = { label: string; action: Action };
 
@@ -107,6 +133,7 @@ export type GameEvent =
   | { type: 'moved'; at: Point; facing: 1 | -1 }
   | { type: 'day'; day: number; payday: boolean }
   | { type: 'battle'; place: string }
+  | { type: 'levelUp'; level: number }
   | { type: 'over'; result: 'won' | 'lost' };
 
 export type Result = { state: GameState; events: GameEvent[] };

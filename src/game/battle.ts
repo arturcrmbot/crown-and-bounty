@@ -1,8 +1,9 @@
 import { SPELLS, type SpellId } from '../content/spells';
 import { TROOPS, troops } from '../content/troops';
 import { chooseAction } from '../rules/battle/ai';
-import { activeFighter, battleAct, boltDamage, canCast, fighterById, options, strike, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
+import { activeFighter, battleAct, boltDamage, canCast, fighterById, options, spellCost, strike, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
 import { BattleScreen, BUTTONS, hexAt, hexCentre, type BattleView } from '../render/battleScreen';
+import { MAP_VIEW } from '../render/frame';
 import { BLUE, GOLD, NEUTRAL, RED } from '../render/palette';
 import { CardView } from '../ui/card';
 import type { Display } from './display';
@@ -153,7 +154,7 @@ export class BattleController {
           this.step(0.4, {
             start: () => {
               v.shots.push(shot);
-              v.log = `Sir Aldric casts ${SPELLS[e.spell].name} on ${this.name(e.target).toLowerCase()}${e.damage ? `: ${e.damage} damage${e.killed ? `, ${e.killed} perish` : ''}` : ''}.`;
+              v.log = `${this.battle.hero.name ?? 'Aldric'} casts ${SPELLS[e.spell].name} on ${this.name(e.target).toLowerCase()}${e.damage ? `: ${e.damage} damage${e.killed ? `, ${e.killed} perish` : ''}` : ''}.`;
               if (e.damage) {
                 v.flashing.add(e.target);
                 this.float(e.target, `-${e.damage}`, GOLD[6]);
@@ -247,7 +248,7 @@ export class BattleController {
   }
 
   placeCard() {
-    this.cards.place(this.display.toPage(480, 300));
+    this.cards.place(null, this.display.toPage(0, MAP_VIEW.y).y, this.display.toPage(0, MAP_VIEW.y + MAP_VIEW.height).y);
   }
 
   /** What clicking a hex would do, for the stack whose turn it is. */
@@ -338,7 +339,7 @@ export class BattleController {
     const spells = hero.spells.map((id) => SPELLS[id]);
     this.cards.show({
       title: 'Spellbook',
-      lines: [`**${hero.mana}** mana. One spell a round.`, ...spells.map((s) => `**${s.name}** (${s.mana}): ${s.note}`)],
+      lines: [`**${hero.mana}** mana. One spell a round.`, ...spells.map((s) => `**${s.name}** (${spellCost(this.battle, s.id)}): ${s.note}`)],
       choices: [
         ...spells.filter((s) => canCast(this.battle, s.id)).map((s) => ({ label: `Cast ${s.name}`, action: { type: 'spell' as const, spell: s.id } })),
         { label: 'Close', action: { type: 'close' } },
