@@ -16,22 +16,19 @@ Working title. A small browser game, not commercial. The goal is quirky and fun,
 
 ## Look
 
-- **Target:** HoMM2's hand-painted pixel charm with modern lighting. The reference is Songs of Conquest.
-- **Plan:** a 3D scene in Three.js built from CC0 models and rendered through a pixel-art pipeline. That means a low-resolution render upscaled with nearest filtering, outlines from depth and normals, and a limited palette, plus real lights, shadows, animated water, fog of war and glowing spells.
-- **Alternative to compare:** a toy diorama with tilt-shift blur and soft shadows. Artur picks by eye from a side-by-side.
-- **Art sources:** CC0 packs only.
-  - Terrain and buildings: KayKit Medieval Hexagon Pack, https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0
-  - Heroes: KayKit Adventurers, https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0
-  - Monsters: KayKit Skeletons, or Quaternius (quaternius.com, poly.pizza).
-- **No image-model art.** Artur rejected generated images. Portraits are close-up renders of the same 3D characters.
+- **Target:** the look and feel of Heroes of Might and Magic 2's adventure map. **2D only.** On 25 Sep 2026 Artur rejected a 3D look test (pixel-art and toy-diorama renders of KayKit models): "it doesn't need to be 3D at all".
+- **Plan:** pixel art at HoMM2's own 640×480, scaled up in whole pixels, with square 32 px tiles and HoMM2's screen layout (map view in a carved frame, right-hand panel with minimap, hero, buttons and status). A 256-colour indexed palette, with water animated by palette cycling as HoMM2 did.
+- **Art sources:** CC0 packs where one fits, and code for everything else. No CC0 pack looks like HoMM2, so the look test draws its art in code.
+- **Real HoMM2 art is possible only locally:** loading your own copy of the game's data files, as the fheroes2 project does. The game couldn't then be shared publicly.
+- **No image-model art.** Artur rejected generated images.
 
 ## Stack
 
-TypeScript, Vite and Three.js. HTML/CSS for menus, panels and dialogs. Vitest for the game rules and Playwright for screenshots.
+TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dialogs. Vitest for the game rules and Playwright for screenshots.
 
 ## Build order
 
-1. **Look test:** one small scene rendered both ways, side by side. Artur picks one.
+1. **Look test:** one small 2D scene in the HoMM2 style. Artur judges it by eye.
 2. **Playable 15-minute loop, little polish:** a small map, two fights, recruiting, payday and one contract. This proves the fun before anything gets polished.
 3. **Battles:** make them look and feel great.
 4. **Content:** full map generation, villains, captains, spells and digging for the sceptre.
@@ -45,5 +42,5 @@ TypeScript, Vite and Three.js. HTML/CSS for menus, panels and dialogs. Vitest fo
 ## Open questions
 
 - **Battle format:** a hex battlefield with stacks, as in HoMM2, or King's Bounty's simpler grid?
-- **Adventure map tiles:** hex (the KayKit pack) or square (as in HoMM2)?
+- **Adventure map tiles:** square, as in HoMM2 (the look test assumes this), or hex?
 - **Adventure map pacing:** turn-based days or real time?
