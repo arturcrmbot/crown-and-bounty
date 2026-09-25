@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>King's Commission · look test</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #1d2433;
+      }
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        touch-action: none;
+      }
+      #hud {
+        position: fixed;
+        left: 12px;
+        top: 10px;
+        font: 700 15px/1.4 ui-monospace, Menlo, Consolas, monospace;
+        color: #f4f1e8;
+        text-shadow: 0 1px 0 #000, 0 0 6px #000;
+        pointer-events: none;
+        user-select: none;
+      }
+      #hud small {
+        display: block;
+        font-weight: 400;
+        font-size: 12px;
+        opacity: 0.85;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="hud">Loading…</div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

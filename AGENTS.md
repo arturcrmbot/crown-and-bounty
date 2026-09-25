@@ -19,4 +19,8 @@ King's Commission (working title) is a browser game: King's Bounty (1990) rebuil
 
 ## Loop
 
-Change, run the tests, open the game in the browser panel, screenshot, fix. Commands get listed here once the project is scaffolded.
+Change, run the tests, open the game in the browser panel, screenshot, fix.
+
+- `npm run dev`: dev server on http://localhost:5173. `?look=a` is pixel art, `?look=b` is the diorama, and `&px=4` fixes the pixel size.
+- `npm run typecheck` and `npm run build`.
+- `npm run shots`: with the dev server running, saves `screenshots/look-a.png` and `look-b.png` through headless Edge.
