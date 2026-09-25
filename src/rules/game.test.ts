@@ -77,7 +77,7 @@ suite('fights', () => {
 
   it('wins the commission by taking the hideout with a big enough army', () => {
     const strong = { ...newGame(), army: { knights: 30, archers: 30, peasants: 0 } };
-    expect(armyPower(strong.army)).toBeGreaterThan(210 * 1.2);
+    expect(armyPower(strong.army)).toBeGreaterThan(200 * 1.2);
     const result = fight(strong, 'hideout');
     expect(result.state.over).toBe('won');
     expect(result.state.bounty).toBe('paid');

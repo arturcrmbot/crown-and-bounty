@@ -56,6 +56,7 @@ export type Action =
   | { type: 'recruit'; id: string }
   | { type: 'fight'; id: string }
   | { type: 'endDay' }
+  | { type: 'restart' }
   | { type: 'close' };
 
 export type Choice = { label: string; action: Action };
@@ -66,6 +67,10 @@ export type Card = { title: string; lines: string[]; choices: Choice[]; reveal?:
 export type Result = { state: GameState; card: Card };
 
 const close: Choice = { label: 'Close', action: { type: 'close' } };
+const again: Choice = { label: 'Ride again', action: { type: 'restart' } };
+
+/** Gold amounts as written on a card: 2,000 not 2000. */
+const coins = (n: number) => Math.round(n).toLocaleString('en-GB');
 
 export function roman(n: number): string {
   const numerals: [number, string][] = [[100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'], [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']];
@@ -172,7 +177,7 @@ export function visit(state: GameState, id: string): Result {
         state,
         card: {
           title: place.name,
-          lines: [`You pry the lid off. Inside: **${gold} gold**.`, 'Keep it, or hand it out so the villagers sing your praises across the province?'],
+          lines: [`You pry the lid off. Inside: **${coins(gold)} gold**.`, 'Keep it, or hand it out so the villagers sing your praises across the province?'],
           choices: [
             { label: 'Keep the gold', action: { type: 'chest', id, take: 'gold' } },
             { label: `Hand it out (+${gold / 20} leadership)`, action: { type: 'chest', id, take: 'leadership' } },
@@ -183,7 +188,7 @@ export function visit(state: GameState, id: string): Result {
     case 'gold': {
       if (place.done) return { state, card: { title: place.name, lines: ['Nothing left but footprints.'], choices: [close] } };
       const gold = place.gold ?? 0;
-      return { state: update({ ...state, gold: state.gold + gold }, id, { done: true }), card: { title: place.name, lines: [`You pocket **${gold} gold**.`], choices: [close] } };
+      return { state: update({ ...state, gold: state.gold + gold }, id, { done: true }), card: { title: place.name, lines: [`You pocket **${coins(gold)} gold**.`], choices: [close] } };
     }
     case 'tower': {
       if (place.done) return { state, card: describe(state, id) };
@@ -206,7 +211,7 @@ export function visit(state: GameState, id: string): Result {
       const gold = place.gold ?? 0;
       return {
         state: update({ ...state, gold: state.gold + gold }, id, { done: true }),
-        card: { title: place.name, lines: [`A forgotten ore cart, still full: **${gold} gold**.`, 'The humming was a dwarf, who asks you to leave.'], choices: [close] },
+        card: { title: place.name, lines: [`A forgotten ore cart, still full: **${coins(gold)} gold**.`, 'The humming was a dwarf, who asks you to leave.'], choices: [close] },
       };
     }
     case 'mill': {
@@ -225,19 +230,19 @@ export function visit(state: GameState, id: string): Result {
       const room = Math.floor((state.leadership - leadershipUsed(state.army)) / TROOPS[offer.troop].leadership);
       const count = Math.min(offer.count, room, Math.floor(state.gold / offer.price));
       const name = TROOPS[offer.troop].name;
-      const lines = [`**${offer.count} ${name}** will join you for **${offer.price} gold** each.`];
+      const lines = [`**${offer.count} ${name}** will join you for **${coins(offer.price)} gold** each.`];
       if (room < offer.count) lines.push(room > 0 ? `You can only lead ${room} more.` : 'You can\u2019t lead any more troops. Find some leadership first.');
       if (count <= 0) return { state, card: { title: place.name, lines, choices: [close] } };
       return {
         state,
-        card: { title: place.name, lines, choices: [{ label: `Recruit ${count} (${count * offer.price} gold)`, action: { type: 'recruit', id } }, { label: 'Not today', action: { type: 'close' } }] },
+        card: { title: place.name, lines, choices: [{ label: `Recruit ${count} (${coins(count * offer.price)} gold)`, action: { type: 'recruit', id } }, { label: 'Not today', action: { type: 'close' } }] },
       };
     }
     case 'patrol':
     case 'hideout': {
       if (place.done) return { state, card: { title: place.name, lines: ['Nobody here but a few goose feathers.'], choices: [close] } };
       const odds = armyPower(state.army) / place.enemy!.power;
-      const hint = odds > 1.6 ? 'They look nervous.' : odds > 1.1 ? 'It will be close-ish.' : 'Your army looks at you. Then at them. Then at you.';
+      const hint = odds > 1.35 ? 'They look nervous.' : odds > 0.95 ? 'It will be close.' : 'Your army looks at you. Then at them. Then at you.';
       return {
         state,
         card: {
@@ -259,7 +264,7 @@ export function act(state: GameState, action: Action): Result | null {
       const gold = place.gold ?? 0;
       const opened = update(state, action.id, { done: true });
       return action.take === 'gold'
-        ? { state: { ...opened, gold: state.gold + gold }, card: { title: place.name, lines: [`**+${gold} gold.** The villagers will never know.`], choices: [close] } }
+        ? { state: { ...opened, gold: state.gold + gold }, card: { title: place.name, lines: [`**+${coins(gold)} gold.** The villagers will never know.`], choices: [close] } }
         : { state: { ...opened, leadership: state.leadership + gold / 20 }, card: { title: place.name, lines: [`The villagers cheer. **+${gold / 20} leadership.**`, 'Somebody starts a song about you. It rhymes \u201cAldric\u201d with \u201cbald trick\u201d.'], choices: [close] } };
     }
     case 'recruit': {
@@ -297,14 +302,14 @@ export function fight(state: GameState, id: string): Result {
         state: next,
         card: {
           title: 'The bounty is paid!',
-          lines: ['Baron Grimsby surrenders, still clutching the goose.', lostLine, `The Crown pays **${enemy.reward} gold**. The royal goose is going home.`, '*Commission complete.*'],
-          choices: [close],
+          lines: ['Baron Grimsby surrenders, still clutching the goose.', lostLine, `The Crown pays **${coins(enemy.reward)} gold**. The royal goose is going home.`, `*Commission complete on day ${roman(next.day)}.*`],
+          choices: [again, close],
         },
       };
     }
-    return { state: next, card: { title: 'Victory!', lines: [`${place.name} breaks and runs.`, lostLine, `You find **${enemy.reward} gold** on the road.`], choices: [close] } };
+    return { state: next, card: { title: 'Victory!', lines: [`${place.name} breaks and runs.`, lostLine, `You find **${coins(enemy.reward)} gold** on the road.`], choices: [close] } };
   }
-  const { army, lost } = takeLosses(state.army, armyPower(state.army) * 0.4);
+  const { army, lost } = takeLosses(state.army, armyPower(state.army) * 0.25);
   return {
     state: { ...state, seed, army, movement: 0 },
     card: { title: 'Retreat!', lines: ['Your men fall back in good order, mostly.', lost.length ? `You lost ${lost.join(' and ')}.` : '', 'Recruit more troops and try again.'].filter(Boolean), choices: [close] },
@@ -323,13 +328,16 @@ export function endDay(state: GameState): Result {
       gold: next.gold + COMMISSION - pay,
       locations: next.locations.map((l) => (l.kind === 'mill' ? { ...l, done: false } : l.recruits ? { ...l, recruits: { ...l.recruits, count: l.recruits.count + 10 } } : l)),
     };
-    lines.push(`**Payday!** The King sends **${COMMISSION} gold**. Your troops take **${pay}** in wages.`, 'The mill has flour again, and there are fresh volunteers.');
+    lines.push(`**Payday!** The King sends **${coins(COMMISSION)} gold**. Your troops take **${coins(pay)}** in wages.`, 'The mill has flour again, and there are fresh volunteers.');
   }
   if (day > LAST_DAY && state.bounty === 'open') {
     next = { ...next, over: 'lost' };
     lines.push('The King\u2019s patience has run out. So has the goose\u2019s.');
   }
-  return { state: next, card: { title: `Day ${roman(day)}`, lines: lines.length ? lines : ['The sun comes up over the province. Your horse looks rested.'], choices: [close] } };
+  return {
+    state: next,
+    card: { title: `Day ${roman(day)}`, lines: lines.length ? lines : ['The sun comes up over the province. Your horse looks rested.'], choices: next.over ? [again] : [close] },
+  };
 }
 
 export function describeHero(state: GameState): Card {

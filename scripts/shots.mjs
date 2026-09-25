@@ -17,7 +17,7 @@ await page.waitForFunction(() => window.__ready === true, null, { timeout: 60_00
 await page.waitForTimeout(300);
 if (process.env.RIDE) {
   const [x, y] = process.env.RIDE.split(',').map(Number);
-  await page.evaluate(([rx, ry]) => window.__rideTo?.(rx, ry), [x, y]);
+  await page.evaluate(([rx, ry]) => window.__kc?.click(rx, ry), [x, y]);
   await page.waitForTimeout(Number(process.env.WAIT ?? 1500));
 }
 const path = process.env.OUT ?? 'screenshots/look.png';

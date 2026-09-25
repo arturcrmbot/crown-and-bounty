@@ -1,4 +1,5 @@
 import { Bitmap, blit } from './bitmap';
+import { Effects } from './effects';
 import { MAP_VIEW, paintFrame, SCREEN } from './frame';
 import { MAP_HEIGHT, MAP_WIDTH, type Point } from './lookTestMap';
 import { bayer, hash, noise } from './noise';
@@ -23,6 +24,7 @@ export class AdventureScreen {
   private readonly grain: Uint32Array;
   private readonly animated: Placed[] = [];
   readonly camera = { x: 0, y: 0 };
+  readonly effects = new Effects();
   /** The route still ahead of the hero: gold dots for today, red for later days. */
   route: { at: Point; today: boolean }[] = [];
   private readonly map: Bitmap;
@@ -55,7 +57,8 @@ export class AdventureScreen {
   }
 
   isFogged(x: number, y: number) {
-    return this.fog[Math.round(y) * MAP_WIDTH + Math.round(x)] === 1;
+    const i = Math.round(y) * MAP_WIDTH + Math.round(x);
+    return i >= 0 && i < this.fog.length && this.fog[i] === 1;
   }
 
   /** Lifts the fog in a circle, with the same dithered edge as the starting fog. */
@@ -114,6 +117,7 @@ export class AdventureScreen {
       const image = o.frames ? o.frames[(o.frame ?? tick) % o.frames.length] : o.sprite;
       blit(screen, image, MAP_VIEW.x + Math.round(o.x) - cx, MAP_VIEW.y + Math.round(o.y) - cy, MAP_VIEW);
     }
+    this.effects.draw(screen, MAP_VIEW.x - cx, MAP_VIEW.y - cy, MAP_VIEW, (x, y) => !this.isFogged(x, y));
     for (const i of this.grain) screen.data[i] = GRAIN_LUT[screen.data[i]];
     blit(screen, this.overlay, 0, 0);
     return screen;

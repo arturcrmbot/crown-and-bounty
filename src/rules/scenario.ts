@@ -38,7 +38,7 @@ const LOCATIONS: Location[] = [
     name: 'Grimsby\u2019s Hideout',
     at: PLACES.hideout,
     done: false,
-    enemy: { lines: ['A muddy stockade deep in Darkwood. Someone inside is honking.', 'About **40 swordsmen**, **20 archers** and one Baron.'], power: 210, reward: 2000 },
+    enemy: { lines: ['A muddy stockade deep in Darkwood. Someone inside is honking.', 'About **40 swordsmen**, **20 archers** and one Baron.'], power: 200, reward: 2000 },
   },
 ];
 

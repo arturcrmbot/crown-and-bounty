@@ -5,7 +5,7 @@ import { buildLookTest, CELL } from './render/lookTestScene';
 import { paletteWords } from './render/palette';
 import { act, describe, describeHero, locationById, spendMovement, visit, type Action, type Card, type GameState } from './rules/game';
 import { findPath, nearestPassable } from './rules/pathfinding';
-import { newGame } from './rules/scenario';
+import { newGame, PLACES } from './rules/scenario';
 import { CardView } from './ui/card';
 
 declare global {
@@ -13,7 +13,14 @@ declare global {
     /** Set once the first frame is on screen. Used by the screenshot script. */
     __ready?: boolean;
     /** Test hooks for scripted play. */
-    __kc?: { click(x: number, y: number): void; choose(label: string): boolean; state(): GameState; idle(): boolean };
+    __kc?: {
+      click(x: number, y: number): void;
+      choose(label: string): boolean;
+      state(): GameState;
+      idle(): boolean;
+      status(): { riding: boolean; visiting: string | null; movement: number };
+      centre(id: string): Point;
+    };
   }
 }
 
@@ -50,8 +57,15 @@ const { view, grid, hero, hitboxes, pickups } = buildLookTest();
 paintHud(view.frame, state);
 const query = new URLSearchParams(window.location.search);
 if (query.has('x')) view.centreOn(Number(query.get('x')), Number(query.get('y') ?? 480));
+/** `?speed=4` rides four times faster, for scripted play-throughs. */
+const speed = RIDE_SPEED * Math.max(1, Number(query.get('speed') ?? 1));
+
+// Crows over the old watchtower (the card says something disturbed them) and rooks in the north-east wood.
+view.effects.addFlock([PLACES.tower[0], PLACES.tower[1] - 84], 6, 1);
+view.effects.addFlock([1010, 90], 5, 4);
 
 const width = hero.idle[0].width;
+let sinceDust = 0;
 const position = { x: hero.object.x + width / 2, y: hero.object.y + hero.foot };
 let route: Point[] = [];
 let visiting: string | null = null;
@@ -88,6 +102,10 @@ function setState(next: GameState) {
 function choose(action: Action) {
   if (action.type === 'close') {
     cards.hide();
+    return;
+  }
+  if (action.type === 'restart') {
+    window.location.reload();
     return;
   }
   if (action.type === 'go') {
@@ -180,7 +198,7 @@ function routeDots() {
 }
 
 function ride(dt: number) {
-  let budget = RIDE_SPEED * dt;
+  let budget = speed * dt;
   while (budget > 0 && route.length > 0 && state.movement > 0) {
     const [tx, ty] = route[0];
     const dx = tx - position.x;
@@ -198,6 +216,11 @@ function ride(dt: number) {
     budget -= move;
     travelled += move;
     sinceReveal += move;
+    sinceDust += move;
+    if (sinceDust > 7 && perPixel * CELL <= 1) {
+      sinceDust = 0;
+      view.effects.dust(position.x - facing * 12, position.y - 1, facing);
+    }
     if (move <= 0) break;
   }
   if (sinceReveal > 6) {
@@ -241,7 +264,10 @@ function clickMap([x, y]: Point) {
   if (hits.length > 0) {
     const box = hits.reduce((front, b) => (b.y1 > front.y1 ? b : front));
     if (view.isFogged((box.x0 + box.x1) / 2, box.y1 - 4)) {
-      showCard({ title: 'Unexplored', lines: ['You cannot see what lies there. Ride closer.'], choices: [] }, anchorOf(box.id));
+      showCard(
+        { title: 'Unexplored', lines: ['You cannot see what lies there.'], choices: [{ label: 'Ride there', action: { type: 'go', id: box.id } }, { label: 'Close', action: { type: 'close' } }] },
+        anchorOf(box.id),
+      );
     } else {
       showCard(describe(state, box.id), anchorOf(box.id));
     }
@@ -301,6 +327,11 @@ window.__kc = {
   },
   state: () => state,
   idle: () => route.length === 0 || state.movement <= 0,
+  status: () => ({ riding: route.length > 0, visiting, movement: state.movement }),
+  centre(id) {
+    const box = hitboxes.find((b) => b.id === id)!;
+    return [(box.x0 + box.x1) / 2, (box.y0 + box.y1) / 2 + 6];
+  },
 };
 
 showCard(
@@ -308,7 +339,8 @@ showCard(
     title: 'The King\u2019s Commission',
     lines: [
       'Baron Grimsby owes the Crown three years of taxes and one goose. Bring him in.',
-      'Click the map to ride. Click anything that looks interesting. Red marks on your route are for tomorrow.',
+      'Click the map to ride, and click anything that looks interesting. Red marks on your route are for tomorrow.',
+      'The hourglass (or **E**) ends the day. Every seventh day is payday.',
     ],
     choices: [{ label: 'Ride out', action: { type: 'close' } }],
   },
@@ -323,6 +355,7 @@ function frame(now: number) {
   const dy = (held.has('arrowdown') || held.has('s') ? 1 : 0) - (held.has('arrowup') || held.has('w') ? 1 : 0);
   if (dx || dy) view.scrollTo(view.camera.x + dx * SCROLL_SPEED, view.camera.y + dy * SCROLL_SPEED);
   ride(dt);
+  view.effects.update(dt, [position.x, position.y]);
   const tick = Math.floor(now / TICK_MS);
   const palette = paletteWords(tick);
   const indexed = view.compose(tick).data;
