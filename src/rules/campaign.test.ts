@@ -3,7 +3,7 @@ import { ALDMOOR } from '../content/aldmoor';
 import { COMMISSIONS } from '../content/campaign';
 import { FENMARCH } from '../content/fenmarch';
 import {
-  apply, briefingCard, courtCard, heroStats, leadershipUsed, levelUpCard, nextArmy, provinceOf, veterans, type GameState,
+  apply, briefingCard, courtCard, heroStats, leadershipUsed, levelUpCard, nextArmy, provinceOf, veterans, visit, type GameState,
 } from './game';
 import { equip, gainXp, giveArtifact, learn } from './hero';
 import { buildMap, CELL } from './map/model';
@@ -52,13 +52,13 @@ describe('the Fenmarch', () => {
     const state = beginCommission(FENMARCH, 1, newGame().campaign.start, 1, []);
     const card = apply(state, { type: 'go', id: 'troll' });
     expect(card).toBeNull();
-    const paid = act(state, { type: 'toll', id: 'troll' });
+    const paid = act(state, { type: 'parley', id: 'troll', parley: 'toll' });
     expect(paid.army.find((s) => s.troop === 'knights')!.count).toBe(8);
     expect(paid.locations.find((l) => l.id === 'troll')!.done).toBe(true);
     expect(paid.hero.xp).toBe(state.hero.xp);
     expect(planRoute(paid, fen, [1160, 880])).not.toBeNull();
     const noKnights = { ...state, army: [{ troop: 'archers' as const, count: 30 }] };
-    expect(apply(noKnights, { type: 'toll', id: 'troll' })).toBeNull();
+    expect(apply(noKnights, { type: 'parley', id: 'troll', parley: 'toll' })).toBeNull();
   });
 
   it('cannot get past the troll to Mother Mirrow until he is beaten', () => {
@@ -185,5 +185,43 @@ describe('level-ups and gear', () => {
     const swapped = equip(s, 'luckyHorseshoe')!.state;
     expect(swapped.hero.mana).toBe(heroStats(swapped).maxMana);
     expect(swapped.hero.mana).toBeLessThan(s.hero.mana);
+  });
+});
+
+describe('parleys', () => {
+  it('show every way past, greyed out when the hero is the wrong sort or can\u2019t pay', () => {
+    const knight = { ...newGame(1, ALDMOOR, 'knight'), opening: undefined };
+    const card = (s: GameState, id: string) => {
+      const e = visit(s, id).events.find((x) => x.type === 'card');
+      return e?.type === 'card' ? e.card : null;
+    };
+    const pardon = card(knight, 'hideout')!.choices.find((c) => c.label.startsWith('Talk the Baron round'))!;
+    expect(pardon.label).toBe('Talk the Baron round (Courtier)');
+    expect(pardon.disabled).toBe(true);
+    const courtier = { ...newGame(1, ALDMOOR, 'courtier'), opening: undefined };
+    expect(card(courtier, 'hideout')!.choices.find((c) => c.label.startsWith('Talk the Baron round'))!.disabled).toBeUndefined();
+    const broke = { ...knight, gold: 100 };
+    expect(card(broke, 'patrol')!.choices.find((c) => c.label.startsWith('Pay them to go home'))!.disabled).toBe(true);
+  });
+
+  it('let a courtier take Grimsby without a fight, for a smaller bounty', () => {
+    const courtier = { ...newGame(1, ALDMOOR, 'courtier'), opening: undefined };
+    const result = apply(courtier, { type: 'parley', id: 'hideout', parley: 'pardon' })!;
+    expect(result.state.over).toBe('won');
+    expect(result.state.bounty).toBe('paid');
+    expect(result.state.gold).toBe(courtier.gold + 1000);
+    expect(result.state.hero.xp).toBe(450);
+    const bounty = result.events.find((e) => e.type === 'card');
+    expect(bounty?.type === 'card' && bounty.card.title).toBe('The bounty is paid!');
+    expect(apply({ ...newGame(1, ALDMOOR, 'knight') }, { type: 'parley', id: 'hideout', parley: 'pardon' })).toBeNull();
+  });
+
+  it('let anyone pay the patrol to go home, which costs gold and gains nothing', () => {
+    const s = { ...newGame(1, ALDMOOR, 'knight'), opening: undefined };
+    const paid = apply(s, { type: 'parley', id: 'patrol', parley: 'bribe' })!;
+    expect(paid.state.gold).toBe(s.gold - 400);
+    expect(paid.state.hero.xp).toBe(0);
+    expect(paid.state.locations.find((l) => l.id === 'patrol')!.done).toBe(true);
+    expect(paid.events[0]).toEqual({ type: 'removed', id: 'patrol' });
   });
 });

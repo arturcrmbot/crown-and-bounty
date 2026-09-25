@@ -64,6 +64,17 @@
   color: #a42a10;
   text-decoration: underline;
 }
+/* Options for another sort of hero, or a fuller purse: shown, but faded. */
+.kc-card button:disabled {
+  cursor: default;
+  font-weight: normal;
+  font-style: italic;
+  color: #8c7a58;
+  text-decoration: none;
+}
+.kc-card button:disabled::before {
+  color: #b9a47c;
+}
 
 /* The name of whatever is under the pointer, like HoMM2's status line. */
 .kc-label {

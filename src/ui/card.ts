@@ -35,6 +35,7 @@ export class CardView {
       for (const choice of card.choices) {
         const button = document.createElement('button');
         button.textContent = choice.label;
+        button.disabled = Boolean(choice.disabled);
         button.addEventListener('click', (e) => {
           e.stopPropagation();
           this.onChoice(choice.action);

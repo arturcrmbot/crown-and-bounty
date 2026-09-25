@@ -45,6 +45,23 @@ export function startFight(state: GameState, id: string): Result {
   return { state: { ...state, seed, battle }, events: [{ type: 'battle', place: id }] };
 }
 
+/**
+ * The villain is taken: the commission is won. `state` already has the bounty's gold; the card
+ * says how it went and sends the hero to court, or ends the campaign after the last commission.
+ */
+export function bountyPaid(state: GameState, id: string, opening: string[], reward: number, spoils: string[]): Result {
+  const place = locationById(state, id);
+  const next: GameState = { ...state, bounty: 'paid', over: 'won' };
+  const c = commissionOf(next);
+  const more = hasNextCommission(next);
+  const card = {
+    title: 'The bounty is paid!',
+    lines: [...opening, `The Crown pays **${coins(reward)} gold**. ${c.homecoming}`, ...spoils, `*Commission complete on day ${roman(next.day)}.*`, ...(more ? [] : campaignLines(next))],
+    choices: more ? [{ label: 'Ride to the King\u2019s court', action: { type: 'court' as const } }] : [again, close],
+  };
+  return { state: next, events: [{ type: 'over', result: 'won' }, show(card, place.at, place.id)] };
+}
+
 /** Turns a finished battle back into the map: survivors, rewards, and what the card says. */
 export function finishFight(state: GameState): Result {
   const battle = state.battle!;
@@ -69,22 +86,8 @@ export function finishFight(state: GameState): Result {
     events.push(...grown.events);
     spoils.push(`**+${xp} experience.**`);
     if (place.kind === 'hideout') {
-      next = { ...next, bounty: 'paid', over: 'won' };
-      const c = commissionOf(next);
-      const more = hasNextCommission(next);
-      events.push({ type: 'over', result: 'won' });
-      events.push(
-        show(
-          {
-            title: 'The bounty is paid!',
-            lines: [c.surrender, lost, `The Crown pays **${coins(enemy.reward)} gold**. ${c.homecoming}`, ...spoils, `*Commission complete on day ${roman(next.day)}.*`, ...(more ? [] : campaignLines(next))],
-            choices: more ? [{ label: 'Ride to the King\u2019s court', action: { type: 'court' } }] : [again, close],
-          },
-          place.at,
-          place.id,
-        ),
-      );
-      return { state: next, events };
+      const paid = bountyPaid(next, place.id, [commissionOf(next).surrender, lost], enemy.reward, spoils);
+      return { state: paid.state, events: [...events, ...paid.events] };
     }
     events.push(show({ title: 'Victory!', lines: [enemy.flees, lost, enemy.loot.replace('{gold}', `**${coins(enemy.reward)} gold**`), ...spoils], choices: [close] }, place.at, place.id));
     return { state: next, events };

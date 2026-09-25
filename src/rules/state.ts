@@ -30,8 +30,8 @@ export type Enemy = {
   look: 'soldiers' | 'wolves' | 'stockade' | 'goblins' | 'troll';
   /** The button that starts the fight, if not just "Fight". */
   charge?: string;
-  /** Troops they will take to let you pass without a fight, and what happens when you pay. */
-  toll?: { troop: TroopId; count: number; paid: string };
+  /** Other ways past them than a fight. */
+  parleys?: Parley[];
   lines: string[];
   army: Army;
   reward: number;
@@ -39,6 +39,21 @@ export type Enemy = {
   threat: string;
   flees: string;
   loot: string;
+};
+
+/** What an option asks of the hero: who he was, what he knows, or what he can spare (and then pays). */
+export type Needs = { background?: BackgroundId; skill?: SkillId; spellPower?: number; gold?: number; troop?: TroopId; count?: number };
+
+/** Another way past an enemy than a fight: talk, pay or trick. */
+export type Parley = {
+  id: string;
+  label: string;
+  needs: Needs;
+  lines: string[];
+  /** `pass`: they let you by and you gain nothing. `win`: it counts as beating them, for `reward` gold. */
+  outcome: 'pass' | 'win';
+  reward?: number;
+  xp?: number;
 };
 
 export type Location = {
@@ -146,8 +161,8 @@ export type Action =
   | { type: 'armoury'; id: string }
   | { type: 'buy'; id: string; artifact: ArtifactId }
   | { type: 'background'; id: BackgroundId }
-  /** Pays an enemy's toll to pass without a fight. */
-  | { type: 'toll'; id: string }
+  /** Deals with an enemy some other way than a fight. */
+  | { type: 'parley'; id: string; parley: string }
   /** After a won commission: ride to the King. */
   | { type: 'court' }
   | { type: 'boon'; id: BoonId }
@@ -155,7 +170,8 @@ export type Action =
   /** After a lost commission: the same one again, from its start. */
   | { type: 'retry' };
 
-export type Choice = { label: string; action: Action };
+/** A button on a card. A `disabled` one shows what the player could do with another hero, or more gold. */
+export type Choice = { label: string; action: Action; disabled?: boolean };
 
 /** A parchment card: a title, a few lines (with **bold** and *italics*), and choices. `wide` is for big decisions. */
 export type Card = { title: string; lines: string[]; choices: Choice[]; wide?: boolean };
