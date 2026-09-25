@@ -12,6 +12,8 @@ Working title. A small browser game, not commercial. The goal is quirky and fun,
 - **Captains:** the rare exception. Once your army is big enough, a notable creature can sign on and bring a small group of its own, such as a dragon captain who is fussy about her hoard. Two or three per run, each with a quirk.
 - **Villains have gimmicks and personality,** for example Baron Grimsby, who stole the royal goose.
 - **Tone:** warm, funny, storybook. The flavour text in `sketches/2d-map-mockup/` shows the voice.
+- **One hero across a campaign** (25 Sep, after the first playtest): levels, skills and gear carry over, and each commission is a new province. RPG depth goes into build choices first (a background, then skills and perks), then story choices, then captains.
+- **Battles are HoMM2-style:** a hex battlefield where stacks take turns, and the hero casts spells and uses skills. Auto-resolve uses the same engine.
 - **Adventure map is turn-based by day:** each day the hero gets a movement allowance. (Artur asked whether real time would suit a browser better. Turn-based days are assumed for now.)
 
 ## Look
@@ -46,6 +48,7 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
 
 ## Open questions
 
-- **Battle format:** a hex battlefield with stacks, as in HoMM2, or King's Bounty's simpler grid?
+See also "Still open" in `PLAN.md`.
+
 - **Adventure map tiles:** the prototype rides freely over an 8 px walk grid on a hand-painted map, with 32 px tiles only for authoring. Keep that, or snap to HoMM2-style square tiles?
 - **Adventure map pacing:** turn-based days or real time?
