@@ -13,8 +13,25 @@ export type Terrain = (typeof Terrain)[keyof typeof Terrain];
 export const riverHalfWidth = (s: number) => 10 + (noise(s / 60, 0.5, 11) - 0.5) * 6;
 export const pathHalfWidth = (s: number) => 3.4 + (noise(s / 25, 3, 21) - 0.5) * 1.6;
 
+/** Distance in pixels outside the nearest pool, negative inside, before the shore's wobble. */
+export function poolDistance(province: Province, x: number, y: number): number {
+  let best = Infinity;
+  for (const [cx, cy, rx, ry] of province.pools ?? []) best = Math.min(best, (Math.hypot((x - cx) / rx, (y - cy) / ry) - 1) * Math.min(rx, ry));
+  return best;
+}
+
+/** The shore's wobble at a point, so pools aren't perfect ellipses. The painter uses the same numbers. */
+export const shoreWobble = (x: number, y: number) => (noise(x / 18, y / 18, 91) - 0.5) * 10;
+
+/** Signed distance from a pool's shore: negative in the water. */
+export const poolEdge = (province: Province, x: number, y: number) => poolDistance(province, x, y) + shoreWobble(x, y);
+
 /** Blocked ground around a building's foot point: width, and height above the foot, in pixels. */
 const FOOTPRINTS: Record<string, [number, number]> = {
+  abbey: [64, 26],
+  peathut: [44, 16],
+  windmill: [34, 16],
+  stilthut: [60, 24],
   castle: [104, 48],
   tower: [22, 14],
   mine: [56, 24],
@@ -29,7 +46,7 @@ const FOOTPRINTS: Record<string, [number, number]> = {
 const ENEMY_REACH = 22;
 
 /** A tree the painter should draw: its foot, and which kind and variant. */
-export type Tree = { x: number; y: number; pine: boolean; variant: number };
+export type Tree = { x: number; y: number; kind: 'pine' | 'oak' | 'willow'; variant: number };
 
 /** The land as the rules see it: terrain per cell, the walk grid, trees, and cells each enemy stands on. */
 export type MapModel = {
@@ -94,7 +111,7 @@ export function buildMap(province: Province): MapModel {
       const face = top === undefined ? -99 : y - top;
       let t: Terrain = Terrain.Grass;
       if (province.cliff && face >= -3 && face < province.cliff.height + 3) t = Terrain.Cliff;
-      else if (r.d < riverHalfWidth(r.s) + 4) t = onPath ? Terrain.Bridge : Terrain.Water;
+      else if (r.d < riverHalfWidth(r.s) + 4 || poolEdge(province, x, y) < 3) t = onPath ? Terrain.Bridge : Terrain.Water;
       else if (onPath) t = Terrain.Road;
       else if (p.d > 9 && forestAmount(province, x, y) > 0.5) t = Terrain.Forest;
       terrain[cy * width + cx] = t;
@@ -126,13 +143,13 @@ export function buildMap(province: Province): MapModel {
   for (const [x, y] of province.trees) block(cellsUnder(x, y, 2, 2), Terrain.Forest);
   for (const d of province.decor) block(cellsUnder(d.at[0], d.at[1], ...FOOTPRINTS[d.sprite]), Terrain.Building);
   for (const l of province.locations) {
-    const footprint = FOOTPRINTS[l.kind];
-    if (footprint && !l.enemy) block(cellsUnder(l.at[0], l.at[1], ...footprint), Terrain.Building);
-    if (l.kind === 'hideout') block(cellsUnder(l.at[0], l.at[1], ...FOOTPRINTS.hideout), Terrain.Building);
+    const footprint = FOOTPRINTS[l.look ?? l.kind];
+    if (footprint && (!l.enemy || l.kind === 'hideout')) block(cellsUnder(l.at[0], l.at[1], ...footprint), Terrain.Building);
   }
 
   // Trees for the painter: packed on a jittered grid wherever forest grows, kept off roads and water.
   const trees: Tree[] = [];
+  const woods = province.woods ?? { pine: 0.75, willow: 0 };
   const clear = (x: number, y: number) => {
     const own = index(x, y);
     if (own < 0 || terrain[own] !== Terrain.Forest) return false;
@@ -147,7 +164,8 @@ export function buildMap(province: Province): MapModel {
       const y = gy + (hash(gx, gy, 2) - 0.5) * 4;
       const f = forestAmount(province, x, y);
       if (f < 0.5 || hash(gx, gy, 3) > (f > 0.56 ? 0.95 : 0.55) || !clear(x, y)) continue;
-      trees.push({ x, y, pine: hash(gx, gy, 4) < 0.75, variant: hash(gx, gy, 5) });
+      const pick = hash(gx, gy, 4);
+      trees.push({ x, y, kind: pick < woods.pine ? 'pine' : pick < woods.pine + woods.willow ? 'willow' : 'oak', variant: hash(gx, gy, 5) });
     }
   }
 

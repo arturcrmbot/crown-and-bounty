@@ -19,6 +19,10 @@ export class HoverLabel {
     this.el.hidden = true;
   }
 
+  dispose() {
+    this.el.remove();
+  }
+
   get text() {
     return this.el.hidden ? null : this.el.textContent;
   }

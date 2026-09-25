@@ -52,6 +52,9 @@ export type HeroStats = {
 };
 
 /** The hero's numbers with everything added up. The rules use these, never the raw fields. */
+/** Leadership each level brings: troops follow a famous officer. */
+export const RENOWN = 10;
+
 export function heroStats(state: GameState): HeroStats {
   const h = state.hero;
   const s: HeroStats = {
@@ -60,7 +63,7 @@ export function heroStats(state: GameState): HeroStats {
     spellPower: h.spellPower,
     knowledge: h.knowledge,
     maxMana: 0,
-    leadership: state.leadership,
+    leadership: state.leadership + (h.level - 1) * RENOWN,
     movement: BASE_MOVEMENT,
     sight: BASE_SIGHT,
     melee: 0,
@@ -151,7 +154,7 @@ export function levelUpCard(state: GameState): Card | null {
   const options = offer.options.map((o) => ({ o, ...describeOption(o, state) }));
   return {
     title: `Level ${roman(offer.level)}!`,
-    lines: [`**${STAT_NAMES[offer.stat]} +1.** Choose something to learn:`, ...options.map((x) => `**${x.label}**: ${x.note}`)],
+    lines: [`**${STAT_NAMES[offer.stat]} +1, leadership +${RENOWN}.** Choose something to learn:`, ...options.map((x) => `**${x.label}**: ${x.note}`)],
     choices: options.map((x) => ({ label: x.label, action: { type: 'learn', option: x.o } })),
   };
 }
@@ -177,12 +180,20 @@ export function gainXp(state: GameState, amount: number): Result {
 /** Takes one of the offered options. */
 export function learn(state: GameState, option: string): Result | null {
   const offer = state.hero.offers[0];
-  if (!offer || !offer.options.includes(option)) return null;
+  if (!offer || !offer.options.includes(option) || !candidates(state).includes(option)) return null;
   const [kind, id] = option.split(':');
   const hero = { ...state.hero, offers: state.hero.offers.slice(1) };
   if (kind === 'perk') hero.perks = [...hero.perks, id as PerkId];
   else hero.skills = { ...hero.skills, [id]: (hero.skills[id as SkillId] ?? 0) + 1 };
-  const next = { ...state, hero };
+  let next: GameState = { ...state, hero };
+  // Offers still waiting were drawn before this choice: draw them again, so none offers what he now has.
+  let seed = next.seed;
+  const offers = hero.offers.map((o) => {
+    const drawn = drawOptions(next, seed);
+    seed = drawn.seed;
+    return { ...o, options: drawn.options };
+  });
+  next = { ...next, seed, hero: { ...hero, offers } };
   const card = levelUpCard(next);
   return { state: next, events: card ? [show(card)] : [] };
 }
@@ -207,7 +218,9 @@ export function equip(state: GameState, id: ArtifactId): Result | null {
   const worn = state.hero.gear[slot];
   const pack = state.hero.pack.filter((_, i) => i !== state.hero.pack.indexOf(id));
   const hero = { ...state.hero, gear: { ...state.hero.gear, [slot]: id }, pack: worn ? [...pack, worn] : pack };
-  const next = { ...state, hero };
+  const swapped = { ...state, hero };
+  // Taking off something that gave knowledge takes its mana with it.
+  const next = { ...swapped, hero: { ...hero, mana: Math.min(hero.mana, heroStats(swapped).maxMana) } };
   return { state: next, events: [show(gearCard(next))] };
 }
 

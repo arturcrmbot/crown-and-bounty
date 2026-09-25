@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { simulate } from './sim';
+import { simulate, simulateCampaign } from './sim';
 
 describe('the bot', () => {
   it('wins the Aldmoor commission for every seed, well before day C', () => {
@@ -9,4 +9,13 @@ describe('the bot', () => {
       expect(run.day).toBeLessThan(40);
     }
   });
+
+  it('wins the whole campaign, court and Fenmarch included', () => {
+    for (const { seed, runs } of simulateCampaign([1, 2, 3], 'wizard')) {
+      const last = runs.at(-1)!;
+      expect(last.state.campaign.chapter, `seed ${seed}`).toBe(1);
+      expect(last.won, `seed ${seed}: ${last.log.join(', ')}`).toBe(true);
+      expect(last.state.campaign.record).toHaveLength(1);
+    }
+  }, 60_000);
 });

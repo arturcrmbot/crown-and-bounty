@@ -108,8 +108,7 @@ try {
   const tower = await go('tower', 'Enter');
   check(tower === 'Old Watchtower', 'the fogged watchtower can be reached and entered');
   const tops = await kc.state();
-  check(tops.hero.pack.length + Object.keys(tops.hero.gear).length > 0, 'the watchtower holds an artifact');
-  if (await kc.choose('Wear')) check(Object.keys((await kc.state()).hero.gear).length > 0, 'the artifact can be worn');
+  check(tops.hero.gear.banner === 'oldBanner' || tops.hero.pack.includes('oldBanner'), 'the watchtower holds the Old Tower Banner');
   await close();
   await go('mine', 'Enter');
   await close();
@@ -153,9 +152,51 @@ try {
   check(final.over === 'won' && final.bounty === 'paid', `the commission is won on day ${final.day}`);
   check(final.hero.level >= 3, `Sir Aldric grew to level ${final.hero.level} (${learned.join(', ')})`);
 
+  // To court: level-ups from the last battle, the King's thanks and a boon, then the next commission.
+  const screen = () => kc.call(() => window.__kc.screen());
+  const first = () => kc.call(() => document.querySelector('.kc-card-wrap:not([hidden]) button')?.textContent ?? null);
+  check(await kc.choose('Ride to the King'), 'the bounty card sends Sir Aldric to court');
+  await page.waitForTimeout(100);
+  check((await screen()) === 'court', 'the throne room opens');
+  while ((await kc.title())?.startsWith('Level')) {
+    learned.push(await first());
+    await kc.choose(await first());
+  }
+  check((await kc.title()) === 'The King\u2019s Court', 'the King receives him');
+  const atCourt = await kc.state();
+  check(atCourt.gold === final.gold + 1500 && atCourt.campaign.court.boons.length === 3, 'the King adds 1,500 gold and offers three boons');
   await page.goto(`${server.url}?speed=8`);
   await kc.ready();
-  check((await kc.title()) === 'Who were you, before the King found you?', 'a finished commission starts afresh on reload');
+  check((await screen()) === 'court' && (await kc.title()) === 'The King\u2019s Court', 'a reload at court comes back to court');
+  const boon = await first();
+  await kc.choose(boon);
+  check((await kc.title())?.startsWith('Commission II'), `after ${boon}, the next commission is read out`);
+  await kc.choose('Ride out');
+  await page.waitForTimeout(150);
+  const fen = await kc.state();
+  check((await screen()) === 'adventure' && fen.campaign.chapter === 1 && fen.day === 1, 'Sir Aldric rides into the Fenmarch on day I');
+  check(fen.hero.level === atCourt.hero.level && JSON.stringify(fen.hero.gear) === JSON.stringify(atCourt.hero.gear), 'he keeps his level and his gear');
+  check((await kc.title())?.startsWith('Commission II'), 'the Fenmarch greets him');
+  await close();
+
+  await go('village', 'Visit');
+  check(await kc.choose('Recruit'), 'Eelby offers archers');
+  await close();
+  await go('goblins', 'Approach');
+  await kc.choose('Let the sergeants');
+  check((await kc.title()) === 'Victory!', 'the sergeants beat the bog goblins');
+  await close();
+  const midFen = await kc.state();
+
+  await page.goto(`${server.url}?speed=8`);
+  await kc.ready();
+  check((await kc.title()) === 'Welcome back' && (await kc.lines()).includes('Commission II'), 'a reload in the Fenmarch carries on there');
+  const resumed = await kc.state();
+  check(resumed.campaign.chapter === 1 && resumed.gold === midFen.gold && resumed.locations.find((l) => l.id === 'goblins').done, 'the save keeps the province, gold and the beaten goblins');
+  await kc.choose('Start a new campaign');
+  await page.waitForTimeout(300);
+  await kc.ready();
+  check((await kc.title()) === 'Who were you, before the King found you?', 'a new campaign starts from the opening card');
   check(errors.length === 0, `no page errors${errors.length ? `: ${errors.join(' | ')}` : ''}`);
 } catch (error) {
   check(false, String(error));

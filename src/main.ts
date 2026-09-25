@@ -1,14 +1,12 @@
-import { ALDMOOR } from './content/aldmoor';
+import { COMMISSIONS } from './content/campaign';
 import { Game } from './game/game';
 import { Display } from './game/display';
 import { Input } from './game/input';
-import { backgroundCard, welcomeBackCard } from './game/intro';
+import { failedCard, welcomeBackCard } from './game/intro';
 import { loadGame, saveGame, stopSaving } from './game/save';
 import { SCREEN } from './render/frame';
 import { paletteWords } from './render/palette';
-import { startFight } from './rules/game';
-import { buildMap } from './rules/map/model';
-import { newGame } from './rules/scenario';
+import { beginCommission, hasNextCommission, newGame, startFight, type GameState } from './rules/game';
 
 declare global {
   interface Window {
@@ -25,21 +23,34 @@ const TICK_MS = 120;
 const query = new URLSearchParams(window.location.search);
 const frozen = query.get('freeze') === '1';
 const saved = frozen || query.get('fresh') === '1' ? null : loadGame();
-const resume = saved && !saved.over ? saved : null;
+// Carry on with any save, unless its campaign is over: then a new one begins.
+const resume = saved && !(saved.over === 'won' && !hasNextCommission(saved)) ? saved : null;
 if (frozen) stopSaving();
 
-// ?battle=patrol opens straight onto a fight, for checking the battle screen.
-const fightAt = query.get('battle');
-const start = resume ?? (fightAt ? startFight(newGame(), fightAt).state : newGame());
+/** Debug starts: ?commission=2 rides into the second province, ?court=1 opens the court after the first. */
+function debugStart(): GameState {
+  const first = newGame();
+  const chapter = Number(query.get('commission') ?? 1) - 1;
+  if (query.get('court') === '1') return { ...first, opening: undefined, over: 'won', bounty: 'paid' };
+  if (chapter > 0) {
+    const { hero, gold, leadership, army } = first;
+    return beginCommission(COMMISSIONS[chapter].province, first.seed, { hero, gold, leadership, army }, chapter, [{ chapter: 0, days: 10, level: 1 }]);
+  }
+  // ?battle=patrol opens straight onto a fight, for checking the battle screen.
+  const fightAt = query.get('battle');
+  return fightAt ? startFight({ ...first, opening: undefined }, fightAt).state : first;
+}
 
+// ?reveal=1 lifts the fog, for looking the whole map over.
+const start = resume ?? (query.has('reveal') ? { ...debugStart(), explored: debugStart().explored.map(() => -1) } : debugStart());
 const display = new Display(SCREEN.width, SCREEN.height);
-const game = new Game(display, buildMap(ALDMOOR), start, Math.max(1, Number(query.get('speed') ?? 1)));
+const game = new Game(display, start, Math.max(1, Number(query.get('speed') ?? 1)));
 const input = new Input(display, game.input);
 if (query.has('x')) game.adventure.view.centreOn(Number(query.get('x')), Number(query.get('y') ?? 480));
 window.__kc = game.debug();
-window.addEventListener('pagehide', () => saveGame(game.adventure.state));
+window.addEventListener('pagehide', () => saveGame(game.state));
 
-if (!game.battle) game.adventure.showCard(resume ? welcomeBackCard(resume.day) : backgroundCard(), null);
+if (!game.battle && !game.court && resume && !resume.opening) game.adventure.showCard(resume.over === 'lost' ? failedCard(resume) : welcomeBackCard(resume), null);
 
 let last = performance.now();
 requestAnimationFrame(function frame(now) {

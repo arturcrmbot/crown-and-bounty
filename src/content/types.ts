@@ -18,6 +18,12 @@ export type Province = {
   paths: Point[][];
   /** Forest masses as ellipses: centre x, centre y, radius x, radius y. */
   forests: [number, number, number, number][];
+  /** Still water, as ellipses like the forests: fen pools and meres. Roads over them become bridges. */
+  pools?: [number, number, number, number][];
+  /** Share of pines and willows among the trees; the rest are oaks. */
+  woods?: { pine: number; willow: number };
+  /** Fen country: the grass is wetter and full of sedge. */
+  fen?: boolean;
   /** Rock outcrops: x, foot y, width, height. */
   crags: [number, number, number, number][];
   /** Lone trees placed on purpose: x, y, pine or not. */

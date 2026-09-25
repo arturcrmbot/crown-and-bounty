@@ -6,7 +6,8 @@ import { Bitmap, blit, SHADOW } from './bitmap';
 import { FogMask } from './fog';
 import { SILHOUETTE } from './palette';
 import {
-  boulder, castle, chest, crag, goldPile, hero, hideout, hut, mill, mine, mirror, oak, patrol, pine, signpost, stoneBridge, watchtower, well, wolfPack,
+  abbey, boulder, castle, chest, crag, goblinBand, goldPile, hero, hideout, hut, mill, mine, mirror, oak, patrol, peatHut, pine, signpost, stiltHut,
+  stoneBridge, troll, watchtower, well, willow, windmill, wolfPack,
 } from './sprites';
 import { paintTerrain } from './terrain';
 
@@ -48,6 +49,16 @@ const place = (sprite: Bitmap, [x, y]: Point, footFromTop: number): Placed => ({
 
 /** The sprite (or frames) that stands for a place on the map, and how far below its top the foot is. */
 function landmark(l: Location): { frames: Bitmap[]; foot: number; animated: boolean } | null {
+  switch (l.look) {
+    case 'abbey':
+      return { frames: [abbey()], foot: 60, animated: false };
+    case 'peathut':
+      return { frames: [peatHut()], foot: 32, animated: false };
+    case 'windmill':
+      return { frames: animation((t) => windmill(t)), foot: 66, animated: true };
+    case 'stilthut':
+      return { frames: animation((t) => stiltHut(t * Math.PI * 2)), foot: 80, animated: true };
+  }
   switch (l.kind) {
     case 'castle':
       return { frames: animation((t) => castle(t * Math.PI * 2)), foot: 104, animated: true };
@@ -68,9 +79,16 @@ function landmark(l: Location): { frames: Bitmap[]; foot: number; animated: bool
     case 'hideout':
       return { frames: [hideout(0.4)], foot: 64, animated: false };
     case 'patrol':
-      return l.enemy?.look === 'wolves'
-        ? { frames: animation((t) => wolfPack(t * Math.PI * 2)), foot: 27, animated: true }
-        : { frames: animation((t) => patrol(t * Math.PI * 2)), foot: 40, animated: true };
+      switch (l.enemy?.look) {
+        case 'wolves':
+          return { frames: animation((t) => wolfPack(t * Math.PI * 2)), foot: 27, animated: true };
+        case 'goblins':
+          return { frames: animation((t) => goblinBand(t * Math.PI * 2)), foot: 38, animated: true };
+        case 'troll':
+          return { frames: animation((t) => troll(t * Math.PI * 2)), foot: 48, animated: true };
+        default:
+          return { frames: animation((t) => patrol(t * Math.PI * 2)), foot: 40, animated: true };
+      }
   }
 }
 
@@ -88,8 +106,9 @@ export function buildAdventureScene(map: MapModel, state: GameState): AdventureS
 
   const pines = Array.from({ length: 18 }, (_, i) => pine(500 + i, 13 + (i % 6) * 2));
   const oaks = Array.from({ length: 12 }, (_, i) => oak(700 + i, 12 + (i % 4) * 2));
+  const willows = map.trees.some((t) => t.kind === 'willow') ? Array.from({ length: 10 }, (_, i) => willow(760 + i, 14 + (i % 4) * 2)) : [];
   for (const t of map.trees) {
-    const variants = t.pine ? pines : oaks;
+    const variants = t.kind === 'pine' ? pines : t.kind === 'willow' ? willows : oaks;
     scenery.push(place(variants[Math.floor(t.variant * variants.length)], [t.x, t.y], variants[0].height - 5));
   }
   province.trees.forEach(([x, y, isPine], i) => {
@@ -119,12 +138,25 @@ export function buildAdventureScene(map: MapModel, state: GameState): AdventureS
     else landmarks.push(o);
   }
 
-  // The bridge sits over the cells where a road crosses water.
-  const bridgeCells = [...map.terrain.keys()].filter((i) => map.terrain[i] === Terrain.Bridge);
-  if (bridgeCells.length > 0) {
-    const cx = bridgeCells.reduce((s, i) => s + (i % map.width), 0) / bridgeCells.length;
-    const cy = bridgeCells.reduce((s, i) => s + Math.floor(i / map.width), 0) / bridgeCells.length;
-    landmarks.push(place(stoneBridge(46), [cx * 8 + 4, cy * 8 + 4], 12));
+  // A bridge over each group of cells where a road crosses water.
+  const unvisited = new Set([...map.terrain.keys()].filter((i) => map.terrain[i] === Terrain.Bridge));
+  for (const first of unvisited) {
+    const group = [first];
+    unvisited.delete(first);
+    for (let k = 0; k < group.length; k++) {
+      const i = group[k];
+      for (const n of [i - 1, i + 1, i - map.width, i + map.width, i - map.width - 1, i - map.width + 1, i + map.width - 1, i + map.width + 1]) {
+        if (unvisited.has(n)) {
+          unvisited.delete(n);
+          group.push(n);
+        }
+      }
+    }
+    const xs = group.map((i) => i % map.width);
+    const cx = xs.reduce((a, b) => a + b, 0) / group.length;
+    const cy = group.reduce((s, i) => s + Math.floor(i / map.width), 0) / group.length;
+    const span = (Math.max(...xs) - Math.min(...xs) + 1) * 8;
+    landmarks.push(place(stoneBridge(Math.max(46, span + 18)), [cx * 8 + 4, cy * 8 + 4], 12));
   }
 
   const isLandmark = new Set(landmarks);

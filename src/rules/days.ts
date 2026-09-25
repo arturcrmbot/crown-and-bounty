@@ -1,3 +1,4 @@
+import { commissionOf } from './campaign';
 import { heroStats } from './hero';
 import { again, close, COMMISSION, coins, LAST_DAY, PAYDAY_EVERY, roman, show, wages, type GameEvent, type GameState, type Result } from './state';
 
@@ -21,9 +22,10 @@ export function endDay(state: GameState): Result {
   const events: GameEvent[] = [{ type: 'day', day, payday }];
   if (day > LAST_DAY && state.bounty === 'open') {
     next = { ...next, over: 'lost' };
-    lines.push('The King\u2019s patience has run out. So has the goose\u2019s.');
+    lines.push(commissionOf(state).timeout);
     events.push({ type: 'over', result: 'lost' });
   }
-  events.push(show({ title: `Day ${roman(day)}`, lines: lines.length ? lines : ['The sun comes up over the province. Your horse looks rested.'], choices: next.over ? [again] : [close] }));
+  const tryAgain = { label: 'Try this commission again', action: { type: 'retry' } } as const;
+  events.push(show({ title: `Day ${roman(day)}`, lines: lines.length ? lines : ['The sun comes up over the province. Your horse looks rested.'], choices: next.over ? [tryAgain, again] : [close] }));
   return { state: next, events };
 }

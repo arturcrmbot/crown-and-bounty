@@ -111,10 +111,10 @@ Each milestone ends with tests green, screenshots in the side panel, and a playt
 | M5 | **Story choices and captains.** Dialogue options gated by background and skills, reputation, and 2–3 captains with quirks. | Choices change outcomes you can notice. |
 | M6 | **Polish.** Animation, portraits, sound, then music. | Later. |
 
-**Progress:** M0, M1 and M2 are done. M3 is next.
+**Progress:** M0, M1, M2 and M3 are done. M4 is next.
 
 ## Still open
 
-- **What carries over between commissions?** My recommendation: the hero, gear and captains carry over. Troops disband, apart from a few veterans.
+- **What carries over between commissions?** Built as recommended: the hero (level, skills, perks, gear), gold and leadership carry over. Troops disband, apart from a quarter of each stack as veterans, and the background's levy joins again. Captains will carry over when they exist.
 - **Map movement:** free movement over the 8 px walk grid (as now), or snapped to square tiles? My recommendation: keep it free.
 - **Difficulty settings:** decide once M1's balance sims exist.

@@ -11,6 +11,9 @@ const SCENES = {
   castle: { query: '&x=1000&y=300' },
   darkwood: { query: '&x=200&y=780' },
   battle: { query: '&battle=patrol', keepCard: true },
+  court: { query: '&court=1', keepCard: true },
+  fenmarch: { query: '&commission=2', keepCard: true },
+  fen: { query: '&commission=2&reveal=1&x=640&y=700', keepCard: true },
 };
 const approve = process.argv.includes('--approve');
 const file = 'test/visual.json';

@@ -1,4 +1,4 @@
-import { roman, type GameState, type TroopId } from '../rules/game';
+import { commissionOf, roman, type GameState, type TroopId } from '../rules/game';
 import { Bitmap, blit } from './bitmap';
 import { BAR, BAR_DIVIDERS, paintBarBackground } from './frame';
 import { GOLD, INK, NEUTRAL, PARCHMENT, RED, STONE, WOOD } from './palette';
@@ -38,6 +38,9 @@ const TROOP_ICONS: Record<TroopId, Bitmap> = {
   crossbowmen: BOW,
   peasants: FORK,
   wolves: FORK,
+  goblins: FORK,
+  trolls: SWORD,
+  witch: BOW,
 };
 
 /** The hourglass: click it (or press E) to end the day. */
@@ -60,7 +63,7 @@ export function paintHud(frame: Bitmap, state: GameState) {
   };
   item(COIN, state.gold.toLocaleString('en-GB'), GOLD[6]);
   for (const stack of state.army) item(TROOP_ICONS[stack.troop], String(stack.count));
-  const bounty = state.bounty === 'paid' ? 'BOUNTY PAID' : 'BOUNTY:  BARON GRIMSBY';
+  const bounty = state.bounty === 'paid' ? 'BOUNTY PAID' : `BOUNTY:  ${commissionOf(state).villain.toUpperCase()}`;
   drawText(frame, bounty, BAR.x + BAR_DIVIDERS[0] + 16, text, state.bounty === 'paid' ? GOLD[6] : GOLD[5], INK);
   x = BAR.x + BAR_DIVIDERS[1] + 14;
   blit(frame, HORSESHOE, x, Math.round(mid - 3));

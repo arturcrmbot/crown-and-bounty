@@ -1,10 +1,10 @@
 import { troopPower } from '../content/troops';
 import { ARTIFACTS } from '../content/artifacts';
-import { apply, armyPower, endDay, fight, heroStats, leadershipUsed, learn, locationById, recruitable, visit, winChance, type GameState, type Location } from './game';
-import type { MapModel } from './map/model';
+import { apply, armyPower, endDay, fight, hasNextCommission, heroStats, leadershipUsed, learn, locationById, provinceOf, recruitable, visit, winChance, type BoonId, type GameState, type Location } from './game';
+import { buildMap, type MapModel } from './map/model';
 import { planRoute, routeCosts, stepAlong } from './map/movement';
 
-export type BotRun = { won: boolean; day: number; gold: number; power: number; fights: number; retreats: number; level: number; log: string[] };
+export type BotRun = { won: boolean; day: number; gold: number; power: number; fights: number; retreats: number; level: number; log: string[]; state: GameState };
 
 /** How much the bot wants a place right now, or null if it isn't worth riding to. */
 function worth(state: GameState, l: Location): number | null {
@@ -78,7 +78,7 @@ export function playCommission(start: GameState, map: MapModel, maxSteps = 20000
     } else if (place.kind === 'castle' || place.kind === 'village') {
       if (recruitable(state, place.id) > 0) state = apply(state, { type: 'recruit', id: place.id })!.state;
       for (const ware of locationById(state, place.id).wares ?? []) {
-        if (state.gold >= (ARTIFACTS[ware].price ?? 0) + 600) state = apply(state, { type: 'buy', id: place.id, artifact: ware })!.state;
+        if (state.gold >= (ARTIFACTS[ware].price ?? 0) + 600) state = apply(state, { type: 'buy', id: place.id, artifact: ware })?.state ?? state;
       }
     } else if (place.enemy && !place.done) {
       fights++;
@@ -89,5 +89,35 @@ export function playCommission(start: GameState, map: MapModel, maxSteps = 20000
     while (state.hero.offers.length > 0) state = learn(state, state.hero.offers[0].options[0])!.state;
     log.push(`day ${state.day}: ${place.name}`);
   }
-  return { won: state.over === 'won', day: state.day, gold: state.gold, power: armyPower(state.army), fights, retreats, level: state.hero.level, log };
+  return { won: state.over === 'won', day: state.day, gold: state.gold, power: armyPower(state.army), fights, retreats, level: state.hero.level, log, state };
+}
+
+/** The boon the bot asks the King for: leadership if it can, else gold, else whatever is first. */
+function pickBoon(state: GameState): BoonId {
+  const boons = state.campaign.court!.boons;
+  return (['warrant', 'purse', 'fencing', 'armourer'] as BoonId[]).find((b) => boons.includes(b)) ?? boons[0];
+}
+
+/**
+ * Plays every commission in turn: each province on its own map, then court, a boon and on to the
+ * next. A lost commission is tried once more from its start, as a player would.
+ */
+export function playCampaign(start: GameState): BotRun[] {
+  const runs: BotRun[] = [];
+  let state = start;
+  for (let tries = 0; tries < 8; tries++) {
+    const run = playCommission(state, buildMap(provinceOf(state)));
+    runs.push(run);
+    if (run.state.over === 'lost') {
+      if (runs.filter((r) => r.state.campaign.chapter === run.state.campaign.chapter).length > 1) break;
+      state = apply(run.state, { type: 'retry' })!.state;
+      continue;
+    }
+    if (!hasNextCommission(run.state)) break;
+    let next = apply(run.state, { type: 'court' })!.state;
+    while (next.hero.offers.length > 0) next = learn(next, next.hero.offers[0].options[0])!.state;
+    next = apply(next, { type: 'boon', id: pickBoon(next) })!.state;
+    state = apply(next, { type: 'nextCommission' })!.state;
+  }
+  return runs;
 }

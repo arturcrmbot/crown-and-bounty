@@ -11,7 +11,7 @@ import { CardView } from '../ui/card';
 import { HoverLabel } from '../ui/label';
 import type { Display } from './display';
 import type { Input } from './input';
-import { storyCard } from './intro';
+import { backgroundCard, storyCard } from './intro';
 import { clearSave, saveGame } from './save';
 
 /** Map pixels per second. */
@@ -60,6 +60,10 @@ export class AdventureController {
   private readonly speed: number;
   /** Called when the rules start a battle; the game switches screens. */
   onBattle: (() => void) | null = null;
+  /** Called when the hero rides to court after a won commission. */
+  onCourt: (() => void) | null = null;
+  /** Called when a new commission begins (maybe in a new province), with the events still to show. */
+  onCommission: ((state: GameState, rest: GameEvent[]) => void) | null = null;
 
   constructor(display: Display, map: MapModel, state: GameState, speed = 1) {
     this.display = display;
@@ -80,6 +84,12 @@ export class AdventureController {
     return this.scene.view;
   }
 
+  /** Takes this screen's cards and labels off the page, when a new province replaces it. */
+  dispose() {
+    this.cards.dispose();
+    this.label.dispose();
+  }
+
   showCard(card: Card, at: Point | null) {
     this.cardAnchor = at;
     this.cards.show(card);
@@ -98,9 +108,22 @@ export class AdventureController {
     saveGame(this.state);
   }
 
+  /** Shows events that happened elsewhere, like the arrival card of a new commission. */
+  play(events: GameEvent[]) {
+    this.handle(events);
+  }
+
   private handle(events: GameEvent[]) {
-    for (const e of events) {
+    for (const [i, e] of events.entries()) {
       switch (e.type) {
+        case 'court':
+          this.hideCard();
+          this.onCourt?.();
+          return;
+        case 'commission':
+          this.hideCard();
+          this.onCommission?.(this.state, events.slice(i + 1));
+          return;
         case 'card':
           this.showCard(e.card, e.place ? this.anchorOf(e.place) : e.at);
           break;
@@ -197,15 +220,15 @@ export class AdventureController {
 
   // --- Each frame -------------------------------------------------------------------------
 
-  /** Level-ups wait for a choice: offer the next one whenever nothing else is on the table. */
-  private promptLevelUp() {
+  /** Choices that must be made wait on screen: the hero's background first, then any level-ups. */
+  private promptPending() {
     if (this.cards.isOpen || this.state.over) return;
-    const card = levelUpCard(this.state);
+    const card = this.state.opening ? backgroundCard() : levelUpCard(this.state);
     if (card) this.showCard(card, null);
   }
 
   update(dt: number, held: Set<string>) {
-    this.promptLevelUp();
+    this.promptPending();
     const dx = (held.has('arrowright') || held.has('d') ? 1 : 0) - (held.has('arrowleft') || held.has('a') ? 1 : 0);
     const dy = (held.has('arrowdown') || held.has('s') ? 1 : 0) - (held.has('arrowup') || held.has('w') ? 1 : 0);
     if (dx || dy) {
@@ -331,7 +354,7 @@ export class AdventureController {
 
   /** A click on the map, in map pixels: the hero, a place, or open ground to ride to. */
   clickMap(point: Point) {
-    if (this.state.over) return;
+    if (this.state.over || this.state.opening) return;
     const thing = this.under(point);
     if (thing?.id === 'hero') {
       this.showCard(describeHero(this.state), [this.drawn.x, this.scene.hero.object.y + 6]);
@@ -352,7 +375,7 @@ export class AdventureController {
   readonly input = {
     click: (x: number, y: number) => {
       const onHourglass = x >= HOURGLASS_AT.x - 3 && x < HOURGLASS_AT.x + HOURGLASS.width + 3 && y >= HOURGLASS_AT.y - 3 && y < HOURGLASS_AT.y + HOURGLASS.height + 3;
-      if (onHourglass) return this.choose({ type: 'endDay' });
+      if (onHourglass && !this.state.opening) return this.choose({ type: 'endDay' });
       const point = this.view.toMap(x, y);
       if (point) this.clickMap(point);
     },
@@ -369,6 +392,7 @@ export class AdventureController {
     },
     leave: () => this.label.hide(),
     key: (key: string) => {
+      if (this.state.opening) return;
       if (key === 'e') this.choose({ type: 'endDay' });
       else if (key === 'escape') this.hideCard();
       else if (key.startsWith('arrow') || 'wasd'.includes(key)) this.follow = false;

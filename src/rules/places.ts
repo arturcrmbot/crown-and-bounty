@@ -1,10 +1,13 @@
-import { ARTIFACTS } from '../content/artifacts';
+import { ARTIFACTS, type ArtifactId } from '../content/artifacts';
 import { BACKGROUNDS } from '../content/backgrounds';
 import { PERKS, RANKS, SKILLS, type SkillId } from '../content/skills';
 import { winChance } from './fight';
 import { foundNote, gainXp, giveArtifact, heroStats, LEVELS } from './hero';
 import { revealDisc } from './map/fog';
-import { addTroops, armyLine, close, coins, LAST_DAY, leadershipUsed, locationById, roman, show, TROOPS, troops, update, type Card, type Choice, type GameEvent, type GameState, type Result } from './state';
+import {
+  addTroops, armyLine, close, coins, LAST_DAY, leadershipUsed, locationById, roman, show, TROOPS, troops, update,
+  type Army, type Card, type Choice, type GameEvent, type GameState, type Location, type PlaceText, type Result,
+} from './state';
 
 /** Experience for finding a place for the first time. */
 export const DISCOVERY_XP = 40;
@@ -14,42 +17,49 @@ const loot = (state: GameState, gold: number) => Math.round(gold * (1 + heroStat
 /** A recruit's price after the hero's charm. */
 export const priceOf = (state: GameState, base: number) => Math.max(1, Math.round(base * (1 + heroStats(state).recruitPrice)));
 
+/** The usual words for each kind of place, for provinces that don't give their own. */
+const USUAL: Record<Location['kind'], PlaceText> = {
+  castle: { about: ['A royal castle.', 'Troops to recruit, and an armoury.'] },
+  tower: { about: ['An old tower, long empty.'], done: ['Empty now.'], visit: ['Someone left a note here, long ago.'] },
+  mine: { about: ['Something down there is humming.'], done: ['Nothing left but echoes.'], visit: ['A forgotten stash: **{gold} gold**.'] },
+  village: { about: ['Friendly, if nosy.'] },
+  mill: { about: ['The miller waves.'], done: ['"Next week, officer."'], visit: ['Your troops eat well and march on.'] },
+  chest: { about: ['Heavy, and locked with a lock that isn\u2019t.'] },
+  gold: { about: ['Someone left in a hurry.'] },
+  patrol: { done: ['Nobody here now.'] },
+  hideout: { done: ['Nobody here now.'] },
+  signpost: { about: ['The arms point every way at once.'] },
+};
+
+/** A place's words: the province's own if it has them, else the usual ones for its kind. */
+const words = (place: Location, part: keyof PlaceText): string[] => place.text?.[part] ?? USUAL[place.kind][part] ?? [];
+
+/** "**20 Swordsmen** and **12 Crossbowmen**": what an enemy has, for its card. */
+export function forceLine(army: Army): string {
+  const parts = army.filter((s) => s.count > 0).map((s) => (TROOPS[s.troop].leadership >= 99 ? `**${TROOPS[s.troop].one}**` : `**${troops(s.troop, s.count)}**`));
+  return parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}` : (parts[0] ?? 'nobody');
+}
+
 /** The card for a place before the hero rides there. */
 export function describe(state: GameState, id: string): Card {
   const place = locationById(state, id);
   const go = (label: string): Choice => ({ label, action: { type: 'go', id } });
   switch (place.kind) {
     case 'castle':
-      return { title: place.name, lines: ['Your castle, flying the King\u2019s banner.', 'The steward is pretending to count spoons.', 'Knights to recruit, and an armoury.'], choices: [go('Visit'), close] };
-    case 'tower':
-      return place.done
-        ? { title: place.name, lines: ['Empty now, apart from some very offended crows.'], choices: [close] }
-        : { title: place.name, lines: ['Abandoned for nearly a century.', '*Something has disturbed the crows recently.*'], choices: [go('Enter'), close] };
-    case 'mine':
-      return place.done
-        ? { title: place.name, lines: ['The humming has stopped. The dwarf has asked you, twice, to leave.'], choices: [close] }
-        : { title: place.name, lines: ['The rails lead into darkness.', 'Something down there is humming.'], choices: [go('Enter'), close] };
     case 'village':
-      return { title: place.name, lines: ['Population 340. Friendly, if nosy.'], choices: [go('Visit'), close] };
-    case 'mill':
-      return { title: place.name, lines: ['The wheel turns. The miller waves a floury hand.'], choices: [go('Visit'), close] };
     case 'chest':
-      return { title: place.name, lines: ['Heavy, and locked with a lock that isn\u2019t.'], choices: [go('Open'), close] };
     case 'gold':
-      return { title: place.name, lines: ['Someone left in a hurry.'], choices: [go('Take'), close] };
+      return { title: place.name, lines: words(place, 'about'), choices: [go({ castle: 'Visit', village: 'Visit', chest: 'Open', gold: 'Take' }[place.kind]), close] };
+    case 'tower':
+    case 'mine':
+    case 'mill':
+      if (place.done) return { title: place.name, lines: words(place, 'done'), choices: [close] };
+      return { title: place.name, lines: words(place, 'about'), choices: [go(place.kind === 'mill' ? 'Visit' : 'Enter'), close] };
     case 'patrol':
     case 'hideout':
-      return { title: place.name, lines: place.enemy!.lines, choices: [go('Approach'), close] };
+      return { title: place.name, lines: [...place.enemy!.lines, `About ${forceLine(place.enemy!.army)}.`], choices: [go('Approach'), close] };
     case 'signpost':
-      return {
-        title: place.name,
-        lines: [
-          '**NORTH:** the Old Watchtower.',
-          '**EAST:** Westmere, over the old bridge.',
-          '**SOUTH-WEST:** Darkwood, and Baron Grimsby, who owes the Crown three years of taxes and one goose.',
-        ],
-        choices: [close],
-      };
+      return { title: place.name, lines: words(place, 'about'), choices: [close] };
   }
 }
 
@@ -100,11 +110,7 @@ export function visit(state: GameState, id: string): Result {
     case 'tower': {
       if (place.done) return say(state, describe(state, id));
       const next = update(state, id, { done: true });
-      const card: Card = {
-        title: place.name,
-        lines: ['The crows were guarding an old soldier\u2019s journal: *"Grimsby rides south-west, into Darkwood. He sleeps with the goose."*'],
-        choices: [close],
-      };
+      const card: Card = { title: place.name, lines: words(place, 'visit'), choices: [close] };
       if (!place.reveals) return found(next, card);
       const [rx, ry] = place.reveals;
       const seen = { ...next, explored: revealDisc(next.explored, next.world, rx, ry, 90).bits };
@@ -115,15 +121,15 @@ export function visit(state: GameState, id: string): Result {
       const gold = loot(state, place.gold ?? 0);
       return found(update({ ...state, gold: state.gold + gold }, id, { done: true }), {
         title: place.name,
-        lines: [`A forgotten ore cart, still full: **${coins(gold)} gold**.`, 'The humming was a dwarf, who asks you to leave, and hands you his spare helmet to hurry you along.'],
+        lines: words(place, 'visit').map((line) => line.replace('{gold}', coins(gold))),
         choices: [close],
       });
     }
     case 'mill': {
-      if (place.done) return say(state, { title: place.name, lines: ['"Next week, officer. Flour doesn\u2019t grow on trees."'], choices: [close] });
+      if (place.done) return say(state, { title: place.name, lines: words(place, 'done'), choices: [close] });
       return found(update({ ...state, movement: state.movement + 40 }, id, { done: true }), {
         title: place.name,
-        lines: ['"Flour for the King\u2019s men!" Your troops eat well and march on.', '**+40 movement** today.'],
+        lines: [...words(place, 'visit'), '**+40 movement** today.'],
         choices: [close],
       });
     }
@@ -144,14 +150,14 @@ export function visit(state: GameState, id: string): Result {
     }
     case 'patrol':
     case 'hideout': {
-      if (place.done) return say(state, { title: place.name, lines: ['Nobody here but a few goose feathers.'], choices: [close] });
+      if (place.done) return say(state, { title: place.name, lines: words(place, 'done'), choices: [close] });
       const chance = winChance(state, id);
       const hint = chance >= 0.9 ? 'They look nervous.' : chance >= 0.55 ? 'It will be close.' : 'Your army looks at you. Then at them. Then at you.';
       return say(state, {
         title: place.name,
         lines: [place.enemy!.threat, hint],
         choices: [
-          { label: place.kind === 'hideout' ? 'Storm the stockade' : 'Fight', action: { type: 'fight', id } },
+          { label: place.enemy!.charge ?? 'Fight', action: { type: 'fight', id } },
           { label: 'Let the sergeants handle it', action: { type: 'autofight', id } },
           { label: 'Retreat', action: { type: 'close' } },
         ],
@@ -194,10 +200,13 @@ export function recruit(state: GameState, id: string): Result | null {
   return { state: next, events: [show({ title: place.name, lines: [`**${troops(offer.troop, count)}** join your army.`], choices: [close] }, place.at, place.id)] };
 }
 
+/** Whether the hero wears or carries an artifact already. */
+const owns = (state: GameState, id: ArtifactId) => Object.values(state.hero.gear).includes(id) || state.hero.pack.includes(id);
+
 /** The armoury's wares, with what you can afford. */
 export function armouryCard(state: GameState, id: string): Card {
   const place = locationById(state, id);
-  const wares = place.wares ?? [];
+  const wares = (place.wares ?? []).filter((w) => !owns(state, w));
   return {
     title: `${place.name}: the armoury`,
     lines: wares.length
@@ -210,7 +219,7 @@ export function armouryCard(state: GameState, id: string): Card {
 export function buy(state: GameState, id: string, artifact: (typeof ARTIFACTS)[keyof typeof ARTIFACTS]['id']): Result | null {
   const place = locationById(state, id);
   const price = ARTIFACTS[artifact].price ?? 0;
-  if (!place.wares?.includes(artifact) || state.gold < price) return null;
+  if (!place.wares?.includes(artifact) || owns(state, artifact) || state.gold < price) return null;
   const next = giveArtifact(update({ ...state, gold: state.gold - price }, id, { wares: place.wares.filter((w) => w !== artifact) }), artifact);
   return { state: next, events: [show({ ...armouryCard(next, id), lines: [`**${ARTIFACTS[artifact].name}** is yours.`, ...armouryCard(next, id).lines] }, place.at, place.id)] };
 }

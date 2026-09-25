@@ -13,7 +13,14 @@ export type ArtifactId =
   | 'luckyHorseshoe'
   | 'wizardsButton'
   | 'goldenFeather'
-  | 'millersLoaf';
+  | 'millersLoaf'
+  | 'abbotsStaff'
+  | 'eelskinBoots'
+  | 'goblinCharm'
+  | 'trollhide'
+  | 'harrowgateMail'
+  | 'fenBanner'
+  | 'astrolabe';
 
 export type Artifact = { id: ArtifactId; name: string; slot: Slot; note: string; bonus: Bonus; price?: number };
 
@@ -28,4 +35,11 @@ export const ARTIFACTS: Record<ArtifactId, Artifact> = {
   wizardsButton: { id: 'wizardsButton', name: 'A Wizard\u2019s Button', slot: 'trinket', note: '+1 spell power. Nobody knows which wizard.', bonus: { spellPower: 1 } },
   goldenFeather: { id: 'goldenFeather', name: 'Golden Goose Feather', slot: 'trinket', note: '+300 gold every payday. The goose would like it back.', bonus: { payday: 300 } },
   millersLoaf: { id: 'millersLoaf', name: 'The Miller\u2019s Everlasting Loaf', slot: 'trinket', note: '+1 knowledge. It never goes stale, which is worrying.', bonus: { knowledge: 1 } },
+  abbotsStaff: { id: 'abbotsStaff', name: 'The Abbot\u2019s Staff', slot: 'weapon', note: '+2 spell power. Still smells faintly of incense and eels.', bonus: { spellPower: 2 } },
+  eelskinBoots: { id: 'eelskinBoots', name: 'Eelskin Boots', slot: 'trinket', note: '+30 movement a day. Slippery, but only on the inside.', bonus: { movement: 30 } },
+  goblinCharm: { id: 'goblinCharm', name: 'Goblin Lucky Charm', slot: 'trinket', note: '+20% gold from treasure. Goblins are very good at finding things that aren\u2019t theirs.', bonus: { loot: 0.2 } },
+  trollhide: { id: 'trollhide', name: 'Trollhide Jerkin', slot: 'armour', note: '+1 defence, and your troops take 10% less damage. Does not wash.', bonus: { defence: 1, armour: 0.1 } },
+  harrowgateMail: { id: 'harrowgateMail', name: 'Harrowgate Mail', slot: 'armour', note: '+3 defence. Heavy enough to anchor a boat.', bonus: { defence: 3 }, price: 1600 },
+  fenBanner: { id: 'fenBanner', name: 'Banner of the Fens', slot: 'banner', note: '+35 leadership. The heron on it is either noble or hungry.', bonus: { leadership: 35 }, price: 1200 },
+  astrolabe: { id: 'astrolabe', name: 'Brass Astrolabe', slot: 'trinket', note: '+1 spell power, +1 knowledge. It points at stars, mostly the wrong ones.', bonus: { spellPower: 1, knowledge: 1 }, price: 1400 },
 };

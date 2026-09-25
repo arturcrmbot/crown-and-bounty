@@ -1,6 +1,7 @@
 import { BACKGROUNDS } from '../content/backgrounds';
 import { ARTIFACTS, type ArtifactId } from '../content/artifacts';
 import { autoResolve } from './battle/ai';
+import { campaignLines, commissionOf, hasNextCommission } from './campaign';
 import { createBattle, survivors, type BattleHero } from './battle/battle';
 import { foundNote, gainXp, giveArtifact, heroStats } from './hero';
 import { again, armyLine, armyPower, close, coins, locationById, roll, roman, show, troops, update, VANISHES, type Army, type GameEvent, type GameState, type Result } from './state';
@@ -50,7 +51,8 @@ export function finishFight(state: GameState): Result {
   const place = locationById(state, battle.place);
   const enemy = place.enemy!;
   const army = survivors(battle, 'player');
-  const base: GameState = { ...state, battle: undefined, army, hero: { ...state.hero, mana: battle.hero.mana } };
+  // The battle rolled its own dice from the state's seed: carry on from where it stopped, not from the start again.
+  const base: GameState = { ...state, seed: battle.seed, battle: undefined, army, hero: { ...state.hero, mana: battle.hero.mana } };
   const lost = lossesLine(state.army, army);
   const events: GameEvent[] = [];
   if (battle.result === 'won') {
@@ -68,13 +70,15 @@ export function finishFight(state: GameState): Result {
     spoils.push(`**+${xp} experience.**`);
     if (place.kind === 'hideout') {
       next = { ...next, bounty: 'paid', over: 'won' };
+      const c = commissionOf(next);
+      const more = hasNextCommission(next);
       events.push({ type: 'over', result: 'won' });
       events.push(
         show(
           {
             title: 'The bounty is paid!',
-            lines: ['Baron Grimsby surrenders, still clutching the goose.', lost, `The Crown pays **${coins(enemy.reward)} gold**. The royal goose is going home.`, ...spoils, `*Commission complete on day ${roman(next.day)}.*`],
-            choices: [again, close],
+            lines: [c.surrender, lost, `The Crown pays **${coins(enemy.reward)} gold**. ${c.homecoming}`, ...spoils, `*Commission complete on day ${roman(next.day)}.*`, ...(more ? [] : campaignLines(next))],
+            choices: more ? [{ label: 'Ride to the King\u2019s court', action: { type: 'court' } }] : [again, close],
           },
           place.at,
           place.id,
@@ -99,7 +103,7 @@ export function finishFight(state: GameState): Result {
     state: { ...base, army: [], movement: 0, hero: { ...base.hero, at: home } },
     events: [
       { type: 'moved', at: home, facing: base.hero.facing },
-      show({ title: 'Defeat', lines: ['Your army is scattered to the four winds.', 'You limp back to Castle Aldmoor to raise another.'], choices: [close] }, null),
+      show({ title: 'Defeat', lines: ['Your army is scattered to the four winds.', `You limp back to ${castle?.name ?? 'safety'} to raise another.`], choices: [close] }, null),
     ],
   };
 }

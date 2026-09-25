@@ -27,7 +27,9 @@ export type LocationKind = 'castle' | 'tower' | 'mine' | 'village' | 'mill' | 'c
 
 export type Enemy = {
   /** How the enemy is drawn on the map. */
-  look: 'soldiers' | 'wolves' | 'stockade';
+  look: 'soldiers' | 'wolves' | 'stockade' | 'goblins' | 'troll';
+  /** The button that starts the fight, if not just "Fight". */
+  charge?: string;
   lines: string[];
   army: Army;
   reward: number;
@@ -55,7 +57,28 @@ export type Location = {
   artifact?: ArtifactId;
   /** For sale here (the castle armoury). */
   wares?: ArtifactId[];
+  /** This province's words for the place, instead of the usual ones for its kind. */
+  text?: PlaceText;
+  /** Which sprite stands for it, when not the usual one for its kind. */
+  look?: PlaceLook;
 };
+
+/** Flavour for a place: before a visit, once it's used up, and on the visit itself. */
+export type PlaceText = { about?: string[]; done?: string[]; visit?: string[] };
+export type PlaceLook = 'abbey' | 'peathut' | 'windmill' | 'stilthut';
+
+/** The campaign so far: which commission this is, how the others went, and how this one began. */
+export type Campaign = {
+  /** Index into the list of commissions, from 0. */
+  chapter: number;
+  record: { chapter: number; days: number; level: number }[];
+  /** The hero, purse and army as this commission began, for trying it again. */
+  start: { hero: Hero; gold: number; leadership: number; army: Army };
+  /** At court between commissions: the boons on offer, and the one taken. */
+  court?: { boons: BoonId[]; chosen?: BoonId };
+};
+
+export type BoonId = 'fencing' | 'armourer' | 'library' | 'astronomer' | 'warrant' | 'purse';
 
 export type GameState = {
   day: number;
@@ -73,6 +96,9 @@ export type GameState = {
   explored: Explored;
   /** A battle in progress, so a save can be made mid-fight. */
   battle?: BattleState;
+  campaign: Campaign;
+  /** Set until the player picks a background on the opening card. */
+  opening?: boolean;
 };
 
 /** Sir Aldric: where he is, who he was, and what he has learned. Derived numbers come from `heroStats`. */
@@ -117,12 +143,18 @@ export type Action =
   | { type: 'gear' }
   | { type: 'armoury'; id: string }
   | { type: 'buy'; id: string; artifact: ArtifactId }
-  | { type: 'background'; id: BackgroundId };
+  | { type: 'background'; id: BackgroundId }
+  /** After a won commission: ride to the King. */
+  | { type: 'court' }
+  | { type: 'boon'; id: BoonId }
+  | { type: 'nextCommission' }
+  /** After a lost commission: the same one again, from its start. */
+  | { type: 'retry' };
 
 export type Choice = { label: string; action: Action };
 
-/** A parchment card: a title, a few lines (with **bold** and *italics*), and choices. */
-export type Card = { title: string; lines: string[]; choices: Choice[] };
+/** A parchment card: a title, a few lines (with **bold** and *italics*), and choices. `wide` is for big decisions. */
+export type Card = { title: string; lines: string[]; choices: Choice[]; wide?: boolean };
 
 /** What happened, for the screens to show. The rules never draw anything themselves. */
 export type GameEvent =
@@ -134,12 +166,16 @@ export type GameEvent =
   | { type: 'day'; day: number; payday: boolean }
   | { type: 'battle'; place: string }
   | { type: 'levelUp'; level: number }
-  | { type: 'over'; result: 'won' | 'lost' };
+  | { type: 'over'; result: 'won' | 'lost' }
+  /** The hero is at court: the screens show the throne room. */
+  | { type: 'court' }
+  /** A new commission has begun, maybe in a new province: the screens rebuild the map. */
+  | { type: 'commission' };
 
 export type Result = { state: GameState; events: GameEvent[] };
 
 export const close: Choice = { label: 'Close', action: { type: 'close' } };
-export const again: Choice = { label: 'Ride again', action: { type: 'restart' } };
+export const again: Choice = { label: 'Start a new campaign', action: { type: 'restart' } };
 
 /** A card event anchored above a map point, or centred when `at` is null. */
 export const show = (card: Card, at: Point | null = null, place?: string): GameEvent => ({ type: 'card', card, at, place });

@@ -38,7 +38,16 @@ export const CYCLE_DEEP = ramp('#132a74', '#152e7c', '#1a3790', '#1e3f9c', '#1a3
 export const CYCLE_SHALLOW = ramp('#244aa8', '#2952b0', '#3a6cca', '#7eaeec', '#3a6cca', '#2952b0');
 /** Falling water: mostly white with blue gaps, cycling downwards. */
 export const CYCLE_FALL = ramp('#e2eef8', '#b4d2f2', '#6a9ae2', '#e2eef8', '#ffffff', '#9cc0ee');
-const CYCLES = [CYCLE_DEEP, CYCLE_SHALLOW, CYCLE_FALL];
+/** Torch flames: yellow to deep orange, flickering as the palette turns. */
+export const CYCLE_FIRE = ramp('#fff2a0', '#ffd24a', '#f59a2a', '#d8581e', '#f59a2a', '#ffd24a');
+/** Fen pools: dark peaty water with a slow green glint. */
+export const CYCLE_BOG = ramp('#1d2c24', '#21332a', '#28402f', '#335036', '#28402f', '#21332a');
+const CYCLES = [CYCLE_DEEP, CYCLE_SHALLOW, CYCLE_FALL, CYCLE_FIRE, CYCLE_BOG];
+
+/** Plum robes and hats, for the witch. Added late, so kept out of the lookup tables below. */
+export const PLUM = ramp('#241029', '#3b1a44', '#5a2a66', '#7c4088', '#a466ac');
+/** Reeds and fen grass: straw-gold stems. */
+export const REED = ramp('#3a3418', '#5a4f22', '#7d6e30', '#a08e44', '#c2ae62');
 
 export const PALETTE_SIZE = hexes.length;
 
@@ -77,36 +86,39 @@ function nearest(r: number, g: number, b: number, exclude: Set<number>): number 
 }
 
 const cycling = new Set(CYCLES.flat());
+/** Colours the lookup tables never map to: cycling ones, and ramps added after the tables were tuned. */
+const excluded = new Set([...cycling, ...PLUM, ...REED]);
 
 /** For each colour, the palette colour of the same thing in shadow: darker and a little bluer. */
 export const SHADOW_LUT = new Uint8Array(256).map((_, i) => {
   if (i >= COLORS.length) return i;
+  if (CYCLE_BOG.includes(i)) return PINE[0];
   if (cycling.has(i)) return WATER[1];
   const [r, g, b] = COLORS[i];
-  return nearest(r * 0.52, g * 0.56, b * 0.7 + 8, cycling);
+  return nearest(r * 0.52, g * 0.56, b * 0.7 + 8, excluded);
 });
 
 /** Unexplored land: desaturated, darker and a touch blue. */
 export const FOG_LUT = new Uint8Array(256).map((_, i) => {
   if (i >= COLORS.length) return i;
   if (i === SILHOUETTE) return i;
-  const [r, g, b] = cycling.has(i) ? COLORS[WATER[3]] : COLORS[i];
+  const [r, g, b] = cycling.has(i) && !CYCLE_BOG.includes(i) ? COLORS[WATER[3]] : COLORS[i];
   const luma = 0.3 * r + 0.59 * g + 0.11 * b;
   const mix = (c: number) => (c * 0.45 + luma * 0.55) * 0.78;
-  return nearest(mix(r), mix(g), mix(b) + 6, cycling);
+  return nearest(mix(r), mix(g), mix(b) + 6, excluded);
 });
 
 /** Highlight: the same colour a little brighter and warmer, for reachable hexes. */
 export const LIGHT_LUT = new Uint8Array(256).map((_, i) => {
   if (i >= COLORS.length || cycling.has(i)) return i;
   const [r, g, b] = COLORS[i];
-  return nearest(Math.min(255, r * 1.22 + 14), Math.min(255, g * 1.22 + 12), Math.min(255, b * 1.12 + 4), cycling);
+  return nearest(Math.min(255, r * 1.22 + 14), Math.min(255, g * 1.22 + 12), Math.min(255, b * 1.12 + 4), excluded);
 });
 
 /** Paper grain: a slightly darker, warmer speck of the same colour. */
 export const GRAIN_LUT = new Uint8Array(256).map((_, i) => {
   if (i >= COLORS.length || cycling.has(i)) return i;
   const [r, g, b] = COLORS[i];
-  const next = nearest(r * 0.84 + 4, g * 0.84 + 2, b * 0.8, cycling);
+  const next = nearest(r * 0.84 + 4, g * 0.84 + 2, b * 0.8, excluded);
   return next === i ? SHADOW_LUT[i] : next;
 });

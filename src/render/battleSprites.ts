@@ -1,6 +1,6 @@
 import type { TroopId } from '../content/troops';
 import { Bitmap, outline, SHADOW } from './bitmap';
-import { BLUE, GOLD, INK, LEAF, NEUTRAL, RED, SKIN, STONE, WOOD } from './palette';
+import { BLUE, FOG, GOLD, INK, LEAF, NEUTRAL, PLUM, RED, SKIN, STONE, WOOD } from './palette';
 import { BLUE4, COAT4, DIRT4, flat, GOLD4, RED4, shadowOval, STONE4, WOOD4 } from './sprites';
 import { mirror } from './sprites';
 
@@ -8,14 +8,20 @@ export type Pose = 'idle' | 'step' | 'strike';
 
 const LEAF4 = [LEAF[2], LEAF[4], LEAF[6], LEAF[7]];
 const PURPLE4 = [RED[0], RED[1], RED[2], GOLD[4]];
+const SKIN4 = [SKIN[1], SKIN[2], SKIN[3], SKIN[4]];
+const GOBLIN4 = [LEAF[3], LEAF[5], LEAF[7], LEAF[8]];
+const TROLL4 = [FOG[3], FOG[5], FOG[7], FOG[8]];
+const PLUM4 = [PLUM[0], PLUM[1], PLUM[2], PLUM[3]];
 
 type Look = {
   body: readonly number[];
   legs: readonly number[];
-  head: 'helm' | 'hood' | 'straw' | 'kettle' | 'crown';
-  weapon: 'sword' | 'bow' | 'fork' | 'crossbow' | 'greatsword';
+  head: 'helm' | 'hood' | 'straw' | 'kettle' | 'crown' | 'ears' | 'brute' | 'witchhat';
+  weapon: 'sword' | 'bow' | 'fork' | 'crossbow' | 'greatsword' | 'spear' | 'club' | 'ladle';
   shield?: readonly number[];
   plume?: number;
+  /** Face and hands, if not plain skin. */
+  skin?: readonly number[];
   scale: number;
 };
 
@@ -26,6 +32,9 @@ const LOOKS: Record<Exclude<TroopId, 'wolves'>, Look> = {
   swordsmen: { body: RED4, legs: STONE4, head: 'helm', weapon: 'sword', shield: RED4, plume: NEUTRAL[7], scale: 1.36 },
   crossbowmen: { body: RED4, legs: WOOD4, head: 'kettle', weapon: 'crossbow', scale: 1.3 },
   baron: { body: PURPLE4, legs: STONE4, head: 'crown', weapon: 'greatsword', scale: 1.75 },
+  goblins: { body: DIRT4, legs: GOBLIN4, head: 'ears', weapon: 'spear', skin: GOBLIN4, scale: 1.05 },
+  trolls: { body: DIRT4, legs: TROLL4, head: 'brute', weapon: 'club', skin: TROLL4, scale: 1.95 },
+  witch: { body: PLUM4, legs: PLUM4, head: 'witchhat', weapon: 'ladle', scale: 1.5 },
 };
 
 /**
@@ -67,8 +76,31 @@ function soldier(look: Look, pose: Pose): Bitmap {
   for (let x = 10; x < 22; x++) px(x, 30.5, GOLD[4]);
   if (look.body === BLUE4 || look.body === RED4) for (let y = 20; y < 28; y++) px(16, y, GOLD[5]);
   // Head.
-  ellipse(16, 12, 4.2, 4.6, [SKIN[1], SKIN[2], SKIN[3], SKIN[4]]);
-  if (look.head === 'helm') {
+  const skin = look.skin ?? SKIN4;
+  ellipse(16, 12, 4.2, 4.6, skin);
+  if (look.head === 'ears') {
+    // Goblin: bald, with ears like sails and a grin.
+    for (const [x, y] of [[11, 9], [10, 8], [9, 7], [11, 10], [10, 9], [21, 9], [22, 8], [23, 7], [21, 10], [22, 9]]) px(x, y, skin[2]);
+    px(18, 11, GOLD[6]);
+    for (let x = 16; x < 20; x++) px(x, 14.5, INK);
+    px(17, 15, NEUTRAL[7]);
+  } else if (look.head === 'brute') {
+    // Troll: a heavy brow, a jaw like a drawer, and two tusks.
+    ellipse(16.5, 13.5, 4.8, 3.6, skin);
+    for (let x = 12; x < 21; x++) px(x, 9.5, skin[0]);
+    px(14.5, 16, NEUTRAL[7]);
+    px(19, 16, NEUTRAL[7]);
+    px(14.5, 15, NEUTRAL[7]);
+  } else if (look.head === 'witchhat') {
+    // A tall crooked hat with a buckle, over a long nose.
+    for (let x = 8; x < 25; x++) px(x, 8.5, PLUM[1]);
+    for (let y = 0; y < 8; y++) for (let x = 12 + y * 0.35; x < 20 - y * 0.2; x++) px(x - (8 - y) * 0.45, 8 - y, y > 5 ? PLUM[2] : PLUM[1]);
+    for (let x = 13; x < 19; x++) px(x, 7.5, PLUM[3]);
+    px(16, 7.5, GOLD[5]);
+    px(20.5, 12.5, SKIN[2]);
+    px(21.5, 13.2, SKIN[2]);
+    for (let y = 13; y < 18; y++) px(12, y, NEUTRAL[5]);
+  } else if (look.head === 'helm') {
     ellipse(16, 10.5, 4.6, 4.2, STONE4);
     for (let x = 16; x < 21; x++) px(x, 12, INK);
     if (look.plume !== undefined) for (const [x, y] of [[14, 5], [13, 4], [12, 4], [11, 5], [15, 5], [12, 5]]) px(x, y, look.plume);
@@ -81,7 +113,7 @@ function soldier(look: Look, pose: Pose): Bitmap {
   } else if (look.head === 'kettle') {
     for (let x = 10; x < 23; x++) px(x, 9, STONE[4]);
     ellipse(16, 8, 4, 2.6, STONE4);
-  } else {
+  } else if (look.head === 'crown') {
     ellipse(16, 13.5, 3.8, 3.2, [NEUTRAL[4], NEUTRAL[5], NEUTRAL[6], NEUTRAL[7]]);
     for (const x of [12, 14, 16, 18, 20]) for (let y = 4; y < 8; y++) px(x, y, y === 4 ? GOLD[6] : GOLD[4]);
     for (let x = 12; x < 21; x++) px(x, 7.5, GOLD[3]);
@@ -89,7 +121,7 @@ function soldier(look: Look, pose: Pose): Bitmap {
   px(18.5, 11.5, INK);
   // Weapon arm, forward when striking.
   const reach = pose === 'strike' ? 6 : 0;
-  box(20, 18, 24 + reach * 0.5, 21, look.body);
+  box(20, 18, 24 + reach * 0.5, 21, look.skin && look.head !== 'witchhat' ? look.skin : look.body);
   if (look.weapon === 'sword' || look.weapon === 'greatsword') {
     const long = look.weapon === 'greatsword' ? 1.5 : 1;
     const bx = 24 + reach;
@@ -105,6 +137,21 @@ function soldier(look: Look, pose: Pose): Bitmap {
   } else if (look.weapon === 'bow') {
     for (let i = -9; i <= 9; i++) px(25 + reach * 0.3 + Math.cos((i / 9) * 1.3) * 3, 19 + i, WOOD[4]);
     for (let i = -8; i <= 8; i++) px(23 + reach * 0.3, 19 + i, NEUTRAL[6]);
+  } else if (look.weapon === 'spear') {
+    for (let i = -6; i < 16; i++) px(24 + reach * 0.6 + i * 0.12, 20 - i, WOOD[3]);
+    for (let i = 0; i < 3; i++) px(24 + reach * 0.6 + 16 * 0.12 - i * 0.3, 3 - i, STONE[6]);
+  } else if (look.weapon === 'club') {
+    const tip = pose === 'strike' ? [31, 18] : [26, 6];
+    for (let t = 0; t <= 1; t += 0.05) {
+      const x = 24 + (tip[0] - 24) * t;
+      const y = 19 + (tip[1] - 19) * t;
+      const r = 0.6 + t * 1.8;
+      for (let dy = -r; dy <= r; dy += 0.5) for (let dx = -r; dx <= r; dx += 0.5) if (dx * dx + dy * dy <= r * r) px(x + dx, y + dy, flat(WOOD4, 0.7 - dx * 0.2, Math.round(x + dx), Math.round(y + dy)));
+    }
+  } else if (look.weapon === 'ladle') {
+    for (let i = 0; i < 12; i++) px(24 + reach * 0.5 + i * 0.2, 19 - i, WOOD[4]);
+    ellipse(26.5 + reach * 0.5, 6, 2.2, 1.6, STONE4);
+    if (pose === 'strike') for (const [x, y] of [[30, 4], [32, 6], [31, 2], [33, 3]]) px(x, y, PLUM[4]);
   } else {
     box(22, 18, 30, 20, WOOD4);
     for (let i = -3; i <= 3; i++) px(29, 19 + i, STONE[5]);

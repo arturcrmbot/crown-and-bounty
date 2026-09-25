@@ -1,6 +1,6 @@
 import { Bitmap, outline, SHADOW } from './bitmap';
 import { hash, noise, rng } from './noise';
-import { BLUE, DIRT, GOLD, INK, LEAF, NEUTRAL, PARCHMENT, PINE, RED, ROCK, SKIN, STONE, WATER, WOOD } from './palette';
+import { BLUE, DIRT, EARTH, FOG, GOLD, INK, LEAF, NEUTRAL, PARCHMENT, PINE, PLUM, RED, REED, ROCK, SKIN, STONE, WATER, WOOD } from './palette';
 
 /** Light comes from the top left and a little towards the viewer, as on the painted HoMM2 maps. */
 const L = (() => {
@@ -702,6 +702,234 @@ export function wolfPack(phase = 0): Bitmap {
   wolf(sprite, 24, 16, 0.4 + Math.sin(phase + 4) * 0.3);
   const shaped = outline(sprite, INK);
   shadowOval(shaped, 25, 27, 18, 2.4);
+  return shaped;
+}
+
+/** Silvery grey-green, darker in the folds. */
+const WILLOW4 = [LEAF[1], LEAF[2], FOG[7], FOG[8]];
+const TROLL4 = four(FOG, 3, 5, 7, 8);
+const GOBLIN4 = four(LEAF, 3, 5, 7, 8);
+const REED4 = four(REED, 1, 2, 3, 4);
+
+/** Weeping willow: a lit dome of leaves with long strands hanging down to the ground. */
+export function willow(seed: number, size = 30): Bitmap {
+  const random = rng(seed);
+  size += Math.floor(random() * size * 0.2);
+  const sprite = new Bitmap(Math.round(size * 1.3) + 6, size + 8);
+  const cx = sprite.width / 2 - 1;
+  const r = size * 0.36;
+  const cy = 3 + r;
+  const foot = sprite.height - 6;
+  for (let y = Math.floor(cy); y < foot; y++) for (let x = Math.floor(cx - 1.5); x < cx + 1.5; x++) sprite.set(x, y, flat(WOOD4, 0.7 - (x - cx + 1.5) * 0.25, x, y));
+  for (let y = 0; y < sprite.height; y++) {
+    for (let x = 0; x < sprite.width; x++) {
+      const v = sphere(x, y, cx, cy, r);
+      if (v === OUTSIDE) continue;
+      const clumps = (noise(x / 2.2, y / 3.5, seed) - 0.5) * 0.45;
+      sprite.set(x, y, flat(WILLOW4, clamp01(0.1 + v * 0.85 + clumps), x, y));
+    }
+  }
+  // Strands fall from the lower half of the dome, longer at the sides.
+  for (let k = 0; k < size * 1.6; k++) {
+    const a = Math.PI * (0.02 + random() * 0.96);
+    const sx = cx + Math.cos(a) * r * (0.55 + random() * 0.45) * (random() < 0.5 ? 1 : -1);
+    const sy = cy + Math.sin(a) * r * 0.5;
+    const length = size * (0.25 + random() * 0.4) * (0.6 + Math.abs(sx - cx) / r);
+    const left = sx < cx;
+    for (let j = 0; j < length && sy + j < foot - 1; j++) {
+      const x = Math.round(sx + Math.sin(j / 5 + k) * 0.6);
+      sprite.set(x, Math.round(sy + j), flat(WILLOW4, left ? 0.72 - j / length * 0.3 : 0.35 - j / length * 0.2, x, j));
+    }
+  }
+  const shaped = outline(sprite, LEAF[0]);
+  shadowOval(shaped, cx + size * 0.16, foot, r * 1.1, Math.max(1.6, size * 0.1));
+  return shaped;
+}
+
+/** St Wendel's Abbey: a roofless nave with a tall broken arch window, and a squat bell tower. */
+export function abbey(): Bitmap {
+  const sprite = new Bitmap(84, 66);
+  // Nave wall, broken along the top.
+  for (let x = 6; x < 62; x++) {
+    const top = 22 + Math.round((noise(x / 5, 0, 61) - 0.3) * 10) + (x > 44 ? 6 : 0);
+    for (let y = top; y < 60; y++) sprite.set(x, y, masonry(x, y, 0.78 - (x - 6) * 0.006 - (y > 54 ? 0.1 : 0), 62));
+  }
+  // The great window: a pointed arch, open to the sky, with a broken tracery mullion.
+  for (let y = 26; y < 50; y++) {
+    for (let x = 18; x < 38; x++) {
+      const dx = Math.abs(x - 27.5);
+      const inArch = y > 34 ? dx < 7 : Math.hypot(dx + 5, y - 35) < 12 && Math.hypot(dx - 5, y - 35) < 12 && dx < 7;
+      if (inArch) sprite.set(x, y, x === 27 && y > 38 ? STONE[5] : 0);
+    }
+  }
+  // Two lancet windows and a door.
+  for (const wx of [44, 52]) for (let y = 38; y < 48; y++) for (let x = wx; x < wx + 3; x++) sprite.set(x, y, y === 38 ? STONE[5] : INK);
+  for (let y = 48; y < 60; y++) for (let x = 10; x < 16; x++) sprite.set(x, y, y < 50 ? STONE[6] : flat(WOOD4, 0.3, x, y));
+  // Bell tower on the east end, still roofed.
+  for (let y = 12; y < 60; y++) for (let x = 62; x < 78; x++) sprite.set(x, y, masonry(x, y, 0.7 - (x - 62) * 0.025, 63));
+  for (let y = 2; y < 13; y++) for (let x = 60 + Math.round((12 - y) * 0.7); x < 80 - Math.round((12 - y) * 0.7); x++) sprite.set(x, y, flat(STONE4, 0.5 - (x - 60) * 0.015, x, y));
+  for (let y = 18; y < 25; y++) for (let x = 67; x < 73; x++) sprite.set(x, y, y === 18 ? STONE[6] : x === 69 || x === 70 ? GOLD[4] : INK);
+  // Ivy creeping up the ruin.
+  for (let n = 0; n < 90; n++) {
+    const x = 6 + Math.floor(hash(n, 1, 64) * 56);
+    const y = 40 + Math.floor(hash(n, 2, 64) * 20) - Math.floor(hash(n, 3, 64) * 14);
+    if (sprite.get(x, y) !== 0) sprite.set(x, y, hash(n, 4, 64) < 0.5 ? LEAF[3] : LEAF[5]);
+  }
+  const shaped = outline(sprite, INK);
+  castShadow(shaped, 9, 3, 40);
+  return shaped;
+}
+
+/** The peat cutters' hut: turf roof, sinking gently, with peat stacked beside it. */
+export function peatHut(): Bitmap {
+  const sprite = new Bitmap(56, 38);
+  for (let y = 16; y < 32; y++) for (let x = 6; x < 32; x++) sprite.set(x, y, timber(x, y, 6, 32, 0.66 - (x - 6) * 0.012));
+  for (let y = 22; y < 32; y++) for (let x = 16; x < 21; x++) sprite.set(x, y, y === 22 ? WOOD[1] : flat(WOOD4, 0.3, x, y));
+  for (let y = 7; y < 17; y++) {
+    const k = (y - 7) / 10;
+    for (let x = 4 - Math.round(k * 2); x < 34 + Math.round(k * 2); x++) sprite.set(x, y, flat(GOBLIN4, 0.25 + (noise(x / 2, y / 2, 65) - 0.5) * 0.5 + (1 - k) * 0.2 - (x - 4) * 0.006, x, y));
+  }
+  // Stacked peat bricks.
+  for (let row = 0; row < 3; row++) {
+    for (let b = 0; b < 4 - row; b++) {
+      const x0 = 36 + b * 5 + row * 2;
+      const y0 = 30 - row * 4;
+      for (let y = y0; y < y0 + 4; y++) for (let x = x0; x < x0 + 5; x++) sprite.set(x, y, x === x0 || y === y0 + 3 ? EARTH[0] : flat([EARTH[1], EARTH[2], EARTH[3], EARTH[4]], 0.6 - (y - y0) * 0.1, x, y));
+    }
+  }
+  const shaped = outline(sprite, INK);
+  castShadow(shaped, 5, 2, 24);
+  return shaped;
+}
+
+/** A fen windmill: a tarred timber tower with a white cap, sails turned to `turn` (0 to 1 round). */
+export function windmill(turn: number): Bitmap {
+  const sprite = new Bitmap(64, 72);
+  const cx = 32;
+  for (let y = 26; y < 66; y++) {
+    const half = 7 + (y - 26) * 0.18;
+    for (let x = Math.floor(cx - half); x < cx + half; x++) {
+      const u = (x - (cx - half)) / (half * 2);
+      sprite.set(x, y, y % 5 === 0 ? WOOD[0] : flat(WOOD4, 0.6 - u * 0.5, x, y));
+    }
+  }
+  for (let y = 54; y < 66; y++) for (let x = cx - 3; x < cx + 3; x++) sprite.set(x, y, y === 54 ? WOOD[3] : INK);
+  for (let y = 38; y < 43; y++) for (let x = cx - 2; x < cx + 1; x++) sprite.set(x, y, GOLD[5]);
+  for (let y = 18; y < 28; y++) for (let x = cx - 10; x < cx + 10; x++) if (Math.hypot((x - cx) / 10, (y - 27) / 9) < 1) sprite.set(x, y, flat(PLASTER4, 0.8 - (x - cx + 10) * 0.025, x, y));
+  // Four sails on the hub, each a lattice of cloth.
+  const hub: [number, number] = [cx, 24];
+  for (let k = 0; k < 4; k++) {
+    const a = (k / 4 + turn * 0.25) * Math.PI * 2;
+    const [dx, dy] = [Math.cos(a), Math.sin(a)];
+    for (let t = 2; t < 28; t++) {
+      for (let w = 0; w < 6; w++) {
+        const x = Math.round(hub[0] + dx * t - dy * w);
+        const y = Math.round(hub[1] + dy * t + dx * w);
+        const lattice = w === 0 || t % 4 === 0;
+        if (w === 0 || t > 6) sprite.set(x, y, lattice ? WOOD[2] : flat(PLASTER4, 0.85 - w * 0.06, x, y));
+      }
+    }
+  }
+  for (let y = 22; y < 27; y++) for (let x = cx - 2; x < cx + 3; x++) sprite.set(x, y, WOOD[1]);
+  const shaped = outline(sprite, INK);
+  castShadow(shaped, 7, 2, 50);
+  return shaped;
+}
+
+/** Mother Mirrow's hut, up on two scaly chicken legs, with green smoke from a crooked chimney. */
+export function stiltHut(phase = 0): Bitmap {
+  const sprite = new Bitmap(76, 86);
+  const shift = Math.sin(phase) > 0.7 ? 1 : 0;
+  // Legs: thighs, knees bent back, three-toed feet.
+  for (const [lx, bend] of [[28, 1], [44, -1]] as const) {
+    for (let y = 46; y < 78; y++) {
+      const k = (y - 46) / 32;
+      const x = lx + Math.round(Math.sin(k * Math.PI) * 5 * bend) + (y > 60 ? shift * bend : 0);
+      const thick = k < 0.4 ? 3 : 2;
+      for (let i = 0; i < thick; i++) sprite.set(x + i, y, flat(GOLD4, y % 4 === 0 ? 0.2 : 0.55 - i * 0.2, x + i, y));
+    }
+    const fx = lx + shift * bend;
+    for (const toe of [-5, 0, 5]) for (let i = 0; i < 5; i++) sprite.set(fx + 1 + Math.round((toe * i) / 5), 78 + Math.min(2, i >> 1), GOLD[3]);
+  }
+  // The hut: grey boards, a sagging thatch, a round window with a candle.
+  for (let y = 22; y < 48; y++) for (let x = 16; x < 58; x++) sprite.set(x, y, (x - 16) % 5 === 0 ? WOOD[0] : flat(TROLL4, 0.62 - (x - 16) * 0.008 + (noise(x / 3, y / 6, 66) - 0.5) * 0.2, x, y));
+  for (let y = 8; y < 24; y++) {
+    const k = (y - 8) / 16;
+    const sag = Math.round(Math.sin(k * Math.PI) * 2);
+    for (let x = 14 - Math.round(k * 4); x < 60 + Math.round(k * 4); x++) sprite.set(x, y + sag, flat(REED4, 0.8 - (x - 14) * 0.008 - k * 0.3 + (noise(x / 1.5, y / 3, 67) - 0.5) * 0.3, x, y));
+  }
+  for (let y = 28; y < 38; y++) for (let x = 30; x < 42; x++) if (Math.hypot(x - 35.5, y - 32.5) < 5) sprite.set(x, y, Math.hypot(x - 35, y - 33) < 2 ? GOLD[6] : GOLD[4]);
+  for (let y = 36; y < 48; y++) for (let x = 46; x < 52; x++) sprite.set(x, y, y === 36 ? WOOD[3] : flat(WOOD4, 0.35, x, y));
+  // A crooked chimney, and smoke of an unwholesome green.
+  for (let y = 0; y < 14; y++) for (let x = 48 + Math.round(y * 0.2); x < 53 + Math.round(y * 0.2); x++) sprite.set(x, y + 4, masonry(x, y, 0.55, 68));
+  for (let k = 0; k < 5; k++) {
+    const cx = 50 - k * 3 + Math.round(Math.sin(phase + k) * 1.5);
+    const cy = 2 - k * 0;
+    if (k < 3) for (let y = -2; y <= 2; y++) for (let x = -2; x <= 2; x++) if (x * x + y * y <= 4) sprite.set(cx + x, cy + y + (k === 0 ? 0 : 0), k === 0 ? LEAF[6] : LEAF[4]);
+  }
+  for (const [x, y] of [[20, 44], [22, 45], [24, 44]]) sprite.set(x, y, PLUM[3]);
+  const shaped = outline(sprite, INK);
+  shadowOval(shaped, 40, 80, 22, 3);
+  return shaped;
+}
+
+/** One bog goblin: green, big-eared, grinning, with a spear taller than he is (or a boot held high). */
+function goblin(sprite: Bitmap, x0: number, y0: number, hop: number, holding: 'spear' | 'boot') {
+  const px = (x: number, y: number, c: number) => sprite.set(x0 + x, y0 + y - hop, c);
+  for (let y = 12; y < 17; y++) {
+    px(3, y, GOBLIN4[0]);
+    px(4, y, GOBLIN4[1]);
+    px(7, y, GOBLIN4[0]);
+    px(8, y, GOBLIN4[1]);
+  }
+  for (let y = 7; y < 13; y++) for (let x = 2; x < 10; x++) if (Math.abs(x - 5.5) < 3.2 + (y - 7) * 0.15) px(x, y, y === 12 ? DIRT4[0] : flat(DIRT4, 0.7 - (x - 2) * 0.08, x, y));
+  for (let y = 0; y < 8; y++) for (let x = 1; x < 11; x++) if (Math.hypot((x - 5.5) / 3.6, (y - 3.6) / 3.4) < 1) px(x, y, flat(GOBLIN4, 0.85 - (x - 1) * 0.07 - (y > 5 ? 0.15 : 0), x, y));
+  // Ears like sails.
+  for (const [x, y] of [[0, 2], [-1, 1], [-2, 0], [0, 3], [-1, 2], [11, 2], [12, 1], [13, 0], [11, 3], [12, 2]]) px(x, y, x < 5 ? GOBLIN4[2] : GOBLIN4[1]);
+  px(4, 3, GOLD[6]);
+  px(7, 3, GOLD[6]);
+  for (let x = 4; x < 8; x++) px(x, 5, INK);
+  px(5, 6, NEUTRAL[7]);
+  if (holding === 'spear') {
+    for (let y = -8; y < 15; y++) px(11, y, y < -6 ? STONE[6] : WOOD[3]);
+    px(10, -7, STONE[5]);
+  } else {
+    for (let y = -2; y < 8; y++) px(10, y, GOBLIN4[2]);
+    for (let y = -7; y < -2; y++) for (let x = 8; x < 12; x++) px(x + (y > -4 ? 2 : 0), y, x === 8 ? WOOD[1] : WOOD[3]);
+  }
+}
+
+/** A band of bog goblins, hopping about, one waving the boot they were squabbling over. */
+export function goblinBand(phase = 0): Bitmap {
+  const sprite = new Bitmap(64, 40);
+  const hop = (k: number) => (Math.sin(phase * 2 + k) > 0.3 ? 1 : 0);
+  goblin(sprite, 4, 18, hop(0), 'spear');
+  goblin(sprite, 22, 12, hop(2), 'boot');
+  goblin(sprite, 40, 17, hop(4), 'spear');
+  goblin(sprite, 16, 22, hop(1), 'spear');
+  goblin(sprite, 32, 23, hop(3), 'spear');
+  const shaped = outline(sprite, INK);
+  shadowOval(shaped, 32, 39, 24, 2.2);
+  return shaped;
+}
+
+/** The bridge troll: grey-green, hunched, leaning on a club, blinking slowly. */
+export function troll(phase = 0): Bitmap {
+  const sprite = new Bitmap(46, 52);
+  const blink = Math.sin(phase) > 0.92;
+  for (const lx of [15, 25]) for (let y = 36; y < 48; y++) for (let x = lx; x < lx + 5; x++) sprite.set(x, y, flat(TROLL4, 0.55 - (x - lx) * 0.1, x, y));
+  for (let y = 14; y < 40; y++) for (let x = 8; x < 38; x++) if (Math.hypot((x - 22) / 14, (y - 27) / 13) < 1) sprite.set(x, y, flat(TROLL4, 0.7 - (x - 8) * 0.012 - (y - 14) * 0.008, x, y));
+  for (let y = 30; y < 38; y++) for (let x = 12; x < 32; x++) if (Math.hypot((x - 22) / 10, (y - 34) / 4) < 1) sprite.set(x, y, flat(DIRT4, 0.5 - (x - 12) * 0.01, x, y));
+  for (let y = 6; y < 20; y++) for (let x = 20; x < 36; x++) if (Math.hypot((x - 28) / 7, (y - 13) / 6.5) < 1) sprite.set(x, y, flat(TROLL4, 0.78 - (x - 20) * 0.02, x, y));
+  for (let x = 23; x < 34; x++) sprite.set(x, 11, TROLL4[0]);
+  sprite.set(30, 13, blink ? TROLL4[0] : GOLD[6]);
+  sprite.set(26, 13, blink ? TROLL4[0] : GOLD[6]);
+  for (const x of [27, 31]) sprite.set(x, 17, NEUTRAL[7]);
+  // A club like a small tree, planted beside him.
+  for (let y = 10; y < 46; y++) for (let x = 38; x < 42 + Math.round((46 - y) / 14); x++) sprite.set(x, y, flat(WOOD4, 0.7 - (x - 38) * 0.15, x, y));
+  for (let y = 26; y < 32; y++) for (let x = 32; x < 40; x++) if (Math.hypot(x - 36, y - 29) < 3) sprite.set(x, y, flat(TROLL4, 0.6, x, y));
+  const shaped = outline(sprite, INK);
+  shadowOval(shaped, 26, 48, 16, 2.6);
   return shaped;
 }
 

@@ -1,6 +1,6 @@
 import { ALDMOOR } from '../content/aldmoor';
 import type { BackgroundId } from '../content/backgrounds';
-import { playCommission, type BotRun } from './bot';
+import { playCampaign, playCommission, type BotRun } from './bot';
 import { buildMap } from './map/model';
 import { newGame } from './scenario';
 
@@ -11,4 +11,9 @@ export function simulate(seeds: number[], background: BackgroundId = 'knight'): 
     const run = playCommission(newGame(seed, ALDMOOR, background), map);
     return { seed, ...run };
   });
+}
+
+/** Plays the whole campaign once per seed: one entry per commission played, retries included. */
+export function simulateCampaign(seeds: number[], background: BackgroundId = 'knight') {
+  return seeds.map((seed) => ({ seed, runs: playCampaign(newGame(seed, ALDMOOR, background)) }));
 }

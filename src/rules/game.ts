@@ -1,4 +1,5 @@
 /** The rules in one place: state, places, days, fights and the hero, plus `apply` for anything a card can do. */
+import { chooseBoon, nextCommission, retry, toCourt } from './campaign';
 import { endDay } from './days';
 import { fight, startFight } from './fight';
 import { equip, gearCard, learn } from './hero';
@@ -9,6 +10,8 @@ import { locationById, show, type Action, type GameState, type Result } from './
 export * from './state';
 export { armouryCard, buy, describe, describeHero, DISCOVERY_XP, openChest, priceOf, recruit, recruitable, visit } from './places';
 export { endDay } from './days';
+export { briefingCard, campaignLines, chooseBoon, commissionOf, courtCard, hasNextCommission, nextArmy, nextCommission, provinceOf, retry, toCourt, veterans, VETERANS } from './campaign';
+export { beginCommission, chooseBackground, newGame } from './scenario';
 export { battleXp, fight, finishFight, heroInBattle, lossesLine, startFight, winChance } from './fight';
 export { equip, gainXp, gearCard, giveArtifact, heroStats, learn, levelFor, levelUpCard, LEVELS } from './hero';
 
@@ -37,6 +40,14 @@ export function apply(state: GameState, action: Action): Result | null {
       return buy(state, action.id, action.artifact);
     case 'background':
       return { state: chooseBackground(state, action.id), events: [] };
+    case 'court':
+      return toCourt(state);
+    case 'boon':
+      return chooseBoon(state, action.id);
+    case 'nextCommission':
+      return nextCommission(state);
+    case 'retry':
+      return retry(state);
     default:
       return null;
   }

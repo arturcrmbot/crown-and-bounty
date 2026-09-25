@@ -27,6 +27,7 @@ export class CardView {
   }
 
   show(card: Card) {
+    this.card.classList.toggle('wide', Boolean(card.wide));
     this.card.innerHTML = `<h3>${escape(card.title)}</h3>${card.lines.map((l) => `<p>${format(l)}</p>`).join('')}`;
     if (card.choices.length) {
       const choices = document.createElement('div');
@@ -49,6 +50,11 @@ export class CardView {
     this.wrap.hidden = true;
   }
 
+  /** Takes the card off the page for good, when its screen goes away. */
+  dispose() {
+    this.wrap.remove();
+  }
+
   /**
    * Puts the card's bottom edge just above `point` (page pixels), or just below it when there is no
    * room above, kept between `top` and `bottom`. With no point, the card sits in the middle.
@@ -56,6 +62,8 @@ export class CardView {
   place(point: ScreenPoint | null, top: number, bottom: number) {
     if (this.wrap.hidden) return;
     const { offsetWidth: w, offsetHeight: h } = this.wrap;
+    // Too tall for the map area: use the whole window, so the buttons at the bottom stay on screen.
+    if (h > bottom - top - 16) [top, bottom] = [0, window.innerHeight];
     const [minY, maxY] = [top + 8, Math.max(top + 8, bottom - h - 8)];
     const clampY = (y: number) => Math.min(maxY, Math.max(minY, y));
     const x = Math.min(window.innerWidth - w - 8, Math.max(8, (point ? point.x : window.innerWidth / 2) - w / 2));
