@@ -58,7 +58,7 @@ describe('choices that come back later', () => {
     expect(past.flags?.wolfpelt).toBeUndefined();
   });
 
-  it('the highwaymen carry Grimsby\u2019s orders, which clear the crossroads and fill his stockade', () => {
+  it('the highwaymen carry Grimsby\u2019s orders: some of the patrol goes to his stockade, the rest desert', () => {
     const beaten = choose(fresh(), 'highwaymen', 'auto')!.state;
     expect(beaten.flags?.orders).toBe(true);
     const before = locationById(beaten, 'hideout').enemy!.army;
@@ -67,8 +67,10 @@ describe('choices that come back later', () => {
     const after = locationById(sent, 'hideout').enemy!.army;
     const count = (army: typeof after, troop: string) => army.find((s) => s.troop === troop)?.count ?? 0;
     const patrol = locationById(beaten, 'patrol').enemy!.army;
-    expect(count(after, 'swordsmen')).toBe(count(before, 'swordsmen') + count(patrol, 'swordsmen'));
-    expect(count(after, 'crossbowmen')).toBe(count(before, 'crossbowmen') + count(patrol, 'crossbowmen'));
+    expect(count(after, 'swordsmen')).toBe(count(before, 'swordsmen') + Math.round(count(patrol, 'swordsmen') * 0.3));
+    expect(count(after, 'crossbowmen')).toBe(count(before, 'crossbowmen') + Math.round(count(patrol, 'crossbowmen') * 0.3));
+    // The rest desert, and can be hired.
+    expect(locationById(sent, 'deserters').recruits?.troop).toBe('swordsmen');
   });
 
   it('beaten wolves leave a cloak for riding the woods, and a pelt for Old Nan', () => {

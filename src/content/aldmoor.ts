@@ -1,4 +1,5 @@
 import type { Point } from '../rules/map/geometry';
+import type { Location } from '../rules/state';
 import type { Province } from './types';
 
 /** Map points of every place in the province, in pixels on the 40 x 30 tile map. */
@@ -24,6 +25,18 @@ const at = {
 
 /** The patrol's size: a gate, too strong for a fresh army (see `rules/difficulty.ts`). */
 const PATROL = { swordsmen: 48, crossbowmen: 29 };
+
+/** Where Grimsby's men make camp once they've had enough of him: beaten, or sent home with his orders. */
+const DESERTERS: Location = {
+  id: 'deserters',
+  kind: 'village',
+  look: 'camp',
+  name: 'Deserters\u2019 Camp',
+  at: [468, 628],
+  done: false,
+  recruits: { troop: 'swordsmen', count: 12, price: 60 },
+  text: { about: ['Grimsby\u2019s former men, sharpening their swords and their excuses.', 'Swordsmen, for hire.'] },
+};
 
 const paths: Point[][] = [
   // Watchtower, past the signpost and the hero, over the bridge to Westmere.
@@ -240,25 +253,14 @@ export const ALDMOOR: Province = {
             id: 'orders',
             label: 'Show them the Baron\u2019s orders',
             needs: { flag: 'orders' },
-            effects: { done: true, xp: 80, reinforce: 'hideout', flags: { orders: false } },
+            effects: { done: true, xp: 300, reinforce: { id: 'hideout', share: 0.3 }, place: DESERTERS, flags: { orders: false } },
             lines: [
               'The sergeant reads the letter upside down, then the right way up. *"Back to the stockade, lads. Baron\u2019s orders."*',
-              'The crossroads are clear. *But they will be waiting for you behind Grimsby\u2019s walls.*',
+              'A few of them go. The rest decide they have had enough of the Baron, and make camp by the crossroads. *The few will be waiting for you behind Grimsby\u2019s walls.*',
             ],
           },
         ],
-        spoils: {
-          place: {
-            id: 'deserters',
-            kind: 'village',
-            look: 'camp',
-            name: 'Deserters\u2019 Camp',
-            at: [468, 628],
-            done: false,
-            recruits: { troop: 'swordsmen', count: 12, price: 60 },
-            text: { about: ['Grimsby\u2019s former men, sharpening their swords and their excuses.', 'Swordsmen, for hire.'] },
-          },
-        },
+        spoils: { place: DESERTERS },
         flees: 'Grimsby\u2019s patrol breaks and runs for Darkwood.',
         loot: 'You find {gold} on the road. And a dozen of them would rather fight for the Crown: they make camp by the crossroads, where **swordsmen** can now be hired.',
       },

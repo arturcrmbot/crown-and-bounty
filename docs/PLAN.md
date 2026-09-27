@@ -123,9 +123,9 @@ full critique. Each round ends with a playtest, a deploy and a new entry in that
 | --- | --- | --- |
 | R1 | **Vibe.** Music and ambience in code, a title screen, an intro at court, portraits. | The first minute has a mood, and a reason to care. **Done:** five tracks and three ambiences, the painted title, the King's prologue with a WANTED poster and a choice of four faces, portraits on cards, and the province's name on a ribbon with a fanfare. |
 | R2 | **Scale and juice.** A scale bible, one creature per map enemy, bigger fighters, feedback for every action. | Screenshots read at a glance, and nothing happens silently. **Mostly done:** rising gains, level glow, dust and glitter, nightfall; in battle, commanders and standards, sparks, shake, corpses, kill counts, breathing and the end ribbon. Still to do: cards that unfold, custom cursors, a fuller battlefield. |
-| R3 | **Gating and rewards.** Small fights first, the patrol as a gate, honest odds, rewards that matter. | You explore before you fight, and every fight pays in something you can feel. |
+| R3 | **Gating and rewards.** Small fights first, the patrol as a gate, honest odds, rewards that matter. | You explore before you fight, and every fight pays in something you can feel. **Started:** six relics that carry the heroes' tricks, Fireball and Stone Skin, the wolves' cloak and pelt, relic gatekeepers and charm shrines in generated provinces. Still to do: a slower experience curve. |
 | R4 | **Playstyles.** Each background's own mechanics, and several paths past every enemy. | Two runs with different backgrounds play differently. **Started:** the knight's charge (no strike-back), the ranger's forest paths and opening volley, the wizard's two casts a round and Far Sight, the courtier's half-price bribes and hired bands. |
-| R5 | **RPG.** Quests with choices, captains, more troops. | Choices you make come back later. |
+| R5 | **RPG.** Quests with choices, captains, more troops. | Choices you make come back later. **Started:** in Aldmoor, spared poachers show their cache, their venison gets you past the wolves, the highwaymen's orders send the patrol to Grimsby, and the wolves' pelt buys Fireball from Old Nan. Still to do: captains, more troops, quests in generated provinces. |
 
 ## Still open
 

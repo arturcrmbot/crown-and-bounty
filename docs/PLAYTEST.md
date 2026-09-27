@@ -3,6 +3,33 @@
 Newest first. Each entry says what was played, how it felt to an experienced player (HoMM2, King's Bounty,
 modern RPGs), and what was done about it.
 
+## #3: 27 Sep 2026, rewards and choices that come back
+
+**Played:** a Hedge Wizard through the talk-and-trick route (Old Nan's Stone Skin, the highwaymen for their
+letter, the orders on the patrol, the poachers for their venison, the venison on the wolves) and a Knight who
+spares the poachers, opens their cache and fights the highwaymen with the horn. A Fireball in battle. A generated
+province's standing stones. Then the bot on the new routes, for every background and four seeds.
+
+**How it felt:** Aldmoor now asks questions. The poachers' card offers a fight, a pardon or (for a courtier) a
+job, and each answer changes what the wolves and the cottage will offer later. Greyed-out choices ("Throw them the
+King's venison") say there is another way, without saying how. Relics make finds exciting: a knight with a horn
+volleys like a ranger, a ranger with a lance charges.
+
+**Found and fixed:**
+
+1. The orders route was a trap. Sending the whole patrol to Grimsby, with no deserters' camp and only 80
+   experience, doubled his stockade: the bot lost most runs for the wizard, ranger and courtier. Now 30% of the
+   patrol goes to the stockade and the rest desert (so swordsmen can be hired), and outwitting them is worth 300
+   experience (a fight is worth 1,120). The bot wins 15 of 16 runs that way.
+2. The first Fireball was a thin ring gone in a third of a second. It is now a ball of fire that drops and
+   bursts in a sheet of flame over everyone it hits, and the forecast warns when your own men stand in it.
+3. The generated shrine was called "The Humming Stones" but drew a wayside shrine: it now draws a ring of
+   standing stones.
+4. The courtier bot never used his trick and lost commission III. It now hires small bands, and wins all five.
+
+**Still open:** one ranger seed still loses on the orders route (rangers can't replace their archers in
+Aldmoor, so they need the patrol's experience). Balance is parked, as agreed.
+
 ## #2: 27 Sep 2026, after R1, R2's juice and R4's signatures, all four backgrounds
 
 **Played:** `scripts/playtest.mjs` with each background (title, prologue, the first day, the patrol by hand and

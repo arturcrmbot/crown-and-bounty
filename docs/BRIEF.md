@@ -55,4 +55,15 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   and his archers loose a free volley before each battle (not at a villain's walls). The Wizard casts two spells
   a round and has Far Sight on the map. The Courtier pays half for any bribe and can hire small bands outright
   for their wages. The wolves grew to 80 so they stay a gate for everyone.
+- **Rewards and choices that come back (R3 and R5, 27 Sep):** six relics carry the heroes' tricks, so any
+  hero can learn to win another way: the Poacher's Horn (a volley), the Greenwood Cloak (the woods), Sir
+  Brannoc's Lance (a charge), the Twin Wand (a second spell a round), the Crystal of Far Sight, and the Silver
+  Signet (cheap bribes, hired bands, for sale at the castle). Two new spells: Fireball bursts over a stack and
+  everyone beside it, friend or foe, and Stone Skin adds 3 defence. In Aldmoor, choices echo: spare the poachers
+  and they point you to their cache and its horn; beat them and their venison sends the wolves off the road; the
+  highwaymen carry Grimsby's orders, which send part of the patrol back to his stockade (the road clears, the
+  rest desert and can be hired, Grimsby grows); the wolves leave a ranger's cloak and a pelt, and Old Nan, a
+  hedge-witch in a crooked cottage, trades Fireball for the pelt and Stone Skin for gold. In generated
+  provinces the gatekeepers carry a relic, the castle sells one, and a ring of standing stones (or a drowned
+  chapel in the fen) teaches two charms. The Fenmarch goblins have Sir Brannoc's lance.
 - **Sound and music:** everything is synthesised with Web Audio, with no files. There are five original pieces for a small medieval band: "The Heather Road" (a jig for open country), "Mist on the Meres" (the fen), "Steel and Feathers" (battle), "The King's Pavane" (court) and a title theme. The band is plucked lute, harp and harpsichord, recorder, fife, hurdy-gurdy drone, frame drum, brass and bells. Music crossfades between screens. Under it runs ambience: birds and wind on the heath, frogs in the fen, a crackling fire at court. Plus effects for clicks, coins, the day bell, fanfares, hits, arrows and spells. A test checks that every strong-beat melody note sits on its chord. M mutes.

@@ -110,8 +110,8 @@ export type Effects = {
   page?: string;
   /** A new place appears on the map: a camp of deserters, a hidden grove. */
   place?: Location;
-  /** This place's enemy marches off to join another's (by id): the road clears, the villain grows. */
-  reinforce?: string;
+  /** A share of this place's enemy marches off to join another's (by id): the road clears, the villain grows. */
+  reinforce?: { id: string; share: number };
 };
 
 /** A choice written as content: a button, what it needs, what it does, and what the card then says. */

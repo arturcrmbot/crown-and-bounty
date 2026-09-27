@@ -97,13 +97,15 @@ export function applyEffects(state: GameState, place: Location, effects: Effects
   }
   if (effects.flags) next = { ...next, flags: { ...next.flags, ...effects.flags } };
   if (effects.reinforce && place.enemy) {
-    const joined = next.locations.find((l) => l.id === effects.reinforce);
+    const joined = next.locations.find((l) => l.id === effects.reinforce!.id);
     if (joined?.enemy && !joined.done) {
       let army = joined.enemy.army;
       for (const stack of place.enemy.army) {
+        const count = Math.round(stack.count * effects.reinforce.share);
+        if (count <= 0) continue;
         const had = army.some((s) => s.troop === stack.troop);
-        if (had) army = army.map((s) => (s.troop === stack.troop ? { ...s, count: s.count + stack.count } : s));
-        else if (army.length < MAX_STACKS) army = [...army, { ...stack }];
+        if (had) army = army.map((s) => (s.troop === stack.troop ? { ...s, count: s.count + count } : s));
+        else if (army.length < MAX_STACKS) army = [...army, { troop: stack.troop, count }];
       }
       next = update(next, joined.id, { enemy: { ...joined.enemy, army } });
       lines.push(`**${joined.name}** grows stronger.`);
