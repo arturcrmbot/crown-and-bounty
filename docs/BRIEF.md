@@ -26,7 +26,7 @@ Working title. A small browser game, not commercial. The goal is quirky and fun,
 
 ## Stack
 
-TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dialogs. Vitest for the game rules and Playwright for screenshots.
+TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dialogs. Vitest for the game rules and Playwright for screenshots. Hosted on GitHub Pages from the public repo `arturcrmbot/kings-commission`: https://arturcrmbot.github.io/kings-commission/
 
 ## Status (25 Sep 2026)
 

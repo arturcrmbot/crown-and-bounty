@@ -29,3 +29,4 @@ Change, run the tests, open the game in the browser panel, screenshot, fix.
 - `npm run e2e`: plays the whole commission through the real UI on its own server; exit code 1 on failure.
 - `npm run visual [-- --approve]`: frozen scenes, exact frame hashes against `test/visual.json`, PNGs in `screenshots/visual/`.
 - `npm run shots`: ad-hoc screenshot of the running dev server (env: `QUERY`, `RIDE=x,y`, `OUT`).
+- `npm run deploy`: builds and publishes to GitHub Pages (the `gh-pages` branch of `origin`). Live a minute later at https://arturcrmbot.github.io/kings-commission/.
