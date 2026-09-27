@@ -41,8 +41,8 @@ export function paintBanner(title: string, subtitle: string): Bitmap {
 }
 
 /** Lays the banner over `screen`, `age` seconds after it appeared: it dithers in, holds, and dithers away. */
-export function drawBanner(screen: Bitmap, banner: Bitmap, cx: number, y: number, age: number) {
-  const alpha = Math.min(1, age / 0.35, Math.max(0, (BANNER_TIME - age) / 0.7));
+export function drawBanner(screen: Bitmap, banner: Bitmap, cx: number, y: number, age: number, life = BANNER_TIME) {
+  const alpha = Math.min(1, age / 0.35, Math.max(0, (life - age) / 0.7));
   if (alpha <= 0) return;
   const x0 = Math.round(cx - banner.width / 2);
   const lift = Math.round((1 - Math.min(1, age / 0.35)) * 8);

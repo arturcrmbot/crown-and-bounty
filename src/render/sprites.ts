@@ -305,8 +305,7 @@ export function castle(phase = 0): Bitmap {
  * The hero: a knight in a red cape on a white horse, carrying the player's blue banner with a gold
  * star. `phase` animates the banner, a gentle bob and the tail; `selected` adds a gold ring.
  */
-export function hero(phase = 0, selected = true, walking = false): Bitmap {
-  const S = 1.4;
+export function hero(phase = 0, selected = true, walking = false, S = 1.4): Bitmap {
   const sprite = new Bitmap(Math.ceil(40 * S), Math.ceil(46 * S));
   const bob = walking ? (Math.sin(phase * 4) > 0 ? 1 : 0) : Math.sin(phase * 2) > 0.3 ? 1 : 0;
   const inEllipse = (x: number, y: number, cx: number, cy: number, rx: number, ry: number, a = 0) => {
@@ -377,10 +376,11 @@ export function hero(phase = 0, selected = true, walking = false): Bitmap {
   });
   for (let x = 17.6; x < 20.4; x += 0.5) dot(x, 9, INK);
   for (const [x, y] of [[16, 4], [15, 3], [16, 3], [14, 2], [15, 2], [13, 2], [14, 3]]) dot(x, y, RED[4]);
+  if (S > 2) each(12, 1, 17, 6, (x, y) => inEllipse(x, y, 14.6, 3.2, 2.4, 1.3, -0.4) && sprite.set(x, y, flat(RED4, 0.7 - ((y - bob) / S - 2) * 0.1, x, y)));
   dot(19.6, 10.2, SKIN[3]);
   // Lance and the blue banner with a gold star.
   const pole = Math.round(21.5 * S);
-  for (let y = 0; y < 30 * S; y++) sprite.set(pole, y + bob, y < 1 ? GOLD[5] : WOOD[2]);
+  for (let y = 0; y < 30 * S; y++) for (let w = 0; w < Math.max(1, Math.round(S / 1.6)); w++) sprite.set(pole - w, y + bob, y < 1 ? GOLD[5] : w ? WOOD[1] : WOOD[2]);
   for (let i = 1; i < 13 * S; i++) {
     const wave = Math.round(Math.sin(i / S * 0.65 + phase) * 1.3);
     const depth = 8 * S - (i / S) * 0.35 * S;

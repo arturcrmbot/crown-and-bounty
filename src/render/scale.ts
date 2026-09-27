@@ -3,13 +3,13 @@ import type { TroopId } from '../content/troops';
 /**
  * The scale bible, in code, so every sprite agrees:
  * - The map's tiles are 32 px. A mounted hero stands about 57 px tall, a person on foot about 34.
- * - In battle a person stands about 60 px tall.
+ * - In battle a person stands about 75 px tall, most of two hex rows, like HoMM2.
  * - Each creature has one size relative to a person, and that size holds on the map and in battle.
  * Figures are drawn 44 units tall at scale 1, so the scales below make those heights.
  */
 export const TILE = 32;
 export const MAP_PERSON = 0.78;
-export const BATTLE_PERSON = 1.36;
+export const BATTLE_PERSON = 1.7;
 
 /** Each troop's size next to a person. */
 export const SIZE: Record<TroopId, number> = {

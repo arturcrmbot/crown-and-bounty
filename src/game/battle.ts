@@ -2,7 +2,9 @@ import { SPELLS, type SpellId } from '../content/spells';
 import { TROOPS, troops } from '../content/troops';
 import { chooseAction } from '../rules/battle/ai';
 import { activeFighter, battleAct, canCast, fighterById, options, spellCost, spellDamage, strike, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
-import { BattleScreen, BUTTONS, hexAt, hexCentre, type BattleView } from '../render/battleScreen';
+import { paintBanner } from '../render/banner';
+import { BattleScreen, BUTTONS, hexAt, hexCentre, type BattleView, type Shot } from '../render/battleScreen';
+import { FIGHTER_FOOT } from '../render/battleSprites';
 import { MAP_VIEW } from '../render/frame';
 import { BLUE, GOLD, NEUTRAL, RED } from '../render/palette';
 import { CardView } from '../ui/card';
@@ -31,6 +33,7 @@ export class BattleController implements Screen {
   private readonly hooks: { onChange: (b: BattleState) => void; onDone: (b: BattleState) => void };
   private readonly pace: number;
   private auto = false;
+  private sparks: Shot[] = [];
   private think = 0;
   private finished = false;
   private pointer: [number, number] | null = null;
@@ -60,6 +63,9 @@ export class BattleController implements Screen {
       inspect: null,
       preview: null,
       targeting: null,
+      time: 0,
+      shake: 0,
+      banner: null,
     };
   }
 
@@ -77,9 +83,36 @@ export class BattleController implements Screen {
     this.queue.push({ duration, elapsed: 0, started: false, ...parts });
   }
 
+  /** Words that rise from a stack and fade. Ones that come close together stack up instead of overlapping. */
   private float(id: number, text: string, color: number) {
-    const [x, y] = this.view.positions.get(id) ?? hexCentre(fighterById(this.battle, id).at);
-    this.view.floaters.push({ x, y: y - 36, text, color, age: 0 });
+    const f = fighterById(this.battle, id);
+    const [x, y] = this.view.positions.get(id) ?? hexCentre(f.at);
+    const top = y + 12 - FIGHTER_FOOT(f.troop) - 14;
+    const crowd = this.view.floaters.filter((o) => o.age < 0.6 && Math.abs(o.x - x) < 44 && Math.abs(o.y - top) < 40).length;
+    this.view.floaters.push({ x, y: top - crowd * 16, text, color, age: 0 });
+  }
+
+  /** A burst where a blow lands, and a jolt for a heavy one. */
+  private impact(target: number, damage: number, heavy: boolean) {
+    const [x, y] = hexCentre(fighterById(this.battle, target).at);
+    const spark = { from: [x, y - 22] as [number, number], to: [x, y - 22] as [number, number], t: 0, kind: 'spark' as const };
+    this.view.shots.push(spark);
+    this.sparks.push(spark);
+    if (heavy) this.view.shake = Math.max(this.view.shake, Math.min(6, 1.5 + damage / 50));
+  }
+
+  /** A stack that goes down leaves a puff of dust, then its fallen. */
+  private poof(target: number) {
+    const [x, y] = hexCentre(fighterById(this.battle, target).at);
+    const dust = { from: [x, y] as [number, number], to: [x, y] as [number, number], t: 0, kind: 'poof' as const };
+    this.step(0.4, {
+      start: () => {
+        this.view.shots.push(dust);
+        this.view.dying.delete(target);
+      },
+      tick: (t) => (dust.t = t),
+      end: () => this.view.shots.splice(this.view.shots.indexOf(dust), 1),
+    });
   }
 
   /** Does an action through the rules, then queues the animations for what happened. */
@@ -149,14 +182,17 @@ export class BattleController implements Screen {
             start: () => {
               v.flashing.add(e.target);
               if (!e.ranged) play('hit');
-              this.float(e.target, `-${e.damage}`, RED[5]);
+              this.impact(e.target, e.damage, !e.ranged);
+              this.float(e.target, e.killed ? `-${e.killed}` : `-${e.damage} hp`, e.killed ? RED[5] : RED[6]);
               v.log = `${this.fighterName(e.attacker)} ${e.ranged ? 'shoot' : e.retaliation ? 'strike back at' : 'hit'} ${this.fighterName(e.target).replace(/^(Your|Their) /, (m) => m.toLowerCase())} for ${e.damage}${e.killed ? `. ${e.killed} perish.` : '.'}${e.hexed ? ' The hex slows them down.' : ''}`;
             },
             end: () => {
               v.flashing.delete(e.target);
+              if (!target.count) return;
               v.dying.delete(e.target);
             },
           });
+          if (target.count === 0) this.poof(e.target);
           break;
         }
         case 'regen':
@@ -180,16 +216,18 @@ export class BattleController implements Screen {
               v.log = `${this.battle.hero.name ?? 'Aldric'} casts ${SPELLS[e.spell].name} on ${this.fighterName(e.target).toLowerCase()}${e.damage ? `: ${e.damage} damage${e.killed ? `, ${e.killed} perish` : ''}` : ''}.`;
               if (e.damage) {
                 v.flashing.add(e.target);
-                this.float(e.target, `-${e.damage}`, GOLD[6]);
+                this.float(e.target, e.killed ? `-${e.killed}` : `-${e.damage} hp`, GOLD[6]);
+                if (look.kind === 'bolt') v.shake = Math.max(v.shake, 4);
               }
             },
             tick: (t) => (shot.t = t),
             end: () => {
               v.shots.splice(v.shots.indexOf(shot), 1);
               v.flashing.delete(e.target);
-              v.dying.delete(e.target);
+              if (target.count) v.dying.delete(e.target);
             },
           });
+          if (target.count === 0) this.poof(e.target);
           break;
         }
         case 'wait':
@@ -205,8 +243,11 @@ export class BattleController implements Screen {
           this.step(0.05, { start: () => (v.log = `Round ${e.round}.`) });
           break;
         case 'end':
-          this.step(1.1, {
+          this.step(2.2, {
             start: () => {
+              const [title, line] =
+                e.result === 'won' ? ['VICTORY', e.rout ? 'The rest of them run for it' : 'The field is yours'] : e.result === 'lost' ? ['DEFEAT', 'Your army breaks and scatters'] : ['RETREAT', 'You live to fight another day'];
+              v.banner = { sprite: paintBanner(title, line), age: 0, life: 2.2 };
               v.log = e.rout
                 ? e.result === 'won'
                   ? 'The rest of them give up and run for it. The field is yours.'
@@ -231,6 +272,12 @@ export class BattleController implements Screen {
     const pace = this.pace * (this.auto ? 2.5 : 1);
     for (const f of v.floaters) f.age += dt;
     v.floaters = v.floaters.filter((f) => f.age < 1);
+    v.time += dt;
+    v.shake = Math.max(0, v.shake - dt * 20);
+    if (v.banner) v.banner.age += dt * pace;
+    for (const spark of this.sparks) spark.t += dt * pace * 4;
+    for (const spark of this.sparks.filter((k) => k.t >= 1)) v.shots.splice(v.shots.indexOf(spark), 1);
+    this.sparks = this.sparks.filter((k) => k.t < 1);
     let budget = dt * pace;
     while (budget > 0 && this.queue.length > 0) {
       const s = this.queue[0];

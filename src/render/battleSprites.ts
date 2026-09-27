@@ -293,3 +293,78 @@ export function flashSprite(sprite: Bitmap): Bitmap {
 
 export const FIGHTER_FOOT = (troop: TroopId) => figureFoot(troop, 'battle');
 export { BLUE4, RED4 };
+
+const corpses = new Map<string, { sprite: Bitmap; dx: number; dy: number }>();
+
+/**
+ * A fallen stack: its figure laid on its back (away from the enemy), dimmed, with no shadow. `dx`
+ * and `dy` put its middle and its lowest pixel on a point.
+ */
+export function corpseSprite(troop: TroopId, facing: 1 | -1): { sprite: Bitmap; dx: number; dy: number } {
+  const key = `${troop}/${facing}`;
+  let corpse = corpses.get(key);
+  if (!corpse) {
+    const up = troopSprite(troop, facing, 'idle');
+    const out = new Bitmap(up.height, up.width);
+    let [x0, x1, y1] = [out.width, 0, 0];
+    for (let y = 0; y < up.height; y++) {
+      for (let x = 0; x < up.width; x++) {
+        const v = up.get(x, y);
+        if (!v || v === SHADOW) continue;
+        // Head away from the enemy: a stack facing right falls to the left.
+        const [nx, ny] = facing > 0 ? [y, up.width - 1 - x] : [up.height - 1 - y, x];
+        out.set(nx, ny, v === INK ? INK : DIM[v] ?? v);
+        [x0, x1, y1] = [Math.min(x0, nx), Math.max(x1, nx), Math.max(y1, ny)];
+      }
+    }
+    corpse = { sprite: out, dx: Math.round((x0 + x1) / 2), dy: y1 };
+    corpses.set(key, corpse);
+  }
+  return corpse;
+}
+
+/** Each colour a few shades down its own ramp, for the fallen. */
+const DIM: Record<number, number> = {};
+for (const ramp of [BLUE4, RED4, COAT4, DIRT4, GOLD4, STONE4, WOOD4, LEAF4, PURPLE4, SKIN4, GOBLIN4, TROLL4, PLUM4]) {
+  for (const [i, c] of ramp.entries()) DIM[c] ??= ramp[Math.max(0, i - 2)];
+}
+for (const ramp of [BLUE, RED, GOLD, STONE, WOOD, NEUTRAL, SKIN, LEAF, PLUM, FOG, EARTH]) for (const [i, c] of ramp.entries()) DIM[c] ??= ramp[Math.max(0, i - 2)];
+
+export type Standard = { cloth: readonly number[]; emblem: 'goose' | 'moon' | 'skull' | 'star' };
+
+/**
+ * A commander's standard on a tall pole, its cloth swallow-tailed and flapping with `phase`, with an
+ * emblem on it: the royal star for Aldric, a goose for Grimsby's men, a moon for the fen.
+ */
+export function standard({ cloth, emblem }: Standard, phase: number, facing: 1 | -1): Bitmap {
+  const w = 58;
+  const h = 118;
+  const s = new Bitmap(w, h);
+  const pole = 6;
+  for (let y = 4; y < h - 4; y++) for (const dx of [0, 1]) s.set(pole + dx, y, dx ? WOOD[1] : WOOD[3]);
+  for (let y = 0; y < 5; y++) for (let x = pole - 2; x <= pole + 3; x++) if (Math.hypot(x - pole - 0.5, y - 2.5) < 2.6) s.set(x, y, y < 2 ? GOLD[6] : GOLD[4]);
+  const top = 8;
+  const deep = 34;
+  for (let i = 0; i < w - pole - 4; i++) {
+    const wave = Math.sin(i / 7 - phase * Math.PI * 2) * (1 + i / 16);
+    const tail = i > w - pole - 18;
+    for (let j = 0; j < deep; j++) {
+      // Swallowtail: a notch cut into the flying end.
+      if (tail && Math.abs(j - deep / 2) < (i - (w - pole - 18)) * 0.9) continue;
+      const x = pole + 2 + i;
+      const y = Math.round(top + j + wave);
+      const u = i - 18;
+      const v = j - deep / 2;
+      let c = flat(cloth, j === 0 || j === deep - 1 ? 0.95 : 0.6 - Math.cos(i / 7 - phase * Math.PI * 2) * 0.2, x, y);
+      if (j < 2 || j > deep - 3) c = GOLD[4];
+      else if (emblem === 'goose' && (Math.hypot(u * 0.8, v - 1) < 6 || Math.hypot(u - 5, v + 5) < 2.6 || (u > 6 && u < 10 && Math.abs(v + 5) < 1))) c = u > 7 && v < -3 ? GOLD[5] : NEUTRAL[7];
+      else if (emblem === 'moon' && Math.hypot(u, v) < 8 && Math.hypot(u + 4, v - 2) > 7) c = NEUTRAL[6];
+      else if (emblem === 'skull' && ((Math.hypot(u, v - 2) < 6.5 && !(Math.hypot(u - 2.5, v - 2) < 1.8 || Math.hypot(u + 2.5, v - 2) < 1.8)) || (Math.abs(u) < 3.5 && v > 5 && v < 9 && Math.round(u) % 2 !== 0))) c = NEUTRAL[7];
+      else if (emblem === 'star' && Math.hypot(u, v) < 3 + 3 * Math.pow(Math.abs(Math.cos(Math.atan2(v, u) * 2.5)), 6)) c = GOLD[5];
+      s.set(x, y, c);
+    }
+  }
+  const shaped = outline(s, INK);
+  shadowOval(shaped, pole + 1, h - 4, 7, 2);
+  return facing > 0 ? shaped : mirror(shaped);
+}

@@ -1,14 +1,24 @@
-import { abilitiesOf, TROOPS } from '../content/troops';
+import { abilitiesOf, TROOPS, type TroopId } from '../content/troops';
 import { SPELLS, STATUSES } from '../content/spells';
 import { spellCost, speedOf, statsOf, type BattleState } from '../rules/battle/battle';
 import { COLS, colOf, HEXES, ROWS, rowOf } from '../rules/battle/hex';
 import { Bitmap, blit } from './bitmap';
-import { flashSprite, FIGHTER_FOOT, troopSprite, type Pose } from './battleSprites';
+import { corpseSprite, flashSprite, FIGHTER_FOOT, standard, troopSprite, type Pose, type Standard } from './battleSprites';
+import { drawBanner } from './banner';
 import { BAR, MAP_VIEW, paintBarBackground, paintFrame, SCREEN, type Rect } from './frame';
-import { hash, noise, shade } from './noise';
-import { BLUE, CYCLE_BOG, EARTH, GOLD, GRASS, INK, LIGHT_LUT, NEUTRAL, PARCHMENT, RED, REED, SHADOW_LUT, STONE } from './palette';
-import { boulder, oak, pine, willow } from './sprites';
+import { bayer, hash, noise, shade } from './noise';
+import { BLUE, CYCLE_BOG, EARTH, GOLD, GRASS, INK, LEAF, LIGHT_LUT, NEUTRAL, PARCHMENT, PLUM, RED, REED, SHADOW_LUT, STONE } from './palette';
+import { boulder, hero, oak, pine, willow } from './sprites';
 import { drawText } from './text';
+
+/** Whose standard flies over the enemy: Grimsby's goose, the fen's moon, a skull for outlaws; beasts carry none. */
+function standardOf(troops: TroopId[]): Standard | null {
+  const has = (...ids: TroopId[]) => troops.some((t) => ids.includes(t));
+  if (has('baron', 'swordsmen', 'crossbowmen')) return { cloth: [RED[1], RED[2], RED[3], RED[4]], emblem: 'goose' };
+  if (has('witch', 'bramble', 'goblins', 'trolls')) return { cloth: [PLUM[1], PLUM[2], PLUM[3], PLUM[4]], emblem: 'moon' };
+  if (has('bandits', 'poachers')) return { cloth: [LEAF[0], LEAF[1], LEAF[2], LEAF[3]], emblem: 'skull' };
+  return null;
+}
 
 /** Pointy-top hexes, squashed for HoMM2's oblique view: 64 wide, rows 44 apart. */
 const HEX_W = 64;
@@ -39,7 +49,7 @@ export function hexAt(x: number, y: number): number | null {
 }
 
 export type Floater = { x: number; y: number; text: string; color: number; age: number };
-export type Shot = { from: [number, number]; to: [number, number]; t: number; kind: 'arrow' | 'bolt' | 'sparkle'; color?: number };
+export type Shot = { from: [number, number]; to: [number, number]; t: number; kind: 'arrow' | 'bolt' | 'sparkle' | 'spark' | 'poof'; color?: number };
 
 /** What the battle controller wants drawn this frame, on top of the rules state. */
 export type BattleView = {
@@ -60,6 +70,12 @@ export type BattleView = {
   /** What the pointed-at action would do, shown instead of the log. */
   preview: string | null;
   targeting: string | null;
+  /** Seconds since the battle opened, for breathing and flags. */
+  time: number;
+  /** How hard the field shakes this frame, in pixels. */
+  shake: number;
+  /** VICTORY or DEFEAT across the field at the end. */
+  banner: { sprite: Bitmap; age: number; life: number } | null;
 };
 
 export const BUTTONS: { id: 'spells' | 'wait' | 'defend' | 'auto' | 'retreat'; label: string; rect: Rect }[] = ['spells', 'wait', 'defend', 'auto', 'retreat'].map((id, i) => ({
@@ -97,6 +113,23 @@ function paintField(obstacles: number[], seed: number, fen: boolean): Bitmap {
     const y = top ? MAP_VIEW.y - t.height + 26 + (i % 3) * 3 : MAP_VIEW.y + MAP_VIEW.height - 18;
     if (!top && x > X0 && x < X0 + FIELD_W - 20) continue;
     blit(field, t, x, y, MAP_VIEW);
+  }
+  // Tufts, flowers and pebbles, so the grass isn't a carpet.
+  for (let n = 0; n < 420; n++) {
+    const x = MAP_VIEW.x + Math.floor(hash(n, 7, seed) * MAP_VIEW.width);
+    const y = MAP_VIEW.y + 20 + Math.floor(hash(n, 8, seed) * (MAP_VIEW.height - 30));
+    const kind = hash(n, 9, seed);
+    if (kind < 0.6) {
+      const tall = 2 + Math.floor(hash(n, 10, seed) * 4);
+      for (let k = 0; k < tall; k++) for (const dx of [-1, 1]) field.set(x + (k > 1 ? dx : 0) * (k - 1 > 0 ? 1 : 0) + dx * (k > 2 ? 1 : 0), y - k, fen ? REED[2 + (k % 3)] : GRASS[Math.min(GRASS.length - 1, 5 + k)]);
+    } else if (kind < 0.85 && !fen) {
+      const petal = [NEUTRAL[7], GOLD[6], RED[5], BLUE[6]][Math.floor(hash(n, 11, seed) * 4)];
+      for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, -1], [0, 1]]) field.set(x + dx, y + dy, dx || dy ? petal : GOLD[4]);
+    } else {
+      field.set(x, y, STONE[5]);
+      field.set(x + 1, y, STONE[3]);
+      field.set(x, y + 1, STONE[2]);
+    }
   }
   // Hex outlines: a darker line where hexes meet.
   for (let i = 0; i < HEXES; i++) {
@@ -163,11 +196,17 @@ export class BattleScreen {
   private readonly overlay: Bitmap;
   private readonly field: Bitmap;
 
+  /** Aldric on his horse at the top left, and the enemy's standard at the top right (beasts have none). */
+  private readonly commander = Array.from({ length: 8 }, (_, i) => hero((i / 8) * Math.PI * 2, false, false, 2.3));
+  private readonly standard: Bitmap[] | null;
+
   constructor(battle: BattleState) {
     const { frame, overlay } = paintFrame();
     this.frame = frame;
     this.overlay = overlay;
     this.field = paintField(battle.obstacles, (battle.seed >>> 8) & 1023, battle.ground === 'fen');
+    const theirs = standardOf(battle.fighters.filter((f) => f.side === 'enemy').map((f) => f.troop));
+    this.standard = theirs && Array.from({ length: 8 }, (_, i) => standard(theirs, i / 8, -1));
   }
 
   draw(b: BattleState, view: BattleView): Bitmap {
@@ -185,23 +224,63 @@ export class BattleScreen {
     }
     if (view.hover) outlineHex(screen, view.hover.hex, view.hover.kind === 'move' ? GOLD[6] : view.hover.kind === 'spell' ? BLUE[6] : RED[5]);
 
+    // The fallen stay where they fell, under everyone still standing.
+    for (const f of b.fighters) {
+      if (f.count > 0 || view.dying.has(f.id)) continue;
+      const [cx, cy] = hexCentre(f.at);
+      const { sprite, dx, dy } = corpseSprite(f.troop, f.side === 'player' ? 1 : -1);
+      blit(screen, sprite, Math.round(cx - dx), Math.round(cy + 12 - dy), MAP_VIEW);
+    }
+    const flap = Math.floor(view.time * 5) % 8;
+    const rider = this.commander[flap];
+    blit(screen, rider, MAP_VIEW.x + 4, Y0 + 96 - rider.height, MAP_VIEW);
+    if (this.standard) {
+      const flag = this.standard[flap];
+      blit(screen, flag, MAP_VIEW.x + MAP_VIEW.width - flag.width - 18, Y0 + 100 - flag.height, MAP_VIEW);
+    }
+
     const shown = b.fighters.filter((f) => f.count > 0 || view.dying.has(f.id));
     const place = (id: number, at: number) => view.positions.get(id) ?? hexCentre(at);
     shown.sort((x, y) => place(x.id, x.at)[1] - place(y.id, y.at)[1]);
     for (const f of shown) {
       const [cx, cy] = place(f.id, f.at);
       const facing = f.side === 'player' ? 1 : -1;
-      let sprite = troopSprite(f.troop, facing, view.poses.get(f.id) ?? 'idle');
+      const pose = view.poses.get(f.id) ?? 'idle';
+      let sprite = troopSprite(f.troop, facing, pose);
       if (view.flashing.has(f.id)) sprite = flashSprite(sprite);
-      blit(screen, sprite, Math.round(cx - sprite.width / 2), Math.round(cy + 12 - FIGHTER_FOOT(f.troop)), MAP_VIEW);
-      if (f.count > 0) this.badge(Math.round(cx + facing * 14), Math.round(cy + 8), f.count, f.side === 'player');
+      // Standing about, everyone breathes: a pixel up and down, each stack in its own time.
+      const breath = pose === 'idle' && !view.positions.has(f.id) && Math.sin(view.time * 2.4 + f.id * 1.9) > 0.35 ? 1 : 0;
+      blit(screen, sprite, Math.round(cx - sprite.width / 2), Math.round(cy + 12 - FIGHTER_FOOT(f.troop)) - breath, MAP_VIEW);
+    }
+    // Counts go on last, so a troll never hides the goblins behind him.
+    for (const f of shown) {
+      if (f.count <= 0) continue;
+      const [cx, cy] = place(f.id, f.at);
+      this.badge(Math.round(cx + (f.side === 'player' ? 14 : -14)), Math.round(cy + 8), f.count, f.side === 'player');
     }
     for (const s of view.shots) this.shot(s);
-    for (const t of view.floaters) drawText(screen, t.text, Math.round(t.x - t.text.length * 3.5), Math.round(t.y - t.age * 26), t.color, INK, 13);
+    for (const t of view.floaters) drawText(screen, t.text, Math.round(t.x - t.text.length * 4), Math.round(t.y - t.age * 30), t.color, INK, 15);
+    if (view.banner) drawBanner(screen, view.banner.sprite, MAP_VIEW.x + MAP_VIEW.width / 2, MAP_VIEW.y + 150, view.banner.age, view.banner.life);
+    if (view.shake > 0.5) this.shake(view.shake, view.time);
     this.logLine(view.preview ?? view.log);
     this.bar(b, view);
     blit(screen, this.overlay, 0, 0);
     return screen;
+  }
+
+  /** Jolts the field (not the frame round it) by up to `amount` pixels, for a heavy blow. */
+  private shake(amount: number, time: number) {
+    const dx = Math.round((hash(Math.floor(time * 60), 1, 3) - 0.5) * 2 * amount);
+    const dy = Math.round((hash(Math.floor(time * 60), 2, 3) - 0.5) * 2 * amount);
+    const { screen } = this;
+    const copy = screen.data.slice();
+    for (let y = MAP_VIEW.y; y < MAP_VIEW.y + MAP_VIEW.height; y++) {
+      const sy = Math.min(MAP_VIEW.y + MAP_VIEW.height - 1, Math.max(MAP_VIEW.y, y - dy));
+      for (let x = MAP_VIEW.x; x < MAP_VIEW.x + MAP_VIEW.width; x++) {
+        const sx = Math.min(MAP_VIEW.x + MAP_VIEW.width - 1, Math.max(MAP_VIEW.x, x - dx));
+        screen.data[y * SCREEN.width + x] = copy[sy * SCREEN.width + sx];
+      }
+    }
   }
 
   private badge(cx: number, y: number, count: number, player: boolean) {
@@ -234,6 +313,28 @@ export class BattleScreen {
         x += (hash(y, Math.floor(s.t * 20), 5) - 0.5) * 10;
         x += (bx - x) * 0.08;
         for (const dx of [-1, 0, 1]) this.screen.set(Math.round(x + dx), y, dx === 0 ? NEUTRAL[7] : GOLD[6]);
+      }
+    } else if (s.kind === 'spark') {
+      // A burst of white and gold where the blow lands.
+      for (let k = 0; k < 9; k++) {
+        const a = k * 0.7 + (hash(k, Math.round(bx), 9) - 0.5);
+        const r0 = 3 + s.t * 10;
+        const r1 = r0 + 6 * (1 - s.t);
+        for (let r = r0; r < r1; r++) if (s.t < 0.6 || (r + k) % 2 === 0) this.screen.set(Math.round(bx + Math.cos(a) * r), Math.round(by + Math.sin(a) * r * 0.7), r < r0 + 2 ? NEUTRAL[7] : GOLD[5]);
+      }
+    } else if (s.kind === 'poof') {
+      // Dust where a stack went down: puffs that swell, rise and thin out.
+      for (let k = 0; k < 7; k++) {
+        const px = bx + (k - 3) * 7 + Math.sin(k * 2.1) * 3;
+        const py = by - 6 - s.t * 18 - (k % 3) * 5;
+        const r = 4 + s.t * 7 + (k % 2) * 2;
+        for (let y = Math.floor(py - r); y <= py + r; y++) {
+          for (let x = Math.floor(px - r); x <= px + r; x++) {
+            const d = Math.hypot(x - px, (y - py) * 1.2) / r;
+            if (d > 1 || bayer(x, y) < s.t * 0.9) continue;
+            this.screen.set(x, y, d > 0.7 ? STONE[3] : d > 0.35 ? STONE[5] : STONE[6]);
+          }
+        }
       }
     } else {
       for (let k = 0; k < 14; k++) {
