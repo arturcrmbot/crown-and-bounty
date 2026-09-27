@@ -2,6 +2,7 @@
 import { chooseBoon, nextCommission, retry, toCourt } from './campaign';
 import { endDay } from './days';
 import { equip, gearCard, learn } from './hero';
+import { castMapSpell } from './mapSpells';
 import { choose } from './places';
 import { chooseBackground } from './scenario';
 import { show, type Action, type GameState, type Result } from './state';
@@ -30,6 +31,8 @@ export function apply(state: GameState, action: Action): Result | null {
       return equip(state, action.artifact);
     case 'gear':
       return { state, events: [show(gearCard(state))] };
+    case 'mapSpell':
+      return castMapSpell(state, action.spell);
     case 'background':
       return { state: chooseBackground(state, action.id), events: [] };
     case 'court':

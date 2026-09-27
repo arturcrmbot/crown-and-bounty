@@ -42,7 +42,18 @@ export type BattleHero = {
   troops?: Partial<Record<TroopId, { attack: number; defence: number; shots: number }>>;
   /** Enemy troops that start slowed. */
   slows?: TroopId[];
+  /** Troops that charge (see CHARGE_HEXES). */
+  charge?: TroopId[];
+  /** Archers loose a free volley before the first round. */
+  volley?: boolean;
+  /** Spells he may cast in a round, and how many he has cast in `castRound`. */
+  casts?: number;
+  castsThisRound?: number;
 };
+
+/** A charging stack rides at least this many hexes before it strikes, hits this much harder, and can't be struck back. */
+export const CHARGE_HEXES = 3;
+export const CHARGE_BONUS = 1.25;
 
 export type BattleState = {
   place: string;
@@ -59,6 +70,8 @@ export type BattleState = {
   /** Whether anyone has been hurt this round, and how many rounds in a row nobody was. */
   struck?: boolean;
   quiet?: number;
+  /** The hero's archers are about to loose their free volley, before anyone moves. */
+  volley?: boolean;
 };
 
 /** Rounds in a row with nobody hurt before the weaker side gives up the field. */
@@ -71,11 +84,14 @@ export type BattleAction =
   | { type: 'wait' }
   | { type: 'defend' }
   | { type: 'cast'; spell: SpellId; target: number }
+  | { type: 'volley' }
   | { type: 'retreat' };
 
 export type BattleEvent =
   | { type: 'move'; fighter: number; path: number[] }
-  | { type: 'hit'; attacker: number; target: number; damage: number; killed: number; ranged: boolean; retaliation: boolean; hexed?: boolean }
+  | { type: 'hit'; attacker: number; target: number; damage: number; killed: number; ranged: boolean; retaliation: boolean; hexed?: boolean; charge?: boolean }
+  /** The ranger's archers open the battle with a free volley. */
+  | { type: 'volley' }
   /** A troll's wounds close up at the start of its turn. */
   | { type: 'regen'; fighter: number; healed: number }
   | { type: 'spell'; spell: SpellId; target: number; damage: number; killed: number }
@@ -141,7 +157,8 @@ export function createBattle(args: { place: string; seed: number; player: Army; 
     const i = hexIndex(2 + Math.floor(a * (COLS - 4)), Math.floor(b * 9));
     if (!obstacles.includes(i)) obstacles.push(i);
   }
-  return { place: args.place, round: 1, fighters, order: turnOrder(fighters), obstacles, seed, hero: args.hero, ...(args.ground === 'fen' ? { ground: 'fen' as const } : {}) };
+  const volley = Boolean(args.hero.volley) && fighters.some((f) => f.side === 'player' && f.shots > 0);
+  return { place: args.place, round: 1, fighters, order: turnOrder(fighters), obstacles, seed, hero: args.hero, ...(args.ground === 'fen' ? { ground: 'fen' as const } : {}), ...(volley ? { volley } : {}) };
 }
 
 /** Whether a hex is taken by a rock or by a living stack (other than `except`). */
@@ -186,8 +203,8 @@ export function skillFactor(attack: number, defence: number): number {
   return attack >= defence ? Math.min(4, 1 + 0.1 * (attack - defence)) : Math.max(0.3, 1 - 0.05 * (defence - attack));
 }
 
-/** Damage one stack deals another. With `seed` it rolls; without, it's the average. */
-export function strike(b: BattleState, attacker: Fighter, target: Fighter, ranged: boolean, seed?: number): { damage: number; seed?: number } {
+/** Damage one stack deals another, times `bonus` (a charge). With `seed` it rolls; without, it's the average. */
+export function strike(b: BattleState, attacker: Fighter, target: Fighter, ranged: boolean, seed?: number, bonus = 1): { damage: number; seed?: number } {
   const t = TROOPS[attacker.troop];
   const attack = t.attack + heroSkill(b, attacker).attack;
   let defence = TROOPS[target.troop].defence + heroSkill(b, target).defence;
@@ -209,7 +226,7 @@ export function strike(b: BattleState, attacker: Fighter, target: Fighter, range
   const inMelee = !ranged && t.shots ? 0.5 : 1;
   const skill = attacker.side === 'player' ? 1 + ((ranged ? b.hero.ranged : b.hero.melee) ?? 0) : 1;
   const armour = target.side === 'player' ? 1 - (b.hero.armour ?? 0) : 1;
-  const damage = Math.max(1, Math.round(attacker.count * perTroop * skillFactor(attack, defence) * inMelee * skill * armour));
+  const damage = Math.max(1, Math.round(attacker.count * perTroop * skillFactor(attack, defence) * inMelee * skill * armour * bonus));
   return { damage, seed };
 }
 
@@ -224,7 +241,12 @@ export function wound(target: Fighter, damage: number): { count: number; hp: num
 
 /** Mana a spell costs this hero. */
 export const spellCost = (b: BattleState, spell: SpellId) => Math.max(1, SPELLS[spell].mana - (b.hero.manaDiscount ?? 0));
-export const canCast = (b: BattleState, spell: SpellId) => b.hero.spells.includes(spell) && b.hero.castRound < b.round && b.hero.mana >= spellCost(b, spell);
+/** Spells the hero may still cast this round: one, or two for a wizard. */
+export const castsLeft = (b: BattleState) => (b.hero.casts ?? 1) - (b.hero.castRound === b.round ? (b.hero.castsThisRound ?? 1) : 0);
+export const canCast = (b: BattleState, spell: SpellId) => b.hero.spells.includes(spell) && castsLeft(b) > 0 && b.hero.mana >= spellCost(b, spell);
+/** Whether a melee attack from `from` would be a charge: a charging troop riding far enough first. */
+export const isCharge = (b: BattleState, f: Fighter, from: number, moves = options(b).moves) =>
+  f.side === 'player' && (b.hero.charge ?? []).includes(f.troop) && from !== f.at && (moves.get(from)?.length ?? 0) >= CHARGE_HEXES;
 /** Damage a spell does, or 0 if it doesn't do damage. */
 export const spellDamage = (b: BattleState, spell: SpellId) => {
   const effect = SPELLS[spell].effect;
@@ -250,14 +272,14 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
   const events: BattleEvent[] = [];
   const opts = options(b);
 
-  const hit = (attacker: Fighter, target: Fighter, ranged: boolean, retaliation: boolean) => {
-    const rolled = strike(next, attacker, target, ranged, expected ? undefined : next.seed);
+  const hit = (attacker: Fighter, target: Fighter, ranged: boolean, retaliation: boolean, charge = false) => {
+    const rolled = strike(next, attacker, target, ranged, expected ? undefined : next.seed, charge ? CHARGE_BONUS : 1);
     if (!expected) next.seed = rolled.seed!;
     next.struck = true;
     const w = wound(target, rolled.damage);
     target.count = w.count;
     target.hp = w.hp;
-    events.push({ type: 'hit', attacker: attacker.id, target: target.id, damage: rolled.damage, killed: w.killed, ranged, retaliation });
+    events.push({ type: 'hit', attacker: attacker.id, target: target.id, damage: rolled.damage, killed: w.killed, ranged, retaliation, ...(charge ? { charge } : {}) });
   };
 
   switch (action.type) {
@@ -271,13 +293,15 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
     case 'melee': {
       const ok = opts.melee.some((m) => m.target === action.target && m.from === action.from);
       if (!ok) return { battle: b, events: [] };
+      const charge = isCharge(b, f, action.from, opts.moves);
       if (action.from !== me.at) {
         events.push({ type: 'move', fighter: me.id, path: opts.moves.get(action.from)! });
         me.at = action.from;
       }
       const target = fighterById(next, action.target);
-      hit(me, target, false, false);
-      if (alive(target) && !target.retaliated) {
+      hit(me, target, false, false, charge);
+      // Nobody gets to swing back at a lance coming in at the gallop.
+      if (alive(target) && !target.retaliated && !charge) {
         target.retaliated = true;
         hit(target, me, false, true);
       }
@@ -311,6 +335,7 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
       const target = fighters.find((x) => x.id === action.target && alive(x));
       if (!target || !canCast(b, action.spell) || (spell.on === 'enemy') !== (target.side === 'enemy')) return { battle: b, events: [] };
       next.hero.mana -= spellCost(b, action.spell);
+      next.hero.castsThisRound = b.hero.castRound === b.round ? (b.hero.castsThisRound ?? 1) + 1 : 1;
       next.hero.castRound = b.round;
       let damage = 0;
       let killed = 0;
@@ -324,6 +349,21 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
         target.hp = w.hp;
       } else addStatus(target, effect.status);
       events.push({ type: 'spell', spell: action.spell, target: target.id, damage, killed });
+      return settle(next, events, false);
+    }
+    case 'volley': {
+      if (!b.volley) return { battle: b, events: [] };
+      next.volley = undefined;
+      events.push({ type: 'volley' });
+      // Every stack that can shoot picks the biggest threat still standing, and looses once.
+      for (const shooter of fighters.filter((x) => x.side === 'player' && alive(x) && x.shots > 0)) {
+        const targets = fighters.filter((x) => x.side === 'enemy' && alive(x));
+        if (!targets.length) break;
+        const worth = (x: Fighter) => x.count * troopPower(x.troop);
+        const target = targets.reduce((best, x) => (worth(x) > worth(best) ? x : best));
+        shooter.shots -= 1;
+        hit(shooter, target, true, false);
+      }
       return settle(next, events, false);
     }
     case 'retreat':

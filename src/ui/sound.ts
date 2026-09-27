@@ -5,7 +5,7 @@
 import { audio, isMuted } from '../audio/context';
 import { playNote } from '../audio/instruments';
 
-export type Sound = 'click' | 'coins' | 'hit' | 'shoot' | 'bolt' | 'spell' | 'day' | 'levelUp' | 'victory' | 'defeat' | 'dig' | 'fanfare';
+export type Sound = 'click' | 'coins' | 'hit' | 'shoot' | 'bolt' | 'spell' | 'day' | 'levelUp' | 'victory' | 'defeat' | 'dig' | 'fanfare' | 'charge';
 
 /** Sound effects go to the effects bus of the shared audio context (see `audio/context.ts`). */
 export { toggleMute, wakeAudio as wakeSound } from '../audio/context';
@@ -91,6 +91,11 @@ export function play(sound: Sound) {
         playNote(a.ctx, a.sfx, 'tabor', t + 0.5, 43, 0.3, 0.7);
         break;
       }
+      case 'charge':
+        // A hunting horn: two quick calls and a long one, and hooves.
+        for (const [midi, at, length] of [[67, 0, 0.1], [67, 0.12, 0.1], [74, 0.24, 0.45]] as [number, number, number][]) playNote(a.ctx, a.sfx, 'brass', t + at, midi, length, 0.34);
+        for (const d of [0, 0.09, 0.18, 0.27]) noise(t + d, 0.06, 'lowpass', 700, 0.5);
+        break;
       case 'dig':
         [0, 0.25, 0.5].forEach((d) => noise(t + d, 0.1, 'lowpass', 500, 0.8));
         tone(1568, t + 0.8, 0.9, 'sine', 0.35);

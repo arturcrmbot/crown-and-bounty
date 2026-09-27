@@ -6,7 +6,9 @@
 import { TROOPS } from '../../content/troops';
 import { armyPower, roll, type GameEvent, type GameState, type Location } from '../state';
 import type { Point } from './geometry';
-import { CELL, cellCentre, gridWithEnemies, standingEnemies, type MapModel } from './model';
+import { heroStats } from '../hero';
+import { mapOf } from './maps';
+import { CELL, cellCentre, cellIndex, gridWithEnemies, standingEnemies, Terrain, type MapModel } from './model';
 import { stepCost } from './movement';
 import { findPath, nearestPassable } from './pathfinding';
 
@@ -23,11 +25,18 @@ const cellOf = ([x, y]: Point) => ({ x: Math.floor(x / CELL), y: Math.floor(y / 
 /** Whether a hunter comes for the hero tonight: he is near, inside its territory, and weaker. */
 export function hunting(state: GameState, l: Location): boolean {
   const e = l.enemy!;
-  if (e.behaviour !== 'hunt' || (e.rest ?? 0) > 0) return false;
+  if (e.behaviour !== 'hunt' || (e.rest ?? 0) > 0 || inTheWoods(state)) return false;
   const home = e.home ?? l.at;
   const hero = state.hero.at;
   const theirs = armyPower(state.army);
   return theirs > 0 && dist(l.at, hero) <= HUNT_SIGHT && dist(home, hero) <= (e.range ?? 120) * 1.5 && armyPower(e.army) >= theirs * 1.2;
+}
+
+/** A ranger among the trees leaves no track that anything on the map can follow. */
+function inTheWoods(state: GameState): boolean {
+  if (!heroStats(state).forestWalk) return false;
+  const map = mapOf(state);
+  return map.terrain[cellIndex(map, state.hero.at[0], state.hero.at[1])] === Terrain.Forest;
 }
 
 /** Every roamer and hunter takes its night's walk. Returns the stacks that are now on the hero's doorstep. */

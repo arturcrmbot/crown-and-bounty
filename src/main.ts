@@ -1,3 +1,4 @@
+import { BACKGROUNDS, type BackgroundId } from './content/backgrounds';
 import { Game } from './game/game';
 import { Display } from './game/display';
 import { Input } from './game/input';
@@ -32,7 +33,9 @@ const seed = query.has('seed') ? Number(query.get('seed')) : frozen ? 1066 : cry
 
 /** Debug starts: ?commission=2 rides into the second province, ?court=1 opens the court after the first. */
 function debugStart(): GameState {
-  const first = newGame(seed);
+  // ?hero=ranger (or knight, wizard, courtier) picks the background for a debug start.
+  const who = query.get('hero');
+  const first = newGame(seed, undefined, who && who in BACKGROUNDS ? (who as BackgroundId) : 'knight');
   const court = Number(query.get('court') ?? 0);
   const chapter = court > 0 ? court - 1 : Number(query.get('commission') ?? 1) - 1;
   const { hero, gold, leadership, army } = first;
@@ -52,7 +55,7 @@ const game = new Game(display, Math.max(1, Number(query.get('speed') ?? 1)));
 const input = new Input(display, game.input);
 // The title and the King's welcome come first, unless a debug start (or a frozen screenshot) wants straight in.
 // ?quick=1 skips them too; ?title=1 brings them back even when frozen.
-const quick = (frozen && query.get('title') !== '1') || ['quick', 'battle', 'court', 'commission', 'sceptre', 'reveal', 'x'].some((k) => query.has(k));
+const quick = (frozen && query.get('title') !== '1') || ['quick', 'battle', 'court', 'commission', 'sceptre', 'reveal', 'x', 'hero'].some((k) => query.has(k));
 if (quick) {
   // ?reveal=1 lifts the fog, for looking the whole map over.
   const start = resume ?? (query.has('reveal') ? { ...debugStart(), explored: debugStart().explored.map(() => -1) } : debugStart());

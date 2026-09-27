@@ -1,13 +1,48 @@
-import { choiceButton } from '../effects';
+import { TROOPS } from '../../content/troops';
+import { applyEffects, choiceButton } from '../effects';
 import { fight, startFight, winChance } from '../fight';
-import { armyLine, type Choice, type GameState, type Location } from '../state';
+import { heroStats } from '../hero';
+import { armyLine, close, coins, show, type Choice, type ContentChoice, type GameState, type Location, type Result } from '../state';
 import { countsExactly, forceLine, note, option, ride, say, words } from './common';
 import type { PlaceKind } from './kind';
 
 const retreat: Choice = { label: 'Retreat', action: { type: 'close' } };
 
+/** A parley as this hero would strike it: a courtier talks any bribe down. */
+export function haggled(state: GameState, parley: ContentChoice): ContentChoice {
+  const off = heroStats(state).bribes;
+  const gold = parley.needs?.gold;
+  return off && gold ? { ...parley, needs: { ...parley.needs, gold: Math.round((gold * (1 - off)) / 10) * 10 } } : parley;
+}
+
 /** The other ways past them, as buttons: greyed out, with what they need, when the hero can't take them. */
-const parleys = (state: GameState, place: Location) => (place.enemy?.parleys ?? []).map((p) => choiceButton(state, place, p, `parley/${p.id}`));
+const parleys = (state: GameState, place: Location) => (place.enemy?.parleys ?? []).map((p) => choiceButton(state, place, haggled(state, p), `parley/${p.id}`));
+
+/** What a band asks to change sides: only troops that draw wages will (no beasts, no villains), and only small fry. */
+export function hirePrice(state: GameState, place: Location): number | null {
+  const foe = place.enemy;
+  if (!foe || place.done || !heroStats(state).hires || (foe.tier !== 'pest' && foe.tier !== 'band')) return null;
+  if (foe.army.some((s) => !TROOPS[s.troop].wage)) return null;
+  // Content with its own offer for this sort of hero knows better.
+  if (foe.parleys?.some((p) => p.needs?.background === state.hero.background)) return null;
+  return foe.army.reduce((sum, s) => sum + s.count * TROOPS[s.troop].wage * HIRE_PRICE, 0);
+}
+/** Gold per point of a troop's weekly wage, to buy him off his old employer. */
+const HIRE_PRICE = 12;
+
+function hire(state: GameState, place: Location): Result | null {
+  const price = hirePrice(state, place);
+  if (price === null || state.gold < price) return null;
+  const done = applyEffects({ ...state, gold: state.gold - price }, place, { troops: place.enemy!.army, done: true });
+  const lines = ['They count your gold twice, bite a coin, and fall in behind your banner.', `**\u2212${coins(price)} gold.**`, ...done.lines];
+  return { state: done.state, events: [...done.events, show({ title: place.name, lines, choices: [close] }, place.at, place.id)] };
+}
+
+/** The courtier's offer, as a button: greyed out when his purse is too light. */
+function hireButton(state: GameState, place: Location): Choice[] {
+  const price = hirePrice(state, place);
+  return price === null ? [] : [option(place, `Hire them (${coins(price)} gold)`, 'hire', state.gold < price)];
+}
 
 /** What the sergeants think of the odds, in words. */
 function hint(chance: number): string {
@@ -32,12 +67,13 @@ export function enemy(kind: 'patrol' | 'hideout'): PlaceKind {
       return say(state, place, {
         title: place.name,
         lines: [foe.threat, hint(winChance(state, place.id))],
-        choices: [option(place, foe.charge ?? 'Fight', 'fight'), option(place, 'Let the sergeants handle it', 'auto'), ...parleys(state, place), retreat],
+        choices: [option(place, foe.charge ?? 'Fight', 'fight'), option(place, 'Let the sergeants handle it', 'auto'), ...hireButton(state, place), ...parleys(state, place), retreat],
       });
     },
     choose(state, place, choice) {
       const calm: GameState = state.ambush === place.id ? { ...state, ambush: undefined } : state;
       if (choice === 'fight') return startFight(calm, place.id);
+      if (choice === 'hire') return hire(calm, place);
       if (choice === 'auto') return fight(calm, place.id);
       if (choice === 'flee' && state.ambush === place.id) {
         const army = state.army.map((s) => ({ ...s, count: s.count - Math.ceil(s.count * 0.2) })).filter((s) => s.count > 0);

@@ -1,7 +1,7 @@
 import { SPELLS, type SpellId } from '../content/spells';
 import { TROOPS, troops } from '../content/troops';
 import { chooseAction } from '../rules/battle/ai';
-import { activeFighter, battleAct, canCast, fighterById, options, spellCost, spellDamage, strike, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
+import { activeFighter, battleAct, canCast, castsLeft, CHARGE_BONUS, fighterById, isCharge, options, spellCost, spellDamage, strike, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
 import { paintBanner } from '../render/banner';
 import { BattleScreen, BUTTONS, hexAt, hexCentre, type BattleView, type Shot } from '../render/battleScreen';
 import { FIGHTER_FOOT } from '../render/battleSprites';
@@ -183,8 +183,13 @@ export class BattleController implements Screen {
               v.flashing.add(e.target);
               if (!e.ranged) play('hit');
               this.impact(e.target, e.damage, !e.ranged);
+              if (e.charge) {
+                this.float(e.attacker, 'Charge!', GOLD[6]);
+                play('charge');
+                v.shake = Math.max(v.shake, 6);
+              }
               this.float(e.target, e.killed ? `-${e.killed}` : `-${e.damage} hp`, e.killed ? RED[5] : RED[6]);
-              v.log = `${this.fighterName(e.attacker)} ${e.ranged ? 'shoot' : e.retaliation ? 'strike back at' : 'hit'} ${this.fighterName(e.target).replace(/^(Your|Their) /, (m) => m.toLowerCase())} for ${e.damage}${e.killed ? `. ${e.killed} perish.` : '.'}${e.hexed ? ' The hex slows them down.' : ''}`;
+              v.log = `${this.fighterName(e.attacker)} ${e.ranged ? 'shoot' : e.retaliation ? 'strike back at' : e.charge ? 'charge' : 'hit'} ${this.fighterName(e.target).replace(/^(Your|Their) /, (m) => m.toLowerCase())} for ${e.damage}${e.killed ? `. ${e.killed} perish.` : '.'}${e.hexed ? ' The hex slows them down.' : ''}`;
             },
             end: () => {
               v.flashing.delete(e.target);
@@ -241,6 +246,9 @@ export class BattleController implements Screen {
           break;
         case 'round':
           this.step(0.05, { start: () => (v.log = `Round ${e.round}.`) });
+          break;
+        case 'volley':
+          this.step(0.3, { start: () => (v.log = 'From the treeline, your archers loose a volley before anyone moves!') });
           break;
         case 'end':
           this.step(2.2, {
@@ -303,6 +311,12 @@ export class BattleController implements Screen {
           this.dispose();
           this.hooks.onDone(this.battle);
         }
+      } else if (this.battle.volley) {
+        this.think += dt * pace;
+        if (this.think >= ENEMY_THINK * 1.5) {
+          this.think = 0;
+          this.perform({ type: 'volley' });
+        }
       } else if (f && (f.side === 'enemy' || this.auto)) {
         this.think += dt * pace;
         if (this.think >= ENEMY_THINK) {
@@ -311,7 +325,7 @@ export class BattleController implements Screen {
         }
       }
     }
-    const mine = !!f && f.side === 'player' && !this.auto && this.queue.length === 0;
+    const mine = !!f && f.side === 'player' && !this.auto && this.queue.length === 0 && !this.battle.volley;
     v.reach = mine && !v.targeting ? new Set(options(this.battle).moves.keys()) : new Set();
     if (this.pointer && mine) this.hoverAt(...this.pointer);
     else if (!mine) {
@@ -391,11 +405,12 @@ export class BattleController implements Screen {
     }
     if (action.type !== 'melee' && action.type !== 'shoot') return null;
     const ranged = action.type === 'shoot';
+    const charge = action.type === 'melee' && isCharge(this.battle, f, action.from);
     const from = action.type === 'melee' ? { ...f, at: action.from } : f;
-    const damage = strike(this.battle, from, target, ranged).damage;
+    const damage = strike(this.battle, from, target, ranged, undefined, charge ? CHARGE_BONUS : 1).damage;
     const left = wound(target, damage);
-    const back = !ranged && left.count > 0 && !target.retaliated ? ' They will strike back.' : '';
-    return `${ranged ? 'Shoot' : 'Attack'} their ${name}: about ${damage} damage, ${left.killed} perish.${back}`;
+    const back = !ranged && !charge && left.count > 0 && !target.retaliated ? ' They will strike back.' : '';
+    return `${charge ? 'Charge! ' : ''}${ranged ? 'Shoot' : 'Attack'} their ${name}: about ${damage} damage, ${left.killed} perish.${back}${charge ? ' No one can strike back at a charge.' : ''}`;
   }
 
   private button(id: (typeof BUTTONS)[number]['id']) {
@@ -429,7 +444,7 @@ export class BattleController implements Screen {
     const spells = hero.spells.map((id) => SPELLS[id]);
     this.cards.show({
       title: 'Spellbook',
-      lines: [`**${hero.mana}** mana. One spell a round.`, ...spells.map((s) => `**${s.name}** (${spellCost(this.battle, s.id)}): ${s.note}`)],
+      lines: [`**${hero.mana}** mana. ${(hero.casts ?? 1) > 1 ? `Two spells a round: ${castsLeft(this.battle)} left this round.` : 'One spell a round.'}`, ...spells.map((s) => `**${s.name}** (${spellCost(this.battle, s.id)}): ${s.note}`)],
       choices: [
         ...spells.filter((s) => canCast(this.battle, s.id)).map((s) => ({ label: `Cast ${s.name}`, action: { type: 'spell' as const, spell: s.id } })),
         { label: 'Close', action: { type: 'close' } },
@@ -473,6 +488,7 @@ export class BattleController implements Screen {
       battle: () => this.battle,
       auto: () => this.button('auto'),
       busy: () => this.queue.length > 0,
+      log: () => this.view.log,
       act: (action: BattleAction) => this.perform(action),
       moves: () => [...options(this.battle).moves.keys()],
       intent: (hex: number) => {

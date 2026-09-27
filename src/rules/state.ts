@@ -1,6 +1,7 @@
 /** Pure game rules: no DOM, no timers. Every change returns a new state plus events, and dice come from `seed`. */
 import type { ArtifactId, Slot } from '../content/artifacts';
 import type { BackgroundId } from '../content/backgrounds';
+import type { MapSpellId } from '../content/spells';
 import type { PortraitId } from '../content/portraits';
 import type { PerkId, SkillId } from '../content/skills';
 import type { SpellId } from '../content/spells';
@@ -228,6 +229,7 @@ export type Action =
   | { type: 'equip'; artifact: ArtifactId }
   | { type: 'gear' }
   | { type: 'background'; id: BackgroundId }
+  | { type: 'mapSpell'; spell: MapSpellId }
   /** After a won commission: ride to the King. */
   | { type: 'court' }
   | { type: 'boon'; id: BoonId }

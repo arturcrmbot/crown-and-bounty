@@ -5,6 +5,12 @@
  */
 export type SpellId = 'bolt' | 'bless' | 'slow' | 'haste';
 
+/** Spells for the adventure map, cast from the hero's card. */
+export type MapSpellId = 'farsight';
+export const MAP_SPELLS: Record<MapSpellId, { id: MapSpellId; name: string; mana: number; note: string; radius: number }> = {
+  farsight: { id: 'farsight', name: 'Far Sight', mana: 10, note: 'The mist rolls back for a long way around you.', radius: 340 },
+};
+
 /** Lasting effects on a stack. Each one changes numbers the engine already uses. */
 export type StatusId = 'blessed' | 'slowed' | 'hasted';
 

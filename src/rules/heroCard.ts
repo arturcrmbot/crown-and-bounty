@@ -1,5 +1,6 @@
 import { BACKGROUNDS } from '../content/backgrounds';
 import { PERKS, RANKS, SKILLS, type SkillId } from '../content/skills';
+import { MAP_SPELLS } from '../content/spells';
 import { CAMPAIGN_LENGTH } from './campaign';
 import { heroStats, LEVELS } from './hero';
 import { armyLine, close, LAST_DAY, leadershipUsed, roman, type Card, type GameState } from './state';
@@ -23,6 +24,11 @@ export function describeHero(state: GameState): Card {
       `Perks: ${perks.join(', ')}`,
       `Pieces of the old map: **${state.campaign.record.length + (state.bounty === 'paid' ? 1 : 0)} of ${CAMPAIGN_LENGTH}**`,
     ],
-    choices: [{ label: 'Equipment', action: { type: 'gear' } }, { label: 'End the day', action: { type: 'endDay' } }, close],
+    choices: [
+      ...s.mapSpells.map((id) => ({ label: `Cast ${MAP_SPELLS[id].name} (${MAP_SPELLS[id].mana} mana)`, action: { type: 'mapSpell' as const, spell: id }, ...(h.mana < MAP_SPELLS[id].mana ? { disabled: true } : {}) })),
+      { label: 'Equipment', action: { type: 'gear' } },
+      { label: 'End the day', action: { type: 'endDay' } },
+      close,
+    ],
   };
 }

@@ -1,6 +1,6 @@
 import { abilitiesOf, TROOPS, type TroopId } from '../content/troops';
 import { SPELLS, STATUSES } from '../content/spells';
-import { spellCost, speedOf, statsOf, type BattleState } from '../rules/battle/battle';
+import { canCast, speedOf, statsOf, type BattleState } from '../rules/battle/battle';
 import { COLS, colOf, HEXES, ROWS, rowOf } from '../rules/battle/hex';
 import { Bitmap, blit } from './bitmap';
 import { corpseSprite, flashSprite, FIGHTER_FOOT, standard, troopSprite, type Pose, type Standard } from './battleSprites';
@@ -363,7 +363,7 @@ export class BattleScreen {
     drawText(screen, mana, BUTTONS[0].rect.x - 70, text, BLUE[6], INK);
     for (const button of BUTTONS) {
       const { x, y, width, height } = button.rect;
-      const disabled = button.id === 'spells' && !Object.values(SPELLS).some((s) => b.hero.spells.includes(s.id) && b.hero.mana >= spellCost(b, s.id) && b.hero.castRound < b.round);
+      const disabled = button.id === 'spells' && !Object.values(SPELLS).some((s) => canCast(b, s.id));
       for (let j = 0; j < height; j++) {
         for (let i = 0; i < width; i++) {
           const edge = i === 0 || j === 0 ? GOLD[4] : i === width - 1 || j === height - 1 ? INK : -1;

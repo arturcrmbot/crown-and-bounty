@@ -7,7 +7,7 @@ import { meets, takeChoice } from '../effects';
 import { locationById, type GameState, type Location, type LocationKind, type Result } from '../state';
 import { dwelling } from './dwelling';
 import { x } from './ending';
-import { enemy } from './enemy';
+import { enemy, haggled } from './enemy';
 import { event } from './event';
 import type { PlaceKind } from './kind';
 import { mill, mine, signpost, tower } from './sights';
@@ -49,7 +49,7 @@ export function choose(state: GameState, id: string, choice: string): Result | n
   const [head, key] = [choice.slice(0, slash), choice.slice(slash + 1)];
   if (head === 'parley') {
     const parley = place.enemy?.parleys?.find((p) => p.id === key);
-    return parley ? takeChoice(state, place, parley) : null;
+    return parley ? takeChoice(state, place, haggled(state, parley)) : null;
   }
   const page = place.pages?.find((p) => p.id === head);
   const option = page?.choices.find((c) => c.id === key);

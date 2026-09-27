@@ -338,7 +338,7 @@ export const ALDMOOR: Province = {
         look: 'wolves',
         tier: 'gate',
         lines: ['Wolves, sitting on the path like they own it.', 'Your archers are pretending not to have seen them.'],
-        army: [{ troop: 'wolves', count: 64 }],
+        army: [{ troop: 'wolves', count: 80 }],
         reward: 300,
         threat: 'They bare their teeth. One of them yawns, which is somehow worse.',
         parleys: [

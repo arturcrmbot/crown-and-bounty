@@ -1,7 +1,7 @@
 import { ARTIFACTS, SLOTS, type ArtifactId, type Slot } from '../content/artifacts';
 import { BACKGROUNDS, type BackgroundId, type Bonus } from '../content/backgrounds';
 import { PERKS, RANKS, SKILLS, type PerkId, type SkillId } from '../content/skills';
-import type { SpellId } from '../content/spells';
+import type { MapSpellId, SpellId } from '../content/spells';
 import type { TroopId } from '../content/troops';
 import { close, roll, roman, show, type Card, type GameEvent, type GameState, type Result } from './state';
 
@@ -49,6 +49,14 @@ export type HeroStats = {
   manaDiscount: number;
   troops: Partial<Record<TroopId, { attack: number; defence: number; shots: number }>>;
   slows: TroopId[];
+  charge: TroopId[];
+  volley: boolean;
+  forestWalk: boolean;
+  /** Spells he may cast in one round of battle. */
+  casts: number;
+  mapSpells: MapSpellId[];
+  bribes: number;
+  hires: boolean;
 };
 
 /** The hero's numbers with everything added up. The rules use these, never the raw fields. */
@@ -76,6 +84,13 @@ export function heroStats(state: GameState): HeroStats {
     manaDiscount: 0,
     troops: {},
     slows: [],
+    charge: [],
+    volley: false,
+    forestWalk: false,
+    casts: 1,
+    mapSpells: [],
+    bribes: 0,
+    hires: false,
   };
   for (const b of bonusesOf(state)) {
     s.attack += b.attack ?? 0;
@@ -98,7 +113,15 @@ export function heroStats(state: GameState): HeroStats {
       s.troops[troop] = { attack: prev.attack + (t.attack ?? 0), defence: prev.defence + (t.defence ?? 0), shots: prev.shots + (t.shots ?? 0) };
     }
     s.slows.push(...(b.slows ?? []));
+    s.charge.push(...(b.charge ?? []));
+    s.volley ||= Boolean(b.volley);
+    s.forestWalk ||= Boolean(b.forestWalk);
+    s.casts += b.casts ?? 0;
+    s.mapSpells.push(...(b.mapSpells ?? []).filter((m) => !s.mapSpells.includes(m)));
+    s.bribes += b.bribes ?? 0;
+    s.hires ||= Boolean(b.hires);
   }
+  s.bribes = Math.min(0.8, s.bribes);
   s.armour = Math.min(0.6, s.armour);
   s.maxMana = s.knowledge * 10;
   return s;

@@ -43,6 +43,7 @@ function guardPost(b: BattleState, f: Fighter, moves: ReadonlyMap<number, unknow
  * when nothing is in reach. It plays both sides in auto-resolve.
  */
 export function chooseActionV1(b: BattleState): BattleAction {
+  if (b.volley) return { type: 'volley' };
   const f = activeFighter(b)!;
   const foes = b.fighters.filter((o) => o.count > 0 && o.side !== f.side);
   if (foes.length === 0) return { type: 'defend' };
@@ -277,6 +278,8 @@ function best(b: BattleState, actions: BattleAction[], side: Side): { action: Ba
 }
 
 export function chooseAction(b: BattleState): BattleAction {
+  // The ranger's free volley comes before anything else.
+  if (b.volley) return { type: 'volley' };
   const f = activeFighter(b)!;
   if (!b.fighters.some((o) => o.count > 0 && o.side !== f.side)) return { type: 'defend' };
   // A spell first, if one is worth more than not casting (the stack still acts after it).

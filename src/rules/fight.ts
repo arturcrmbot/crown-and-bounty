@@ -24,8 +24,17 @@ export function heroInBattle(state: GameState): BattleHero {
     manaDiscount: s.manaDiscount,
     troops: s.troops,
     slows: s.slows,
+    ...(s.charge.length ? { charge: s.charge } : {}),
+    ...(s.volley ? { volley: true } : {}),
+    ...(s.casts > 1 ? { casts: s.casts } : {}),
   };
 }
+
+/** The hero as he meets this enemy: a villain keeps to his walls, so there's no treeline for a volley. */
+const heroAgainst = (state: GameState, place: Location): BattleHero => {
+  const hero = heroInBattle(state);
+  return place.kind === 'hideout' ? { ...hero, volley: undefined } : hero;
+};
 
 /** Experience for a won battle: the fighting worth of what was beaten. */
 export const battleXp = (enemy: Army) => Math.round(armyPower(enemy));
@@ -44,7 +53,7 @@ export function startFight(state: GameState, id: string): Result | null {
   const place = locationById(state, id);
   if (state.army.length === 0 || !place.enemy || place.done) return null;
   const [, seed] = roll(state.seed);
-  const battle = createBattle({ place: id, seed: state.seed, player: state.army, enemy: place.enemy!.army, hero: heroInBattle(state), obstacles: place.kind === 'hideout' ? 3 : 5, ground: provinceOf(state).fen ? 'fen' : 'meadow' });
+  const battle = createBattle({ place: id, seed: state.seed, player: state.army, enemy: place.enemy!.army, hero: heroAgainst(state, place), obstacles: place.kind === 'hideout' ? 3 : 5, ground: provinceOf(state).fen ? 'fen' : 'meadow' });
   return { state: { ...state, seed, battle }, events: [{ type: 'battle', place: id }] };
 }
 
@@ -173,7 +182,7 @@ function simulateChance(state: GameState, id: string, samples: number): number {
   if (!place.enemy) return 0;
   let wins = 0;
   for (let i = 1; i <= samples; i++) {
-    const battle = createBattle({ place: id, seed: sampleSeed(i), player: state.army, enemy: place.enemy.army, hero: heroInBattle(state), obstacles: place.kind === 'hideout' ? 3 : 5 });
+    const battle = createBattle({ place: id, seed: sampleSeed(i), player: state.army, enemy: place.enemy.army, hero: heroAgainst(state, place), obstacles: place.kind === 'hideout' ? 3 : 5 });
     if (autoResolve(battle).result === 'won') wins++;
   }
   return wins / samples;
