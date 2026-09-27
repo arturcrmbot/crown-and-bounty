@@ -439,38 +439,44 @@ export function bridge(length: number): Bitmap {
   return shaped;
 }
 
+/** A treasure chest, about two-thirds of a tile across: an arched lid, iron bands and a gold lock. */
 export function chest(): Bitmap {
-  const sprite = new Bitmap(18, 16);
-  for (let y = 3; y < 13; y++) {
-    for (let x = 2; x < 15; x++) {
-      const band = x === 5 || x === 11;
-      const lid = y < 7;
-      let color = flat(WOOD4, (lid ? 0.8 : 0.55) - (x - 2) * 0.02, x, y);
-      if (band) color = lid ? GOLD[5] : GOLD[3];
-      if (y === 7) color = GOLD[4];
+  const sprite = new Bitmap(26, 22);
+  const [x0, x1, top, lidEdge, bottom] = [3, 22, 4, 11, 19];
+  for (let y = top; y < bottom; y++) {
+    for (let x = x0; x < x1; x++) {
+      const lid = y < lidEdge;
+      // The lid bulges: its corners are cut round.
+      if (lid && y < top + 2 && (x < x0 + 2 - (y - top) || x >= x1 - 2 + (y - top))) continue;
+      const band = x === x0 + 4 || x === x1 - 5;
+      let color = flat(WOOD4, (lid ? 0.82 : 0.56) - (x - x0) * 0.018 - (lid ? (y - top) * 0.02 : 0), x, y);
+      if (band) color = lid ? STONE[5] : STONE[3];
+      if (y === lidEdge) color = GOLD[4];
+      if (y === bottom - 1) color = WOOD[1];
       sprite.set(x, y, color);
     }
   }
-  sprite.set(8, 8, GOLD[6]);
-  sprite.set(8, 9, INK);
+  const mid = Math.floor((x0 + x1) / 2);
+  for (let y = lidEdge - 1; y < lidEdge + 3; y++) for (let x = mid - 1; x <= mid + 1; x++) sprite.set(x, y, y === lidEdge + 1 && x === mid ? INK : GOLD[x < mid ? 6 : 5]);
   const shaped = outline(sprite, INK);
-  shadowOval(shaped, 11, 13.5, 8, 2);
+  shadowOval(shaped, 15, 19.5, 11, 2.4);
   return shaped;
 }
 
+/** A heap of gold coins, a little wider than a chest. */
 export function goldPile(): Bitmap {
-  const sprite = new Bitmap(22, 14);
-  for (let y = 0; y < 12; y++) {
-    for (let x = 0; x < 22; x++) {
-      const light = sphere(x, y * 1.6, 10, 16, 10);
-      if (light === OUTSIDE || y < 3) continue;
+  const sprite = new Bitmap(30, 18);
+  for (let y = 0; y < 16; y++) {
+    for (let x = 0; x < 30; x++) {
+      const light = sphere(x, y * 1.55, 14, 22, 14);
+      if (light === OUTSIDE || y < 4) continue;
       const coin = hash(x >> 1, y, 5) < 0.3 ? 0.18 : 0;
       sprite.set(x, y, flat(GOLD4, clamp01(0.3 + light * 0.7 + coin), x, y));
     }
   }
-  for (const [x, y] of [[7, 5], [12, 4], [14, 7]]) sprite.set(x, y, NEUTRAL[7]);
+  for (const [x, y] of [[9, 7], [16, 5], [20, 9], [12, 11]]) sprite.set(x, y, NEUTRAL[7]);
   const shaped = outline(sprite, GOLD[0]);
-  shadowOval(shaped, 13, 12, 9, 1.8);
+  shadowOval(shaped, 17, 15.5, 12, 2.2);
   return shaped;
 }
 
@@ -586,37 +592,6 @@ export function stoneBridge(length: number): Bitmap {
 
 export const MINIMAP_COLOURS = { forest: PINE[4], mountain: ROCK[5], castle: BLUE[4], hero: BLUE[6], road: DIRT[5] };
 
-/** One of Baron Grimsby's footmen: red tabard, round shield, spear. */
-function footman(sprite: Bitmap, x0: number, y0: number, step: number) {
-  const px = (x: number, y: number, c: number) => sprite.set(x0 + x, y0 + y, c);
-  for (let y = 14; y < 20; y++) {
-    px(4, y + (step && y > 17 ? -1 : 0), WOOD4[0]);
-    px(7, y, WOOD4[0]);
-  }
-  for (let y = 7; y < 15; y++) for (let x = 3; x < 9; x++) px(x, y, x === 5 && y > 8 && y < 13 ? GOLD[5] : flat(RED4, 0.75 - (x - 3) * 0.1, x, y));
-  for (let y = 2; y < 7; y++) for (let x = 4; x < 8; x++) px(x, y, y === 5 && x > 5 ? INK : flat(STONE4, 0.8 - (x - 4) * 0.15, x, y));
-  for (let y = 9; y < 15; y++) for (let x = 0; x < 4; x++) if (Math.hypot(x - 1.5, y - 11.8) < 2.6) px(x, y, flat(RED4, 0.35 + (x < 2 ? 0.2 : 0), x, y));
-  for (let y = -5; y < 17; y++) px(10, y, y < -3 ? STONE[6] : WOOD[3]);
-  px(9, 10, SKIN[3]);
-}
-
-/** Baron Grimsby's patrol: three footmen under his red banner. */
-export function patrol(phase = 0): Bitmap {
-  const sprite = new Bitmap(44, 42);
-  const march = Math.sin(phase) > 0 ? 1 : 0;
-  footman(sprite, 2, 18, march);
-  footman(sprite, 24, 16, 1 - march);
-  footman(sprite, 13, 22, march);
-  for (let y = 0; y < 22; y++) sprite.set(36, y, WOOD[2]);
-  for (let i = 1; i < 8; i++) {
-    const wave = Math.round(Math.sin(i * 0.8 + phase) * 0.9);
-    for (let j = 0; j < 8 - Math.floor(i / 3); j++) sprite.set(36 - i, 1 + j + wave, j === 3 && i > 2 && i < 6 ? GOLD[5] : flat(RED4, 0.7 - j * 0.04, i, j));
-  }
-  const shaped = outline(sprite, INK);
-  shadowOval(shaped, 26, 40, 17, 2.4);
-  return shaped;
-}
-
 /** A mine mouth in the rock: timber frame, dark shaft, a little cart of ore on rails. */
 export function mine(): Bitmap {
   const sprite = crag(64, 44, 77);
@@ -682,30 +657,6 @@ export function hideout(phase = 0): Bitmap {
   return shaped;
 }
 
-/** One grey wolf, side-on, facing left. */
-function wolf(sprite: Bitmap, x0: number, y0: number, tail: number) {
-  const px = (x: number, y: number, c: number) => sprite.set(x0 + x, y0 + y, c);
-  for (let y = 3; y < 8; y++) for (let x = 3; x < 13; x++) if (Math.hypot((x - 8) / 5, (y - 5.2) / 2.4) <= 1) px(x, y, flat(COAT4, 0.55 - (y - 3) * 0.08 + (x < 7 ? 0.1 : 0), x, y));
-  for (let y = 1; y < 6; y++) for (let x = 0; x < 5; x++) if (Math.hypot((x - 2.2) / 2.4, (y - 3.2) / 1.9) <= 1) px(x, y, flat(COAT4, 0.62, x, y));
-  px(2, 0, NEUTRAL[4]);
-  px(4, 0, NEUTRAL[4]);
-  px(1, 3, GOLD[5]);
-  px(0, 4, INK);
-  for (const lx of [4, 6, 10, 12]) for (let y = 7; y < 10; y++) px(lx, y, y === 9 ? INK : NEUTRAL[3]);
-  for (let i = 0; i < 4; i++) px(13 + i, 4 - Math.round(i * tail), NEUTRAL[4]);
-}
-
-export function wolfPack(phase = 0): Bitmap {
-  const sprite = new Bitmap(46, 30);
-  wolf(sprite, 20, 4, 0.4 + Math.sin(phase) * 0.3);
-  wolf(sprite, 2, 10, 0.4 + Math.sin(phase + 2) * 0.3);
-  wolf(sprite, 24, 16, 0.4 + Math.sin(phase + 4) * 0.3);
-  const shaped = outline(sprite, INK);
-  shadowOval(shaped, 25, 27, 18, 2.4);
-  return shaped;
-}
-
-/** Silvery grey-green, darker in the folds. */
 const WILLOW4 = [LEAF[1], LEAF[2], FOG[7], FOG[8]];
 const TROLL4 = four(FOG, 3, 5, 7, 8);
 const GOBLIN4 = four(LEAF, 3, 5, 7, 8);
@@ -873,46 +824,6 @@ export function stiltHut(phase = 0): Bitmap {
   return shaped;
 }
 
-/** One bog goblin: green, big-eared, grinning, with a spear taller than he is (or a boot held high). */
-function goblin(sprite: Bitmap, x0: number, y0: number, hop: number, holding: 'spear' | 'boot') {
-  const px = (x: number, y: number, c: number) => sprite.set(x0 + x, y0 + y - hop, c);
-  for (let y = 12; y < 17; y++) {
-    px(3, y, GOBLIN4[0]);
-    px(4, y, GOBLIN4[1]);
-    px(7, y, GOBLIN4[0]);
-    px(8, y, GOBLIN4[1]);
-  }
-  for (let y = 7; y < 13; y++) for (let x = 2; x < 10; x++) if (Math.abs(x - 5.5) < 3.2 + (y - 7) * 0.15) px(x, y, y === 12 ? DIRT4[0] : flat(DIRT4, 0.7 - (x - 2) * 0.08, x, y));
-  for (let y = 0; y < 8; y++) for (let x = 1; x < 11; x++) if (Math.hypot((x - 5.5) / 3.6, (y - 3.6) / 3.4) < 1) px(x, y, flat(GOBLIN4, 0.85 - (x - 1) * 0.07 - (y > 5 ? 0.15 : 0), x, y));
-  // Ears like sails.
-  for (const [x, y] of [[0, 2], [-1, 1], [-2, 0], [0, 3], [-1, 2], [11, 2], [12, 1], [13, 0], [11, 3], [12, 2]]) px(x, y, x < 5 ? GOBLIN4[2] : GOBLIN4[1]);
-  px(4, 3, GOLD[6]);
-  px(7, 3, GOLD[6]);
-  for (let x = 4; x < 8; x++) px(x, 5, INK);
-  px(5, 6, NEUTRAL[7]);
-  if (holding === 'spear') {
-    for (let y = -8; y < 15; y++) px(11, y, y < -6 ? STONE[6] : WOOD[3]);
-    px(10, -7, STONE[5]);
-  } else {
-    for (let y = -2; y < 8; y++) px(10, y, GOBLIN4[2]);
-    for (let y = -7; y < -2; y++) for (let x = 8; x < 12; x++) px(x + (y > -4 ? 2 : 0), y, x === 8 ? WOOD[1] : WOOD[3]);
-  }
-}
-
-/** A band of bog goblins, hopping about, one waving the boot they were squabbling over. */
-export function goblinBand(phase = 0): Bitmap {
-  const sprite = new Bitmap(64, 40);
-  const hop = (k: number) => (Math.sin(phase * 2 + k) > 0.3 ? 1 : 0);
-  goblin(sprite, 4, 18, hop(0), 'spear');
-  goblin(sprite, 22, 12, hop(2), 'boot');
-  goblin(sprite, 40, 17, hop(4), 'spear');
-  goblin(sprite, 16, 22, hop(1), 'spear');
-  goblin(sprite, 32, 23, hop(3), 'spear');
-  const shaped = outline(sprite, INK);
-  shadowOval(shaped, 32, 39, 24, 2.2);
-  return shaped;
-}
-
 /** A wayside shrine: a little stone house for a saint, with a candle, on a step. */
 export function shrine(): Bitmap {
   const sprite = new Bitmap(28, 34);
@@ -948,26 +859,6 @@ export function xMark(phase = 0): Bitmap {
   for (let x = 31; x < 38; x++) sprite.set(x, 1, WOOD[2]);
   const shaped = outline(sprite, INK);
   shadowOval(shaped, 20, 30, 16, 2.4);
-  return shaped;
-}
-
-/** The bridge troll: grey-green, hunched, leaning on a club, blinking slowly. */
-export function troll(phase = 0): Bitmap {
-  const sprite = new Bitmap(46, 52);
-  const blink = Math.sin(phase) > 0.92;
-  for (const lx of [15, 25]) for (let y = 36; y < 48; y++) for (let x = lx; x < lx + 5; x++) sprite.set(x, y, flat(TROLL4, 0.55 - (x - lx) * 0.1, x, y));
-  for (let y = 14; y < 40; y++) for (let x = 8; x < 38; x++) if (Math.hypot((x - 22) / 14, (y - 27) / 13) < 1) sprite.set(x, y, flat(TROLL4, 0.7 - (x - 8) * 0.012 - (y - 14) * 0.008, x, y));
-  for (let y = 30; y < 38; y++) for (let x = 12; x < 32; x++) if (Math.hypot((x - 22) / 10, (y - 34) / 4) < 1) sprite.set(x, y, flat(DIRT4, 0.5 - (x - 12) * 0.01, x, y));
-  for (let y = 6; y < 20; y++) for (let x = 20; x < 36; x++) if (Math.hypot((x - 28) / 7, (y - 13) / 6.5) < 1) sprite.set(x, y, flat(TROLL4, 0.78 - (x - 20) * 0.02, x, y));
-  for (let x = 23; x < 34; x++) sprite.set(x, 11, TROLL4[0]);
-  sprite.set(30, 13, blink ? TROLL4[0] : GOLD[6]);
-  sprite.set(26, 13, blink ? TROLL4[0] : GOLD[6]);
-  for (const x of [27, 31]) sprite.set(x, 17, NEUTRAL[7]);
-  // A club like a small tree, planted beside him.
-  for (let y = 10; y < 46; y++) for (let x = 38; x < 42 + Math.round((46 - y) / 14); x++) sprite.set(x, y, flat(WOOD4, 0.7 - (x - 38) * 0.15, x, y));
-  for (let y = 26; y < 32; y++) for (let x = 32; x < 40; x++) if (Math.hypot(x - 36, y - 29) < 3) sprite.set(x, y, flat(TROLL4, 0.6, x, y));
-  const shaped = outline(sprite, INK);
-  shadowOval(shaped, 26, 48, 16, 2.6);
   return shaped;
 }
 

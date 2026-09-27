@@ -1,4 +1,5 @@
 import { ARTIFACTS } from '../../content/artifacts';
+import { crowd } from '../../content/troops';
 import { foundNote, gainXp, giveArtifact, heroStats } from '../hero';
 import { close, locationById, show, TROOPS, troops, update, type Army, type Card, type Choice, type GameEvent, type GameState, type Location, type PlaceText, type Result } from '../state';
 
@@ -29,11 +30,19 @@ const USUAL: Record<Location['kind'], PlaceText> = {
 /** A place's words: the province's own if it has them, else the usual ones for its kind. */
 export const words = (place: Location, part: keyof PlaceText): string[] => place.text?.[part] ?? USUAL[place.kind][part] ?? [];
 
-/** "**20 Swordsmen** and **12 Crossbowmen**": what an enemy has, for its card. */
-export function forceLine(army: Army): string {
-  const parts = army.filter((s) => s.count > 0).map((s) => (TROOPS[s.troop].leadership >= 99 ? `**${TROOPS[s.troop].one}**` : `**${troops(s.troop, s.count)}**`));
+/**
+ * What an enemy has, for its card: "**lots of Swordsmen** and **a pack of Crossbowmen**", or with
+ * `exact` counts, "**20 Swordsmen** and **12 Crossbowmen**". A villain is always just himself.
+ */
+export function forceLine(army: Army, exact = true): string {
+  const parts = army
+    .filter((s) => s.count > 0)
+    .map((s) => (TROOPS[s.troop].leadership >= 99 ? `**${TROOPS[s.troop].one}**` : `**${exact ? troops(s.troop, s.count) : crowd(s.troop, s.count)}**`));
   return parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}` : (parts[0] ?? 'nobody');
 }
+
+/** Whether the hero's scouts count an enemy exactly: a Ranger's do, and anyone's with Scouting. */
+export const countsExactly = (state: GameState) => state.hero.background === 'ranger' || Boolean(state.hero.skills.scouting);
 
 /** A button for one of a place's choices. */
 export const option = (place: Location, label: string, choice: string, disabled = false): Choice => ({ label, action: { type: 'choose', id: place.id, choice }, ...(disabled ? { disabled: true } : {}) });

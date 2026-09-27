@@ -1,7 +1,7 @@
 import { choiceButton } from '../effects';
 import { fight, startFight, winChance } from '../fight';
 import { armyLine, type Choice, type GameState, type Location } from '../state';
-import { forceLine, note, option, ride, say, words } from './common';
+import { countsExactly, forceLine, note, option, ride, say, words } from './common';
 import type { PlaceKind } from './kind';
 
 const retreat: Choice = { label: 'Retreat', action: { type: 'close' } };
@@ -19,7 +19,12 @@ function hint(chance: number): string {
 /** An enemy on the map: fight it, let the sergeants fight it, or take one of its parleys. */
 export function enemy(kind: 'patrol' | 'hideout'): PlaceKind {
   return {
-    about: (_, place) => ({ title: place.name, lines: [...place.enemy!.lines, `About ${forceLine(place.enemy!.army)}.`], choices: [ride(place, 'Approach'), { label: 'Close', action: { type: 'close' } }] }),
+    about: (state, place) => {
+      const exact = countsExactly(state);
+      const force = forceLine(place.enemy!.army, exact);
+      const line = exact ? `Your scouts count ${force}.` : `${force.replace(/^\*\*(.)/, (_, c: string) => `**${c.toUpperCase()}`)}.`;
+      return { title: place.name, lines: [...place.enemy!.lines, line], choices: [ride(place, 'Approach'), { label: 'Close', action: { type: 'close' } }] };
+    },
     arrive(state, place) {
       const foe = place.enemy!;
       if (place.done) return say(state, place, note(place, words(place, 'done')));

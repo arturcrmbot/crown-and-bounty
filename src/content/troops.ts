@@ -73,5 +73,11 @@ export function troopPower(id: TroopId): number {
   return Math.sqrt(t.hp * damage) * (1 + (t.attack + t.defence) / 20) * (t.shots ? 1.35 : 1);
 }
 
+/** HoMM2's words for how many: "a few Wolves", "lots of Swordsmen", "a horde of Goblins". */
+export function crowd(id: TroopId, count: number): string {
+  const word = count < 5 ? 'a few' : count < 10 ? 'several' : count < 20 ? 'a pack of' : count < 50 ? 'lots of' : count < 100 ? 'a horde of' : count < 250 ? 'a throng of' : count < 500 ? 'a swarm of' : count < 1000 ? 'zounds of' : 'a legion of';
+  return `${word} ${TROOPS[id].name}`;
+}
+
 /** "1 Knight", "12 Knights". */
 export const troops = (id: TroopId, count: number) => `${count} ${count === 1 ? TROOPS[id].one : TROOPS[id].name}`;

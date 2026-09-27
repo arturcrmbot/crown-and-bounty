@@ -3,6 +3,7 @@ import { Bitmap, outline, SHADOW } from './bitmap';
 import { BLUE, FOG, GOLD, INK, LEAF, NEUTRAL, PLUM, RED, SKIN, STONE, WOOD } from './palette';
 import { BLUE4, COAT4, DIRT4, flat, GOLD4, RED4, shadowOval, STONE4, WOOD4 } from './sprites';
 import { mirror } from './sprites';
+import { battleScale, mapScale } from './scale';
 
 export type Pose = 'idle' | 'step' | 'strike';
 
@@ -22,28 +23,26 @@ type Look = {
   plume?: number;
   /** Face and hands, if not plain skin. */
   skin?: readonly number[];
-  scale: number;
 };
 
 const LOOKS: Record<Exclude<TroopId, 'wolves'>, Look> = {
-  knights: { body: BLUE4, legs: STONE4, head: 'helm', weapon: 'sword', shield: BLUE4, plume: BLUE[5], scale: 1.45 },
-  archers: { body: LEAF4, legs: WOOD4, head: 'hood', weapon: 'bow', scale: 1.3 },
-  peasants: { body: DIRT4, legs: WOOD4, head: 'straw', weapon: 'fork', scale: 1.24 },
-  swordsmen: { body: RED4, legs: STONE4, head: 'helm', weapon: 'sword', shield: RED4, plume: NEUTRAL[7], scale: 1.36 },
-  crossbowmen: { body: RED4, legs: WOOD4, head: 'kettle', weapon: 'crossbow', scale: 1.3 },
-  baron: { body: PURPLE4, legs: STONE4, head: 'crown', weapon: 'greatsword', scale: 1.75 },
-  goblins: { body: DIRT4, legs: GOBLIN4, head: 'ears', weapon: 'spear', skin: GOBLIN4, scale: 1.05 },
-  trolls: { body: DIRT4, legs: TROLL4, head: 'brute', weapon: 'club', skin: TROLL4, scale: 1.95 },
-  witch: { body: PLUM4, legs: PLUM4, head: 'witchhat', weapon: 'ladle', scale: 1.5 },
-  bramble: { body: GOBLIN4, legs: PLUM4, head: 'witchhat', weapon: 'ladle', scale: 1.65 },
+  knights: { body: BLUE4, legs: STONE4, head: 'helm', weapon: 'sword', shield: BLUE4, plume: BLUE[5] },
+  archers: { body: LEAF4, legs: WOOD4, head: 'hood', weapon: 'bow' },
+  peasants: { body: DIRT4, legs: WOOD4, head: 'straw', weapon: 'fork' },
+  swordsmen: { body: RED4, legs: STONE4, head: 'helm', weapon: 'sword', shield: RED4, plume: NEUTRAL[7] },
+  crossbowmen: { body: RED4, legs: WOOD4, head: 'kettle', weapon: 'crossbow' },
+  baron: { body: PURPLE4, legs: STONE4, head: 'crown', weapon: 'greatsword' },
+  goblins: { body: DIRT4, legs: GOBLIN4, head: 'ears', weapon: 'spear', skin: GOBLIN4 },
+  trolls: { body: DIRT4, legs: TROLL4, head: 'brute', weapon: 'club', skin: TROLL4 },
+  witch: { body: PLUM4, legs: PLUM4, head: 'witchhat', weapon: 'ladle' },
+  bramble: { body: GOBLIN4, legs: PLUM4, head: 'witchhat', weapon: 'ladle' },
 };
 
 /**
  * One soldier facing right, drawn from simple shapes with four flat shades, lit from the top left.
  * `pose` bends the legs for a step or swings the weapon for a strike.
  */
-function soldier(look: Look, pose: Pose): Bitmap {
-  const S = look.scale;
+function soldier(look: Look, pose: Pose, S: number): Bitmap {
   const w = Math.ceil(34 * S);
   const h = Math.ceil(44 * S);
   const sprite = new Bitmap(w, h);
@@ -213,17 +212,26 @@ function wolfSmall(pose: Pose): Bitmap {
 
 const cache = new Map<string, Bitmap>();
 
-/** The sprite for a stack: its troop, facing (1 is right), and pose. */
-export function troopSprite(troop: TroopId, facing: 1 | -1, pose: Pose = 'idle'): Bitmap {
-  const key = `${troop}/${facing}/${pose}`;
+/**
+ * A troop's figure at any scale: `battle` size for the battlefield, `map` size for the one creature
+ * that stands for a stack on the adventure map. Facing 1 is right.
+ */
+export function troopFigure(troop: TroopId, facing: 1 | -1, pose: Pose, size: 'battle' | 'map'): Bitmap {
+  const key = `${troop}/${facing}/${pose}/${size}`;
   let sprite = cache.get(key);
   if (!sprite) {
-    const right = troop === 'wolves' ? wolf(pose) : soldier(LOOKS[troop], pose);
+    const right = troop === 'wolves' ? (size === 'battle' ? wolf(pose) : wolfSmall(pose)) : soldier(LOOKS[troop], pose, size === 'battle' ? battleScale(troop) : mapScale(troop));
     sprite = facing > 0 ? right : mirror(right);
     cache.set(key, sprite);
   }
   return sprite;
 }
+
+/** The sprite for a stack on the battlefield: its troop, facing (1 is right), and pose. */
+export const troopSprite = (troop: TroopId, facing: 1 | -1, pose: Pose = 'idle') => troopFigure(troop, facing, pose, 'battle');
+
+/** Pixels from the top of a figure to its feet. */
+export const figureFoot = (troop: TroopId, size: 'battle' | 'map') => (troop === 'wolves' ? (size === 'battle' ? 52 : 26) : Math.round(41 * (size === 'battle' ? battleScale(troop) : mapScale(troop))));
 
 /** The same sprite flashed pale, for the moment a stack is hit. */
 export function flashSprite(sprite: Bitmap): Bitmap {
@@ -235,5 +243,5 @@ export function flashSprite(sprite: Bitmap): Bitmap {
   return out;
 }
 
-export const FIGHTER_FOOT = (troop: TroopId) => (troop === 'wolves' ? 52 : Math.round(41 * LOOKS[troop].scale));
+export const FIGHTER_FOOT = (troop: TroopId) => figureFoot(troop, 'battle');
 export { BLUE4, RED4 };

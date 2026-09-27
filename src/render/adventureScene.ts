@@ -1,13 +1,15 @@
-import { VANISHES, type GameState, type Location } from '../rules/game';
+import { troopPower, TROOPS, type TroopId } from '../content/troops';
+import { VANISHES, type Army, type GameState, type Location } from '../rules/game';
 import type { Point } from '../rules/map/geometry';
 import { Terrain, type MapModel } from '../rules/map/model';
 import { AdventureScreen, type Placed } from './adventureScreen';
 import { Bitmap, blit, SHADOW } from './bitmap';
 import { FogMask } from './fog';
 import { SILHOUETTE } from './palette';
+import { figureFoot, troopFigure } from './battleSprites';
 import {
-  abbey, boulder, castle, chest, crag, goblinBand, goldPile, hero, hideout, hut, mill, mine, mirror, oak, patrol, peatHut, pine, signpost, stiltHut,
-  shrine, stoneBridge, troll, watchtower, well, willow, windmill, wolfPack, xMark,
+  abbey, boulder, castle, chest, crag, goldPile, hero, hideout, hut, mill, mine, mirror, oak, peatHut, pine, signpost, stiltHut, shrine, stoneBridge,
+  watchtower, well, willow, windmill, xMark,
 } from './sprites';
 import { paintTerrain } from './terrain';
 
@@ -47,6 +49,12 @@ export type AdventureScene = {
 
 const place = (sprite: Bitmap, [x, y]: Point, footFromTop: number): Placed => ({ sprite, x: x - sprite.width / 2, y: y - footFromTop });
 
+/** The troop that stands for a stack on the map: the one worth most, leaving out a lone villain. */
+function leadTroop(army: Army): TroopId {
+  const ranked = [...army].filter((s) => s.count > 0).sort((a, b) => b.count * troopPower(b.troop) - a.count * troopPower(a.troop));
+  return (ranked.find((s) => TROOPS[s.troop].leadership < 99) ?? ranked[0]).troop;
+}
+
 /** The sprite (or frames) that stands for a place on the map, and how far below its top the foot is. */
 function landmark(l: Location): { frames: Bitmap[]; foot: number; animated: boolean } | null {
   switch (l.look) {
@@ -77,22 +85,18 @@ function landmark(l: Location): { frames: Bitmap[]; foot: number; animated: bool
     case 'event':
       return { frames: [shrine()], foot: 30, animated: false };
     case 'chest':
-      return { frames: [chest()], foot: 13, animated: true };
+      return { frames: [chest()], foot: 19, animated: true };
     case 'gold':
-      return { frames: [goldPile()], foot: 12, animated: true };
+      return { frames: [goldPile()], foot: 15, animated: true };
     case 'hideout':
       return { frames: [hideout(0.4)], foot: 64, animated: false };
-    case 'patrol':
-      switch (l.enemy?.look) {
-        case 'wolves':
-          return { frames: animation((t) => wolfPack(t * Math.PI * 2)), foot: 27, animated: true };
-        case 'goblins':
-          return { frames: animation((t) => goblinBand(t * Math.PI * 2)), foot: 38, animated: true };
-        case 'troll':
-          return { frames: animation((t) => troll(t * Math.PI * 2)), foot: 48, animated: true };
-        default:
-          return { frames: animation((t) => patrol(t * Math.PI * 2)), foot: 40, animated: true };
-      }
+    case 'patrol': {
+      // One creature stands for the stack, HoMM2 style, at the same scale as everything else.
+      const lead = leadTroop(l.enemy!.army);
+      const idle = troopFigure(lead, -1, 'idle', 'map');
+      const step = troopFigure(lead, -1, 'step', 'map');
+      return { frames: [idle, idle, idle, idle, step, step, idle, idle], foot: figureFoot(lead, 'map'), animated: true };
+    }
   }
 }
 

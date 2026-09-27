@@ -91,7 +91,7 @@ export const BACKGROUNDS: Record<BackgroundId, Background> = {
     gold: 1000,
     army: [{ troop: 'knights', count: 9 }, { troop: 'archers', count: 34 }],
     spells: ['slow'],
-    signature: { name: 'Pathfinder', note: '+30 movement a day, sees 50 paces further, archers +1 attack and +4 shots.', bonus: { movement: 30, sight: 50, troops: { archers: { attack: 1, shots: 4 } } } },
+    signature: { name: 'Pathfinder', note: '+30 movement a day, sees 50 paces further and counts every enemy exactly, archers +1 attack and +4 shots.', bonus: { movement: 30, sight: 50, troops: { archers: { attack: 1, shots: 4 } } } },
     growth: { attack: 3, defence: 2, spellPower: 1, knowledge: 1 },
     favours: ['archery', 'logistics', 'scouting'],
   },

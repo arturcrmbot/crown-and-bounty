@@ -12,7 +12,7 @@ export const SKILLS: Record<SkillId, Skill> = {
   offence: { id: 'offence', name: 'Offence', note: 'Melee attacks deal 10% more damage a rank.', perRank: { melee: 0.1 } },
   armourer: { id: 'armourer', name: 'Armourer', note: 'Your troops take 7% less damage a rank.', perRank: { armour: 0.07 } },
   logistics: { id: 'logistics', name: 'Logistics', note: '+20 movement a day a rank.', perRank: { movement: 20 } },
-  scouting: { id: 'scouting', name: 'Scouting', note: 'See 40 paces further a rank.', perRank: { sight: 40 } },
+  scouting: { id: 'scouting', name: 'Scouting', note: 'See 40 paces further a rank, and count every enemy exactly.', perRank: { sight: 40 } },
   leadership: { id: 'leadership', name: 'Leadership', note: '+25 leadership a rank.', perRank: { leadership: 25 } },
   estates: { id: 'estates', name: 'Estates', note: '+150 gold every payday a rank.', perRank: { payday: 150 } },
   sorcery: { id: 'sorcery', name: 'Sorcery', note: '+1 spell power a rank.', perRank: { spellPower: 1 } },
