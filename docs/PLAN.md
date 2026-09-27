@@ -113,6 +113,20 @@ Each milestone ends with tests green, screenshots in the side panel, and a playt
 
 **Progress:** M0 to M4 are done: generated provinces for commissions III to V, two recurring villains, map pieces and the dig for the sceptre. Parleys are a first taste of M5. Next: captains, story choices at places other than enemies, then polish (M6).
 
+## Polish rounds (from 27 Sep)
+
+Artur played the live build and found it lacking: no vibe or music, sprites at different scales, combat that's
+trivial and then a wall, dull rewards, and playstyles that differ only in numbers. `docs/PLAYTEST.md` holds the
+full critique. Each round ends with a playtest, a deploy and a new entry in that log.
+
+| # | Round | Done when |
+| --- | --- | --- |
+| R1 | **Vibe.** Music and ambience in code, a title screen, an intro at court, portraits. | The first minute has a mood, and a reason to care. |
+| R2 | **Scale and juice.** A scale bible, one creature per map enemy, bigger fighters, feedback for every action. | Screenshots read at a glance, and nothing happens silently. |
+| R3 | **Gating and rewards.** Small fights first, the patrol as a gate, honest odds, rewards that matter. | You explore before you fight, and every fight pays in something you can feel. |
+| R4 | **Playstyles.** Each background's own mechanics, and several paths past every enemy. | Two runs with different backgrounds play differently. |
+| R5 | **RPG.** Quests with choices, captains, more troops. | Choices you make come back later. |
+
 ## Still open
 
 - **What carries over between commissions?** Built as recommended: the hero (level, skills, perks, gear), gold and leadership carry over. Troops disband, apart from a quarter of each stack as veterans, and the background's levy joins again. Captains will carry over when they exist.

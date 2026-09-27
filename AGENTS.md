@@ -8,7 +8,7 @@ King's Commission (working title) is a browser game: King's Bounty (1990) rebuil
 - Show, don't tell. Open the game in the browser side panel and screenshot it. Use a mermaid diagram for flows.
 - Build in small, visible steps. Check in before any big build or long design deep-dive.
 - No image-generation models for art. Use CC0 packs, and code for everything else.
-- Don't commit or push unless asked.
+- Commit, push and deploy (`npm run deploy`) after every improvement, and playtest it properly yourself first. Follow `.github/skills/kings-commission-ship/SKILL.md` (Artur, 27 Sep). Never bring him obvious issues.
 
 ## Architecture
 
