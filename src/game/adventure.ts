@@ -96,6 +96,14 @@ export class AdventureController implements Screen {
     return this.view.compose(tick).data;
   }
 
+  get music() {
+    return this.map.province.fen ? ('fen' as const) : ('heath' as const);
+  }
+
+  get ambience() {
+    return this.map.province.fen ? ('fen' as const) : ('heath' as const);
+  }
+
   get bitmap() {
     return this.view.screen;
   }

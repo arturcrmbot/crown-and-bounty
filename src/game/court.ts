@@ -11,6 +11,8 @@ import { NO_INPUT, type Screen } from './screen';
  */
 export class CourtController implements Screen {
   readonly name = 'court';
+  readonly music = 'court' as const;
+  readonly ambience = 'fire' as const;
   readonly input = NO_INPUT;
   state: GameState;
   private readonly display: Display;

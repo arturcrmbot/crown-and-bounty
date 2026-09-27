@@ -1,3 +1,5 @@
+import { setAmbience } from '../audio/ambience';
+import { setMusic } from '../audio/music';
 import { mapOf } from '../rules/map/maps';
 import { hasNextCommission, toCourt, type GameEvent, type GameState } from '../rules/game';
 import { AdventureController } from './adventure';
@@ -109,6 +111,8 @@ export class Game {
 
   update(dt: number, held: ReadonlySet<string>) {
     this.top.update(dt, held);
+    setMusic(this.top.music ?? null);
+    setAmbience(this.top.ambience ?? null);
   }
 
   frame(tick: number): Uint8Array {

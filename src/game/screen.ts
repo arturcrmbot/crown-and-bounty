@@ -1,3 +1,5 @@
+import type { AmbienceId } from '../audio/ambience';
+import type { TrackId } from '../audio/score';
 import type { Bitmap } from '../render/bitmap';
 import type { InputHandlers } from './input';
 
@@ -19,6 +21,9 @@ export interface Screen {
   readonly input: InputHandlers;
   /** Takes its cards and labels off the page for good. */
   dispose(): void;
+  /** The music and the sound of the place, while this screen is on top. */
+  readonly music?: TrackId | null;
+  readonly ambience?: AmbienceId | null;
 }
 
 /** Input for a screen that only has cards. */

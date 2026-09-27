@@ -20,6 +20,8 @@ const ENEMY_THINK = 0.35;
  */
 export class BattleController implements Screen {
   readonly name = 'battle';
+  readonly music = 'battle' as const;
+  readonly ambience = null;
   battle: BattleState;
   private readonly screen: BattleScreen;
   private readonly view: BattleView;
