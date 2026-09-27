@@ -1,3 +1,6 @@
+import type { PortraitId } from '../content/portraits';
+import { paletteWords } from '../render/palette';
+import { portraitOf } from '../render/portraits';
 import type { Action, Card } from '../rules/game';
 import './card.css';
 import { play } from './sound';
@@ -6,6 +9,27 @@ type ScreenPoint = { x: number; y: number };
 
 const escape = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const format = (text: string) => escape(text).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\*(.+?)\*/g, '<i>$1</i>');
+
+/** A portrait as an image for the page, drawn once through the game's palette. */
+const images = new Map<PortraitId, string>();
+function portraitImage(id: PortraitId): string {
+  let url = images.get(id);
+  if (!url) {
+    const bitmap = portraitOf(id);
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const ctx = canvas.getContext('2d')!;
+    const image = ctx.createImageData(bitmap.width, bitmap.height);
+    const pixels = new Uint32Array(image.data.buffer);
+    const words = paletteWords(0);
+    for (let i = 0; i < bitmap.data.length; i++) pixels[i] = bitmap.data[i] ? words[bitmap.data[i]] : 0;
+    ctx.putImageData(image, 0, 0);
+    url = canvas.toDataURL();
+    images.set(id, url);
+  }
+  return url;
+}
 
 /** The one parchment card on screen. It sits above whatever it describes and follows it around. */
 export class CardView {
@@ -29,13 +53,29 @@ export class CardView {
 
   show(card: Card) {
     this.card.classList.toggle('wide', Boolean(card.wide));
-    this.card.innerHTML = `<h3>${escape(card.title)}</h3>${card.lines.map((l) => `<p>${format(l)}</p>`).join('')}`;
+    this.card.classList.toggle('poster', Boolean(card.poster));
+    this.card.classList.toggle('tiled', Boolean(card.tiles));
+    const face = card.portrait ? `<img class="portrait" alt="" src="${portraitImage(card.portrait)}">` : '';
+    const title = card.title ? `<h3>${escape(card.title)}</h3>` : '';
+    this.card.innerHTML = `${card.poster ? title + face : face + title}${card.lines.map((l) => `<p>${format(l)}</p>`).join('')}`;
     if (card.choices.length) {
       const choices = document.createElement('div');
-      choices.className = 'choices';
+      choices.className = card.tiles ? 'choices tiles' : 'choices';
       for (const choice of card.choices) {
         const button = document.createElement('button');
         button.textContent = choice.label;
+        if (choice.detail) {
+          const detail = document.createElement('small');
+          detail.textContent = choice.detail;
+          button.append(detail);
+        }
+        if (choice.portrait) {
+          button.classList.add('with-portrait');
+          const face = document.createElement('img');
+          face.alt = '';
+          face.src = portraitImage(choice.portrait);
+          button.prepend(face);
+        }
         button.disabled = Boolean(choice.disabled);
         button.addEventListener('click', (e) => {
           e.stopPropagation();

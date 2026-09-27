@@ -3,8 +3,9 @@
  * player has clicked or pressed a key, so the audio starts then. M mutes it, and that sticks.
  */
 import { audio, isMuted } from '../audio/context';
+import { playNote } from '../audio/instruments';
 
-export type Sound = 'click' | 'coins' | 'hit' | 'shoot' | 'bolt' | 'spell' | 'day' | 'levelUp' | 'victory' | 'defeat' | 'dig';
+export type Sound = 'click' | 'coins' | 'hit' | 'shoot' | 'bolt' | 'spell' | 'day' | 'levelUp' | 'victory' | 'defeat' | 'dig' | 'fanfare';
 
 /** Sound effects go to the effects bus of the shared audio context (see `audio/context.ts`). */
 export { toggleMute, wakeAudio as wakeSound } from '../audio/context';
@@ -83,6 +84,13 @@ export function play(sound: Sound) {
       case 'defeat':
         [392, 349, 311, 262].forEach((f, i) => tone(f, t + i * 0.22, 0.4, 'triangle', 0.4));
         break;
+      case 'fanfare': {
+        // Three quick calls up the chord of G, then the whole chord held, on the drum.
+        const calls: [number, number, number][] = [[55, 0, 0.15], [59, 0.16, 0.15], [62, 0.32, 0.15], [67, 0.5, 1.2], [62, 0.5, 1.2], [59, 0.5, 1.2]];
+        for (const [midi, at, length] of calls) playNote(a.ctx, a.sfx, 'brass', t + at, midi, length, 0.3);
+        playNote(a.ctx, a.sfx, 'tabor', t + 0.5, 43, 0.3, 0.7);
+        break;
+      }
       case 'dig':
         [0, 0.25, 0.5].forEach((d) => noise(t + d, 0.1, 'lowpass', 500, 0.8));
         tone(1568, t + 0.8, 0.9, 'sine', 0.35);

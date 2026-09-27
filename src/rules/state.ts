@@ -1,6 +1,7 @@
 /** Pure game rules: no DOM, no timers. Every change returns a new state plus events, and dice come from `seed`. */
 import type { ArtifactId, Slot } from '../content/artifacts';
 import type { BackgroundId } from '../content/backgrounds';
+import type { PortraitId } from '../content/portraits';
 import type { PerkId, SkillId } from '../content/skills';
 import type { SpellId } from '../content/spells';
 import { TROOPS, troopPower, troops, type TroopId } from '../content/troops';
@@ -235,10 +236,15 @@ export type Action =
   | { type: 'retry' };
 
 /** A button on a card. A `disabled` one shows what the player could do with another hero, or more gold. */
-export type Choice = { label: string; action: Action; disabled?: boolean };
+/** A button on a card. `detail` is a smaller line under the label; `portrait` puts a face beside it. */
+export type Choice = { label: string; action: Action; disabled?: boolean; portrait?: PortraitId; detail?: string };
 
 /** A parchment card: a title, a few lines (with **bold** and *italics*), and choices. `wide` is for big decisions. */
-export type Card = { title: string; lines: string[]; choices: Choice[]; wide?: boolean };
+/**
+ * A parchment card. `portrait` puts a face at its top left. `poster` makes it a WANTED poster, with the
+ * face in the middle. `tiles` lays the choices side by side, each with its face, for picking a hero.
+ */
+export type Card = { title: string; lines: string[]; choices: Choice[]; wide?: boolean; portrait?: PortraitId; poster?: boolean; tiles?: boolean };
 
 /** What happened, for the screens to show. The rules never draw anything themselves. */
 export type GameEvent =

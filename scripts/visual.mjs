@@ -4,7 +4,12 @@ import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { openPage, kc as hooks } from './lib/browser.mjs';
 import { startServer } from './lib/server.mjs';
 
+// `steps` are card buttons to press on the way in; without them, a scene picks the knight and rides out unless `keepCard`.
 const SCENES = {
+  title: { query: '&title=1', steps: [] },
+  king: { query: '&title=1', steps: ['New campaign'] },
+  wanted: { query: '&title=1', steps: ['New campaign', 'At your service'] },
+  heroes: { query: '&title=1', steps: ['New campaign', 'At your service', 'I\u2019ll bring him in'] },
   intro: { query: '', keepCard: true },
   meadow: { query: '' },
   watchtower: { query: '&x=300&y=220' },
@@ -33,7 +38,8 @@ try {
   for (const [name, scene] of Object.entries(SCENES)) {
     await page.goto(`${server.url}?freeze=1${scene.query}`);
     await kc.ready();
-    if (!scene.keepCard) {
+    if (scene.steps) for (const label of scene.steps) await kc.choose(label);
+    else if (!scene.keepCard) {
       await kc.choose('Knight of the Realm');
       await kc.choose('Ride out');
     }

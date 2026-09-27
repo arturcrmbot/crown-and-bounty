@@ -5,6 +5,7 @@ import { startServer } from './lib/server.mjs';
 const server = await startServer();
 const { browser, page, errors } = await openPage();
 const kc = hooks(page);
+const screen = () => kc.call(() => window.__kc.screen());
 let failed = false;
 const check = (ok, message) => {
   console.log(`${ok ? 'ok  ' : 'FAIL'} ${message}`);
@@ -80,12 +81,18 @@ async function go(id, action) {
 try {
   await page.goto(`${server.url}?fresh=1&speed=8&seed=1066`);
   await kc.ready();
-  check((await kc.title()) === 'Who were you, before the King found you?', 'the first card asks who the hero was');
+  check((await screen()) === 'title', 'the game opens on the title');
+  check(!(await kc.choose('Continue')) && (await kc.choose('New campaign')), 'with no save, the title only offers a new campaign');
+  check((await screen()) === 'prologue' && (await kc.title()) === 'King Osric', 'the King explains the trouble');
+  await kc.choose('At your service');
+  check((await kc.title()) === 'WANTED' && (await kc.lines()).includes('Baron Grimsby'), 'then comes the poster for the first villain');
+  await kc.choose('I\u2019ll bring him in');
+  check((await kc.title()) === 'Who were you, before the King found you?', 'then the King asks who the hero was');
   check(await kc.choose('Knight of the Realm'), 'the knight can be chosen');
-  check((await kc.title()) === 'The King\u2019s Commission', 'then the commission is read out');
   const start = await kc.state();
   check(start.hero.background === 'knight' && start.army[0].troop === 'knights', 'the knight rides out with his knights');
   await kc.choose('Ride out');
+  check((await screen()) === 'adventure' && !(await kc.state()).opening, 'then he is on the map, his choice made');
 
   check((await go('chest', 'Open')) === 'Treasure Chest', 'the chest opens on arrival');
   const lead = (await kc.state()).leadership;
@@ -101,8 +108,7 @@ try {
   const before = await kc.state();
   await page.goto(`${server.url}?speed=8`);
   await kc.ready();
-  check((await kc.title()) === 'Welcome back', 'a reload offers to carry on');
-  await kc.choose('Ride on');
+  check((await kc.lines()) !== null && (await kc.choose('Continue')), 'a reload offers to carry on from the title');
   const after = await kc.state();
   check(after.gold === before.gold && after.day === before.day, 'the save keeps gold and day');
   check(after.locations.find((l) => l.id === 'chest').done && String(after.hero.at) === String(before.hero.at), 'the save keeps the opened chest and where the hero stands');
@@ -176,7 +182,6 @@ try {
   check(final.hero.level >= 3, `Sir Aldric grew to level ${final.hero.level} (${learned.join(', ')})`);
 
   // To court: level-ups from the last battle, the King's thanks and a boon, then the next commission.
-  const screen = () => kc.call(() => window.__kc.screen());
   const first = () => kc.call(() => document.querySelector('.kc-card-wrap:not([hidden]) button')?.textContent ?? null);
   check(await kc.choose('Ride to the King'), 'the bounty card sends Sir Aldric to court');
   await page.waitForTimeout(100);
@@ -190,6 +195,7 @@ try {
   check(atCourt.gold === final.gold + 1500 && atCourt.campaign.court.boons.length === 3, 'the King adds 1,500 gold and offers three boons');
   await page.goto(`${server.url}?speed=8`);
   await kc.ready();
+  await kc.choose('Continue');
   check((await screen()) === 'court' && (await kc.title()) === 'The King\u2019s Court', 'a reload at court comes back to court');
   const boon = await first();
   await kc.choose(boon);
@@ -213,13 +219,14 @@ try {
 
   await page.goto(`${server.url}?speed=8`);
   await kc.ready();
-  check((await kc.title()) === 'Welcome back' && (await kc.lines()).includes('Commission II'), 'a reload in the Fenmarch carries on there');
+  const buttons = await kc.call(() => [...document.querySelectorAll('.kc-card-wrap:not([hidden]) button')].map((b) => b.textContent).join(' / '));
+  check(buttons.includes('Commission II') && (await kc.choose('Continue')), 'a reload in the Fenmarch offers to carry on there');
   const resumed = await kc.state();
   check(resumed.campaign.chapter === 1 && resumed.gold === midFen.gold && resumed.locations.find((l) => l.id === 'goblins').done, 'the save keeps the province, gold and the beaten goblins');
-  await kc.choose('Start a new campaign');
-  await page.waitForTimeout(300);
+  await page.goto(`${server.url}?speed=8`);
   await kc.ready();
-  check((await kc.title()) === 'Who were you, before the King found you?', 'a new campaign starts from the opening card');
+  await kc.choose('New campaign');
+  check((await kc.title()) === 'King Osric' && (await kc.state()).campaign.chapter === 0, 'a new campaign starts over with the King');
   check(errors.length === 0, `no page errors${errors.length ? `: ${errors.join(' | ')}` : ''}`);
 } catch (error) {
   check(false, String(error));

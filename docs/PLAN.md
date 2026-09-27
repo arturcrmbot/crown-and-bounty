@@ -121,7 +121,7 @@ full critique. Each round ends with a playtest, a deploy and a new entry in that
 
 | # | Round | Done when |
 | --- | --- | --- |
-| R1 | **Vibe.** Music and ambience in code, a title screen, an intro at court, portraits. | The first minute has a mood, and a reason to care. |
+| R1 | **Vibe.** Music and ambience in code, a title screen, an intro at court, portraits. | The first minute has a mood, and a reason to care. **Done:** five tracks and three ambiences, the painted title, the King's prologue with a WANTED poster and a choice of four faces, portraits on cards, and the province's name on a ribbon with a fanfare. |
 | R2 | **Scale and juice.** A scale bible, one creature per map enemy, bigger fighters, feedback for every action. | Screenshots read at a glance, and nothing happens silently. |
 | R3 | **Gating and rewards.** Small fights first, the patrol as a gate, honest odds, rewards that matter. | You explore before you fight, and every fight pays in something you can feel. |
 | R4 | **Playstyles.** Each background's own mechanics, and several paths past every enemy. | Two runs with different backgrounds play differently. |

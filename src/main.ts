@@ -47,27 +47,36 @@ function debugStart(): GameState {
   return fightAt ? (startFight({ ...base, opening: undefined }, fightAt)?.state ?? base) : base;
 }
 
-// ?reveal=1 lifts the fog, for looking the whole map over.
-const start = resume ?? (query.has('reveal') ? { ...debugStart(), explored: debugStart().explored.map(() => -1) } : debugStart());
 const display = new Display(SCREEN.width, SCREEN.height);
-const game = new Game(display, start, Math.max(1, Number(query.get('speed') ?? 1)));
+const game = new Game(display, Math.max(1, Number(query.get('speed') ?? 1)));
 const input = new Input(display, game.input);
-if (query.has('x')) game.adventure.view.centreOn(Number(query.get('x')), Number(query.get('y') ?? 480));
-const dig = start.locations.find((l) => l.kind === 'dig');
-if (query.get('sceptre') === '1' && dig) game.adventure.view.centreOn(dig.at[0], dig.at[1]);
+// The title and the King's welcome come first, unless a debug start (or a frozen screenshot) wants straight in.
+// ?quick=1 skips them too; ?title=1 brings them back even when frozen.
+const quick = (frozen && query.get('title') !== '1') || ['quick', 'battle', 'court', 'commission', 'sceptre', 'reveal', 'x'].some((k) => query.has(k));
+if (quick) {
+  // ?reveal=1 lifts the fog, for looking the whole map over.
+  const start = resume ?? (query.has('reveal') ? { ...debugStart(), explored: debugStart().explored.map(() => -1) } : debugStart());
+  game.resume(start);
+  if (query.has('x')) game.adventure.view.centreOn(Number(query.get('x')), Number(query.get('y') ?? 480));
+  const dig = start.locations.find((l) => l.kind === 'dig');
+  if (query.get('sceptre') === '1' && dig) game.adventure.view.centreOn(dig.at[0], dig.at[1]);
+  if (game.top.name === 'adventure' && resume && !resume.opening) game.adventure.showCard(resume.over === 'lost' ? failedCard(resume) : welcomeBackCard(resume), null);
+} else game.showTitle(resume, () => newGame(seed));
 window.__kc = game.debug();
 // Sound may only start once the player has done something; M turns it off and on.
 for (const type of ['pointerdown', 'keydown'] as const) window.addEventListener(type, wakeAudio, { once: true });
 window.addEventListener('keydown', (e) => {
   if (e.key.toLowerCase() === 'm') toggleMute();
 });
-window.addEventListener('pagehide', () => saveGame(game.state));
-
-if (game.top.name === 'adventure' && resume && !resume.opening) game.adventure.showCard(resume.over === 'lost' ? failedCard(resume) : welcomeBackCard(resume), null);
+window.addEventListener('pagehide', () => {
+  const state = game.saveable;
+  if (state) saveGame(state);
+});
 
 let last = performance.now();
 requestAnimationFrame(function frame(now) {
-  const dt = frozen ? 0 : Math.min(0.05, (now - last) / 1000);
+  // The first frame can be stamped a moment before the page started counting: never run the clock backwards.
+  const dt = frozen ? 0 : Math.max(0, Math.min(0.05, (now - last) / 1000));
   last = now;
   game.update(dt, input.held);
   const tick = frozen ? 0 : Math.floor(now / TICK_MS);

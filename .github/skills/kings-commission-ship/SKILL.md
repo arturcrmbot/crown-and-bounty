@@ -68,6 +68,7 @@ mounted knights are wider.
 - The dev server is on 127.0.0.1:5188 (5173 belongs to another project; don't kill it).
 - Playwright uses `channel: 'msedge'`. Scripts start their own server (`scripts/lib/server.mjs`).
 - `?freeze=1` is for exact screenshots; `?seed=N` fixes the campaign; `?fresh=1` ignores the save.
+- The game opens on the title and the prologue. Scripts press `New campaign`, `At your service`, `I’ll bring him in`, then a hero; `?quick=1` skips all of it.
   `?court=N`, `?commission=N`, `?battle=id`, `?reveal=1` and `?sceptre=1` jump straight to a scene.
 - Saves are keyed by version (`src/game/save.ts`). Bump it when the state's shape changes or when
   generated maps come out differently for the same seed.

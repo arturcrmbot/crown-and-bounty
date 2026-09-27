@@ -72,11 +72,18 @@ async function go(id, action) {
 try {
   await page.goto(`${base}?fresh=1&speed=4&seed=${process.env.SEED ?? 1066}`);
   await kc.ready();
-  await look('first-screen');
-  await page.mouse.click(480, 270);
-  await look('after-first-click');
+  await look('title');
+  await press('New campaign');
+  await look('king');
+  await press('At your service');
+  await look('wanted');
+  await press('I\u2019ll bring him in');
+  await look('heroes');
   if (await press(background)) await look('story');
   await press('Ride out');
+  await page.waitForTimeout(600);
+  await look('banner');
+  await page.waitForTimeout(4200);
   await look('map');
   const hero = await kc.call(() => window.__kc.state().hero.at);
   await kc.click(hero[0], hero[1] - 6);

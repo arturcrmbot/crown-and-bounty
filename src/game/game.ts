@@ -5,6 +5,8 @@ import { hasNextCommission, toCourt, type GameEvent, type GameState } from '../r
 import { AdventureController } from './adventure';
 import { BattleController } from './battle';
 import { CourtController } from './court';
+import { PrologueController } from './prologue';
+import { TitleController } from './title';
 import type { Display } from './display';
 import type { InputHandlers } from './input';
 import { saveGame } from './save';
@@ -17,34 +19,62 @@ const hashOf = (data: Uint8Array) => {
 };
 
 /**
- * The screens, as a stack: the map at the bottom, and a battle or the court open over it until
- * it closes back. Only the top screen runs, draws and hears input.
+ * The screens, as a stack: the title or the map at the bottom, and a battle or the court open over
+ * the map until it closes back. Only the top screen runs, draws and hears input.
  */
 export class Game {
   private readonly stack: Screen[] = [];
   private readonly display: Display;
   private readonly speed: number;
 
-  constructor(display: Display, state: GameState, speed = 1) {
+  constructor(display: Display, speed = 1) {
     this.display = display;
     this.speed = speed;
-    this.stack.push(this.makeAdventure(state));
+  }
+
+  /** The title, with its menu: carry on with `resume`, or hear the King out and begin `fresh`. */
+  showTitle(resume: GameState | null, fresh: () => GameState) {
+    this.clear();
+    this.push(
+      new TitleController(this.display, resume, {
+        onNew: () => {
+          this.clear();
+          this.push(new PrologueController(this.display, fresh(), (state) => this.beginCommission(state, [])));
+        },
+        onContinue: () => this.resume(resume!),
+      }),
+    );
+  }
+
+  /** Straight onto the map, as the state left it: in the middle of a battle, or on the way to court. */
+  resume(state: GameState) {
+    this.clear();
+    this.push(this.makeAdventure(state));
     if (state.battle && !state.battle.result) this.openBattle();
     else if (state.over === 'won' && hasNextCommission(state)) this.openCourt();
   }
 
-  /** The map: always at the bottom of the stack. */
+  /** The map, if one is open: it's always at the bottom of the stack. */
   get adventure(): AdventureController {
-    return this.stack[0] as AdventureController;
+    const map = this.stack[0];
+    if (!(map instanceof AdventureController)) throw new Error('no map is open');
+    return map;
   }
 
   get top(): Screen {
     return this.stack[this.stack.length - 1];
   }
 
-  /** The rules state of whichever screen is up. */
-  get state(): GameState {
-    return this.top instanceof CourtController ? this.top.state : this.adventure.state;
+  /** The rules state of whichever screen is up, or null on the title. */
+  get state(): GameState | null {
+    const top = this.top;
+    if (top instanceof CourtController || top instanceof PrologueController) return top.state;
+    return this.stack[0] instanceof AdventureController ? this.stack[0].state : null;
+  }
+
+  /** What to keep when the page closes: only a campaign that has ridden out. */
+  get saveable(): GameState | null {
+    return this.stack[0] instanceof AdventureController ? this.state : null;
   }
 
   private push(screen: Screen) {
@@ -54,6 +84,10 @@ export class Game {
   /** Closes the top screen, back to the one under it. */
   private pop() {
     if (this.stack.length > 1) this.stack.pop()!.dispose();
+  }
+
+  private clear() {
+    while (this.stack.length) this.stack.pop()!.dispose();
   }
 
   private makeAdventure(state: GameState): AdventureController {
@@ -100,12 +134,13 @@ export class Game {
     );
   }
 
-  /** A new commission: a fresh map for its province, then whatever the rules still had to say. */
+  /** A new commission: a fresh map for its province, its name across the sky, then whatever the rules still had to say. */
   private beginCommission(state: GameState, rest: GameEvent[]) {
-    while (this.stack.length) this.stack.pop()!.dispose();
+    this.clear();
     const adventure = this.makeAdventure(state);
     this.stack.push(adventure);
     saveGame(state);
+    adventure.announce();
     adventure.play(rest);
   }
 
@@ -131,17 +166,22 @@ export class Game {
     key: (key) => this.top.input.key(key),
   };
 
-  /** Hooks for scripts. They always reach whichever map is current. */
+  /** Hooks for scripts. They reach whichever map is current, and do nothing while there is none. */
   debug() {
-    const adventure = () => this.adventure.debug();
+    const adventure = () => (this.stack[0] instanceof AdventureController ? this.stack[0].debug() : null);
     return {
-      click: (x: number, y: number) => adventure().click(x, y),
-      choose: (label: string) => adventure().choose(label),
+      click: (x: number, y: number) => adventure()?.click(x, y),
+      /** Presses the first button on the card on screen whose text starts with `label`. */
+      choose: (label: string) => {
+        const button = [...document.querySelectorAll<HTMLButtonElement>('.kc-card-wrap:not([hidden]) .kc-card button')].find((b) => b.textContent?.startsWith(label));
+        button?.click();
+        return Boolean(button);
+      },
       state: () => this.state,
-      idle: () => adventure().idle(),
-      status: () => adventure().status(),
-      centre: (id: string) => adventure().centre(id),
-      hover: () => adventure().hover(),
+      idle: () => adventure()?.idle() ?? true,
+      status: () => adventure()?.status() ?? null,
+      centre: (id: string) => adventure()?.centre(id) ?? null,
+      hover: () => adventure()?.hover() ?? null,
       screen: () => this.top.name,
       battle: () => (this.top instanceof BattleController ? this.top.debug() : null),
       frameHash: () => hashOf(this.top.bitmap.data),

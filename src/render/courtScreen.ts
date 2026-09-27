@@ -322,6 +322,8 @@ export class CourtScreen {
   private readonly base: Bitmap;
   private readonly overlay: Bitmap;
   caption = '';
+  /** The royal goose, at the King's feet. Before the first commission, Grimsby has it. */
+  goose = true;
 
   constructor() {
     const { frame, overlay } = paintFrame();
@@ -353,7 +355,7 @@ export class CourtScreen {
 
   draw(phase: number): Bitmap {
     this.screen.data.set(this.base.data);
-    blit(this.screen, goose(phase), MAP_VIEW.x + MID + 58, MAP_VIEW.y + 176);
+    if (this.goose) blit(this.screen, goose(phase), MAP_VIEW.x + MID + 58, MAP_VIEW.y + 176);
     if (this.caption) drawText(this.screen, this.caption, BAR.x + 12, BAR.y + 5, PARCHMENT[6], INK);
     blit(this.screen, this.overlay, 0, 0);
     return this.screen;

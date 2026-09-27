@@ -36,6 +36,8 @@ export type Background = {
   /** What the story calls him in passing. */
   short: string;
   pitch: string;
+  /** How he wins, in a line, for the choice at the start. */
+  playstyle: string;
   stats: { attack: number; defence: number; spellPower: number; knowledge: number };
   leadership: number;
   gold: number;
@@ -56,6 +58,7 @@ export const BACKGROUNDS: Record<BackgroundId, Background> = {
     title: 'Sir Aldric, Knight of the Realm',
     short: 'Sir Aldric',
     pitch: 'Heavy horse, heavier armour. Leads more troops and his knights hit harder.',
+    playstyle: 'Charge in. The biggest army, and knights that hit harder.',
     stats: { attack: 1, defence: 1, spellPower: 1, knowledge: 1 },
     leadership: 140,
     gold: 1000,
@@ -71,6 +74,7 @@ export const BACKGROUNDS: Record<BackgroundId, Background> = {
     title: 'Aldric the Hedge Wizard',
     short: 'Aldric',
     pitch: 'Fewer swords, more lightning. Spells are cheaper and hit much harder.',
+    playstyle: 'Win with magic. Four spells from the first day, and cheaper to cast.',
     stats: { attack: 0, defence: 1, spellPower: 3, knowledge: 3 },
     leadership: 110,
     gold: 1250,
@@ -86,6 +90,7 @@ export const BACKGROUNDS: Record<BackgroundId, Background> = {
     title: 'Aldric of the Greenwood',
     short: 'Aldric',
     pitch: 'Rides further, sees further, and his archers never miss twice.',
+    playstyle: 'Scout and shoot. Rides further, counts every foe, and brings a crowd of archers.',
     stats: { attack: 1, defence: 1, spellPower: 1, knowledge: 1 },
     leadership: 120,
     gold: 1000,
@@ -101,6 +106,7 @@ export const BACKGROUNDS: Record<BackgroundId, Background> = {
     title: 'Lord Aldric, Courtier',
     short: 'Lord Aldric',
     pitch: 'Knows everyone, owes no one. Cheaper troops, fatter paydays, a full purse.',
+    playstyle: 'Pay your way. Starts rich, hires cheap, and every payday pays more.',
     stats: { attack: 1, defence: 1, spellPower: 2, knowledge: 2 },
     leadership: 125,
     gold: 2400,

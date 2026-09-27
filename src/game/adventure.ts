@@ -1,9 +1,11 @@
 import { BACKGROUNDS } from '../content/backgrounds';
 import { addPlace, buildAdventureScene, type AdventureScene, type Hitbox } from '../render/adventureScene';
+import { BANNER_TIME, drawBanner, paintBanner } from '../render/banner';
+import type { Bitmap } from '../render/bitmap';
 import { MAP_VIEW } from '../render/frame';
 import { HOURGLASS, HOURGLASS_AT, paintHud } from '../render/hud';
 import type { BattleState } from '../rules/battle/battle';
-import { ambushCard, apply, describe, describeHero, finishFight, levelUpCard, locationById, visit, type Action, type Card, type GameEvent, type GameState, type Result } from '../rules/game';
+import { ambushCard, apply, commissionOf, describe, describeHero, finishFight, levelUpCard, locationById, roman, visit, type Action, type Card, type GameEvent, type GameState, type Result } from '../rules/game';
 import type { Point } from '../rules/map/geometry';
 import { cellCentre, type MapModel } from '../rules/map/model';
 import { planRoute, routeCosts, stepAlong } from '../rules/map/movement';
@@ -66,6 +68,7 @@ export class AdventureController implements Screen {
   private cardAnchor: Point | null = null;
   private hudMovement = -1;
   private readonly speed: number;
+  private banner: { sprite: Bitmap; age: number } | null = null;
   /** Called when the rules start a battle; the game switches screens. */
   onBattle: (() => void) | null = null;
   /** Called when the hero rides to court after a won commission. */
@@ -93,7 +96,16 @@ export class AdventureController implements Screen {
   }
 
   render(tick: number): Uint8Array {
-    return this.view.compose(tick).data;
+    const frame = this.view.compose(tick);
+    if (this.banner) drawBanner(frame, this.banner.sprite, MAP_VIEW.x + MAP_VIEW.width / 2, MAP_VIEW.y + 70, this.banner.age);
+    return frame.data;
+  }
+
+  /** The province's name across the sky, with a fanfare: a new commission begins. */
+  announce() {
+    const commission = commissionOf(this.state);
+    this.banner = { sprite: paintBanner(this.map.province.name.toUpperCase(), `Commission ${roman(this.state.campaign.chapter + 1)} \u00b7 ${commission.villain}`), age: 0 };
+    play('fanfare');
   }
 
   get music() {
@@ -296,6 +308,7 @@ export class AdventureController implements Screen {
   }
 
   update(dt: number, held: ReadonlySet<string>) {
+    if (this.banner && (this.banner.age += dt) > BANNER_TIME) this.banner = null;
     this.promptPending();
     this.walks.advance(dt);
     const dx = (held.has('arrowright') || held.has('d') ? 1 : 0) - (held.has('arrowleft') || held.has('a') ? 1 : 0);
@@ -472,11 +485,6 @@ export class AdventureController implements Screen {
   debug() {
     return {
       click: (x: number, y: number) => this.clickMap([x, y]),
-      choose: (label: string) => {
-        const button = [...document.querySelectorAll<HTMLButtonElement>('.kc-card-wrap:not([hidden]) .kc-card button')].find((b) => b.textContent?.startsWith(label));
-        button?.click();
-        return Boolean(button);
-      },
       state: () => this.state,
       idle: () => this.route.length === 0 || !stepAlong(this.state, this.map, this.route),
       status: () => ({
