@@ -28,6 +28,35 @@ async function close() {
   await settle();
 }
 
+/**
+ * Takes on an enemy the way a patient player would: ride up, and if the sergeants don't like the
+ * odds yet, wait for payday, recruit, and come back. Returns the title of the card that follows.
+ */
+async function beatWhenReady(id, tries = 6) {
+  for (let attempt = 1; attempt <= tries; attempt++) {
+    await go(id, 'Approach');
+    if ((await kc.lines()).includes('nervous') || attempt === tries) {
+      await kc.choose('Let the sergeants');
+      const title = await kc.title();
+      if (title === 'Victory!' || title === 'The bounty is paid!') return title;
+      await close();
+    } else await kc.choose('Retreat');
+    do {
+      await settle();
+      await page.keyboard.press('e');
+      await page.waitForTimeout(40);
+      await close();
+    } while ((await kc.state()).day % 7 !== 1);
+    for (const [place, verb] of [['castle', 'Visit'], ['village', 'Visit'], ['deserters', 'Visit']]) {
+      if (!(await kc.state()).locations.some((l) => l.id === place)) continue;
+      await go(place, verb);
+      await kc.choose('Recruit');
+      await close();
+    }
+  }
+  return kc.title();
+}
+
 /** Clicks a place, takes its action, and keeps riding (ending days when tired) until the hero gets there. */
 async function go(id, action) {
   await settle();
@@ -78,10 +107,16 @@ try {
   check(after.gold === before.gold && after.day === before.day, 'the save keeps gold and day');
   check(after.locations.find((l) => l.id === 'chest').done && String(after.hero.at) === String(before.hero.at), 'the save keeps the opened chest and where the hero stands');
 
+  // The patrol is a gate: too strong for a fresh army.
   await go('patrol', 'Approach');
+  check((await kc.lines()).includes('looks at you'), 'the patrol is too strong at first');
+  await kc.choose('Retreat');
+
+  // The highwaymen on the tower road are an easy first fight: fought by hand, then left to the sergeants.
+  await go('highwaymen', 'Approach');
   await kc.choose('Fight');
   await page.waitForTimeout(200);
-  check((await kc.call(() => window.__kc.screen())) === 'battle', 'fighting the patrol opens the battlefield');
+  check((await kc.call(() => window.__kc.screen())) === 'battle', 'fighting the highwaymen opens the battlefield');
   // Wait for our first turn, then move the acting stack by clicking a hex it can reach.
   await page.waitForFunction(() => {
     const b = window.__kc.battle();
@@ -101,9 +136,8 @@ try {
   check(!!moved && field.fighters.find((f) => f.id === moved.id).at === moved.target, 'a stack moves where you point it');
   await kc.call(() => window.__kc.battle().auto());
   await page.waitForFunction(() => window.__kc.screen() === 'adventure', null, { timeout: 60_000 });
-  check((await kc.title()) === 'Victory!', 'the patrol is beaten on the battlefield');
+  check((await kc.title()) === 'Victory!', 'the highwaymen are beaten on the battlefield');
   await close();
-  check(learned.length > 0 && (await kc.state()).hero.level >= 2, `the patrol's experience brings a level-up (${learned.join(', ')})`);
 
   const tower = await go('tower', 'Enter');
   check(tower === 'Old Watchtower', 'the fogged watchtower can be reached and entered');
@@ -112,42 +146,31 @@ try {
   await close();
   await go('mine', 'Enter');
   await close();
+  check(learned.length > 0 && (await kc.state()).hero.level >= 2, `a first fight and some finds bring a level-up (${learned.join(', ')})`);
+  await go('boars', 'Approach');
+  await kc.choose('Let the sergeants');
+  check((await kc.title()) === 'Victory!', 'the sergeants see off the boars on the castle road');
+  await close();
   await go('castle', 'Visit');
   check(await kc.choose('Recruit'), 'the castle offers knights');
+  await close();
+  await go('poachers', 'Approach');
+  await kc.choose('Let the sergeants');
   await close();
   await go('village', 'Visit');
   check(await kc.choose('Recruit'), 'Westmere offers peasants');
   await close();
-  await go('wolves', 'Approach');
-  await kc.choose('Let the sergeants');
-  check((await kc.title()) === 'Victory!', 'the sergeants beat the wolves');
-  await close();
 
-  // Storm the hideout when the sergeants like the odds; otherwise wait for payday and recruit.
-  let result = null;
-  for (let attempt = 1; attempt <= 6 && result !== 'The bounty is paid!'; attempt++) {
-    await go('hideout', 'Approach');
-    const odds = await kc.lines();
-    if (odds.includes('nervous') || attempt >= 5) {
-      await kc.choose('Let the sergeants');
-      result = await kc.title();
-      if (result === 'The bounty is paid!') break;
-    }
-    if (result === 'Retreat!' || result === 'Defeat') await close();
-    else await kc.choose('Retreat');
-    result = null;
-    do {
-      await settle();
-      await page.keyboard.press('e');
-      await page.waitForTimeout(40);
-      await close();
-    } while ((await kc.state()).day % 7 !== 1);
-    for (const [place, verb] of [['castle', 'Visit'], ['village', 'Visit']]) {
-      await go(place, verb);
-      await kc.choose('Recruit');
-      await close();
-    }
-  }
+  // Explored and grown: back to the patrol, the wolves, and Grimsby, each when the sergeants like the odds.
+  check((await beatWhenReady('patrol')) === 'Victory!', 'once explored, the sergeants beat the patrol');
+  await close();
+  check((await kc.state()).locations.some((l) => l.id === 'deserters'), 'deserters make camp by the crossroads');
+  await go('deserters', 'Visit');
+  check(await kc.choose('Recruit'), 'the deserters\u2019 camp offers swordsmen');
+  await close();
+  check((await beatWhenReady('wolves')) === 'Victory!', 'the sergeants beat the wolves');
+  await close();
+  await beatWhenReady('hideout', 8);
   const final = await kc.state();
   check(final.over === 'won' && final.bounty === 'paid', `the commission is won on day ${final.day}`);
   check(final.hero.level >= 3, `Sir Aldric grew to level ${final.hero.level} (${learned.join(', ')})`);
