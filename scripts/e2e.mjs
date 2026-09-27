@@ -14,7 +14,8 @@ const check = (ok, message) => {
 
 /** Level-ups wait for a choice whenever no other card is open: take the first thing offered. */
 async function settle() {
-  await page.waitForTimeout(50);
+  // Gains rise off the hero before a level-up card comes up.
+  await page.waitForTimeout(400);
   while ((await kc.title())?.startsWith('Level')) {
     const label = await kc.call(() => document.querySelector('.kc-card-wrap:not([hidden]) button').textContent);
     await kc.choose(label);

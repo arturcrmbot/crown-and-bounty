@@ -34,13 +34,13 @@ export const chest: PlaceKind = {
   },
 };
 
-/** A pile of gold by the road: picked up on arrival. */
+/** A pile of gold by the road: scooped up on arrival, no card needed (the map shows the gold rising). */
 export const pile: PlaceKind = {
   about: (_, place) => ({ title: place.name, lines: words(place, 'about'), choices: [ride(place, 'Take'), close] }),
   arrive(state, place) {
     if (place.done) return say(state, place, note(place, ['Nothing left but footprints.']));
     const gold = loot(state, place.gold ?? 0);
-    return say(update({ ...state, gold: state.gold + gold }, place.id, { done: true }), place, note(place, [`You pocket **${coins(gold)} gold**.`]), { type: 'removed', id: place.id });
+    return { state: update({ ...state, gold: state.gold + gold }, place.id, { done: true }), events: [{ type: 'removed', id: place.id }] };
   },
   worth: (_, place) => (place.done ? null : (place.gold ?? 0)),
 };

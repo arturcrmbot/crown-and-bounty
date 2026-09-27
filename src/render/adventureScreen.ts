@@ -3,8 +3,8 @@ import { Effects } from './effects';
 import { MAP_VIEW, paintFrame, SCREEN } from './frame';
 import type { Point } from '../rules/map/geometry';
 import type { FogMask } from './fog';
-import { hash, noise } from './noise';
-import { FOG_LUT, GOLD, GRAIN_LUT, INK, RED } from './palette';
+import { bayer, hash, noise } from './noise';
+import { FOG_LUT, GOLD, GRAIN_LUT, INK, RED, SHADOW_LUT } from './palette';
 
 /**
  * `x` and `y` are the sprite's top-left in map pixels. `frames` animate it (flags, wheels);
@@ -26,6 +26,8 @@ export class AdventureScreen {
   private readonly animated: Placed[] = [];
   readonly camera = { x: 0, y: 0 };
   readonly effects = new Effects();
+  /** How far night has fallen over the map, 0 to 1, while a day ends. */
+  dusk = 0;
   /** The route still ahead of the hero: gold dots for today, red for later days. */
   route: { at: Point; today: boolean }[] = [];
   private readonly map: Bitmap;
@@ -108,6 +110,17 @@ export class AdventureScreen {
     }
     this.effects.draw(screen, MAP_VIEW.x - cx, MAP_VIEW.y - cy, MAP_VIEW, (x, y) => !this.isFogged(x, y));
     for (const i of this.grain) screen.data[i] = GRAIN_LUT[screen.data[i]];
+    if (this.dusk > 0) {
+      // Night falls over the map, and lifts again, in a dither of shadow.
+      for (let y = MAP_VIEW.y; y < MAP_VIEW.y + MAP_VIEW.height; y++) {
+        for (let x = MAP_VIEW.x; x < MAP_VIEW.x + MAP_VIEW.width; x++) {
+          const d = bayer(x, y);
+          if (d >= this.dusk) continue;
+          const o = y * SCREEN.width + x;
+          screen.data[o] = d < this.dusk - 0.45 ? SHADOW_LUT[SHADOW_LUT[screen.data[o]]] : SHADOW_LUT[screen.data[o]];
+        }
+      }
+    }
     blit(screen, this.overlay, 0, 0);
     return screen;
   }

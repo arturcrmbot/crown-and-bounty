@@ -1,8 +1,10 @@
 import { BACKGROUNDS } from '../content/backgrounds';
+import { troops } from '../content/troops';
 import { addPlace, buildAdventureScene, type AdventureScene, type Hitbox } from '../render/adventureScene';
 import { BANNER_TIME, drawBanner, paintBanner } from '../render/banner';
 import type { Bitmap } from '../render/bitmap';
 import { MAP_VIEW } from '../render/frame';
+import { BLUE, GOLD, NEUTRAL, PARCHMENT, RED } from '../render/palette';
 import { HOURGLASS, HOURGLASS_AT, paintHud } from '../render/hud';
 import type { BattleState } from '../rules/battle/battle';
 import { ambushCard, apply, commissionOf, describe, describeHero, finishFight, levelUpCard, locationById, roman, visit, type Action, type Card, type GameEvent, type GameState, type Result } from '../rules/game';
@@ -19,6 +21,8 @@ import { backgroundCard, endCard, storyCard } from './intro';
 import { clearSave, saveGame } from './save';
 import { Walks } from './walks';
 
+/** How long night takes to fall and lift at the end of a day, in seconds. */
+const NIGHT = 1.4;
 /** Map pixels per second. */
 const RIDE_SPEED = 95;
 /** Map pixels per step of the trot cycle, so hooves don't slide. */
@@ -68,7 +72,15 @@ export class AdventureController implements Screen {
   private cardAnchor: Point | null = null;
   private hudMovement = -1;
   private readonly speed: number;
+  /** How much faster than life scripts run the map (?speed=8). */
+  private readonly pace: number;
   private banner: { sprite: Bitmap; age: number } | null = null;
+  /** What the hero just gained, waiting for the card on screen to close before it rises off him. */
+  private gains: [string, number][] = [];
+  /** Seconds left of gains rising: the level-up card waits for them. */
+  private celebrating = 0;
+  /** Seconds into the night that falls between two days, while it does. */
+  private nightfall: number | null = null;
   /** Called when the rules start a battle; the game switches screens. */
   onBattle: (() => void) | null = null;
   /** Called when the hero rides to court after a won commission. */
@@ -81,6 +93,7 @@ export class AdventureController implements Screen {
     this.map = map;
     this.state = state;
     this.speed = RIDE_SPEED * speed;
+    this.pace = speed;
     this.scene = buildAdventureScene(map, state);
     this.cards = new CardView((action) => this.choose(action));
     this.drawn = { x: state.hero.at[0], y: state.hero.at[1] };
@@ -143,11 +156,36 @@ export class AdventureController implements Screen {
 
   private run(result: Result | null) {
     if (!result) return;
-    const gold = this.state.gold;
+    const before = this.state;
     this.state = result.state;
-    if (this.state.gold > gold) play('coins');
+    if (this.state.gold > before.gold) play('coins');
     this.handle(result.events);
+    this.floatGains(before, this.state);
     saveGame(this.state);
+  }
+
+  /** Whatever the hero gained rises off him in words, one after another: gold, troops, leadership, experience. */
+  private floatGains(before: GameState, after: GameState) {
+    const gains: [string, number][] = [];
+    const gold = after.gold - before.gold;
+    if (gold) gains.push([`${gold > 0 ? '+' : '\u2212'}${Math.abs(gold).toLocaleString('en-GB')} gold`, gold > 0 ? GOLD[6] : RED[5]]);
+    for (const stack of after.army) {
+      const had = before.army.find((s) => s.troop === stack.troop)?.count ?? 0;
+      if (stack.count > had && !before.battle) gains.push([`+${troops(stack.troop, stack.count - had)}`, PARCHMENT[6]]);
+    }
+    if (after.leadership > before.leadership) gains.push([`+${after.leadership - before.leadership} leadership`, BLUE[6]]);
+    if (after.hero.level > before.hero.level) gains.push([`Level ${roman(after.hero.level)}!`, GOLD[6]]);
+    else if (after.hero.xp > before.hero.xp) gains.push([`+${after.hero.xp - before.hero.xp} experience`, NEUTRAL[7]]);
+    if (gains.length) this.gains.push(...gains);
+  }
+
+  /** Gains wait until no card is in the way, then rise one after another; a level-up card waits for them. */
+  private releaseGains() {
+    if (this.cards.isOpen || !this.gains.length) return;
+    for (const [i, [text, colour]] of this.gains.entries()) this.view.effects.floatText(this.drawn.x, this.drawn.y - 76, text, colour, i * 0.35);
+    this.celebrating = 0.6 + this.gains.length * 0.35;
+    if (this.gains.some(([text]) => text.startsWith('Level'))) this.view.effects.puff(this.drawn.x, this.drawn.y, 'glow');
+    this.gains = [];
   }
 
   /** Shows events that happened elsewhere, like the arrival card of a new commission. */
@@ -176,6 +214,8 @@ export class AdventureController implements Screen {
           addPlace(this.scene, locationById(this.state, e.id));
           break;
         case 'removed': {
+          const gone = this.state.locations.find((l) => l.id === e.id);
+          if (gone) this.view.effects.puff(gone.at[0], gone.at[1], gone.enemy ? 'dust' : 'sparkle');
           const object = this.scene.pickups.get(e.id);
           if (object) this.view.remove(object);
           this.scene.pickups.delete(e.id);
@@ -183,6 +223,7 @@ export class AdventureController implements Screen {
         }
         case 'day':
           this.tiredShown = false;
+          this.nightfall = 0;
           play('day');
           break;
         case 'levelUp':
@@ -298,7 +339,7 @@ export class AdventureController implements Screen {
    * Once a commission is over, what comes next (court, or trying again) comes back if hidden.
    */
   private promptPending() {
-    if (this.cards.isOpen) return;
+    if (this.cards.isOpen || this.celebrating > 0) return;
     if (this.state.ambush) {
       const foe = locationById(this.state, this.state.ambush);
       return this.showCard(ambushCard(this.state), this.anchorOf(foe.id));
@@ -309,6 +350,13 @@ export class AdventureController implements Screen {
 
   update(dt: number, held: ReadonlySet<string>) {
     if (this.banner && (this.banner.age += dt) > BANNER_TIME) this.banner = null;
+    this.releaseGains();
+    this.celebrating = Math.max(0, this.celebrating - dt * this.pace);
+    if (this.nightfall !== null) {
+      this.nightfall += dt;
+      this.view.dusk = this.nightfall < NIGHT ? Math.sin((Math.PI * this.nightfall) / NIGHT) * 0.9 : 0;
+      if (this.nightfall >= NIGHT) this.nightfall = null;
+    }
     this.promptPending();
     this.walks.advance(dt);
     const dx = (held.has('arrowright') || held.has('d') ? 1 : 0) - (held.has('arrowleft') || held.has('a') ? 1 : 0);
