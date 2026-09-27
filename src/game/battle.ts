@@ -1,7 +1,7 @@
 import { SPELLS, type SpellId } from '../content/spells';
 import { TROOPS, troops } from '../content/troops';
 import { chooseAction } from '../rules/battle/ai';
-import { activeFighter, battleAct, boltDamage, canCast, fighterById, options, spellCost, strike, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
+import { activeFighter, battleAct, canCast, fighterById, options, spellCost, spellDamage, strike, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
 import { BattleScreen, BUTTONS, hexAt, hexCentre, type BattleView } from '../render/battleScreen';
 import { MAP_VIEW } from '../render/frame';
 import { BLUE, GOLD, NEUTRAL, RED } from '../render/palette';
@@ -167,11 +167,12 @@ export class BattleController {
           const target = fighterById(this.battle, e.target);
           if (target.count === 0) v.dying.add(e.target);
           const [tx, ty] = hexCentre(target.at);
-          const shot = { from: [tx, 0] as [number, number], to: [tx, ty - 10] as [number, number], t: 0, kind: e.spell === 'bolt' ? ('bolt' as const) : ('sparkle' as const), color: e.spell === 'slow' ? BLUE[6] : GOLD[6] };
+          const look = SPELLS[e.spell].look;
+          const shot = { from: [tx, 0] as [number, number], to: [tx, ty - 10] as [number, number], t: 0, kind: look.kind, color: look.colour === 'blue' ? BLUE[6] : GOLD[6] };
           this.step(0.4, {
             start: () => {
               v.shots.push(shot);
-              play(e.spell === 'bolt' ? 'bolt' : 'spell');
+              play(look.kind === 'bolt' ? 'bolt' : 'spell');
               v.log = `${this.battle.hero.name ?? 'Aldric'} casts ${SPELLS[e.spell].name} on ${this.name(e.target).toLowerCase()}${e.damage ? `: ${e.damage} damage${e.killed ? `, ${e.killed} perish` : ''}` : ''}.`;
               if (e.damage) {
                 v.flashing.add(e.target);
@@ -317,8 +318,9 @@ export class BattleController {
     if (!target) return null;
     const name = TROOPS[target.troop].name.toLowerCase();
     if (action.type === 'cast') {
-      if (action.spell !== 'bolt') return `${SPELLS[action.spell].name} on their ${name}.`;
-      return `Lightning Bolt: ${boltDamage(this.battle)} damage, ${wound(target, boltDamage(this.battle)).killed} of their ${name} perish.`;
+      const damage = spellDamage(this.battle, action.spell);
+      if (!damage) return `${SPELLS[action.spell].name} on their ${name}.`;
+      return `${SPELLS[action.spell].name}: ${damage} damage, ${wound(target, damage).killed} of their ${name} perish.`;
     }
     if (action.type !== 'melee' && action.type !== 'shoot') return null;
     const ranged = action.type === 'shoot';

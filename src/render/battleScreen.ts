@@ -1,5 +1,5 @@
-import { ABILITIES, TROOPS } from '../content/troops';
-import { SPELLS } from '../content/spells';
+import { abilitiesOf, TROOPS } from '../content/troops';
+import { SPELLS, STATUSES } from '../content/spells';
 import { spellCost, speedOf, statsOf, type BattleState } from '../rules/battle/battle';
 import { COLS, colOf, HEXES, ROWS, rowOf } from '../rules/battle/hex';
 import { Bitmap, blit } from './bitmap';
@@ -253,7 +253,7 @@ export class BattleScreen {
     if (view.targeting) drawText(screen, `Cast ${view.targeting}: pick a target (Esc to cancel)`, BAR.x + 12, text, GOLD[6], INK);
     else if (f) {
       const t = TROOPS[f.troop];
-      const tags = [t.ability ? ` ${ABILITIES[t.ability].name}` : '', f.blessed ? ' Blessed' : '', f.slowed ? ' Slowed' : '', f.defending ? ' Defending' : ''].join('');
+      const tags = [...abilitiesOf(f.troop).map((a) => ` ${a.name}`), ...f.status.filter((s) => s !== 'hasted').map((s) => ` ${STATUSES[s].name}`), f.defending ? ' Defending' : ''].join('');
       const { attack, defence } = statsOf(b, f);
       const info = `${f.count} ${f.count === 1 ? t.one : t.name}  ·  Att ${attack} Def ${defence} Dmg ${t.damage[0]}-${t.damage[1]} HP ${f.hp}/${t.hp} Spd ${speedOf(f)}${f.shots ? ` Shots ${f.shots}` : ''}${tags}`;
       drawText(screen, info, BAR.x + 12, text, f.side === 'player' ? PARCHMENT[6] : RED[6], INK);

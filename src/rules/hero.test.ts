@@ -102,7 +102,7 @@ describe('skills and gear', () => {
     const whisperer: GameState = { ...knight(), hero: { ...knight().hero, perks: ['gooseWhisperer'] } };
     const hideout = ALDMOOR.locations.find((l) => l.id === 'hideout')!;
     const b = createBattle({ place: 'hideout', seed: 1, player: whisperer.army, enemy: hideout.enemy!.army, hero: heroInBattle(whisperer) });
-    expect(b.fighters.find((f) => f.troop === 'baron')!.slowed).toBe(true);
+    expect(b.fighters.find((f) => f.troop === 'baron')!.status).toContain('slowed');
     expect(autoResolve(b).result).toBeDefined();
     expect(winChance(whisperer, 'hideout')).toBeGreaterThanOrEqual(winChance(knight(), 'hideout'));
   });

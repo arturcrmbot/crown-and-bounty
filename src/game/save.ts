@@ -5,7 +5,7 @@ import type { GameState } from '../rules/game';
  * half-loaded, and the generator's whenever it lays provinces out differently: a save only
  * records a generated province's seed, and must get the same map back.
  */
-const VERSION = 4;
+const VERSION = 5;
 const GENERATOR = 2;
 const KEY = `kings-commission/save/v${VERSION}-g${GENERATOR}`;
 /** Off once a restart has begun (or for frozen test pages), so nothing writes the old game back. */

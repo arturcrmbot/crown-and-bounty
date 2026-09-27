@@ -1,6 +1,6 @@
 import { troopPower, TROOPS } from '../../content/troops';
 import {
-  activeFighter, battleAct, boltDamage, canCast, fighterById, isRanged, options, spellCost, strike, wound,
+  activeFighter, battleAct, canCast, fighterById, hasStatus, isRanged, options, spellCost, spellDamage, strike, wound,
   type BattleAction, type BattleState, type Fighter,
 } from './battle';
 import { distance } from './hex';
@@ -47,18 +47,19 @@ export function chooseAction(b: BattleState): BattleAction {
   if (foes.length === 0) return { type: 'defend' };
 
   if (f.side === 'player' && canCast(b, 'bolt')) {
-    const target = foes.reduce((best, o) => (payoff(o, boltDamage(b)) > payoff(best, boltDamage(b)) ? o : best));
-    if (worthOf(target, boltDamage(b)) > troopPower(target.troop) * 0.5) return { type: 'cast', spell: 'bolt', target: target.id };
+    const bolt = spellDamage(b, 'bolt');
+    const target = foes.reduce((best, o) => (payoff(o, bolt) > payoff(best, bolt) ? o : best));
+    if (worthOf(target, bolt) > troopPower(target.troop) * 0.5) return { type: 'cast', spell: 'bolt', target: target.id };
   }
   if (f.side === 'player' && canCast(b, 'slow')) {
-    const fast = foes.filter((o) => !o.slowed && TROOPS[o.troop].speed >= 6).sort((x, y) => threat(y) - threat(x))[0];
+    const fast = foes.filter((o) => !hasStatus(o, 'slowed') && TROOPS[o.troop].speed >= 6).sort((x, y) => threat(y) - threat(x))[0];
     if (fast && (!b.hero.spells.includes('bolt') || b.hero.mana >= spellCost(b, 'slow') + spellCost(b, 'bolt'))) return { type: 'cast', spell: 'slow', target: fast.id };
   }
   if (f.side === 'player' && canCast(b, 'bless') && !b.hero.spells.includes('bolt')) {
-    const strongest = b.fighters.filter((o) => o.count > 0 && o.side === 'player' && !o.blessed).sort((x, y) => threat(y) - threat(x))[0];
+    const strongest = b.fighters.filter((o) => o.count > 0 && o.side === 'player' && !hasStatus(o, 'blessed')).sort((x, y) => threat(y) - threat(x))[0];
     if (strongest) return { type: 'cast', spell: 'bless', target: strongest.id };
   }
-  if (f.side === 'player' && canCast(b, 'haste') && !f.hasted && !isRanged(f)) return { type: 'cast', spell: 'haste', target: f.id };
+  if (f.side === 'player' && canCast(b, 'haste') && !hasStatus(f, 'hasted') && !isRanged(f)) return { type: 'cast', spell: 'haste', target: f.id };
 
   const opts = options(b);
   if (opts.shoot.length > 0) {

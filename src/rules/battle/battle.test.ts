@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { autoResolve, chooseAction } from './ai';
-import { activeFighter, battleAct, boltDamage, createBattle, fighterById, options, strike, wound, type BattleHero, type BattleState } from './battle';
+import { activeFighter, battleAct, createBattle, fighterById, options, spellDamage, strike, wound, type BattleHero, type BattleState } from './battle';
 import { colOf, distance, hexIndex, neighbours, reachable } from './hex';
 
 const hero: BattleHero = { attack: 1, defence: 1, spellPower: 2, mana: 20, spells: ['bolt', 'bless', 'slow'], castRound: 0 };
@@ -82,7 +82,7 @@ describe('a battle', () => {
     const b = battle(['knights'], [10], ['witch'], [1]);
     const ready = { ...b, order: [1, 0] };
     const hexed = battleAct(ready, { type: 'shoot', target: 0 });
-    expect(fighterById(hexed.battle, 0).slowed).toBe(true);
+    expect(fighterById(hexed.battle, 0).status).toContain('slowed');
     expect(hexed.events.some((e) => e.type === 'hit' && e.hexed)).toBe(true);
   });
 
@@ -98,7 +98,7 @@ describe('a battle', () => {
     const b = battle(['knights'], [10], ['swordsmen'], [30]);
     const acting = activeFighter(b)!.id;
     const cast = battleAct(b, { type: 'cast', spell: 'bolt', target: 1 });
-    expect(cast.events[0]).toMatchObject({ type: 'spell', damage: boltDamage(b) });
+    expect(cast.events[0]).toMatchObject({ type: 'spell', damage: spellDamage(b, 'bolt') });
     expect(cast.battle.hero.mana).toBe(13);
     expect(activeFighter(cast.battle)!.id).toBe(acting);
     expect(battleAct(cast.battle, { type: 'cast', spell: 'bolt', target: 1 }).events).toHaveLength(0);
