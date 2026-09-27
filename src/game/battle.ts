@@ -8,6 +8,7 @@ import { BLUE, GOLD, NEUTRAL, RED } from '../render/palette';
 import { CardView } from '../ui/card';
 import { play } from '../ui/sound';
 import type { Display } from './display';
+import type { Screen } from './screen';
 
 type Step = { duration: number; elapsed: number; started: boolean; start?: () => void; tick?: (t: number) => void; end?: () => void };
 
@@ -17,7 +18,8 @@ const ENEMY_THINK = 0.35;
  * A battle on screen. The rules decide everything; this plays each event as a little animation,
  * lets the player point and click on their stacks' turns, and runs the AI on the enemy's.
  */
-export class BattleController {
+export class BattleController implements Screen {
+  readonly name = 'battle';
   battle: BattleState;
   private readonly screen: BattleScreen;
   private readonly view: BattleView;
@@ -63,7 +65,7 @@ export class BattleController {
     this.cards.dispose();
   }
 
-  private name(id: number, count?: number) {
+  private fighterName(id: number, count?: number) {
     const f = fighterById(this.battle, id);
     const who = f.side === 'player' ? 'Your' : 'Their';
     return count === undefined ? `${who} ${TROOPS[f.troop].name}` : `${who} ${troops(f.troop, count)}`;
@@ -146,7 +148,7 @@ export class BattleController {
               v.flashing.add(e.target);
               if (!e.ranged) play('hit');
               this.float(e.target, `-${e.damage}`, RED[5]);
-              v.log = `${this.name(e.attacker)} ${e.ranged ? 'shoot' : e.retaliation ? 'strike back at' : 'hit'} ${this.name(e.target).replace(/^(Your|Their) /, (m) => m.toLowerCase())} for ${e.damage}${e.killed ? `. ${e.killed} perish.` : '.'}${e.hexed ? ' The hex slows them down.' : ''}`;
+              v.log = `${this.fighterName(e.attacker)} ${e.ranged ? 'shoot' : e.retaliation ? 'strike back at' : 'hit'} ${this.fighterName(e.target).replace(/^(Your|Their) /, (m) => m.toLowerCase())} for ${e.damage}${e.killed ? `. ${e.killed} perish.` : '.'}${e.hexed ? ' The hex slows them down.' : ''}`;
             },
             end: () => {
               v.flashing.delete(e.target);
@@ -159,7 +161,7 @@ export class BattleController {
           this.step(0.3, {
             start: () => {
               this.float(e.fighter, `+${e.healed}`, GOLD[6]);
-              v.log = `${this.name(e.fighter)} regenerate: the wounds close up.`;
+              v.log = `${this.fighterName(e.fighter)} regenerate: the wounds close up.`;
             },
           });
           break;
@@ -173,7 +175,7 @@ export class BattleController {
             start: () => {
               v.shots.push(shot);
               play(look.kind === 'bolt' ? 'bolt' : 'spell');
-              v.log = `${this.battle.hero.name ?? 'Aldric'} casts ${SPELLS[e.spell].name} on ${this.name(e.target).toLowerCase()}${e.damage ? `: ${e.damage} damage${e.killed ? `, ${e.killed} perish` : ''}` : ''}.`;
+              v.log = `${this.battle.hero.name ?? 'Aldric'} casts ${SPELLS[e.spell].name} on ${this.fighterName(e.target).toLowerCase()}${e.damage ? `: ${e.damage} damage${e.killed ? `, ${e.killed} perish` : ''}` : ''}.`;
               if (e.damage) {
                 v.flashing.add(e.target);
                 this.float(e.target, `-${e.damage}`, GOLD[6]);
@@ -193,7 +195,7 @@ export class BattleController {
           this.step(0.25, {
             start: () => {
               this.float(e.fighter, e.type === 'wait' ? 'waits' : 'defends', NEUTRAL[7]);
-              v.log = `${this.name(e.fighter)} ${e.type === 'wait' ? 'wait for a better moment' : 'raise their shields'}.`;
+              v.log = `${this.fighterName(e.fighter)} ${e.type === 'wait' ? 'wait for a better moment' : 'raise their shields'}.`;
             },
           });
           break;
@@ -222,7 +224,7 @@ export class BattleController {
     }
   }
 
-  update(dt: number) {
+  update(dt: number, _held?: ReadonlySet<string>) {
     const v = this.view;
     const pace = this.pace * (this.auto ? 2.5 : 1);
     for (const f of v.floaters) f.age += dt;
@@ -269,8 +271,16 @@ export class BattleController {
     }
   }
 
-  render(): Uint8Array {
+  render(_tick?: number): Uint8Array {
     return this.screen.draw(this.battle, this.view).data;
+  }
+
+  get bitmap() {
+    return this.screenBitmap;
+  }
+
+  placeCards() {
+    this.placeCard();
   }
 
   get screenBitmap() {

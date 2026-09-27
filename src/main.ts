@@ -63,7 +63,7 @@ window.addEventListener('keydown', (e) => {
 });
 window.addEventListener('pagehide', () => saveGame(game.state));
 
-if (!game.battle && !game.court && resume && !resume.opening) game.adventure.showCard(resume.over === 'lost' ? failedCard(resume) : welcomeBackCard(resume), null);
+if (game.top.name === 'adventure' && resume && !resume.opening) game.adventure.showCard(resume.over === 'lost' ? failedCard(resume) : welcomeBackCard(resume), null);
 
 let last = performance.now();
 requestAnimationFrame(function frame(now) {

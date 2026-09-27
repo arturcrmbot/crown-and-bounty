@@ -3,12 +3,15 @@ import { MAP_VIEW } from '../render/frame';
 import { apply, courtCard, levelUpCard, roman, type Action, type GameEvent, type GameState } from '../rules/game';
 import { CardView } from '../ui/card';
 import type { Display } from './display';
+import { NO_INPUT, type Screen } from './screen';
 
 /**
  * The King's court between commissions: the throne room, with the cards on top. Any level-ups
  * still waiting come first, then the King's thanks and boons, then the next commission's briefing.
  */
-export class CourtController {
+export class CourtController implements Screen {
+  readonly name = 'court';
+  readonly input = NO_INPUT;
   state: GameState;
   private readonly display: Display;
   private readonly screen = new CourtScreen();
@@ -44,12 +47,20 @@ export class CourtController {
     else this.showNext();
   }
 
-  update(dt: number) {
+  update(dt: number, _held?: ReadonlySet<string>) {
     this.time += dt;
   }
 
-  render(): Uint8Array {
+  render(_tick?: number): Uint8Array {
     return this.screen.draw(this.time).data;
+  }
+
+  get bitmap() {
+    return this.screen.screen;
+  }
+
+  placeCards() {
+    this.placeCard();
   }
 
   get screenBitmap() {

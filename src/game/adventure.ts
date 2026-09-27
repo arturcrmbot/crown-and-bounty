@@ -1,6 +1,5 @@
 import { BACKGROUNDS } from '../content/backgrounds';
 import { addPlace, buildAdventureScene, type AdventureScene, type Hitbox } from '../render/adventureScene';
-import type { Placed } from '../render/adventureScreen';
 import { MAP_VIEW } from '../render/frame';
 import { HOURGLASS, HOURGLASS_AT, paintHud } from '../render/hud';
 import type { BattleState } from '../rules/battle/battle';
@@ -13,8 +12,10 @@ import { play } from '../ui/sound';
 import { HoverLabel } from '../ui/label';
 import type { Display } from './display';
 import type { Input } from './input';
+import type { Screen } from './screen';
 import { backgroundCard, endCard, storyCard } from './intro';
 import { clearSave, saveGame } from './save';
+import { Walks } from './walks';
 
 /** Map pixels per second. */
 const RIDE_SPEED = 95;
@@ -42,7 +43,8 @@ function curve(points: Point[]): Point[] {
  * The adventure map: turns clicks into rules actions, animates the ride between the cells the
  * rules move the hero through, and shows whatever the rules' events say happened.
  */
-export class AdventureController {
+export class AdventureController implements Screen {
+  readonly name = 'adventure';
   state: GameState;
   readonly map: MapModel;
   readonly scene: AdventureScene;
@@ -53,7 +55,7 @@ export class AdventureController {
   /** Where the current ride is going, to find the way again when enemies move. */
   private target: Point | null = null;
   /** Enemy sprites walking their night's path. */
-  private readonly walks = new Map<string, { object: Placed; box?: Hitbox; points: Point[]; t: number; offset: Point }>();
+  private readonly walks = new Walks();
   private visiting: string | null = null;
   /** Where the hero is drawn; it chases his cell in the rules. */
   private readonly drawn: { x: number; y: number };
@@ -88,6 +90,18 @@ export class AdventureController {
 
   get view() {
     return this.scene.view;
+  }
+
+  render(tick: number): Uint8Array {
+    return this.view.compose(tick).data;
+  }
+
+  get bitmap() {
+    return this.view.screen;
+  }
+
+  placeCards() {
+    this.placeCard();
   }
 
   /** Takes this screen's cards and labels off the page, when a new province replaces it. */
@@ -163,7 +177,10 @@ export class AdventureController {
           this.drawn.y = e.at[1];
           break;
         case 'enemyMoved':
-          this.walkEnemy(e.id, e.from, e.path);
+          {
+            const object = this.scene.pickups.get(e.id);
+            if (object) this.walks.start(e.id, object, this.scene.hitboxes.find((b) => b.id === e.id), e.from, e.path);
+          }
           // Somebody may be standing on the road now: find the way again.
           if (this.target) this.replan();
           break;
@@ -270,42 +287,9 @@ export class AdventureController {
     if (card) this.showCard(card, null);
   }
 
-  /** Slides an enemy's sprite along the path it walked in the night, and moves its hit area with it. */
-  private walkEnemy(id: string, from: Point, path: Point[]) {
-    const object = this.scene.pickups.get(id);
-    const box = this.scene.hitboxes.find((b) => b.id === id);
-    if (!object || path.length === 0) return;
-    // A walk still going from the night before finishes first.
-    if (this.walks.has(id)) this.walkEnemies(Infinity, id);
-    this.walks.set(id, { object, box, points: [from, ...path], t: 0, offset: [object.x - from[0], object.y - from[1]] });
-  }
-
-  private walkEnemies(dt: number, only?: string) {
-    for (const [id, walk] of this.walks) {
-      if (only && id !== only) continue;
-      walk.t = Math.min(1, walk.t + dt / 0.9);
-      const seg = walk.t * (walk.points.length - 1);
-      const k = Math.min(walk.points.length - 2, Math.floor(seg));
-      const f = seg - k;
-      const [ax, ay] = walk.points[k];
-      const [bx, by] = walk.points[k + 1] ?? walk.points[k];
-      const [x, y] = [ax + (bx - ax) * f, ay + (by - ay) * f];
-      const [dx, dy] = [x + walk.offset[0] - walk.object.x, y + walk.offset[1] - walk.object.y];
-      walk.object.x += dx;
-      walk.object.y += dy;
-      if (walk.box) {
-        walk.box.x0 += dx;
-        walk.box.x1 += dx;
-        walk.box.y0 += dy;
-        walk.box.y1 += dy;
-      }
-      if (walk.t >= 1) this.walks.delete(id);
-    }
-  }
-
-  update(dt: number, held: Set<string>) {
+  update(dt: number, held: ReadonlySet<string>) {
     this.promptPending();
-    this.walkEnemies(dt);
+    this.walks.advance(dt);
     const dx = (held.has('arrowright') || held.has('d') ? 1 : 0) - (held.has('arrowleft') || held.has('a') ? 1 : 0);
     const dy = (held.has('arrowdown') || held.has('s') ? 1 : 0) - (held.has('arrowup') || held.has('w') ? 1 : 0);
     if (dx || dy) {
