@@ -1,4 +1,4 @@
-import { apply, armyPower, choose, endDay, fight, hasNextCommission, learn, locationById, PLACE_KINDS, provinceOf, visit, type BoonId, type GameState } from './game';
+import { apply, armyPower, choose, endDay, fight, hasNextCommission, learn, locationById, PLACE_KINDS, provinceOf, visit, type BoonId, type GameState, type Location } from './game';
 import { buildMap, type MapModel } from './map/model';
 import { planRoute, routeCosts, stepAlong } from './map/movement';
 
@@ -9,7 +9,10 @@ export type BotRun = { won: boolean; day: number; gold: number; power: number; f
  * chests when short of it, recruit whatever it can, fight when the odds are good, end the day when
  * tired or when there's nothing to do. It uses exactly the rules the screens use.
  */
-export function playCommission(start: GameState, map: MapModel, maxSteps = 20000): BotRun {
+/** Limits for a bot run: which places it may go for, and when to stop (for balance checkpoints). */
+export type BotLimits = { allow?: (place: Location) => boolean; stop?: (state: GameState) => boolean };
+
+export function playCommission(start: GameState, map: MapModel, maxSteps = 20000, limits: BotLimits = {}): BotRun {
   let state = start;
   const log: string[] = [];
   let fights = 0;
@@ -25,9 +28,10 @@ export function playCommission(start: GameState, map: MapModel, maxSteps = 20000
       log.push(`day ${state.day}: ambushed by ${locationById(state, id).name}`);
     }
   };
-  for (let guard = 0; guard < 400 && !state.over; guard++) {
+  for (let guard = 0; guard < 400 && !state.over && !limits.stop?.(state); guard++) {
     let best: { id: string; route: number[]; score: number } | null = null;
     for (const l of state.locations) {
+      if (limits.allow && !limits.allow(l)) continue;
       const value = PLACE_KINDS[l.kind].worth(state, l);
       if (value === null) continue;
       const route = planRoute(state, map, l.at, Boolean(l.enemy));

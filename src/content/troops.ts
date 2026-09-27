@@ -1,7 +1,7 @@
 import type { StatusId } from './spells';
 
 /** Every kind of troop, with HoMM2-style numbers. Troops are just numbers: 400 peasants are 400 peasants. */
-export type TroopId = 'peasants' | 'archers' | 'knights' | 'swordsmen' | 'crossbowmen' | 'wolves' | 'baron' | 'goblins' | 'trolls' | 'witch' | 'bramble';
+export type TroopId = 'peasants' | 'archers' | 'knights' | 'swordsmen' | 'crossbowmen' | 'wolves' | 'baron' | 'goblins' | 'trolls' | 'witch' | 'bramble' | 'poachers' | 'bandits' | 'boars';
 
 export type TroopDef = {
   id: TroopId;
@@ -61,6 +61,9 @@ export const TROOPS: Record<TroopId, TroopDef> = {
   trolls: { id: 'trolls', name: 'Trolls', one: 'Troll', hp: 70, attack: 9, defence: 7, damage: [8, 12], speed: 3, leadership: 12, wage: 20, note: 'Big, slow, and very attached to their bridge.', abilities: ['regenerates'] },
   witch: { id: 'witch', name: 'Mother Mirrow', one: 'Mother Mirrow', hp: 140, attack: 8, defence: 8, damage: [6, 10], speed: 4, shots: 8, leadership: 99, wage: 0, note: 'Throws hexes, and the occasional ladle.', abilities: ['hexes'] },
   bramble: { id: 'bramble', name: 'Aunt Bramble', one: 'Aunt Bramble', hp: 170, attack: 9, defence: 9, damage: [7, 11], speed: 4, shots: 10, leadership: 99, wage: 0, note: 'Mother Mirrow\u2019s big sister. Bigger hat, worse temper.', abilities: ['hexes'] },
+  poachers: { id: 'poachers', name: 'Poachers', one: 'Poacher', hp: 7, attack: 3, defence: 2, damage: [1, 3], speed: 4, shots: 6, leadership: 1, wage: 1, note: 'Other people\u2019s deer, other people\u2019s rabbits, and now, other people\u2019s officers.' },
+  bandits: { id: 'bandits', name: 'Highwaymen', one: 'Highwayman', hp: 11, attack: 4, defence: 3, damage: [2, 3], speed: 5, leadership: 2, wage: 2, note: 'Stand and deliver. Mostly they stand.' },
+  boars: { id: 'boars', name: 'Wild Boars', one: 'Wild Boar', hp: 18, attack: 5, defence: 4, damage: [2, 4], speed: 5, leadership: 3, wage: 0, note: 'Bristles, tusks and a very short temper.' },
 };
 
 /**

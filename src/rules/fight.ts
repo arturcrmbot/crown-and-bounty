@@ -1,6 +1,7 @@
 import { BACKGROUNDS } from '../content/backgrounds';
 import { ARTIFACTS, type ArtifactId } from '../content/artifacts';
 import { autoResolve } from './battle/ai';
+import { applyEffects } from './effects/core';
 import { CAMPAIGN_LENGTH, campaignLines, commissionOf, hasNextCommission, provinceOf } from './campaign';
 import { revealDisc } from './map/fog';
 import { createBattle, survivors, type BattleHero } from './battle/battle';
@@ -92,6 +93,12 @@ export function beat(state: GameState, id: string, how: { title: string; lines: 
     next = giveArtifact(next, place.artifact as ArtifactId);
     spoils.push(`Among the spoils: **${ARTIFACTS[place.artifact as ArtifactId].name}**. ${foundNote(next, place.artifact as ArtifactId)}`);
   }
+  if (place.enemy?.spoils) {
+    const extra = applyEffects(next, place, place.enemy.spoils);
+    next = extra.state;
+    events.push(...extra.events);
+    spoils.push(...extra.lines);
+  }
   if (how.xp) {
     const grown = gainXp(next, how.xp);
     next = grown.state;
@@ -143,10 +150,13 @@ export function finishFight(state: GameState): Result {
  * The sergeants' estimate: how often the army wins this fight when both sides play it out by the
  * AI, over a few fixed seeds. Honest about tactics in a way raw troop numbers aren't.
  */
+/** Well-mixed seeds for the sample battles, so the samples cover different fields and dice. */
+const sampleSeed = (i: number) => (Math.imul(i + 1, 0x9e3779b1) ^ 0x85ebca6b) >>> 0;
+
 /** Recent answers, since the same odds get asked for again and again (every card, every bot step). */
 const chances = new Map<string, number>();
 
-export function winChance(state: GameState, id: string, samples = 8): number {
+export function winChance(state: GameState, id: string, samples = 16): number {
   const place = locationById(state, id);
   if (!place.enemy || state.army.length === 0) return 0;
   const key = JSON.stringify([state.army, heroInBattle(state), place.enemy.army, place.kind, provinceOf(state).fen ?? false, samples]);
@@ -163,7 +173,7 @@ function simulateChance(state: GameState, id: string, samples: number): number {
   if (!place.enemy) return 0;
   let wins = 0;
   for (let i = 1; i <= samples; i++) {
-    const battle = createBattle({ place: id, seed: i * 7919, player: state.army, enemy: place.enemy.army, hero: heroInBattle(state), obstacles: place.kind === 'hideout' ? 3 : 5 });
+    const battle = createBattle({ place: id, seed: sampleSeed(i), player: state.army, enemy: place.enemy.army, hero: heroInBattle(state), obstacles: place.kind === 'hideout' ? 3 : 5 });
     if (autoResolve(battle).result === 'won') wins++;
   }
   return wins / samples;

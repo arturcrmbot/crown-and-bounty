@@ -843,6 +843,32 @@ export function shrine(): Bitmap {
   return shaped;
 }
 
+/** A camp: two canvas tents, a cooking fire, and a pennant on a pole. */
+export function camp(phase = 0): Bitmap {
+  const sprite = new Bitmap(62, 40);
+  const tent = (cx: number, base: number, half: number, height: number) => {
+    for (let y = base - height; y < base; y++) {
+      const w = ((y - (base - height)) / height) * half;
+      for (let x = Math.round(cx - w); x <= cx + w; x++) sprite.set(x, y, x === Math.round(cx) ? WOOD[2] : flat(PLASTER4, x < cx ? 0.8 : 0.45, x, y));
+    }
+    for (let y = base - 7; y < base; y++) sprite.set(Math.round(cx), y, INK);
+  };
+  tent(18, 34, 13, 22);
+  tent(42, 30, 11, 19);
+  for (let y = 4; y < 30; y++) sprite.set(54, y, WOOD[2]);
+  for (let i = 1; i < 8; i++) {
+    const wave = Math.round(Math.sin(i * 0.8 + phase) * 0.9);
+    for (let j = 0; j < 6 - Math.floor(i / 3); j++) sprite.set(54 - i, 5 + j + wave, flat(RED4, 0.7 - j * 0.05, i, j));
+  }
+  for (const [x, y] of [[29, 36], [31, 35], [33, 36], [30, 37], [32, 37]]) sprite.set(x, y, WOOD[1]);
+  sprite.set(31, 34, GOLD[6]);
+  sprite.set(30, 35, RED[5]);
+  sprite.set(32, 35, GOLD[5]);
+  const shaped = outline(sprite, INK);
+  castShadow(shaped, 5, 2, 26);
+  return shaped;
+}
+
 /** A big red X painted on the ground, with a shovel stuck in beside it. */
 export function xMark(phase = 0): Bitmap {
   const sprite = new Bitmap(40, 34);

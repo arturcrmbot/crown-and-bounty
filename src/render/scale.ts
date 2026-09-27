@@ -24,6 +24,9 @@ export const SIZE: Record<TroopId, number> = {
   trolls: 1.42,
   witch: 1.1,
   bramble: 1.2,
+  poachers: 0.95,
+  bandits: 1,
+  boars: 0.9,
 };
 
 export const battleScale = (troop: TroopId) => BATTLE_PERSON * SIZE[troop];

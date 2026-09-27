@@ -32,6 +32,10 @@ export type Enemy = {
   charge?: string;
   /** Other ways past them than a fight: talk, pay or trick. */
   parleys?: ContentChoice[];
+  /** What else beating them brings, however it's done: new recruits, a spell, a place appears. */
+  spoils?: Effects;
+  /** How hard they are meant to be, for the balance checks: see `rules/difficulty.ts`. */
+  tier?: Tier;
   /**
    * What they do at night. `guard` holds its ground (the default). `roam` wanders within `range` of
    * `home`. `hunt` roams too, but comes for a weaker hero who strays into its territory.
@@ -39,7 +43,7 @@ export type Enemy = {
   behaviour?: 'guard' | 'roam' | 'hunt';
   range?: number;
   home?: Point;
-  /** A share more troops every payday, up to eight times: a villain recruiting while you dawdle. */
+  /** A share more troops every payday, up to five times: a villain recruiting while you dawdle. */
   grows?: number;
   grown?: number;
   /** Nights left before a hunter that has fallen on the camp hunts again. */
@@ -54,6 +58,12 @@ export type Enemy = {
 };
 
 export type FlagValue = boolean | number | string;
+
+/**
+ * How hard an enemy is meant to be: a `pest` is an easy first fight, a `band` a fair one, a `gate`
+ * too strong at first (explore, grow, come back), and a `boss` needs the whole loop.
+ */
+export type Tier = 'pest' | 'band' | 'gate' | 'boss';
 
 /**
  * What a choice asks of the hero. Who he was, what he knows, what he carries and what has happened
@@ -95,6 +105,8 @@ export type Effects = {
   win?: boolean;
   /** The page of this place to show next, instead of closing. */
   page?: string;
+  /** A new place appears on the map: a camp of deserters, a hidden grove. */
+  place?: Location;
 };
 
 /** A choice written as content: a button, what it needs, what it does, and what the card then says. */
@@ -134,7 +146,7 @@ export type Location = {
 
 /** Flavour for a place: before a visit, once it's used up, and on the visit itself. */
 export type PlaceText = { about?: string[]; done?: string[]; visit?: string[] };
-export type PlaceLook = 'abbey' | 'peathut' | 'windmill' | 'stilthut' | 'shrine';
+export type PlaceLook = 'abbey' | 'peathut' | 'windmill' | 'stilthut' | 'shrine' | 'camp';
 
 /** The campaign so far: which commission this is, how the others went, and how this one began. */
 export type Campaign = {

@@ -47,9 +47,10 @@ export function enemy(kind: 'patrol' | 'hideout'): PlaceKind {
     },
     worth(state, place) {
       if (place.done) return null;
-      const odds = winChance(state, place.id, 6);
+      const odds = winChance(state, place.id, 8);
       if (kind === 'patrol') return odds >= 0.9 ? place.enemy!.reward + 200 : null;
-      return odds >= 0.85 || (state.day > 40 && odds >= 0.6) ? 5000 : null;
+      // A villain is worth a gamble once the days are running out.
+      return odds >= 0.85 || (state.day > 30 && odds >= 0.5) || (state.day > 60 && odds >= 0.25) ? 5000 : null;
     },
   };
 }

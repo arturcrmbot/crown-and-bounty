@@ -1,6 +1,6 @@
 import type { TroopId } from '../content/troops';
 import { Bitmap, outline, SHADOW } from './bitmap';
-import { BLUE, FOG, GOLD, INK, LEAF, NEUTRAL, PLUM, RED, SKIN, STONE, WOOD } from './palette';
+import { BLUE, EARTH, FOG, GOLD, INK, LEAF, NEUTRAL, PLUM, RED, SKIN, STONE, WOOD } from './palette';
 import { BLUE4, COAT4, DIRT4, flat, GOLD4, RED4, shadowOval, STONE4, WOOD4 } from './sprites';
 import { mirror } from './sprites';
 import { battleScale, mapScale } from './scale';
@@ -25,7 +25,7 @@ type Look = {
   skin?: readonly number[];
 };
 
-const LOOKS: Record<Exclude<TroopId, 'wolves'>, Look> = {
+const LOOKS: Record<Exclude<TroopId, 'wolves' | 'boars'>, Look> = {
   knights: { body: BLUE4, legs: STONE4, head: 'helm', weapon: 'sword', shield: BLUE4, plume: BLUE[5] },
   archers: { body: LEAF4, legs: WOOD4, head: 'hood', weapon: 'bow' },
   peasants: { body: DIRT4, legs: WOOD4, head: 'straw', weapon: 'fork' },
@@ -36,6 +36,8 @@ const LOOKS: Record<Exclude<TroopId, 'wolves'>, Look> = {
   trolls: { body: DIRT4, legs: TROLL4, head: 'brute', weapon: 'club', skin: TROLL4 },
   witch: { body: PLUM4, legs: PLUM4, head: 'witchhat', weapon: 'ladle' },
   bramble: { body: GOBLIN4, legs: PLUM4, head: 'witchhat', weapon: 'ladle' },
+  poachers: { body: DIRT4, legs: WOOD4, head: 'hood', weapon: 'bow' },
+  bandits: { body: COAT4, legs: WOOD4, head: 'kettle', weapon: 'sword' },
 };
 
 /**
@@ -210,6 +212,43 @@ function wolfSmall(pose: Pose): Bitmap {
   return shaped;
 }
 
+/** A wild boar at map size, facing right: bristly back, tusks, and little legs going like pistons. */
+function boarSmall(pose: Pose): Bitmap {
+  const sprite = new Bitmap(44, 28);
+  const lunge = pose === 'strike' ? 3 : 0;
+  const leg = pose === 'step' ? 2 : 0;
+  const BRISTLE4 = [EARTH[1], EARTH[2], EARTH[4], EARTH[5]];
+  const ell = (cx: number, cy: number, rx: number, ry: number, bias: number) => {
+    for (let y = Math.floor(cy - ry); y <= cy + ry; y++) {
+      for (let x = Math.floor(cx - rx); x <= cx + rx; x++) {
+        const u = (x + 0.5 - cx) / rx;
+        const v = (y + 0.5 - cy) / ry;
+        if (u * u + v * v <= 1) sprite.set(x, y, flat(BRISTLE4, bias - v * 0.35 - u * 0.08, x, y));
+      }
+    }
+  };
+  for (const [x, dx] of [[12, -leg], [16, leg], [25, leg], [29, -leg]]) for (let y = 19; y < 25; y++) sprite.set(x + (dx * (y - 19)) / 6, y, y > 23 ? INK : EARTH[1]);
+  ell(21, 15, 12, 7, 0.55);
+  ell(33 + lunge, 15, 6, 5, 0.5);
+  ell(38 + lunge, 17, 2.8, 2.4, 0.35);
+  for (let x = 10; x < 30; x += 2) sprite.set(x, 8 + (x % 4 === 0 ? 0 : 1), EARTH[0]);
+  sprite.set(32 + lunge, 12, INK);
+  sprite.set(31 + lunge, 9, EARTH[1]);
+  for (const [x, y] of [[38, 15], [39, 14], [40, 13]]) sprite.set(x + lunge, y, NEUTRAL[7]);
+  for (let i = 0; i < 4; i++) sprite.set(9 - i, 13 + (i % 2), EARTH[1]);
+  const shaped = outline(sprite, INK);
+  shadowOval(shaped, 24, 24, 15, 2.2);
+  return shaped;
+}
+
+/** A wild boar at battle size: drawn at map size and doubled, like the wolf. */
+function boar(pose: Pose): Bitmap {
+  const small = boarSmall(pose);
+  const sprite = new Bitmap(small.width * 2, small.height * 2);
+  for (let y = 0; y < sprite.height; y++) for (let x = 0; x < sprite.width; x++) sprite.data[y * sprite.width + x] = small.data[(y >> 1) * small.width + (x >> 1)];
+  return sprite;
+}
+
 const cache = new Map<string, Bitmap>();
 
 /**
@@ -220,7 +259,12 @@ export function troopFigure(troop: TroopId, facing: 1 | -1, pose: Pose, size: 'b
   const key = `${troop}/${facing}/${pose}/${size}`;
   let sprite = cache.get(key);
   if (!sprite) {
-    const right = troop === 'wolves' ? (size === 'battle' ? wolf(pose) : wolfSmall(pose)) : soldier(LOOKS[troop], pose, size === 'battle' ? battleScale(troop) : mapScale(troop));
+    const right =
+      troop === 'wolves'
+        ? size === 'battle' ? wolf(pose) : wolfSmall(pose)
+        : troop === 'boars'
+          ? size === 'battle' ? boar(pose) : boarSmall(pose)
+          : soldier(LOOKS[troop], pose, size === 'battle' ? battleScale(troop) : mapScale(troop));
     sprite = facing > 0 ? right : mirror(right);
     cache.set(key, sprite);
   }
@@ -231,7 +275,11 @@ export function troopFigure(troop: TroopId, facing: 1 | -1, pose: Pose, size: 'b
 export const troopSprite = (troop: TroopId, facing: 1 | -1, pose: Pose = 'idle') => troopFigure(troop, facing, pose, 'battle');
 
 /** Pixels from the top of a figure to its feet. */
-export const figureFoot = (troop: TroopId, size: 'battle' | 'map') => (troop === 'wolves' ? (size === 'battle' ? 52 : 26) : Math.round(41 * (size === 'battle' ? battleScale(troop) : mapScale(troop))));
+export function figureFoot(troop: TroopId, size: 'battle' | 'map'): number {
+  if (troop === 'wolves') return size === 'battle' ? 52 : 26;
+  if (troop === 'boars') return size === 'battle' ? 48 : 24;
+  return Math.round(41 * (size === 'battle' ? battleScale(troop) : mapScale(troop)));
+}
 
 /** The same sprite flashed pale, for the moment a stack is hit. */
 export function flashSprite(sprite: Bitmap): Bitmap {

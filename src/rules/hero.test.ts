@@ -60,8 +60,8 @@ describe('levels', () => {
   });
 
   it('pays experience for beating an enemy and for finding places', () => {
-    const won = apply(knight(), { type: 'choose', id: 'wolves', choice: 'auto' })!.state;
-    expect(won.hero.xp).toBeGreaterThan(200);
+    const won = apply(knight(), { type: 'choose', id: 'highwaymen', choice: 'auto' })!.state;
+    expect(won.hero.xp).toBeGreaterThan(80);
     const seen = visit(knight(), 'signpost').state;
     expect(seen.hero.xp).toBe(40);
     expect(visit(seen, 'signpost').state.hero.xp).toBe(40);

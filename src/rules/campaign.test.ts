@@ -219,7 +219,7 @@ describe('parleys', () => {
   it('let anyone pay the patrol to go home, which costs gold and gains nothing', () => {
     const s = { ...newGame(1, ALDMOOR, 'knight'), opening: undefined };
     const paid = apply(s, { type: 'choose', id: 'patrol', choice: 'parley/bribe' })!;
-    expect(paid.state.gold).toBe(s.gold - 400);
+    expect(paid.state.gold).toBe(s.gold - 900);
     expect(paid.state.hero.xp).toBe(0);
     expect(paid.state.locations.find((l) => l.id === 'patrol')!.done).toBe(true);
     expect(paid.events[0]).toEqual({ type: 'removed', id: 'patrol' });

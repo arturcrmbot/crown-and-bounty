@@ -15,7 +15,13 @@ const at = {
   hideout: [104, 850],
   wolves: [256, 700],
   shrine: [676, 506],
+  poachers: [880, 684],
+  highwaymen: [366, 336],
+  boars: [1040, 424],
 } satisfies Record<string, Point>;
+
+/** The patrol's size: a gate, too strong for a fresh army (see `rules/difficulty.ts`). */
+const PATROL = { swordsmen: 48, crossbowmen: 29 };
 
 const paths: Point[][] = [
   // Watchtower, past the signpost and the hero, over the bridge to Westmere.
@@ -178,23 +184,36 @@ export const ALDMOOR: Province = {
       artifact: 'carvingKnife',
       enemy: {
         look: 'soldiers',
+        tier: 'gate',
         behaviour: 'roam',
         range: 90,
-        lines: ['Grimsby\u2019s men, with goose feathers in their helmets. They patrol the crossroads.'],
-        army: [{ troop: 'swordsmen', count: 20 }, { troop: 'crossbowmen', count: 12 }],
-        reward: 300,
+        lines: ['Grimsby\u2019s men, with goose feathers in their helmets. They patrol the crossroads, and they are not in a hurry.'],
+        army: [{ troop: 'swordsmen', count: PATROL.swordsmen }, { troop: 'crossbowmen', count: PATROL.crossbowmen }],
+        reward: 500,
         threat: 'They level their spears.',
         parleys: [
           {
             id: 'bribe',
             label: 'Pay them to go home',
-            needs: { gold: 400 },
+            needs: { gold: 900 },
             effects: { done: true },
             lines: ['The sergeant counts the coins twice, salutes, and marches the patrol back to Darkwood. *"We got lost, my lord. Very lost."*'],
           },
         ],
+        spoils: {
+          place: {
+            id: 'deserters',
+            kind: 'village',
+            look: 'camp',
+            name: 'Deserters\u2019 Camp',
+            at: [468, 628],
+            done: false,
+            recruits: { troop: 'swordsmen', count: 12, price: 60 },
+            text: { about: ['Grimsby\u2019s former men, sharpening their swords and their excuses.', 'Swordsmen, for hire.'] },
+          },
+        },
         flees: 'Grimsby\u2019s patrol breaks and runs for Darkwood.',
-        loot: 'You find {gold} on the road.',
+        loot: 'You find {gold} on the road. And a dozen of them would rather fight for the Crown: they make camp by the crossroads, where **swordsmen** can now be hired.',
       },
     },
     {
@@ -206,10 +225,11 @@ export const ALDMOOR: Province = {
       artifact: 'goldenFeather',
       enemy: {
         look: 'stockade',
+        tier: 'boss',
         grows: 0.05,
         charge: 'Storm the stockade',
         lines: ['A muddy stockade deep in Darkwood. Someone inside is honking.'],
-        army: [{ troop: 'swordsmen', count: 40 }, { troop: 'crossbowmen', count: 20 }, { troop: 'baron', count: 1 }],
+        army: [{ troop: 'swordsmen', count: 60 }, { troop: 'crossbowmen', count: 30 }, { troop: 'baron', count: 1 }],
         reward: 2000,
         threat: 'The Baron shouts from the palisade: *"I have the goose AND the walls!"*',
         parleys: [
@@ -227,6 +247,88 @@ export const ALDMOOR: Province = {
       text: { done: ['Nobody here but a few goose feathers.'] },
     },
     {
+      id: 'poachers',
+      kind: 'patrol',
+      name: 'Poachers',
+      at: at.poachers,
+      done: false,
+      enemy: {
+        look: 'soldiers',
+        tier: 'pest',
+        behaviour: 'roam',
+        range: 60,
+        lines: ['Poachers, with the King\u2019s deer over their shoulders.'],
+        army: [{ troop: 'poachers', count: 16 }],
+        reward: 150,
+        threat: 'They nock their arrows, a little guiltily.',
+        parleys: [
+          {
+            id: 'hire',
+            label: 'Offer them honest work',
+            needs: { background: 'courtier' },
+            effects: { done: true, troops: [{ troop: 'poachers', count: 16 }], xp: 60 },
+            lines: ['"Scouting for the Crown? Paid? In advance?" The poachers can\u2019t sign up fast enough.'],
+          },
+        ],
+        flees: 'The poachers drop the deer and run.',
+        loot: 'You find {gold} and a haunch of venison.',
+      },
+    },
+    {
+      id: 'highwaymen',
+      kind: 'patrol',
+      name: 'Highwaymen',
+      at: at.highwaymen,
+      done: false,
+      enemy: {
+        look: 'soldiers',
+        tier: 'pest',
+        lines: ['Highwaymen, in a line across the road to the watchtower.'],
+        army: [{ troop: 'bandits', count: 14 }],
+        reward: 200,
+        threat: '*"Stand and deliver!"* They stand. Somebody has to deliver.',
+        parleys: [
+          {
+            id: 'toll',
+            label: 'Pay their toll',
+            needs: { gold: 120 },
+            effects: { done: true },
+            lines: ['They bite every coin, bow, and melt away into the heather.'],
+          },
+        ],
+        flees: 'The highwaymen scatter into the heather.',
+        loot: 'Their takings: {gold}.',
+      },
+    },
+    {
+      id: 'boars',
+      kind: 'patrol',
+      name: 'Wild Boars',
+      at: at.boars,
+      done: false,
+      enemy: {
+        look: 'wolves',
+        tier: 'pest',
+        behaviour: 'roam',
+        range: 60,
+        lines: ['Wild boars, rooting up the castle road.'],
+        army: [{ troop: 'boars', count: 9 }],
+        reward: 80,
+        threat: 'The biggest one lowers its tusks and scrapes the ground.',
+        parleys: [
+          {
+            id: 'lead',
+            label: 'Lead them off with a trail of acorns',
+            needs: { background: 'ranger' },
+            effects: { done: true, xp: 60 },
+            lines: ['A trail of acorns into the woods, and the boars follow it like a procession.'],
+          },
+        ],
+        flees: 'The boars crash off into the woods.',
+        loot: 'Truffles where they were rooting! Worth {gold} at market.',
+      },
+    },
+    {
       id: 'wolves',
       kind: 'patrol',
       name: 'Wolf Pack',
@@ -234,9 +336,10 @@ export const ALDMOOR: Province = {
       done: false,
       enemy: {
         look: 'wolves',
+        tier: 'gate',
         lines: ['Wolves, sitting on the path like they own it.', 'Your archers are pretending not to have seen them.'],
-        army: [{ troop: 'wolves', count: 32 }],
-        reward: 150,
+        army: [{ troop: 'wolves', count: 64 }],
+        reward: 300,
         threat: 'They bare their teeth. One of them yawns, which is somehow worse.',
         parleys: [
           {

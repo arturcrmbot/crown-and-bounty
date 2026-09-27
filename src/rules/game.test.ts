@@ -77,14 +77,24 @@ suite('places', () => {
 });
 
 suite('fights', () => {
-  it('beats the patrol with the starting army, with some losses', () => {
-    const result = fight(newGame(), 'patrol')!;
+  it('beats the poachers with the starting army, with light losses', () => {
+    const result = fight(newGame(), 'poachers')!;
     expect(cardOf(result).title).toBe('Victory!');
-    expect(result.events).toContainEqual({ type: 'removed', id: 'patrol' });
-    expect(countOf(result.state.army, 'knights')).toBeGreaterThanOrEqual(4);
-    expect(armyPower(result.state.army)).toBeLessThan(armyPower(newGame().army));
-    expect(locationById(result.state, 'patrol').done).toBe(true);
+    expect(result.events).toContainEqual({ type: 'removed', id: 'poachers' });
+    expect(armyPower(result.state.army)).toBeGreaterThan(armyPower(newGame().army) * 0.8);
+    expect(locationById(result.state, 'poachers').done).toBe(true);
     expect(result.state.battle).toBeUndefined();
+  });
+
+  it('keeps the patrol too strong for the starting army, and leaves a camp of deserters once it is beaten', () => {
+    expect(fight(newGame(), 'patrol')!.state.locations.find((l) => l.id === 'patrol')!.done).toBe(false);
+    const strong = { ...newGame(), army: [{ troop: 'knights' as const, count: 40 }, { troop: 'archers' as const, count: 40 }] };
+    const won = fight(strong, 'patrol')!;
+    expect(locationById(won.state, 'patrol').done).toBe(true);
+    expect(countOf(won.state.army, 'knights')).toBeGreaterThanOrEqual(20);
+    const camp = locationById(won.state, 'deserters');
+    expect(camp.recruits?.troop).toBe('swordsmen');
+    expect(won.events).toContainEqual({ type: 'added', id: 'deserters' });
   });
 
   it('is repeatable for the same seed', () => {
@@ -92,7 +102,7 @@ suite('fights', () => {
   });
 
   it('wins the commission by taking the hideout with a big enough army', () => {
-    const strong = { ...newGame(), army: [{ troop: 'knights' as const, count: 40 }, { troop: 'archers' as const, count: 40 }] };
+    const strong = { ...newGame(), army: [{ troop: 'knights' as const, count: 70 }, { troop: 'archers' as const, count: 60 }] };
     expect(armyPower(strong.army)).toBeGreaterThan(armyPower(locationById(strong, 'hideout').enemy!.army) * 1.2);
     const result = fight(strong, 'hideout')!;
     expect(result.state.over).toBe('won');

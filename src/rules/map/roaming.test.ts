@@ -69,7 +69,7 @@ describe('enemies on the map', () => {
     let s = aldmoor();
     for (let day = 1; day < 8; day++) s = endDay(s).state;
     const army = locationById(s, 'hideout').enemy!.army;
-    expect(army.find((a) => a.troop === 'swordsmen')!.count).toBe(Math.round(40 * 1.05));
+    expect(army.find((a) => a.troop === 'swordsmen')!.count).toBe(Math.round(60 * 1.05));
     expect(army.find((a) => a.troop === 'baron')!.count).toBe(1);
   });
 });

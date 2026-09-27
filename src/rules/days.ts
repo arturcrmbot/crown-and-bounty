@@ -26,7 +26,7 @@ function grow(l: Location): Location {
 }
 
 /** Paydays a villain goes on recruiting for. */
-const MAX_GROWTH = 8;
+const MAX_GROWTH = 5;
 
 /**
  * Next day: fresh legs. Every seventh day is payday: the King pays, troops take wages, places
