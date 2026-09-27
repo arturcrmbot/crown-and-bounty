@@ -202,7 +202,8 @@ try {
   await kc.choose(boon);
   check((await kc.title())?.startsWith('Commission II'), `after ${boon}, the next commission is read out`);
   await kc.choose('Ride out');
-  await page.waitForTimeout(150);
+  // The province's name takes the sky first; its greeting follows.
+  await page.waitForFunction(() => document.querySelector('.kc-card-wrap:not([hidden]) h3')?.textContent?.startsWith('Commission II'), null, { timeout: 10_000 });
   const fen = await kc.state();
   check((await screen()) === 'adventure' && fen.campaign.chapter === 1 && fen.day === 1, 'Sir Aldric rides into the Fenmarch on day I');
   check(fen.hero.level === atCourt.hero.level && JSON.stringify(fen.hero.gear) === JSON.stringify(atCourt.hero.gear), 'he keeps his level and his gear');

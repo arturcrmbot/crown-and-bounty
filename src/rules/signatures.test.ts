@@ -3,7 +3,7 @@ import { ALDMOOR } from '../content/aldmoor';
 import { chooseAction } from './battle/ai';
 import { battleAct, CHARGE_BONUS, createBattle, fighterById, strike, type BattleHero, type BattleState } from './battle/battle';
 import { hexIndex } from './battle/hex';
-import { apply, locationById, visit, type GameState, type Location, type Result } from './game';
+import { apply, leadershipUsed, locationById, visit, type GameState, type Location, type Result } from './game';
 import { mapOf } from './map/maps';
 import { cellCentre, Terrain } from './map/model';
 import { costsFor } from './map/movement';
@@ -122,6 +122,10 @@ describe('on the map', () => {
     expect(hired.army.some((s) => s.troop === 'bandits')).toBe(true);
     expect(hired.gold).toBeLessThan(courtier.gold);
     expect(locationById(hired, 'highwaymen').done).toBe(true);
+    // With no room under his banner, he can't pay for anyone.
+    const full: GameState = { ...courtier, leadership: leadershipUsed(courtier.army) };
+    expect(cardOf(visit(full, 'highwaymen')).choices.find((c) => c.label.startsWith('Hire'))).toMatchObject({ label: 'Hire them (no room to lead them)', disabled: true });
+    expect(apply(full, { type: 'choose', id: 'highwaymen', choice: 'hire' })).toBeNull();
     // Beasts won't take coin, gates won't sell out, and nobody else gets the offer.
     expect(labels(courtier, 'boars').some((l) => l.startsWith('Hire'))).toBe(false);
     expect(labels(courtier, 'patrol').some((l) => l.startsWith('Hire'))).toBe(false);

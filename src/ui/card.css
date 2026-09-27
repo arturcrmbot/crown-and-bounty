@@ -21,7 +21,7 @@
   clip-path: polygon(0 3px, 7% 0, 18% 2px, 33% 0, 52% 3px, 70% 0, 86% 2px, 100% 0, 100% 97%, 91% 100%, 76% 98%, 60% 100%, 41% 97%, 24% 100%, 9% 98%, 0 100%);
 }
 .kc-card.wide {
-  width: 440px;
+  width: 400px;
 }
 /* Never taller than the window (padding and border included): a very long card scrolls rather than losing its buttons. */
 .kc-card {

@@ -2,7 +2,7 @@ import { TROOPS } from '../../content/troops';
 import { applyEffects, choiceButton } from '../effects';
 import { fight, startFight, winChance } from '../fight';
 import { heroStats } from '../hero';
-import { armyLine, close, coins, show, type Choice, type ContentChoice, type GameState, type Location, type Result } from '../state';
+import { addTroops, armyLine, close, coins, leadershipUsed, show, type Army, type Choice, type ContentChoice, type GameState, type Location, type Result } from '../state';
 import { countsExactly, forceLine, note, option, ride, say, words } from './common';
 import type { PlaceKind } from './kind';
 
@@ -18,30 +18,60 @@ export function haggled(state: GameState, parley: ContentChoice): ContentChoice 
 /** The other ways past them, as buttons: greyed out, with what they need, when the hero can't take them. */
 const parleys = (state: GameState, place: Location) => (place.enemy?.parleys ?? []).map((p) => choiceButton(state, place, haggled(state, p), `parley/${p.id}`));
 
-/** What a band asks to change sides: only troops that draw wages will (no beasts, no villains), and only small fry. */
-export function hirePrice(state: GameState, place: Location): number | null {
+/** Who of a band would fit under the hero's banner: as many as his leadership and his stacks allow. */
+function joiners(state: GameState, band: Army): Army {
+  let room = heroStats(state).leadership - leadershipUsed(state.army);
+  let army = state.army;
+  const joining: Army = [];
+  for (const stack of band) {
+    const count = Math.min(stack.count, Math.floor(room / TROOPS[stack.troop].leadership));
+    const next = count > 0 ? addTroops(army, stack.troop, count) : null;
+    if (!next) continue;
+    army = next;
+    room -= count * TROOPS[stack.troop].leadership;
+    joining.push({ troop: stack.troop, count });
+  }
+  return joining;
+}
+
+/**
+ * What a band asks to change sides, and who of it would fit: only troops that draw wages will
+ * (no beasts, no villains), and only small fry. He pays only for the ones he can lead.
+ */
+export function hireOffer(state: GameState, place: Location): { price: number; joining: Army; all: boolean } | null {
   const foe = place.enemy;
   if (!foe || place.done || !heroStats(state).hires || (foe.tier !== 'pest' && foe.tier !== 'band')) return null;
   if (foe.army.some((s) => !TROOPS[s.troop].wage)) return null;
   // Content with its own offer for this sort of hero knows better.
   if (foe.parleys?.some((p) => p.needs?.background === state.hero.background)) return null;
-  return foe.army.reduce((sum, s) => sum + s.count * TROOPS[s.troop].wage * HIRE_PRICE, 0);
+  const joining = joiners(state, foe.army);
+  const price = joining.reduce((sum, s) => sum + s.count * TROOPS[s.troop].wage * HIRE_PRICE, 0);
+  const all = foe.army.every((s) => joining.find((j) => j.troop === s.troop)?.count === s.count);
+  return { price, joining, all };
 }
 /** Gold per point of a troop's weekly wage, to buy him off his old employer. */
 const HIRE_PRICE = 12;
 
 function hire(state: GameState, place: Location): Result | null {
-  const price = hirePrice(state, place);
-  if (price === null || state.gold < price) return null;
-  const done = applyEffects({ ...state, gold: state.gold - price }, place, { troops: place.enemy!.army, done: true });
-  const lines = ['They count your gold twice, bite a coin, and fall in behind your banner.', `**\u2212${coins(price)} gold.**`, ...done.lines];
+  const offer = hireOffer(state, place);
+  if (!offer || !offer.joining.length || state.gold < offer.price) return null;
+  const done = applyEffects({ ...state, gold: state.gold - offer.price }, place, { troops: offer.joining, done: true });
+  const lines = [
+    'They count your gold twice, bite a coin, and fall in behind your banner.',
+    `**\u2212${coins(offer.price)} gold.**`,
+    ...done.lines,
+    ...(offer.all ? [] : ['The rest, for whom you have no room, wander off home.']),
+  ];
   return { state: done.state, events: [...done.events, show({ title: place.name, lines, choices: [close] }, place.at, place.id)] };
 }
 
 /** The courtier's offer, as a button: greyed out when his purse is too light. */
 function hireButton(state: GameState, place: Location): Choice[] {
-  const price = hirePrice(state, place);
-  return price === null ? [] : [option(place, `Hire them (${coins(price)} gold)`, 'hire', state.gold < price)];
+  const offer = hireOffer(state, place);
+  if (!offer) return [];
+  if (!offer.joining.length) return [option(place, 'Hire them (no room to lead them)', 'hire', true)];
+  const label = offer.all ? 'Hire them' : 'Hire as many as you can lead';
+  return [option(place, `${label} (${coins(offer.price)} gold)`, 'hire', state.gold < offer.price)];
 }
 
 /** What the sergeants think of the odds, in words. */

@@ -21,6 +21,8 @@ import { backgroundCard, endCard, storyCard } from './intro';
 import { clearSave, saveGame } from './save';
 import { Walks } from './walks';
 
+/** Seconds a new province's name holds the sky before cards may cover it. */
+const BANNER_HOLD = 2.4;
 /** How long night takes to fall and lift at the end of a day, in seconds. */
 const NIGHT = 1.4;
 /** Map pixels per second. */
@@ -74,7 +76,9 @@ export class AdventureController implements Screen {
   private readonly speed: number;
   /** How much faster than life scripts run the map (?speed=8). */
   private readonly pace: number;
-  private banner: { sprite: Bitmap; age: number } | null = null;
+  private banner: { sprite: Bitmap; age: number; y: number } | null = null;
+  /** A card that came while the province's name was up, waiting for its turn. */
+  private held: { card: Card; at: Point | null } | null = null;
   /** What the hero just gained, waiting for the card on screen to close before it rises off him. */
   private gains: [string, number][] = [];
   /** Seconds left of gains rising: the level-up card waits for them. */
@@ -110,14 +114,18 @@ export class AdventureController implements Screen {
 
   render(tick: number): Uint8Array {
     const frame = this.view.compose(tick);
-    if (this.banner) drawBanner(frame, this.banner.sprite, MAP_VIEW.x + MAP_VIEW.width / 2, MAP_VIEW.y + 70, this.banner.age);
+    if (this.banner) drawBanner(frame, this.banner.sprite, MAP_VIEW.x + MAP_VIEW.width / 2, this.banner.y, this.banner.age);
     return frame.data;
   }
 
   /** The province's name across the sky, with a fanfare: a new commission begins. */
   announce() {
     const commission = commissionOf(this.state);
-    this.banner = { sprite: paintBanner(this.map.province.name.toUpperCase(), `Commission ${roman(this.state.campaign.chapter + 1)} \u00b7 ${commission.villain}`), age: 0 };
+    const sprite = paintBanner(this.map.province.name.toUpperCase(), `Commission ${roman(this.state.campaign.chapter + 1)} \u00b7 ${commission.villain}`);
+    // Across the top of the sky, or the bottom if that's where the hero stands.
+    const heroY = MAP_VIEW.y + this.state.hero.at[1] - this.view.camera.y;
+    const y = heroY < MAP_VIEW.y + 190 ? MAP_VIEW.y + MAP_VIEW.height - sprite.height - 40 : MAP_VIEW.y + 70;
+    this.banner = { sprite, age: 0, y };
     play('fanfare');
   }
 
@@ -144,6 +152,11 @@ export class AdventureController implements Screen {
   }
 
   showCard(card: Card, at: Point | null) {
+    // A new province's name gets its moment across the sky before any card covers it.
+    if (this.banner && this.banner.age < BANNER_HOLD) {
+      this.held = { card, at };
+      return;
+    }
     this.cardAnchor = at;
     this.cards.show(card);
   }
@@ -349,7 +362,12 @@ export class AdventureController implements Screen {
   }
 
   update(dt: number, held: ReadonlySet<string>) {
-    if (this.banner && (this.banner.age += dt) > BANNER_TIME) this.banner = null;
+    if (this.banner && (this.banner.age += dt * this.pace) > BANNER_TIME) this.banner = null;
+    if (this.held && (!this.banner || this.banner.age >= BANNER_HOLD)) {
+      const { card, at } = this.held;
+      this.held = null;
+      this.showCard(card, at);
+    }
     this.releaseGains();
     this.celebrating = Math.max(0, this.celebrating - dt * this.pace);
     if (this.nightfall !== null) {

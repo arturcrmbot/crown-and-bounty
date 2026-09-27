@@ -60,14 +60,18 @@ about 52 px. Every enemy stack on the map is drawn as **one** creature at the sa
 battle (HoMM2 style). Its size shows as a word: few, several, pack, lots, horde, throng, swarm.
 Buildings sit on the tile grid: huts are about 1 tile, mills and towers 2 to 3, castles 4.
 
-In battle, a person is about 60 px tall. Goblins are about 0.75× that, trolls about 1.4×, and
-mounted knights are wider.
+In battle, a person is about 75 px tall, most of two hex rows as in HoMM2 (`BATTLE_PERSON` in
+`src/render/scale.ts`). Goblins are about 0.75× that, trolls about 1.4×, and mounted knights are wider.
+Aldric's commander figure at the field's edge is the map hero drawn at scale 2.3, not blown up.
 
 ## Gotchas
 
 - The dev server is on 127.0.0.1:5188 (5173 belongs to another project; don't kill it).
 - Playwright uses `channel: 'msedge'`. Scripts start their own server (`scripts/lib/server.mjs`).
-- `?freeze=1` is for exact screenshots; `?seed=N` fixes the campaign; `?fresh=1` ignores the save.
+- `?freeze=1` is for exact screenshots; `?seed=N` fixes the campaign; `?fresh=1` ignores the save;
+  `?hero=ranger` (with a debug start such as `?battle=wolves`) picks the background.
+- Anything that grows a hero (a signature, a skill) can break a gate: run `npm run difficulty` after, and keep
+  every tier inside its targets.
 - The game opens on the title and the prologue. Scripts press `New campaign`, `At your service`, `I’ll bring him in`, then a hero; `?quick=1` skips all of it.
   `?court=N`, `?commission=N`, `?battle=id`, `?reveal=1` and `?sceptre=1` jump straight to a scene.
 - Saves are keyed by version (`src/game/save.ts`). Bump it when the state's shape changes or when

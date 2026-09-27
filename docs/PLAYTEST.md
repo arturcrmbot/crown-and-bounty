@@ -3,6 +3,41 @@
 Newest first. Each entry says what was played, how it felt to an experienced player (HoMM2, King's Bounty,
 modern RPGs), and what was done about it.
 
+## #2: 28 Sep 2026, after R1, R2's juice and R4's signatures, all four backgrounds
+
+**Played:** `scripts/playtest.mjs` with each background (title, prologue, the first day, the patrol by hand and
+on auto, the tower, the castle). Also: every signature in a real battle (the knight's charge against the
+wolves, the ranger's volley, the wizard's casting), the ranger riding into the woods, the courtier hiring
+highwaymen and bribing the patrol, the court into the Fenmarch, and generated provinces' villains. Then
+`npm run e2e`, `npm run sim -- 4`, and one full campaign per background (`npm run sim -- 1 --campaign`).
+
+**How it felt:** the first minute finally has a mood. The painted sunset, the title tune, the King's welcome and
+the WANTED poster give a reason to ride out, and picking a face and a way to win beats picking a row of
+numbers. Battles read at a glance and have weight. The four heroes now play differently on the map and in a
+fight.
+
+**Found and fixed:**
+
+1. The last card of the prologue ran off the bottom of the frame. It now leaves out the brief the poster has
+   just given, names the hero's signature, and sits to the left of the throne so the King stays in view.
+2. A new province's arrival card covered its name ribbon, and the ribbon could hide the hero. Cards now wait
+   until the name has had its moment, and the ribbon moves to the bottom when the hero is near the top.
+3. Gold, troops and experience rose off the hero *under* the card that announced them. Gains now wait for the
+   card to close, gold piles skip their card (the gold rises instead), and a level-up card waits for the glow.
+4. The damage numbers began inside the new, taller fighters, and a big troll hid the goblins' count. Numbers now
+   rise from above each head, stack instead of overlapping, and counts are drawn last.
+5. The courtier could pay a band that had no room under his banner. He now pays only for those he can lead,
+   and the button says so.
+6. The signatures broke the gates: the knight crushed the wolves on day 1, and the ranger had a 13% shot at
+   Grimsby from the start. The wolves are now 80 (from 64), the charge adds a quarter (not half), and there's
+   no volley at a villain's walls. Every difficulty target holds again.
+7. The first frame's clock could run backwards (a negative `dt`), which crashed the title.
+
+**Still open (balance is parked, as agreed):** the bot's ranger now wins Aldmoor by day 4 through the woods,
+and the courtier (who doesn't hire yet in the bot) takes 11 to 23 days. Fogged landmarks show as dark blocks at
+the map's edge. The battlefield is still mostly empty grass between the armies. Rewards (R3) and quests and
+captains (R5) are next.
+
 ## #1: 27 Sep 2026, the live build, Knight, Aldmoor opening
 
 **Played:** a fresh campaign through the real UI (`scripts/playtest.mjs`): the opening card, the map, the gold,

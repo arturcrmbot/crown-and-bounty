@@ -61,12 +61,16 @@ export class PrologueController implements Screen {
     return this.screen.screen;
   }
 
-  /** Cards hang to the right of the throne, so the King stays in view; the wide choice of hero sits in the middle. */
+  /**
+   * Cards hang to the right of the throne, so the King stays in view; the choice of hero sits in the
+   * middle, and the wide last word to the left of the throne.
+   */
   placeCards() {
     const top = this.display.toPage(0, MAP_VIEW.y).y;
     const bottom = this.display.toPage(0, MAP_VIEW.y + MAP_VIEW.height).y;
-    const wide = this.page === this.pages.length;
-    this.cards.place(wide ? null : this.display.toPage(MAP_VIEW.x + MAP_VIEW.width * 0.8, MAP_VIEW.y + MAP_VIEW.height - 8), top, bottom);
+    const side = this.page > this.pages.length ? 0.2 : 0.8;
+    const at = this.display.toPage(MAP_VIEW.x + MAP_VIEW.width * side, MAP_VIEW.y + MAP_VIEW.height - 8);
+    this.cards.place(this.page === this.pages.length ? null : at, top, bottom);
   }
 
   dispose() {
