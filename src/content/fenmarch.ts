@@ -183,7 +183,9 @@ export const FENMARCH: Province = {
       done: false,
       enemy: {
         look: 'goblins',
-        lines: ['A great many **bog goblins**, squabbling over a boot.', 'They stop squabbling when they see your horse.'],
+        behaviour: 'hunt',
+        range: 170,
+        lines: ['A great many **bog goblins**, squabbling over a boot.', 'They stop squabbling when they see your horse, and start following it.'],
         army: [{ troop: 'goblins', count: 180 }],
         reward: 400,
         threat: 'They giggle, which is worse than shouting.',
@@ -236,6 +238,7 @@ export const FENMARCH: Province = {
       done: false,
       enemy: {
         look: 'stockade',
+        grows: 0.05,
         charge: 'Storm the hut',
         lines: ['A hut on long chicken legs, deep in the fen. Something inside is croaking.', 'Trolls doze under it, and goblins everywhere else.'],
         army: [{ troop: 'trolls', count: 18 }, { troop: 'goblins', count: 220 }, { troop: 'witch', count: 1 }],

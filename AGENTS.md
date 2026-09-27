@@ -19,6 +19,7 @@ King's Commission (working title) is a browser game: King's Bounty (1990) rebuil
   - Content choices: shrines, quests, parleys and events are content. They're pages of choices with `Needs` (conditions and costs) and `Effects` (gold, stats, spells, troops, flags, reveal, xp, win...), interpreted by `src/rules/effects.ts`, with story state in `state.flags`.
   - Battle: spells, statuses and troop abilities are data in `src/content/spells.ts` and `troops.ts`, and the battle engine reads them generically.
   - Battle AI (`rules/battle/ai.ts`): it tries every option with the real rules, so new content needs no AI changes.
+  - Map AI (`rules/map/roaming.ts`): an enemy's `behaviour` (guard, roam, hunt), `range` and `grows` are data. Enemies block the walk grid where the state says they stand.
 - `src/game/`: screen controllers (input, riding animation, events into cards and HUD), save/load. `main.ts` only boots.
 - `src/render/`: 2D pixel-art drawing into an indexed 960×540 framebuffer. It reads the rules state and never changes it.
 - `src/ui/`: HTML/CSS overlays (parchment cards, hover label).

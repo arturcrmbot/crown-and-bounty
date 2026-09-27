@@ -2,7 +2,7 @@ import type { GameEvent, GameState } from '../game';
 import { heroStats } from '../hero';
 import { revealDisc } from './fog';
 import type { Point } from './geometry';
-import { cellCentre, cellIndex, gridWithEnemies, type MapModel } from './model';
+import { cellCentre, cellIndex, gridWithEnemies, standingEnemies, type MapModel } from './model';
 import { findPath, nearestPassable, reachableNear } from './pathfinding';
 
 /** How far the hero sees as he rides, in pixels. */
@@ -10,9 +10,8 @@ export const SIGHT = 150;
 
 const cellXY = (map: MapModel, i: number) => ({ x: i % map.width, y: Math.floor(i / map.width) });
 
-/** Enemies block the way until they are beaten. */
-const standingGrid = (state: GameState, map: MapModel) =>
-  gridWithEnemies(map, (id) => !state.locations.find((l) => l.id === id)?.done);
+/** Enemies block the way where they stand, until they are beaten. */
+const standingGrid = (state: GameState, map: MapModel) => gridWithEnemies(map, standingEnemies(state.locations));
 
 /** How close (in cells) the hero rides up to an enemy he is going to face. */
 export const APPROACH = 6;

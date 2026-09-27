@@ -1,4 +1,4 @@
-import { apply, armyPower, endDay, fight, hasNextCommission, learn, locationById, PLACE_KINDS, provinceOf, visit, type BoonId, type GameState } from './game';
+import { apply, armyPower, choose, endDay, fight, hasNextCommission, learn, locationById, PLACE_KINDS, provinceOf, visit, type BoonId, type GameState } from './game';
 import { buildMap, type MapModel } from './map/model';
 import { planRoute, routeCosts, stepAlong } from './map/movement';
 
@@ -14,8 +14,16 @@ export function playCommission(start: GameState, map: MapModel, maxSteps = 20000
   const log: string[] = [];
   let fights = 0;
   let retreats = 0;
+  /** The night passes; if something falls on the camp at dawn, the sergeants deal with it. */
   const nextDay = () => {
     state = endDay(state).state;
+    if (state.ambush) {
+      fights++;
+      const id = state.ambush;
+      state = choose(state, id, 'auto')?.state ?? { ...state, ambush: undefined };
+      if (!locationById(state, id).done) retreats++;
+      log.push(`day ${state.day}: ambushed by ${locationById(state, id).name}`);
+    }
   };
   for (let guard = 0; guard < 400 && !state.over; guard++) {
     let best: { id: string; route: number[]; score: number } | null = null;
@@ -32,14 +40,20 @@ export function playCommission(start: GameState, map: MapModel, maxSteps = 20000
       nextDay();
       continue;
     }
-    let route = best.route;
-    for (let steps = 0; route.length > 0 && steps < maxSteps && !state.over; steps++) {
+    let route: number[] | null = best.route;
+    const goal = locationById(state, best.id);
+    for (let steps = 0; route && route.length > 0 && steps < maxSteps && !state.over; steps++) {
       const step = stepAlong(state, map, route);
       if (step) {
         state = step.state;
         route = route.slice(1);
-      } else nextDay();
+      } else {
+        nextDay();
+        // Stacks move at night: find the way again (to where the enemy stands now, if it's one).
+        route = planRoute(state, map, locationById(state, best.id).at, Boolean(goal.enemy));
+      }
     }
+    if (!route || state.over) continue;
     const place = locationById(state, best.id);
     state = visit(state, best.id).state;
     if (place.enemy && !place.done) {

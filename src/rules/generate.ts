@@ -212,7 +212,8 @@ function attempt(seed: number, v: VillainTemplate, chapter: number): Province {
     name: v.bands[i].name,
     at: at(p),
     done: false,
-    enemy: enemy(v.bands[i], BASE.band * s * (0.9 + i * 0.2), Math.round(400 * s)),
+    // The first band roams its stretch of road; the second hunts anyone weaker who wanders near.
+    enemy: { ...enemy(v.bands[i], BASE.band * s * (0.9 + i * 0.2), Math.round(400 * s)), behaviour: i === 0 ? 'roam' : 'hunt', range: i === 0 ? 130 : 160 },
   }));
   const locations: Location[] = [
     { id: 'castle', kind: 'castle', name: pick(random, names.castle), at: at(castle), done: false, text: { about: pick(random, words.castle) }, recruits: { troop: 'knights', count: 6, price: 110 }, wares: shuffle(random, ['harrowgateMail', 'fenBanner', 'astrolabe', 'swordOfAldmoor', 'breastplate', 'luckyHorseshoe'] as const).slice(0, 3) },
@@ -232,7 +233,7 @@ function attempt(seed: number, v: VillainTemplate, chapter: number): Province {
       name: v.hideout.name,
       at: at(hideout),
       done: false,
-      enemy: { ...enemy(v.hideout, BASE.hideout * s, Math.round(3000 * s), v.hideout.bosses), ...(v.parleys?.hideout ? { parleys: v.parleys.hideout } : {}) },
+      enemy: { ...enemy(v.hideout, BASE.hideout * s, Math.round(3000 * s), v.hideout.bosses), grows: 0.05, ...(v.parleys?.hideout ? { parleys: v.parleys.hideout } : {}) },
       text: { done: v.hideout.done },
     },
   ];
@@ -281,7 +282,7 @@ export function playable(province: Province): boolean {
   if (!start) return false;
   // As the hero rides: places by the nearest open cell, enemies from his own side of them.
   const reach = (standing: Set<string>, place: Location) => {
-    const grid = gridWithEnemies(map, (id) => standing.has(id));
+    const grid = gridWithEnemies(map, province.locations.filter((l) => standing.has(l.id)));
     const goal = place.enemy ? reachableNear(grid, start, cell(place.at), APPROACH) : nearestPassable(grid, cell(place.at), 16);
     return goal !== null && findPath(grid, start, goal) !== null;
   };

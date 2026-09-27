@@ -1,9 +1,10 @@
 import { BACKGROUNDS } from '../content/backgrounds';
 import { addPlace, buildAdventureScene, type AdventureScene, type Hitbox } from '../render/adventureScene';
+import type { Placed } from '../render/adventureScreen';
 import { MAP_VIEW } from '../render/frame';
 import { HOURGLASS, HOURGLASS_AT, paintHud } from '../render/hud';
 import type { BattleState } from '../rules/battle/battle';
-import { apply, describe, describeHero, finishFight, levelUpCard, locationById, visit, type Action, type Card, type GameEvent, type GameState, type Result } from '../rules/game';
+import { ambushCard, apply, describe, describeHero, finishFight, levelUpCard, locationById, visit, type Action, type Card, type GameEvent, type GameState, type Result } from '../rules/game';
 import type { Point } from '../rules/map/geometry';
 import { cellCentre, type MapModel } from '../rules/map/model';
 import { planRoute, routeCosts, stepAlong } from '../rules/map/movement';
@@ -49,6 +50,10 @@ export class AdventureController {
   private readonly cards: CardView;
   private readonly label = new HoverLabel();
   private route: number[] = [];
+  /** Where the current ride is going, to find the way again when enemies move. */
+  private target: Point | null = null;
+  /** Enemy sprites walking their night's path. */
+  private readonly walks = new Map<string, { object: Placed; box?: Hitbox; points: Point[]; t: number; offset: Point }>();
   private visiting: string | null = null;
   /** Where the hero is drawn; it chases his cell in the rules. */
   private readonly drawn: { x: number; y: number };
@@ -157,6 +162,11 @@ export class AdventureController {
           this.drawn.x = e.at[0];
           this.drawn.y = e.at[1];
           break;
+        case 'enemyMoved':
+          this.walkEnemy(e.id, e.from, e.path);
+          // Somebody may be standing on the road now: find the way again.
+          if (this.target) this.replan();
+          break;
         case 'over':
           play(e.result === 'won' ? 'victory' : 'defeat');
           break;
@@ -218,15 +228,29 @@ export class AdventureController {
       return;
     }
     this.route = route;
+    this.target = route.length ? target : null;
     this.visiting = visitId;
     this.follow = true;
     this.tiredShown = false;
     if (route.length === 0 && visitId) this.arrive();
   }
 
+  /** Finds the way to the same place again, keeping what the hero means to do there. */
+  private replan() {
+    const facing = this.visiting ? locationById(this.state, this.visiting) : null;
+    const route = this.target && planRoute(this.state, this.map, facing?.enemy && !facing.done ? facing.at : this.target, Boolean(facing?.enemy && !facing.done));
+    if (route) this.route = route;
+    else {
+      this.route = [];
+      this.visiting = null;
+      this.target = null;
+    }
+  }
+
   private arrive() {
     const id = this.visiting!;
     this.visiting = null;
+    this.target = null;
     this.run(visit(this.state, id));
   }
 
@@ -238,12 +262,50 @@ export class AdventureController {
    */
   private promptPending() {
     if (this.cards.isOpen) return;
+    if (this.state.ambush) {
+      const foe = locationById(this.state, this.state.ambush);
+      return this.showCard(ambushCard(this.state), this.anchorOf(foe.id));
+    }
     const card = this.state.over ? endCard(this.state) : this.state.opening ? backgroundCard() : levelUpCard(this.state);
     if (card) this.showCard(card, null);
   }
 
+  /** Slides an enemy's sprite along the path it walked in the night, and moves its hit area with it. */
+  private walkEnemy(id: string, from: Point, path: Point[]) {
+    const object = this.scene.pickups.get(id);
+    const box = this.scene.hitboxes.find((b) => b.id === id);
+    if (!object || path.length === 0) return;
+    // A walk still going from the night before finishes first.
+    if (this.walks.has(id)) this.walkEnemies(Infinity, id);
+    this.walks.set(id, { object, box, points: [from, ...path], t: 0, offset: [object.x - from[0], object.y - from[1]] });
+  }
+
+  private walkEnemies(dt: number, only?: string) {
+    for (const [id, walk] of this.walks) {
+      if (only && id !== only) continue;
+      walk.t = Math.min(1, walk.t + dt / 0.9);
+      const seg = walk.t * (walk.points.length - 1);
+      const k = Math.min(walk.points.length - 2, Math.floor(seg));
+      const f = seg - k;
+      const [ax, ay] = walk.points[k];
+      const [bx, by] = walk.points[k + 1] ?? walk.points[k];
+      const [x, y] = [ax + (bx - ax) * f, ay + (by - ay) * f];
+      const [dx, dy] = [x + walk.offset[0] - walk.object.x, y + walk.offset[1] - walk.object.y];
+      walk.object.x += dx;
+      walk.object.y += dy;
+      if (walk.box) {
+        walk.box.x0 += dx;
+        walk.box.x1 += dx;
+        walk.box.y0 += dy;
+        walk.box.y1 += dy;
+      }
+      if (walk.t >= 1) this.walks.delete(id);
+    }
+  }
+
   update(dt: number, held: Set<string>) {
     this.promptPending();
+    this.walkEnemies(dt);
     const dx = (held.has('arrowright') || held.has('d') ? 1 : 0) - (held.has('arrowleft') || held.has('a') ? 1 : 0);
     const dy = (held.has('arrowdown') || held.has('s') ? 1 : 0) - (held.has('arrowup') || held.has('w') ? 1 : 0);
     if (dx || dy) {
@@ -369,7 +431,7 @@ export class AdventureController {
 
   /** A click on the map, in map pixels: the hero, a place, or open ground to ride to. */
   clickMap(point: Point) {
-    if (this.state.over || this.state.opening) return;
+    if (this.state.over || this.state.opening || this.state.ambush) return;
     const thing = this.under(point);
     if (thing?.id === 'hero') {
       this.showCard(describeHero(this.state), [this.drawn.x, this.scene.hero.object.y + 6]);
@@ -390,7 +452,7 @@ export class AdventureController {
   readonly input = {
     click: (x: number, y: number) => {
       const onHourglass = x >= HOURGLASS_AT.x - 3 && x < HOURGLASS_AT.x + HOURGLASS.width + 3 && y >= HOURGLASS_AT.y - 3 && y < HOURGLASS_AT.y + HOURGLASS.height + 3;
-      if (onHourglass && !this.state.opening && !this.state.over) return this.choose({ type: 'endDay' });
+      if (onHourglass && !this.state.opening && !this.state.over && !this.state.ambush) return this.choose({ type: 'endDay' });
       const point = this.view.toMap(x, y);
       if (point) this.clickMap(point);
     },
@@ -408,7 +470,7 @@ export class AdventureController {
     leave: () => this.label.hide(),
     key: (key: string) => {
       if (this.state.opening) return;
-      if (key === 'e' && !this.state.over) this.choose({ type: 'endDay' });
+      if (key === 'e' && !this.state.over && !this.state.ambush) this.choose({ type: 'endDay' });
       else if (key === 'escape') this.hideCard();
       else if (key.startsWith('arrow') || 'wasd'.includes(key)) this.follow = false;
     },

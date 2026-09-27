@@ -32,6 +32,18 @@ export type Enemy = {
   charge?: string;
   /** Other ways past them than a fight: talk, pay or trick. */
   parleys?: ContentChoice[];
+  /**
+   * What they do at night. `guard` holds its ground (the default). `roam` wanders within `range` of
+   * `home`. `hunt` roams too, but comes for a weaker hero who strays into its territory.
+   */
+  behaviour?: 'guard' | 'roam' | 'hunt';
+  range?: number;
+  home?: Point;
+  /** A share more troops every payday, up to eight times: a villain recruiting while you dawdle. */
+  grows?: number;
+  grown?: number;
+  /** Nights left before a hunter that has fallen on the camp hunts again. */
+  rest?: number;
   lines: string[];
   army: Army;
   reward: number;
@@ -160,6 +172,8 @@ export type GameState = {
   opening?: boolean;
   /** What has happened in the story: quests started, favours owed, promises made. */
   flags?: Record<string, FlagValue>;
+  /** An enemy that fell on the hero's camp at dawn: fight it, or flee, before anything else. */
+  ambush?: string;
 };
 
 /** Sir Aldric: where he is, who he was, and what he has learned. Derived numbers come from `heroStats`. */
@@ -223,6 +237,8 @@ export type GameEvent =
   /** A new place appears on the map, like the X once the map is whole. */
   | { type: 'added'; id: string }
   | { type: 'moved'; at: Point; facing: 1 | -1 }
+  /** An enemy stack moved in the night, from where it stood along these points. */
+  | { type: 'enemyMoved'; id: string; from: Point; path: Point[] }
   | { type: 'day'; day: number; payday: boolean }
   | { type: 'battle'; place: string }
   | { type: 'levelUp'; level: number }

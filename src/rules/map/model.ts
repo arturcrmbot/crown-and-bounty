@@ -1,4 +1,5 @@
 import type { Province } from '../../content/types';
+import type { Location } from '../state';
 import { fbm, hash, noise } from '../noise';
 import { lineAt, smooth, type Point } from './geometry';
 import type { Grid } from './pathfinding';
@@ -50,7 +51,7 @@ const ENEMY_REACH = 22;
 /** A tree the painter should draw: its foot, and which kind and variant. */
 export type Tree = { x: number; y: number; kind: 'pine' | 'oak' | 'willow'; variant: number };
 
-/** The land as the rules see it: terrain per cell, the walk grid, trees, and cells each enemy stands on. */
+/** The land as the rules see it: terrain per cell, the walk grid and trees. Enemies stand where the state says. */
 export type MapModel = {
   province: Province;
   width: number;
@@ -62,7 +63,6 @@ export type MapModel = {
   paths: Point[][];
   cliff: Point[] | null;
   trees: Tree[];
-  enemyCells: Map<string, number[]>;
 };
 
 /** How much forest wants to grow at a point: above one half means woodland. Landmarks keep a clearing. */
@@ -212,27 +212,31 @@ export function buildMap(province: Province): MapModel {
     cost[i] = t === Terrain.Road || t === Terrain.Bridge ? 1 : t === Terrain.Grass ? 2 : Infinity;
   }
 
-  const enemyCells = new Map<string, number[]>();
-  for (const l of province.locations) {
-    if (!l.enemy || l.kind === 'hideout') continue;
-    const cells: number[] = [];
-    for (let cy = 0; cy < height; cy++) {
-      for (let cx = 0; cx < width; cx++) {
-        if (Math.hypot(cx * CELL + CELL / 2 - l.at[0], cy * CELL + CELL / 2 - (l.at[1] - 6)) <= ENEMY_REACH) cells.push(cy * width + cx);
-      }
-    }
-    enemyCells.set(l.id, cells);
-  }
-
-  return { province, width, height, terrain, grid: { width, height, cost }, river, paths, cliff, trees, enemyCells };
+  return { province, width, height, terrain, grid: { width, height, cost }, river, paths, cliff, trees };
 }
 
-/** The walk grid with enemies that are still standing marked as impassable. */
-export function gridWithEnemies(map: MapModel, standing: (id: string) => boolean): Grid {
+/** The cells an enemy stack standing at `at` holds, so it can close a road. */
+export function enemyCellsAt(map: MapModel, [x, y]: Point): number[] {
+  const cells: number[] = [];
+  const r = Math.ceil(ENEMY_REACH / CELL) + 1;
+  const [cx0, cy0] = [Math.floor(x / CELL), Math.floor((y - 6) / CELL)];
+  for (let cy = Math.max(0, cy0 - r); cy <= Math.min(map.height - 1, cy0 + r); cy++) {
+    for (let cx = Math.max(0, cx0 - r); cx <= Math.min(map.width - 1, cx0 + r); cx++) {
+      if (Math.hypot(cx * CELL + CELL / 2 - x, cy * CELL + CELL / 2 - (y - 6)) <= ENEMY_REACH) cells.push(cy * map.width + cx);
+    }
+  }
+  return cells;
+}
+
+/** The walk grid with these enemies marked as impassable where they stand. */
+export function gridWithEnemies(map: MapModel, enemies: readonly { at: Point }[]): Grid {
   const cost = map.grid.cost.slice();
-  for (const [id, cells] of map.enemyCells) if (standing(id)) for (const i of cells) cost[i] = Infinity;
+  for (const e of enemies) for (const i of enemyCellsAt(map, e.at)) cost[i] = Infinity;
   return { width: map.width, height: map.height, cost };
 }
+
+/** Enemies that stand in the way: on the map, not yet beaten, and not holed up in a hideout. */
+export const standingEnemies = (locations: readonly Location[]) => locations.filter((l) => l.enemy && !l.done && l.kind !== 'hideout');
 
 export const cellIndex = (map: MapModel, x: number, y: number) => Math.floor(y / CELL) * map.width + Math.floor(x / CELL);
 export const cellCentre = (map: MapModel, i: number): Point => [(i % map.width) * CELL + CELL / 2, Math.floor(i / map.width) * CELL + CELL / 2];

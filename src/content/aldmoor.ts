@@ -178,7 +178,9 @@ export const ALDMOOR: Province = {
       artifact: 'carvingKnife',
       enemy: {
         look: 'soldiers',
-        lines: ['Grimsby\u2019s men, with goose feathers in their helmets.'],
+        behaviour: 'roam',
+        range: 90,
+        lines: ['Grimsby\u2019s men, with goose feathers in their helmets. They patrol the crossroads.'],
         army: [{ troop: 'swordsmen', count: 20 }, { troop: 'crossbowmen', count: 12 }],
         reward: 300,
         threat: 'They level their spears.',
@@ -204,6 +206,7 @@ export const ALDMOOR: Province = {
       artifact: 'goldenFeather',
       enemy: {
         look: 'stockade',
+        grows: 0.05,
         charge: 'Storm the stockade',
         lines: ['A muddy stockade deep in Darkwood. Someone inside is honking.'],
         army: [{ troop: 'swordsmen', count: 40 }, { troop: 'crossbowmen', count: 20 }, { troop: 'baron', count: 1 }],

@@ -10,7 +10,7 @@ export * from './state';
 export { choose, describe, DISCOVERY_XP, forceLine, payday, PLACE_KINDS, priceOf, recruitable, visit, type PlaceKind } from './places';
 export { describeHero } from './heroCard';
 export { meets, needsLabel } from './effects';
-export { endDay } from './days';
+export { ambushCard, endDay } from './days';
 export { briefingCard, CAMPAIGN_LENGTH, campaignLines, chooseBoon, commissionAt, commissionOf, courtCard, hasNextCommission, nextArmy, nextCommission, provinceOf, retry, toCourt, veterans, VETERANS } from './campaign';
 export { beginCommission, chooseBackground, newGame } from './scenario';
 export { battleXp, fight, finishFight, heroInBattle, lossesLine, startFight, winChance } from './fight';

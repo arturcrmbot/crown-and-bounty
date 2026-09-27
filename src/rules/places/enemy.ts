@@ -1,6 +1,6 @@
 import { choiceButton } from '../effects';
 import { fight, startFight, winChance } from '../fight';
-import type { Choice, GameState, Location } from '../state';
+import { armyLine, type Choice, type GameState, type Location } from '../state';
 import { forceLine, note, option, ride, say, words } from './common';
 import type { PlaceKind } from './kind';
 
@@ -31,15 +31,20 @@ export function enemy(kind: 'patrol' | 'hideout'): PlaceKind {
       });
     },
     choose(state, place, choice) {
-      if (choice === 'fight') return startFight(state, place.id);
-      if (choice === 'auto') return fight(state, place.id);
+      const calm: GameState = state.ambush === place.id ? { ...state, ambush: undefined } : state;
+      if (choice === 'fight') return startFight(calm, place.id);
+      if (choice === 'auto') return fight(calm, place.id);
+      if (choice === 'flee' && state.ambush === place.id) {
+        const army = state.army.map((s) => ({ ...s, count: s.count - Math.ceil(s.count * 0.2) })).filter((s) => s.count > 0);
+        return say({ ...calm, army }, place, note(place, ['You leave the camp fires burning and ride hard. Not everyone keeps up.', `*${armyLine(army)} are left.*`]));
+      }
       return null;
     },
     worth(state, place) {
       if (place.done) return null;
       const odds = winChance(state, place.id, 6);
-      if (kind === 'patrol') return odds >= 0.99 ? place.enemy!.reward + 200 : null;
-      return odds >= 0.99 || (state.day > 60 && odds >= 0.6) ? 5000 : null;
+      if (kind === 'patrol') return odds >= 0.9 ? place.enemy!.reward + 200 : null;
+      return odds >= 0.85 || (state.day > 40 && odds >= 0.6) ? 5000 : null;
     },
   };
 }
