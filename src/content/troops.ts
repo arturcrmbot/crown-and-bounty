@@ -35,14 +35,14 @@ export type Ability = 'regenerates' | 'hexes';
 export type AbilityDef = {
   name: string;
   note: string;
-  /** At the start of the stack's turn: its top troop heals all its wounds. */
-  healsTopOnTurn?: boolean;
+  /** At the start of the stack's turn, its top troop heals this share of its health (1 is all its wounds). */
+  healsTopOnTurn?: number;
   /** Its shots put this status on whatever they hit. */
   shotStatus?: StatusId;
 };
 
 export const ABILITIES: Record<Ability, AbilityDef> = {
-  regenerates: { name: 'Regenerates', note: 'The top troll heals all its wounds at the start of each turn.', healsTopOnTurn: true },
+  regenerates: { name: 'Regenerates', note: 'At the start of each turn, the top troll heals half its health.', healsTopOnTurn: 0.5 },
   hexes: { name: 'Hexes', note: 'Her shots slow whatever they hit.', shotStatus: 'slowed' },
 };
 

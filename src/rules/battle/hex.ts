@@ -47,3 +47,25 @@ export function reachable(from: number, steps: number, blocked: (i: number) => b
   paths.delete(from);
   return paths;
 }
+
+/** Each hex's neighbours, worked out once. */
+export const NEIGHBOURS: readonly number[][] = Array.from({ length: HEXES }, (_, i) => neighbours(i));
+
+/** Hexes reachable within `steps` through hexes not marked in `blocked`, as a mask. Fast: no paths. */
+export function reachMask(from: number, steps: number, blocked: Uint8Array): Uint8Array {
+  const seen = new Uint8Array(HEXES);
+  seen[from] = 1;
+  let frontier = [from];
+  for (let s = 0; s < steps && frontier.length > 0; s++) {
+    const next: number[] = [];
+    for (const i of frontier) {
+      for (const n of NEIGHBOURS[i]) {
+        if (seen[n] || blocked[n]) continue;
+        seen[n] = 1;
+        next.push(n);
+      }
+    }
+    frontier = next;
+  }
+  return seen;
+}

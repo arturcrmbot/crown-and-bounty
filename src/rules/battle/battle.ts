@@ -1,5 +1,5 @@
 import { SPELLS, STATUSES, type SpellId, type StatusId } from '../../content/spells';
-import { abilitiesOf, TROOPS, type TroopId } from '../../content/troops';
+import { abilitiesOf, troopPower, TROOPS, type TroopId } from '../../content/troops';
 import { roll, type Army } from '../state';
 import { COLS, HEXES, hexIndex, neighbours, reachable } from './hex';
 
@@ -56,7 +56,13 @@ export type BattleState = {
   result?: 'won' | 'lost' | 'fled';
   /** What the field looks like: Aldmoor's meadows or the Fenmarch's reeds. It changes nothing else. */
   ground?: 'meadow' | 'fen';
+  /** Whether anyone has been hurt this round, and how many rounds in a row nobody was. */
+  struck?: boolean;
+  quiet?: number;
 };
+
+/** Rounds in a row with nobody hurt before the weaker side gives up the field. */
+export const QUIET_ROUNDS = 3;
 
 export type BattleAction =
   | { type: 'move'; to: number }
@@ -76,7 +82,7 @@ export type BattleEvent =
   | { type: 'wait' | 'defend'; fighter: number }
   | { type: 'turn'; fighter: number }
   | { type: 'round'; round: number }
-  | { type: 'end'; result: 'won' | 'lost' | 'fled' };
+  | { type: 'end'; result: 'won' | 'lost' | 'fled'; rout?: boolean };
 
 export type BattleResult = { battle: BattleState; events: BattleEvent[] };
 
@@ -230,8 +236,12 @@ const addStatus = (f: Fighter, status: StatusId) => {
   if (!f.status.includes(status)) f.status = [...f.status, status];
 };
 
-/** Applies one action for the acting stack (or the hero's spell) and moves the battle on. */
-export function battleAct(b: BattleState, action: BattleAction): BattleResult {
+/**
+ * Applies one action for the acting stack (or the hero's spell) and moves the battle on. With
+ * `expected`, damage is the average instead of a roll and the dice aren't used: for the AI to
+ * try an action out.
+ */
+export function battleAct(b: BattleState, action: BattleAction, expected = false): BattleResult {
   const f = activeFighter(b);
   if (!f) return { battle: b, events: [] };
   const fighters = b.fighters.map((x) => ({ ...x }));
@@ -241,8 +251,9 @@ export function battleAct(b: BattleState, action: BattleAction): BattleResult {
   const opts = options(b);
 
   const hit = (attacker: Fighter, target: Fighter, ranged: boolean, retaliation: boolean) => {
-    const rolled = strike(next, attacker, target, ranged, next.seed);
-    next.seed = rolled.seed!;
+    const rolled = strike(next, attacker, target, ranged, expected ? undefined : next.seed);
+    if (!expected) next.seed = rolled.seed!;
+    next.struck = true;
     const w = wound(target, rolled.damage);
     target.count = w.count;
     target.hp = w.hp;
@@ -285,7 +296,7 @@ export function battleAct(b: BattleState, action: BattleAction): BattleResult {
       break;
     }
     case 'wait': {
-      if (me.waited) return battleAct(b, { type: 'defend' });
+      if (me.waited) return battleAct(b, { type: 'defend' }, expected);
       me.waited = true;
       next.order = [...next.order.slice(1), me.id];
       events.push({ type: 'wait', fighter: me.id });
@@ -305,6 +316,7 @@ export function battleAct(b: BattleState, action: BattleAction): BattleResult {
       let killed = 0;
       const effect = spell.effect;
       if (effect.kind === 'damage') {
+        next.struck = true;
         damage = spellDamage(b, action.spell);
         const w = wound(target, damage);
         killed = w.killed;
@@ -335,16 +347,26 @@ function settle(b: BattleState, events: BattleEvent[], endTurn: boolean): Battle
     return { battle: { ...next, result }, events };
   }
   if (order.length === 0) {
+    const quiet = next.struck ? 0 : (next.quiet ?? 0) + 1;
+    // Nobody can land a blow (someone fast keeps running, say): the weaker side gives up the field.
+    if (quiet >= QUIET_ROUNDS) {
+      const worth = (side: Side) => next.fighters.filter((f) => alive(f) && f.side === side).reduce((sum, f) => sum + (((f.count - 1) * TROOPS[f.troop].hp + f.hp) / TROOPS[f.troop].hp) * troopPower(f.troop), 0);
+      const result = worth('enemy') < worth('player') ? 'won' : 'fled';
+      events.push({ type: 'end', result, rout: true });
+      return { battle: { ...next, result, quiet }, events };
+    }
     const fighters = next.fighters.map((f) => ({ ...f, retaliated: false, waited: false }));
-    next = { ...next, round: next.round + 1, fighters, order: turnOrder(fighters) };
+    next = { ...next, round: next.round + 1, fighters, order: turnOrder(fighters), struck: false, quiet };
     events.push({ type: 'round', round: next.round });
   }
   const acting = fighterById(next, next.order[0]);
   if (acting.defending) next = { ...next, fighters: next.fighters.map((f) => (f.id === acting.id ? { ...f, defending: false } : f)) };
   const full = TROOPS[acting.troop].hp;
-  if (abilitiesOf(acting.troop).some((a) => a.healsTopOnTurn) && acting.hp < full) {
-    next = { ...next, fighters: next.fighters.map((f) => (f.id === acting.id ? { ...f, hp: full } : f)) };
-    events.push({ type: 'regen', fighter: acting.id, healed: full - acting.hp });
+  const heal = Math.round(full * Math.max(0, ...abilitiesOf(acting.troop).map((a) => a.healsTopOnTurn ?? 0)));
+  if (heal > 0 && acting.hp < full) {
+    const hp = Math.min(full, acting.hp + heal);
+    next = { ...next, fighters: next.fighters.map((f) => (f.id === acting.id ? { ...f, hp } : f)) };
+    events.push({ type: 'regen', fighter: acting.id, healed: hp - acting.hp });
   }
   events.push({ type: 'turn', fighter: acting.id });
   return { battle: next, events };

@@ -203,7 +203,15 @@ export class BattleController {
         case 'end':
           this.step(1.1, {
             start: () => {
-              v.log = e.result === 'won' ? 'Victory! The field is yours.' : e.result === 'lost' ? 'Your army breaks and scatters.' : 'You sound the retreat.';
+              v.log = e.rout
+                ? e.result === 'won'
+                  ? 'The rest of them give up and run for it. The field is yours.'
+                  : 'Nobody can land a blow. Your men fall back.'
+                : e.result === 'won'
+                  ? 'Victory! The field is yours.'
+                  : e.result === 'lost'
+                    ? 'Your army breaks and scatters.'
+                    : 'You sound the retreat.';
               if (e.result !== 'fled') play(e.result === 'won' ? 'victory' : 'defeat');
             },
           });

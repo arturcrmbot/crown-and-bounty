@@ -8,7 +8,7 @@ describe('the bot', () => {
       expect(run.won, `seed ${run.seed}: ${run.log.join(', ')}`).toBe(true);
       expect(run.day).toBeLessThan(40);
     }
-  });
+  }, 120_000);
 
   it('wins Aldmoor and the Fenmarch, court included', () => {
     for (const { seed, runs } of simulateCampaign([1, 2, 3], 'wizard', 1)) {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { autoResolve, chooseAction } from './ai';
-import { activeFighter, battleAct, createBattle, fighterById, options, spellDamage, strike, wound, type BattleHero, type BattleState } from './battle';
+import { activeFighter, battleAct, createBattle, fighterById, options, QUIET_ROUNDS, spellDamage, strike, wound, type BattleHero, type BattleState } from './battle';
 import { colOf, distance, hexIndex, neighbours, reachable } from './hex';
 
 const hero: BattleHero = { attack: 1, defence: 1, spellPower: 2, mana: 20, spells: ['bolt', 'bless', 'slow'], castRound: 0 };
@@ -68,13 +68,14 @@ describe('a battle', () => {
     expect(options(pinned).shoot).toEqual([]);
   });
 
-  it('lets trolls heal the top troll\u2019s wounds at the start of their turn', () => {
+  it('lets trolls heal half the top troll\u2019s health at the start of their turn', () => {
     const b = battle(['archers'], [20], ['trolls'], [3]);
     const ready = { ...b, order: [0, 1] };
     const shot = battleAct(ready, { type: 'shoot', target: 1 });
     const troll = fighterById(shot.battle, 1);
+    const hurt = 70 - (shot.events.find((e) => e.type === 'hit') as { damage: number }).damage;
     expect(shot.battle.order[0]).toBe(1);
-    expect(troll.hp).toBe(70);
+    expect(troll.hp).toBe(Math.min(70, hurt + 35));
     expect(shot.events.some((e) => e.type === 'regen' && e.fighter === 1)).toBe(true);
   });
 
@@ -84,6 +85,16 @@ describe('a battle', () => {
     const hexed = battleAct(ready, { type: 'shoot', target: 0 });
     expect(fighterById(hexed.battle, 0).status).toContain('slowed');
     expect(hexed.events.some((e) => e.type === 'hit' && e.hexed)).toBe(true);
+  });
+
+  it('ends a battle nobody can land a blow in: the weaker side gives up the field', () => {
+    const b = battle(['knights'], [10], ['goblins'], [5]);
+    const quiet = { ...b, order: [0], quiet: QUIET_ROUNDS - 1, struck: false };
+    const end = battleAct(quiet, { type: 'defend' });
+    expect(end.battle.result).toBe('won');
+    expect(end.events.at(-1)).toMatchObject({ type: 'end', result: 'won', rout: true });
+    const busy = battleAct({ ...quiet, struck: true }, { type: 'defend' });
+    expect(busy.battle.result).toBeUndefined();
   });
 
   it('makes defenders harder to hurt, and lets a stack wait until last', () => {

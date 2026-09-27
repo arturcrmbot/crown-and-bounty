@@ -132,9 +132,24 @@ export function finishFight(state: GameState): Result {
  * The sergeants' estimate: how often the army wins this fight when both sides play it out by the
  * AI, over a few fixed seeds. Honest about tactics in a way raw troop numbers aren't.
  */
+/** Recent answers, since the same odds get asked for again and again (every card, every bot step). */
+const chances = new Map<string, number>();
+
 export function winChance(state: GameState, id: string, samples = 8): number {
   const place = locationById(state, id);
   if (!place.enemy || state.army.length === 0) return 0;
+  const key = JSON.stringify([state.army, heroInBattle(state), place.enemy.army, place.kind, provinceOf(state).fen ?? false, samples]);
+  const known = chances.get(key);
+  if (known !== undefined) return known;
+  const chance = simulateChance(state, id, samples);
+  if (chances.size > 2000) chances.clear();
+  chances.set(key, chance);
+  return chance;
+}
+
+function simulateChance(state: GameState, id: string, samples: number): number {
+  const place = locationById(state, id);
+  if (!place.enemy) return 0;
   let wins = 0;
   for (let i = 1; i <= samples; i++) {
     const battle = createBattle({ place: id, seed: i * 7919, player: state.army, enemy: place.enemy.army, hero: heroInBattle(state), obstacles: place.kind === 'hideout' ? 3 : 5 });
