@@ -39,18 +39,18 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
 - **Campaign (M3):** two commissions. After Aldmoor comes the King's court: a code-drawn throne room with King Osric and the returned goose. There, any waiting level-ups are taken, the King adds gold and offers a boon (pick one of three), and the next commission is read out. Commission II is the Fenmarch: meres, reeds and willows, bog goblins, a bridge troll who guards the only way south, and Mother Mirrow, a bog witch in a hut on chicken legs who turned the King's tax collector into a newt. Levels also bring leadership (+10 each). A lost commission can be tried again from its start. The bot wins both commissions with every background: Aldmoor by day 9 to 10, the Fenmarch by day 9 to 16.
 - **Generated commissions and parleys (M4):** the campaign is five commissions. After Aldmoor and the Fenmarch, each province is generated from the campaign's seed: roads join the places, woods and meres or crags fill the land, bands stand on the roads, and the villain's hideout sits in a ringed wood behind gatekeepers. Every map is checked playable with the same pathfinding the hero uses. The villains are Baron Grimsby again (he escaped, with the King's hat) and Aunt Bramble, Mother Mirrow's big sister, who turned the royal choir into frogs. Each commission is a fifth stronger than the last. Enemies can offer parleys, other ways past than a fight: pay, talk or trick. Some need a background or skill, and options the hero can't take show greyed out as a hint. Trolls regenerate, and the witches' hexes slow what they hit.
 - **The ending:** every bounty comes with a torn piece of an old map (the hero card counts them). In the fifth commission, the last piece puts an X on the map: ride there and dig up the Sceptre of Order to win the campaign. The bot plays all five commissions, including the dig, with every background.
-- **Title and prologue (R1, 28 Sep):** the game opens on a painted sunset over the King's country (castle,
+- **Title and prologue (R1, 27 Sep):** the game opens on a painted sunset over the King's country (castle,
   fields, river, the hero setting out) with the name in beaten gold and the title tune. A new campaign starts at
   court: King Osric explains the trouble, his clerk hands over a WANTED poster for Grimsby, and Aldric picks who
   he was from four faces with a plain line on how each wins. Every commission opens with its province's name on
   a ribbon and a fanfare. Portraits (the King, the heroes, the villains) appear on cards.
-- **Juice (R2, 28 Sep):** on the map, gains rise off the hero in words (gold, troops, leadership, experience), a
+- **Juice (R2, 27 Sep):** on the map, gains rise off the hero in words (gold, troops, leadership, experience), a
   level brings a golden ring, beaten foes leave dust and treasure glitters, and night falls over the map
   between days. In battle, fighters are HoMM2-sized (most of two hex rows), Aldric sits his horse at the field's
   edge and the enemy flies a standard (Grimsby's goose, the fen's moon, the outlaws' skull), blows spark and
   shake the field, the fallen stay where they fell, kill counts rise over heads, and a ribbon says VICTORY or
   DEFEAT.
-- **Signature playstyles (R4, 28 Sep):** the Knight's knights charge (3 hexes or more first: a quarter harder,
+- **Signature playstyles (R4, 27 Sep):** the Knight's knights charge (3 hexes or more first: a quarter harder,
   and nobody strikes back). The Ranger rides through woodland, where nothing on the map can follow or hunt him,
   and his archers loose a free volley before each battle (not at a villain's walls). The Wizard casts two spells
   a round and has Far Sight on the map. The Courtier pays half for any bribe and can hire small bands outright

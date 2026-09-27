@@ -1,7 +1,7 @@
 import { SPELLS, type SpellId } from '../content/spells';
 import { TROOPS, troops } from '../content/troops';
 import { chooseAction } from '../rules/battle/ai';
-import { activeFighter, battleAct, canCast, castsLeft, CHARGE_BONUS, fighterById, isCharge, options, spellCost, spellDamage, strike, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
+import { activeFighter, battleAct, canCast, castsLeft, CHARGE_BONUS, fighterById, isCharge, options, spellCost, spellDamage, spellVictims, strike, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
 import { paintBanner } from '../render/banner';
 import { BattleScreen, BUTTONS, hexAt, hexCentre, type BattleView, type Shot } from '../render/battleScreen';
 import { FIGHTER_FOOT } from '../render/battleSprites';
@@ -213,16 +213,32 @@ export class BattleController implements Screen {
           if (target.count === 0) v.dying.add(e.target);
           const [tx, ty] = hexCentre(target.at);
           const look = SPELLS[e.spell].look;
-          const shot = { from: [tx, 0] as [number, number], to: [tx, ty - 10] as [number, number], t: 0, kind: look.kind, color: look.colour === 'blue' ? BLUE[6] : GOLD[6] };
-          this.step(0.4, {
+          if (e.splash) {
+            // Caught in the burst beside the target: the flames already there, so just the damage.
+            this.step(0.08, {
+              start: () => {
+                v.flashing.add(e.target);
+                this.float(e.target, e.killed ? `-${e.killed}` : `-${e.damage} hp`, target.side === 'player' ? RED[5] : GOLD[6]);
+              },
+              end: () => {
+                v.flashing.delete(e.target);
+                if (target.count) v.dying.delete(e.target);
+              },
+            });
+            if (target.count === 0) this.poof(e.target);
+            break;
+          }
+          const colour = look.colour === 'blue' ? BLUE[6] : look.colour === 'red' ? RED[5] : GOLD[6];
+          const shot = { from: [tx, 0] as [number, number], to: [tx, ty - 10] as [number, number], t: 0, kind: look.kind, color: colour };
+          this.step(look.kind === 'fire' ? 0.95 : 0.4, {
             start: () => {
               v.shots.push(shot);
-              play(look.kind === 'bolt' ? 'bolt' : 'spell');
+              play(look.kind === 'sparkle' ? 'spell' : 'bolt');
               v.log = `${this.battle.hero.name ?? 'Aldric'} casts ${SPELLS[e.spell].name} on ${this.fighterName(e.target).toLowerCase()}${e.damage ? `: ${e.damage} damage${e.killed ? `, ${e.killed} perish` : ''}` : ''}.`;
               if (e.damage) {
                 v.flashing.add(e.target);
                 this.float(e.target, e.killed ? `-${e.killed}` : `-${e.damage} hp`, GOLD[6]);
-                if (look.kind === 'bolt') v.shake = Math.max(v.shake, 4);
+                if (look.kind !== 'sparkle') v.shake = Math.max(v.shake, look.kind === 'fire' ? 5 : 4);
               }
             },
             tick: (t) => (shot.t = t),
@@ -400,8 +416,12 @@ export class BattleController implements Screen {
     const name = TROOPS[target.troop].name.toLowerCase();
     if (action.type === 'cast') {
       const damage = spellDamage(this.battle, action.spell);
-      if (!damage) return `${SPELLS[action.spell].name} on their ${name}.`;
-      return `${SPELLS[action.spell].name}: ${damage} damage, ${wound(target, damage).killed} of their ${name} perish.`;
+      if (!damage) return `${SPELLS[action.spell].name} on ${target.side === 'player' ? 'your' : 'their'} ${name}.`;
+      const [, ...caught] = spellVictims(this.battle, action.spell, target);
+      const ours = caught.filter((c) => c.side === 'player').map((c) => TROOPS[c.troop].name.toLowerCase());
+      const theirs = caught.length - ours.length;
+      const more = [theirs ? `${theirs} more of theirs` : '', ours.length ? `your own ${ours.join(' and ')}!` : ''].filter(Boolean).join(', and ');
+      return `${SPELLS[action.spell].name}: ${damage} damage, ${wound(target, damage).killed} of their ${name} perish.${more ? ` It also hits ${more}` : ''}`;
     }
     if (action.type !== 'melee' && action.type !== 'shoot') return null;
     const ranged = action.type === 'shoot';

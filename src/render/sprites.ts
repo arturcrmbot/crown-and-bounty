@@ -753,6 +753,74 @@ export function peatHut(): Bitmap {
   return shaped;
 }
 
+/** A ring of old standing stones on the heath, two of them with a lintel across, moss at their feet. */
+export function standingStones(): Bitmap {
+  const sprite = new Bitmap(60, 42);
+  // [middle x, foot y, half width, height]: the back of the ring first, so the front stands over it.
+  const stones: [number, number, number, number][] = [
+    [17, 22, 3.5, 15], [30, 20, 4, 17], [43, 22, 3.5, 15],
+    [8, 28, 3.5, 13], [52, 28, 3.5, 13],
+    [19, 34, 4, 13], [41, 34, 4, 13], [30, 36, 3.5, 10],
+  ];
+  const STONE5 = [ROCK[2], ROCK[3], ROCK[5], ROCK[6], ROCK[7]];
+  for (const [cx, foot, half, tall] of stones) {
+    for (let y = foot - tall; y < foot; y++) {
+      const taper = y < foot - tall + 3 ? (foot - tall + 3 - y) * 0.6 : 0;
+      for (let x = Math.floor(cx - half + taper * 0.5); x < cx + half - taper * 0.5; x++) {
+        const u = (x + 0.5 - (cx - half)) / (half * 2);
+        const moss = y > foot - 4 && hash(x, y, 51) < 0.45;
+        sprite.set(x, y, moss ? LEAF[3 + Math.floor(hash(x, y, 52) * 2)] : flat(STONE5, 0.78 - u * 0.55 + (noise(x / 2, y / 3, 53) - 0.5) * 0.25, x, y));
+      }
+    }
+  }
+  // The lintel across the two tallest at the back.
+  for (let y = 3; y < 7; y++) for (let x = 14; x < 34; x++) sprite.set(x, y, flat(STONE5, 0.75 - (y - 3) * 0.12 - (x - 14) * 0.008, x, y));
+  const shaped = outline(sprite, INK);
+  castShadow(shaped, 5, 2, 18);
+  return shaped;
+}
+
+/**
+ * Old Nan's cottage at the edge of the wood: a leaning whitewashed cottage under a shaggy thatch, a
+ * crooked chimney puffing purple smoke with `phase`, and a cauldron by the door.
+ */
+export function cottage(phase = 0): Bitmap {
+  const sprite = new Bitmap(48, 50);
+  const REED4 = [REED[1], REED[2], REED[3], REED[4]];
+  // Walls, leaning a pixel as they rise.
+  for (let y = 26; y < 44; y++) {
+    const lean = Math.round((44 - y) / 12);
+    for (let x = 7 + lean; x < 33 + lean; x++) sprite.set(x, y, timber(x, y, 7 + lean, 33 + lean, 0.86 - (x - 7) * 0.012));
+  }
+  for (let y = 33; y < 44; y++) for (let x = 17; x < 23; x++) sprite.set(x, y, y === 33 ? WOOD[1] : flat(WOOD4, 0.35 + (x === 21 ? 0.3 : 0), x, y));
+  for (let y = 29; y < 33; y++) for (let x = 10; x < 14; x++) sprite.set(x, y, y === 29 || x === 10 ? WOOD[2] : GOLD[5]);
+  // The chimney, at a slant.
+  for (let y = 6; y < 24; y++) {
+    const x0 = 27 + Math.round((24 - y) / 7);
+    for (let x = x0; x < x0 + 4; x++) sprite.set(x, y, flat(STONE4, 0.6 - (x - x0) * 0.12 + (y % 3 === 0 ? -0.15 : 0), x, y));
+  }
+  roof(sprite, 5, 36, 12, 28, REED4);
+  // The cauldron, bubbling green.
+  for (let y = 38; y < 45; y++) for (let x = 36; x < 45; x++) if (((x - 40.5) / 4.6) ** 2 + ((y - 40) / 4) ** 2 <= 1) sprite.set(x, y, y < 39 ? LEAF[6] : flat(STONE4, 0.25 - (x - 36) * 0.02, x, y));
+  const shaped = outline(sprite, INK);
+  castShadow(shaped, 5, 2, 30);
+  // Purple smoke, curling off to the east.
+  for (let k = 0; k < 3; k++) {
+    const t = (phase + k / 3) % 1;
+    const cx = 30 + t * 12 + Math.sin(t * 6 + k) * 2;
+    const cy = 5 - t * 5;
+    const r = 1.4 + t * 2.4;
+    for (let y = Math.floor(cy - r); y <= cy + r; y++) {
+      for (let x = Math.floor(cx - r); x <= cx + r; x++) {
+        if (y < 0 || ((x - cx) / r) ** 2 + ((y - cy) / r) ** 2 > 1 || shaped.get(x, y) !== 0) continue;
+        if (t > 0.6 && (x + y) % 2 === 0) continue;
+        shaped.set(x, y, t < 0.35 ? PLUM[4] : PLUM[3]);
+      }
+    }
+  }
+  return shaped;
+}
+
 /** A fen windmill: a tarred timber tower with a white cap, sails turned to `turn` (0 to 1 round). */
 export function windmill(turn: number): Bitmap {
   const sprite = new Bitmap(64, 72);

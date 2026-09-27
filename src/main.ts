@@ -1,4 +1,5 @@
 import { BACKGROUNDS, type BackgroundId } from './content/backgrounds';
+import { SPELLS, type SpellId } from './content/spells';
 import { Game } from './game/game';
 import { Display } from './game/display';
 import { Input } from './game/input';
@@ -35,7 +36,10 @@ const seed = query.has('seed') ? Number(query.get('seed')) : frozen ? 1066 : cry
 function debugStart(): GameState {
   // ?hero=ranger (or knight, wizard, courtier) picks the background for a debug start.
   const who = query.get('hero');
-  const first = newGame(seed, undefined, who && who in BACKGROUNDS ? (who as BackgroundId) : 'knight');
+  const picked = newGame(seed, undefined, who && who in BACKGROUNDS ? (who as BackgroundId) : 'knight');
+  // ?spells=fireball,stoneskin teaches spells for a debug start.
+  const taught = (query.get('spells') ?? '').split(',').filter((id): id is SpellId => id in SPELLS && !picked.hero.spells.includes(id as SpellId));
+  const first = taught.length ? { ...picked, hero: { ...picked.hero, spells: [...picked.hero.spells, ...taught] } } : picked;
   const court = Number(query.get('court') ?? 0);
   const chapter = court > 0 ? court - 1 : Number(query.get('commission') ?? 1) - 1;
   const { hero, gold, leadership, army } = first;
@@ -55,7 +59,7 @@ const game = new Game(display, Math.max(1, Number(query.get('speed') ?? 1)));
 const input = new Input(display, game.input);
 // The title and the King's welcome come first, unless a debug start (or a frozen screenshot) wants straight in.
 // ?quick=1 skips them too; ?title=1 brings them back even when frozen.
-const quick = (frozen && query.get('title') !== '1') || ['quick', 'battle', 'court', 'commission', 'sceptre', 'reveal', 'x', 'hero'].some((k) => query.has(k));
+const quick = (frozen && query.get('title') !== '1') || ['quick', 'battle', 'court', 'commission', 'sceptre', 'reveal', 'x', 'hero', 'spells'].some((k) => query.has(k));
 if (quick) {
   // ?reveal=1 lifts the fog, for looking the whole map over.
   const start = resume ?? (query.has('reveal') ? { ...debugStart(), explored: debugStart().explored.map(() => -1) } : debugStart());

@@ -9,7 +9,7 @@ import { SKILLS } from '../../content/skills';
 import { SPELLS } from '../../content/spells';
 import { foundNote, gainXp, giveArtifact, heroStats } from '../hero';
 import { revealDisc } from '../map/fog';
-import { addTroops, coins, countOf, leadershipUsed, TROOPS, troops, update, VANISHES, type Effects, type GameEvent, type GameState, type Location, type Needs } from '../state';
+import { addTroops, coins, countOf, leadershipUsed, MAX_STACKS, TROOPS, troops, update, VANISHES, type Effects, type GameEvent, type GameState, type Location, type Needs } from '../state';
 
 const STAT_WORDS = { attack: 'attack', defence: 'defence', spellPower: 'spell power', knowledge: 'knowledge' } as const;
 
@@ -27,6 +27,7 @@ export function meets(state: GameState, needs: Needs | undefined): boolean {
   if (needs.gold && state.gold < needs.gold) return false;
   if (needs.mana && hero.mana < needs.mana) return false;
   if (needs.troop && countOf(state.army, needs.troop) < (needs.count ?? 1)) return false;
+  if (needs.notSpell && hero.spells.includes(needs.notSpell)) return false;
   // Nobody pays with his whole army.
   if (needs.troop && state.army.reduce((n, s) => n + s.count, 0) <= (needs.count ?? 1)) return false;
   return true;
@@ -95,6 +96,19 @@ export function applyEffects(state: GameState, place: Location, effects: Effects
     lines.push(army ? `**${troops(stack.troop, count)}** join your army.` : `**${TROOPS[stack.troop].name}** would join you, but you can\u2019t lead any more.`);
   }
   if (effects.flags) next = { ...next, flags: { ...next.flags, ...effects.flags } };
+  if (effects.reinforce && place.enemy) {
+    const joined = next.locations.find((l) => l.id === effects.reinforce);
+    if (joined?.enemy && !joined.done) {
+      let army = joined.enemy.army;
+      for (const stack of place.enemy.army) {
+        const had = army.some((s) => s.troop === stack.troop);
+        if (had) army = army.map((s) => (s.troop === stack.troop ? { ...s, count: s.count + stack.count } : s));
+        else if (army.length < MAX_STACKS) army = [...army, { ...stack }];
+      }
+      next = update(next, joined.id, { enemy: { ...joined.enemy, army } });
+      lines.push(`**${joined.name}** grows stronger.`);
+    }
+  }
   if (effects.reveal) {
     const { at, radius } = effects.reveal;
     next = { ...next, explored: revealDisc(next.explored, next.world, at[0], at[1], radius).bits };

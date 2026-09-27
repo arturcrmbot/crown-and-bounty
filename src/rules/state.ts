@@ -1,10 +1,9 @@
 /** Pure game rules: no DOM, no timers. Every change returns a new state plus events, and dice come from `seed`. */
 import type { ArtifactId, Slot } from '../content/artifacts';
 import type { BackgroundId } from '../content/backgrounds';
-import type { MapSpellId } from '../content/spells';
 import type { PortraitId } from '../content/portraits';
 import type { PerkId, SkillId } from '../content/skills';
-import type { SpellId } from '../content/spells';
+import type { MapSpellId, SpellId } from '../content/spells';
 import { TROOPS, troopPower, troops, type TroopId } from '../content/troops';
 import type { BattleState } from './battle/battle';
 import type { Offer } from './hero';
@@ -84,6 +83,8 @@ export type Needs = {
   troop?: TroopId;
   count?: number;
   mana?: number;
+  /** A spell the hero must not know yet (so a teacher doesn't teach it twice). */
+  notSpell?: SpellId;
 };
 
 /** What a choice does, all of it optional, applied in this order. */
@@ -109,6 +110,8 @@ export type Effects = {
   page?: string;
   /** A new place appears on the map: a camp of deserters, a hidden grove. */
   place?: Location;
+  /** This place's enemy marches off to join another's (by id): the road clears, the villain grows. */
+  reinforce?: string;
 };
 
 /** A choice written as content: a button, what it needs, what it does, and what the card then says. */
@@ -148,7 +151,7 @@ export type Location = {
 
 /** Flavour for a place: before a visit, once it's used up, and on the visit itself. */
 export type PlaceText = { about?: string[]; done?: string[]; visit?: string[] };
-export type PlaceLook = 'abbey' | 'peathut' | 'windmill' | 'stilthut' | 'shrine' | 'camp';
+export type PlaceLook = 'abbey' | 'peathut' | 'windmill' | 'stilthut' | 'shrine' | 'camp' | 'cottage' | 'stones';
 
 /** The campaign so far: which commission this is, how the others went, and how this one began. */
 export type Campaign = {

@@ -181,11 +181,12 @@ export const FENMARCH: Province = {
       name: 'Bog Goblins',
       at: at.goblins,
       done: false,
+      artifact: 'brannocsLance',
       enemy: {
         look: 'goblins',
         behaviour: 'hunt',
         range: 170,
-        lines: ['A great many **bog goblins**, squabbling over a boot.', 'They stop squabbling when they see your horse, and start following it.'],
+        lines: ['A great many **bog goblins**, squabbling over a boot.', 'They stop squabbling when they see your horse, and start following it.', '*One of them is dragging a knight\u2019s lance through the mud.*'],
         army: [{ troop: 'goblins', count: 180 }],
         reward: 400,
         threat: 'They giggle, which is worse than shouting.',
@@ -199,7 +200,7 @@ export const FENMARCH: Province = {
           },
         ],
         flees: 'The goblins scatter into the reeds, still arguing about the boot.',
-        loot: 'You find {gold} in a hollow log.',
+        loot: 'You find {gold} in a hollow log, and the lance, which turns out to be Sir Brannoc\u2019s, lost in the fen a hundred years ago.',
       },
     },
     {

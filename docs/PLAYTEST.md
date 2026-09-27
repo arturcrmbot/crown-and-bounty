@@ -3,7 +3,7 @@
 Newest first. Each entry says what was played, how it felt to an experienced player (HoMM2, King's Bounty,
 modern RPGs), and what was done about it.
 
-## #2: 28 Sep 2026, after R1, R2's juice and R4's signatures, all four backgrounds
+## #2: 27 Sep 2026, after R1, R2's juice and R4's signatures, all four backgrounds
 
 **Played:** `scripts/playtest.mjs` with each background (title, prologue, the first day, the patrol by hand and
 on auto, the tower, the castle). Also: every signature in a real battle (the knight's charge against the

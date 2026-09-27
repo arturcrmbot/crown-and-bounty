@@ -49,7 +49,7 @@ export function hexAt(x: number, y: number): number | null {
 }
 
 export type Floater = { x: number; y: number; text: string; color: number; age: number };
-export type Shot = { from: [number, number]; to: [number, number]; t: number; kind: 'arrow' | 'bolt' | 'sparkle' | 'spark' | 'poof'; color?: number };
+export type Shot = { from: [number, number]; to: [number, number]; t: number; kind: 'arrow' | 'bolt' | 'fire' | 'sparkle' | 'spark' | 'poof'; color?: number };
 
 /** What the battle controller wants drawn this frame, on top of the rules state. */
 export type BattleView = {
@@ -313,6 +313,40 @@ export class BattleScreen {
         x += (hash(y, Math.floor(s.t * 20), 5) - 0.5) * 10;
         x += (bx - x) * 0.08;
         for (const dx of [-1, 0, 1]) this.screen.set(Math.round(x + dx), y, dx === 0 ? NEUTRAL[7] : GOLD[6]);
+      }
+    } else if (s.kind === 'fire') {
+      const FALL = 0.35;
+      if (s.t < FALL) {
+        // A ball of fire drops out of the sky onto the stack, trailing sparks.
+        const k = s.t / FALL;
+        const x = bx + 70 * (1 - k);
+        const y = MAP_VIEW.y + 10 + (by - 20 - MAP_VIEW.y) * k;
+        for (let n = 1; n < 9; n++) this.screen.set(Math.round(x + n * 5), Math.round(y - n * 6), n % 2 ? GOLD[5] : RED[4]);
+        for (let j = -8; j <= 8; j++) {
+          for (let i = -8; i <= 8; i++) {
+            const d = Math.hypot(i, j);
+            if (d <= 8) this.screen.set(Math.round(x + i), Math.round(y + j), d < 3 ? NEUTRAL[7] : d < 5.5 ? GOLD[6] : RED[5]);
+          }
+        }
+      } else {
+        // It bursts over the stack and everyone beside it: a sheet of flame that swells, then gutters out.
+        const k = (s.t - FALL) / (1 - FALL);
+        const rx = 22 + k * 50;
+        const ry = rx * 0.6;
+        const flicker = Math.floor(s.t * 30);
+        for (let y = Math.floor(by - ry - 26); y <= by + ry + 6; y++) {
+          for (let x = Math.floor(bx - rx); x <= bx + rx; x++) {
+            const dx = (x - bx) / rx;
+            const dy = (y - by - 2) / ry;
+            // Flames lick upwards: the top of the sheet is ragged and taller.
+            const lick = dy < 0 ? (hash(Math.floor(x / 3), flicker, 71) * 0.8 + 0.2) * (1 - k) * 1.6 : 0;
+            const d = Math.hypot(dx, dy < 0 ? dy / (1 + lick) : dy);
+            if (d > 1) continue;
+            if (bayer(x, y) < k * k * 1.1 - (1 - d) * 0.25) continue;
+            const hot = (1 - d) * (1 - k * 0.7);
+            this.screen.set(x, y, hot > 0.55 ? NEUTRAL[7] : hot > 0.3 ? GOLD[6] : hot > 0.12 ? RED[5] : RED[3]);
+          }
+        }
       }
     } else if (s.kind === 'spark') {
       // A burst of white and gold where the blow lands.

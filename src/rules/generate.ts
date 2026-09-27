@@ -1,4 +1,6 @@
+import { RELICS } from '../content/artifacts';
 import type { Commission } from '../content/campaign';
+import { SPELLS, type SpellId } from '../content/spells';
 import type { Band, VillainTemplate } from '../content/villains';
 import { troopPower, type TroopId } from '../content/troops';
 import type { Province } from '../content/types';
@@ -99,6 +101,36 @@ function enemy(band: Band, power: number, reward: number, bosses: TroopId[] = []
   const words: Enemy = { look: band.look, lines: band.lines, threat: band.threat, flees: band.flees, loot: band.loot, army: [...armyOf(band.troops, power), ...bosses.map((troop) => ({ troop, count: 1 }))], reward };
   if (band.charge) words.charge = band.charge;
   return words;
+}
+
+/**
+ * Standing stones on the heath, or a drowned chapel in the fen, that teach one charm for gold and
+ * another to anyone with the wits for it.
+ */
+function charmShrine(at: Point, fen: boolean, bought: SpellId, earned: SpellId, s: number): Location {
+  const price = Math.round((250 * s) / 10) * 10;
+  return {
+    id: 'stones',
+    kind: 'event',
+    look: fen ? 'shrine' : 'stones',
+    name: fen ? 'The Drowned Chapel' : 'The Humming Stones',
+    at,
+    done: false,
+    text: { about: fen ? ['A chapel up to its windows in the mere. Candles still burn inside.'] : ['A ring of old standing stones. They hum when the wind drops.'] },
+    pages: [
+      {
+        id: 'charms',
+        lines: fen
+          ? ['On the altar, two charms are written in candle wax. The collection box is suspiciously clean.']
+          : ['The stones hum louder as you come near. Two charms are carved on the tallest, and under one of them, a slot the size of a coin.'],
+        choices: [
+          { id: 'buy', label: `Learn ${SPELLS[bought].name}`, needs: { gold: price, notSpell: bought }, effects: { spell: bought }, lines: ['The coins drop into the dark. The words come to you as if you had always known them.'] },
+          { id: 'read', label: `Read ${SPELLS[earned].name}`, needs: { spellPower: 3, notSpell: earned }, effects: { spell: earned }, lines: ['It takes a clever head to read it, and you have one. The charm is yours.'] },
+          { id: 'leave', label: 'Ride on', lines: [fen ? 'You leave the candles to burn.' : 'The humming follows you for a mile or so.'] },
+        ],
+      },
+    ],
+  };
 }
 
 /** One attempt at a province; the caller checks it can be played and tries again if not. */
@@ -203,6 +235,19 @@ function attempt(seed: number, v: VillainTemplate, chapter: number): Province {
     else trees.push([p[0], p[1], !fen && random() < 0.4]);
   }
 
+  // Extras roll their own dice, so adding them never moves anything drawn above.
+  const extra = rng(seed ^ 0x51ed);
+  const relic = pick(extra, RELICS);
+  const forSale = pick(extra, ['crystalBall', 'silverSignet'] as const);
+  const [firstCharm, secondCharm] = shuffle(extra, ['fireball', 'stoneskin', 'haste', 'slow', 'bless', 'bolt'] as SpellId[]);
+  const clearOf = (p: Point, areas: readonly [number, number, number, number][], room: number) => areas.every(([x, y, rx, ry]) => ((p[0] - x) / rx) ** 2 + ((p[1] - y) / ry) ** 2 > room);
+  let stones: Point | null = null;
+  for (let i = 0; i < 120 && !stones; i++) {
+    const p: Point = [between(extra, 100, W - 100), between(extra, 110, H - 100)];
+    if (free(p, 120) && dist(p, hideout) > 300 && dist(p, hero) > 220 && clearOf(p, forests, 1.4) && clearOf(p, crags, 2) && poolDistance({ pools } as Province, p[0], p[1]) > 30) stones = p;
+  }
+
+  const guardian: Enemy = { ...enemy(v.guardian, BASE.guardian * s, Math.round(600 * s)), ...(v.parleys?.guardian ? { parleys: v.parleys.guardian } : {}) };
   const names = v.names;
   const words = WORDS[v.land];
   const at = (p: Point) => P(p);
@@ -216,7 +261,16 @@ function attempt(seed: number, v: VillainTemplate, chapter: number): Province {
     enemy: { ...enemy(v.bands[i], BASE.band * s * (0.9 + i * 0.2), Math.round(400 * s)), behaviour: i === 0 ? 'roam' : 'hunt', range: i === 0 ? 130 : 160 },
   }));
   const locations: Location[] = [
-    { id: 'castle', kind: 'castle', name: pick(random, names.castle), at: at(castle), done: false, text: { about: pick(random, words.castle) }, recruits: { troop: 'knights', count: 6, price: 110 }, wares: shuffle(random, ['harrowgateMail', 'fenBanner', 'astrolabe', 'swordOfAldmoor', 'breastplate', 'luckyHorseshoe'] as const).slice(0, 3) },
+    {
+      id: 'castle',
+      kind: 'castle',
+      name: pick(random, names.castle),
+      at: at(castle),
+      done: false,
+      text: { about: pick(random, words.castle) },
+      recruits: { troop: 'knights', count: 6, price: 110 },
+      wares: [...shuffle(random, ['harrowgateMail', 'fenBanner', 'astrolabe', 'swordOfAldmoor', 'breastplate', 'luckyHorseshoe'] as const).slice(0, 3), forSale],
+    },
     { id: 'village', kind: 'village', name: pick(random, names.village), at: at(village), done: false, recruits: { ...v.village }, text: { about: pick(random, words.village) } },
     { id: 'tower', kind: 'tower', ...(fen ? { look: 'abbey' as const } : {}), name: pick(random, names.tower), at: at(tower), done: false, reveals: at(hideout), text: { about: pick(random, words.tower), done: words.towerDone, visit: [v.towerClue] } },
     { id: 'mine', kind: 'mine', ...(fen ? { look: 'peathut' as const } : {}), name: pick(random, names.mine), at: at(mine), done: false, gold: Math.round(500 * s), text: { about: pick(random, words.mine), visit: words.mineVisit, done: words.mineDone } },
@@ -225,7 +279,17 @@ function attempt(seed: number, v: VillainTemplate, chapter: number): Province {
     ...chests.map((p, i): Location => ({ id: `chest${i}`, kind: 'chest', name: 'Treasure Chest', at: at(p), done: false, gold: Math.round((500 + i * 150) * s) })),
     ...piles.map((p, i): Location => ({ id: `gold${i}`, kind: 'gold', name: 'Pile of Gold', at: at(p), done: false, gold: Math.round((300 + i * 150) * s) })),
     ...bandLocations,
-    { id: 'guardian', kind: 'patrol', name: v.guardian.name, at: at(guardianAt), done: false, enemy: { ...enemy(v.guardian, BASE.guardian * s, Math.round(600 * s)), ...(v.parleys?.guardian ? { parleys: v.parleys.guardian } : {}) } },
+    {
+      id: 'guardian',
+      kind: 'patrol',
+      name: v.guardian.name,
+      at: at(guardianAt),
+      done: false,
+      // The gatekeepers carry a relic: a reason to fight them, not just a door.
+      artifact: relic,
+      enemy: { ...guardian, lines: [...guardian.lines, '*Something glints in their baggage.*'] },
+    },
+    ...(stones ? [charmShrine(at(stones), fen, firstCharm, secondCharm, s)] : []),
     {
       id: 'hideout',
       kind: 'hideout',

@@ -20,7 +20,13 @@ export type ArtifactId =
   | 'trollhide'
   | 'harrowgateMail'
   | 'fenBanner'
-  | 'astrolabe';
+  | 'astrolabe'
+  | 'poachersHorn'
+  | 'greenwoodCloak'
+  | 'brannocsLance'
+  | 'twinWand'
+  | 'crystalBall'
+  | 'silverSignet';
 
 export type Artifact = { id: ArtifactId; name: string; slot: Slot; note: string; bonus: Bonus; price?: number };
 
@@ -42,4 +48,20 @@ export const ARTIFACTS: Record<ArtifactId, Artifact> = {
   harrowgateMail: { id: 'harrowgateMail', name: 'Harrowgate Mail', slot: 'armour', note: '+3 defence. Heavy enough to anchor a boat.', bonus: { defence: 3 }, price: 1600 },
   fenBanner: { id: 'fenBanner', name: 'Banner of the Fens', slot: 'banner', note: '+35 leadership. The heron on it is either noble or hungry.', bonus: { leadership: 35 }, price: 1200 },
   astrolabe: { id: 'astrolabe', name: 'Brass Astrolabe', slot: 'trinket', note: '+1 spell power, +1 knowledge. It points at stars, mostly the wrong ones.', bonus: { spellPower: 1, knowledge: 1 }, price: 1400 },
+  // Relics: each carries one hero's trick, so anyone can learn to win another way.
+  poachersHorn: { id: 'poachersHorn', name: 'The Poacher\u2019s Horn', slot: 'trinket', note: 'Your archers loose a free volley before every battle, as a ranger\u2019s do.', bonus: { volley: true } },
+  greenwoodCloak: { id: 'greenwoodCloak', name: 'Greenwood Cloak', slot: 'armour', note: '+1 defence, and you ride through the woods like a ranger, where nothing can follow.', bonus: { defence: 1, forestWalk: true } },
+  brannocsLance: {
+    id: 'brannocsLance',
+    name: 'Sir Brannoc\u2019s Lance',
+    slot: 'weapon',
+    note: '+1 attack, and your knights and swordsmen charge: after riding 3 hexes they hit a quarter harder, and nobody strikes back.',
+    bonus: { attack: 1, charge: ['knights', 'swordsmen'] },
+  },
+  twinWand: { id: 'twinWand', name: 'The Twin Wand', slot: 'weapon', note: 'One more spell every round of battle. The two halves argue.', bonus: { casts: 1 } },
+  crystalBall: { id: 'crystalBall', name: 'Crystal of Far Sight', slot: 'helm', note: 'Cast Far Sight on the map, and see 40 paces further.', bonus: { mapSpells: ['farsight'], sight: 40 }, price: 800 },
+  silverSignet: { id: 'silverSignet', name: 'Silver Signet', slot: 'trinket', note: 'Bribes cost a third less, and small bands will take your coin and join you.', bonus: { bribes: 0.33, hires: true }, price: 900 },
 };
+
+/** Relics carry another hero's trick: a charge, a volley, the woods, a second spell, Far Sight, a silver tongue. */
+export const RELICS: ArtifactId[] = ['poachersHorn', 'greenwoodCloak', 'brannocsLance', 'twinWand', 'crystalBall', 'silverSignet'];

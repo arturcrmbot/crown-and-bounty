@@ -18,6 +18,8 @@ const at = {
   poachers: [880, 684],
   highwaymen: [366, 336],
   boars: [1040, 424],
+  nan: [1012, 556],
+  cache: [772, 800],
 } satisfies Record<string, Point>;
 
 /** The patrol's size: a gate, too strong for a fresh army (see `rules/difficulty.ts`). */
@@ -92,7 +94,7 @@ export const ALDMOOR: Province = {
       at: at.castle,
       done: false,
       recruits: { troop: 'knights', count: 5, price: 100 },
-      wares: ['swordOfAldmoor', 'breastplate', 'helmOfFarSight', 'luckyHorseshoe'],
+      wares: ['swordOfAldmoor', 'breastplate', 'helmOfFarSight', 'luckyHorseshoe', 'silverSignet'],
       text: { about: ['Your castle, flying the King\u2019s banner.', 'The steward is pretending to count spoons.', 'Knights to recruit, and an armoury.'] },
     },
     {
@@ -173,6 +175,41 @@ export const ALDMOOR: Province = {
         { id: 'after', when: { flag: 'aldhelm' }, lines: ['The shrine is quiet. The feather has gone.'], choices: [] },
       ],
     },
+    {
+      id: 'nan',
+      kind: 'event',
+      look: 'cottage',
+      name: 'Old Nan\u2019s Cottage',
+      at: at.nan,
+      done: false,
+      text: { about: ['A crooked cottage with a crooked chimney, at the edge of the wood.', '*The smoke is purple.*'] },
+      pages: [
+        {
+          id: 'door',
+          lines: [
+            'Old Nan peers at you over a steaming cauldron. *"The King\u2019s man! I know a charm or two, dearie, for them as can pay."*',
+            '*"And if you ever bring me a good warm wolf pelt, I\u2019ll show you something hotter."*',
+          ],
+          choices: [
+            {
+              id: 'stone',
+              label: 'Learn Stone Skin',
+              needs: { gold: 300, notSpell: 'stoneskin' },
+              effects: { spell: 'stoneskin' },
+              lines: ['She taps your men\u2019s shields with a wooden spoon. They go grey, and very hard. *"That\u2019ll keep the arrows out."*'],
+            },
+            {
+              id: 'fire',
+              label: 'Give her the wolf pelt',
+              needs: { flag: 'wolfpelt', notSpell: 'fireball' },
+              effects: { spell: 'fireball', flags: { wolfpelt: false } },
+              lines: ['*"Ooh, that\u2019s a warm one."* She wraps herself in it, and shows you how to set the air on fire. *"Mind your own lads, mind."*'],
+            },
+            { id: 'leave', label: 'Ride on', lines: ['You leave her to her cauldron. Something in it winks at you.'] },
+          ],
+        },
+      ],
+    },
     { id: 'chest', kind: 'chest', name: 'Treasure Chest', at: at.chest, done: false, gold: 500 },
     { id: 'gold', kind: 'gold', name: 'Pile of Gold', at: at.gold, done: false, gold: 250 },
     {
@@ -198,6 +235,16 @@ export const ALDMOOR: Province = {
             needs: { gold: 900 },
             effects: { done: true },
             lines: ['The sergeant counts the coins twice, salutes, and marches the patrol back to Darkwood. *"We got lost, my lord. Very lost."*'],
+          },
+          {
+            id: 'orders',
+            label: 'Show them the Baron\u2019s orders',
+            needs: { flag: 'orders' },
+            effects: { done: true, xp: 80, reinforce: 'hideout', flags: { orders: false } },
+            lines: [
+              'The sergeant reads the letter upside down, then the right way up. *"Back to the stockade, lads. Baron\u2019s orders."*',
+              'The crossroads are clear. *But they will be waiting for you behind Grimsby\u2019s walls.*',
+            ],
           },
         ],
         spoils: {
@@ -269,9 +316,22 @@ export const ALDMOOR: Province = {
             effects: { done: true, troops: [{ troop: 'poachers', count: 16 }], xp: 60 },
             lines: ['"Scouting for the Crown? Paid? In advance?" The poachers can\u2019t sign up fast enough.'],
           },
+          {
+            id: 'spare',
+            label: 'Let them off, if they swear off the King\u2019s deer',
+            effects: {
+              done: true,
+              xp: 40,
+              flags: { poachers: 'spared' },
+              place: { id: 'cache', kind: 'chest', name: 'The Poachers\u2019 Cache', at: at.cache, done: false, gold: 300, artifact: 'poachersHorn' },
+              reveal: { at: at.cache, radius: 80 },
+            },
+            lines: ['They swear on the deer, which seems fair. As they go, the youngest whispers: *"Hollow oak, south of the old bridge. Take the horn, my lord. We won\u2019t be needing it."*'],
+          },
         ],
+        spoils: { flags: { venison: true } },
         flees: 'The poachers drop the deer and run.',
-        loot: 'You find {gold} and a haunch of venison.',
+        loot: 'You find {gold} and a haunch of the King\u2019s venison. *Something out there would love this.*',
       },
     },
     {
@@ -296,8 +356,9 @@ export const ALDMOOR: Province = {
             lines: ['They bite every coin, bow, and melt away into the heather.'],
           },
         ],
+        spoils: { flags: { orders: true } },
         flees: 'The highwaymen scatter into the heather.',
-        loot: 'Their takings: {gold}.',
+        loot: 'Their takings: {gold}, and a letter with the Baron\u2019s seal: *"All patrols back to the stockade if the King\u2019s man comes. G."*',
       },
     },
     {
@@ -334,6 +395,7 @@ export const ALDMOOR: Province = {
       name: 'Wolf Pack',
       at: at.wolves,
       done: false,
+      artifact: 'greenwoodCloak',
       enemy: {
         look: 'wolves',
         tier: 'gate',
@@ -349,9 +411,17 @@ export const ALDMOOR: Province = {
             effects: { done: true, xp: 150 },
             lines: ['You lay a false trail through the heather, with a little help from the miller\u2019s ham. By noon the wolves are three valleys away, arguing about it.'],
           },
+          {
+            id: 'venison',
+            label: 'Throw them the King\u2019s venison',
+            needs: { flag: 'venison' },
+            effects: { done: true, xp: 100, flags: { venison: false } },
+            lines: ['You toss the poachers\u2019 haunch of venison into the heather. The whole pack goes after it, snarling, and the road to Darkwood is clear.'],
+          },
         ],
+        spoils: { flags: { wolfpelt: true } },
         flees: 'The pack scatters into Darkwood.',
-        loot: 'You find {gold} the wolves were, somehow, guarding.',
+        loot: 'Under their favourite rock: {gold}, a fine grey pelt, and an old ranger\u2019s cloak they had been sleeping on. *Old Nan would like that pelt.*',
       },
     },
   ],

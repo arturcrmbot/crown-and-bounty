@@ -1,6 +1,7 @@
 import { apply, armyPower, choose, endDay, fight, hasNextCommission, learn, locationById, PLACE_KINDS, provinceOf, visit, type BoonId, type GameState, type Location } from './game';
 import { buildMap, type MapModel } from './map/model';
 import { planRoute, routeCosts, stepAlong } from './map/movement';
+import { hireOffer } from './places/enemy';
 
 export type BotRun = { won: boolean; day: number; gold: number; power: number; fights: number; retreats: number; level: number; log: string[]; state: GameState };
 
@@ -60,6 +61,13 @@ export function playCommission(start: GameState, map: MapModel, maxSteps = 20000
     if (!route || state.over) continue;
     const place = locationById(state, best.id);
     state = visit(state, best.id).state;
+    // A courtier (or anyone with the signet) buys small bands outright when the purse allows.
+    const offer = place.enemy && !place.done ? hireOffer(state, place) : null;
+    if (offer && offer.all && state.gold >= offer.price + 300) {
+      state = choose(state, place.id, 'hire')?.state ?? state;
+      log.push(`day ${state.day}: hired ${place.name}`);
+      continue;
+    }
     if (place.enemy && !place.done) {
       fights++;
       const before = locationById(state, place.id).done;

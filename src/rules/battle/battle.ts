@@ -94,7 +94,8 @@ export type BattleEvent =
   | { type: 'volley' }
   /** A troll's wounds close up at the start of its turn. */
   | { type: 'regen'; fighter: number; healed: number }
-  | { type: 'spell'; spell: SpellId; target: number; damage: number; killed: number }
+  /** A spell lands. `splash` marks the stacks a burst caught besides its target. */
+  | { type: 'spell'; spell: SpellId; target: number; damage: number; killed: number; splash?: boolean }
   | { type: 'wait' | 'defend'; fighter: number }
   | { type: 'turn'; fighter: number }
   | { type: 'round'; round: number }
@@ -184,11 +185,14 @@ export function options(b: BattleState): Options {
   return { moves, melee, shoot };
 }
 
+/** Defence a stack's statuses add (Stone Skin). */
+const statusDefence = (f: Fighter) => f.status.reduce((sum, s) => sum + (STATUSES[s].defenceAdd ?? 0), 0);
+
 /** A stack's attack and defence as they stand, with the hero's help. */
 export function statsOf(b: BattleState, f: Fighter): { attack: number; defence: number } {
   const t = TROOPS[f.troop];
   const help = heroSkill(b, f);
-  return { attack: t.attack + help.attack, defence: t.defence + help.defence };
+  return { attack: t.attack + help.attack, defence: t.defence + help.defence + statusDefence(f) };
 }
 
 /** Attack and defence the hero adds to a stack: his own, plus any bonus for that kind of troop. */
@@ -207,7 +211,7 @@ export function skillFactor(attack: number, defence: number): number {
 export function strike(b: BattleState, attacker: Fighter, target: Fighter, ranged: boolean, seed?: number, bonus = 1): { damage: number; seed?: number } {
   const t = TROOPS[attacker.troop];
   const attack = t.attack + heroSkill(b, attacker).attack;
-  let defence = TROOPS[target.troop].defence + heroSkill(b, target).defence;
+  let defence = TROOPS[target.troop].defence + heroSkill(b, target).defence + statusDefence(target);
   if (target.defending) defence = Math.round(defence * 1.3);
   const [min, max] = t.damage;
   let perTroop: number;
@@ -250,8 +254,15 @@ export const isCharge = (b: BattleState, f: Fighter, from: number, moves = optio
 /** Damage a spell does, or 0 if it doesn't do damage. */
 export const spellDamage = (b: BattleState, spell: SpellId) => {
   const effect = SPELLS[spell].effect;
-  return effect.kind === 'damage' ? effect.perPower * b.hero.spellPower : 0;
+  return effect.kind === 'damage' || effect.kind === 'burst' ? effect.perPower * b.hero.spellPower : 0;
 };
+
+/** Who a spell cast at `target` would hit: the target, and for a burst everyone next to it too. */
+export function spellVictims(b: BattleState, spell: SpellId, target: Fighter): Fighter[] {
+  if (SPELLS[spell].effect.kind !== 'burst') return [target];
+  const around = new Set([target.at, ...neighbours(target.at)]);
+  return [target, ...b.fighters.filter((f) => alive(f) && f.id !== target.id && around.has(f.at))];
+}
 
 /** Puts a status on a stack, once. */
 const addStatus = (f: Fighter, status: StatusId) => {
@@ -337,18 +348,20 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
       next.hero.mana -= spellCost(b, action.spell);
       next.hero.castsThisRound = b.hero.castRound === b.round ? (b.hero.castsThisRound ?? 1) + 1 : 1;
       next.hero.castRound = b.round;
-      let damage = 0;
-      let killed = 0;
       const effect = spell.effect;
-      if (effect.kind === 'damage') {
-        next.struck = true;
-        damage = spellDamage(b, action.spell);
-        const w = wound(target, damage);
-        killed = w.killed;
-        target.count = w.count;
-        target.hp = w.hp;
-      } else addStatus(target, effect.status);
-      events.push({ type: 'spell', spell: action.spell, target: target.id, damage, killed });
+      if (effect.kind === 'status') {
+        addStatus(target, effect.status);
+        events.push({ type: 'spell', spell: action.spell, target: target.id, damage: 0, killed: 0 });
+        return settle(next, events, false);
+      }
+      next.struck = true;
+      const damage = spellDamage(b, action.spell);
+      for (const victim of spellVictims(next, action.spell, target)) {
+        const w = wound(victim, damage);
+        victim.count = w.count;
+        victim.hp = w.hp;
+        events.push({ type: 'spell', spell: action.spell, target: victim.id, damage, killed: w.killed, ...(victim.id !== target.id ? { splash: true } : {}) });
+      }
       return settle(next, events, false);
     }
     case 'volley': {

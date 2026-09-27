@@ -36,6 +36,7 @@ export class CardView {
   private readonly wrap = document.createElement('div');
   private readonly card = document.createElement('div');
   private onChoice: (action: Action) => void;
+  private title: string | null = null;
 
   constructor(onChoice: (action: Action) => void) {
     this.onChoice = onChoice;
@@ -52,6 +53,13 @@ export class CardView {
   }
 
   show(card: Card) {
+    // A new card unfolds like a letter; the same card shown again just updates.
+    if (this.wrap.hidden || this.title !== card.title) {
+      this.card.classList.remove('unfold');
+      void this.card.offsetWidth;
+      this.card.classList.add('unfold');
+    }
+    this.title = card.title;
     this.card.classList.toggle('wide', Boolean(card.wide));
     this.card.classList.toggle('poster', Boolean(card.poster));
     this.card.classList.toggle('tiled', Boolean(card.tiles));

@@ -1,4 +1,5 @@
-import { heroStats } from '../hero';
+import { ARTIFACTS } from '../../content/artifacts';
+import { foundNote, giveArtifact, heroStats } from '../hero';
 import { close, coins, leadershipUsed, update, type GameState, type Location, type Result } from '../state';
 import { loot, note, option, ride, say, words } from './common';
 import type { PlaceKind } from './kind';
@@ -6,11 +7,17 @@ import type { PlaceKind } from './kind';
 function openChest(state: GameState, place: Location, take: 'keep' | 'give'): Result | null {
   if (place.done) return null;
   const gold = loot(state, place.gold ?? 0);
-  const opened = update(state, place.id, { done: true });
+  let opened = update(state, place.id, { done: true });
   const removed = { type: 'removed', id: place.id } as const;
-  if (take === 'keep') return say({ ...opened, gold: state.gold + gold }, place, note(place, [`**+${coins(gold)} gold.** The villagers will never know.`]), removed);
+  // Some chests hold more than coin, and that he keeps either way.
+  const found: string[] = [];
+  if (place.artifact) {
+    opened = giveArtifact(opened, place.artifact);
+    found.push(`And under the coins: **${ARTIFACTS[place.artifact].name}**. ${foundNote(opened, place.artifact)}`);
+  }
+  if (take === 'keep') return say({ ...opened, gold: state.gold + gold }, place, note(place, [`**+${coins(gold)} gold.** The villagers will never know.`, ...found]), removed);
   const leadership = Math.round(gold / 20);
-  return say({ ...opened, leadership: state.leadership + leadership }, place, note(place, [`The villagers cheer. **+${leadership} leadership.**`, 'Somebody starts a song about you. It rhymes \u201cAldric\u201d with \u201cbald trick\u201d.']), removed);
+  return say({ ...opened, leadership: state.leadership + leadership }, place, note(place, [`The villagers cheer. **+${leadership} leadership.**`, 'Somebody starts a song about you. It rhymes \u201cAldric\u201d with \u201cbald trick\u201d.', ...found]), removed);
 }
 
 /** A treasure chest: keep the gold, or hand it out for leadership. */

@@ -8,7 +8,8 @@ import { FogMask } from './fog';
 import { SILHOUETTE } from './palette';
 import { figureFoot, troopFigure } from './battleSprites';
 import {
-  abbey, boulder, camp, castle, chest, crag, goldPile, hero, hideout, hut, mill, mine, mirror, oak, peatHut, pine, signpost, stiltHut, shrine, stoneBridge,
+  abbey, boulder, camp,
+  cottage, castle, standingStones, chest, crag, goldPile, hero, hideout, hut, mill, mine, mirror, oak, peatHut, pine, signpost, stiltHut, shrine, stoneBridge,
   watchtower, well, willow, windmill, xMark,
 } from './sprites';
 import { paintTerrain } from './terrain';
@@ -68,6 +69,10 @@ function landmark(l: Location): { frames: Bitmap[]; foot: number; animated: bool
       return { frames: animation((t) => stiltHut(t * Math.PI * 2)), foot: 80, animated: true };
     case 'camp':
       return { frames: animation((t) => camp(t * Math.PI * 2)), foot: 36, animated: true };
+    case 'cottage':
+      return { frames: animation((t) => cottage(t)), foot: 44, animated: true };
+    case 'stones':
+      return { frames: [standingStones()], foot: 36, animated: false };
   }
   switch (l.kind) {
     case 'castle':
