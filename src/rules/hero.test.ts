@@ -60,7 +60,7 @@ describe('levels', () => {
   });
 
   it('pays experience for beating an enemy and for finding places', () => {
-    const won = apply(knight(), { type: 'autofight', id: 'wolves' })!.state;
+    const won = apply(knight(), { type: 'choose', id: 'wolves', choice: 'auto' })!.state;
     expect(won.hero.xp).toBeGreaterThan(200);
     const seen = visit(knight(), 'signpost').state;
     expect(seen.hero.xp).toBe(40);
@@ -92,10 +92,10 @@ describe('skills and gear', () => {
 
   it('sell the castle\u2019s wares for gold', () => {
     const rich = { ...knight(), gold: 5000 };
-    const bought = apply(rich, { type: 'buy', id: 'castle', artifact: 'swordOfAldmoor' })!.state;
+    const bought = apply(rich, { type: 'choose', id: 'castle', choice: 'buy:swordOfAldmoor' })!.state;
     expect(bought.gold).toBe(4100);
     expect(bought.hero.gear.weapon).toBe('swordOfAldmoor');
-    expect(apply(bought, { type: 'buy', id: 'castle', artifact: 'swordOfAldmoor' })).toBeNull();
+    expect(apply(bought, { type: 'choose', id: 'castle', choice: 'buy:swordOfAldmoor' })).toBeNull();
   });
 
   it('let the Goose Whisperer slow Baron Grimsby from the start', () => {

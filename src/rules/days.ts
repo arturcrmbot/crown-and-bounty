@@ -1,5 +1,6 @@
 import { commissionOf } from './campaign';
 import { heroStats } from './hero';
+import { payday as reopen } from './places';
 import { again, close, COMMISSION, coins, LAST_DAY, PAYDAY_EVERY, roman, show, wages, type GameEvent, type GameState, type Result } from './state';
 
 /** Next day: fresh legs. Every seventh day is payday: the King pays, troops take wages, places restock. */
@@ -15,7 +16,7 @@ export function endDay(state: GameState): Result {
     next = {
       ...next,
       gold: next.gold + commission - pay,
-      locations: next.locations.map((l) => (l.kind === 'mill' ? { ...l, done: false } : l.recruits ? { ...l, recruits: { ...l.recruits, count: l.recruits.count + 10 } } : l)),
+      locations: next.locations.map(reopen),
     };
     lines.push(`**Payday!** The King sends **${coins(commission)} gold**. Your troops take **${coins(pay)}** in wages.`, 'The mill has flour again, and there are fresh volunteers.');
   }

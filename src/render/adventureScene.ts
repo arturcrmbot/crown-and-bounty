@@ -1,4 +1,4 @@
-import type { GameState, Location } from '../rules/game';
+import { VANISHES, type GameState, type Location } from '../rules/game';
 import type { Point } from '../rules/map/geometry';
 import { Terrain, type MapModel } from '../rules/map/model';
 import { AdventureScreen, type Placed } from './adventureScreen';
@@ -7,7 +7,7 @@ import { FogMask } from './fog';
 import { SILHOUETTE } from './palette';
 import {
   abbey, boulder, castle, chest, crag, goblinBand, goldPile, hero, hideout, hut, mill, mine, mirror, oak, patrol, peatHut, pine, signpost, stiltHut,
-  stoneBridge, troll, watchtower, well, willow, windmill, wolfPack, xMark,
+  shrine, stoneBridge, troll, watchtower, well, willow, windmill, wolfPack, xMark,
 } from './sprites';
 import { paintTerrain } from './terrain';
 
@@ -74,6 +74,8 @@ function landmark(l: Location): { frames: Bitmap[]; foot: number; animated: bool
       return { frames: [signpost()], foot: 23, animated: false };
     case 'dig':
       return { frames: animation((t) => xMark(t * Math.PI * 2)), foot: 30, animated: true };
+    case 'event':
+      return { frames: [shrine()], foot: 30, animated: false };
     case 'chest':
       return { frames: [chest()], foot: 13, animated: true };
     case 'gold':
@@ -140,7 +142,7 @@ export function buildAdventureScene(map: MapModel, state: GameState): AdventureS
     if (!look) continue;
     const o: Placed = { ...place(look.frames[0], l.at, look.foot), frames: look.frames.length > 1 ? look.frames : undefined };
     partOf(l.id, o);
-    const vanishes = l.kind === 'chest' || l.kind === 'gold' || l.kind === 'patrol';
+    const vanishes = VANISHES.has(l.kind);
     if (vanishes) {
       if (!l.done) {
         pickups.set(l.id, o);

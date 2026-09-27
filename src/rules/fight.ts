@@ -79,6 +79,34 @@ export function bountyPaid(state: GameState, id: string, opening: string[], rewa
   return { state: next, events: [{ type: 'over', result: 'won' }, show(card, place.at, place.id)] };
 }
 
+/**
+ * An enemy beaten, in battle or by other means: its gold, its artifact and the experience, the
+ * enemy gone from the map, and at a hideout, the bounty.
+ */
+export function beat(state: GameState, id: string, how: { title: string; lines: string[]; reward: number; xp: number; sayGold?: boolean }): Result {
+  const place = locationById(state, id);
+  let next = update({ ...state, gold: state.gold + how.reward }, id, { done: true });
+  const events: GameEvent[] = VANISHES.has(place.kind) ? [{ type: 'removed', id }] : [];
+  const spoils: string[] = [];
+  if (place.artifact) {
+    next = giveArtifact(next, place.artifact as ArtifactId);
+    spoils.push(`Among the spoils: **${ARTIFACTS[place.artifact as ArtifactId].name}**. ${foundNote(next, place.artifact as ArtifactId)}`);
+  }
+  if (how.xp) {
+    const grown = gainXp(next, how.xp);
+    next = grown.state;
+    events.push(...grown.events);
+    spoils.push(`**+${how.xp} experience.**`);
+  }
+  if (place.kind === 'hideout') {
+    const paid = bountyPaid(next, id, how.lines, how.reward, spoils);
+    return { state: paid.state, events: [...events, ...paid.events] };
+  }
+  const gold = how.sayGold && how.reward ? [`**+${coins(how.reward)} gold.**`] : [];
+  events.push(show({ title: how.title, lines: [...how.lines, ...spoils, ...gold], choices: [close] }, place.at, place.id));
+  return { state: next, events };
+}
+
 /** Turns a finished battle back into the map: survivors, rewards, and what the card says. */
 export function finishFight(state: GameState): Result {
   const battle = state.battle!;
@@ -88,26 +116,9 @@ export function finishFight(state: GameState): Result {
   // The battle rolled its own dice from the state's seed: carry on from where it stopped, not from the start again.
   const base: GameState = { ...state, seed: battle.seed, battle: undefined, army, hero: { ...state.hero, mana: battle.hero.mana } };
   const lost = lossesLine(state.army, army);
-  const events: GameEvent[] = [];
   if (battle.result === 'won') {
-    let next = update({ ...base, gold: base.gold + enemy.reward }, place.id, { done: true });
-    if (VANISHES.has(place.kind)) events.push({ type: 'removed', id: place.id });
-    const spoils: string[] = [];
-    if (place.artifact) {
-      next = giveArtifact(next, place.artifact as ArtifactId);
-      spoils.push(`Among the spoils: **${ARTIFACTS[place.artifact as ArtifactId].name}**. ${foundNote(next, place.artifact as ArtifactId)}`);
-    }
-    const xp = battleXp(enemy.army);
-    const grown = gainXp(next, xp);
-    next = grown.state;
-    events.push(...grown.events);
-    spoils.push(`**+${xp} experience.**`);
-    if (place.kind === 'hideout') {
-      const paid = bountyPaid(next, place.id, [commissionOf(next).surrender, lost], enemy.reward, spoils);
-      return { state: paid.state, events: [...events, ...paid.events] };
-    }
-    events.push(show({ title: 'Victory!', lines: [enemy.flees, lost, enemy.loot.replace('{gold}', `**${coins(enemy.reward)} gold**`), ...spoils], choices: [close] }, place.at, place.id));
-    return { state: next, events };
+    const opening = place.kind === 'hideout' ? [commissionOf(base).surrender, lost] : [enemy.flees, lost, enemy.loot.replace('{gold}', `**${coins(enemy.reward)} gold**`)];
+    return beat(base, place.id, { title: 'Victory!', lines: opening, reward: enemy.reward, xp: battleXp(enemy.army) });
   }
   if (battle.result === 'fled') {
     const shaken = army.map((s) => ({ ...s, count: s.count - Math.ceil(s.count * 0.25) })).filter((s) => s.count > 0);

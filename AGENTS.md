@@ -14,6 +14,11 @@ King's Commission (working title) is a browser game: King's Bounty (1990) rebuil
 
 - `src/content/`: typed game data. Provinces (land, places, decor), troops, spells, backgrounds, skills, perks and artifacts.
 - `src/rules/`: the game rules in plain TypeScript, with no Three.js, DOM or timers. Every change is `(state, action) → { state, events }`, and dice come from the seed in the state. The rules own the logical map (`map/`: 8 px walk grid, pathfinding, movement, fog). Tested with Vitest.
+- **Extending the game.** Most additions are data:
+  - Places: each kind of place is one module in `src/rules/places/` (a `PlaceKind`: its cards, arrival, own choices, payday, bot appetite), registered in `places/index.ts`.
+  - Content choices: shrines, quests, parleys and events are content. They're pages of choices with `Needs` (conditions and costs) and `Effects` (gold, stats, spells, troops, flags, reveal, xp, win...), interpreted by `src/rules/effects.ts`, with story state in `state.flags`.
+  - Battle: spells, statuses and troop abilities are data in `src/content/spells.ts` and `troops.ts`, and the battle engine reads them generically.
+  - Battle AI (`rules/battle/ai.ts`): it tries every option with the real rules, so new content needs no AI changes.
 - `src/game/`: screen controllers (input, riding animation, events into cards and HUD), save/load. `main.ts` only boots.
 - `src/render/`: 2D pixel-art drawing into an indexed 960×540 framebuffer. It reads the rules state and never changes it.
 - `src/ui/`: HTML/CSS overlays (parchment cards, hover label).

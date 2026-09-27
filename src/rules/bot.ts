@@ -1,40 +1,8 @@
-import { troopPower } from '../content/troops';
-import { ARTIFACTS } from '../content/artifacts';
-import { apply, armyPower, endDay, fight, hasNextCommission, heroStats, leadershipUsed, learn, locationById, provinceOf, recruitable, visit, winChance, type BoonId, type GameState, type Location } from './game';
+import { apply, armyPower, endDay, fight, hasNextCommission, learn, locationById, PLACE_KINDS, provinceOf, visit, type BoonId, type GameState } from './game';
 import { buildMap, type MapModel } from './map/model';
 import { planRoute, routeCosts, stepAlong } from './map/movement';
 
 export type BotRun = { won: boolean; day: number; gold: number; power: number; fights: number; retreats: number; level: number; log: string[]; state: GameState };
-
-/** How much the bot wants a place right now, or null if it isn't worth riding to. */
-function worth(state: GameState, l: Location): number | null {
-  if (l.done && l.kind !== 'castle' && l.kind !== 'village') return null;
-  const odds = l.enemy ? winChance(state, l.id, 6) : 0;
-  switch (l.kind) {
-    case 'chest':
-      return 500;
-    case 'gold':
-    case 'mine':
-      return l.gold ?? 0;
-    case 'tower':
-      return 400;
-    case 'mill':
-      return 60;
-    case 'castle':
-    case 'village': {
-      const n = recruitable(state, l.id);
-      return n > 0 ? n * troopPower(l.recruits!.troop) * 3 : null;
-    }
-    case 'patrol':
-      return odds >= 0.99 ? l.enemy!.reward + 200 : null;
-    case 'hideout':
-      return odds >= 0.99 || (state.day > 60 && odds >= 0.6) ? 5000 : null;
-    case 'signpost':
-      return null;
-    case 'dig':
-      return 100000;
-  }
-}
 
 /**
  * A simple greedy player: ride to whatever is worth most per movement point, take leadership from
@@ -52,7 +20,7 @@ export function playCommission(start: GameState, map: MapModel, maxSteps = 20000
   for (let guard = 0; guard < 400 && !state.over; guard++) {
     let best: { id: string; route: number[]; score: number } | null = null;
     for (const l of state.locations) {
-      const value = worth(state, l);
+      const value = PLACE_KINDS[l.kind].worth(state, l);
       if (value === null) continue;
       const route = planRoute(state, map, l.at, Boolean(l.enemy));
       if (!route) continue;
@@ -74,21 +42,13 @@ export function playCommission(start: GameState, map: MapModel, maxSteps = 20000
     }
     const place = locationById(state, best.id);
     state = visit(state, best.id).state;
-    if (place.kind === 'chest' && !place.done) {
-      const short = heroStats(state).leadership - leadershipUsed(state.army) < 40;
-      state = apply(state, { type: 'chest', id: place.id, take: short ? 'leadership' : 'gold' })!.state;
-    } else if (place.kind === 'castle' || place.kind === 'village') {
-      if (recruitable(state, place.id) > 0) state = apply(state, { type: 'recruit', id: place.id })!.state;
-      for (const ware of locationById(state, place.id).wares ?? []) {
-        if (state.gold >= (ARTIFACTS[ware].price ?? 0) + 600) state = apply(state, { type: 'buy', id: place.id, artifact: ware })?.state ?? state;
-      }
-    } else if (place.kind === 'dig') {
-      state = apply(state, { type: 'dig', id: place.id })?.state ?? state;
-    } else if (place.enemy && !place.done) {
+    if (place.enemy && !place.done) {
       fights++;
       const before = locationById(state, place.id).done;
       state = fight(state, place.id)?.state ?? state;
       if (locationById(state, place.id).done === before) retreats++;
+    } else {
+      state = PLACE_KINDS[place.kind].bot?.(state, locationById(state, place.id)) ?? state;
     }
     while (state.hero.offers.length > 0) state = learn(state, state.hero.offers[0].options[0])!.state;
     log.push(`day ${state.day}: ${place.name}`);

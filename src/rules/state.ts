@@ -23,15 +23,15 @@ export const PAYDAY_EVERY = 7;
 export const COMMISSION = 1000;
 export const LAST_DAY = 100;
 
-export type LocationKind = 'castle' | 'tower' | 'mine' | 'village' | 'mill' | 'chest' | 'gold' | 'patrol' | 'hideout' | 'signpost' | 'dig';
+export type LocationKind = 'castle' | 'tower' | 'mine' | 'village' | 'mill' | 'chest' | 'gold' | 'patrol' | 'hideout' | 'signpost' | 'dig' | 'event';
 
 export type Enemy = {
   /** How the enemy is drawn on the map. */
   look: 'soldiers' | 'wolves' | 'stockade' | 'goblins' | 'troll';
   /** The button that starts the fight, if not just "Fight". */
   charge?: string;
-  /** Other ways past them than a fight. */
-  parleys?: Parley[];
+  /** Other ways past them than a fight: talk, pay or trick. */
+  parleys?: ContentChoice[];
   lines: string[];
   army: Army;
   reward: number;
@@ -41,20 +41,58 @@ export type Enemy = {
   loot: string;
 };
 
-/** What an option asks of the hero: who he was, what he knows, or what he can spare (and then pays). */
-export type Needs = { background?: BackgroundId; skill?: SkillId; spellPower?: number; gold?: number; troop?: TroopId; count?: number };
+export type FlagValue = boolean | number | string;
 
-/** Another way past an enemy than a fight: talk, pay or trick. */
-export type Parley = {
-  id: string;
-  label: string;
-  needs: Needs;
-  lines: string[];
-  /** `pass`: they let you by and you gain nothing. `win`: it counts as beating them, for `reward` gold. */
-  outcome: 'pass' | 'win';
-  reward?: number;
-  xp?: number;
+/**
+ * What a choice asks of the hero. Who he was, what he knows, what he carries and what has happened
+ * are checked; gold, troops and mana are checked and then paid.
+ */
+export type Needs = {
+  background?: BackgroundId;
+  skill?: SkillId;
+  spellPower?: number;
+  level?: number;
+  artifact?: ArtifactId;
+  /** A story flag that must be set, or must not be. */
+  flag?: string;
+  notFlag?: string;
+  gold?: number;
+  troop?: TroopId;
+  count?: number;
+  mana?: number;
 };
+
+/** What a choice does, all of it optional, applied in this order. */
+export type Effects = {
+  gold?: number;
+  leadership?: number;
+  movement?: number;
+  mana?: number;
+  /** Primary stats, for good. */
+  stats?: Partial<Record<'attack' | 'defence' | 'spellPower' | 'knowledge', number>>;
+  artifact?: ArtifactId;
+  spell?: SpellId;
+  /** Troops that join, as many as leadership and free slots allow. */
+  troops?: Army;
+  flags?: Record<string, FlagValue>;
+  reveal?: { at: Point; radius: number };
+  xp?: number;
+  /** The place is used up (and gone from the map, if its kind vanishes). */
+  done?: boolean;
+  /** It counts as beating the place's enemy: its artifact and, at a hideout, the bounty. */
+  win?: boolean;
+  /** The page of this place to show next, instead of closing. */
+  page?: string;
+};
+
+/** A choice written as content: a button, what it needs, what it does, and what the card then says. */
+export type ContentChoice = { id: string; label: string; needs?: Needs; effects?: Effects; lines?: string[] };
+
+/**
+ * A card written as content. A visit shows the first page whose `when` holds; an `answer` page is
+ * never shown on arrival, only when a choice leads to it.
+ */
+export type Page = { id: string; when?: Needs; answer?: boolean; title?: string; lines: string[]; choices: ContentChoice[] };
 
 export type Location = {
   id: string;
@@ -78,11 +116,13 @@ export type Location = {
   text?: PlaceText;
   /** Which sprite stands for it, when not the usual one for its kind. */
   look?: PlaceLook;
+  /** Cards written as content: an event's whole story, or extra pages for any place. */
+  pages?: Page[];
 };
 
 /** Flavour for a place: before a visit, once it's used up, and on the visit itself. */
 export type PlaceText = { about?: string[]; done?: string[]; visit?: string[] };
-export type PlaceLook = 'abbey' | 'peathut' | 'windmill' | 'stilthut';
+export type PlaceLook = 'abbey' | 'peathut' | 'windmill' | 'stilthut' | 'shrine';
 
 /** The campaign so far: which commission this is, how the others went, and how this one began. */
 export type Campaign = {
@@ -118,6 +158,8 @@ export type GameState = {
   campaign: Campaign;
   /** Set until the player picks a background on the opening card. */
   opening?: boolean;
+  /** What has happened in the story: quests started, favours owed, promises made. */
+  flags?: Record<string, FlagValue>;
 };
 
 /** Sir Aldric: where he is, who he was, and what he has learned. Derived numbers come from `heroStats`. */
@@ -146,10 +188,8 @@ export type Hero = {
 /** What the player can do from a card. `go` rides to a location and visits it on arrival. */
 export type Action =
   | { type: 'go'; id: string }
-  | { type: 'chest'; id: string; take: 'gold' | 'leadership' }
-  | { type: 'recruit'; id: string }
-  | { type: 'fight'; id: string }
-  | { type: 'autofight'; id: string }
+  /** A choice on a place's card: one of its kind's own (`recruit`, `fight`...) or written as content (`page/choice`). */
+  | { type: 'choose'; id: string; choice: string }
   | { type: 'endDay' }
   | { type: 'restart' }
   | { type: 'close' }
@@ -160,13 +200,7 @@ export type Action =
   | { type: 'learn'; option: string }
   | { type: 'equip'; artifact: ArtifactId }
   | { type: 'gear' }
-  | { type: 'armoury'; id: string }
-  | { type: 'buy'; id: string; artifact: ArtifactId }
   | { type: 'background'; id: BackgroundId }
-  /** Deals with an enemy some other way than a fight. */
-  | { type: 'parley'; id: string; parley: string }
-  /** Digs where the map's X is, at the end of the campaign. */
-  | { type: 'dig'; id: string }
   /** After a won commission: ride to the King. */
   | { type: 'court' }
   | { type: 'boon'; id: BoonId }

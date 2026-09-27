@@ -1,4 +1,4 @@
-import type { Enemy, Location, Parley, PlaceLook } from '../rules/state';
+import type { ContentChoice, Enemy, Location, PlaceLook } from '../rules/state';
 import type { TroopId } from './troops';
 
 /** What a generated province feels like: Aldmoor's heath and woods, or the Fenmarch's meres and reeds. */
@@ -28,7 +28,7 @@ export type VillainTemplate = {
   village: NonNullable<Location['recruits']>;
   names: { province: string[]; castle: string[]; village: string[]; tower: string[]; mine: string[]; mill: string[] };
   towerClue: string;
-  parleys?: { guardian?: Parley[]; hideout?: Parley[] };
+  parleys?: { guardian?: ContentChoice[]; hideout?: ContentChoice[] };
 };
 
 export const VILLAINS: VillainTemplate[] = [
@@ -86,9 +86,7 @@ export const VILLAINS: VillainTemplate[] = [
           id: 'pardon',
           label: 'Talk the Baron round again',
           needs: { background: 'courtier' },
-          outcome: 'win',
-          reward: 1500,
-          xp: 700,
+          effects: { win: true, gold: 1500, xp: 700 },
           lines: ['Another long lunch. You point out that the Tower has a much better cook than his stockade. He hands over the hat with a sigh.'],
         },
       ],
@@ -149,9 +147,7 @@ export const VILLAINS: VillainTemplate[] = [
           id: 'outhex',
           label: 'Out-hex her',
           needs: { background: 'wizard', spellPower: 10 },
-          outcome: 'win',
-          reward: 2500,
-          xp: 1500,
+          effects: { win: true, gold: 2500, xp: 1500 },
           lines: ['It takes all afternoon and most of your eyebrows, but your counter-hex holds. Aunt Bramble admits, grudgingly, that you are nearly as good as her sister said.'],
         },
       ],
@@ -212,18 +208,14 @@ export const VILLAINS: VillainTemplate[] = [
           id: 'speech',
           label: 'Make a best-man speech',
           needs: { background: 'courtier' },
-          outcome: 'win',
-          reward: 3000,
-          xp: 1500,
+          effects: { win: true, gold: 3000, xp: 1500 },
           lines: ['You make a speech so moving that both of them weep, and hand over the Crown Jewels just to make you stop.'],
         },
         {
           id: 'present',
           label: 'Give them a wedding present',
           needs: { gold: 6000 },
-          outcome: 'win',
-          reward: 2000,
-          xp: 600,
+          effects: { win: true, gold: 2000, xp: 600 },
           lines: ['Six thousand gold, in a nice box with a ribbon. Touched, the couple hand over the Crown Jewels and wave you off.'],
         },
       ],

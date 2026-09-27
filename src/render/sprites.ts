@@ -913,6 +913,25 @@ export function goblinBand(phase = 0): Bitmap {
   return shaped;
 }
 
+/** A wayside shrine: a little stone house for a saint, with a candle, on a step. */
+export function shrine(): Bitmap {
+  const sprite = new Bitmap(28, 34);
+  for (let y = 26; y < 32; y++) for (let x = 3; x < 25; x++) sprite.set(x, y, masonry(x, y, y === 26 ? 0.85 : 0.6 - (x - 3) * 0.01, 71));
+  for (let y = 9; y < 26; y++) for (let x = 7; x < 21; x++) sprite.set(x, y, masonry(x, y, 0.75 - (x - 7) * 0.025, 72));
+  for (let y = 2; y < 10; y++) for (let x = 14 - (y - 2) * 1.1; x <= 14 + (y - 2) * 1.1; x++) sprite.set(Math.round(x), y, flat(STONE4, 0.55 - (x - 7) * 0.02, Math.round(x), y));
+  for (let y = 13; y < 23; y++) for (let x = 11; x < 17; x++) sprite.set(x, y, y < 15 && (x === 11 || x === 16) ? STONE[4] : INK);
+  sprite.set(13, 19, GOLD[6]);
+  sprite.set(14, 19, GOLD[5]);
+  sprite.set(13, 20, NEUTRAL[7]);
+  sprite.set(14, 20, NEUTRAL[6]);
+  for (let y = 0; y < 3; y++) sprite.set(14, y, GOLD[5]);
+  sprite.set(13, 1, GOLD[5]);
+  sprite.set(15, 1, GOLD[5]);
+  const shaped = outline(sprite, INK);
+  castShadow(shaped, 4, 1, 26);
+  return shaped;
+}
+
 /** A big red X painted on the ground, with a shovel stuck in beside it. */
 export function xMark(phase = 0): Bitmap {
   const sprite = new Bitmap(40, 34);

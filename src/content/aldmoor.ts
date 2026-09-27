@@ -14,6 +14,7 @@ const at = {
   gold: [640, 560],
   hideout: [104, 850],
   wolves: [256, 700],
+  shrine: [676, 506],
 } satisfies Record<string, Point>;
 
 const paths: Point[][] = [
@@ -144,6 +145,28 @@ export const ALDMOOR: Province = {
         ],
       },
     },
+    {
+      id: 'shrine',
+      kind: 'event',
+      look: 'shrine',
+      name: 'Shrine of St Aldhelm',
+      at: at.shrine,
+      done: false,
+      text: { about: ['A mossy wayside shrine to St Aldhelm, patron saint of lost geese.'] },
+      pages: [
+        {
+          id: 'start',
+          when: { notFlag: 'aldhelm' },
+          lines: ['A mossy wayside shrine to St Aldhelm, patron saint of lost geese. Somebody has left a single white feather on the step.'],
+          choices: [
+            { id: 'pray', label: 'Kneel and pray', effects: { stats: { knowledge: 1 }, flags: { aldhelm: 'prayed' }, done: true }, lines: ['You pray for the goose, and for the Baron\u2019s swift arrest. Your head feels oddly clear.'] },
+            { id: 'give', label: 'Leave an offering', needs: { gold: 150 }, effects: { mana: 20, xp: 150, flags: { aldhelm: 'gave' }, done: true }, lines: ['The coins clink into the box. Somewhere, a goose honks approvingly.'] },
+            { id: 'leave', label: 'Ride on' },
+          ],
+        },
+        { id: 'after', when: { flag: 'aldhelm' }, lines: ['The shrine is quiet. The feather has gone.'], choices: [] },
+      ],
+    },
     { id: 'chest', kind: 'chest', name: 'Treasure Chest', at: at.chest, done: false, gold: 500 },
     { id: 'gold', kind: 'gold', name: 'Pile of Gold', at: at.gold, done: false, gold: 250 },
     {
@@ -164,7 +187,7 @@ export const ALDMOOR: Province = {
             id: 'bribe',
             label: 'Pay them to go home',
             needs: { gold: 400 },
-            outcome: 'pass',
+            effects: { done: true },
             lines: ['The sergeant counts the coins twice, salutes, and marches the patrol back to Darkwood. *"We got lost, my lord. Very lost."*'],
           },
         ],
@@ -191,9 +214,7 @@ export const ALDMOOR: Province = {
             id: 'pardon',
             label: 'Talk the Baron round',
             needs: { background: 'courtier' },
-            outcome: 'win',
-            reward: 1000,
-            xp: 450,
+            effects: { win: true, gold: 1000, xp: 450 },
             lines: ['Over a very long lunch, you explain what the Crown does to barons who keep geese that aren\u2019t theirs, and what it does for barons who don\u2019t. Grimsby signs for the taxes and hands over the goose.'],
           },
         ],
@@ -219,8 +240,7 @@ export const ALDMOOR: Province = {
             id: 'trail',
             label: 'Lead the pack off the path',
             needs: { background: 'ranger' },
-            outcome: 'pass',
-            xp: 150,
+            effects: { done: true, xp: 150 },
             lines: ['You lay a false trail through the heather, with a little help from the miller\u2019s ham. By noon the wolves are three valleys away, arguing about it.'],
           },
         ],

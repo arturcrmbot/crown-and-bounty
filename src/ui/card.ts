@@ -39,7 +39,7 @@ export class CardView {
         button.disabled = Boolean(choice.disabled);
         button.addEventListener('click', (e) => {
           e.stopPropagation();
-          play(choice.action.type === 'dig' ? 'dig' : 'click');
+          play(choice.action.type === 'choose' && choice.action.choice === 'dig' ? 'dig' : 'click');
           this.onChoice(choice.action);
         });
         choices.append(button);

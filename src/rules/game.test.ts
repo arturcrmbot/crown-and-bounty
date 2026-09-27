@@ -43,9 +43,9 @@ suite('days', () => {
 suite('places', () => {
   it('lets you keep the chest gold or turn it into leadership', () => {
     const state = newGame();
-    const gold = apply(state, { type: 'chest', id: 'chest', take: 'gold' })!.state;
+    const gold = apply(state, { type: 'choose', id: 'chest', choice: 'keep' })!.state;
     expect(gold.gold).toBe(state.gold + 500);
-    const cheer = apply(state, { type: 'chest', id: 'chest', take: 'leadership' })!.state;
+    const cheer = apply(state, { type: 'choose', id: 'chest', choice: 'give' })!.state;
     expect(cheer.leadership).toBe(state.leadership + 25);
     expect(locationById(cheer, 'chest').done).toBe(true);
   });
@@ -58,11 +58,11 @@ suite('places', () => {
   it('caps recruiting by leadership and gold', () => {
     const state = newGame();
     const room = 140 - leadershipUsed(state.army);
-    const joined = apply(state, { type: 'recruit', id: 'village' })!.state;
+    const joined = apply(state, { type: 'choose', id: 'village', choice: 'recruit' })!.state;
     expect(countOf(joined.army, 'peasants')).toBe(Math.min(20, room));
     expect(leadershipUsed(joined.army)).toBeLessThanOrEqual(joined.leadership);
     const broke = { ...state, gold: 0 };
-    expect(apply(broke, { type: 'recruit', id: 'village' })).toBeNull();
+    expect(apply(broke, { type: 'choose', id: 'village', choice: 'recruit' })).toBeNull();
   });
 
   it('points the way to the hideout from the watchtower', () => {

@@ -52,13 +52,13 @@ describe('the Fenmarch', () => {
     const state = beginCommission(FENMARCH, 1, newGame().campaign.start, 1, []);
     const card = apply(state, { type: 'go', id: 'troll' });
     expect(card).toBeNull();
-    const paid = act(state, { type: 'parley', id: 'troll', parley: 'toll' });
+    const paid = act(state, { type: 'choose', id: 'troll', choice: 'parley/toll' });
     expect(paid.army.find((s) => s.troop === 'knights')!.count).toBe(8);
     expect(paid.locations.find((l) => l.id === 'troll')!.done).toBe(true);
     expect(paid.hero.xp).toBe(state.hero.xp);
     expect(planRoute(paid, fen, [1160, 880])).not.toBeNull();
     const noKnights = { ...state, army: [{ troop: 'archers' as const, count: 30 }] };
-    expect(apply(noKnights, { type: 'parley', id: 'troll', parley: 'toll' })).toBeNull();
+    expect(apply(noKnights, { type: 'choose', id: 'troll', choice: 'parley/toll' })).toBeNull();
   });
 
   it('cannot get past the troll to Mother Mirrow until he is beaten', () => {
@@ -206,19 +206,19 @@ describe('parleys', () => {
 
   it('let a courtier take Grimsby without a fight, for a smaller bounty', () => {
     const courtier = { ...newGame(1, ALDMOOR, 'courtier'), opening: undefined };
-    const result = apply(courtier, { type: 'parley', id: 'hideout', parley: 'pardon' })!;
+    const result = apply(courtier, { type: 'choose', id: 'hideout', choice: 'parley/pardon' })!;
     expect(result.state.over).toBe('won');
     expect(result.state.bounty).toBe('paid');
     expect(result.state.gold).toBe(courtier.gold + 1000);
     expect(result.state.hero.xp).toBe(450);
     const bounty = result.events.find((e) => e.type === 'card');
     expect(bounty?.type === 'card' && bounty.card.title).toBe('The bounty is paid!');
-    expect(apply({ ...newGame(1, ALDMOOR, 'knight') }, { type: 'parley', id: 'hideout', parley: 'pardon' })).toBeNull();
+    expect(apply({ ...newGame(1, ALDMOOR, 'knight') }, { type: 'choose', id: 'hideout', choice: 'parley/pardon' })).toBeNull();
   });
 
   it('let anyone pay the patrol to go home, which costs gold and gains nothing', () => {
     const s = { ...newGame(1, ALDMOOR, 'knight'), opening: undefined };
-    const paid = apply(s, { type: 'parley', id: 'patrol', parley: 'bribe' })!;
+    const paid = apply(s, { type: 'choose', id: 'patrol', choice: 'parley/bribe' })!;
     expect(paid.state.gold).toBe(s.gold - 400);
     expect(paid.state.hero.xp).toBe(0);
     expect(paid.state.locations.find((l) => l.id === 'patrol')!.done).toBe(true);
@@ -241,21 +241,21 @@ describe('the end of the campaign', () => {
     const last = beginCommission(province, 5, start.campaign.start, CAMPAIGN_LENGTH - 1, [], start.campaign.seed);
     const hideout = last.locations.find((l) => l.kind === 'hideout')!;
     const strong = { ...last, army: [{ troop: 'knights' as const, count: 4000 }] };
-    const won = apply(strong, { type: 'autofight', id: hideout.id })!;
+    const won = apply(strong, { type: 'choose', id: hideout.id, choice: 'auto' })!;
     expect(won.state.bounty).toBe('paid');
     expect(won.state.over).toBeUndefined();
     expect(won.events.some((e) => e.type === 'added' && e.id === 'sceptre')).toBe(true);
     const x = won.state.locations.find((l) => l.id === 'sceptre')!;
     expect(x.at).toEqual(province.sceptre);
-    const dug = apply(won.state, { type: 'dig', id: 'sceptre' })!;
+    const dug = apply(won.state, { type: 'choose', id: 'sceptre', choice: 'dig' })!;
     expect(dug.state.over).toBe('won');
     const card = dug.events.find((e) => e.type === 'card');
     expect(card?.type === 'card' && card.card.title).toBe('The Sceptre of Order!');
-    expect(apply(dug.state, { type: 'dig', id: 'sceptre' })).toBeNull();
+    expect(apply(dug.state, { type: 'choose', id: 'sceptre', choice: 'dig' })).toBeNull();
   });
 
   it('gives a piece of the map with every bounty', () => {
-    const won = apply({ ...newGame(), opening: undefined, army: [{ troop: 'knights', count: 4000 }] }, { type: 'autofight', id: 'hideout' })!;
+    const won = apply({ ...newGame(), opening: undefined, army: [{ troop: 'knights', count: 4000 }] }, { type: 'choose', id: 'hideout', choice: 'auto' })!;
     const card = won.events.find((e) => e.type === 'card');
     expect(card?.type === 'card' && card.card.lines.some((l) => l.includes('**1 of 5**'))).toBe(true);
   });
@@ -264,17 +264,17 @@ describe('the end of the campaign', () => {
 describe('parleys, carefully', () => {
   it('turn up the place\u2019s artifact when they count as a win', () => {
     const courtier = { ...newGame(1, ALDMOOR, 'courtier'), opening: undefined };
-    const won = apply(courtier, { type: 'parley', id: 'hideout', parley: 'pardon' })!;
+    const won = apply(courtier, { type: 'choose', id: 'hideout', choice: 'parley/pardon' })!;
     expect(Object.values(won.state.hero.gear).concat(won.state.hero.pack)).toContain('goldenFeather');
   });
 
   it('never take a whole army as a toll, and nobody fights with no army', () => {
     const state = beginCommission(FENMARCH, 1, newGame().campaign.start, 1, []);
     const two = { ...state, army: [{ troop: 'knights' as const, count: 2 }] };
-    expect(apply(two, { type: 'parley', id: 'troll', parley: 'toll' })).toBeNull();
+    expect(apply(two, { type: 'choose', id: 'troll', choice: 'parley/toll' })).toBeNull();
     const none = { ...state, army: [] };
-    expect(apply(none, { type: 'autofight', id: 'goblins' })).toBeNull();
-    expect(apply(none, { type: 'fight', id: 'goblins' })).toBeNull();
+    expect(apply(none, { type: 'choose', id: 'goblins', choice: 'auto' })).toBeNull();
+    expect(apply(none, { type: 'choose', id: 'goblins', choice: 'fight' })).toBeNull();
     const card = visit(none, 'goblins').events.find((e) => e.type === 'card');
     expect(card?.type === 'card' && card.card.lines.some((l) => l.includes('no troops'))).toBe(true);
   });

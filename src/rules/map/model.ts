@@ -32,6 +32,8 @@ const FOOTPRINTS: Record<string, [number, number]> = {
   peathut: [44, 16],
   windmill: [34, 16],
   stilthut: [60, 24],
+  shrine: [22, 8],
+  event: [22, 8],
   castle: [104, 48],
   tower: [22, 14],
   mine: [56, 24],
