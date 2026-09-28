@@ -1,0 +1,22 @@
+name: Playtest notes
+description: How a playthrough went.
+labels: [playtest]
+body:
+  - type: dropdown
+    id: hero
+    attributes:
+      label: Hero
+      options: [Knight, Hedge Wizard, Ranger, Courtier]
+  - type: input
+    id: far
+    attributes:
+      label: How far you got
+      placeholder: "Beat Grimsby on day 12"
+  - type: textarea
+    id: fun
+    attributes:
+      label: What was fun
+  - type: textarea
+    id: not
+    attributes:
+      label: What wasn't

@@ -1,0 +1,207 @@
+# Every push to main is checked and, once typecheck, the unit tests and the build pass, deployed to
+# GitHub Pages: live about three minutes after the push. The play-through, a playtest with each
+# background, the visual scenes and the balance report run alongside and report in the run's summary
+# and artifacts. If main breaks, an issue labelled `ci` opens itself, and closes when main is green.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Typecheck, unit tests, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: check-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npx vitest run
+      - run: npx vite build
+      - name: Size of the build
+        run: |
+          {
+            echo "### Build"
+            echo "| | |"
+            echo "| --- | --- |"
+            echo "| JavaScript | $(du -ch dist/assets/*.js | tail -1 | cut -f1) |"
+            echo "| Everything | $(du -sh dist | cut -f1) |"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          path: dist
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    # One deploy at a time; a newer push waiting in line replaces an older one.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+  play:
+    name: Play-through and playtests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: play-${{ github.ref }}
+      cancel-in-progress: true
+    env:
+      # Playwright's own Chromium: CI has no Edge.
+      CHANNEL: bundled
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - run: npx playwright install --with-deps chromium
+      - name: Play the first commission through the real UI
+        run: npm run e2e 2>&1 | tee e2e.txt
+      - name: Playtest the opening with each background
+        if: always()
+        run: |
+          for bg in "Knight of the Realm" "Hedge Wizard" "Ranger of the Greenwood" "Courtier"; do
+            slug=$(echo "$bg" | cut -d' ' -f1 | tr 'A-Z' 'a-z')
+            BG="$bg" node scripts/playtest.mjs > "playtest-$slug.txt" 2>&1 || true
+            [ -d screenshots/playtest ] && mv screenshots/playtest "screenshots/playtest-$slug"
+          done
+      - name: Report
+        if: always()
+        run: |
+          {
+            echo "### Play-through"
+            echo '```'
+            grep -E "^(ok|FAIL)" e2e.txt | tail -60 || true
+            echo '```'
+            echo "### Playtests"
+            for f in playtest-*.txt; do echo "- **${f#playtest-}**: $(tail -1 "$f")"; done
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playtests
+          path: |
+            screenshots/
+            playtest-*.txt
+            e2e.txt
+          retention-days: 14
+
+  visual:
+    name: Visual scenes (report)
+    # Scenes were approved on a Mac, so they're drawn on one here too; it only reports.
+    runs-on: macos-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    concurrency:
+      group: visual-${{ github.ref }}
+      cancel-in-progress: true
+    env:
+      CHANNEL: bundled
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install chromium
+      - name: Compare frozen scenes with test/visual.json
+        run: npm run visual 2>&1 | tee visual.txt
+      - name: Report
+        if: always()
+        run: |
+          { echo "### Visual scenes"; echo '```'; cat visual.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: visual-scenes
+          path: screenshots/visual/
+          retention-days: 14
+
+  balance:
+    name: Balance report
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+    concurrency:
+      group: balance-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: The bot plays all five commissions with every background
+        run: npm run sim -- 1 --campaign 2>&1 | tee sim.txt
+      - name: Difficulty targets
+        if: always()
+        run: npm run difficulty 2>&1 | tee difficulty.txt
+      - name: Report
+        if: always()
+        run: |
+          {
+            echo "### Campaign, played by the bot"; echo '```'; grep -v "^>" sim.txt | sed '/^$/d'; echo '```'
+            echo "### Difficulty (a ! is outside its target)"; echo '```'; grep -v "^>" difficulty.txt | sed '/^$/d'; echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  alert:
+    name: Issue when main breaks
+    needs: [check, play]
+    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          CHECK: ${{ needs.check.result }}
+          PLAY: ${{ needs.play.result }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SHA: ${{ github.sha }}
+        run: |
+          title="Main is broken"
+          open=$(gh issue list --state open --label ci --search "\"$title\" in:title" --json number --jq '.[0].number // empty')
+          if [ "$CHECK" = failure ] || [ "$PLAY" = failure ]; then
+            what=""
+            [ "$CHECK" = failure ] && what="typecheck, the unit tests or the build"
+            [ "$PLAY" = failure ] && what="${what:+$what, and }the play-through"
+            body=$(printf 'Commit %s broke %s.\n\nRun: %s' "${SHA:0:7}" "$what" "$RUN")
+            if [ -n "$open" ]; then gh issue comment "$open" --body "$body"; else gh issue create --title "$title" --label ci --label bug --body "$body"; fi
+          elif [ "$CHECK" = success ] && [ "$PLAY" = success ] && [ -n "$open" ]; then
+            gh issue close "$open" --comment "Green again at ${SHA:0:7}: $RUN"
+          fi
