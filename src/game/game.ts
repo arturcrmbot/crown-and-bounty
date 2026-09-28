@@ -1,5 +1,9 @@
 import { setAmbience } from '../audio/ambience';
 import { setMusic } from '../audio/music';
+import { sting, type StingId } from '../audio/stings';
+import { SCREEN } from '../render/frame';
+import { Transition, type TransitionStyle } from '../render/transition';
+import { setVeil } from '../ui/veil';
 import { mapOf } from '../rules/map/maps';
 import { hasNextCommission, toCourt, type GameEvent, type GameState } from '../rules/game';
 import { AdventureController } from './adventure';
@@ -24,15 +28,62 @@ const hashOf = (data: Uint8Array) => {
 /**
  * The screens, as a stack: the title or the map at the bottom, and a battle or the court open over
  * the map until it closes back. Only the top screen runs, draws and hears input.
+ *
+ * Every change of screen is a change of scene: the old picture gives way to the new (see
+ * `render/transition.ts`), a sting marks it, and the new screen's cards wait until its picture is in.
  */
 export class Game {
   private readonly stack: Screen[] = [];
   private readonly display: Display;
   private readonly speed: number;
+  /** Whether screens change with a transition; not when frozen, so screenshots catch the screen settled. */
+  private readonly transitions: boolean;
+  private transition: Transition | null = null;
+  /** What was last put on screen: the top screen's frame, or a transition's mix of two. */
+  private shown: Uint8Array | null = null;
+  private readonly mixed = new Uint8Array(SCREEN.width * SCREEN.height);
+  /** What waits for the new screen's picture to be in: a province's name across the sky, its first card. */
+  private revealed: (() => void)[] = [];
 
-  constructor(display: Display, speed = 1) {
+  constructor(display: Display, speed = 1, transitions = true) {
     this.display = display;
     this.speed = speed;
+    this.transitions = transitions;
+  }
+
+  /**
+   * Changes screens: `act` swaps them, the old picture gives way to the new in `style`, and `cue`
+   * sounds (holding the new screen's music until it has rung).
+   */
+  private change(style: TransitionStyle, cue: StingId | null, act: () => void) {
+    if (this.transitions && this.shown) {
+      this.transition = new Transition(this.shown.slice(), style);
+      setVeil(true);
+    }
+    act();
+    if (cue) sting(cue);
+    if (!this.transition) this.reveal();
+  }
+
+  /** Runs `f` once the screen change under way is far enough in, or at once if there is none. */
+  private whenRevealed(f: () => void) {
+    if (this.transition && !this.transition.revealed) this.revealed.push(f);
+    else f();
+  }
+
+  private reveal() {
+    setVeil(false);
+    const waiting = this.revealed;
+    this.revealed = [];
+    for (const f of waiting) f();
+  }
+
+  /** A click or key skips the change under way. */
+  private skip() {
+    if (!this.transition) return false;
+    this.transition = null;
+    this.reveal();
+    return true;
   }
 
   /** The title, with its menu: carry on with `resume`, or hear the King out and begin `fresh`. */
@@ -40,11 +91,13 @@ export class Game {
     this.clear();
     this.push(
       new TitleController(this.display, resume, {
-        onNew: () => {
-          this.clear();
-          this.push(new PrologueController(this.display, fresh(), (state) => whenUnitArt(() => this.beginCommission(state, []))));
-        },
-        onContinue: () => whenUnitArt(() => this.resume(resume!)),
+        onNew: () =>
+          // The painting gives way to the throne room, and a harp sweeps up into the court's tune.
+          this.change('fade', 'curtain', () => {
+            this.clear();
+            this.push(new PrologueController(this.display, fresh(), (state) => whenUnitArt(() => this.change('dissolve', null, () => this.beginCommission(state, [])))));
+          }),
+        onContinue: () => whenUnitArt(() => this.change('fade', null, () => this.resume(resume!))),
       }),
     );
   }
@@ -53,8 +106,8 @@ export class Game {
   resume(state: GameState) {
     this.clear();
     this.push(this.makeAdventure(state));
-    if (state.battle && !state.battle.result) this.openBattle();
-    else if (state.over === 'won' && hasNextCommission(state)) this.openCourt();
+    if (state.battle && !state.battle.result) this.pushBattle();
+    else if (state.over === 'won' && hasNextCommission(state)) this.pushCourt();
   }
 
   /** The map, if one is open: it's always at the bottom of the stack. */
@@ -95,9 +148,11 @@ export class Game {
 
   private makeAdventure(state: GameState): AdventureController {
     const adventure = new AdventureController(this.display, mapOf(state), state, this.speed);
-    adventure.onBattle = () => this.openBattle();
-    adventure.onCourt = () => this.openCourt();
-    adventure.onCommission = (next, rest) => this.beginCommission(next, rest);
+    // Into battle with a drum roll and a clash of steel; to court with the heralds' trumpets.
+    adventure.onBattle = () => this.change('clash', 'battle', () => this.pushBattle());
+    adventure.onCourt = () => this.change('fade', 'court', () => this.pushCourt());
+    // Trying a lost commission again: the map sinks into the dark and rises fresh.
+    adventure.onCommission = (next, rest) => this.change('fade', null, () => this.beginCommission(next, rest));
     adventure.onHero = (stack) => this.openHero(stack);
     return adventure;
   }
@@ -108,7 +163,7 @@ export class Game {
     this.push(new HeroController(this.display, this.adventure, () => this.top instanceof HeroController && this.pop(), stack));
   }
 
-  private openBattle() {
+  private pushBattle() {
     const battle = this.adventure.state.battle!;
     this.push(
       new BattleController(
@@ -116,10 +171,12 @@ export class Game {
         battle,
         {
           onChange: (b) => this.adventure.updateBattle(b),
-          onDone: (b) => {
-            this.pop();
-            this.adventure.finishBattle(b);
-          },
+          // Back to the map: a win dissolves into it, a defeat or a retreat sinks through the dark.
+          onDone: (b) =>
+            this.change(b.result === 'won' ? 'dissolve' : 'fade', null, () => {
+              this.pop();
+              this.adventure.finishBattle(b);
+            }),
         },
         this.speed,
         heroArtId(this.adventure.state.hero.background),
@@ -127,7 +184,7 @@ export class Game {
     );
   }
 
-  private openCourt() {
+  private pushCourt() {
     if (this.top instanceof CourtController) return;
     // A save made just after the win may not have reached court yet.
     const now = this.adventure.state;
@@ -137,32 +194,47 @@ export class Game {
     this.push(
       new CourtController(this.display, state, {
         onChange: (next) => saveGame(next),
-        onDone: (next, rest) => {
-          this.pop();
-          this.beginCommission(next, rest);
-        },
+        onDone: (next, rest) =>
+          this.change('fade', null, () => {
+            this.pop();
+            this.beginCommission(next, rest);
+          }),
       }),
     );
   }
 
-  /** A new commission: a fresh map for its province, its name across the sky, then whatever the rules still had to say. */
+  /**
+   * A new commission: a fresh map for its province, then, once it's in view, its name across the sky
+   * and whatever the rules still had to say.
+   */
   private beginCommission(state: GameState, rest: GameEvent[]) {
     this.clear();
     const adventure = this.makeAdventure(state);
     this.stack.push(adventure);
     saveGame(state);
-    adventure.announce();
-    adventure.play(rest);
+    this.whenRevealed(() => {
+      if (this.stack[0] !== adventure) return;
+      adventure.announce();
+      adventure.play(rest);
+    });
   }
 
   update(dt: number, held: ReadonlySet<string>) {
+    if (this.transition) {
+      this.transition.age += dt * this.speed;
+      if (this.transition.revealed) this.reveal();
+      if (this.transition.done) this.transition = null;
+    }
     this.top.update(dt, held);
     setMusic(this.top.music ?? null);
     setAmbience(this.top.ambience ?? null);
   }
 
   frame(tick: number): Uint8Array {
-    return this.top.render(tick);
+    const frame = this.top.render(tick);
+    if (this.transition) this.transition.compose(frame, this.mixed);
+    this.shown = this.transition ? this.mixed : frame;
+    return this.shown;
   }
 
   placeCards() {
@@ -170,13 +242,17 @@ export class Game {
   }
 
   readonly input: InputHandlers = {
-    click: (x, y) => this.top.input.click(x, y),
-    look: (x, y) => this.top.input.look?.(x, y),
+    // A click while the screen changes only skips the change; a key skips it and still counts.
+    click: (x, y) => this.skip() || this.top.input.click(x, y),
+    look: (x, y) => this.skip() || this.top.input.look?.(x, y),
     wheel: (dx, dy) => this.top.input.wheel?.(dx, dy),
     hover: (x, y, cx, cy) => this.top.input.hover(x, y, cx, cy),
     drag: (dx, dy) => this.top.input.drag(dx, dy),
     leave: () => this.top.input.leave(),
-    key: (key) => this.top.input.key(key),
+    key: (key) => {
+      this.skip();
+      this.top.input.key(key);
+    },
   };
 
   /** Hooks for scripts. They reach whichever map is current, and do nothing while there is none. */

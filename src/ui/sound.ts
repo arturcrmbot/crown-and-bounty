@@ -4,6 +4,7 @@
  */
 import { audio, isMuted } from '../audio/context';
 import { playNote } from '../audio/instruments';
+import { sting } from '../audio/stings';
 
 export type Sound = 'click' | 'coins' | 'hit' | 'shoot' | 'bolt' | 'spell' | 'day' | 'levelUp' | 'victory' | 'defeat' | 'dig' | 'fanfare' | 'charge' | 'page' | 'lift' | 'equip' | 'march';
 
@@ -48,6 +49,7 @@ function noise(at: number, length: number, filter: BiquadFilterType, frequency: 
 export function play(sound: Sound) {
   const a = audio();
   if (!a || isMuted()) return;
+  if (sound === 'victory' || sound === 'defeat') return sting(sound);
   try {
     const t = a.ctx.currentTime + 0.01;
     switch (sound) {
@@ -77,12 +79,6 @@ export function play(sound: Sound) {
         break;
       case 'levelUp':
         [523, 659, 784, 1047].forEach((f, i) => tone(f, t + i * 0.11, 0.35, 'triangle', 0.45));
-        break;
-      case 'victory':
-        [392, 523, 659, 784, 659, 784].forEach((f, i) => tone(f, t + i * 0.13, i === 5 ? 0.6 : 0.2, 'triangle', 0.45));
-        break;
-      case 'defeat':
-        [392, 349, 311, 262].forEach((f, i) => tone(f, t + i * 0.22, 0.4, 'triangle', 0.4));
         break;
       case 'fanfare': {
         // Three quick calls up the chord of G, then the whole chord held, on the drum.

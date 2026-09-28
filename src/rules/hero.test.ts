@@ -71,12 +71,12 @@ describe('levels', () => {
 describe('skills and gear', () => {
   it('make the numbers in battle bigger', () => {
     const plain = knight();
-    const archer: GameState = { ...plain, hero: { ...plain.hero, skills: { archery: 3 } } };
+    const archer: GameState = { ...plain, hero: { ...plain.hero, skills: { archery: 2 } } };
     const b0 = createBattle({ place: 'x', seed: 1, player: [{ troop: 'archers', count: 20 }], enemy: [{ troop: 'swordsmen', count: 20 }], hero: heroInBattle(plain), obstacles: 0 });
     const b1 = createBattle({ place: 'x', seed: 1, player: [{ troop: 'archers', count: 20 }], enemy: [{ troop: 'swordsmen', count: 20 }], hero: heroInBattle(archer), obstacles: 0 });
     const d0 = strike(b0, b0.fighters[0], b0.fighters[1], true).damage;
     const d1 = strike(b1, b1.fighters[0], b1.fighters[1], true).damage;
-    expect(d1 / d0).toBeCloseTo(1.45, 1);
+    expect(d1 / d0).toBeCloseTo(1.3, 1);
   });
 
   it('wear artifacts in their slots, swapping from the pack', () => {

@@ -3,6 +3,69 @@
 Newest first. Each entry says what was played, how it felt to an experienced player (HoMM2, King's Bounty,
 modern RPGs), and what was done about it.
 
+## #10: 28 Sep 2026, skills that change how you play
+
+**Played:** Artur's point that level-ups were "+1 defence, +1 offence", through the real UI in headless Edge. A new
+Courtier from the title: the highwaymen and the poachers, and his first level-up. A Courtier six levels on (Advanced
+Diplomacy, Expert Estates, Advanced Scouting) at his level-up card, the patrol, the wolves and a payday. A Courtier
+with a big army at the highwaymen with Basic Diplomacy. A Knight with Advanced Archery and Expert Offence against the
+wolves. Then every rank in tests, `npm run difficulty` and the campaign sim.
+
+**How it felt:** a level-up is now a real choice. *"Expert Diplomacy: any band that draws wages will take your coin
+and join you: gatekeepers too, at twice the price"* against *"War Chest: every payday brings 400 more gold"* made me
+stop and think, and the gatekeepers turned out to cost 6,888 gold: a real price for the whole patrol. Scouting earns
+its keep on the patrol's card: *"Your scouts don't give you one chance in ten"*, and they have seen the Carving Knife
+in the baggage, so I know what the fight is worth before I pick it. The payday card with rents and fuller villages
+reads like an estate paying off. Riding up to the highwaymen with a big army and a diplomat, *"Demand their
+surrender"* is quicker and cheaper than a fight, for half the experience. In battle the stakes show at once: the
+wolves come on at speed 4, "Slowed", into the knights and 30 peasants who can now charge too.
+
+**Found and fixed:**
+
+1. The hero screen called the stakes "Dread" (the Goose Whisperer's word) and listed "Wolves and Wild Boars and Bog
+   Goblins". It now says *"Slowed from the start: Wolves, Wild Boars and Bog Goblins start every battle slowed."*
+2. A surrender came up under the band's name like any visit. It now says *"They surrender!"*.
+3. Rents arrived at the end of the payday card, after the villain's news. They now follow the King's gold they are
+   part of.
+
+**Checked:** all tests pass, with a new test for every rank's trick and for heroes saved with the old nine skills.
+Every Aldmoor difficulty target holds, and the bot wins all five commissions with every background. Generated maps
+are unchanged, so saves still match.
+
+**Still open:** the battle doesn't say what starts slowed (the stakes, the goose); a line in the opening ribbon would.
+The ambush card still gives the odds only in words. The bot never demands a surrender. Wisdom comes with the
+spellbook.
+
+## #9: 28 Sep 2026, a change of scene between screens
+
+**Played:** the whole opening and the first fights with the clock running, and every change of screen frame by
+frame with the clock frozen (`?freeze=1&transitions=1`, stepped with `__kc.advance`): the title into the prologue,
+the prologue onto the map, the map into battle and back (won and lost), the court into the Fenmarch, and a
+commission lost on day C and tried again. The stings rendered offline through the game's own buses and measured
+(`npm run listen`): peaks, their loudest 400 ms against the score's, how long they ring. Then e2e and the visual
+scenes.
+
+**How it felt:** before, every screen cut hard to the next, and the music simply swapped: the map, a battle and
+the court felt like tabs of one window. Now each is a place you go to. The painting sinks into the dark in a dither
+of shadow as a harp sweeps up, and the throne room rises out of it with the King's card unfolding once it's in
+view. Riding into a fight, the map darkens on a drum roll and a gleaming edge sweeps across it like a blade, the
+steel rings and the field behind it flashes, and the battle march starts on the clash. A win is brass climbing into
+E major over the battle's E minor; a defeat, a bell tolling twice. Court opens on two heralds' trumpets. A lost
+commission tolls the knell three times and the dark closes over the map and stays.
+
+**Found and fixed:**
+
+1. A new province's name and fanfare came while the court was still fading out, and the arrival card sat over a
+   black screen. The name, the fanfare and the first card now wait until the new map is in.
+2. The first flash for a battle turned the grass a sickly yellow and read as static. It's now one step brighter
+   behind a narrow gleaming edge, which reads as a sweep of steel.
+3. The harp's sweep into court was 4 dB louder than anything in the score; every sting now sits about as loud as
+   the score's loudest bars, and the score ducks under it.
+4. Cards appeared while the picture was still dark: they now wait for 80% of a fade.
+
+**Checked:** a click skips a change, a key skips it and still counts, and frozen screenshots are unchanged (every
+visual scene hashes the same). Each change costs 1 to 2 ms a frame while it runs.
+
 ## #8: 28 Sep 2026, Artur's second commission; a hero screen, the army, mana, and a UX pass
 
 **What Artur said** (his second time through Aldmoor, after the Wesnoth art and the battle AI):

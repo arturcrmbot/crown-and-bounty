@@ -17,6 +17,7 @@ import { statIcon } from '../render/artifactIcons';
 import { CardView } from '../ui/card';
 import { bitmapUrl } from '../ui/pixels';
 import { play } from '../ui/sound';
+import { sting } from '../audio/stings';
 import { HoverLabel } from '../ui/label';
 import type { Display } from './display';
 import type { Input } from './input';
@@ -29,6 +30,8 @@ import { Walks } from './walks';
 const BANNER_HOLD = 2.4;
 /** How long night takes to fall and lift at the end of a day, in seconds. */
 const NIGHT = 1.4;
+/** How dark the map grows once a commission is lost. */
+const GLOOM = 0.6;
 /** Map pixels per second. */
 const RIDE_SPEED = 95;
 /** Map pixels per step of the trot cycle, so hooves don't slide. */
@@ -105,6 +108,8 @@ export class AdventureController implements Screen {
   private celebrating = 0;
   /** Seconds into the night that falls between two days, while it does. */
   private nightfall: number | null = null;
+  /** How far the dark has closed over the map since the commission was lost. */
+  private gloom = 0;
   /** Called when the rules start a battle; the game switches screens. */
   onBattle: (() => void) | null = null;
   /** Called when the hero rides to court after a won commission. */
@@ -292,7 +297,8 @@ export class AdventureController implements Screen {
           if (this.target) this.replan();
           break;
         case 'over':
-          play(e.result === 'won' ? 'victory' : 'defeat');
+          // The bounty paid: the brass and the bells. The commission failed: the knell, and the light goes.
+          sting(e.result === 'won' ? 'bounty' : 'lost');
           break;
       }
     }
@@ -427,6 +433,9 @@ export class AdventureController implements Screen {
       this.view.dusk = this.nightfall < NIGHT ? Math.sin((Math.PI * this.nightfall) / NIGHT) * 0.9 : 0;
       if (this.nightfall >= NIGHT) this.nightfall = null;
     }
+    // A lost commission: the dark closes in over the map and stays, until he tries again.
+    this.gloom = this.state.over === 'lost' ? Math.min(GLOOM, this.gloom + dt * 0.35) : 0;
+    if (this.gloom > 0) this.view.dusk = Math.max(this.nightfall === null ? 0 : this.view.dusk, this.gloom);
     this.promptPending();
     this.showRide(dt);
     this.walks.advance(dt);
