@@ -3,7 +3,7 @@ import { buildMap, type MapModel } from './map/model';
 import { planRoute, routeCosts, stepAlong } from './map/movement';
 import { hireOffer, tameOffer } from './places/enemy';
 
-export type BotRun = { won: boolean; day: number; gold: number; power: number; fights: number; retreats: number; level: number; log: string[]; state: GameState };
+export type BotRun = { won: boolean; day: number; gold: number; power: number; fights: number; retreats: number; level: number; log: string[]; start: GameState; state: GameState };
 
 /**
  * A simple greedy player: ride to whatever is worth most per movement point, take leadership from
@@ -99,7 +99,7 @@ export function playCommission(start: GameState, map: MapModel, maxSteps = 20000
     // Sheltering: stay behind the walls until morning.
     if (shelter.length) nextDay();
   }
-  return { won: state.over === 'won', day: state.day, gold: state.gold, power: armyPower(state.army), fights, retreats, level: state.hero.level, log, state };
+  return { won: state.over === 'won', day: state.day, gold: state.gold, power: armyPower(state.army), fights, retreats, level: state.hero.level, log, start, state };
 }
 
 /** The boon the bot asks the King for: leadership if it can, else gold, else whatever is first. */
@@ -112,10 +112,11 @@ function pickBoon(state: GameState): BoonId {
  * Plays every commission in turn: each province on its own map, then court, a boon and on to the
  * next. A lost commission is tried once more from its start, as a player would.
  */
-export function playCampaign(start: GameState, lastChapter = Infinity): BotRun[] {
+export function* playCampaignStarts(start: GameState, lastChapter = Infinity): Generator<GameState, BotRun[]> {
   const runs: BotRun[] = [];
   let state = start;
   for (let tries = 0; tries < 12; tries++) {
+    yield state;
     const run = playCommission(state, buildMap(provinceOf(state)));
     runs.push(run);
     if (run.state.over === 'lost') {
@@ -130,4 +131,11 @@ export function playCampaign(start: GameState, lastChapter = Infinity): BotRun[]
     state = apply(next, { type: 'nextCommission' })!.state;
   }
   return runs;
+}
+
+export function playCampaign(start: GameState, lastChapter = Infinity): BotRun[] {
+  const journey = playCampaignStarts(start, lastChapter);
+  let step = journey.next();
+  while (!step.done) step = journey.next();
+  return step.value;
 }
