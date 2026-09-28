@@ -1,0 +1,23 @@
+/* While one screen gives way to the next, its cards wait out of sight, then unfold once the picture is in. */
+body.kc-veiled .kc-card-wrap {
+  visibility: hidden;
+}
+@keyframes kc-arrive {
+  from {
+    opacity: 0;
+    transform: perspective(600px) rotateX(-38deg) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+body.kc-unveiling .kc-card-wrap:not([hidden]) {
+  transform-origin: 50% 0;
+  animation: kc-arrive 190ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  body.kc-unveiling .kc-card-wrap:not([hidden]) {
+    animation: none;
+  }
+}

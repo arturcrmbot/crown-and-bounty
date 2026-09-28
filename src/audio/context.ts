@@ -6,7 +6,23 @@
 export type Buses = { ctx: AudioContext; music: GainNode; sfx: GainNode; ambience: GainNode };
 
 const MUTE_KEY = 'kings-commission/muted';
-const LEVELS = { music: 0.42, sfx: 0.7, ambience: 0.35 };
+/** How loud each bus is, and the master over them. */
+export const LEVELS = { music: 0.42, sfx: 0.7, ambience: 0.35 };
+export const MASTER = 0.9;
+
+/**
+ * The master chain for any context, live or rendered offline to be measured: a master gain into a
+ * gentle compressor, so nothing clips. Returns the master gain, for the buses to feed.
+ */
+export function masterChain(ctx: BaseAudioContext, level = MASTER): GainNode {
+  const squash = ctx.createDynamicsCompressor();
+  squash.threshold.value = -14;
+  squash.ratio.value = 4;
+  const gain = ctx.createGain();
+  gain.gain.value = level;
+  gain.connect(squash).connect(ctx.destination);
+  return gain;
+}
 let buses: Buses | null = null;
 let master: GainNode | null = null;
 let muted = (() => {
@@ -32,12 +48,7 @@ export function wakeAudio() {
   if (typeof AudioContext === 'undefined') return;
   try {
     const ctx = new AudioContext();
-    const squash = ctx.createDynamicsCompressor();
-    squash.threshold.value = -14;
-    squash.ratio.value = 4;
-    master = ctx.createGain();
-    master.gain.value = muted ? 0 : 0.9;
-    master.connect(squash).connect(ctx.destination);
+    master = masterChain(ctx, muted ? 0 : MASTER);
     const bus = (level: number) => {
       const g = ctx.createGain();
       g.gain.value = level;
@@ -64,6 +75,6 @@ export function toggleMute(): boolean {
   } catch {
     // Nowhere to remember it; it still works for now.
   }
-  if (master && buses) master.gain.setTargetAtTime(muted ? 0 : 0.9, buses.ctx.currentTime, 0.05);
+  if (master && buses) master.gain.setTargetAtTime(muted ? 0 : MASTER, buses.ctx.currentTime, 0.05);
   return muted;
 }
