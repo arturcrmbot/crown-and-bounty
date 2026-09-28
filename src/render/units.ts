@@ -207,14 +207,14 @@ export const HERO_ART: UnitArt = {
 export type ArtId = TroopId | 'hero';
 export const ART: Record<ArtId, UnitArt> = { ...UNIT_ART, hero: HERO_ART };
 
+/** Every image one unit uses. */
+export function artImages(art: UnitArt): string[] {
+  const all = [art.stand, art.defend, ...(art.defendRanged ? [art.defendRanged] : [])];
+  for (const list of [art.idle, art.move, art.melee.frames, art.charge?.frames, art.ranged?.frames, art.death]) for (const f of list ?? []) all.push(f.image);
+  return all;
+}
+
 /** Every image the troops and the hero use, once each. */
 export function unitImages(): string[] {
-  const all = new Set<string>();
-  for (const art of Object.values(ART)) {
-    all.add(art.stand);
-    all.add(art.defend);
-    if (art.defendRanged) all.add(art.defendRanged);
-    for (const list of [art.idle, art.move, art.melee.frames, art.charge?.frames, art.ranged?.frames, art.death]) for (const f of list ?? []) all.add(f.image);
-  }
-  return [...all];
+  return [...new Set(Object.values(ART).flatMap(artImages))];
 }

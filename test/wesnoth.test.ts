@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { SHADOW } from '../src/render/bitmap';
 import { BLUE, CYCLING, RED } from '../src/render/palette';
 import { decodePng } from '../src/render/png';
@@ -44,5 +44,19 @@ describe('Wesnoth unit art', () => {
         }
       }
     }
+  });
+
+  it('keeps going when an image never arrives: its unit stands in its usual pose', async () => {
+    vi.resetModules();
+    const fresh = await import('../src/render/wesnoth');
+    const lost = ART.baron.death![7].image;
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await fresh.loadUnitArt(async (path) => {
+      if (path === lost) throw new Error('503');
+      return new Uint8Array(readFileSync(file(path)));
+    });
+    warn.mockRestore();
+    expect(fresh.unitImage(lost)).toBe(fresh.unitImage(ART.baron.stand));
+    expect(fresh.unitImage(ART.baron.death![6].image)).not.toBe(fresh.unitImage(ART.baron.stand));
   });
 });

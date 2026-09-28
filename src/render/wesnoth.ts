@@ -1,7 +1,7 @@
 import { Bitmap, SHADOW } from './bitmap';
 import { BLUE, COLORS, CYCLING, RED, SILHOUETTE } from './palette';
 import { decodePng, type Rgba } from './png';
-import { unitImages } from './units';
+import { ART, artImages, unitImages } from './units';
 
 /**
  * Battle for Wesnoth's unit art, turned into our indexed sprites. The PNGs stay as Wesnoth made
@@ -14,29 +14,51 @@ export type Team = 'blue' | 'red' | null;
 
 const images = new Map<string, Rgba>();
 let loading: Promise<void> | null = null;
+let loaded = false;
 
+/** GitHub Pages can answer 503 for a moment after a deploy, so each image gets a few tries. */
 const fetchImage = async (path: string) => {
-  const response = await fetch(`${import.meta.env.BASE_URL}assets/wesnoth/units/${path}`);
-  if (!response.ok) throw new Error(`missing unit art: ${path}`);
-  return new Uint8Array(await response.arrayBuffer());
+  for (let attempt = 1; ; attempt++) {
+    const response = await fetch(`${import.meta.env.BASE_URL}assets/wesnoth/units/${path}`).catch(() => null);
+    if (response?.ok) return new Uint8Array(await response.arrayBuffer());
+    if (attempt === 5) throw new Error(`missing unit art: ${path}`);
+    await new Promise((resolve) => setTimeout(resolve, 250 * 2 ** attempt));
+  }
 };
 
-/** Loads every unit image once. `read` fetches from the site unless a script gives its own. */
+/** Loads every unit image once, a few at a time. `read` fetches from the site unless a script gives its own. */
 export function loadUnitArt(read: (path: string) => Promise<Uint8Array> = fetchImage): Promise<void> {
-  loading ??= Promise.all(unitImages().map(async (path) => images.set(path, await decodePng(await read(path))))).then(() => undefined);
+  if (loading) return loading;
+  const queue = unitImages();
+  const worker = async () => {
+    for (let path = queue.pop(); path; path = queue.pop()) {
+      try {
+        images.set(path, await decodePng(await read(path)));
+      } catch (error) {
+        console.warn(error);
+      }
+    }
+  };
+  loading = Promise.all(Array.from({ length: 12 }, worker)).then(() => {
+    loaded = true;
+  });
   return loading;
 }
 
 /** Runs `then` once the unit art is in: at once if it is, or when it arrives. */
 export function whenUnitArt(then: () => void) {
-  if (images.size > 0 || !loading) then();
+  if (loaded || !loading) then();
   else void loading.then(then);
 }
 
+const NOTHING: Rgba = { width: 1, height: 1, data: new Uint8Array(4) };
+
+/** An image, or if it never came, its unit's standing pose, so one lost frame can't break a fight. */
 export function unitImage(path: string): Rgba {
   const image = images.get(path);
-  if (!image) throw new Error(`unit art not loaded: ${path}`);
-  return image;
+  if (image) return image;
+  const owner = Object.values(ART).find((art) => artImages(art).includes(path));
+  return (owner && images.get(owner.stand)) ?? NOTHING;
 }
 
 /**
