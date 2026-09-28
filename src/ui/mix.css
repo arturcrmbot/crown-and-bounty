@@ -53,6 +53,10 @@
   width: 4.6em;
 }
 .kc-mix-row input[type='range'] {
-  flex: 1 1 auto;
+  /* A range input keeps its default width (about 130 px) unless told it may shrink to fit the panel. */
+  flex: 1 1 0;
+  min-width: 0;
+  width: 100%;
+  margin: 0;
   accent-color: #c28a1c;
 }
