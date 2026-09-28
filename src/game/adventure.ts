@@ -21,6 +21,7 @@ import { sting } from '../audio/stings';
 import type { Place, Soundscape } from '../audio/ambience';
 import { soundscapeOf } from './soundscape';
 import { lairTune, provinceTune } from './tunes';
+import { skyOf, weatherOf } from './skies';
 import type { TrackId } from '../audio/score';
 import { HoverLabel } from '../ui/label';
 import type { Display } from './display';
@@ -128,6 +129,9 @@ export class AdventureController implements Screen {
   private fromBattle = false;
   /** Seconds the town's tune plays on: kept full while its card is open, then running down. */
   private inTown = 0;
+  /** Seconds on the map, and since this day's dawn, for the weather. */
+  private clock = 0;
+  private sinceDawn = 0;
   /** The day's full movement, worked out once per state. */
   private fullDay: { state: GameState; movement: number } | null = null;
   /** Called when the rules start a battle; the game switches screens. */
@@ -147,6 +151,7 @@ export class AdventureController implements Screen {
     this.pace = speed;
     this.scene = buildAdventureScene(map, state);
     this.soundscape = soundscapeOf(map, state);
+    this.view.weather = weatherOf(map, state);
     this.cards = new CardView((action) => this.choose(action));
     this.drawn = { x: state.hero.at[0], y: state.hero.at[1] };
     const tower = state.locations.find((l) => l.kind === 'tower');
@@ -210,14 +215,19 @@ export class AdventureController implements Screen {
    * view while he's scrolled out of sight. Night comes as the day's riding runs out, and while it
    * falls between days.
    */
+  /** How far night has come: as the day's riding runs out, and while it falls between days. */
+  private get night(): number {
+    return Math.max(Math.min(1, this.view.dusk / 0.8), Math.max(0, Math.min(1, (this.dayGone - 0.8) / 0.17)));
+  }
+
   get place(): Place {
     const gone = this.dayGone;
-    const night = Math.max(Math.min(1, this.view.dusk / 0.8), Math.max(0, Math.min(1, (gone - 0.8) / 0.17)));
+    const night = this.night;
     const { camera } = this.view;
     const { x, y } = this.drawn;
     const seen = x > camera.x && x < camera.x + MAP_VIEW.width && y > camera.y && y < camera.y + MAP_VIEW.height;
     const at = seen ? { x, y } : { x: camera.x + MAP_VIEW.width / 2, y: camera.y + MAP_VIEW.height / 2 };
-    return { scape: this.soundscape, listener: { ...at, night, morning: Math.max(0, 1 - gone / 0.2) } };
+    return { scape: this.soundscape, listener: { ...at, night, morning: Math.max(0, 1 - gone / 0.2), rain: this.view.sky.rain } };
   }
 
   get bitmap() {
@@ -330,6 +340,7 @@ export class AdventureController implements Screen {
         case 'day':
           this.tiredShown = false;
           this.nightfall = 0;
+          this.sinceDawn = 0;
           play('day');
           if (e.payday) sting('payday');
           // A quiet dawn has no card: the new day's number rises off the hero as the light comes back.
@@ -503,6 +514,10 @@ export class AdventureController implements Screen {
 
   update(dt: number, held: ReadonlySet<string>) {
     this.inTown = this.visitingTown() ? TOWN_LINGER : Math.max(0, this.inTown - dt);
+    // The sky keeps its own clock: real seconds, stopped when frozen.
+    this.clock += dt;
+    this.sinceDawn += dt;
+    this.view.sky = skyOf(this.state, Boolean(this.map.province.fen), this.dayGone, this.night, this.clock, this.sinceDawn);
     if (this.banner && (this.banner.age += dt * this.pace) > BANNER_TIME) this.banner = null;
     if (this.held && (!this.banner || this.banner.age >= BANNER_HOLD)) {
       const { card, at } = this.held;

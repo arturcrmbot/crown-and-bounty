@@ -136,3 +136,36 @@ export const GRAIN_LUT = new Uint8Array(256).map((_, i) => {
   const next = nearest(r * 0.84 + 4, g * 0.84 + 2, b * 0.8, excluded);
   return next === i ? SHADOW_LUT[i] : next;
 });
+
+/**
+ * The light of the day, as tables over the map (see `render/weather.ts`): a fresh morning, a golden
+ * evening, a blue night, fen mist and a shower's grey. Water and flames keep turning: a night's
+ * shallows turn to the deep water's colours, and torches stay bright.
+ */
+function tint(f: (r: number, g: number, b: number) => [number, number, number], water: (i: number) => number = (i) => i) {
+  return new Uint8Array(256).map((_, i) => {
+    if (i >= COLORS.length) return i;
+    if (cycling.has(i)) return water(i);
+    const [r, g, b] = f(...COLORS[i]);
+    return nearest(Math.max(0, Math.min(255, r)), Math.max(0, Math.min(255, g)), Math.max(0, Math.min(255, b)), excluded);
+  });
+}
+const clampByte = (v: number) => Math.max(0, Math.min(255, v));
+const toDeep = (i: number) => (CYCLE_SHALLOW.includes(i) ? CYCLE_DEEP[CYCLE_SHALLOW.indexOf(i)] : i);
+
+/** Early morning: a touch brighter and cooler, the dew still on everything. */
+export const MORNING_LUT = tint((r, g, b) => [r * 1.04 + 10, g * 1.1 + 14, b * 1.22 + 26]);
+/** Evening: warm and golden, the light low. */
+export const EVENING_LUT = tint((r, g, b) => [r * 1.12 + 22, g * 0.9 + 2, b * 0.52]);
+/** Night: dark and blue, still readable. */
+export const NIGHT_LUT = tint((r, g, b) => [r * 0.42, g * 0.5 + 2, b * 0.72 + 22], toDeep);
+/** Mist: paler, greyer and a little blue, as if seen through it. */
+export const MIST_LUT = tint((r, g, b) => {
+  const luma = 0.3 * r + 0.59 * g + 0.11 * b;
+  return [clampByte(r * 0.5 + luma * 0.2 + 72), clampByte(g * 0.5 + luma * 0.2 + 78), clampByte(b * 0.5 + luma * 0.2 + 90)];
+});
+/** Under a shower: greyer and a little darker. */
+export const RAIN_LUT = tint((r, g, b) => {
+  const luma = 0.3 * r + 0.59 * g + 0.11 * b;
+  return [(r * 0.55 + luma * 0.45) * 0.82, (g * 0.55 + luma * 0.45) * 0.84, (b * 0.55 + luma * 0.45) * 0.9 + 6];
+}, toDeep);

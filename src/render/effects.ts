@@ -99,18 +99,6 @@ export class Effects {
       put(Math.round(ox + m.x), Math.round(oy + m.y), DUST[Math.min(DUST.length - 1, Math.floor((m.age / m.life) * DUST.length))]);
     }
     for (const p of this.puffs) this.drawPuff(put, ox + p.x, oy + p.y, p);
-    for (const f of this.floaters) {
-      if (f.age < 0) continue;
-      const fade = Math.max(0, (f.age - FLOAT_LIFE + 0.5) / 0.5);
-      const x0 = Math.round(ox + f.x);
-      const y0 = Math.round(oy + f.y - Math.min(1, f.age / 0.9) * 22);
-      for (let j = 0; j < f.sprite.height; j++) {
-        for (let i = 0; i < f.sprite.width; i++) {
-          const v = f.sprite.data[j * f.sprite.width + i];
-          if (v && bayer(i, j) >= fade) put(x0 + i, y0 + j, v);
-        }
-      }
-    }
     // Birds show even over fog: circling crows are how you spot the old watchtower from afar.
     for (const b of this.birds) {
       const x = Math.round(ox + b.x);
@@ -121,6 +109,24 @@ export class Effects {
       put(x + 1, y + (up ? -1 : 0), INK);
       put(x - 2, y + (up ? -1 : 1), NEUTRAL[1]);
       put(x + 2, y + (up ? -1 : 1), NEUTRAL[1]);
+    }
+  }
+
+  /** The words rising off the map, drawn last of all so no light or weather dims them. */
+  drawWords(screen: Bitmap, ox: number, oy: number, clip: { x: number; y: number; width: number; height: number }) {
+    for (const f of this.floaters) {
+      if (f.age < 0) continue;
+      const fade = Math.max(0, (f.age - FLOAT_LIFE + 0.5) / 0.5);
+      const x0 = Math.round(ox + f.x);
+      const y0 = Math.round(oy + f.y - Math.min(1, f.age / 0.9) * 22);
+      for (let j = 0; j < f.sprite.height; j++) {
+        for (let i = 0; i < f.sprite.width; i++) {
+          const v = f.sprite.data[j * f.sprite.width + i];
+          const x = x0 + i;
+          const y = y0 + j;
+          if (v && bayer(i, j) >= fade && x >= clip.x && y >= clip.y && x < clip.x + clip.width && y < clip.y + clip.height) screen.set(x, y, v);
+        }
+      }
     }
   }
 

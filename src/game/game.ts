@@ -282,6 +282,8 @@ export class Game {
       frameHash: () => hashOf(this.top.bitmap.data),
       /** What's playing and what the land sounds like, once sound is awake. */
       sound: () => ({ music: nowPlaying(), ambience: heard() }),
+      /** The sky over the map: the day's light, mist, rain, wind and night (see `render/weather.ts`). */
+      sky: () => (this.stack[0] instanceof AdventureController ? this.stack[0].view.sky : null),
       /** Moves the clock on by hand, even when frozen: for frame-by-frame screenshots of an animation. */
       advance: (seconds: number) => this.update(seconds, new Set()),
     };
