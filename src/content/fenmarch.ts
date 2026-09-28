@@ -107,7 +107,7 @@ export const FENMARCH: Province = {
       at: at.keep,
       done: false,
       recruits: { troop: 'knights', count: 6, price: 110 },
-      wares: ['harrowgateMail', 'fenBanner', 'astrolabe', 'helmOfFarSight'],
+      wares: ['harrowgateMail', 'fenBanner', 'astrolabe', 'recruitingDrum', 'stewardsLedger', 'helmOfFarSight'],
       text: { about: ['The King\u2019s keep in the Fenmarch, damp to the battlements.', 'The castellan wears waders indoors.', 'Knights to recruit, and an armoury.'] },
     },
     {
@@ -387,6 +387,7 @@ export const FENMARCH: Province = {
       name: 'Mother Mirrow\u2019s Hut',
       at: at.hideout,
       done: false,
+      artifact: 'witchsHat',
       enemy: {
         look: 'stockade',
         grows: 0.05,

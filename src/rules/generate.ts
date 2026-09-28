@@ -318,6 +318,9 @@ function attempt(seed: number, v: VillainTemplate, chapter: number): Province {
   // Finds roll dice of their own, after everything else, so they never move what was drawn above.
   const finds = rng(seed ^ 0xf1d5);
   const deepRelic = pick(finds, RELICS.filter((r) => r !== relic && r !== forSale));
+  // So does the armoury's special stock: gear with a price, or gear that changes how you ride and count.
+  const shop = rng(seed ^ 0x5409);
+  const special = shuffle(shop, ['headsmansAxe', 'kingsPlate', 'friarsHabit', 'stewardsLedger', 'recruitingDrum', 'spyglass'] as const).slice(0, 2);
   const guardian: Enemy = { ...enemy(v.guardian, BASE.guardian * s, Math.round(600 * s)), ...(v.parleys?.guardian ? { parleys: v.parleys.guardian } : {}) };
   const names = v.names;
   const words = WORDS[v.land];
@@ -340,7 +343,7 @@ function attempt(seed: number, v: VillainTemplate, chapter: number): Province {
       done: false,
       text: { about: pick(random, words.castle) },
       recruits: { troop: 'knights', count: 6, price: 110 },
-      wares: [...shuffle(random, ['harrowgateMail', 'fenBanner', 'astrolabe', 'swordOfAldmoor', 'breastplate', 'luckyHorseshoe'] as const).slice(0, 3), forSale],
+      wares: [...shuffle(random, ['harrowgateMail', 'fenBanner', 'astrolabe', 'swordOfAldmoor', 'breastplate', 'luckyHorseshoe'] as const).slice(0, 3), ...special, forSale],
     },
     { id: 'village', kind: 'village', name: pick(random, names.village), at: at(village), done: false, recruits: { ...v.village }, text: { about: pick(random, words.village) } },
     { id: 'tower', kind: 'tower', ...(fen ? { look: 'abbey' as const } : {}), name: pick(random, names.tower), at: at(tower), done: false, text: { about: pick(random, words.tower), done: words.towerDone }, pages: [towerPage(v, at(hideout), towerCharm)] },
@@ -369,6 +372,7 @@ function attempt(seed: number, v: VillainTemplate, chapter: number): Province {
       at: at(hideout),
       done: false,
       enemy: { ...enemy(v.hideout, BASE.hideout * s, Math.round(3000 * s), v.hideout.bosses), grows: 0.05, parleys: [weaknessParley(v, s), ...(v.parleys?.hideout ?? [])] },
+      ...(v.hideout.artifact ? { artifact: v.hideout.artifact } : {}),
       text: { done: v.hideout.done },
     },
   ];

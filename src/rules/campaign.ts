@@ -48,8 +48,15 @@ export function withNewPlaces(state: GameState): GameState {
   const known = new Set(state.locations.map((l) => l.id));
   const added = province.filter((l) => !known.has(l.id));
   let changed = added.length > 0;
+  const gear = new Set([...Object.values(state.hero.gear), ...state.hero.pack]);
   const locations = state.locations.map((l) => {
     const now = province.find((p) => p.id === l.id);
+    // An armoury stocks what it has been given since, unless he has it already (bought, or found).
+    const stock = (now?.wares ?? []).filter((w) => !l.wares?.includes(w) && !gear.has(w));
+    if (stock.length) {
+      changed = true;
+      l = { ...l, wares: [...(l.wares ?? []), ...stock] };
+    }
     if (!now || l.done || l.seen) return l;
     let next: Location = l;
     if (!l.enemy && pick(l, WORDS) !== pick(now, WORDS)) next = { ...next, ...Object.fromEntries(WORDS.map((k) => [k, structuredClone(now[k])])) };

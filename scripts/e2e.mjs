@@ -175,10 +175,12 @@ try {
     await page.waitForTimeout(80);
   };
   if ((await sheet()).slots.banner !== 'oldBanner') await dragTo(`pack:${(await sheet()).pack.indexOf('oldBanner')}`, 'slot:banner');
-  await dragTo('slot:banner', 'pack:0');
+  // Into the first empty square: the highwaymen's black banner may be in the pack already.
+  const free = (await sheet()).pack.length;
+  await dragTo('slot:banner', `pack:${free}`);
   let looked = await sheet();
-  check(looked.slots.banner === null && looked.pack[0] === 'oldBanner', 'the banner comes off, dragged into the pack');
-  await dragTo('pack:0', 'slot:banner');
+  check(looked.slots.banner === null && looked.pack[free] === 'oldBanner', 'the banner comes off, dragged into the pack');
+  await dragTo(`pack:${free}`, 'slot:banner');
   looked = await sheet();
   check(looked.slots.banner === 'oldBanner' && (await kc.state()).hero.gear.banner === 'oldBanner', 'and goes back on, dragged to its slot');
   const line = looked.army;

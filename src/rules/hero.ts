@@ -1,4 +1,4 @@
-import { ARTIFACTS, type ArtifactId, type Slot } from '../content/artifacts';
+import { ARTIFACTS, piecesOf, SETS, type ArtifactId, type SetId, type Slot } from '../content/artifacts';
 import { BACKGROUNDS, type BackgroundId, type Bonus } from '../content/backgrounds';
 import { PERKS, RANKS, SKILLS, type PerkId, type SkillId } from '../content/skills';
 import type { MapSpellId, SpellId } from '../content/spells';
@@ -27,7 +27,27 @@ export function bonusesOf(state: GameState): Bonus[] {
   for (const [id, rank] of Object.entries(hero.skills) as [SkillId, number][]) if (SKILLS[id] && rank > 0) out.push(SKILLS[id].ranks[Math.min(rank, RANKS.length) - 1].bonus);
   for (const id of hero.perks) out.push(PERKS[id].bonus);
   for (const id of Object.values(hero.gear)) if (id) out.push(ARTIFACTS[id].bonus);
+  for (const set of wornSets(state)) out.push(SETS[set].bonus);
   return out;
+}
+
+/** Sets whose every piece the hero wears. */
+export function wornSets(state: GameState): SetId[] {
+  const worn = new Set(Object.values(state.hero.gear));
+  return (Object.keys(SETS) as SetId[]).filter((set) => piecesOf(set).every((id) => worn.has(id)));
+}
+
+/**
+ * What an artifact's set means for the hero: how many of it he wears, and what all of them do; or
+ * that he has just completed it. Empty for an artifact that belongs to no set.
+ */
+export function setLine(state: GameState, id: ArtifactId): string {
+  const set = ARTIFACTS[id].set;
+  if (!set) return '';
+  const pieces = piecesOf(set);
+  const worn = pieces.filter((p) => Object.values(state.hero.gear).includes(p)).length;
+  if (worn === pieces.length) return `**${SETS[set].name} is complete!** ${SETS[set].note}`;
+  return `*One of ${SETS[set].name} (${worn} of ${pieces.length} worn): with all ${pieces.length === 3 ? 'three' : pieces.length}, ${SETS[set].note.charAt(0).toLowerCase()}${SETS[set].note.slice(1)}*`;
 }
 
 export type HeroStats = {
@@ -311,11 +331,21 @@ export function giveArtifact(state: GameState, id: ArtifactId): GameState {
 /** Says where a just-found artifact went: on him, or into the pack because that slot is taken. */
 export function foundNote(state: GameState, id: ArtifactId): string {
   const a = ARTIFACTS[id];
-  return state.hero.gear[a.slot] === id ? `You put it on. ${a.note}` : `${a.note} It goes in your pack, since you wear something there already: **H** to swap.`;
+  const set = setLine(state, id);
+  const note = state.hero.gear[a.slot] === id ? `You put it on. ${a.note}` : `${a.note} It goes in your pack, since you wear something there already: **H** to swap.`;
+  return set ? `${note} ${set}` : note;
 }
 
-/** Keeps mana within what the hero can now hold: taking off knowledge takes its mana with it. */
-const withinMana = (state: GameState): GameState => ({ ...state, hero: { ...state.hero, mana: Math.min(state.hero.mana, heroStats(state).maxMana) } });
+/**
+ * After a change of gear: taking off knowledge takes its mana with it, and gear that slows him
+ * (heavy plate, or taking off his boots) slows today's ride too, not just tomorrow's. Nothing
+ * a change of gear does gives back mana or movement already spent.
+ */
+const withinMana = (before: GameState, state: GameState): GameState => {
+  const s = heroStats(state);
+  const slower = Math.max(0, heroStats(before).movement - s.movement);
+  return { ...state, movement: Math.max(0, state.movement - slower), hero: { ...state.hero, mana: Math.min(state.hero.mana, s.maxMana) } };
+};
 
 /**
  * Moves one thing in a list from `from` to `to`: onto another, the two swap; past the last, it
@@ -338,7 +368,7 @@ export function wear(state: GameState, from: number): Result | null {
   const slot = ARTIFACTS[id].slot;
   const worn = gear[slot];
   const rest = worn ? pack.map((p, i) => (i === from ? worn : p)) : pack.filter((_, i) => i !== from);
-  return { state: withinMana({ ...state, hero: { ...state.hero, gear: { ...gear, [slot]: id }, pack: rest } }), events: [] };
+  return { state: withinMana(state, { ...state, hero: { ...state.hero, gear: { ...gear, [slot]: id }, pack: rest } }), events: [] };
 }
 
 /** Wears an artifact from the pack, by name. */
@@ -356,7 +386,7 @@ export function unequip(state: GameState, slot: Slot, to = state.hero.pack.lengt
   const at = Math.min(to, pack.length);
   const rest = { ...gear };
   delete rest[slot];
-  return { state: withinMana({ ...state, hero: { ...state.hero, gear: rest, pack: [...pack.slice(0, at), worn, ...pack.slice(at)] } }), events: [] };
+  return { state: withinMana(state, { ...state, hero: { ...state.hero, gear: rest, pack: [...pack.slice(0, at), worn, ...pack.slice(at)] } }), events: [] };
 }
 
 /** Moves an artifact from one pack square to another. */
