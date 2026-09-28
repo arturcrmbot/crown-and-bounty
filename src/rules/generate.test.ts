@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { VILLAINS } from '../content/villains';
 import { generateCommission, playable } from './generate';
+import { timeout } from '../testing';
 
 describe('generated provinces', () => {
   it('are always playable: the castle open, every place reachable, the hideout only past its guards', () => {
@@ -12,7 +13,7 @@ describe('generated provinces', () => {
         expect(c.province.locations.some((l) => l.id === 'guardian')).toBe(true);
       }
     }
-  }, 120_000);
+  }, timeout(120_000));
 
   it('are the same for the same seed, and different for another', () => {
     const a = generateCommission(7, VILLAINS[0], 2);

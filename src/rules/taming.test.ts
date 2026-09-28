@@ -9,6 +9,7 @@ import { apply, battleXp, commissionAt, endDay, heroStats, leadershipUsed, locat
 import { tameOffer } from './places/enemy';
 import { simulate } from './sim';
 import { beginCommission, newGame } from './scenario';
+import { timeout } from '../testing';
 
 const fresh = (background: BackgroundId = 'ranger'): GameState => ({ ...newGame(1066, ALDMOOR, background), opening: undefined });
 const choose = (state: GameState, id: string, choice: string) => apply(state, { type: 'choose', id, choice });
@@ -146,5 +147,5 @@ describe('tamed beasts', () => {
     const runs = simulate([1, 2, 3, 4, 5, 6, 7, 8], 'ranger');
     expect(runs.every((r) => r.won)).toBe(true);
     expect(runs.some((r) => r.log.some((l) => l.includes('tamed')))).toBe(true);
-  }, 60_000);
+  }, timeout(60_000));
 });

@@ -8,6 +8,7 @@ import { apply, commissionAt, heroStats, locationById, visit, type Card, type Ga
 import { mapOf } from './map/maps';
 import { planRoute } from './map/movement';
 import { beginCommission, newGame } from './scenario';
+import { timeout } from '../testing';
 
 const fresh = (background: BackgroundId = 'knight'): GameState => ({ ...newGame(1066, ALDMOOR, background), opening: undefined });
 const fen = (background: BackgroundId = 'knight'): GameState => beginCommission(FENMARCH, 1, newGame(1066, ALDMOOR, background).campaign.start, 1, []);
@@ -167,7 +168,7 @@ describe('generated provinces\u2019 finds', () => {
       const known = { ...s, hero: { ...s.hero, spells: s.hero.spells.filter((x) => x !== charm.effects!.spell) } };
       expect(take(known, 'tower', 'watch/charm').hero.spells).toContain(charm.effects!.spell);
     }
-  }, 30_000);
+  }, timeout(30_000));
 
   it('the mine\u2019s gold, or a relic deeper down; the mill\u2019s sons, or a charm', () => {
     for (const chapter of [2, 3, 4]) {
@@ -185,7 +186,7 @@ describe('generated provinces\u2019 finds', () => {
       expect(count(sons.army, 'archers')).toBeGreaterThan(count(roomy.army, 'archers'));
       expect(choose(sons, 'mill', 'miller/charm')).toBeNull();
     }
-  }, 30_000);
+  }, timeout(30_000));
 });
 
 describe('one-off finds', () => {

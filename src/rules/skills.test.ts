@@ -12,6 +12,7 @@ import { costsFor, planRoute, stepAlong } from './map/movement';
 import { hunting } from './map/roaming';
 import { hireOffer } from './places/enemy';
 import { beginCommission, newGame } from './scenario';
+import { timeout } from '../testing';
 
 const fresh = (background: BackgroundId = 'knight'): GameState => ({ ...newGame(1066, ALDMOOR, background), opening: undefined });
 const skilled = (skills: Partial<Record<SkillId, number>>, background: BackgroundId = 'knight', base = fresh(background)): GameState => ({ ...base, hero: { ...base.hero, skills } });
@@ -210,7 +211,7 @@ describe('Sorcery and Mysticism', () => {
     expect(levelUpCard(offered)!.choices[0].detail).toContain('that part changes nothing for you');
     const knight = { ...skilled({ sorcery: 2 }), hero: { ...skilled({ sorcery: 2 }).hero, offers: offered.hero.offers } };
     expect(levelUpCard(knight)!.choices[0].detail).not.toContain('changes nothing');
-  }, 30_000);
+  }, timeout(30_000));
 
   it('Mysticism: mana comes back as he rides, up to what he can hold', () => {
     const mystic = skilled({ mysticism: 2 }, 'wizard');

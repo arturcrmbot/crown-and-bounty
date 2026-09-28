@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { explored, odds, TARGETS } from './difficulty';
 import { newGame } from './scenario';
+import { timeout } from '../testing';
 
 const within = (chance: number, range?: readonly [number, number]) => !range || (chance >= range[0] && chance <= range[1]);
 
@@ -14,6 +15,6 @@ describe('the difficulty model in Aldmoor', () => {
       // Exploring beats the pests and nothing more.
       expect(later.locations.filter((l) => l.enemy?.tier === 'pest').every((l) => l.done)).toBe(true);
       expect(later.locations.filter((l) => l.enemy?.tier === 'gate').some((l) => l.done)).toBe(false);
-    }, 60_000);
+    }, timeout(60_000));
   }
 });

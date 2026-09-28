@@ -8,6 +8,7 @@ import { apply, commissionAt, heroStats, locationById, visit, type GameState, ty
 import { mapOf } from './map/maps';
 import { planRoute } from './map/movement';
 import { newGame } from './scenario';
+import { timeout } from '../testing';
 
 const fresh = (background: BackgroundId = 'knight'): GameState => ({ ...newGame(1066, ALDMOOR, background), opening: undefined });
 const choose = (state: GameState, id: string, choice: string) => apply(state, { type: 'choose', id, choice });
@@ -148,5 +149,5 @@ describe('generated provinces', () => {
         expect(place('stones')?.pages?.[0].choices.length, `${seed}/${chapter}`).toBe(3);
       }
     }
-  }, 60_000);
+  }, timeout(60_000));
 });
