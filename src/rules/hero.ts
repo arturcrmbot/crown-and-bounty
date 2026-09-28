@@ -416,7 +416,7 @@ export function foundNote(state: GameState, id: ArtifactId): string {
   const a = ARTIFACTS[id];
   const set = setLine(state, id);
   const worn = Object.values(state.hero.gear).includes(id);
-  const reason = a.slot === 'trinket' ? 'all three trinket slots are occupied' : `you wear something in its ${a.slot} slot already`;
+  const reason = a.slot === 'trinket' ? 'all three trinket slots are taken' : `its ${a.slot} slot is already occupied`;
   const note = worn ? `You put it on. ${a.note}` : `${a.note} It goes in your pack, since ${reason}: **H** to swap.`;
   return set ? `${note} ${set}` : note;
 }

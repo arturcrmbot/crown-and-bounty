@@ -70,6 +70,13 @@ describe('gear, moved by hand', () => {
     expect(apply(s, { type: 'wear', from: 9 })).toBeNull();
   });
 
+  it('can target the third trinket slot directly', () => {
+    const s = kitted();
+    const worn = apply(s, { type: 'wear', from: 0, slot: 'trinket3' })!.state;
+    expect(worn.hero.gear.trinket3).toBe('astrolabe');
+    expect(worn.hero.pack).toEqual(['goldenFeather']);
+  });
+
   it('takes off into a chosen square, or the end of the pack', () => {
     const s = kitted();
     const off = apply(s, { type: 'unequip', slot: 'weapon' })!.state;
