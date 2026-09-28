@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TROOPS, type TroopId } from '../../content/troops';
-import { finishFight, startFight, type GameState } from '../game';
+import { finishFight, heroInBattle, startFight, type GameState } from '../game';
 import { newGame } from '../scenario';
 import { autoResolve, castActions } from './ai';
 import { activeFighter, battleAct, canCast, castsLeft, createBattle, fighterById, statsOf, type BattleHero, type BattleState, type Fighter } from './battle';
@@ -143,6 +143,16 @@ describe('what spells and heroes can do', () => {
       { source: 'Armourer', status: 'stoneskin', fighters: [of(b, 'archers').id] },
       { source: 'Stakes (Advanced Scouting)', status: 'slowed', fighters: [of(b, 'swordsmen').id] },
     ]);
+  });
+
+  it('knows where each status the hero brings comes from: a skill, a perk, his gear', () => {
+    const s: GameState = { ...newGame(1066, undefined, 'ranger'), opening: undefined };
+    const skilled: GameState = { ...s, hero: { ...s.hero, skills: { ...s.hero.skills, archery: 2 }, perks: [...s.hero.perks, 'gooseWhisperer'] } };
+    const brought = heroInBattle(skilled).brought!;
+    expect(brought).toContainEqual({ source: 'Advanced Archery', side: 'enemy', troops: ['wolves', 'boars', 'goblins'], status: 'slowed' });
+    expect(brought).toContainEqual({ source: 'Goose Whisperer', side: 'enemy', troops: ['baron', 'witch', 'bramble'], status: 'slowed' });
+    const b = startFight(skilled, 'wolves')!.state.battle!;
+    expect(b.opening).toEqual([{ source: 'Advanced Archery', status: 'slowed', fighters: b.fighters.filter((f) => f.troop === 'wolves').map((f) => f.id) }]);
   });
 
   it('casts from a charge for no mana, but it takes one of the round\u2019s casts all the same', () => {

@@ -89,6 +89,30 @@ export class BattleController implements Screen {
       shake: 0,
       banner: null,
     };
+    // What the hero brought to the field is said as the battle opens: "Advanced Archery: the Wolves start slowed."
+    const opening = battle.round === 1 && !battle.struck ? (battle.opening ?? []) : [];
+    for (const o of opening) {
+      this.step(1.2, {
+        start: () => {
+          this.view.log = this.openingLine(o);
+          for (const id of o.fighters) this.float(id, STATUSES[o.status].name, GOLD[6]);
+        },
+      });
+    }
+    if (opening.length) this.step(0.01, { start: () => (this.view.log = 'To battle! Click a hex to move, or an enemy to attack.') });
+  }
+
+  /** One thing the hero brought, and whom it touches, in words. */
+  private openingLine(o: NonNullable<BattleState['opening']>[number]) {
+    const names = o.fighters.map((id) => {
+      const f = fighterById(this.battle, id);
+      return this.named(id) ? TROOPS[f.troop].name : `${f.side === 'player' ? 'your' : 'the'} ${TROOPS[f.troop].name}`;
+    });
+    const who = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0];
+    const status = STATUSES[o.status].name;
+    const one = o.fighters.length === 1 && this.named(o.fighters[0]);
+    // "start slowed", but "start with Stone Skin".
+    return `${o.source}: ${who} ${one ? 'starts' : 'start'} ${/ed$/.test(status) ? status.toLowerCase() : `with ${status}`}.`;
   }
 
   dispose() {
