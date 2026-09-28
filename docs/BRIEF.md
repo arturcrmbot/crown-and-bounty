@@ -122,4 +122,15 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   Sorcery: cheaper spells, then a second cast a round. Mysticism: mana comes back as you ride. A new skill, Diplomacy:
   bands far weaker than you surrender when you ride up (their gold, half the experience), small bands take your coin,
   and at Expert even gatekeepers, at twice the price. The Courtier now favours Diplomacy over Mysticism.
+- **Gear with character (28 Sep):** twelve new artifacts and two sets. Grimsby's Regalia (his carving knife, his
+  golden feather and, from commission III, his hat): wear all three and his men start every battle slowed. The
+  Fenmarch Finery (eelskin boots, trollhide jerkin, banner of the Fens): goblins and trolls start slowed, and riding
+  off the road costs a quarter less. The villains leave their things: Mother Mirrow's hat, Grimsby's hat and Aunt
+  Bramble's ladle (+3 spell power, but spells a mana dearer). Gear with a price: the Headsman's Axe (+4 attack, −2
+  defence), the King's Plate (+5 defence, −40 movement), a Friar's Habit (+2 knowledge, −1 defence, cheaper bribes)
+  and the highwaymen's Black Banner (weak bands surrender, but recruits cost a tenth more, and the recruit card says
+  why). Gear that changes how you ride, count and collect: the Surveyor's Chain in Aldmoor's chest, a Pilgrim's Hat as
+  St Aldhelm's third way (mana back as you ride), and in the armouries a Scout's Spyglass (numbers on the odds), the
+  Steward's Ledger (rents) and the Recruiting Drum (volunteers every payday). Generated armouries stock two such
+  specials. Gear that slows the hero slows today's ride too, so its price can't be dodged overnight.
 - **Sound and music:** everything is synthesised with Web Audio, with no files. There are five original pieces for a small medieval band: "The Heather Road" (a jig for open country), "Mist on the Meres" (the fen), "Steel and Feathers" (battle), "The King's Pavane" (court) and a title theme. The band is plucked lute, harp and harpsichord, recorder, fife, hurdy-gurdy drone, frame drum, brass and bells. Music crossfades between screens. Every change of screen is a change of scene (28 Sep): the picture sinks into the dark and the next rises out of it, or dissolves, and riding into battle a gleaming edge sweeps across the map like a blade; under a second, and a click skips it. Stings mark each: a harp sweeping up into court, a drum roll and a clash of steel into battle, heralds' trumpets for court, brass for a win, a tolling bell for a defeat, the bells for a paid bounty, the knell for a lost commission (and the dark stays over the map). The score ducks under them. Under it runs ambience: birds and wind on the heath, frogs in the fen, a crackling fire at court. Plus effects for clicks, coins, the day bell, fanfares, hits, arrows and spells. A test checks that every strong-beat melody note sits on its chord. The title waits for a click, so the music starts with it. M or the Sound button in the top right corner mutes.

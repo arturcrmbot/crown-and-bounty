@@ -78,6 +78,8 @@ describe('gear with a price', () => {
     const flagged = wearing(['blackBanner']);
     expect(heroStats(flagged).cows).toBe(true);
     expect(priceOf(flagged, 100)).toBe(110);
+    expect(cardOf(visit(flagged, 'castle')).lines).toContain('*They don\u2019t like the look of your Black Banner: that\u2019s 10% dearer.*');
+    expect(cardOf(visit(fresh(), 'castle')).lines.some((l) => l.includes('dearer'))).toBe(false);
   });
 
   it('heavy plate slows today\u2019s ride as soon as it goes on, and taking it off gives nothing back', () => {

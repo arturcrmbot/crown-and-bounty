@@ -3,6 +3,44 @@
 Newest first. Each entry says what was played, how it felt to an experienced player (HoMM2, King's Bounty,
 modern RPGs), and what was done about it.
 
+## #11: 28 Sep 2026, a Knight fills his paper doll
+
+**Played:** a new Knight from the title, through the real UI in headless Edge: the chest, the highwaymen, St
+Aldhelm's shrine, the watchtower and the castle armoury, then the hero screen, swapping banners. A Knight with
+Grimsby's knife and feather putting on his hat. All twelve new items on the doll and in the pack at once. Then
+the sets, the trade-offs and where everything is found, in tests, `npm run difficulty` and the campaign sim.
+
+**How it felt:** gear is now a string of small decisions. The chest's Surveyor's Chain makes the first
+cross-country ride cheaper at once. The highwaymen's Black Banner goes on by itself, and the castle then asks
+110 for a knight instead of 100: the skull scares off honest recruits but makes weak bands surrender. Then the
+tower's Old Tower Banner turns up, and the banner slot is a real choice between archers and surrenders. St
+Aldhelm's shrine now has three ways to go: the goose, taming, or a pilgrim's hat that brings mana back on the
+road. The armoury sells a Scout's Spyglass that puts numbers on the odds, which is Advanced Scouting in a pocket.
+Putting on Grimsby's hat with his knife and feather completes his Regalia, and the leader card says at once that
+swordsmen and crossbowmen start every battle slowed. That is the Baron's own men, in three commissions.
+
+**Found and fixed:**
+
+1. Putting on the King's Plate mid-day left today's ride as it was ("150/110" on the sheet), so its price could be
+   dodged by swapping it at night. Gear that slows him now slows today's ride too. Nothing a change of gear does
+   gives back what's spent, and the mill's flour stays.
+2. On the hero screen a set piece said nothing about its set. Each piece's note now names the set and what it
+   does, and a find says how many of it are worn, or that it's complete.
+3. After the patrol fight the Deserters' Camp can appear right behind the hero, and his figure takes the click,
+   as it should. e2e now clicks another corner of the place, as a player would.
+4. With the Black Banner on, knights simply cost 110 and nothing said why. The recruit card now says: *"They
+   don't like the look of your Black Banner: that's 10% dearer."*
+
+**Checked:** all tests pass, with new ones for both sets, every trade-off, where each item is found, and old
+saves' armouries stocking the new wares unless he owns them. e2e passes, every visual scene is unchanged, every
+difficulty target holds, and the bot wins all five commissions with every background. On the same four seeds
+the Knight's campaign took 160 days in all, against 189 before: different builds, no slower. Generated maps are
+unchanged, and the new wares roll their own dice.
+
+**Still open:** the hero screen could show a set's progress and celebrate one completed (asked of "Hero screen and
+army"). Gear that grants spells or has charges waits for the engine, and cursed gear for the equip rules. Thirteen
+trinkets share one slot.
+
 ## #10: 28 Sep 2026, skills that change how you play
 
 **Played:** Artur's point that level-ups were "+1 defence, +1 offence", through the real UI in headless Edge. A new

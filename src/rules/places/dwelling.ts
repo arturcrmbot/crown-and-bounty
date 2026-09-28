@@ -43,6 +43,9 @@ function recruitCard(state: GameState, place: Location, before: string[] = []): 
   const each = priceOf(state, offer.price);
   const purse = Math.floor(state.gold / each);
   const lines = [...before, `**${troops(offer.troop, offer.count)}** will join you for **${coins(each)} gold** each.`];
+  // Gear that puts honest recruits off (the Black Banner) says so, or the price is a mystery.
+  const shunned = Object.values(state.hero.gear).find((id) => id && (ARTIFACTS[id].bonus.recruitPrice ?? 0) > 0);
+  if (shunned) lines.push(`*They don\u2019t like the look of your ${ARTIFACTS[shunned].name.replace(/^The /, '')}: that\u2019s ${Math.round((ARTIFACTS[shunned].bonus.recruitPrice ?? 0) * 100)}% dearer.*`);
   // Say why fewer than are on offer can come: no room in the line, not enough leadership, or not enough gold.
   const slot = Boolean(addTroops(state.army, offer.troop, 1));
   if (!slot) lines.push('Five companies are all one officer can lead. Dismiss one (H) to make room.');
