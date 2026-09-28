@@ -19,6 +19,10 @@ describe('mana you can see', () => {
     expect(dawn.hero.mana).toBe(heroStats(dawn).maxMana);
     const empty = { ...w, hero: { ...w.hero, knowledge: 0 } };
     expect(manaNote(empty)).toContain('No mana');
+    // Advanced Mysticism brings mana back on the road, too.
+    const mystic = { ...spent, hero: { ...spent.hero, skills: { mysticism: 2 } } };
+    expect(manaNote(mystic)).toBe('Mana 20/50 · a point back every 15 movement ridden, and full at dawn');
+    expect(heroSheet(mystic).mana.back).toBe('back as you ride');
   });
 
   it('goes into battle with its maximum, for the spellbook', () => {
@@ -131,7 +135,7 @@ describe('the hero screen', () => {
     expect(sheet.xp).toEqual({ share: 0, line: '0 / 150 experience: 150 more for level II. Fights and new places bring it.' });
     expect(sheet.stats.map((s) => s.value)).toEqual([0, 1, 3, 3]);
     expect(sheet.stats[2].note).toContain('a Lightning Bolt does 60 damage');
-    expect(sheet.mana).toEqual({ left: 30, max: 30, line: 'Mana 30/30 · it fills up again every dawn' });
+    expect(sheet.mana).toEqual({ left: 30, max: 30, line: 'Mana 30/30 · it fills up again every dawn', back: 'refills every dawn' });
     expect(sheet.leadership.used).toBe(84);
     expect(sheet.signature.name).toBe('Hedge Magic');
     expect(sheet.spells.map((s) => s.name)).toEqual(['Lightning Bolt', 'Bless', 'Slow', 'Haste']);

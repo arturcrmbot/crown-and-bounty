@@ -102,6 +102,8 @@ export class AdventureController implements Screen {
    * ride there is. `name` is the place's label without it.
    */
   private resting: { key: string; point: Point; approach: boolean; name: string | null; client: [number, number]; still: number; text?: string; asOf?: string } | null = null;
+  /** "Start over?" is on screen: a second Start a new campaign really does. */
+  private restartAsked = false;
   /** The place whose card is open because the player clicked it: a second click there goes to it. */
   private looking: { id: string; go: Action; label: string } | null = null;
   private readonly speed: number;
@@ -241,6 +243,7 @@ export class AdventureController implements Screen {
     }
     this.cardAnchor = at;
     this.looking = null;
+    this.restartAsked = false;
     this.label.hide();
     this.cards.show(card);
   }
@@ -248,6 +251,7 @@ export class AdventureController implements Screen {
   hideCard() {
     this.looking = null;
     this.cardPlace = null;
+    this.restartAsked = false;
     this.cards.hide();
   }
 
@@ -404,8 +408,24 @@ export class AdventureController implements Screen {
         this.hideCard();
         return;
       case 'restart':
-        clearSave();
-        window.location.reload();
+        // A whole campaign goes with one click: ask first, unless it's already won.
+        if (this.restartAsked || this.state.over === 'won') {
+          clearSave();
+          window.location.reload();
+          return;
+        }
+        this.showCard(
+          {
+            title: 'Start over?',
+            lines: ['A new campaign begins with the King, and **this one is gone for good**: the hero, his gear, his army and every commission so far.'],
+            choices: [
+              { label: 'No, carry on', action: { type: 'close' } },
+              { label: 'Yes, start a new campaign', action: { type: 'restart' } },
+            ],
+          },
+          null,
+        );
+        this.restartAsked = true;
         return;
       case 'go': {
         this.hideCard();
@@ -570,7 +590,14 @@ export class AdventureController implements Screen {
           this.tiredShown = true;
           saveGame(this.state);
           this.showCard(
-            { title: ART[heroArtId(this.state.hero.background)].rides ? 'Your horse is spent' : 'Your legs are spent', lines: ['End the day to rest. Red marks are for tomorrow.'], choices: [{ label: 'End the day (E)', action: { type: 'endDay' } }] },
+            {
+              title: ART[heroArtId(this.state.hero.background)].rides ? 'Your horse is spent' : 'Your legs are spent',
+              lines: ['End the day to rest, and he rides on at dawn. Red marks are for tomorrow.'],
+              choices: [
+                { label: 'End the day (E)', action: { type: 'endDay' } },
+                { label: 'Not yet', detail: 'Look around first: the route waits.', action: { type: 'close' } },
+              ],
+            },
             [this.drawn.x, this.drawn.y - this.scene.hero.foot],
           );
         }
@@ -807,10 +834,9 @@ export class AdventureController implements Screen {
       if (key === 'e' && !this.state.over && !this.state.ambush) this.choose({ type: 'endDay' });
       else if (key === 'h' && !this.state.over && !this.state.ambush) this.openHero();
       else if (key === '?') this.showCard(keysCard(), null);
-      else if (key === 'enter' || key === ' ') {
-        // Space with no card up brings the view back to the hero.
-        if (!this.cards.pressOnly() && key === ' ' && !this.cards.isOpen) this.follow = true;
-      }
+      else if (this.cards.key(key)) return;
+      // Space with no card up brings the view back to the hero.
+      else if (key === ' ' && !this.cards.isOpen) this.follow = true;
       else if (key === 'escape') {
         // Esc puts a card away, or with none up, reins in.
         if (this.cards.isOpen) this.hideCard();
