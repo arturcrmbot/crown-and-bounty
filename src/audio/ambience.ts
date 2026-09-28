@@ -31,8 +31,8 @@ export type Soundscape = {
   fen: boolean;
 };
 
-/** Who is listening and when: a point on the map, how far night has come (0 to 1), and how fresh the morning is. */
-export type Listener = { x: number; y: number; night: number; morning: number };
+/** Who is listening and when: a point on the map, how far night has come (0 to 1), how fresh the morning is, and how hard it's raining. */
+export type Listener = { x: number; y: number; night: number; morning: number; rain?: number };
 
 export type Place = { scape: Soundscape; listener: Listener };
 
@@ -189,6 +189,24 @@ function gale(ctx: BaseAudioContext, dest: AudioNode): () => void {
     source.stop();
     pitch.stop();
     gusts.stop();
+  };
+}
+
+/** A shower: a hiss of rain, and the patter of big drops close by. */
+function shower(ctx: BaseAudioContext, dest: AudioNode): () => void {
+  const source = noiseLoop(ctx, 3);
+  const hiss = filter(ctx, 'highpass', 2200, 0.5);
+  const hissGain = ctx.createGain();
+  hissGain.gain.value = 0.12;
+  const body = filter(ctx, 'bandpass', 900, 0.6);
+  const bodyGain = ctx.createGain();
+  bodyGain.gain.value = 0.1;
+  source.connect(hiss).connect(hissGain).connect(dest);
+  source.connect(body).connect(bodyGain).connect(dest);
+  const lfo = wobble(ctx, hissGain.gain, 0.17, 0.03);
+  return () => {
+    source.stop();
+    lfo.stop();
   };
 }
 
@@ -705,6 +723,7 @@ function startLayers(ctx: BaseAudioContext, dest: AudioNode, scape: Soundscape):
   if (scape.falls.length) layers.set('falls', layer(ctx, dest, falls));
   if (scape.high.length) layers.set('high', layer(ctx, dest, gale));
   layers.set('night', layer(ctx, dest, crickets));
+  layers.set('rain', layer(ctx, dest, shower));
   return layers;
 }
 
@@ -727,13 +746,17 @@ function mix(a: NonNullable<ReturnType<typeof audio>>, place: Place) {
   set('falls', roar.amount * 0.8, roar.pan);
   const high = presence(scape.high, RANGE.high, FULL.high, x, y);
   set('high', high.amount * 0.5, high.pan);
-  set('night', night * 0.9);
+  const rain = listener.rain ?? 0;
+  set('night', night * 0.9 * (1 - rain * 0.7));
+  set('rain', rain);
 
   const t = now + 0.05;
   const dest = current!.gain;
   const around = new Map<keyof typeof RANGE, number>();
   for (const call of CALLS) {
-    const rate = call.day * (1 - night) + call.night * night;
+    // Rain sends the birds into cover, and the people indoors; frogs don't mind.
+    const dry = call.kind === 'still' || call.kind === 'river' ? 1 : 1 - rain * 0.8;
+    const rate = (call.day * (1 - night) + call.night * night) * dry;
     const spots = scape[call.kind];
     if (rate <= 0 || !spots.length) continue;
     if (!around.has(call.kind)) around.set(call.kind, presence(spots, RANGE[call.kind], FULL[call.kind], x, y).amount);
@@ -746,7 +769,9 @@ function mix(a: NonNullable<ReturnType<typeof audio>>, place: Place) {
   }
   // Open country between the places: a skylark by day; frogs in every fen ditch, more of them at night.
   if (night < 0.5 && !scape.fen && Math.random() < 0.035 * TICK * 2) skylark(ctx, outlet(ctx, dest, 0.8, rand(-0.5, 0.5)), t);
-  if (scape.fen && Math.random() < (0.12 + night * 0.25) * TICK * 2) frog(ctx, outlet(ctx, dest, 0.35, rand(-0.7, 0.7)), t);
+  if (scape.fen && Math.random() < (0.12 + night * 0.25 + rain * 0.2) * TICK * 2) frog(ctx, outlet(ctx, dest, 0.35, rand(-0.7, 0.7)), t);
+  // Big drops close by, in a shower.
+  if (rain > 0.2 && Math.random() < rain * 1.5 * TICK) droplet(ctx, outlet(ctx, dest, 0.6 * rain, rand(-0.8, 0.8)), t);
   // The cockerel crows once as night gives way to a fresh morning, if there's a farm in earshot.
   const isNight = night > 0.5;
   if (wasNight && !isNight && listener.morning > 0.5) {
@@ -815,4 +840,4 @@ export const AMBIENT_CALLS = { songbird, blackbird, cuckoo, woodpecker, skylark,
 const CALL_NAMES = new Map<OneOff, string>(Object.entries(AMBIENT_CALLS).map(([name, f]) => [f, name]));
 
 /** And the layers that go on while you're near. */
-export const AMBIENT_LAYERS = { brook, falls, gale, crickets };
+export const AMBIENT_LAYERS = { brook, falls, gale, crickets, shower };

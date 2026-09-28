@@ -37,6 +37,7 @@ const SCENES = {
   sceptre: { query: '&commission=5&reveal=1&sceptre=1', keepCard: true },
   hero: { query: `&hero=wizard&gear=${GEAR}&army=knights:8,archers:22,peasants:40`, steps: ['key:h'], dom: true },
   herostack: { query: `&hero=wizard&gear=${GEAR}&army=knights:8,archers:22,peasants:40`, steps: ['key:h', 'place:stack:0'], dom: true },
+  heroleader: { query: `&hero=knight&gear=oldBanner,brannocsLance&army=knights:10,archers:20,peasants:30`, steps: ['key:h', 'place:hero'], dom: true },
 };
 const approve = process.argv.includes('--approve');
 const file = 'test/visual.json';

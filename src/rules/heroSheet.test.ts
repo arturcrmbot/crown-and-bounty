@@ -3,7 +3,7 @@ import { ALDMOOR } from '../content/aldmoor';
 import { createBattle } from './battle/battle';
 import { rowOf } from './battle/hex';
 import { apply, giveArtifact, heroInBattle, heroStats, type GameState } from './game';
-import { barNote, heroSheet, manaInBattle, manaNote, nextPayday, stackSheet } from './heroSheet';
+import { barNote, heroSheet, leaderSheet, manaInBattle, manaNote, nextPayday, stackSheet } from './heroSheet';
 import { newGame } from './scenario';
 
 const wizard = (): GameState => ({ ...newGame(1066, ALDMOOR, 'wizard'), opening: undefined });
@@ -144,7 +144,7 @@ describe('the hero screen', () => {
     const skilled = { ...wizard(), hero: { ...wizard().hero, attack: 1, skills: { sorcery: 2 } } };
     const again = heroSheet(giveArtifact(skilled, 'swordOfAldmoor'));
     expect(again.skills).toEqual([{ name: 'Advanced Sorcery', note: expect.any(String) }]);
-    expect(again.stats[0].note).toBe('Attack 3 (1 his own, +2 from skills and gear): every stack of his adds it to its own attack.');
+    expect(again.stats[0].note).toBe('Attack 3 (1 his own, +2 from skills and gear): added to his own attack in battle, and to every stack\u2019s.');
   });
 
   it('shows what a stack fights with, and what the hero adds', () => {
@@ -155,10 +155,54 @@ describe('the hero screen', () => {
       { name: 'Defence', value: '10', note: '8 their own, +2 from Sir Aldric' },
     ]);
     expect(k.traits.map((t) => t.name)).toEqual(['Banner of the Realm', 'Charge (Banner of the Realm)']);
+    // Taught twice, still one charge.
+    const lanced = stackSheet(giveArtifact(knight(), 'brannocsLance'), 0)!;
+    expect(lanced.traits.filter((t) => t.name.startsWith('Charge'))).toHaveLength(1);
+    expect(lanced.traits.map((t) => t.name)).toContain('Charge (Banner of the Realm, Sir Brannoc\u2019s Lance)');
     expect(k.wages).toBe('Wages: 80 gold every payday');
     const ranger = { ...newGame(1066, ALDMOOR, 'ranger'), opening: undefined };
     const archers = stackSheet(ranger, 1)!;
     expect(archers.stats.find((s) => s.name === 'Shots')).toEqual({ name: 'Shots', value: '16', note: '12 their own, +4 from Aldric' });
     expect(archers.traits.map((t) => t.name)).toEqual(['Shooter', 'Pathfinder', 'First volley (Pathfinder)']);
+    const horned = stackSheet(giveArtifact(ranger, 'poachersHorn'), 1)!;
+    expect(horned.traits.filter((t) => t.name.startsWith('First volley')).map((t) => t.name)).toEqual(['First volley (Pathfinder, The Poacher\u2019s Horn)']);
+  });
+});
+
+describe('the hero\u2019s own card', () => {
+  it('shows how he fights, from his troop and himself, and what happens if he falls', () => {
+    const me = leaderSheet(knight());
+    expect(me.troop).toBe('heroKnight');
+    expect(me.title).toBe('Sir Aldric, Knight of the Realm');
+    expect(me.stats).toEqual([
+      { name: 'Attack', value: '6', note: '5 as a fighter, +1 from his Attack' },
+      { name: 'Defence', value: '6', note: '5 as a fighter, +1 from his Defence' },
+      { name: 'Damage', value: '12\u201318', note: 'each blow: +2 a level' },
+      { name: 'Health', value: '80', note: '+10 a level' },
+      { name: 'Speed', value: '6', note: 'hexes a turn' },
+    ]);
+    const names = me.traits.map((t) => t.name);
+    expect(names.slice(0, 4)).toEqual(['Leads', 'Spells', 'Charge', 'Bodyguard']);
+    expect(names.filter((n) => n === 'Charge')).toHaveLength(1);
+    expect(me.traits[2].note.startsWith('He and his Knights charge')).toBe(true);
+    expect(me.traits[1].note).toBe('One a round from the 1 in his book, but only while he stands. Mana 10/10: none comes back in battle.');
+    expect(me.lines[0]).toBe('In battle Sir Aldric stands below the middle of the line.');
+    expect(me.lines[1]).toContain('carried from the field, not killed');
+    expect(me.lines[1]).toContain('no further that day');
+  });
+
+  it('knows a caster\u2019s bolts grow with his spell power, and a courtier\u2019s rally', () => {
+    const w = leaderSheet(wizard());
+    expect(w.stats.find((s) => s.name === 'Damage')).toEqual({ name: 'Damage', value: '12\u201314', note: 'each blow: +1 a level, +3 per spell power' });
+    expect(w.traits[0]).toEqual({ name: 'Leads', note: 'Every stack fights with +1 defence.' });
+    expect(w.stats.find((s) => s.name === 'Shots')).toEqual({ name: 'Shots', value: '10', note: 'a battle' });
+    expect(w.traits.map((t) => t.name)).not.toContain('2 spells a round');
+    const courtier = { ...newGame(1066, ALDMOOR, 'courtier'), opening: undefined };
+    expect(leaderSheet(courtier).traits.map((t) => t.name)).toContain('Rallies');
+    // A stack's own numbers don't depend on standing beside him; the rally is said as a trait.
+    const knights = stackSheet(courtier, 0)!;
+    expect(knights.stats[0]).toEqual({ name: 'Attack', value: '9', note: '8 their own, +1 from Lord Aldric' });
+    expect(knights.traits).toContainEqual({ name: 'Rallied', note: 'Beside Lord Aldric they fight with +2 attack and +2 defence.' });
+    expect(stackSheet(knight(), 0)!.traits.map((t) => t.name)).not.toContain('Rallied');
   });
 });
