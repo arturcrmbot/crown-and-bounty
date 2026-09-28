@@ -95,8 +95,8 @@ export class AdventureController implements Screen {
   onCourt: (() => void) | null = null;
   /** Called when a new commission begins (maybe in a new province), with the events still to show. */
   onCommission: ((state: GameState, rest: GameEvent[]) => void) | null = null;
-  /** Called to open the hero screen, maybe looking at the army first. */
-  onHero: ((focus: 'army' | null) => void) | null = null;
+  /** Called to open the hero screen, maybe with one stack's card open. */
+  onHero: ((stack: number | null) => void) | null = null;
 
   constructor(display: Display, map: MapModel, state: GameState, speed = 1) {
     this.display = display;
@@ -558,16 +558,16 @@ export class AdventureController implements Screen {
   private clickBar(hit: HudHit) {
     if (!this.barClickable(hit)) return;
     if (hit.item.kind === 'hourglass') this.choose({ type: 'endDay' });
-    else this.openHero(hit.item.kind === 'stack' ? 'army' : null);
+    else this.openHero(hit.item.kind === 'stack' ? hit.item.index : null);
   }
 
   /** The hero screen: who he is, what he carries, his army. H, a click on him, or the bar's army and mana open it. */
-  private openHero(focus: 'army' | null = null) {
+  private openHero(stack: number | null = null) {
     if (this.state.opening || this.state.over || this.state.ambush) return;
     this.hideCard();
     this.label.hide();
     this.display.canvas.style.cursor = 'default';
-    this.onHero?.(focus);
+    this.onHero?.(stack);
   }
 
   /** Does something from the hero screen through the rules; false if the rules said no. */

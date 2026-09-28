@@ -4,9 +4,9 @@ import { outline } from '../render/bitmap';
 import { artifactIcon, slotGhost, statIcon } from '../render/artifactIcons';
 import { INK } from '../render/palette';
 import { portraitOf } from '../render/portraits';
-import { ART, type ArtId } from '../render/units';
+import { ART, heroArtId, type ArtId } from '../render/units';
 import { unitBitmap } from '../render/wesnoth';
-import { coins, heroSheet, heroStats, leadershipUsed, SLOT_NAMES, stackSheet, wages, type Action, type GameState, type HeroSheet } from '../rules/game';
+import { coins, heroSheet, heroStats, leaderTraits, leadershipUsed, SLOT_NAMES, stackSheet, wages, type Action, type GameState, type HeroSheet } from '../rules/game';
 import './heroScreen.css';
 import { bitmapUrl, PARCHMENT_SHADOW } from './pixels';
 import { play } from './sound';
@@ -79,6 +79,7 @@ export class HeroScreen {
   private over: string | null = null;
   private swallowClick = false;
   private lastClick: { key: string; at: number } | null = null;
+  private quiet = false;
   /** The card open over the sheet: a stack's, or the hero's own. */
   private card: Place | null = null;
   private confirming = false;
@@ -86,7 +87,8 @@ export class HeroScreen {
   private fresh = new Set<string>();
   private lastStats: number[] | null = null;
 
-  constructor(state: GameState, hooks: HeroScreenHooks, focus: 'army' | null = null) {
+  /** `stack` opens that stack's card straight away, as a click on its count in the bar does. */
+  constructor(state: GameState, hooks: HeroScreenHooks, stack: number | null = null) {
     this.state = state;
     this.hooks = hooks;
     this.root.className = 'kc-hero';
@@ -103,9 +105,9 @@ export class HeroScreen {
     this.listen();
     this.render();
     play('page');
-    const first = this.root.querySelector<HTMLElement>(focus === 'army' ? '[data-place="stack:0"]' : '[data-act="close"]');
-    first?.focus({ preventScroll: true });
-    if (focus === 'army' && state.army.length) this.openCard({ kind: 'stack', index: 0 });
+    const shown = stack !== null && state.army[stack] ? stack : null;
+    if (shown !== null) this.openCard({ kind: 'stack', index: shown });
+    this.focus(this.root.querySelector<HTMLElement>(shown !== null ? `[data-place="stack:${shown}"]` : '[data-act="close"]'));
   }
 
   /** Shows the state after a change, keeping focus where it was. */
@@ -162,7 +164,7 @@ export class HeroScreen {
     this.root.setAttribute('aria-label', sheet.title);
     if (focusKey) {
       const [kind, key] = [focusKey.slice(0, focusKey.indexOf(':')), focusKey.slice(focusKey.indexOf(':') + 1)];
-      this.root.querySelector<HTMLElement>(kind === 'place' ? `[data-place="${key}"]` : `[data-act="${key}"]`)?.focus({ preventScroll: true });
+      this.focus(this.root.querySelector<HTMLElement>(kind === 'place' ? `[data-place="${key}"]` : `[data-act="${key}"]`));
     }
     this.fresh.clear();
   }
@@ -253,7 +255,7 @@ export class HeroScreen {
     return `<section class="army">
       <h3>Army <small>drag to set the line: the first stands in the middle, the next above and below it</small></h3>
       <div class="strip">
-        <button class="tile leader${open}" data-place="hero" data-tip="${escape(leaderTip)}" aria-label="${escape(sheet.title)}"><img alt="" draggable="false" src="${unitUrl('hero')}"><span class="count">Leader</span></button>
+        <button class="tile leader${open}" data-place="hero" data-tip="${escape(leaderTip)}" aria-label="${escape(sheet.title)}"><img alt="" draggable="false" src="${unitUrl(heroArtId(this.state.hero.background))}"><span class="count">Leader</span></button>
         <span class="sep"></span>
         ${tiles}
         <div class="totals">
@@ -281,7 +283,7 @@ export class HeroScreen {
       const sheet = heroSheet(this.state);
       const s = heroStats(this.state);
       return `<div class="kc-hero-card leader-card">
-        <img class="pic" alt="" draggable="false" src="${unitUrl('hero', 2)}">
+        <img class="pic" alt="" draggable="false" src="${unitUrl(heroArtId(this.state.hero.background), 2)}">
         <div class="head"><h3>${escape(sheet.title)}</h3><p>${escape(sheet.level)}. He leads from the field\u2019s edge.</p></div>
         <dl>
           <dt>Attack</dt><dd><b>+${s.attack}</b> <small>to every stack</small></dd>
@@ -289,6 +291,7 @@ export class HeroScreen {
           <dt>Spells</dt><dd><b>${s.casts}</b> <small>a round, from ${this.state.hero.spells.length} in his book</small></dd>
           <dt>Mana</dt><dd><b>${sheet.mana.left}/${sheet.mana.max}</b> <small>none comes back in battle</small></dd>
         </dl>
+        ${this.traitList(leaderTraits(this.state))}
         <div class="acts"><button class="act" data-act="card-close">Close</button></div>
       </div>`;
     }
@@ -298,7 +301,7 @@ export class HeroScreen {
     const i = this.card.index;
     const last = this.state.army.length - 1;
     const stats = info.stats.map((s) => `<dt>${escape(s.name)}</dt><dd><b>${escape(s.value)}</b> <small>${escape(s.note)}</small></dd>`).join('');
-    const traits = info.traits.map((t) => `<li${t.trick ? ' class="trick"' : ''}><b>${escape(t.name)}.</b> ${escape(t.note)}</li>`).join('');
+
     const acts = this.confirming
       ? `<span class="ask">Send the ${escape(info.title)} home for good?</span><button class="act" data-act="dismiss-yes">Dismiss them</button><button class="act" data-act="dismiss-no">Keep them</button>`
       : `<button class="act" data-act="left"${i === 0 ? ' disabled' : ''}>\u25C0 Move left</button><button class="act" data-act="right"${i >= last ? ' disabled' : ''}>Move right \u25B6</button><button class="act" data-act="dismiss"${info.canDismiss ? '' : ' disabled'} data-tip="${info.canDismiss ? 'They go home, and take no more wages' : 'Your last company stays with you'}">Dismiss\u2026</button><span class="spacer"></span><button class="act" data-act="card-close">Close</button>`;
@@ -306,10 +309,15 @@ export class HeroScreen {
       <img class="pic" alt="" draggable="false" src="${unitUrl(info.troop, 2)}">
       <div class="head"><h3>${escape(info.title)}</h3><p><i>${escape(info.note)}</i></p></div>
       <dl>${stats}</dl>
-      ${traits ? `<ul class="traits">${traits}</ul>` : ''}
+      ${this.traitList(info.traits)}
       <p class="cost">${escape(info.leadership)}<br>${escape(info.wages)}<br>${escape(info.row)}</p>
       <div class="acts">${acts}</div>
     </div>`;
+  }
+
+  private traitList(traits: { name: string; note: string; trick?: boolean }[]): string {
+    const items = traits.map((t) => `<li${t.trick ? ' class="trick"' : ''}><b>${escape(t.name)}.</b> ${escape(t.note)}</li>`).join('');
+    return items ? `<ul class="traits">${items}</ul>` : '';
   }
 
   // --- What moves where -------------------------------------------------------------------
@@ -441,6 +449,7 @@ export class HeroScreen {
     });
     root.addEventListener('keydown', (e) => this.key(e));
     root.addEventListener('focusin', (e) => {
+      if (this.quiet) return this.hideTip();
       const el = (e.target as HTMLElement).closest<HTMLElement>('[data-tip]');
       if (el && el.matches(':focus-visible')) this.showTip(el);
       else this.hideTip();
@@ -536,13 +545,13 @@ export class HeroScreen {
     }
     if (act === 'left' || act === 'right') {
       if (!this.perform({ type: 'moveStack', from: index, to: act === 'left' ? index - 1 : index + 1 })) this.render();
-      this.root.querySelector<HTMLElement>(`[data-act="${act}"]:not(:disabled)`)?.focus({ preventScroll: true });
+      this.focus(this.root.querySelector<HTMLElement>(`[data-act="${act}"]:not(:disabled)`));
       return;
     }
     if (act === 'dismiss') {
       this.confirming = true;
       this.render();
-      this.root.querySelector<HTMLElement>('[data-act="dismiss-no"]')?.focus({ preventScroll: true });
+      this.focus(this.root.querySelector<HTMLElement>('[data-act="dismiss-no"]'));
       return;
     }
     if (act === 'dismiss-yes') {
@@ -554,7 +563,7 @@ export class HeroScreen {
         this.card = card;
         this.render();
       }
-      this.root.querySelector<HTMLElement>(`[data-place="stack:${Math.max(0, Math.min(index, this.state.army.length - 1))}"]`)?.focus({ preventScroll: true });
+      this.focus(this.root.querySelector<HTMLElement>(`[data-place="stack:${Math.max(0, Math.min(index, this.state.army.length - 1))}"]`));
     }
   }
 
@@ -570,7 +579,7 @@ export class HeroScreen {
     this.card = null;
     this.confirming = false;
     this.render();
-    if (was) this.root.querySelector<HTMLElement>(`[data-place="${keyOf(was)}"]`)?.focus({ preventScroll: true });
+    if (was) this.focus(this.root.querySelector<HTMLElement>(`[data-place="${keyOf(was)}"]`));
   }
 
   /** Arrows move between squares; Shift+arrows move what's there; Delete dismisses a stack. */
@@ -595,7 +604,7 @@ export class HeroScreen {
           const action = place.kind === 'stack' ? ({ type: 'moveStack', from: place.index, to } as const) : ({ type: 'movePack', from: place.index, to } as const);
           if (this.actionFor(place, { kind: place.kind, index: to } as Place)) {
             if (!this.perform(action)) this.render();
-            this.root.querySelector<HTMLElement>(`[data-place="${place.kind}:${Math.min(to, (place.kind === 'stack' ? this.state.army.length : this.state.hero.pack.length) - 1)}"]`)?.focus({ preventScroll: true });
+            this.focus(this.root.querySelector<HTMLElement>(`[data-place="${place.kind}:${Math.min(to, (place.kind === 'stack' ? this.state.army.length : this.state.hero.pack.length) - 1)}"]`));
           }
         }
         return;
@@ -609,7 +618,7 @@ export class HeroScreen {
       this.card = place;
       this.confirming = stackSheet(this.state, place.index)?.canDismiss ?? false;
       this.render();
-      this.root.querySelector<HTMLElement>(this.confirming ? '[data-act="dismiss-no"]' : '[data-act="card-close"]')?.focus({ preventScroll: true });
+      this.focus(this.root.querySelector<HTMLElement>(this.confirming ? '[data-act="dismiss-no"]' : '[data-act="card-close"]'));
       return;
     }
     // Letters are the screen's hotkeys (H closes, E ends the day): they go on up to the game.
@@ -632,7 +641,7 @@ export class HeroScreen {
       const s = along + across * 2.5;
       if (s < score) [best, score] = [el, s];
     }
-    best?.focus({ preventScroll: true });
+    this.focus(best, false);
   }
 
   private hoverTip(e: PointerEvent) {
@@ -662,6 +671,14 @@ export class HeroScreen {
 
   private hideTip() {
     this.tip.hidden = true;
+  }
+
+  /** Moves focus without scrolling the page. Focus the sheet moves itself brings up no note. */
+  private focus(el: HTMLElement | null, quiet = true) {
+    if (!el) return;
+    this.quiet = quiet;
+    el.focus({ preventScroll: true });
+    this.quiet = false;
   }
 
   /** For scripts: what the sheet shows, in words. */

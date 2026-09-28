@@ -10,7 +10,7 @@ import type { Action, GameState, Result } from './state';
 
 export * from './state';
 export { choose, describe, DISCOVERY_XP, forceLine, payday, PLACE_KINDS, priceOf, recruitable, visit, type PlaceKind } from './places';
-export { barNote, heroSheet, manaNote, SLOT_NAMES, stackSheet, type BarItem, type HeroSheet, type Note, type StackSheet } from './heroSheet';
+export { barNote, heroSheet, leaderTraits, manaNote, SLOT_NAMES, stackSheet, type BarItem, type HeroSheet, type Note, type StackSheet } from './heroSheet';
 export { meets, needsLabel } from './effects';
 export { ambushCard, endDay } from './days';
 export { briefingCard, CAMPAIGN_LENGTH, campaignLines, chooseBoon, commissionAt, commissionOf, courtCard, hasNextCommission, nextArmy, nextCommission, provinceOf, retry, toCourt, veterans, VETERANS } from './campaign';

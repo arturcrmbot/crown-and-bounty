@@ -59,7 +59,7 @@ export function storyCard(background: BackgroundId, briefed = false): Card {
       `You ride out with ${b.army.map((s) => troops(s.troop, s.count)).join(' and ')}${b.spells.length ? `, and ${b.spells.map((s) => SPELLS[s].name).join(', ')} in your spellbook` : ''}.`,
       `**${b.signature.name}.** ${b.signature.note}`,
       'Click the map to ride, and click anything that looks interesting. Red marks on your route are for tomorrow.',
-      `The hourglass (or **E**) ends the day. Every seventh day is payday. Click ${b.short} to see what he has learned. **M** turns the sound off.`,
+      `The hourglass (or **E**) ends the day. Every seventh day is payday. Click ${b.short} (or press **H**) for his gear and his army. **M** turns the sound off.`,
     ],
     choices: [{ label: 'Ride out', action: { type: 'close' } }],
     wide: true,

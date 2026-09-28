@@ -98,14 +98,14 @@ export class Game {
     adventure.onBattle = () => this.openBattle();
     adventure.onCourt = () => this.openCourt();
     adventure.onCommission = (next, rest) => this.beginCommission(next, rest);
-    adventure.onHero = (focus) => this.openHero(focus);
+    adventure.onHero = (stack) => this.openHero(stack);
     return adventure;
   }
 
-  /** The hero screen over the map; closing it goes back to the map. */
-  private openHero(focus: 'army' | null) {
+  /** The hero screen over the map, maybe with a stack's card open; closing it goes back to the map. */
+  private openHero(stack: number | null) {
     if (this.top !== this.adventure) return;
-    this.push(new HeroController(this.display, this.adventure, () => this.top instanceof HeroController && this.pop(), focus));
+    this.push(new HeroController(this.display, this.adventure, () => this.top instanceof HeroController && this.pop(), stack));
   }
 
   private openBattle() {

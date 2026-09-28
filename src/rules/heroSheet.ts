@@ -137,6 +137,23 @@ export function heroSheet(state: GameState): HeroSheet {
   };
 }
 
+/** What the hero brings to every battle beyond his numbers: his tricks, and what his skills add. */
+export function leaderTraits(state: GameState): Note[] {
+  const s = heroStats(state);
+  const pct = (x: number) => `${Math.round(x * 100)}%`;
+  const names = (ids: TroopId[]) => [...new Set(ids)].map((id) => TROOPS[id].name).join(' and ');
+  const out: Note[] = [];
+  if (s.casts > 1) out.push({ name: `${s.casts} spells a round`, note: 'He casts again before the round is out.', trick: true });
+  if (s.manaDiscount) out.push({ name: 'Hedge magic', note: `Every spell costs ${s.manaDiscount} less mana.` });
+  if (s.charge.length) out.push({ name: 'Charge', note: `His ${names(s.charge)} charge: after a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder, and nobody strikes back.`, trick: true });
+  if (s.volley) out.push({ name: 'First volley', note: 'His shooters loose a free volley before every battle, except at a villain\u2019s walls.', trick: true });
+  if (s.melee) out.push({ name: 'Offence', note: `+${pct(s.melee)} damage in melee, for every stack.` });
+  if (s.ranged) out.push({ name: 'Archery', note: `+${pct(s.ranged)} damage with every shot.` });
+  if (s.armour) out.push({ name: 'Armour', note: `His troops take ${pct(s.armour)} less damage.` });
+  if (s.slows.length) out.push({ name: 'Dread', note: `${names(s.slows)} start every battle slowed.` });
+  return out;
+}
+
 /** Where the hero's skills, perks, gear and background come from, by name, for saying what adds what. */
 function namedBonuses(state: GameState): { name: string; bonus: Bonus }[] {
   const h = state.hero;

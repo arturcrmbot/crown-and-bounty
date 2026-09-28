@@ -16,7 +16,7 @@ export class HeroController implements Screen {
   readonly sheet: HeroScreen;
   private readonly onClose: () => void;
 
-  constructor(display: Display, adventure: AdventureController, onClose: () => void, focus: 'army' | null = null) {
+  constructor(display: Display, adventure: AdventureController, onClose: () => void, stack: number | null = null) {
     this.display = display;
     this.adventure = adventure;
     this.onClose = onClose;
@@ -32,7 +32,7 @@ export class HeroController implements Screen {
         endDay: () => this.closeThen({ type: 'endDay' }),
         close: () => this.close(),
       },
-      focus,
+      stack,
     );
     this.placeCards();
   }

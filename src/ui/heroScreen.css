@@ -304,6 +304,7 @@
   align-items: center;
   justify-content: center;
   cursor: grab;
+  touch-action: none;
   background: #c6ab7c;
   border: 1px solid #5a3e14;
   box-shadow: inset 2px 2px 0 rgba(58, 36, 16, 0.3), inset -1px -1px 0 rgba(255, 240, 200, 0.3);
