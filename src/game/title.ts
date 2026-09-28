@@ -1,6 +1,6 @@
 import { MAP_VIEW } from '../render/frame';
 import { TitleScreen } from '../render/titleScreen';
-import type { Action, GameState } from '../rules/game';
+import type { Action, Card, GameState } from '../rules/game';
 import { CardView } from '../ui/card';
 import type { Display } from './display';
 import { titleCard } from './intro';
@@ -20,6 +20,7 @@ export class TitleController implements Screen {
 
   /** Browsers only allow sound after a click, so the painting waits for one: then the tune starts and the menu opens. */
   private waiting = true;
+  private progressing = false;
 
   constructor(display: Display, resume: GameState | null, hooks: TitleController['hooks']) {
     this.display = display;
@@ -34,6 +35,12 @@ export class TitleController implements Screen {
     this.cards.show(titleCard(this.resume));
   }
 
+  showProgress(card: Card) {
+    this.waiting = false;
+    this.progressing = true;
+    this.cards.show(card);
+  }
+
   private choose(action: Action) {
     if (action.type === 'close' && this.resume) this.hooks.onContinue();
     else if (action.type === 'restart') this.hooks.onNew();
@@ -42,10 +49,12 @@ export class TitleController implements Screen {
   /** Any click or key opens the menu; then Enter picks its first choice: carry on if there is a save, a new campaign if not. */
   readonly input = {
     ...NO_INPUT,
-    click: () => this.begin(),
+    click: () => {
+      if (!this.progressing) this.begin();
+    },
     key: (key: string) => {
       if (this.waiting) this.begin();
-      else if (key === 'enter') this.choose(this.resume ? { type: 'close' } : { type: 'restart' });
+      else if (!this.progressing && key === 'enter') this.choose(this.resume ? { type: 'close' } : { type: 'restart' });
     },
   };
 
