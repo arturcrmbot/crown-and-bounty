@@ -1,5 +1,7 @@
 # King's Commission
 
+[![CI](https://github.com/arturcrmbot/kings-commission/actions/workflows/ci.yml/badge.svg)](https://github.com/arturcrmbot/kings-commission/actions/workflows/ci.yml)
+
 A small browser game: King's Bounty (1990) rebuilt with the charm of Heroes of Might and Magic 2. The troops are Battle for Wesnoth's hand-painted units; every other pixel, and every note, is made in code.
 
 Ride out for King Osric across five commissions, as a Knight who charges, a Ranger who rides the woods, a Hedge Wizard who casts twice a round, or a Courtier who buys his way through.
@@ -7,6 +9,8 @@ Ride out for King Osric across five commissions, as a Knight who charges, a Rang
 **Play it:** https://arturcrmbot.github.io/kings-commission/
 
 To run it locally: `npm install`, then `npm run dev` and open http://127.0.0.1:5188. `AGENTS.md` lists the commands, and `docs/` holds the design and the plan.
+
+Bugs and ideas: [Issues](https://github.com/arturcrmbot/kings-commission/issues). Every push to `main` is tested and deployed by [GitHub Actions](https://github.com/arturcrmbot/kings-commission/actions).
 
 ## Licence
 

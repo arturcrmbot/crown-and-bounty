@@ -1,0 +1,30 @@
+name: Bug
+description: Something in the game is broken or wrong.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you saw, in a sentence or two.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to make it happen
+      placeholder: "Knight, day 3: attacked the patrol and pressed Defend twice."
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should happen
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where
+      options: [Map, Battle, Hero screen, Cards, Court or prologue, Title, Sound and music, Somewhere else]
+  - type: dropdown
+    id: hero
+    attributes:
+      label: Hero
+      options: [Any, Knight, Hedge Wizard, Ranger, Courtier]

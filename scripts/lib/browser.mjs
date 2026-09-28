@@ -1,8 +1,9 @@
 import { chromium } from 'playwright';
 
-/** A 960 x 540 page on headless Edge, with page errors printed. */
+/** A 960 x 540 page on headless Edge (CHANNEL=bundled: Playwright's own Chromium, as in CI), with page errors printed. */
 export async function openPage() {
-  const browser = await chromium.launch({ channel: process.env.CHANNEL ?? 'msedge' });
+  const channel = process.env.CHANNEL ?? 'msedge';
+  const browser = await chromium.launch(channel === 'bundled' ? {} : { channel });
   const page = await browser.newPage({ viewport: { width: 960, height: 540 } });
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));

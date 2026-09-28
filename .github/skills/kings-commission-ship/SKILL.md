@@ -10,22 +10,26 @@ description: >
 
 # Ship King's Commission
 
-Artur's rules (27 Sep 2026): **every improvement gets deployed**, and **playtest it yourself,
-properly, before reporting**. Fix what a player would hate, and keep going until *you* would enjoy it.
-Never bring him obvious issues.
+Artur's rules: **every improvement gets deployed** (27 Sep 2026), and **fast** (28 Sep: "I want to
+just play this, and I'll tell you if something is not working"). Ship small slices as soon as they
+work; GitHub Actions does the long checks. Fix what a player would hate.
 
 ## The loop
 
 1. **Change** something small and visible.
-2. **Check** it: `npm test`, `npm run typecheck`, then as needed `npm run e2e`, `npm run visual`
-   (look at the PNGs before `-- --approve`), and `npm run sim` / `npm run sim:battles` for balance.
-3. **Playtest** it (below). Log the findings in `docs/PLAYTEST.md`: date, what you played, what felt
-   wrong, and what you fixed. Fix what you found, then play again.
-4. **Ship**: commit (with the Co-authored-by trailer), `git push`, then `npm run deploy`. Pages is
-   live within about a minute: poll `gh api repos/arturcrmbot/kings-commission/pages/builds/latest
-   --jq .status` until it says `built`. Then load the live URL in headless Edge and check it plays
-   with no page errors (`URL=https://arturcrmbot.github.io/kings-commission/ node scripts/playtest.mjs`).
-5. **Report** briefly: what changed, what you judged, and the live link. Only when you are happy.
+2. **Check** it locally: `npm run typecheck` and the tests for what you touched
+   (`npx vitest run <files>`). That's all. CI runs the whole suite, the build, the play-through, a
+   playtest with each background, the visual scenes and the balance report on every push.
+3. **Playtest** only what a test can't judge (how a new screen looks, how a fight feels), quickly.
+   Artur playtests and reports; his findings become GitHub Issues.
+4. **Ship**: commit (with the Co-authored-by trailer, and `Fixes #N` for an issue), merge
+   `origin/main`, then `git push origin HEAD:main`. CI deploys it about three minutes later. Don't
+   wait for the run before starting the next thing; if it breaks main, an issue labelled `ci` opens
+   itself. `gh run watch` follows a run. Don't run `npm run deploy`.
+5. **Report** in a line: what changed, and the live link.
+
+Before a visual change lands, `npm run visual` and a look at the PNGs still pay: approve with
+`npm run visual -- --approve`. CI only reports the scenes.
 
 ## Playtest like an experienced gamer
 
@@ -50,8 +54,8 @@ modern RPGs:
   be several paths through each commission: fight, talk, sneak, cast, buy.
 - **RPG depth.** Choices with consequences, characters who remember you, quests, builds.
 
-Do this for every background at least through its first fights. Do the balance numbers
-(`npm run sim -- 20 --campaign`) agree with how it felt?
+When you do play, try every background at least through its first fights. CI's balance report
+(the run's summary) says whether the bot still wins every commission with each.
 
 ## Scale bible
 
@@ -78,7 +82,7 @@ has its count (the villains too); the King's star flies at the field's edge.
 ## Gotchas
 
 - The dev server is on 127.0.0.1:5188 (5173 belongs to another project; don't kill it).
-- Playwright uses `channel: 'msedge'`. Scripts start their own server (`scripts/lib/server.mjs`).
+- Playwright uses `channel: 'msedge'` locally, and Playwright's own Chromium in CI (`CHANNEL=bundled`). Scripts start their own server (`scripts/lib/server.mjs`).
 - `?freeze=1` is for exact screenshots; `?seed=N` fixes the campaign; `?fresh=1` ignores the save;
   `?hero=ranger` (with a debug start such as `?battle=wolves`) picks the background.
 - Anything that grows a hero (a signature, a skill) can break a gate: run `npm run difficulty` after, and keep

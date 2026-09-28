@@ -7,7 +7,8 @@ const width = Number(process.env.W ?? 960);
 const height = Number(process.env.H ?? 540);
 mkdirSync('screenshots', { recursive: true });
 
-const browser = await chromium.launch({ channel: process.env.CHANNEL ?? 'msedge', args: ['--ignore-gpu-blocklist'] });
+const channel = process.env.CHANNEL ?? 'msedge';
+const browser = await chromium.launch({ ...(channel === 'bundled' ? {} : { channel }), args: ['--ignore-gpu-blocklist'] });
 const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: Number(process.env.DPR ?? 1) });
 page.on('console', (m) => m.type() !== 'debug' && console.log(`[${m.type()}] ${m.text()}`));
 page.on('pageerror', (e) => console.log(`[pageerror] ${e.message}`));
