@@ -20,6 +20,8 @@ import { play } from '../ui/sound';
 import { sting } from '../audio/stings';
 import type { Place, Soundscape } from '../audio/ambience';
 import { soundscapeOf } from './soundscape';
+import { lairTune, provinceTune } from './tunes';
+import type { TrackId } from '../audio/score';
 import { HoverLabel } from '../ui/label';
 import type { Display } from './display';
 import type { Input } from './input';
@@ -34,6 +36,8 @@ const BANNER_HOLD = 2.4;
 const NIGHT = 1.4;
 /** How dark the map grows once a commission is lost. */
 const GLOOM = 0.6;
+/** How near a castle or village the hero must be for its card to bring the town's tune. */
+const TOWN_REACH = 90;
 /** Map pixels per second. */
 const RIDE_SPEED = 95;
 /** Map pixels per step of the trot cycle, so hooves don't slide. */
@@ -114,6 +118,10 @@ export class AdventureController implements Screen {
   private gloom = 0;
   /** Where the land makes its sounds. */
   private readonly soundscape: Soundscape;
+  /** The place whose card is open, if the card came from a visit there. */
+  private cardPlace: string | null = null;
+  /** Settling a battle fought on the field, whose stings have played already. */
+  private fromBattle = false;
   /** The day's full movement, worked out once per state. */
   private fullDay: { state: GameState; movement: number } | null = null;
   /** Called when the rules start a battle; the game switches screens. */
@@ -163,8 +171,14 @@ export class AdventureController implements Screen {
     play('fanfare');
   }
 
-  get music() {
-    return this.map.province.fen ? ('fen' as const) : ('heath' as const);
+  /**
+   * The province's own tune; a villain's theme near his lair; and while the hero is in a castle or
+   * a village, with its card open, the town's.
+   */
+  get music(): TrackId {
+    const here = this.cardPlace && this.cards.isOpen ? this.state.locations.find((l) => l.id === this.cardPlace) : null;
+    if (here && (here.kind === 'castle' || here.kind === 'village') && !here.look && Math.hypot(here.at[0] - this.drawn.x, here.at[1] - this.drawn.y) < TOWN_REACH) return 'town';
+    return lairTune(this.state, [this.drawn.x, this.drawn.y]) ?? provinceTune(this.state.campaign.chapter, Boolean(this.map.province.fen));
   }
 
   get ambience() {
@@ -210,6 +224,7 @@ export class AdventureController implements Screen {
   }
 
   showCard(card: Card, at: Point | null) {
+    this.cardPlace = null;
     // A new province's name gets its moment across the sky before any card covers it.
     if (this.banner && this.banner.age < BANNER_HOLD) {
       this.held = { card, at };
@@ -223,6 +238,7 @@ export class AdventureController implements Screen {
 
   hideCard() {
     this.looking = null;
+    this.cardPlace = null;
     this.cards.hide();
   }
 
@@ -280,6 +296,9 @@ export class AdventureController implements Screen {
           return;
         case 'card':
           this.showCard(e.card, e.place ? this.anchorOf(e.place) : e.at);
+          this.cardPlace = e.place ?? null;
+          // A fight the sergeants settled gets the same brass, or the same bell, as one fought on the field.
+          if (!this.fromBattle && (e.card.title === 'Victory!' || e.card.title === 'Defeat')) sting(e.card.title === 'Defeat' ? 'defeat' : 'victory');
           break;
         case 'reveal':
           this.scene.fog.reveal(this.state.explored, e.at[0], e.at[1], e.radius);
@@ -299,6 +318,7 @@ export class AdventureController implements Screen {
           this.tiredShown = false;
           this.nightfall = 0;
           play('day');
+          if (e.payday) sting('payday');
           // A quiet dawn has no card: the new day's number rises off the hero as the light comes back.
           if (!events.some((x) => x.type === 'card')) this.view.effects.floatText(this.drawn.x, this.drawn.y - this.scene.hero.head - 12, `Day ${roman(e.day)}`, GOLD[6], NIGHT * 0.55);
           break;
@@ -363,7 +383,9 @@ export class AdventureController implements Screen {
 
   /** Back from the battlefield: the rules settle survivors and rewards, and the card says how it went. */
   finishBattle(battle: BattleState) {
+    this.fromBattle = true;
     this.run(finishFight({ ...this.state, battle }));
+    this.fromBattle = false;
     this.follow = true;
   }
 

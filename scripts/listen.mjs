@@ -15,7 +15,7 @@ try {
   const report = await page.evaluate(async (wanted) => {
     const { playNote } = await import('/src/audio/instruments.ts');
     const { STINGS } = await import('/src/audio/stings.ts');
-    const { TRACKS, notesOf, loopUnits, midiOf } = await import('/src/audio/score.ts');
+    const { TRACKS, notesOf, loopUnits, midiOf, gateLevel } = await import('/src/audio/score.ts');
     const { LEVELS, masterChain } = await import('/src/audio/context.ts');
     const { AMBIENT_CALLS, AMBIENT_LAYERS } = await import('/src/audio/ambience.ts');
     const RATE = 44100;
@@ -69,20 +69,41 @@ try {
       });
       out.stings.push({ id, ...stats(data), rings: tail(data), duck: def.duck, next: def.next ?? null });
     }
+    const MOODS = { map: { intensity: 0, balance: 0 }, start: { intensity: 0.25, balance: 0 }, heated: { intensity: 0.85, balance: 0 }, winning: { intensity: 0.85, balance: 0.6 }, losing: { intensity: 0.85, balance: -0.6 } };
     for (const [id, track] of Object.entries(TRACKS)) {
       if (!want('tracks', id)) continue;
       const loop = loopUnits(track) * track.unit;
       const notes = notesOf(track);
-      // Two laps, so the seam between them sounds as it will in the game.
-      const data = await render(loop * 2 + 3, LEVELS.music, (ctx, dest) => {
-        for (let lap = 0; lap < 2; lap++) for (const n of notes) playNote(ctx, dest, n.instrument, 0.05 + lap * loop + n.at * track.unit, n.midi, n.length * track.unit, n.volume);
-      });
-      const at = (s) => Math.floor((0.05 + s) * RATE);
-      // How loud the second before the seam, the second after it, and the second lap as a whole are.
-      const before = db(rms(data, at(loop - 1), at(loop)));
-      const after = db(rms(data, at(loop), at(loop + 1)));
-      const lap = rms(data, at(loop), at(loop * 2));
-      out.tracks.push({ id, seconds: Math.round(loop * 10) / 10, ...stats(data.subarray(at(loop), at(loop * 2))), lap: db(lap), seamBefore: before, seamAfter: after });
+      const gated = notes.some((n) => n.gate);
+      /** Renders the stretch of track time [from, to) (laps wrap round), in a mood, and returns it without its 3 s lead-in. */
+      const stretch = async (from, to, mood) => {
+        const lead = 3;
+        const data = await render(to - from + lead + 2, LEVELS.music, (ctx, dest) => {
+          for (let lap = Math.floor((from - lead) / loop); lap <= Math.floor(to / loop); lap++) {
+            for (const n of notes) {
+              const t = lap * loop + n.at * track.unit;
+              if (t < from - lead || t >= to) continue;
+              const level = gateLevel(n.gate, mood);
+              if (level > 0.02) playNote(ctx, dest, n.instrument, t - (from - lead), n.midi, n.length * track.unit, n.volume * level);
+            }
+          }
+        });
+        return data.subarray(Math.floor(lead * RATE), Math.floor((lead + to - from) * RATE));
+      };
+      // Each pass of the form on its own, so a quiet verse can't hide.
+      const passes = [];
+      let at = 0;
+      for (const pass of track.form) {
+        const seconds = track.sections[pass.section].chords.length * track.unitsPerBar * track.unit;
+        const data = await stretch(at, at + seconds, MOODS.map);
+        passes.push(`${pass.section}:${db(rms(data))}`);
+        at += seconds;
+      }
+      // The seam: the last seconds of the loop and the first of the next time round.
+      const seam = await stretch(loop - 3, loop + 3, MOODS.map);
+      const moods = {};
+      if (gated) for (const [name, mood] of Object.entries(MOODS)) moods[name] = db(rms(await stretch(0, Math.min(loop, 20), mood)));
+      out.tracks.push({ id, seconds: Math.round(loop), passes, seamBefore: db(rms(seam, 0, 3 * RATE)), seamAfter: db(rms(seam, 3 * RATE)), moods });
     }
     return out;
   }, only);
@@ -92,9 +113,11 @@ try {
     for (const s of report.stings) console.log(`${s.id.padEnd(9)} ${String(s.peak).padStart(5)}  ${String(s.loudest).padStart(6)}  ${String(s.rings).padStart(5)}s ${String(s.duck).padStart(4)}s ${s.next === null ? '' : `${s.next}s`}`);
   }
   if (report.tracks.length) {
-    console.log('\nTracks (the second lap, as heard in the game)');
-    console.log('id        loop    peak   rms   loudest   seam: last s -> first s');
-    for (const t of report.tracks) console.log(`${t.id.padEnd(9)} ${String(t.seconds).padStart(5)}s ${String(t.peak).padStart(6)} ${String(t.rms).padStart(6)} ${String(t.loudest).padStart(7)}   ${t.seamBefore} -> ${t.seamAfter}`);
+    console.log('\nTracks (as heard in the game): each pass of the form, the seam, and for gated tracks each mood (first 20 s, dB RMS)');
+    for (const t of report.tracks) {
+      console.log(`${t.id.padEnd(9)} ${String(t.seconds).padStart(4)}s  passes ${t.passes.join('  ')}  seam ${t.seamBefore} -> ${t.seamAfter}`);
+      if (Object.keys(t.moods).length) console.log(`${''.padEnd(16)}moods ${Object.entries(t.moods).map(([k, v]) => `${k} ${v}`).join('  ')}`);
+    }
   }
   if (report.ambience.length) {
     console.log('\nAmbience at its loudest (right on top of it; through the ambience bus and the master)');
