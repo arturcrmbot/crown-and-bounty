@@ -425,11 +425,11 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
       if (!b.volley) return { battle: b, events: [] };
       next.volley = undefined;
       events.push({ type: 'volley' });
-      // Every stack that can shoot picks the biggest threat still standing, and looses once.
+      // Every stack that can shoot looses once, where its arrows take the most: their shooters count double.
       for (const shooter of fighters.filter((x) => x.side === 'player' && alive(x) && x.shots > 0)) {
         const targets = fighters.filter((x) => x.side === 'enemy' && alive(x));
         if (!targets.length) break;
-        const worth = (x: Fighter) => x.count * troopPower(x.troop);
+        const worth = (x: Fighter) => Math.min(x.count, strike(next, shooter, x, true).damage / TROOPS[x.troop].hp) * troopPower(x.troop) * (x.shots > 0 ? 2 : 1);
         const target = targets.reduce((best, x) => (worth(x) > worth(best) ? x : best));
         shooter.shots -= 1;
         hit(shooter, target, true, false);
