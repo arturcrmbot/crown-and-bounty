@@ -37,6 +37,8 @@ export type Bonus = {
   casts?: number;
   /** Spells he can cast on the map. */
   mapSpells?: MapSpellId[];
+  /** Battle spells he can cast while he has this (gear that holds a spell). */
+  spells?: SpellId[];
   /** Fraction off every bribe. */
   bribes?: number;
   /** Small bands will take his coin and join him. */

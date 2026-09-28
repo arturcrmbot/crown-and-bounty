@@ -97,6 +97,23 @@ describe('gear with a price', () => {
   });
 });
 
+describe('gear that holds a spell', () => {
+  it('lets him cast it in battle while he has it', () => {
+    const base = fresh();
+    const armed = { ...base, hero: { ...base.hero, gear: { weapon: 'swordOfAldmoor' as const } } };
+    expect(heroInBattle(armed).spells).toEqual(base.hero.spells);
+    const held = { ...ARTIFACTS.swordOfAldmoor, bonus: { ...ARTIFACTS.swordOfAldmoor.bonus, spells: ['bolt' as const] } };
+    const original = ARTIFACTS.swordOfAldmoor;
+    ARTIFACTS.swordOfAldmoor = held;
+    try {
+      expect(heroInBattle(armed).spells).toEqual([...base.hero.spells, 'bolt']);
+      expect(armed.hero.spells).not.toContain('bolt');
+    } finally {
+      ARTIFACTS.swordOfAldmoor = original;
+    }
+  });
+});
+
 describe('gear that changes how you ride, count and collect', () => {
   it('the Surveyor\u2019s Chain, the Spyglass, the Ledger, the Drum and the Pilgrim\u2019s Hat', () => {
     expect(heroStats(wearing(['surveyorsChain'])).offRoad).toBe(0.25);

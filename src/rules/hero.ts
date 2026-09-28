@@ -75,6 +75,8 @@ export type HeroStats = {
   /** Spells he may cast in one round of battle. */
   casts: number;
   mapSpells: MapSpellId[];
+  /** Battle spells he can cast: his own, and any his gear holds. */
+  spells: SpellId[];
   bribes: number;
   hires: boolean;
   tames: boolean;
@@ -132,6 +134,7 @@ export function heroStats(state: GameState): HeroStats {
     forestWalk: false,
     casts: 1,
     mapSpells: [],
+    spells: [...h.spells],
     bribes: 0,
     hires: false,
     tames: false,
@@ -175,6 +178,7 @@ export function heroStats(state: GameState): HeroStats {
     s.forestWalk ||= Boolean(b.forestWalk);
     s.casts += b.casts ?? 0;
     s.mapSpells.push(...(b.mapSpells ?? []).filter((m) => !s.mapSpells.includes(m)));
+    s.spells.push(...(b.spells ?? []).filter((m) => !s.spells.includes(m)));
     s.bribes += b.bribes ?? 0;
     s.hires ||= Boolean(b.hires);
     s.tames ||= Boolean(b.tames);
