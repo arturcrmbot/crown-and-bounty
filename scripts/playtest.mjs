@@ -24,6 +24,15 @@ async function look(name) {
   const file = `${String(++shot).padStart(2, '0')}-${name}.png`;
   await page.screenshot({ path: `${out}/${file}` });
   const card = await kc.call(() => {
+    // The hero screen, if it's open, else the card on screen.
+    const sheet = document.querySelector('.kc-hero');
+    if (sheet) {
+      return {
+        title: sheet.querySelector('h2')?.textContent ?? '',
+        lines: [...sheet.querySelectorAll('.level, .when, .stat, .gauge, .learned .row, .totals div, .kc-hero-card')].map((el) => el.textContent.replace(/\s+/g, ' ').trim()),
+        buttons: [...sheet.querySelectorAll('button.act')].map((b) => `${b.textContent}${b.disabled ? ' (greyed)' : ''}`),
+      };
+    }
     const wrap = document.querySelector('.kc-card-wrap:not([hidden])');
     if (!wrap) return null;
     return {
@@ -41,9 +50,9 @@ async function look(name) {
   if (card) console.log(`   ${card.title} :: ${card.lines.join(' / ')} :: ${card.buttons.join(' | ')}`);
 }
 
-/** Clicks the first button on the open card whose label starts with `label`, like a player would. */
+/** Clicks the first button on the open card (or the hero screen) whose label starts with `label`, like a player would. */
 async function press(label) {
-  const button = page.locator('.kc-card-wrap:not([hidden]) button', { hasText: label }).first();
+  const button = page.locator('.kc-card-wrap:not([hidden]) button, .kc-hero button.act', { hasText: label }).first();
   if (!(await button.count())) return false;
   await button.click();
   await page.waitForTimeout(120);
@@ -89,7 +98,7 @@ try {
   await look('map');
   const hero = await kc.call(() => window.__kc.state().hero.at);
   await kc.click(hero[0], hero[1] - 6);
-  await look('hero-card');
+  await look('hero-screen');
   await press('Close');
   for (const [id, verb] of [['gold', 'Take'], ['chest', 'Open']]) {
     if (await go(id, verb)) await look(id);

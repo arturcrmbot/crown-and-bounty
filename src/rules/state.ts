@@ -232,7 +232,16 @@ export type Action =
   | { type: 'retreat' }
   | { type: 'learn'; option: string }
   | { type: 'equip'; artifact: ArtifactId }
-  | { type: 'gear' }
+  /** Wears the artifact in pack square `from`; whatever its slot held takes that square. */
+  | { type: 'wear'; from: number }
+  /** Takes off what's worn in `slot`, into pack square `to` (or the end). */
+  | { type: 'unequip'; slot: Slot; to?: number }
+  /** Moves an artifact between pack squares: onto another, the two swap. */
+  | { type: 'movePack'; from: number; to: number }
+  /** Moves a stack along the army line, which sets its row in battle: onto another, the two swap. */
+  | { type: 'moveStack'; from: number; to: number }
+  /** Sends a stack home. The last one stays. */
+  | { type: 'dismiss'; index: number }
   | { type: 'background'; id: BackgroundId }
   | { type: 'mapSpell'; spell: MapSpellId }
   /** After a won commission: ride to the King. */

@@ -1,21 +1,23 @@
 /** The rules in one place: state, places, days, fights and the hero, plus `apply` for anything a card can do. */
 import { chooseBoon, nextCommission, retry, toCourt } from './campaign';
+import { dismiss, moveStack } from './army';
 import { endDay } from './days';
-import { equip, gearCard, learn } from './hero';
+import { equip, learn, movePack, unequip, wear } from './hero';
 import { castMapSpell } from './mapSpells';
 import { choose } from './places';
 import { chooseBackground } from './scenario';
-import { show, type Action, type GameState, type Result } from './state';
+import type { Action, GameState, Result } from './state';
 
 export * from './state';
 export { choose, describe, DISCOVERY_XP, forceLine, payday, PLACE_KINDS, priceOf, recruitable, visit, type PlaceKind } from './places';
-export { describeHero } from './heroCard';
+export { barNote, heroSheet, manaNote, SLOT_NAMES, stackSheet, type BarItem, type HeroSheet, type Note, type StackSheet } from './heroSheet';
 export { meets, needsLabel } from './effects';
 export { ambushCard, endDay } from './days';
 export { briefingCard, CAMPAIGN_LENGTH, campaignLines, chooseBoon, commissionAt, commissionOf, courtCard, hasNextCommission, nextArmy, nextCommission, provinceOf, retry, toCourt, veterans, VETERANS } from './campaign';
 export { beginCommission, chooseBackground, newGame } from './scenario';
 export { battleXp, fight, finishFight, heroInBattle, lossesLine, startFight, winChance } from './fight';
-export { equip, gainXp, gearCard, giveArtifact, heroStats, learn, levelFor, levelUpCard, LEVELS } from './hero';
+export { equip, gainXp, giveArtifact, heroStats, learn, levelFor, levelUpCard, LEVELS, movePack, unequip, wear } from './hero';
+export { dismiss, moveStack } from './army';
 
 /** Applies a card choice. `go`, `close`, `restart`, `spell` and `retreat` are for the screens, so they return null here. */
 export function apply(state: GameState, action: Action): Result | null {
@@ -29,8 +31,16 @@ export function apply(state: GameState, action: Action): Result | null {
       return learn(state, action.option);
     case 'equip':
       return equip(state, action.artifact);
-    case 'gear':
-      return { state, events: [show(gearCard(state))] };
+    case 'wear':
+      return wear(state, action.from);
+    case 'unequip':
+      return unequip(state, action.slot, action.to);
+    case 'movePack':
+      return movePack(state, action.from, action.to);
+    case 'moveStack':
+      return moveStack(state, action.from, action.to);
+    case 'dismiss':
+      return dismiss(state, action.index);
     case 'mapSpell':
       return castMapSpell(state, action.spell);
     case 'background':

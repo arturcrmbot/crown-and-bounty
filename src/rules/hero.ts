@@ -1,9 +1,9 @@
-import { ARTIFACTS, SLOTS, type ArtifactId, type Slot } from '../content/artifacts';
+import { ARTIFACTS, type ArtifactId, type Slot } from '../content/artifacts';
 import { BACKGROUNDS, type BackgroundId, type Bonus } from '../content/backgrounds';
 import { PERKS, RANKS, SKILLS, type PerkId, type SkillId } from '../content/skills';
 import type { MapSpellId, SpellId } from '../content/spells';
 import type { TroopId } from '../content/troops';
-import { close, roll, roman, show, type Card, type GameEvent, type GameState, type Result } from './state';
+import { roll, roman, show, type Card, type GameEvent, type GameState, type Result } from './state';
 
 /** A level-up waiting for the player to choose: skills (`skill:archery`) or perks (`perk:warchest`). */
 export type Offer = { level: number; stat: StatId; options: string[] };
@@ -259,30 +259,55 @@ export function foundNote(state: GameState, id: ArtifactId): string {
   return state.hero.gear[a.slot] === id ? `You put it on. ${a.note}` : `${a.note} It goes in your pack: you already wear something there.`;
 }
 
-/** Wears an artifact from the pack; whatever was in that slot goes back in the pack. */
-export function equip(state: GameState, id: ArtifactId): Result | null {
-  if (!state.hero.pack.includes(id)) return null;
-  const slot = ARTIFACTS[id].slot;
-  const worn = state.hero.gear[slot];
-  const pack = state.hero.pack.filter((_, i) => i !== state.hero.pack.indexOf(id));
-  const hero = { ...state.hero, gear: { ...state.hero.gear, [slot]: id }, pack: worn ? [...pack, worn] : pack };
-  const swapped = { ...state, hero };
-  // Taking off something that gave knowledge takes its mana with it.
-  const next = { ...swapped, hero: { ...hero, mana: Math.min(hero.mana, heroStats(swapped).maxMana) } };
-  return { state: next, events: [show(gearCard(next))] };
+/** Keeps mana within what the hero can now hold: taking off knowledge takes its mana with it. */
+const withinMana = (state: GameState): GameState => ({ ...state, hero: { ...state.hero, mana: Math.min(state.hero.mana, heroStats(state).maxMana) } });
+
+/**
+ * Moves one thing in a list from `from` to `to`: onto another, the two swap; past the last, it
+ * goes to the end. Null when nothing would change. Pack squares and army slots both work this way.
+ */
+export function moveWithin<T>(list: readonly T[], from: number, to: number): T[] | null {
+  if (from < 0 || from >= list.length || to < 0 || to === from) return null;
+  const next = [...list];
+  if (to < list.length) [next[from], next[to]] = [next[to], next[from]];
+  else if (from === list.length - 1) return null;
+  else next.push(...next.splice(from, 1));
+  return next;
 }
 
-export function gearCard(state: GameState): Card {
+/** Wears the artifact in pack square `from`; whatever that slot held takes its square. */
+export function wear(state: GameState, from: number): Result | null {
   const { gear, pack } = state.hero;
-  const worn = SLOTS.map((slot: Slot) => {
-    const id = gear[slot];
-    return `**${slot[0].toUpperCase()}${slot.slice(1)}:** ${id ? `${ARTIFACTS[id].name}. ${ARTIFACTS[id].note}` : '(nothing)'}`;
-  });
-  return {
-    title: 'Equipment',
-    lines: [...worn, ...(pack.length ? [`*In the pack: ${pack.map((id) => ARTIFACTS[id].name).join(', ')}.*`] : [])],
-    choices: [...pack.map((id) => ({ label: `Wear ${ARTIFACTS[id].name}`, action: { type: 'equip' as const, artifact: id } })), close],
-  };
+  const id = pack[from];
+  if (!id) return null;
+  const slot = ARTIFACTS[id].slot;
+  const worn = gear[slot];
+  const rest = worn ? pack.map((p, i) => (i === from ? worn : p)) : pack.filter((_, i) => i !== from);
+  return { state: withinMana({ ...state, hero: { ...state.hero, gear: { ...gear, [slot]: id }, pack: rest } }), events: [] };
+}
+
+/** Wears an artifact from the pack, by name. */
+export const equip = (state: GameState, id: ArtifactId): Result | null => wear(state, state.hero.pack.indexOf(id));
+
+/**
+ * Takes off what's worn in `slot`, into pack square `to` (the end, if it's past the last). Onto an
+ * artifact for the same slot, the two swap.
+ */
+export function unequip(state: GameState, slot: Slot, to = state.hero.pack.length): Result | null {
+  const { gear, pack } = state.hero;
+  const worn = gear[slot];
+  if (!worn || to < 0) return null;
+  if (pack[to] && ARTIFACTS[pack[to]].slot === slot) return wear(state, to);
+  const at = Math.min(to, pack.length);
+  const rest = { ...gear };
+  delete rest[slot];
+  return { state: withinMana({ ...state, hero: { ...state.hero, gear: rest, pack: [...pack.slice(0, at), worn, ...pack.slice(at)] } }), events: [] };
+}
+
+/** Moves an artifact from one pack square to another. */
+export function movePack(state: GameState, from: number, to: number): Result | null {
+  const pack = moveWithin(state.hero.pack, from, to);
+  return pack ? { state: { ...state, hero: { ...state.hero, pack } }, events: [] } : null;
 }
 
 /** A fresh hero of a background, standing at `at`. */

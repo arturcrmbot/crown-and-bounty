@@ -7,7 +7,7 @@ import { BAR, MAP_VIEW } from '../render/frame';
 import { BLUE, GOLD, NEUTRAL, PARCHMENT, RED } from '../render/palette';
 import { paintHud, type HudHit } from '../render/hud';
 import type { BattleState } from '../rules/battle/battle';
-import { ambushCard, apply, commissionOf, describe, describeHero, finishFight, levelUpCard, locationById, roman, visit, type Action, type Card, type GameEvent, type GameState, type Result } from '../rules/game';
+import { ambushCard, apply, commissionOf, describe, finishFight, levelUpCard, locationById, roman, visit, type Action, type Card, type GameEvent, type GameState, type Result } from '../rules/game';
 import { barNote } from '../rules/heroSheet';
 import type { Point } from '../rules/map/geometry';
 import { cellCentre, type MapModel } from '../rules/map/model';
@@ -94,6 +94,8 @@ export class AdventureController implements Screen {
   onCourt: (() => void) | null = null;
   /** Called when a new commission begins (maybe in a new province), with the events still to show. */
   onCommission: ((state: GameState, rest: GameEvent[]) => void) | null = null;
+  /** Called to open the hero screen, maybe looking at the army first. */
+  onHero: ((focus: 'army' | null) => void) | null = null;
 
   constructor(display: Display, map: MapModel, state: GameState, speed = 1) {
     this.display = display;
@@ -544,12 +546,29 @@ export class AdventureController implements Screen {
   private clickBar(hit: HudHit) {
     if (!this.barClickable(hit)) return;
     if (hit.item.kind === 'hourglass') this.choose({ type: 'endDay' });
-    else this.openHero();
+    else this.openHero(hit.item.kind === 'stack' ? 'army' : null);
   }
 
-  /** The hero's card: who he is, what he carries, his army. H or a click on him opens it. */
-  private openHero() {
-    this.showCard(describeHero(this.state), [this.drawn.x, this.scene.hero.object.y + 6]);
+  /** The hero screen: who he is, what he carries, his army. H, a click on him, or the bar's army and mana open it. */
+  private openHero(focus: 'army' | null = null) {
+    if (this.state.opening || this.state.over || this.state.ambush) return;
+    this.hideCard();
+    this.label.hide();
+    this.display.canvas.style.cursor = 'default';
+    this.onHero?.(focus);
+  }
+
+  /** Does something from the hero screen through the rules; false if the rules said no. */
+  act(action: Action): boolean {
+    const result = apply(this.state, action);
+    if (!result) return false;
+    this.run(result);
+    return true;
+  }
+
+  /** What's on the bottom bar at a screen point, if anything. */
+  barAt(x: number, y: number) {
+    return this.onBar(x, y)?.item.kind ?? (y >= BAR.y ? 'bar' : null);
   }
 
   /** Handlers for `Input`: screen pixels in. */

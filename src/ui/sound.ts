@@ -5,7 +5,7 @@
 import { audio, isMuted } from '../audio/context';
 import { playNote } from '../audio/instruments';
 
-export type Sound = 'click' | 'coins' | 'hit' | 'shoot' | 'bolt' | 'spell' | 'day' | 'levelUp' | 'victory' | 'defeat' | 'dig' | 'fanfare' | 'charge';
+export type Sound = 'click' | 'coins' | 'hit' | 'shoot' | 'bolt' | 'spell' | 'day' | 'levelUp' | 'victory' | 'defeat' | 'dig' | 'fanfare' | 'charge' | 'page' | 'lift' | 'equip' | 'march';
 
 /** Sound effects go to the effects bus of the shared audio context (see `audio/context.ts`). */
 export { toggleMute, wakeAudio as wakeSound } from '../audio/context';
@@ -95,6 +95,23 @@ export function play(sound: Sound) {
         // A hunting horn: two quick calls and a long one, and hooves.
         for (const [midi, at, length] of [[67, 0, 0.1], [67, 0.12, 0.1], [74, 0.24, 0.45]] as [number, number, number][]) playNote(a.ctx, a.sfx, 'brass', t + at, midi, length, 0.34);
         for (const d of [0, 0.09, 0.18, 0.27]) noise(t + d, 0.06, 'lowpass', 700, 0.5);
+        break;
+      case 'page':
+        // A page of the hero's book turning.
+        noise(t, 0.16, 'bandpass', 2600, 0.35, 0.45);
+        break;
+      case 'lift':
+        noise(t, 0.05, 'bandpass', 1400, 0.3, 1.6);
+        break;
+      case 'equip':
+        // Buckles and a little ring of metal.
+        noise(t, 0.04, 'highpass', 3000, 0.25);
+        tone(1760, t + 0.02, 0.1, 'triangle', 0.22);
+        tone(2637, t + 0.06, 0.18, 'sine', 0.14);
+        break;
+      case 'march':
+        // Boots going off down the road.
+        [0, 0.14, 0.28, 0.42].forEach((d, i) => noise(t + d, 0.06, 'lowpass', 600, 0.55 - i * 0.12));
         break;
       case 'dig':
         [0, 0.25, 0.5].forEach((d) => noise(t + d, 0.1, 'lowpass', 500, 0.8));

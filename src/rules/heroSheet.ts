@@ -1,7 +1,14 @@
-import { TROOPS, troops } from '../content/troops';
-import { commissionOf } from './campaign';
-import { heroStats } from './hero';
-import { COMMISSION, coins, LAST_DAY, PAYDAY_EVERY, roman, wages, type GameState } from './state';
+import { ARTIFACTS, type Slot } from '../content/artifacts';
+import { BACKGROUNDS, type BackgroundId, type Bonus } from '../content/backgrounds';
+import { PERKS, RANKS, SKILLS, type SkillId } from '../content/skills';
+import { MAP_SPELLS, SPELLS, type MapSpellId } from '../content/spells';
+import { abilitiesOf, TROOPS, troops, type TroopId } from '../content/troops';
+import { createBattle, statsOf } from './battle/battle';
+import { rowOf } from './battle/hex';
+import { CAMPAIGN_LENGTH, commissionOf } from './campaign';
+import { heroInBattle } from './fight';
+import { heroStats, LEVELS, type StatId } from './hero';
+import { COMMISSION, coins, LAST_DAY, leadershipUsed, PAYDAY_EVERY, roman, wages, type GameState } from './state';
 
 /** Mana left, the most he can hold, and how it comes back: "Mana 12/30 · full again at dawn". */
 export function manaNote(state: GameState): string {
@@ -61,4 +68,150 @@ export function barNote(state: GameState, item: BarItem): string {
     case 'hourglass':
       return 'End the day (E)';
   }
+}
+
+// --- The hero screen ---------------------------------------------------------------------
+
+/** A named thing with a note, for the hero screen's chips and hover labels. */
+export type Note = { name: string; note: string; trick?: boolean };
+
+/** Everything the hero screen shows about him, in the game's voice. The screen only lays it out. */
+export type HeroSheet = {
+  title: string;
+  /** Who he was: his portrait, and his figure on the field. */
+  background: BackgroundId;
+  level: string;
+  /** How far through this level he is (0 to 1), and the words for it. */
+  xp: { share: number; line: string };
+  stats: { id: StatId; name: string; value: number; note: string }[];
+  mana: { left: number; max: number; line: string };
+  movement: { left: number; max: number; line: string };
+  leadership: { used: number; max: number; line: string };
+  signature: Note;
+  skills: Note[];
+  perks: Note[];
+  spells: Note[];
+  mapSpells: { spell: MapSpellId; label: string; note: string; disabled: boolean }[];
+  pieces: string;
+  day: string;
+};
+
+export const SLOT_NAMES: Record<Slot, string> = { weapon: 'Weapon', armour: 'Armour', helm: 'Helm', banner: 'Banner', trinket: 'Trinket' };
+
+export function heroSheet(state: GameState): HeroSheet {
+  const h = state.hero;
+  const s = heroStats(state);
+  const b = BACKGROUNDS[h.background];
+  const [from, to] = [LEVELS[h.level] ?? 0, LEVELS[h.level + 1]];
+  const bolt = SPELLS.bolt.effect.kind === 'damage' ? SPELLS.bolt.effect.perPower * s.spellPower : 0;
+  const stat = (id: StatId, name: string, what: string) => {
+    const extra = s[id] - h[id];
+    const own = extra ? ` (${h[id]} his own, ${extra > 0 ? '+' : '\u2212'}${Math.abs(extra)} from skills and gear)` : '';
+    return { id, name, value: s[id], note: `${name} ${s[id]}${own}: ${what}` };
+  };
+  const used = leadershipUsed(state.army);
+  const discount = s.manaDiscount;
+  return {
+    title: b.title,
+    background: h.background,
+    level: `Level ${roman(h.level)}`,
+    xp: to
+      ? { share: Math.max(0, Math.min(1, (h.xp - from) / (to - from))), line: `${coins(h.xp)} / ${coins(to)} experience: ${coins(to - h.xp)} more for level ${roman(h.level + 1)}` }
+      : { share: 1, line: `${coins(h.xp)} experience: as seasoned as they come` },
+    stats: [
+      stat('attack', 'Attack', 'every stack of his adds it to its own attack.'),
+      stat('defence', 'Defence', 'every stack of his adds it to its own defence.'),
+      stat('spellPower', 'Spell power', `the harder his spells hit: a Lightning Bolt does ${bolt} damage.`),
+      stat('knowledge', 'Knowledge', `10 mana a point, ${s.maxMana} in all, full again every dawn.`),
+    ],
+    mana: { left: h.mana, max: s.maxMana, line: manaNote(state) },
+    movement: { left: Math.floor(state.movement), max: s.movement, line: `${Math.floor(state.movement)} of ${s.movement} movement left today \u00b7 E ends the day` },
+    leadership: { used, max: s.leadership, line: `Leadership ${used}/${s.leadership}: every troop needs some, and no more will join past it` },
+    signature: { name: b.signature.name, note: b.signature.note, trick: true },
+    skills: (Object.entries(h.skills) as [SkillId, number][]).filter(([, rank]) => rank > 0).map(([id, rank]) => ({ name: `${RANKS[rank - 1]} ${SKILLS[id].name}`, note: SKILLS[id].note })),
+    perks: h.perks.map((id) => ({ name: PERKS[id].name, note: PERKS[id].note, ...(PERKS[id].trick ? { trick: true } : {}) })),
+    spells: h.spells.map((id) => ({ name: SPELLS[id].name, note: `${Math.max(1, SPELLS[id].mana - discount)} mana: ${SPELLS[id].note}` })),
+    mapSpells: s.mapSpells.map((id) => ({ spell: id, label: `Cast ${MAP_SPELLS[id].name} (${MAP_SPELLS[id].mana} mana)`, note: MAP_SPELLS[id].note, disabled: h.mana < MAP_SPELLS[id].mana })),
+    pieces: `Pieces of the old map: ${state.campaign.record.length + (state.bounty === 'paid' ? 1 : 0)} of ${CAMPAIGN_LENGTH}`,
+    day: `Day ${roman(state.day)} of ${LAST_DAY}`,
+  };
+}
+
+/** Where the hero's skills, perks, gear and background come from, by name, for saying what adds what. */
+function namedBonuses(state: GameState): { name: string; bonus: Bonus }[] {
+  const h = state.hero;
+  const sig = BACKGROUNDS[h.background].signature;
+  const out = [{ name: sig.name, bonus: sig.bonus }];
+  for (const [id, rank] of Object.entries(h.skills) as [SkillId, number][]) {
+    const per = SKILLS[id].perRank;
+    if (rank > 0) out.push({ name: `${RANKS[rank - 1]} ${SKILLS[id].name}`, bonus: { melee: (per.melee ?? 0) * rank, ranged: (per.ranged ?? 0) * rank, armour: (per.armour ?? 0) * rank } });
+  }
+  for (const id of h.perks) out.push({ name: PERKS[id].name, bonus: PERKS[id].bonus });
+  for (const id of Object.values(h.gear)) if (id) out.push({ name: ARTIFACTS[id].name, bonus: ARTIFACTS[id].bonus });
+  return out;
+}
+
+/** Everything a stack's card says: its numbers as they'd fight, what the hero adds, and what it costs. */
+export type StackSheet = {
+  troop: TroopId;
+  title: string;
+  note: string;
+  stats: { name: string; value: string; note: string }[];
+  traits: Note[];
+  leadership: string;
+  wages: string;
+  /** Where it stands when a battle begins. */
+  row: string;
+  canDismiss: boolean;
+};
+
+/** A battle row as words: the stacks line up centre first, then above and below. */
+const ROW_WORDS = ['at the top', 'near the top', 'above the middle', 'just above the middle', 'in the middle', 'just below the middle', 'below the middle', 'near the bottom', 'at the bottom'].map((w) => `${w} of the line`);
+
+export function stackSheet(state: GameState, index: number): StackSheet | null {
+  const stack = state.army[index];
+  if (!stack) return null;
+  const t = TROOPS[stack.troop];
+  const s = heroStats(state);
+  const who = BACKGROUNDS[state.hero.background].short;
+  // The numbers the battle itself would use.
+  const b = createBattle({ place: 'sheet', seed: 1, player: state.army, enemy: [], hero: heroInBattle(state), obstacles: 0 });
+  const mine = b.fighters.filter((f) => f.side === 'player' && f.troop === stack.troop);
+  const f = mine.length === 1 ? mine[0] : b.fighters.filter((x) => x.side === 'player')[index];
+  const { attack, defence } = f ? statsOf(b, f) : { attack: t.attack, defence: t.defence };
+  const shots = f?.shots ?? t.shots ?? 0;
+  const from = (total: number, own: number) => (total === own ? 'their own' : `${own} their own, ${total > own ? '+' : '\u2212'}${Math.abs(total - own)} from ${who}`);
+  const pct = (x: number) => `${Math.round(x * 100)}%`;
+  const traits: Note[] = abilitiesOf(stack.troop).map((a) => ({ name: a.name, note: a.note }));
+  if (t.shots) traits.push({ name: 'Shooter', note: 'Shoots from anywhere, unless an enemy stands beside it. In melee it hits at half strength.' });
+  for (const { name, bonus } of namedBonuses(state)) {
+    const own = bonus.troops?.[stack.troop];
+    const parts = [own?.attack && `+${own.attack} attack`, own?.defence && `+${own.defence} defence`, own?.shots && t.shots && `+${own.shots} shots`].filter(Boolean);
+    if (parts.length) traits.push({ name, note: `${parts.join(', ')}.` });
+    if (bonus.charge?.includes(stack.troop)) traits.push({ name: `Charge (${name})`, note: 'After a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder, and nobody strikes back.', trick: true });
+    if (bonus.volley && t.shots) traits.push({ name: `First volley (${name})`, note: 'A free volley before every battle, except at a villain\u2019s walls.', trick: true });
+    if (bonus.melee) traits.push({ name, note: `+${pct(bonus.melee)} damage in melee.` });
+    if (bonus.ranged && t.shots) traits.push({ name, note: `+${pct(bonus.ranged)} damage with their shots.` });
+    if (bonus.armour) traits.push({ name, note: `They take ${pct(bonus.armour)} less damage.` });
+  }
+  const wage = Math.round(stack.count * t.wage * (1 + s.wages));
+  const row = f ? ROW_WORDS[rowOf(f.at)] : ROW_WORDS[4];
+  return {
+    troop: stack.troop,
+    title: troops(stack.troop, stack.count),
+    note: t.note,
+    stats: [
+      { name: 'Attack', value: String(attack), note: from(attack, t.attack) },
+      { name: 'Defence', value: String(defence), note: from(defence, t.defence) },
+      { name: 'Damage', value: t.damage[0] === t.damage[1] ? `${t.damage[0]}` : `${t.damage[0]}\u2013${t.damage[1]}`, note: 'each troop, each blow' },
+      { name: 'Health', value: String(t.hp), note: 'each troop' },
+      { name: 'Speed', value: String(t.speed), note: 'hexes a turn' },
+      ...(t.shots ? [{ name: 'Shots', value: String(shots), note: from(shots, t.shots) }] : []),
+    ],
+    traits,
+    leadership: `Leadership: ${t.leadership} each, ${coins(stack.count * t.leadership)} in all (${leadershipUsed(state.army)} of ${s.leadership} in use)`,
+    wages: t.wage ? `Wages: ${coins(wage)} gold every payday` : 'Wages: none. They work for the fun of it.',
+    row: `In battle they stand ${row}.`,
+    canDismiss: state.army.length > 1,
+  };
 }
