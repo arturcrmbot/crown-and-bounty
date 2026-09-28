@@ -9,7 +9,7 @@ import { playNote, type InstrumentId } from './instruments';
 import { cueMusic, duckMusic } from './music';
 import { midiOf } from './score';
 
-export type StingId = 'curtain' | 'battle' | 'court' | 'victory' | 'defeat' | 'bounty' | 'lost';
+export type StingId = 'curtain' | 'battle' | 'court' | 'victory' | 'defeat' | 'bounty' | 'lost' | 'payday' | 'levelUp';
 
 /** One note: instrument, seconds from the start, note name (or a drum), seconds long, volume. */
 type Hit = [instrument: InstrumentId, at: number, note: string, length: number, volume: number];
@@ -116,6 +116,36 @@ export const STINGS: Record<StingId, StingDef> = {
       ...run('harp', 0.32, ['D5', 'F#5', 'A5', 'D6', 'F#6'], 0.05, 1.2, 0.14),
     ],
     duck: 1.8,
+  },
+  // Payday: the lute strums G, the recorder says ta-da, and a bell rings it in.
+  payday: {
+    key: 'G major',
+    level: 1,
+    hits: [
+      ...run('lute', 0, ['G3', 'B3', 'D4', 'G4'], 0.025, 0.8, 0.2),
+      ['recorder', 0.12, 'D5', 0.12, 0.22],
+      ['recorder', 0.26, 'G5', 0.12, 0.24],
+      ['recorder', 0.4, 'B5', 0.55, 0.24],
+      ['tabor', 0.4, 'C3', 0.2, 0.5],
+      ['bell', 0.4, 'G5', 1, 0.07],
+      ...run('harp', 0.45, ['D6', 'G6', 'B5'], 0.06, 0.6, 0.1),
+    ],
+    duck: 1,
+  },
+  // A level: the harp sweeps up D major, the brass holds it, and the bells ring.
+  levelUp: {
+    key: 'D major',
+    level: 1.2,
+    hits: [
+      ...run('harp', 0, ['D4', 'F#4', 'A4', 'D5', 'F#5', 'A5', 'D6'], 0.045, 1.3, 0.2, 0.2),
+      ['brass', 0.32, 'D5', 0.9, 0.2],
+      ['brass', 0.32, 'A4', 0.9, 0.18],
+      ['brass', 0.32, 'F#4', 0.9, 0.16],
+      ['tabor', 0.32, 'C3', 0.2, 0.5],
+      ['bell', 0.32, 'D6', 1, 0.08],
+      ['bell', 0.6, 'F#6', 1, 0.06],
+    ],
+    duck: 1.3,
   },
   // A commission failed: the knell tolls three times, slow, over a drone that won't resolve.
   lost: {
