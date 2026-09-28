@@ -14,7 +14,8 @@ export class PrologueController implements Screen {
   readonly name = 'prologue';
   readonly music = 'court' as const;
   readonly ambience = 'fire' as const;
-  readonly input = NO_INPUT;
+  /** Enter, Space or a number presses a card's button, as on the map. */
+  readonly input = { ...NO_INPUT, key: (key: string) => void this.cards.key(key) };
   state: GameState;
   private readonly display: Display;
   private readonly screen = new CourtScreen();

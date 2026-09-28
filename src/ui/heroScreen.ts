@@ -211,7 +211,11 @@ export class HeroScreen {
     const slots = SLOTS.map((slot) => {
       const id = gear[slot];
       const place: Place = { kind: 'slot', slot };
-      const tip = id ? `**${ARTIFACTS[id].name}** \u00b7 ${SLOT_NAMES[slot]}\n${ARTIFACTS[id].note}\n*Drag it to the pack, or click to pick it up. Double-click takes it off.*` : `**${SLOT_NAMES[slot]}**: nothing yet.\n*Drag an artifact here from the pack.*`;
+      const spare = pack.find((p) => ARTIFACTS[p].slot === slot);
+      const empty = spare
+        ? `**${SLOT_NAMES[slot]}**: nothing on.\n*Drag the ${ARTIFACTS[spare].name} here from the pack, or double-click it there.*`
+        : `**${SLOT_NAMES[slot]}**: nothing yet.\n*Artifacts turn up in chests and old places, as spoils, and in castle armouries.*`;
+      const tip = id ? `**${ARTIFACTS[id].name}** \u00b7 ${SLOT_NAMES[slot]}\n${ARTIFACTS[id].note}\n*Drag it to the pack, or click to pick it up. Double-click takes it off.*` : empty;
       const img = id ? `<img alt="" draggable="false" src="${iconUrl(id)}">` : `<img class="ghostly" alt="" draggable="false" src="${ghostUrl(slot)}">`;
       return `<button class="slot ${slot}${classes(place, Boolean(id))}" data-place="${keyOf(place)}" data-tip="${escape(tip)}" aria-label="${escape(id ? `${SLOT_NAMES[slot]}: ${ARTIFACTS[id].name}` : `${SLOT_NAMES[slot]}: empty`)}">${img}</button>`;
     }).join('');
@@ -243,7 +247,10 @@ export class HeroScreen {
     const tiles = Array.from({ length: 5 }, (_, index) => {
       const stack = army[index];
       const place: Place = { kind: 'stack', index };
-      if (!stack) return `<button class="tile empty" data-place="${keyOf(place)}" aria-label="An empty place in the line" tabindex="-1"></button>`;
+      if (!stack) {
+        const tip = '**An empty place in the line.**\n*Recruit at castles and villages, or win a band over: up to five companies.*';
+        return `<button class="tile empty" data-place="${keyOf(place)}" data-tip="${escape(tip)}" aria-label="An empty place in the line" tabindex="-1"></button>`;
+      }
       const info = stackSheet(this.state, index)!;
       const open = this.card && keyOf(this.card) === keyOf(place) ? ' open' : '';
       const tip = `**${info.title}**\n${info.row}\n*Click for their card. Drag them along the line.*`;
