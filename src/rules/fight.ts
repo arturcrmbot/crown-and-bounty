@@ -1,6 +1,6 @@
 import { BACKGROUNDS } from '../content/backgrounds';
 import { ARTIFACTS, type ArtifactId } from '../content/artifacts';
-import { ABILITIES, heroTroop, TROOPS, type HeroId, type TroopId } from '../content/troops';
+import { ABILITIES, crowd, heroTroop, TROOPS, type HeroId, type TroopId } from '../content/troops';
 import type { StatusId } from '../content/spells';
 import { autoResolve } from './battle/ai';
 import { applyEffects } from './effects/core';
@@ -125,7 +125,8 @@ export function likelyLossesLine(state: GameState, id: string, samples = 16): st
   const fallen = losses.reduce((sum, stack) => sum + stack.count, 0);
   const army = state.army.reduce((sum, stack) => sum + stack.count, 0);
   const share = fallen / army;
-  const amount = share < 0.1 ? 'a few' : share < 0.3 ? 'about a fifth' : share < 0.45 ? 'about a third' : share < 0.65 ? 'about half' : share < 0.9 ? 'most' : 'nearly all';
+  if (share < 0.1) return `*You\u2019d likely lose ${losses.map((stack) => crowd(stack.troop, stack.count)).join(' and ')}.*`;
+  const amount = share < 0.3 ? 'about a fifth' : share < 0.45 ? 'about a third' : share < 0.65 ? 'about half' : share < 0.9 ? 'most' : 'nearly all';
   const first = losses.slice(0, 2).map((stack) => TROOPS[stack.troop].name);
   const order = first.length === 1 ? `${first[0]} first` : `${first[0]}, then ${first[1]}`;
   return `*You\u2019d likely lose ${amount} of your army, ${order}.*`;
