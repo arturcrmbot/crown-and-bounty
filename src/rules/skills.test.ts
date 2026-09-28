@@ -5,7 +5,7 @@ import { FENMARCH } from '../content/fenmarch';
 import { RANKS, SKILLS, type SkillId } from '../content/skills';
 import { createBattle, statsOf } from './battle/battle';
 import { apply, battleXp, describe as about, endDay, heroInBattle, heroStats, levelUpCard, locationById, nextArmy, visit, winChance, type Card, type GameState, type Result } from './game';
-import { giveArtifact } from './hero';
+import { gainXp, giveArtifact, LEVELS } from './hero';
 import { mapOf } from './map/maps';
 import { Terrain } from './map/model';
 import { costsFor, planRoute, stepAlong } from './map/movement';
@@ -193,6 +193,24 @@ describe('Sorcery and Mysticism', () => {
     expect(heroStats(skilled({ sorcery: 3 })).casts).toBe(2);
     expect(heroInBattle(skilled({ sorcery: 3 })).casts).toBe(2);
   });
+
+  it('nobody casts more than two spells a round, however many ways he learns', () => {
+    const wizard = skilled({ sorcery: 3 }, 'wizard');
+    const stacked = giveArtifact({ ...wizard, hero: { ...wizard.hero, perks: ['battleMage'] } }, 'twinWand');
+    expect(heroStats(stacked).casts).toBe(2);
+    expect(heroInBattle(stacked).casts).toBe(2);
+    // The wand still gives him something: spell power.
+    expect(heroStats(stacked).spellPower).toBe(heroStats({ ...wizard, hero: { ...wizard.hero, perks: ['battleMage'] } }).spellPower + 1);
+    // A hero who casts two already is never offered Battle Mage, and Expert Sorcery says its cast changes nothing.
+    for (let seed = 1; seed < 13; seed++) {
+      const grown = gainXp({ ...fresh('wizard'), seed }, LEVELS[4]).state;
+      for (const offer of grown.hero.offers) expect(offer.options).not.toContain('perk:battleMage');
+    }
+    const offered = { ...skilled({ sorcery: 2 }, 'wizard'), hero: { ...skilled({ sorcery: 2 }, 'wizard').hero, offers: [{ level: 2, stat: 'attack' as const, options: ['skill:sorcery', 'skill:archery', 'perk:warchest'] }] } };
+    expect(levelUpCard(offered)!.choices[0].detail).toContain('that part changes nothing for you');
+    const knight = { ...skilled({ sorcery: 2 }), hero: { ...skilled({ sorcery: 2 }).hero, offers: offered.hero.offers } };
+    expect(levelUpCard(knight)!.choices[0].detail).not.toContain('changes nothing');
+  }, 30_000);
 
   it('Mysticism: mana comes back as he rides, up to what he can hold', () => {
     const mystic = skilled({ mysticism: 2 }, 'wizard');

@@ -86,7 +86,13 @@ export const ARTIFACTS: Record<ArtifactId, Artifact> = {
     note: '+1 attack, and your knights and swordsmen charge: after a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder, and nobody strikes back.',
     bonus: { attack: 1, charge: ['knights', 'swordsmen'] },
   },
-  twinWand: { id: 'twinWand', name: 'The Twin Wand', slot: 'weapon', note: 'One more spell every round of battle. The two halves argue.', bonus: { casts: 1 } },
+  twinWand: {
+    id: 'twinWand',
+    name: 'The Twin Wand',
+    slot: 'weapon',
+    note: '+1 spell power, and a second spell every round of battle (nobody casts more than two). The two halves argue.',
+    bonus: { spellPower: 1, casts: 1 },
+  },
   crystalBall: { id: 'crystalBall', name: 'Crystal of Far Sight', slot: 'helm', note: 'Cast Far Sight on the map, and see 40 paces further.', bonus: { mapSpells: ['farsight'], sight: 40 }, price: 800 },
   silverSignet: { id: 'silverSignet', name: 'Silver Signet', slot: 'trinket', note: 'Bribes cost a third less, and small bands will take your coin and join you.', bonus: { bribes: 0.33, hires: true }, price: 900 },
   hawthornCrown: {

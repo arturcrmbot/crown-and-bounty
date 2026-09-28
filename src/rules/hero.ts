@@ -103,6 +103,9 @@ export const RENOWN = 10;
 /** The share of every company that stays on between commissions, before skills. */
 export const VETERANS = 0.25;
 
+/** Nobody casts more spells than this in a round, however many ways he has learned to cast again. */
+export const MAX_CASTS = 2;
+
 export function heroStats(state: GameState): HeroStats {
   const h = state.hero;
   const s: HeroStats = {
@@ -194,6 +197,7 @@ export function heroStats(state: GameState): HeroStats {
   s.offRoad = Math.min(0.5, s.offRoad);
   s.veterans = Math.min(0.5, s.veterans);
   s.bribes = Math.min(0.8, s.bribes);
+  s.casts = Math.min(MAX_CASTS, s.casts);
   s.armour = Math.min(0.6, s.armour);
   s.maxMana = s.knowledge * 10;
   return s;
@@ -214,6 +218,7 @@ export function knowsTrick(state: GameState, b: Bonus): boolean {
   if (b.hires) return s.hires;
   if (b.tames) return s.tames;
   if (b.mapSpells?.length) return b.mapSpells.every((m) => s.mapSpells.includes(m));
+  if (b.casts) return s.casts >= MAX_CASTS;
   return false;
 }
 
@@ -267,7 +272,10 @@ export function describeOption(option: string, state: GameState): { label: strin
   const [kind, id] = option.split(':');
   if (kind === 'perk') return { label: `${PERKS[id as PerkId].name} (${PERKS[id as PerkId].trick ? 'new trick' : 'perk'})`, note: PERKS[id as PerkId].note };
   const rank = Math.min(state.hero.skills[id as SkillId] ?? 0, RANKS.length - 1);
-  return { label: `${RANKS[rank]} ${SKILLS[id as SkillId].name}`, note: SKILLS[id as SkillId].ranks[rank].note };
+  const next = SKILLS[id as SkillId].ranks[rank];
+  // A second cast is nothing new to a hero who casts two already: say so, rather than let him think it's a third.
+  const capped = next.bonus.casts && heroStats(state).casts >= MAX_CASTS ? ' *You cast two spells a round already, and nobody casts more: that part changes nothing for you.*' : '';
+  return { label: `${RANKS[rank]} ${SKILLS[id as SkillId].name}`, note: `${next.note}${capped}` };
 }
 
 /** The card for the first level-up still waiting, or null. */
