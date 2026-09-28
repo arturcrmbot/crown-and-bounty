@@ -21,6 +21,7 @@ const at = {
   boars: [1040, 424],
   nan: [1012, 556],
   cache: [772, 800],
+  butts: [612, 640],
 } satisfies Record<string, Point>;
 
 /** The patrol's size: a gate, too strong for a fresh army (see `rules/difficulty.ts`). */
@@ -222,6 +223,16 @@ export const ALDMOOR: Province = {
           ],
         },
       ],
+    },
+    {
+      id: 'butts',
+      kind: 'village',
+      look: 'range',
+      name: 'Aldmoor Butts',
+      at: at.butts,
+      done: false,
+      recruits: { troop: 'archers', count: 12, price: 30 },
+      text: { about: ['The village archery butts. Straw targets, and a sign: *"MIND THE GOOSE"*.', 'Archers, for hire.'] },
     },
     { id: 'chest', kind: 'chest', name: 'Treasure Chest', at: at.chest, done: false, gold: 500 },
     { id: 'gold', kind: 'gold', name: 'Pile of Gold', at: at.gold, done: false, gold: 250 },

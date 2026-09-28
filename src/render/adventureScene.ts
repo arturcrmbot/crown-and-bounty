@@ -9,7 +9,7 @@ import { SILHOUETTE } from './palette';
 import { figureFoot, troopFigure } from './battleSprites';
 import {
   abbey, boulder, camp,
-  cottage, castle, standingStones, chest, crag, goldPile, hero, hideout, hut, mill, mine, mirror, oak, peatHut, pine, signpost, stiltHut, shrine, stoneBridge,
+  butts, cottage, castle, standingStones, chest, crag, goldPile, hero, hideout, hut, mill, mine, mirror, oak, peatHut, pine, signpost, stiltHut, shrine, stoneBridge,
   watchtower, well, willow, windmill, xMark,
 } from './sprites';
 import { paintTerrain } from './terrain';
@@ -73,6 +73,8 @@ function landmark(l: Location): { frames: Bitmap[]; foot: number; animated: bool
       return { frames: animation((t) => cottage(t)), foot: 44, animated: true };
     case 'stones':
       return { frames: [standingStones()], foot: 36, animated: false };
+    case 'range':
+      return { frames: [butts()], foot: 34, animated: false };
   }
   switch (l.kind) {
     case 'castle':

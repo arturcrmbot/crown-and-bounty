@@ -6,7 +6,8 @@ describe('the bot', () => {
     const runs = simulate(Array.from({ length: 12 }, (_, i) => i + 1));
     for (const run of runs) {
       expect(run.won, `seed ${run.seed}: ${run.log.join(', ')}`).toBe(true);
-      expect(run.day).toBeLessThan(40);
+      // A bot that storms Grimsby too soon and loses takes a few weeks to raise another army.
+      expect(run.day).toBeLessThan(60);
     }
   }, 120_000);
 

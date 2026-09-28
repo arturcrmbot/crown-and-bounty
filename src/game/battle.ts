@@ -1,5 +1,5 @@
 import { SPELLS, type SpellId } from '../content/spells';
-import { TROOPS, troops } from '../content/troops';
+import { TROOPS, troops, type TroopId } from '../content/troops';
 import { chooseAction } from '../rules/battle/ai';
 import { activeFighter, battleAct, canCast, castsLeft, CHARGE_BONUS, fighterById, isCharge, options, spellCost, spellDamage, spellVictims, strike, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
 import { paintBanner } from '../render/banner';
@@ -15,6 +15,8 @@ import type { Screen } from './screen';
 type Step = { duration: number; elapsed: number; started: boolean; start?: () => void; tick?: (t: number) => void; end?: () => void };
 
 const ENEMY_THINK = 0.35;
+/** How tall the beasts' bodies stand above their feet (their sprites are wider than they are tall). */
+const BODY_HEIGHT: Partial<Record<TroopId, number>> = { wolves: 34, boars: 30 };
 
 /**
  * A battle on screen. The rules decide everything; this plays each event as a little animation,
@@ -86,19 +88,24 @@ export class BattleController implements Screen {
   /** Words that rise from a stack and fade. Ones that come close together stack up instead of overlapping. */
   private float(id: number, text: string, color: number) {
     const f = fighterById(this.battle, id);
-    const [x, y] = this.view.positions.get(id) ?? hexCentre(f.at);
-    const top = y + 12 - FIGHTER_FOOT(f.troop) - 14;
+    // Over the stack's own hex, not wherever a blow has knocked it, so it never lands on the attacker.
+    const [x, y] = hexCentre(f.at);
+    const top = y + 12 - (BODY_HEIGHT[f.troop] ?? FIGHTER_FOOT(f.troop)) - 16;
     const crowd = this.view.floaters.filter((o) => o.age < 0.6 && Math.abs(o.x - x) < 44 && Math.abs(o.y - top) < 40).length;
     this.view.floaters.push({ x, y: top - crowd * 16, text, color, age: 0 });
   }
 
-  /** A burst where a blow lands, and a jolt for a heavy one. */
+  /** A burst where a blow lands, blood for the wounded, and a jolt that grows with the damage. */
   private impact(target: number, damage: number, heavy: boolean) {
-    const [x, y] = hexCentre(fighterById(this.battle, target).at);
-    const spark = { from: [x, y - 22] as [number, number], to: [x, y - 22] as [number, number], t: 0, kind: 'spark' as const };
-    this.view.shots.push(spark);
-    this.sparks.push(spark);
-    if (heavy) this.view.shake = Math.max(this.view.shake, Math.min(6, 1.5 + damage / 50));
+    const f = fighterById(this.battle, target);
+    const [x, y] = hexCentre(f.at);
+    const chest = y + 12 - Math.round((BODY_HEIGHT[f.troop] ?? FIGHTER_FOOT(f.troop)) * 0.5);
+    for (const kind of ['spark', 'blood'] as const) {
+      const shot = { from: [x, chest] as [number, number], to: [x, chest] as [number, number], t: 0, kind };
+      this.view.shots.push(shot);
+      this.sparks.push(shot);
+    }
+    this.view.shake = Math.max(this.view.shake, Math.min(8, (heavy ? 2 : 0.8) + damage / 40));
   }
 
   /** A stack that goes down leaves a puff of dust, then its fallen. */
@@ -165,20 +172,36 @@ export class BattleController implements Screen {
               end: () => v.shots.splice(v.shots.indexOf(shot), 1),
             });
           } else {
+            // Wind up (lean back), lunge in hard, then the blow lands at the far end of the lunge.
             const len = Math.hypot(tx - ax, ty - ay) || 1;
-            this.step(0.18, {
+            const [ux, uy] = [(tx - ax) / len, (ty - ay) / len];
+            const reach = Math.min(26, len * 0.42);
+            this.step(0.12, {
               tick: (t) => {
-                const k = Math.sin(t * Math.PI) * 9;
-                v.positions.set(e.attacker, [ax + ((tx - ax) / len) * k, ay + ((ty - ay) / len) * k]);
-                v.poses.set(e.attacker, 'strike');
+                const k = -5 * Math.sin((t * Math.PI) / 2);
+                v.positions.set(e.attacker, [ax + ux * k, ay + uy * k]);
+                v.poses.set(e.attacker, 'step');
               },
-              end: () => {
-                v.positions.delete(e.attacker);
-                v.poses.delete(e.attacker);
+            });
+            this.step(0.09, {
+              tick: (t) => {
+                const k = -5 + (reach + 5) * t * t;
+                v.positions.set(e.attacker, [ax + ux * k, ay + uy * k]);
+                v.poses.set(e.attacker, 'strike');
               },
             });
           }
-          this.step(0.2, {
+          // The target reels away from the blow while it flashes, and the game holds still for a beat.
+          const reel = (() => {
+            const len = Math.hypot(tx - ax, ty - ay) || 1;
+            return [((tx - ax) / len) * (e.ranged ? 4 : 8), ((ty - ay) / len) * (e.ranged ? 4 : 8)] as const;
+          })();
+          this.step(e.ranged ? 0.2 : 0.26, {
+            tick: (t) => {
+              if (target.count === 0) return;
+              const k = Math.sin(Math.min(1, t * 1.6) * Math.PI) * (1 - t * 0.4);
+              v.positions.set(e.target, [tx + reel[0] * k, ty + reel[1] * k]);
+            },
             start: () => {
               v.flashing.add(e.target);
               if (!e.ranged) play('hit');
@@ -193,10 +216,27 @@ export class BattleController implements Screen {
             },
             end: () => {
               v.flashing.delete(e.target);
+              v.positions.delete(e.target);
+              if (!e.ranged) {
+                v.positions.delete(e.attacker);
+                v.poses.delete(e.attacker);
+              }
               if (!target.count) return;
               v.dying.delete(e.target);
             },
           });
+          if (!e.ranged) {
+            // The attacker steps back to his hex.
+            const len = Math.hypot(tx - ax, ty - ay) || 1;
+            const reach = Math.min(26, len * 0.42);
+            this.step(0.1, {
+              tick: (t) => {
+                const k = reach * (1 - t);
+                v.positions.set(e.attacker, [ax + ((tx - ax) / len) * k, ay + ((ty - ay) / len) * k]);
+              },
+              end: () => v.positions.delete(e.attacker),
+            });
+          }
           if (target.count === 0) this.poof(e.target);
           break;
         }

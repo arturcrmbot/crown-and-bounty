@@ -127,14 +127,34 @@ export function heroStats(state: GameState): HeroStats {
   return s;
 }
 
-/** What a level-up could teach: skills below Expert, and perks not yet taken. */
+/**
+ * Whether a trick perk would change nothing for this hero: he can already do it (his background's
+ * signature, a relic, an earlier perk).
+ */
+function hasTrick(state: GameState, id: PerkId): boolean {
+  const s = heroStats(state);
+  const b = PERKS[id].bonus;
+  if (b.charge?.length) return b.charge.every((t) => s.charge.includes(t));
+  if (b.volley) return s.volley;
+  if (b.forestWalk) return s.forestWalk;
+  if (b.hires) return s.hires;
+  if (b.mapSpells?.length) return b.mapSpells.every((m) => s.mapSpells.includes(m));
+  return false;
+}
+
+/** What a level-up could teach: skills below Expert, and perks not yet taken (or tricks he already has). */
 function candidates(state: GameState): string[] {
   const skills = (Object.keys(SKILLS) as SkillId[]).filter((id) => (state.hero.skills[id] ?? 0) < RANKS.length).map((id) => `skill:${id}`);
-  const perks = (Object.keys(PERKS) as PerkId[]).filter((id) => !state.hero.perks.includes(id)).map((id) => `perk:${id}`);
+  const perks = (Object.keys(PERKS) as PerkId[]).filter((id) => !state.hero.perks.includes(id) && !hasTrick(state, id)).map((id) => `perk:${id}`);
   return [...skills, ...perks];
 }
 
-/** Draws three different options, favouring the background's skills and the skills already learned. */
+const isTrick = (option: string) => option.startsWith('perk:') && Boolean(PERKS[option.slice(5) as PerkId].trick);
+
+/**
+ * Draws three different options, favouring the background's skills and the skills already learned.
+ * One of the three is always a trick while any are left: something that changes how he plays.
+ */
 function drawOptions(state: GameState, seed: number): { options: string[]; seed: number } {
   const favours = BACKGROUNDS[state.hero.background].favours;
   const pool = candidates(state).map((option) => {
@@ -143,13 +163,18 @@ function drawOptions(state: GameState, seed: number): { options: string[]; seed:
     return { option, weight };
   });
   const options: string[] = [];
-  while (options.length < 3 && pool.length > 0) {
+  const take = (from: typeof pool) => {
     const [r, next] = roll(seed);
     seed = next;
-    let pick = r * pool.reduce((sum, p) => sum + p.weight, 0);
-    const i = pool.findIndex((p) => (pick -= p.weight) <= 0);
-    options.push(pool.splice(i < 0 ? pool.length - 1 : i, 1)[0].option);
-  }
+    let pick = r * from.reduce((sum, p) => sum + p.weight, 0);
+    const i = from.findIndex((p) => (pick -= p.weight) <= 0);
+    const chosen = from[i < 0 ? from.length - 1 : i];
+    pool.splice(pool.indexOf(chosen), 1);
+    options.push(chosen.option);
+  };
+  const tricks = pool.filter((p) => isTrick(p.option));
+  if (tricks.length) take(tricks);
+  while (options.length < 3 && pool.length > 0) take(pool);
   return { options, seed };
 }
 
@@ -165,7 +190,7 @@ const STAT_NAMES: Record<StatId, string> = { attack: 'Attack', defence: 'Defence
 
 export function describeOption(option: string, state: GameState): { label: string; note: string } {
   const [kind, id] = option.split(':');
-  if (kind === 'perk') return { label: `${PERKS[id as PerkId].name} (perk)`, note: PERKS[id as PerkId].note };
+  if (kind === 'perk') return { label: `${PERKS[id as PerkId].name} (${PERKS[id as PerkId].trick ? 'new trick' : 'perk'})`, note: PERKS[id as PerkId].note };
   const rank = state.hero.skills[id as SkillId] ?? 0;
   return { label: `${RANKS[rank]} ${SKILLS[id as SkillId].name}`, note: SKILLS[id as SkillId].note };
 }

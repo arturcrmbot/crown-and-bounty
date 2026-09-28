@@ -178,7 +178,7 @@ describe('level-ups and gear', () => {
 
   it('take mana away with the knowledge that gave it', () => {
     let s = newGame(1, ALDMOOR, 'knight');
-    s = giveArtifact(s, 'millersLoaf');
+    s = giveArtifact(s, 'astrolabe');
     s = { ...s, hero: { ...s.hero, mana: heroStats(s).maxMana } };
     s = giveArtifact(s, 'wizardsButton');
     s = giveArtifact(s, 'luckyHorseshoe');

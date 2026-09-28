@@ -41,13 +41,16 @@ const LOOKS: Record<Exclude<TroopId, 'wolves' | 'boars'>, Look> = {
 };
 
 /**
- * One soldier facing right, drawn from simple shapes with four flat shades, lit from the top left.
- * `pose` bends the legs for a step or swings the weapon for a strike.
+ * One soldier facing right, HoMM2-chunky and storybook-cute: a big round head with bright eyes and
+ * rosy cheeks, a round little body, stubby legs and big boots. Four flat shades, lit from the top
+ * left. `pose` bends the legs for a step or swings the weapon for a strike.
  */
 function soldier(look: Look, pose: Pose, S: number): Bitmap {
-  const w = Math.ceil(34 * S);
+  const w = Math.ceil(38 * S);
   const h = Math.ceil(44 * S);
   const sprite = new Bitmap(w, h);
+  /** Faces get their glints, cheeks and smiles only where there are pixels enough for them. */
+  const big = S >= 1.2;
   const px = (x: number, y: number, c: number) => sprite.set(Math.round(x * S), Math.round(y * S), c);
   const box = (x0: number, y0: number, x1: number, y1: number, shades: readonly number[], lean = 0) => {
     for (let y = Math.floor(y0 * S); y < y1 * S; y++) {
@@ -57,122 +60,235 @@ function soldier(look: Look, pose: Pose, S: number): Bitmap {
       }
     }
   };
-  const ellipse = (cx: number, cy: number, rx: number, ry: number, shades: readonly number[]) => {
+  /** A lit ellipse; with `clip`, rows below that line (in units) are left out. */
+  const ellipse = (cx: number, cy: number, rx: number, ry: number, shades: readonly number[], clip = Infinity) => {
     for (let y = Math.floor((cy - ry) * S); y <= (cy + ry) * S; y++) {
+      if (y / S > clip) break;
       for (let x = Math.floor((cx - rx) * S); x <= (cx + rx) * S; x++) {
         const u = (x / S - cx) / rx;
         const v = (y / S - cy) / ry;
         if (u * u + v * v > 1) continue;
-        sprite.set(x, y, flat(shades, 0.75 - u * 0.35 - v * 0.25, x, y));
+        sprite.set(x, y, flat(shades, 0.78 - u * 0.35 - v * 0.25, x, y));
       }
     }
   };
-  const step = pose === 'step' ? 2 : 0;
-  // Legs and boots.
-  box(12 - step, 30, 15 - step, 40, look.legs, -step * 0.5);
-  box(17 + step, 30, 20 + step, 40, look.legs, step * 0.5);
-  box(11 - step, 39, 15 - step, 41, [INK, NEUTRAL[1], NEUTRAL[2], NEUTRAL[3]]);
-  box(17 + step, 39, 21 + step, 41, [INK, NEUTRAL[1], NEUTRAL[2], NEUTRAL[3]]);
-  // Body: tabard with a gold hem.
-  box(10, 17, 22, 31, look.body);
-  for (let x = 10; x < 22; x++) px(x, 30.5, GOLD[4]);
-  if (look.body === BLUE4 || look.body === RED4) for (let y = 20; y < 28; y++) px(16, y, GOLD[5]);
-  // Head.
+  /** A round dot `r` units across, and at least one pixel. */
+  const dot = (x: number, y: number, r: number, c: number) => {
+    if (r * S < 0.9) return px(x, y, c);
+    for (let j = Math.floor((y - r) * S); j <= (y + r) * S; j++) for (let i = Math.floor((x - r) * S); i <= (x + r) * S; i++) if ((i / S - x) ** 2 + (j / S - y) ** 2 <= r * r) sprite.set(i, j, c);
+  };
   const skin = look.skin ?? SKIN4;
-  ellipse(16, 12, 4.2, 4.6, skin);
-  if (look.head === 'ears') {
-    // Goblin: bald, with ears like sails and a grin.
-    for (const [x, y] of [[11, 9], [10, 8], [9, 7], [11, 10], [10, 9], [21, 9], [22, 8], [23, 7], [21, 10], [22, 9]]) px(x, y, skin[2]);
-    px(18, 11, GOLD[6]);
-    for (let x = 16; x < 20; x++) px(x, 14.5, INK);
-    px(17, 15, NEUTRAL[7]);
-  } else if (look.head === 'brute') {
-    // Troll: a heavy brow, a jaw like a drawer, and two tusks.
-    ellipse(16.5, 13.5, 4.8, 3.6, skin);
-    for (let x = 12; x < 21; x++) px(x, 9.5, skin[0]);
-    px(14.5, 16, NEUTRAL[7]);
-    px(19, 16, NEUTRAL[7]);
-    px(14.5, 15, NEUTRAL[7]);
-  } else if (look.head === 'witchhat') {
-    // A tall crooked hat with a buckle, over a long nose.
-    for (let x = 8; x < 25; x++) px(x, 8.5, PLUM[1]);
-    for (let y = 0; y < 8; y++) for (let x = 12 + y * 0.35; x < 20 - y * 0.2; x++) px(x - (8 - y) * 0.45, 8 - y, y > 5 ? PLUM[2] : PLUM[1]);
-    for (let x = 13; x < 19; x++) px(x, 7.5, PLUM[3]);
-    px(16, 7.5, GOLD[5]);
-    px(20.5, 12.5, SKIN[2]);
-    px(21.5, 13.2, SKIN[2]);
-    for (let y = 13; y < 18; y++) px(12, y, NEUTRAL[5]);
-  } else if (look.head === 'helm') {
-    ellipse(16, 10.5, 4.6, 4.2, STONE4);
-    for (let x = 16; x < 21; x++) px(x, 12, INK);
-    if (look.plume !== undefined) for (const [x, y] of [[14, 5], [13, 4], [12, 4], [11, 5], [15, 5], [12, 5]]) px(x, y, look.plume);
-  } else if (look.head === 'hood') {
-    ellipse(15.5, 11, 5, 5.2, LEAF4);
-    ellipse(17.5, 12.5, 2.6, 2.8, [SKIN[1], SKIN[2], SKIN[3], SKIN[4]]);
-  } else if (look.head === 'straw') {
-    for (let x = 9; x < 24; x++) px(x, 8, GOLD[x % 3 === 0 ? 3 : 5]);
-    ellipse(16, 6.5, 4.5, 2.4, GOLD4);
-  } else if (look.head === 'kettle') {
-    for (let x = 10; x < 23; x++) px(x, 9, STONE[4]);
-    ellipse(16, 8, 4, 2.6, STONE4);
-  } else if (look.head === 'crown') {
-    ellipse(16, 13.5, 3.8, 3.2, [NEUTRAL[4], NEUTRAL[5], NEUTRAL[6], NEUTRAL[7]]);
-    for (const x of [12, 14, 16, 18, 20]) for (let y = 4; y < 8; y++) px(x, y, y === 4 ? GOLD[6] : GOLD[4]);
-    for (let x = 12; x < 21; x++) px(x, 7.5, GOLD[3]);
+  const [hx, hy] = [16.6, 11.8];
+  const step = pose === 'step' ? 2 : 0;
+
+  // Stubby legs, and big round boots.
+  const BOOT4 = [INK, NEUTRAL[1], NEUTRAL[2], NEUTRAL[3]];
+  box(12.5 - step, 30, 15.5 - step, 39, look.legs, -step * 0.5);
+  box(17.5 + step, 30, 20.5 + step, 39, look.legs, step * 0.5);
+  ellipse(13.4 - step * 1.4, 39.8, 2.8, 1.5, BOOT4);
+  ellipse(19.6 + step * 1.4, 39.8, 2.8, 1.5, BOOT4);
+
+  // A round little body in its tabard: shoulders rounded off, a belt, and a gold hem.
+  const bodyTop = 18;
+  const bodyBottom = 31;
+  const halfAt = (t: number) => 5.2 + t * 2 - (t < 0.2 ? (0.2 - t) * 9 : 0);
+  for (let y = Math.floor(bodyTop * S); y < bodyBottom * S; y++) {
+    const t = (y / S - bodyTop) / (bodyBottom - bodyTop);
+    const half = halfAt(t);
+    for (let x = Math.floor((16 - half) * S); x <= (16 + half) * S; x++) {
+      const u = (x / S - (16 - half)) / (half * 2);
+      sprite.set(x, y, flat(look.body, 0.88 - u * 0.55 - t * 0.12, x, y));
+    }
   }
-  px(18.5, 11.5, INK);
-  // Weapon arm, forward when striking.
+  const across = (y: number, c: number) => {
+    const half = halfAt((y - bodyTop) / (bodyBottom - bodyTop));
+    for (let x = 16 - half; x <= 16 + half; x += 0.5) px(x, y, c);
+  };
+  across(30.4, GOLD[4]);
+  if (look.body === BLUE4 || look.body === RED4) for (let y = 19.5; y < 25.5; y += 0.5) px(16.5, y, GOLD[5]);
+  across(26, WOOD[1]);
+  dot(16.5, 26, 0.7, GOLD[5]);
+
+  // The weapon arm, forward when striking, with a round mitten of a hand. The weapon is drawn a
+  // little lower and further out than the old, lankier figure held it, clear of the big head.
   const reach = pose === 'strike' ? 6 : 0;
-  box(20, 18, 24 + reach * 0.5, 21, look.skin && look.head !== 'witchhat' ? look.skin : look.body);
+  const wpx = (x: number, y: number, c: number) => px(x + 1.5, y + 3, c);
+  box(20, 19.5, 25 + reach * 0.5, 22.5, look.skin && look.head !== 'witchhat' ? look.skin : look.body);
   if (look.weapon === 'sword' || look.weapon === 'greatsword') {
     const long = look.weapon === 'greatsword' ? 1.5 : 1;
     const bx = 24 + reach;
-    for (let i = 0; i < 12 * long; i++) {
+    for (let i = 0; i < 12 * long; i += 0.5) {
       const x = pose === 'strike' ? bx + i : bx + i * 0.25;
       const y = pose === 'strike' ? 19 - i * 0.15 : 18 - i;
-      px(x, y, i === 0 ? GOLD[4] : STONE[6]);
-      px(x + 0.8, y, i === 0 ? GOLD[3] : STONE[4]);
+      const tip = i > 12 * long - 1.5;
+      if (pose === 'strike') {
+        wpx(x, y - 0.5, i < 1 ? GOLD[4] : STONE[7]);
+        if (!tip) wpx(x, y, i < 1 ? GOLD[3] : STONE[5]);
+      } else {
+        wpx(x - 0.5, y, i < 1 ? GOLD[4] : STONE[7]);
+        if (!tip) wpx(x, y, i < 1 ? GOLD[3] : STONE[5]);
+      }
     }
+    // A crossguard.
+    for (let k = -1.5; k <= 1.5; k += 0.5) wpx(pose === 'strike' ? bx + 0.6 : bx + k, pose === 'strike' ? 19 + k : 18.4, GOLD[5]);
   } else if (look.weapon === 'fork') {
-    for (let i = -8; i < 14; i++) px(24 + reach * 0.4 + i * 0.1, 19 - i, WOOD[3]);
-    for (const dx of [-1.5, 0, 1.5]) for (let i = 0; i < 4; i++) px(24 + reach * 0.4 - 1.4 + dx, 4 - i, STONE[5]);
+    for (let i = -8; i < 14; i++) wpx(24 + reach * 0.4 + i * 0.1, 19 - i, WOOD[3]);
+    for (const dx of [-1.5, 0, 1.5]) for (let i = 0; i < 4; i++) wpx(24 + reach * 0.4 - 1.4 + dx, 4 - i, STONE[5]);
   } else if (look.weapon === 'bow') {
-    for (let i = -9; i <= 9; i++) px(25 + reach * 0.3 + Math.cos((i / 9) * 1.3) * 3, 19 + i, WOOD[4]);
-    for (let i = -8; i <= 8; i++) px(23 + reach * 0.3, 19 + i, NEUTRAL[6]);
+    for (let i = -9; i <= 9; i++) wpx(25 + reach * 0.3 + Math.cos((i / 9) * 1.3) * 3, 19 + i, WOOD[4]);
+    for (let i = -8; i <= 8; i++) wpx(23 + reach * 0.3, 19 + i, NEUTRAL[6]);
   } else if (look.weapon === 'spear') {
-    for (let i = -6; i < 16; i++) px(24 + reach * 0.6 + i * 0.12, 20 - i, WOOD[3]);
-    for (let i = 0; i < 3; i++) px(24 + reach * 0.6 + 16 * 0.12 - i * 0.3, 3 - i, STONE[6]);
+    for (let i = -6; i < 16; i++) wpx(24 + reach * 0.6 + i * 0.12, 20 - i, WOOD[3]);
+    for (let i = 0; i < 3; i++) wpx(24 + reach * 0.6 + 16 * 0.12 - i * 0.3, 3 - i, STONE[6]);
   } else if (look.weapon === 'club') {
     const tip = pose === 'strike' ? [31, 18] : [26, 6];
     for (let t = 0; t <= 1; t += 0.05) {
       const x = 24 + (tip[0] - 24) * t;
       const y = 19 + (tip[1] - 19) * t;
       const r = 0.6 + t * 1.8;
-      for (let dy = -r; dy <= r; dy += 0.5) for (let dx = -r; dx <= r; dx += 0.5) if (dx * dx + dy * dy <= r * r) px(x + dx, y + dy, flat(WOOD4, 0.7 - dx * 0.2, Math.round(x + dx), Math.round(y + dy)));
+      for (let dy = -r; dy <= r; dy += 0.5) for (let dx = -r; dx <= r; dx += 0.5) if (dx * dx + dy * dy <= r * r) wpx(x + dx, y + dy, flat(WOOD4, 0.7 - dx * 0.2, Math.round(x + dx), Math.round(y + dy)));
     }
   } else if (look.weapon === 'ladle') {
-    for (let i = 0; i < 12; i++) px(24 + reach * 0.5 + i * 0.2, 19 - i, WOOD[4]);
-    ellipse(26.5 + reach * 0.5, 6, 2.2, 1.6, STONE4);
-    if (pose === 'strike') for (const [x, y] of [[30, 4], [32, 6], [31, 2], [33, 3]]) px(x, y, PLUM[4]);
+    for (let i = 0; i < 12; i++) wpx(24 + reach * 0.5 + i * 0.2, 19 - i, WOOD[4]);
+    ellipse(26.5 + reach * 0.5, 7.5, 2.2, 1.6, STONE4);
+    if (pose === 'strike') for (const [x, y] of [[30, 4], [32, 6], [31, 2], [33, 3]]) wpx(x, y, PLUM[4]);
   } else {
-    box(22, 18, 30, 20, WOOD4);
-    for (let i = -3; i <= 3; i++) px(29, 19 + i, STONE[5]);
+    box(22, 19.5, 30, 21.5, WOOD4);
+    for (let i = -3; i <= 3; i++) wpx(29, 19 + i, STONE[5]);
   }
+  dot(25.4 + reach * 0.5, 21.2, 1.5, skin[2]);
   if (look.shield) {
-    ellipse(9.5, 22, 4.2, 5.4, look.shield);
-    px(9, 22, GOLD[5]);
-    px(9, 21, GOLD[5]);
+    // A big round shield with a gold boss.
+    ellipse(9.8, 23.6, 4.8, 5.6, look.shield);
+    for (let a = 0; a < Math.PI * 2; a += 0.2) px(9.8 + Math.cos(a) * 4.3, 23.6 + Math.sin(a) * 5.1, GOLD[3]);
+    dot(9.8, 23.6, 1.1, GOLD[5]);
   }
   if (look.head === 'crown') {
     // The royal goose, tucked under the Baron's arm and not happy about it.
-    ellipse(8, 22, 4.8, 3.4, [NEUTRAL[5], NEUTRAL[6], NEUTRAL[7], NEUTRAL[7]]);
-    for (let i = 0; i < 6; i++) px(4.5 - i * 0.2, 21 - i, NEUTRAL[7]);
-    px(3.5, 15, GOLD[5]);
-    px(2.8, 15, GOLD[5]);
-    px(4.2, 14.6, INK);
+    ellipse(8, 23.5, 4.8, 3.4, [NEUTRAL[5], NEUTRAL[6], NEUTRAL[7], NEUTRAL[7]]);
+    for (let i = 0; i < 6; i++) px(4.5 - i * 0.2, 22.5 - i, NEUTRAL[7]);
+    px(3.5, 16.5, GOLD[5]);
+    px(2.8, 16.5, GOLD[5]);
+    px(4.2, 16.1, INK);
+  }
+
+  // What goes behind the head: goblin ears like sails, the witch's grey hair.
+  if (look.head === 'ears') {
+    for (let t = 0; t <= 1; t += 0.08) {
+      dot(hx - 5.8 - t * 3.6, hy - 1 - t * 3.8, 1.8 - t * 1.4, skin[2]);
+      dot(hx + 5.6 + t * 3.2, hy - 1 - t * 3.8, 1.8 - t * 1.4, skin[2]);
+    }
+  } else if (look.head === 'witchhat') {
+    for (let y = hy - 2; y < hy + 9; y += 0.5) {
+      px(10 - (y - hy) * 0.1, y, NEUTRAL[5]);
+      px(10.8 - (y - hy) * 0.1, y + 0.5, NEUTRAL[4]);
+    }
+  }
+
+  // The big round head.
+  ellipse(hx, hy, 6.3, 6, skin);
+  if (look.head === 'brute') ellipse(hx + 0.8, hy + 2.4, 6.4, 4.2, skin);
+
+  /** Two big shining eyes looking ahead, rosy cheeks, and a smile. */
+  const face = (eyeY: number, eye = INK, smile = true, r = 1.05) => {
+    for (const ex of [18.4, 21.6]) {
+      if (!big) {
+        px(ex, eyeY, eye === INK ? INK : eye);
+        continue;
+      }
+      // A tall oval, dark (or goblin-yellow with a dark pupil), and a white glint at its top left.
+      for (let j = Math.floor((eyeY - r * 1.35) * S); j <= (eyeY + r * 1.35) * S; j++) {
+        for (let i = Math.floor((ex - r) * S); i <= (ex + r) * S; i++) {
+          if (((i / S - ex) / r) ** 2 + ((j / S - eyeY) / (r * 1.35)) ** 2 <= 1) sprite.set(i, j, eye);
+        }
+      }
+      if (eye !== INK) dot(ex + 0.35, eyeY + 0.2, r * 0.55, INK);
+      dot(ex - r * 0.35, eyeY - r * 0.5, Math.max(0.35, r * 0.34), NEUTRAL[7]);
+    }
+    if (!big) return;
+    for (const cx of [16.6, 23.4]) {
+      px(cx, eyeY + 2.4, RED[5]);
+      px(cx + 0.5, eyeY + 2.4, RED[5]);
+    }
+    if (smile) for (const [x, y] of [[19.2, 0], [19.8, 0.5], [20.6, 0.5], [21.2, 0]]) px(x, eyeY + 3.4 + y, INK);
+  };
+
+  if (look.head === 'helm') {
+    face(hy + 1.6);
+    // An open helm over the top of the head, with a brim and a plume.
+    ellipse(hx - 0.2, hy - 1.8, 6.9, 5.2, STONE4, hy - 1.6);
+    for (let x = hx - 7; x <= hx + 7; x += 0.5) px(x, hy - 1.4, STONE[2]);
+    if (look.plume !== undefined) for (const [x, y] of [[14.4, 5.2], [13.2, 4.4], [12, 4], [10.8, 4.4], [9.8, 5.2], [12.6, 5]]) dot(x, y, 1.2, look.plume);
+  } else if (look.head === 'hood') {
+    // A hood round the whole head, with the face in its opening and a point trailing behind.
+    ellipse(hx - 0.6, hy - 0.2, 7.2, 7, LEAF4);
+    for (const [x, y, r] of [[9.2, 7.6, 1.2], [8.4, 6.6, 0.9], [7.8, 5.8, 0.6]]) dot(x, y, r, LEAF[3]);
+    ellipse(hx + 1.2, hy + 1, 4.8, 4.6, skin);
+    face(hy + 1.2);
+  } else if (look.head === 'straw') {
+    face(hy + 1.4);
+    for (let x = hx - 8.5; x <= hx + 8.5; x += 0.5) {
+      px(x, hy - 3.6, GOLD[Math.floor(x * 2) % 3 === 0 ? 3 : 5]);
+      px(x, hy - 3.1, GOLD[3]);
+    }
+    ellipse(hx, hy - 5.6, 5, 2.6, GOLD4);
+  } else if (look.head === 'kettle') {
+    face(hy + 1.4);
+    ellipse(hx, hy - 4.4, 5.8, 3, STONE4);
+    for (let x = hx - 8; x <= hx + 8; x += 0.5) {
+      px(x, hy - 2.6, STONE[4]);
+      px(x, hy - 2.1, STONE[2]);
+    }
+  } else if (look.head === 'crown') {
+    face(hy + 0.4, INK, false);
+    // A great grey beard and moustache, and the crown he stole along with the goose.
+    ellipse(hx + 1.4, hy + 4, 5, 3.2, [NEUTRAL[4], NEUTRAL[5], NEUTRAL[6], NEUTRAL[7]]);
+    dot(19.4, hy + 2.6, 1.4, NEUTRAL[6]);
+    dot(21.8, hy + 2.6, 1.4, NEUTRAL[6]);
+    for (const x of [11.8, 14.1, 16.4, 18.7, 21]) for (let y = hy - 9.4; y < hy - 5; y += 0.5) px(x, y, y < hy - 8.8 ? GOLD[6] : GOLD[4]);
+    for (let x = 11.2; x <= 21.6; x += 0.5) {
+      px(x, hy - 5.2, GOLD[4]);
+      px(x, hy - 4.7, GOLD[2]);
+    }
+    dot(16.4, hy - 6.4, 0.8, RED[4]);
+  } else if (look.head === 'ears') {
+    // Big yellow goblin eyes, and a grin with two teeth.
+    face(hy + 0.2, GOLD[6], false, 1.2);
+    if (big) {
+      for (let x = 18; x <= 22.5; x += 0.5) px(x, hy + 3.4, INK);
+      px(19.2, hy + 3.9, NEUTRAL[7]);
+      px(21.4, hy + 3.9, NEUTRAL[7]);
+    }
+  } else if (look.head === 'brute') {
+    // A troll: a heavy brow over small eyes, and two tusks.
+    face(hy + 0.4, INK, false, 0.7);
+    for (let x = hx - 6; x <= hx + 6.5; x += 0.5) {
+      px(x, hy - 1.2, skin[0]);
+      px(x, hy - 0.7, skin[0]);
+    }
+    for (const x of [18.6, 22]) {
+      px(x, hy + 5, NEUTRAL[7]);
+      px(x, hy + 4.4, NEUTRAL[7]);
+    }
+  } else if (look.head === 'witchhat') {
+    face(hy + 1.4);
+    // A long nose, and a tall crooked hat with a buckle.
+    dot(23.3, hy + 1.6, 1, skin[2]);
+    px(24.3, hy + 2, skin[2]);
+    for (let x = hx - 9; x <= hx + 9; x += 0.5) {
+      px(x, hy - 3.8, PLUM[1]);
+      px(x, hy - 3.3, PLUM[2]);
+    }
+    for (let y = 0; y < 8; y += 0.5) {
+      const half = 4.5 - y * 0.5;
+      const lean = -y * 0.55;
+      for (let x = hx - half + lean; x <= hx + half + lean; x += 0.5) px(x, hy - 3.8 - y, y > 6 ? PLUM[2] : PLUM[1]);
+    }
+    for (let x = hx - 4.2; x <= hx + 4.2; x += 0.5) px(x, hy - 4.6, PLUM[3]);
+    dot(hx, hy - 4.6, 0.6, GOLD[5]);
   }
   const shaped = outline(sprite, INK);
-  shadowOval(shaped, w / 2 + 3, 41 * S, 10 * S, 2.4 * S);
+  shadowOval(shaped, 19 * S, 41 * S, 10 * S, 2.4 * S);
   return shaped;
 }
 

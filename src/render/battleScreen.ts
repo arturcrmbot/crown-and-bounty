@@ -49,7 +49,7 @@ export function hexAt(x: number, y: number): number | null {
 }
 
 export type Floater = { x: number; y: number; text: string; color: number; age: number };
-export type Shot = { from: [number, number]; to: [number, number]; t: number; kind: 'arrow' | 'bolt' | 'fire' | 'sparkle' | 'spark' | 'poof'; color?: number };
+export type Shot = { from: [number, number]; to: [number, number]; t: number; kind: 'arrow' | 'bolt' | 'fire' | 'sparkle' | 'spark' | 'blood' | 'poof'; color?: number };
 
 /** What the battle controller wants drawn this frame, on top of the rules state. */
 export type BattleView = {
@@ -349,12 +349,25 @@ export class BattleScreen {
         }
       }
     } else if (s.kind === 'spark') {
-      // A burst of white and gold where the blow lands.
-      for (let k = 0; k < 9; k++) {
-        const a = k * 0.7 + (hash(k, Math.round(bx), 9) - 0.5);
-        const r0 = 3 + s.t * 10;
-        const r1 = r0 + 6 * (1 - s.t);
-        for (let r = r0; r < r1; r++) if (s.t < 0.6 || (r + k) % 2 === 0) this.screen.set(Math.round(bx + Math.cos(a) * r), Math.round(by + Math.sin(a) * r * 0.7), r < r0 + 2 ? NEUTRAL[7] : GOLD[5]);
+      // A star of white and gold where the blow lands: a hard flash at the heart, then streaks out.
+      if (s.t < 0.3) for (let j = -4; j <= 4; j++) for (let i = -4; i <= 4; i++) if (Math.abs(i) + Math.abs(j) <= 4 - s.t * 8) this.screen.set(Math.round(bx + i), Math.round(by + j), NEUTRAL[7]);
+      for (let k = 0; k < 12; k++) {
+        const a = k * 0.52 + (hash(k, Math.round(bx), 9) - 0.5) * 0.4;
+        const r0 = 3 + s.t * 16;
+        const r1 = r0 + 10 * (1 - s.t);
+        for (let r = r0; r < r1; r++) if (s.t < 0.6 || (Math.round(r) + k) % 2 === 0) this.screen.set(Math.round(bx + Math.cos(a) * r), Math.round(by + Math.sin(a) * r * 0.7), r < r0 + 3 ? NEUTRAL[7] : GOLD[5]);
+      }
+    } else if (s.kind === 'blood') {
+      // A spray of red droplets that arc up and fall.
+      for (let k = 0; k < 10; k++) {
+        const side = hash(k, Math.round(by), 13) < 0.5 ? -1 : 1;
+        const vx = side * (8 + hash(k, 1, 13) * 22);
+        const vy = -14 - hash(k, 2, 13) * 16;
+        const x = bx + vx * s.t;
+        const y = by + vy * s.t + 44 * s.t * s.t;
+        const c = k % 3 === 0 ? RED[5] : RED[3];
+        this.screen.set(Math.round(x), Math.round(y), c);
+        if (k % 2 === 0) this.screen.set(Math.round(x), Math.round(y) + 1, RED[2]);
       }
     } else if (s.kind === 'poof') {
       // Dust where a stack went down: puffs that swell, rise and thin out.

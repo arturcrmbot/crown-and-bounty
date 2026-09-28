@@ -20,9 +20,22 @@ export const SKILLS: Record<SkillId, Skill> = {
 };
 
 /** Perks are taken once and bend a rule, in the game's voice. */
-export type PerkId = 'quartermaster' | 'nightRider' | 'gooseWhisperer' | 'treasureHunter' | 'drillSergeant' | 'warchest';
+export type PerkId =
+  | 'quartermaster'
+  | 'nightRider'
+  | 'gooseWhisperer'
+  | 'treasureHunter'
+  | 'drillSergeant'
+  | 'warchest'
+  | 'cavalryCharge'
+  | 'firstVolley'
+  | 'woodsman'
+  | 'battleMage'
+  | 'silverTongue'
+  | 'farSight';
 
-export type Perk = { id: PerkId; name: string; note: string; bonus: Bonus };
+/** A perk. `trick` marks one that changes what you can do, not just a number: those come first on a level-up. */
+export type Perk = { id: PerkId; name: string; note: string; bonus: Bonus; trick?: boolean };
 
 export const PERKS: Record<PerkId, Perk> = {
   quartermaster: { id: 'quartermaster', name: 'Quartermaster', note: 'Wages cost a fifth less. The troops have noticed.', bonus: { wages: -0.2 } },
@@ -31,4 +44,17 @@ export const PERKS: Record<PerkId, Perk> = {
   treasureHunter: { id: 'treasureHunter', name: 'Treasure Hunter', note: 'Chests, piles and old mines give half as much again.', bonus: { loot: 0.5 } },
   drillSergeant: { id: 'drillSergeant', name: 'Drill Sergeant', note: 'Peasants fight like militia: +3 attack, +2 defence.', bonus: { troops: { peasants: { attack: 3, defence: 2 } } } },
   warchest: { id: 'warchest', name: 'War Chest', note: 'Every payday brings 400 more gold.', bonus: { payday: 400 } },
+  // The heroes' tricks, to learn: a level can teach any hero another's way of winning.
+  cavalryCharge: {
+    id: 'cavalryCharge',
+    name: 'Cavalry Charge',
+    note: 'Your knights charge: after riding 3 hexes they hit a quarter harder, and nobody strikes back.',
+    bonus: { charge: ['knights'] },
+    trick: true,
+  },
+  firstVolley: { id: 'firstVolley', name: 'First Volley', note: 'Your archers loose a free volley before every battle.', bonus: { volley: true }, trick: true },
+  woodsman: { id: 'woodsman', name: 'Woodsman', note: 'You ride through the woods, where nothing on the map can follow or hunt you.', bonus: { forestWalk: true }, trick: true },
+  battleMage: { id: 'battleMage', name: 'Battle Mage', note: 'Cast one more spell every round of battle.', bonus: { casts: 1 }, trick: true },
+  silverTongue: { id: 'silverTongue', name: 'Silver Tongue', note: 'Bribes cost a third less, and small bands will take your coin and join you.', bonus: { bribes: 0.33, hires: true }, trick: true },
+  farSight: { id: 'farSight', name: 'Far Sight', note: 'Cast Far Sight from the map: the mist rolls back for a long way around you.', bonus: { mapSpells: ['farsight'] }, trick: true },
 };

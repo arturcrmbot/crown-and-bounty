@@ -70,7 +70,7 @@ export const VILLAINS: VillainTemplate[] = [
       loot: 'The Crown pays {gold}.',
       done: ['Nobody here but a hat stand.'],
     },
-    village: { troop: 'peasants', count: 30, price: 10 },
+    village: { troop: 'archers', count: 16, price: 35 },
     names: {
       province: ['Brackenholt', 'Ashmoor', 'the Weald', 'Thornbury Heath', 'Highcombe'],
       castle: ['Castle Brackenholt', 'Ashmoor Keep', 'Castle Thorne', 'Wealdhall'],

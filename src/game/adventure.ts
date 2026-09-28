@@ -478,16 +478,22 @@ export class AdventureController implements Screen {
 
   // --- Input ------------------------------------------------------------------------------
 
-  /** The place (or the hero) under a map point, front-most first. */
+  /**
+   * The place (or the hero) under a map point, front-most first. A place the hero stands in front of
+   * is still the hero; one drawn in front of him (lower on the map) takes the click.
+   */
   private under([x, y]: Point): { id: string; name: string; box?: Hitbox; fogged?: boolean } | null {
     const h = this.scene.hero.object;
     const width = this.scene.hero.idle[0].width;
-    if (x >= h.x + 6 && x < h.x + width - 6 && y >= h.y + 4 && y < h.y + this.scene.hero.foot + 4) return { id: 'hero', name: BACKGROUNDS[this.state.hero.background].short };
+    const onHero = x >= h.x + 6 && x < h.x + width - 6 && y >= h.y + 4 && y < h.y + this.scene.hero.foot + 4;
     const gone = (id: string) => {
       const l = this.state.locations.find((p) => p.id === id);
       return !!l && l.done && (l.kind === 'chest' || l.kind === 'gold' || l.kind === 'patrol');
     };
     const hits = this.scene.hitboxes.filter((b) => x >= b.x0 && x < b.x1 && y >= b.y0 && y < b.y1 && !gone(b.id));
+    const heroFoot = h.y + this.scene.hero.foot;
+    const inFront = hits.filter((b) => b.y1 > heroFoot + 2);
+    if (onHero && inFront.length === 0) return { id: 'hero', name: BACKGROUNDS[this.state.hero.background].short };
     if (hits.length === 0) return null;
     const box = hits.reduce((front, b) => (b.y1 > front.y1 ? b : front));
     const fogged = this.view.isFogged((box.x0 + box.x1) / 2, box.y1 - 4);

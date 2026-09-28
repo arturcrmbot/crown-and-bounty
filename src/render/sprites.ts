@@ -753,6 +753,35 @@ export function peatHut(): Bitmap {
   return shaped;
 }
 
+/** Archery butts: two straw targets on posts with painted rings, a bow rack, and a pennant. */
+export function butts(): Bitmap {
+  const sprite = new Bitmap(56, 40);
+  const STRAW4 = [DIRT[3], DIRT[5], DIRT[6], DIRT[7]];
+  // A low rail fence behind.
+  for (let x = 2; x < 54; x++) for (const y of [20, 25]) sprite.set(x, y, flat(WOOD4, 0.5 - (y - 20) * 0.04, x, y));
+  for (let x = 4; x < 54; x += 12) for (let y = 18; y < 32; y++) sprite.set(x, y, flat(WOOD4, 0.35, x, y));
+  // Two targets: straw bosses, rings of red, white and gold.
+  for (const [cx, cy] of [[16, 20], [38, 22]] as const) {
+    for (let y = cy + 6; y < cy + 14; y++) for (const dx of [-5, 5]) sprite.set(cx + dx, y, WOOD[2]);
+    for (let y = cy - 8; y <= cy + 8; y++) {
+      for (let x = cx - 8; x <= cx + 8; x++) {
+        const d = Math.hypot(x - cx, (y - cy) * 1.05);
+        if (d > 8) continue;
+        const colour = d < 1.8 ? GOLD[5] : d < 3.6 ? RED[4] : d < 5.4 ? NEUTRAL[7] : d < 7 ? RED[3] : flat(STRAW4, 0.7 - (x - cx) * 0.03, x, y);
+        sprite.set(x, y, colour);
+      }
+    }
+    // An arrow in each.
+    for (let k = 0; k < 7; k++) sprite.set(cx + 2 + k, cy - 1 - Math.floor(k / 3), k < 5 ? WOOD[3] : NEUTRAL[7]);
+  }
+  // A pennant on a tall pole.
+  for (let y = 2; y < 34; y++) sprite.set(52, y, WOOD[1]);
+  for (let j = 0; j < 7; j++) for (let i = 0; i < 9 - j; i++) sprite.set(51 - i, 3 + j, j === 0 ? GOLD[5] : LEAF[5]);
+  const shaped = outline(sprite, INK);
+  castShadow(shaped, 5, 2, 26);
+  return shaped;
+}
+
 /** A ring of old standing stones on the heath, two of them with a lintel across, moss at their feet. */
 export function standingStones(): Bitmap {
   const sprite = new Bitmap(60, 42);
