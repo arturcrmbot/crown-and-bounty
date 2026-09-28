@@ -48,7 +48,7 @@ export function backgroundCard(): Card {
   };
 }
 
-/** Aldric's army and spells, and how to play. `briefed` means the King has already told him who to catch. */
+/** Aldric's army, spells and signature. `briefed` means the King has already told him who to catch. */
 export function storyCard(background: BackgroundId, briefed = false): Card {
   const b = BACKGROUNDS[background];
   return {
@@ -58,8 +58,6 @@ export function storyCard(background: BackgroundId, briefed = false): Card {
       ...(briefed ? [] : [`${b.title}: ${COMMISSIONS[0].brief.join(' ')}`]),
       `You ride out with ${b.army.map((s) => troops(s.troop, s.count)).join(' and ')}${b.spells.length ? `, and ${b.spells.map((s) => SPELLS[s].name).join(', ')} in your spellbook` : ''}.`,
       `**${b.signature.name}.** ${b.signature.note}`,
-      'Click the map to ride (hold **Shift** to gallop). Click anything to look at it, and again to go there. Red marks on your route are for tomorrow.',
-      `The hourglass (or **E**) ends the day. Every seventh day is payday. Click ${b.short} (or press **H**) for his gear and his army. **M** turns the sound off, and **?** lists every key.`,
     ],
     choices: [{ label: 'Ride out', action: { type: 'close' } }],
     wide: true,

@@ -27,6 +27,7 @@ import { HoverLabel } from '../ui/label';
 import type { Display } from './display';
 import type { Input } from './input';
 import type { Screen } from './screen';
+import { FirstTimeHints } from './hints';
 import { backgroundCard, endCard, keysCard, storyCard } from './intro';
 import { clearSave, saveGame } from './save';
 import { Walks } from './walks';
@@ -135,6 +136,7 @@ export class AdventureController implements Screen {
   /** Seconds on the map, and since this day's dawn, for the weather. */
   private clock = 0;
   private sinceDawn = 0;
+  private readonly hints = new FirstTimeHints();
   /** The day's full movement, worked out once per state. */
   private fullDay: { state: GameState; movement: number } | null = null;
   /** Called when the rules start a battle; the game switches screens. */
@@ -310,6 +312,10 @@ export class AdventureController implements Screen {
   }
 
   private handle(events: GameEvent[]) {
+    if (events.some((e) => e.type === 'day' && e.payday) && this.hints.take('payday')) {
+      const news = events.find((e) => e.type === 'card');
+      if (news?.type === 'card') news.card = { ...news.card, lines: [...news.card.lines, '*Every seventh dawn is payday: the King pays, the troops take wages, and recruiters restock.*'] };
+    }
     for (const [i, e] of events.entries()) {
       switch (e.type) {
         case 'court':
@@ -477,6 +483,16 @@ export class AdventureController implements Screen {
     this.visiting = visitId;
     this.follow = true;
     this.tiredShown = false;
+    if (route.length > 0 && this.hints.take('ride')) {
+      this.showCard(
+        {
+          title: 'On the road',
+          lines: ['Click the map to ride; hold **Shift** to gallop. Click Aldric or press **Esc** to stop. **M** mutes the sound; **?** lists every key.'],
+          choices: [{ label: 'Onward', action: { type: 'close' } }],
+        },
+        [this.drawn.x, this.drawn.y - this.scene.hero.foot],
+      );
+    }
     if (route.length === 0 && visitId) this.arrive();
   }
 
@@ -496,7 +512,12 @@ export class AdventureController implements Screen {
     const id = this.visiting!;
     this.visiting = null;
     this.target = null;
-    this.run(visit(this.state, id));
+    const result = visit(this.state, id);
+    if (this.hints.take('place')) {
+      const arrival = result.events.find((e) => e.type === 'card');
+      if (arrival?.type === 'card') arrival.card = { ...arrival.card, lines: [...arrival.card.lines, '*Click a place once to look, then again to ride there. Click Aldric or press **H** for his gear and army.*'] };
+    }
+    this.run(result);
   }
 
   // --- Each frame -------------------------------------------------------------------------
@@ -604,13 +625,13 @@ export class AdventureController implements Screen {
           this.handle(step.events.filter((e) => e.type !== 'moved'));
           continue;
         }
-        if (!this.tiredShown) {
+        if (!this.tiredShown && this.hints.take('tired')) {
           this.tiredShown = true;
           saveGame(this.state);
           this.showCard(
             {
               title: ART[heroArtId(this.state.hero.background)].rides ? 'Your horse is spent' : 'Your legs are spent',
-              lines: ['End the day to rest, and he rides on at dawn. Red marks are for tomorrow.'],
+              lines: ['The hourglass (or **E**) ends the day; red marks on the route wait for tomorrow.'],
               choices: [
                 { label: 'End the day (E)', action: { type: 'endDay' } },
                 { label: 'Not yet', detail: 'Look around first: the route waits.', action: { type: 'close' } },
