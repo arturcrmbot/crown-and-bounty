@@ -114,6 +114,10 @@ export type HeroStats = {
   manaRate: number;
   cows: boolean;
   hiresGates: boolean;
+  /** Chance a blow lands lucky: twice as hard. */
+  luck: number;
+  /** Chance a stack's good spirits win it another turn before the round moves on. */
+  morale: number;
   /** Share more recruits, free; share of today's movement that carries over; how far he smells treasure. */
   freeRecruits: number;
   carry: number;
@@ -184,6 +188,8 @@ export function heroStats(state: GameState): HeroStats {
     manaRate: 0,
     cows: false,
     hiresGates: false,
+    luck: 0,
+    morale: 0,
     freeRecruits: 0,
     carry: 0,
     smells: 0,
@@ -244,6 +250,8 @@ export function heroStats(state: GameState): HeroStats {
     s.manaRate += b.manaRide ? 1 / b.manaRide : 0;
     s.cows ||= Boolean(b.cows);
     s.hiresGates ||= Boolean(b.hiresGates);
+    s.luck += b.luck ?? 0;
+    s.morale += b.morale ?? 0;
     gearDefence += b.gearDefence ?? 0;
     s.freeRecruits += b.freeRecruits ?? 0;
     s.carry = Math.max(s.carry, b.carry ?? 0);
@@ -263,6 +271,8 @@ export function heroStats(state: GameState): HeroStats {
   s.manaBack = Math.min(1, s.manaBack);
   s.mend = Math.min(0.5, s.mend);
   s.armour = Math.min(0.6, s.armour);
+  s.luck = Math.min(0.5, s.luck);
+  s.morale = Math.min(0.5, s.morale);
   s.maxMana = s.knowledge * 10;
   return s;
 }

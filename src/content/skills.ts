@@ -153,7 +153,8 @@ export type PerkId =
   | 'farSight'
   | 'beastFriend'
   | 'scholar'
-  | 'favourite';
+  | 'favourite'
+  | 'fortunesFavour';
 
 /** A perk. `trick` marks one that changes what you can do, not just a number: those come first on a level-up. */
 export type Perk = { id: PerkId; name: string; note: string; bonus: Bonus; trick?: boolean };
@@ -206,5 +207,11 @@ export const PERKS: Record<PerkId, Perk> = {
     note: 'Beasts that couldn\u2019t beat you follow you instead of fighting: as many as you can lead, and they draw no wages.',
     bonus: { tames: true },
     trick: true,
+  },
+  fortunesFavour: {
+    id: 'fortunesFavour',
+    name: 'Fortune\u2019s Favour',
+    note: 'A 10% chance every blow lands lucky, twice as hard, and a 10% chance a stack\u2019s spirits win it another turn before the round moves on.',
+    bonus: { luck: 0.1, morale: 0.1 },
   },
 };

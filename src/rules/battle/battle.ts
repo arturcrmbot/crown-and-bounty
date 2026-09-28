@@ -23,6 +23,8 @@ export type Fighter = {
   waited: boolean;
   /** Spells and abilities on the stack, for the rest of the battle unless `until` says otherwise. */
   status: StatusId[];
+  /** Whether good morale has already won this stack a second turn this round (once a round). */
+  moraleUsed?: boolean;
   /** The round a status wears off at the start of (those with `rounds`). */
   until?: Partial<Record<StatusId, number>>;
   unit?: UnitNumbers;
@@ -64,6 +66,10 @@ export type BattleHero = Spellbook & {
   ranged?: number;
   /** Fraction of damage the hero's troops shrug off. */
   armour?: number;
+  /** Chance a stack's blow lands lucky: twice as hard. */
+  luck?: number;
+  /** Chance a stack's good spirits win it another turn before the round moves on. */
+  morale?: number;
   manaDiscount?: number;
   /** Extra attack, defence and shots for kinds of troop. */
   troops?: Partial<Record<TroopId, { attack: number; defence: number; shots: number }>>;
@@ -142,7 +148,7 @@ export type BattleAction =
 
 export type BattleEvent =
   | { type: 'move'; fighter: number; path: number[] }
-  | { type: 'hit'; attacker: number; target: number; damage: number; killed: number; ranged: boolean; retaliation: boolean; status?: StatusId; charge?: boolean }
+  | { type: 'hit'; attacker: number; target: number; damage: number; killed: number; ranged: boolean; retaliation: boolean; status?: StatusId; charge?: boolean; lucky?: boolean }
   /** Every shooter on a side looses at once: the ranger's archers before the battle, or at a villain's order (`spell`, `by`). */
   | { type: 'volley'; side?: Side; spell?: SpellId; by?: number }
   /** A fresh stack marches in from its side's edge of the field, called by a spell or an order. */
@@ -160,6 +166,8 @@ export type BattleEvent =
   | { type: 'spell'; spell: SpellId; target: number; damage: number; killed: number; splash?: boolean; healed?: number; raised?: number; by?: number }
   | { type: 'wait' | 'defend'; fighter: number }
   | { type: 'turn'; fighter: number }
+  /** Good spirits win a stack another turn before the round moves on (once a round). */
+  | { type: 'morale'; fighter: number }
   | { type: 'round'; round: number }
   | { type: 'end'; result: 'won' | 'lost' | 'fled'; rout?: boolean };
 
@@ -410,7 +418,7 @@ export function skillFactor(attack: number, defence: number): number {
 }
 
 /** Damage one stack deals another, times `bonus` (a charge). With `seed` it rolls; without, it's the average. */
-export function strike(b: BattleState, attacker: Fighter, target: Fighter, ranged: boolean, seed?: number, bonus = 1): { damage: number; seed?: number } {
+export function strike(b: BattleState, attacker: Fighter, target: Fighter, ranged: boolean, seed?: number, bonus = 1): { damage: number; seed?: number; lucky?: boolean } {
   const t = unitOf(attacker);
   const attack = t.attack + helpOf(b, attacker).attack + statusAttack(attacker);
   let defence = unitOf(target).defence + helpOf(b, target).defence + statusDefence(target);
@@ -439,8 +447,23 @@ export function strike(b: BattleState, attacker: Fighter, target: Fighter, range
   const skill = attacker.side === 'player' ? 1 + ((ranged ? b.hero.ranged : b.hero.melee) ?? 0) : 1;
   const armour = target.side === 'player' ? 1 - (b.hero.armour ?? 0) : 1;
   const shield = ranged ? statusShot(target) : 1;
-  const damage = Math.max(1, Math.round(attacker.count * perTroop * skillFactor(attack, defence) * inMelee * skill * armour * bonus * shield));
-  return { damage: ranged ? shotOn(target, damage) : damage, seed };
+  // A lucky blow lands twice as hard. Without a seed (the AI's look-ahead), the chance is spread over the average instead.
+  const luckChance = attacker.side === 'player' ? (b.hero.luck ?? 0) : 0;
+  let lucky = false;
+  let luck = 1;
+  if (luckChance > 0) {
+    if (seed === undefined) luck = 1 + luckChance;
+    else {
+      const [v, next] = roll(seed);
+      seed = next;
+      if (v < luckChance) {
+        lucky = true;
+        luck = 2;
+      }
+    }
+  }
+  const damage = Math.max(1, Math.round(attacker.count * perTroop * skillFactor(attack, defence) * inMelee * skill * armour * bonus * shield * luck));
+  return { damage: ranged ? shotOn(target, damage) : damage, seed, ...(lucky ? { lucky } : {}) };
 }
 
 /** Troops no single shot can take more than a share of (a hero's bodyguard, shields up). */
@@ -574,7 +597,7 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
         }
       }
     }
-    events.push({ type: 'hit', attacker: attacker.id, target: target.id, damage: rolled.damage, killed: w.killed, ranged, retaliation, ...(status ? { status } : {}), ...(charge ? { charge } : {}) });
+    events.push({ type: 'hit', attacker: attacker.id, target: target.id, damage: rolled.damage, killed: w.killed, ranged, retaliation, ...(status ? { status } : {}), ...(charge ? { charge } : {}), ...(rolled.lucky ? { lucky: true } : {}) });
   };
 
   switch (action.type) {
@@ -618,7 +641,7 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
       me.waited = true;
       next.order = [...next.order.slice(1), me.id];
       events.push({ type: 'wait', fighter: me.id });
-      return settle(next, events, false);
+      return settle(next, events, false, expected);
     }
     case 'defend':
       me.defending = true;
@@ -694,28 +717,46 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
           }
         }
       }
-      return settle(next, events, false);
+      return settle(next, events, false, expected);
     }
     case 'volley': {
       if (!b.volley) return { battle: b, events: [] };
       next.volley = undefined;
       events.push({ type: 'volley' });
       loose(next, 'player', fighters, hit);
-      return settle(next, events, false);
+      return settle(next, events, false, expected);
     }
     case 'retreat':
       next = { ...next, result: 'fled' };
       events.push({ type: 'end', result: 'fled' });
       return { battle: next, events };
   }
-  return settle(next, events, true);
+  return settle(next, events, true, expected);
 }
 
 /** Drops the dead, ends the turn if asked, starts a new round when everyone has acted, and checks for a winner. */
-function settle(b: BattleState, events: BattleEvent[], endTurn: boolean): BattleResult {
+function settle(b: BattleState, events: BattleEvent[], endTurn: boolean, expected = false): BattleResult {
   let order = b.order.filter((id) => alive(fighterById(b, id)));
-  if (endTurn && order[0] === b.order[0]) order = order.slice(1);
-  let next: BattleState = { ...b, order };
+  let fighters = b.fighters;
+  let seed = b.seed;
+  if (endTurn && order[0] === b.order[0]) {
+    const actedId = order[0];
+    order = order.slice(1);
+    // Good spirits: a chance the stack goes again before the round moves on, once a round. The
+    // AI's look-ahead (`expected`) skips the roll, so it never sees a bonus turn that may not come.
+    const morale = b.hero.morale ?? 0;
+    const acted = fighterById(b, actedId);
+    if (!expected && morale > 0 && acted.side === 'player' && !acted.moraleUsed) {
+      const [v, rolled] = roll(seed);
+      seed = rolled;
+      if (v < morale) {
+        order = [actedId, ...order];
+        fighters = fighters.map((f) => (f.id === actedId ? { ...f, moraleUsed: true } : f));
+        events.push({ type: 'morale', fighter: actedId });
+      }
+    }
+  }
+  let next: BattleState = { ...b, order, fighters, seed };
   const players = next.fighters.some((f) => alive(f) && f.side === 'player');
   const enemies = next.fighters.some((f) => alive(f) && f.side === 'enemy');
   if (!players || !enemies) {
@@ -740,7 +781,7 @@ function settle(b: BattleState, events: BattleEvent[], endTurn: boolean): Battle
       // Statuses that last a few rounds wear off as a new one begins.
       const fighters = next.fighters.map((f) => {
         const gone = f.until ? f.status.filter((st) => (f.until![st] ?? Infinity) <= round) : [];
-        return { ...f, retaliated: false, waited: false, ...(gone.length ? { status: f.status.filter((st) => !gone.includes(st)) } : {}) };
+        return { ...f, retaliated: false, waited: false, moraleUsed: false, ...(gone.length ? { status: f.status.filter((st) => !gone.includes(st)) } : {}) };
       });
       next = { ...next, round, fighters, order: turnOrder(fighters), struck: false, quiet, gap: reach.gap };
       events.push({ type: 'round', round });

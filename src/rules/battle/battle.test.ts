@@ -283,6 +283,50 @@ describe('status fields', () => {
   });
 });
 
+describe('luck and morale', () => {
+  it('spreads luck\u2019s chance over the average damage, without a seed', () => {
+    const b = battle(['knights'], [10], ['swordsmen'], [10]);
+    const plain = strike(b, b.fighters[0], b.fighters[1], false).damage;
+    const lucky = { ...b, hero: { ...b.hero, luck: 0.4 } };
+    expect(strike(lucky, lucky.fighters[0], lucky.fighters[1], false).damage).toBeCloseTo(plain * 1.4, -1);
+    // Only the player's own side rolls for luck.
+    expect(strike(lucky, lucky.fighters[1], lucky.fighters[0], false).damage).toBe(strike(b, b.fighters[1], b.fighters[0], false).damage);
+  });
+
+  it('with a seed, a lucky blow lands twice as hard and says so', () => {
+    const b = battle(['knights'], [10], ['swordsmen'], [10]);
+    const lucky = { ...b, hero: { ...b.hero, luck: 1 } };
+    const base = strike(b, b.fighters[0], b.fighters[1], false, 123).damage;
+    const rolled = strike(lucky, lucky.fighters[0], lucky.fighters[1], false, 123);
+    expect(rolled.lucky).toBe(true);
+    expect(rolled.damage).toBeCloseTo(base * 2, -1);
+    // It fires from battleAct too, on the hit event.
+    let shooting = createBattle({ place: 'test', seed: 3, player: [{ troop: 'archers', count: 20 }], enemy: [{ troop: 'swordsmen', count: 20 }], hero: lucky.hero, obstacles: 0 });
+    shooting = { ...shooting, order: [0, 1] };
+    const { events } = battleAct(shooting, { type: 'shoot', target: 1 });
+    expect(events.find((e) => e.type === 'hit')).toMatchObject({ lucky: true });
+  });
+
+  it('good morale wins a stack another turn, once a round', () => {
+    let b = battle(['knights'], [10], ['swordsmen'], [10]);
+    b = { ...b, hero: { ...b.hero, morale: 1 }, order: [0, 1] };
+    const first = battleAct(b, { type: 'defend' });
+    expect(first.events.some((e) => e.type === 'morale')).toBe(true);
+    expect(first.battle.order[0]).toBe(0);
+    // It doesn't trigger twice for the same stack in the same round.
+    const second = battleAct(first.battle, { type: 'defend' });
+    expect(second.events.some((e) => e.type === 'morale')).toBe(false);
+  });
+
+  it('the AI\u2019s look-ahead skips the dice for both', () => {
+    let b = battle(['knights'], [10], ['swordsmen'], [10]);
+    b = { ...b, hero: { ...b.hero, luck: 1, morale: 1 }, order: [0, 1] };
+    const { events, battle: after } = battleAct(b, { type: 'defend' }, true);
+    expect(events.some((e) => e.type === 'morale')).toBe(false);
+    expect(after.order[0]).not.toBe(0);
+  });
+});
+
 describe('shooters in melee', () => {
   it('hit at half strength, unless the hero has taught them better', () => {
     const hero: BattleHero = { attack: 0, defence: 0, spellPower: 1, mana: 0, spells: [], castRound: 0 };

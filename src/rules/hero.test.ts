@@ -90,6 +90,17 @@ describe('skills and gear', () => {
     expect(heroStats(worn).spellPower).toBe(heroStats(knight()).spellPower + 1);
   });
 
+  it('grant luck and morale from a perk and a trinket', () => {
+    expect(heroStats(knight()).luck).toBe(0);
+    expect(heroStats(knight()).morale).toBe(0);
+    const diced = giveArtifact(knight(), 'bonesDice');
+    expect(heroStats(diced).luck).toBeCloseTo(0.12);
+    expect(heroStats(diced).morale).toBeCloseTo(0.12);
+    const favoured = { ...knight(), hero: { ...knight().hero, perks: ['fortunesFavour' as const] } };
+    expect(heroStats(favoured).luck).toBeCloseTo(0.1);
+    expect(heroStats(favoured).morale).toBeCloseTo(0.1);
+  });
+
   it('sell the castle\u2019s wares for gold', () => {
     const rich = { ...knight(), gold: 5000 };
     const bought = apply(rich, { type: 'choose', id: 'castle', choice: 'buy:swordOfAldmoor' })!.state;

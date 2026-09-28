@@ -39,7 +39,8 @@ export type ArtifactId =
   | 'recruitingDrum'
   | 'surveyorsChain'
   | 'spyglass'
-  | 'stewardsLedger';
+  | 'stewardsLedger'
+  | 'bonesDice';
 
 /** A set of artifacts that do something more when all of them are worn. */
 export type SetId = 'regalia' | 'finery';
@@ -173,6 +174,14 @@ export const ARTIFACTS: Record<ArtifactId, Artifact> = {
     note: 'Every castle and village you have visited pays you 60 gold of rent on payday. The steward will want it back, eventually.',
     bonus: { rents: 60 },
     price: 900,
+  },
+  bonesDice: {
+    id: 'bonesDice',
+    name: 'A Pair of Bone Dice',
+    slot: 'trinket',
+    note: 'Won off a card-sharp who swore they were fair: a 12% chance a blow lands lucky, twice as hard, and a 12% chance a stack\u2019s spirits win it another turn.',
+    bonus: { luck: 0.12, morale: 0.12 },
+    price: 700,
   },
 };
 
