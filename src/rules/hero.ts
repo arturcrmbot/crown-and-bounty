@@ -80,6 +80,9 @@ export type HeroStats = {
   spells: SpellId[];
   /** How hard his shooters hit in melee, as a share of a shot. */
   shooterMelee: number;
+  /** After a won battle: the share of his mana that comes back, and of each company's fallen who get up. */
+  manaBack: number;
+  mend: number;
   bribes: number;
   hires: boolean;
   tames: boolean;
@@ -139,6 +142,8 @@ export function heroStats(state: GameState): HeroStats {
     mapSpells: [],
     spells: [...h.spells],
     shooterMelee: SHOOTER_MELEE,
+    manaBack: 0,
+    mend: 0,
     bribes: 0,
     hires: false,
     tames: false,
@@ -184,6 +189,8 @@ export function heroStats(state: GameState): HeroStats {
     s.mapSpells.push(...(b.mapSpells ?? []).filter((m) => !s.mapSpells.includes(m)));
     s.spells.push(...(b.spells ?? []).filter((m) => !s.spells.includes(m)));
     s.shooterMelee = Math.max(s.shooterMelee, b.shooterMelee ?? 0);
+    s.manaBack += b.manaBack ?? 0;
+    s.mend += b.mend ?? 0;
     s.bribes += b.bribes ?? 0;
     s.hires ||= Boolean(b.hires);
     s.tames ||= Boolean(b.tames);
@@ -207,6 +214,8 @@ export function heroStats(state: GameState): HeroStats {
   s.veterans = Math.min(0.5, s.veterans);
   s.bribes = Math.min(0.8, s.bribes);
   s.casts = Math.min(MAX_CASTS, s.casts);
+  s.manaBack = Math.min(1, s.manaBack);
+  s.mend = Math.min(0.5, s.mend);
   s.armour = Math.min(0.6, s.armour);
   s.maxMana = s.knowledge * 10;
   return s;

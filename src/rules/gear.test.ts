@@ -5,6 +5,7 @@ import type { BackgroundId } from '../content/backgrounds';
 import { FENMARCH } from '../content/fenmarch';
 import { createBattle, spellCost } from './battle/battle';
 import { withNewPlaces } from './campaign';
+import { afterVictory } from './fight';
 import { apply, commissionAt, heroInBattle, heroStats, locationById, priceOf, visit, type Card, type GameState, type Result } from './game';
 import { equip, giveArtifact, setLine, unequip, wornSets } from './hero';
 import { mapOf } from './map/maps';
@@ -111,6 +112,27 @@ describe('gear that holds a spell', () => {
     } finally {
       ARTIFACTS.swordOfAldmoor = original;
     }
+  });
+});
+
+describe('after a won battle', () => {
+  it('mana comes back and the fallen get up, for a hero whose gear says so', () => {
+    const base = { ...fresh('wizard'), hero: { ...fresh('wizard').hero, mana: 2 } };
+    const before = [{ troop: 'knights' as const, count: 10 }, { troop: 'archers' as const, count: 20 }];
+    const after = { ...base, army: [{ troop: 'knights' as const, count: 6 }] };
+    const held = { ...ARTIFACTS.swordOfAldmoor, bonus: { manaBack: 0.5, mend: 0.25 } };
+    const original = ARTIFACTS.swordOfAldmoor;
+    ARTIFACTS.swordOfAldmoor = held;
+    try {
+      const worn = { ...after, hero: { ...after.hero, gear: { weapon: 'swordOfAldmoor' as const } } };
+      const r = afterVictory(worn, before);
+      expect(r.state.hero.mana).toBe(2 + Math.round(heroStats(worn).maxMana * 0.5));
+      expect(r.state.army).toEqual([{ troop: 'knights', count: 7 }, { troop: 'archers', count: 5 }]);
+      expect(r.lines).toEqual([`As the dust settles, **${Math.round(heroStats(worn).maxMana * 0.5)} mana** comes back to you.`, '**1 Knight** and **5 Archers** get back on their feet.']);
+    } finally {
+      ARTIFACTS.swordOfAldmoor = original;
+    }
+    expect(afterVictory(after, before)).toEqual({ state: after, lines: [] });
   });
 });
 
