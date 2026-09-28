@@ -178,7 +178,9 @@ export function finishFight(state: GameState): Result {
   const army = survivors(battle, 'player');
   // Carried from the field, he's on his feet again by evening: it costs him only the rest of the day.
   const fell = heroFell(battle);
-  const carried = fell ? [`**${BACKGROUNDS[state.hero.background].short} was carried from the field.** He's on his feet by evening, sore and cross, but goes no further today.`] : [];
+  const who = BACKGROUNDS[state.hero.background].short;
+  const alone = !fell && army.length === 0 && battle.fighters.some((f) => f.hero);
+  const carried = fell ? [`**${who} was carried from the field.** He's on his feet by evening, sore and cross, but goes no further today.`] : alone ? [`*Only ${who} is left standing.*`] : [];
   // The battle rolled its own dice from the state's seed: carry on from where it stopped, not from the start again.
   const base: GameState = { ...state, seed: battle.seed, battle: undefined, army, hero: { ...state.hero, mana: battle.hero.mana }, ...(fell ? { movement: 0 } : {}) };
   const lost = lossesLine(state.army, army);

@@ -754,6 +754,15 @@ export class BattleController implements Screen {
       log: () => this.view.log,
       act: (action: BattleAction) => this.perform(action),
       moves: () => [...options(this.battle).moves.keys()],
+      /** The blows the acting stack could strike, with the length of the ride to each (a charge needs 3). */
+      melee: () => {
+        const opts = options(this.battle);
+        return opts.melee.map((m) => ({ ...m, run: m.from === activeFighter(this.battle)?.at ? 0 : (opts.moves.get(m.from)?.length ?? 0) }));
+      },
+      /** What the forecast line would say for an action, as when pointing at it. */
+      forecast: (action: BattleAction) => this.forecast(action),
+      /** Whether the sergeants have command. */
+      isAuto: () => this.auto,
       intent: (hex: number) => {
         const [x, y] = hexCentre(hex);
         return this.intent(hex, x, y)?.action ?? null;
