@@ -47,7 +47,7 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   a ribbon and a fanfare. Portraits (the King, the heroes, the villains) appear on cards.
 - **Juice (R2, 27 Sep):** on the map, gains rise off the hero in words (gold, troops, leadership, experience), a
   level brings a golden ring, beaten foes leave dust and treasure glitters, and night falls over the map
-  between days. In battle, fighters are HoMM2-sized (most of two hex rows), Aldric sits his horse at the field's
+  between days. In battle, fighters are HoMM2-sized (most of two hex rows), the King's star flies at the field's
   edge and the enemy flies a standard (Grimsby's goose, the fen's moon, the outlaws' skull), blows spark and
   shake the field, the fallen stay where they fell, kill counts rise over heads, and a ribbon says VICTORY or
   DEFEAT.
@@ -92,11 +92,23 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   tower's note gives away the villain's hideout and weakness (back pay, church bells, the wedding ale), or a
   charm; the mine gives gold, or a relic deeper down; the mill gives the miller's sons, or a charm.
 - **The hero looks like who he is (28 Sep, from Artur's second playtest):** each background has its own Wesnoth
-  figure, on the map, at the field's edge and on his portrait. The Knight rides the Horseman with our pennant.
+  figure, on the map, in battle, kneeling at court and on his portrait. The Knight rides the Horseman with our pennant.
   The others go on foot, since Wesnoth has no mounted mage and each should read as himself at a glance: the
   Hedge Wizard is an Arch Mage (hood, beard, orb and staff), the Ranger is Wesnoth's own Ranger in his green hood
   (nothing like the red poachers), and the Courtier is a Master at Arms in a plumed hat, who doffs it with a bow
   now and then. A tired hero on foot hears that his legs are spent, not his horse.
+- **The hero on the field (28 Sep, from Artur's second playtest):** Aldric fights in his battles, as the villains
+  do: a stack of one in his army's line, never one of its five stacks. Each background fights his own way. The
+  Knight's lance charges with his knights. The Hedge Wizard throws bolts from his staff, as hard as his spell
+  power, and is frail up close. The Ranger's longbow joins the opening volley. The Courtier's light blade matters
+  less than his presence: stacks beside him fight with +2 attack and +2 defence. His health and damage grow with
+  his level, and his attack and defence (level-ups and gear) count for him as for every stack; at level I he's
+  worth about a tenth of the army he starts with. He casts from where he stands, hands raised, and only while he
+  stands. His guard raise their shields over him, so no shot or spell takes more than a third of his health, but
+  a blow at close quarters takes what it takes. If he falls he's carried from the field, and the battle goes on
+  without his spells; he's on his feet by evening, but goes no further that day. The enemy finishes him off when
+  it can, and the sergeants keep him out of harm's way; both now see a charge coming. The odds on every card count
+  him. He stands in the gold ring he has on the map, and he and the villains show a health bar instead of a count.
 - **The hero screen and the army (28 Sep, from Artur's second playtest):** H, a click on the hero, or the bar's
   troop counts open a HoMM2-style sheet over the map (the map stands still under it): his portrait, level and
   experience, the four stats, mana (left, most, and when it comes back), movement and leadership, his signature,
