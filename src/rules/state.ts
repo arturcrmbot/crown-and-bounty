@@ -270,7 +270,10 @@ export type Choice = { label: string; action: Action; disabled?: boolean; portra
  * A parchment card. `portrait` puts a face at its top left. `poster` makes it a WANTED poster, with the
  * face in the middle. `tiles` lays the choices side by side, each with its face, for picking a hero.
  */
-export type Card = { title: string; lines: string[]; choices: Choice[]; wide?: boolean; portrait?: PortraitId; poster?: boolean; tiles?: boolean };
+/** The fallen in a battle, for the result card. */
+export type BattleResultCard = { player: Army; enemy: Army; manaSpent: number; manaAvailable: number };
+
+export type Card = { title: string; lines: string[]; choices: Choice[]; wide?: boolean; portrait?: PortraitId; poster?: boolean; tiles?: boolean; battleResult?: BattleResultCard };
 
 /** What happened, for the screens to show. The rules never draw anything themselves. */
 export type GameEvent =
