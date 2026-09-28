@@ -253,6 +253,21 @@
   margin: 0 0 2px;
   background: radial-gradient(ellipse 42px 70px at 50% 52%, rgba(90, 62, 20, 0.14), transparent 70%);
 }
+/* His own figure behind the slots, like an engraving on the parchment. */
+.kc-hero .doll {
+  position: relative;
+}
+.kc-hero .doll .figure {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 144px;
+  height: 144px;
+  transform: translate(-50%, -52%);
+  opacity: 0.3;
+  filter: sepia(1) saturate(0.6);
+  pointer-events: none;
+}
 .kc-hero .doll .helm {
   grid-area: 1 / 2;
 }

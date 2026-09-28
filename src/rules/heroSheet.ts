@@ -7,8 +7,9 @@ import { createBattle, statsOf } from './battle/battle';
 import { rowOf } from './battle/hex';
 import { CAMPAIGN_LENGTH, commissionOf } from './campaign';
 import { heroInBattle } from './fight';
+import { countsExactly, forceLine } from './places/common';
 import { heroStats, LEVELS, type StatId } from './hero';
-import { COMMISSION, coins, LAST_DAY, leadershipUsed, PAYDAY_EVERY, roman, wages, type GameState } from './state';
+import { COMMISSION, coins, LAST_DAY, leadershipUsed, locationById, PAYDAY_EVERY, roman, wages, type GameState } from './state';
 
 /** Mana left, the most he can hold, and how it comes back: "Mana 12/30 · full again at dawn". */
 export function manaNote(state: GameState): string {
@@ -68,6 +69,18 @@ export function barNote(state: GameState, item: BarItem): string {
     case 'hourglass':
       return 'End the day (E)';
   }
+}
+
+/** What the map's hover label says about a place: its name, and what's there at a glance. */
+export function placeNote(state: GameState, id: string): string {
+  const place = locationById(state, id);
+  if (place.enemy && !place.done) {
+    const force = forceLine(place.enemy.army, countsExactly(state)).replace(/\*\*/g, '');
+    return `${place.name}: ${force}${place.enemy.trailing ? ' \u00b7 on your trail!' : ''}`;
+  }
+  const offer = place.recruits;
+  if (offer && !place.done && offer.count > 0) return `${place.name}: ${troops(offer.troop, offer.count)} to recruit`;
+  return place.name;
 }
 
 // --- The hero screen ---------------------------------------------------------------------
