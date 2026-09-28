@@ -36,10 +36,13 @@ function speaker(on: boolean): Bitmap {
 
 /**
  * Button size and where it sits, in screen pixels: on the bar's right end, over the hourglass's corner
- * of the frame, where every screen leaves room (the hourglass itself sits just left of it).
+ * of the frame, where every screen leaves room (the hourglass itself sits just left of it). Exported
+ * so the mix panel beside it (`ui/mix.ts`) can line itself up against it.
  */
-const SIZE = { width: 74, height: 22 };
-const AT = { x: SCREEN.width - SIZE.width - 6, y: 5 };
+export const SOUND_SIZE = { width: 74, height: 22 };
+export const SOUND_AT = { x: SCREEN.width - SOUND_SIZE.width - 6, y: 5 };
+const SIZE = SOUND_SIZE;
+const AT = SOUND_AT;
 
 /** The sound button, always in the top right corner: click it (or press M) to mute and unmute everything. */
 export class MuteButton {
