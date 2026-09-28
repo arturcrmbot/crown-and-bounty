@@ -57,6 +57,7 @@ export type HeroStats = {
   mapSpells: MapSpellId[];
   bribes: number;
   hires: boolean;
+  tames: boolean;
 };
 
 /** The hero's numbers with everything added up. The rules use these, never the raw fields. */
@@ -91,6 +92,7 @@ export function heroStats(state: GameState): HeroStats {
     mapSpells: [],
     bribes: 0,
     hires: false,
+    tames: false,
   };
   for (const b of bonusesOf(state)) {
     s.attack += b.attack ?? 0;
@@ -120,6 +122,7 @@ export function heroStats(state: GameState): HeroStats {
     s.mapSpells.push(...(b.mapSpells ?? []).filter((m) => !s.mapSpells.includes(m)));
     s.bribes += b.bribes ?? 0;
     s.hires ||= Boolean(b.hires);
+    s.tames ||= Boolean(b.tames);
   }
   s.bribes = Math.min(0.8, s.bribes);
   s.armour = Math.min(0.6, s.armour);
@@ -131,13 +134,16 @@ export function heroStats(state: GameState): HeroStats {
  * Whether a trick perk would change nothing for this hero: he can already do it (his background's
  * signature, a relic, an earlier perk).
  */
-function hasTrick(state: GameState, id: PerkId): boolean {
+const hasTrick = (state: GameState, id: PerkId) => knowsTrick(state, PERKS[id].bonus);
+
+/** Whether a bonus's trick is one the hero can do already. False for a bonus with no trick. */
+export function knowsTrick(state: GameState, b: Bonus): boolean {
   const s = heroStats(state);
-  const b = PERKS[id].bonus;
   if (b.charge?.length) return b.charge.every((t) => s.charge.includes(t));
   if (b.volley) return s.volley;
   if (b.forestWalk) return s.forestWalk;
   if (b.hires) return s.hires;
+  if (b.tames) return s.tames;
   if (b.mapSpells?.length) return b.mapSpells.every((m) => s.mapSpells.includes(m));
   return false;
 }

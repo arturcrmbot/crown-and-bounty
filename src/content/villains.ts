@@ -28,6 +28,11 @@ export type VillainTemplate = {
   village: NonNullable<Location['recruits']>;
   names: { province: string[]; castle: string[]; village: string[]; tower: string[]; mine: string[]; mill: string[] };
   towerClue: string;
+  /**
+   * What the watcher's note at the tower gives away, and how the hero can use it at the hideout: a
+   * share of one of the villain's troops slips away, for a price in gold (scaled with the commission) or none.
+   */
+  weakness: { note: string; label: string; lines: string[]; troop: TroopId; share: number; gold?: number };
   parleys?: { guardian?: ContentChoice[]; hideout?: ContentChoice[] };
 };
 
@@ -80,6 +85,14 @@ export const VILLAINS: VillainTemplate[] = [
       mill: ['Weald Mill', 'Hilltop Mill', 'Old Mill'],
     },
     towerClue: 'A shepherd has left a note for the King\u2019s officer: *"Baron went that way, wearing a hat. Didn\u2019t pay for the sheep."*',
+    weakness: {
+      note: '*"P.S. His men haven\u2019t been paid since Michaelmas. They grumble about it at the gate every night."*',
+      label: 'Offer his men their back pay',
+      gold: 400,
+      troop: 'swordsmen',
+      share: 0.4,
+      lines: ['You call over the palisade: back pay, in full, from the Crown, for any man who walks out now. A good many of them walk out, counting.'],
+    },
     parleys: {
       hideout: [
         {
@@ -104,7 +117,7 @@ export const VILLAINS: VillainTemplate[] = [
     homecoming: 'The choir is un-frogged by Sunday, and sings better than ever.',
     timeout: 'The royal choir has settled in the palace pond. The King has stopped going to chapel.',
     praise: '"My choir is back, and in tune!" says King Osric. "Well, nearly in tune."',
-    arrival: ['Meres and reeds again, and somewhere, a great deal of croaking.', 'Your horse sighs, and steps into the mud.'],
+    arrival: ['Meres and reeds again, and somewhere, a great deal of croaking.', 'Somebody behind you sighs, and steps into the mud.'],
     bands: [
       { name: 'Goblin Raiders', look: 'goblins', troops: [['goblins', 1]], lines: ['Bog goblins, raiding for anything shiny.', 'They have taken all the church bells. Nobody knows why.'], threat: 'They giggle and sharpen their spears.', flees: 'The goblins scatter into the reeds.', loot: 'In their sack: {gold}, and a bell.' },
       { name: 'Troll Ford', look: 'troll', troops: [['trolls', 0.7], ['goblins', 0.3]], lines: ['A troll sits in the ford, charging goblins to cross. Business is bad.'], threat: 'The troll gets up, slowly and completely.', flees: 'The troll wades away downstream.', loot: 'In the ford: {gold} in old tolls.' },
@@ -141,6 +154,13 @@ export const VILLAINS: VillainTemplate[] = [
       mill: ['Fen Windmill', 'Pump Mill', 'Drainage Mill'],
     },
     towerClue: 'A frog on the windowsill croaks the same three notes over and over. Brother Anselm\u2019s old map is pinned beneath it, with Aunt Bramble\u2019s hut circled.',
+    weakness: {
+      note: 'In the margin, in Brother Anselm\u2019s hand: *"Her goblins stole the bells because they cannot bear the ringing. Ring one and see."*',
+      label: 'Ring a bell under her window',
+      troop: 'goblins',
+      share: 0.5,
+      lines: ['Brother Anselm was right. At the first clang, half her goblins bolt for the reeds with their fingers in their ears.'],
+    },
     parleys: {
       hideout: [
         {
@@ -202,6 +222,14 @@ export const VILLAINS: VillainTemplate[] = [
       mill: ['Wold Mill', 'Bellbury Mill'],
     },
     towerClue: 'The bell-ringer shows you a wedding invitation. The address is circled, with a little heart.',
+    weakness: {
+      note: 'On the back, in the bell-ringer\u2019s hand: *"The goblins are only there for the free drink. Stop the barrels and they\u2019ll go."*',
+      label: 'Buy up the wedding ale',
+      gold: 500,
+      troop: 'goblins',
+      share: 0.5,
+      lines: ['A purse changes hands at the inn. The barrels run dry, and so do half the goblins, off to find the next party.'],
+    },
     parleys: {
       hideout: [
         {

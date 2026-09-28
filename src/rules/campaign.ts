@@ -4,7 +4,7 @@ import { VILLAINS } from '../content/villains';
 import { generateCommission } from './generate';
 import { heroStats } from './hero';
 import { beginCommission } from './scenario';
-import { addTroops, armyLine, close, coins, leadershipUsed, roll, roman, show, TROOPS, type Army, type BoonId, type Campaign, type Card, type GameState, type Result } from './state';
+import { addTroops, armyLine, close, coins, leadershipUsed, roll, roman, show, TROOPS, type Army, type BoonId, type Campaign, type Card, type GameState, type Location, type Result } from './state';
 
 /** Commissions in a campaign: the hand-made ones, then provinces generated for this campaign. */
 export const CAMPAIGN_LENGTH = 5;
@@ -31,14 +31,35 @@ export const commissionOf = (state: GameState) => commissionAt(state.campaign, s
 export const provinceOf = (state: GameState) => commissionOf(state).province;
 export const hasNextCommission = (state: GameState) => state.campaign.chapter + 1 < CAMPAIGN_LENGTH;
 
+/** What a place says and offers, as opposed to what has happened to it: a save takes the newest. */
+const WORDS = ['text', 'pages', 'artifact', 'reveals', 'gold'] as const;
+const ENEMY_WORDS = ['lines', 'threat', 'flees', 'loot', 'tamed', 'parleys', 'spoils'] as const;
+const pick = <T extends object>(from: T | undefined, keys: readonly (keyof T)[]) => JSON.stringify(keys.map((k) => from?.[k] ?? null));
+
 /**
- * A province's places that a saved game doesn't have yet join it, so a commission in progress gets
- * places added since (Aldmoor's archery butts). Places never leave `locations`, so a missing one is newer than the save.
+ * Brings a saved commission up to date with its province. Places added since join it (Aldmoor's
+ * archery butts); places never leave `locations`, so a missing one is newer than the save. Places
+ * the hero hasn't used up yet take the province's newest words and choices (the tower's banner or
+ * journal), keeping everything that has happened to them: where they stand, how many they are.
+ * An enemy keeps the artifact it was carrying.
  */
 export function withNewPlaces(state: GameState): GameState {
+  const province = provinceOf(state).locations;
   const known = new Set(state.locations.map((l) => l.id));
-  const added = provinceOf(state).locations.filter((l) => !known.has(l.id));
-  return added.length ? { ...state, locations: [...state.locations, ...structuredClone(added)] } : state;
+  const added = province.filter((l) => !known.has(l.id));
+  let changed = added.length > 0;
+  const locations = state.locations.map((l) => {
+    const now = province.find((p) => p.id === l.id);
+    if (!now || l.done || l.seen) return l;
+    let next: Location = l;
+    if (!l.enemy && pick(l, WORDS) !== pick(now, WORDS)) next = { ...next, ...Object.fromEntries(WORDS.map((k) => [k, structuredClone(now[k])])) };
+    if (l.enemy && now.enemy && pick(l.enemy, ENEMY_WORDS) !== pick(now.enemy, ENEMY_WORDS)) {
+      next = { ...next, text: structuredClone(now.text), enemy: { ...l.enemy, ...Object.fromEntries(ENEMY_WORDS.map((k) => [k, structuredClone(now.enemy![k])])) } };
+    }
+    if (next !== l) changed = true;
+    return next;
+  });
+  return changed ? { ...state, locations: [...locations, ...structuredClone(added)] } : state;
 }
 
 /** The share of every stack that stays on between commissions. */

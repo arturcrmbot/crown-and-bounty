@@ -51,7 +51,7 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   edge and the enemy flies a standard (Grimsby's goose, the fen's moon, the outlaws' skull), blows spark and
   shake the field, the fallen stay where they fell, kill counts rise over heads, and a ribbon says VICTORY or
   DEFEAT.
-- **Signature playstyles (R4, 27 Sep):** the Knight's knights charge (a run-up of 3 hexes or more, started
+- **Signature playstyles (R4, 27 Sep; the Ranger's beasts, 28 Sep):** the Knight's knights charge (a run-up of 3 hexes or more, started
   clear of the enemy: a quarter harder, and nobody strikes back). The Ranger rides through woodland, where nothing on the map can follow or hunt him,
   and his archers loose a free volley before each battle (not at a villain's walls), where it hurts most, enemy shooters first. The Wizard casts two spells
   a round and has Far Sight on the map. The Courtier pays half for any bribe and can hire small bands outright
@@ -75,4 +75,26 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   +3 shots, and the Miller's Everlasting Loaf gives +25 movement a day and makes wages a tenth cheaper. In
   battle, melee winds up, lunges, knocks the target back and sprays blood, and each count drops as its blow
   lands. Soldiers are redrawn chibi-style.
+- **Taming and real choices (28 Sep, after Artur's first playtest):** the Ranger wins beasts over instead of
+  fighting them: wolves and boars, anything that draws no wages and follows no villain. They come only if his
+  army could beat them (odds the card calls close, or better), as many as his leadership allows, and the rest
+  wander off. A tamed band gives half the experience and shows its den (the wolves' cloak), but no gold and no
+  spoils (no pelt for Old Nan). A mixed band, like the gatekeepers with their hounds, loses its beasts and fights
+  on. Other heroes learn it from St Aldhelm's Hawthorn Crown, a relic, or the Beast Friend trick perk. The
+  Fenmarch has a boar wallow. Finds now offer choices instead of a flat bonus, and some come back: the
+  watchtower's crows let you take the banner or the journal (Sergeant Pike's father's: give it to Pike and the
+  whole patrol goes home); the Old Mine's dwarf gives up his cart, or his helmet and the old delving, a tunnel
+  that comes up behind the wolves at Grimsby's door; the mill gives the Everlasting Loaf or Haste; St Aldhelm
+  lends his crown, or hears a prayer for the goose, who then lures half Grimsby's crossbowmen away. In the
+  Fenmarch, Brother Anselm spares his staff, a thunderbolt (Lightning Bolt) or a letter to his big sister, the
+  witch, who sends half her goblins home; the sinking peat hut saves the wages, the boots or the cutters' punt,
+  which slips past the troll; the windmill gives a goblin charm or the miller's sons. In generated provinces the
+  tower's note gives away the villain's hideout and weakness (back pay, church bells, the wedding ale), or a
+  charm; the mine gives gold, or a relic deeper down; the mill gives the miller's sons, or a charm.
+- **The hero looks like who he is (28 Sep, from Artur's second playtest):** each background has its own Wesnoth
+  figure, on the map, at the field's edge and on his portrait. The Knight rides the Horseman with our pennant.
+  The others go on foot, since Wesnoth has no mounted mage and each should read as himself at a glance: the
+  Hedge Wizard is an Arch Mage (hood, beard, orb and staff), the Ranger is Wesnoth's own Ranger in his green hood
+  (nothing like the red poachers), and the Courtier is a Master at Arms in a plumed hat, who doffs it with a bow
+  now and then. A tired hero on foot hears that his legs are spent, not his horse.
 - **Sound and music:** everything is synthesised with Web Audio, with no files. There are five original pieces for a small medieval band: "The Heather Road" (a jig for open country), "Mist on the Meres" (the fen), "Steel and Feathers" (battle), "The King's Pavane" (court) and a title theme. The band is plucked lute, harp and harpsichord, recorder, fife, hurdy-gurdy drone, frame drum, brass and bells. Music crossfades between screens. Under it runs ambience: birds and wind on the heath, frogs in the fen, a crackling fire at court. Plus effects for clicks, coins, the day bell, fanfares, hits, arrows and spells. A test checks that every strong-beat melody note sits on its chord. The title waits for a click, so the music starts with it. M or the Sound button in the top right corner mutes.

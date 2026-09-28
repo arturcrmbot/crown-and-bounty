@@ -3,6 +3,38 @@
 Newest first. Each entry says what was played, how it felt to an experienced player (HoMM2, King's Bounty,
 modern RPGs), and what was done about it.
 
+## #7: 28 Sep 2026, the Ranger tames beasts, and finds offer real choices
+
+**Played:** Artur's two points from #4 ("as a ranger all of the animals would have joined me", and "you visit an
+old watchtower, look at some text and just get +1 something"), through the real UI in headless Edge. A Ranger on
+day I at the boars and the wolves. A Knight through Aldmoor's shrine, mill, watchtower and mine, down the dwarf's
+delving to Grimsby's door and back, then Sergeant Pike's journal at the patrol. Tamed wolves and boars in a
+battle. Then the Fenmarch's and generated provinces' finds in tests, `npm run difficulty` and the campaign sim.
+
+**How it felt:** the Ranger now plays like a ranger. On day I the boars follow him (3 of 9: he has room for no
+more), and the card says why the wolves won't: *"Beasts follow only someone who could beat them, and these don't
+think you could. Not yet."* Once his army could beat them, the pack lies down at his feet, shows him its den and
+the old cloak, and runs at his side for no wages. He gives up the fight's gold and the pelt Old Nan wants for
+Fireball, which is a real trade. The finds ask questions: the crows let you take the banner *or* the journal, and
+the journal turns out to be Sergeant Pike's father's, so the whole patrol goes home without a fight. The dwarf's
+tunnel is the best moment: help him instead of taking his cart, and you can come up behind the wolves, at
+Grimsby's door, on day III.
+
+**Found and fixed:**
+
+1. Tamed boars cost 3 leadership each, a poor deal next to archers: a day-I Ranger got 2 of 9, and the Ranger bot's
+   slow runs doubled (p90 16 days to 36) while its banner filled with boars. Boars now cost 2, like wolves.
+2. Coming up out of the delving or the punt, the hero stood on the mouth and hid it. He now comes up beside it.
+3. A spent story choice still showed, greyed out ("Whistle St Aldhelm's hymn" after the goose had been called).
+   Parleys whose flag has been used now go.
+
+**Checked:** all tests pass (taming, the finds and their callbacks, the two shortcuts, old saves getting the new
+choices at places not yet visited), every Aldmoor difficulty target holds (the wolves stay a gate for taming too:
+0% at the start), and the bot wins all five commissions with every background, taming as it goes. Generated maps
+come out exactly as before, so saves of them still match.
+
+**Still open (balance is parked, as agreed):** the Ranger bot's Aldmoor has a longer tail (a few runs of 30 to 57
+days out of 30) because it fills its banner with peasants. The finds' flags only last one commission.
 ## #6: 28 Sep 2026, Battle for Wesnoth's units
 
 **Played:** every Aldmoor fight (the patrol, wolves, boars, poachers, highwaymen and Grimsby's hideout) and the

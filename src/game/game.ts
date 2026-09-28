@@ -12,6 +12,7 @@ import type { Display } from './display';
 import type { InputHandlers } from './input';
 import { saveGame } from './save';
 import { whenUnitArt } from '../render/wesnoth';
+import { heroArtId } from '../render/units';
 import type { Screen } from './screen';
 
 const hashOf = (data: Uint8Array) => {
@@ -121,6 +122,7 @@ export class Game {
           },
         },
         this.speed,
+        heroArtId(this.adventure.state.hero.background),
       ),
     );
   }

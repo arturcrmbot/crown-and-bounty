@@ -151,8 +151,9 @@ try {
 
   const tower = await go('tower', 'Enter');
   check(tower === 'Old Watchtower', 'the fogged watchtower can be reached and entered');
+  check((await kc.lines()).includes('take one') && (await kc.choose('Take the banner')), 'the crows let him take the banner or the journal');
   const tops = await kc.state();
-  check(tops.hero.gear.banner === 'oldBanner' || tops.hero.pack.includes('oldBanner'), 'the watchtower holds the Old Tower Banner');
+  check(tops.hero.gear.banner === 'oldBanner' || tops.hero.pack.includes('oldBanner'), 'he takes the Old Tower Banner');
   await close();
 
   // The hero screen: H opens it; artifacts and stacks move by drag and drop, through the rules.
@@ -188,6 +189,7 @@ try {
   await page.waitForTimeout(60);
   check((await screen()) === 'adventure' && JSON.stringify((await kc.state()).army.map((a) => `${a.count} ${a.troop}`)) === JSON.stringify(line), 'Escape closes it, with the army as it was');
   await go('mine', 'Enter');
+  check(await kc.choose('Take the cart'), 'the dwarf gives up his ore cart');
   await close();
   check(learned.length > 0 && (await kc.state()).hero.level >= 2, `a first fight and some finds bring a level-up (${learned.join(', ')})`);
   await go('boars', 'Approach');

@@ -1,10 +1,11 @@
+import type { BackgroundId } from '../content/backgrounds';
 import type { TroopId } from '../content/troops';
 
 /** One frame of a Wesnoth animation: an image under `units/`, and how long it shows. */
 export type Frame = { image: string; ms: number };
 /** An attack: its frames, and how far in (ms) the blow lands, as Wesnoth's `start_time` puts it. */
 export type Attack = { frames: Frame[]; hit: number };
-export type Missile = 'arrow' | 'quarrel' | 'hex';
+export type Missile = 'arrow' | 'quarrel' | 'hex' | 'magic';
 
 /**
  * How one of our troops is drawn: a unit from Battle for Wesnoth 1.18, with the frames its `.cfg`
@@ -14,6 +15,8 @@ export type UnitArt = {
   /** The Wesnoth unit, and its `.cfg` under `data/core/units/`, for the credits. */
   unit: string;
   cfg: string;
+  /** On horseback, for the words: "your horse is spent". */
+  rides?: boolean;
   stand: string;
   /** A fidget now and then while it waits its turn, or on the map. */
   idle?: Frame[];
@@ -190,11 +193,13 @@ export const UNIT_ART: Record<TroopId, UnitArt> = {
 };
 
 const HORSE = 'human-loyalists/horseman/';
+const MAGI = 'human-magi/';
 
-/** The hero, on the map and at the field's edge in battle: a Horseman, with our colours on his lance. */
-export const HERO_ART: UnitArt = {
+/** The Knight of the Realm: a Horseman, with our colours on his lance. */
+const HORSEMAN: UnitArt = {
   unit: 'Horseman',
   cfg: 'humans/Horseman.cfg',
+  rides: true,
   stand: HORSE + 'horseman.png',
   idle: frames(HORSE, 'horseman-breeze-[1~4,2,5].png', '200,300*3,200*2'),
   move: frames(HORSE, 'horseman-se-run[1~8].png', 70),
@@ -203,9 +208,56 @@ export const HERO_ART: UnitArt = {
   death: frames(HORSE, 'horseman-se-die[1~5].png', 100),
 };
 
+/** The figures Aldric can be. */
+export type HeroArtId = 'heroKnight' | 'heroWizard' | 'heroRanger' | 'heroCourtier';
+
+/**
+ * Aldric as each background makes him, the same on the map and in battle. The Knight rides; the
+ * others go on foot, as Wesnoth has them (it has no mounted mage), each plainly who he is.
+ */
+export const HERO_ART: Record<HeroArtId, UnitArt> = {
+  heroKnight: HORSEMAN,
+  /** An Arch Mage: the hood, the beard, an orb and a staff. His fidget weighs the orb. */
+  heroWizard: {
+    unit: 'Arch Mage',
+    cfg: 'humans/Mage_Arch.cfg',
+    stand: MAGI + 'arch-mage.png',
+    idle: frames(MAGI, 'arch-mage-idle-[1~5,4~1].png', '100*4,2000,100*4'),
+    melee: attack(250, one(MAGI, 'arch-mage.png', 50), frames(MAGI, 'arch-mage-attack-staff-[1~2].png', '100,200'), one(MAGI, 'arch-mage-attack-magic-1.png', 75), one(MAGI, 'arch-mage.png', 75)),
+    // His bolt leaves his hands with the second frame, and flies while it holds.
+    ranged: { ...attack(300, one(MAGI, 'arch-mage.png', 50), frames(MAGI, 'arch-mage-attack-magic-[1,2,1].png', '100,150,75'), one(MAGI, 'arch-mage.png', 75)), missile: 'magic' },
+    defend: MAGI + 'arch-mage-defend.png',
+  },
+  /** Wesnoth's own Ranger: a green hood and cloak, a longbow and a sword. */
+  heroRanger: {
+    unit: 'Ranger',
+    cfg: 'humans/Woodsman_Ranger.cfg',
+    stand: OUTLAW + 'ranger.png',
+    melee: attack(275, one(OUTLAW, 'ranger-sword-defend-1.png', 50), frames(OUTLAW, 'ranger-sword-attack[1~4].png', 100), one(OUTLAW, 'ranger-sword-defend-1.png', 50)),
+    ranged: { ...attack(400, one(OUTLAW, 'ranger-bow.png', 75), frames(OUTLAW, 'ranger-bow-attack[1~4].png', '75,150,75*2'), one(OUTLAW, 'ranger-bow.png', 50)), missile: 'arrow' },
+    defend: OUTLAW + 'ranger-sword-defend-2.png',
+    defendRanged: OUTLAW + 'ranger-bow-defend.png',
+  },
+  /** A Master at Arms: the plumed hat, the fine coat and a sabre. His fidget doffs the hat with a bow. */
+  heroCourtier: {
+    unit: 'Master at Arms',
+    cfg: 'humans/Loyalist_Master_at_Arms.cfg',
+    stand: LOYAL + 'master-at-arms.png',
+    idle: frames(LOYAL, 'master-at-arms-victory-[1~6,5~1].png', '100*5,1000,100*5'),
+    melee: attack(200, one(LOYAL, 'master-at-arms.png', 25), frames(LOYAL, 'master-at-arms-melee-1-[1~3].png', '50*2,150'), frames(LOYAL, 'master-at-arms-recover-[1,2].png', 50), one(LOYAL, 'master-at-arms.png', 25)),
+    defend: LOYAL + 'master-at-arms-defend-2.png',
+  },
+};
+
+const HERO_OF: Record<BackgroundId, HeroArtId> = { knight: 'heroKnight', wizard: 'heroWizard', ranger: 'heroRanger', courtier: 'heroCourtier' };
+/** The figure of a background's hero: on the map, in the field and on his cards. */
+export const heroArtId = (background: BackgroundId): ArtId => HERO_OF[background];
+/** Whether a figure is Aldric's (`'hero'` is the Knight's, as before there were others). */
+export const isHeroArt = (id: ArtId) => id === 'hero' || id in HERO_ART;
+
 /** Everyone Wesnoth draws for us: the troops, and the hero. */
-export type ArtId = TroopId | 'hero';
-export const ART: Record<ArtId, UnitArt> = { ...UNIT_ART, hero: HERO_ART };
+export type ArtId = TroopId | 'hero' | HeroArtId;
+export const ART: Record<ArtId, UnitArt> = { ...UNIT_ART, ...HERO_ART, hero: HORSEMAN };
 
 /** Every image one unit uses. */
 export function artImages(art: UnitArt): string[] {

@@ -39,6 +39,8 @@ export class PrologueController implements Screen {
       const result = apply(this.state, action);
       if (!result) return;
       this.state = result.state;
+      // He kneels before the King as who he was.
+      this.screen.kneel(action.id);
       this.cards.show(storyCard(action.id, true));
       this.page = this.pages.length + 1;
     } else if (action.type === 'close') {

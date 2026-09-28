@@ -4,7 +4,7 @@ import { canCast, speedOf, statsOf, type BattleState } from '../rules/battle/bat
 import { COLS, colOf, HEXES, ROWS, rowOf } from '../rules/battle/hex';
 import { Bitmap, blit } from './bitmap';
 import { animLength, corpseSprite, everyFrame, hurtSprite, standard, STAND, troopFigure, type Pose, type Standard } from './battleSprites';
-import { ART } from './units';
+import { ART, type ArtId } from './units';
 import { drawBanner } from './banner';
 import { BAR, MAP_VIEW, paintBarBackground, paintFrame, SCREEN, type Rect } from './frame';
 import { bayer, hash, noise, shade } from './noise';
@@ -63,7 +63,7 @@ export const FLOAT_RISE = 30;
 /** The message ribbon across the top of the field. */
 const LOG_TOP = MAP_VIEW.y + 6;
 export const LOG_BOTTOM = LOG_TOP + 18;
-export type Shot = { from: [number, number]; to: [number, number]; t: number; kind: 'arrow' | 'quarrel' | 'hex' | 'bolt' | 'fire' | 'sparkle' | 'spark' | 'blood' | 'poof'; color?: number };
+export type Shot = { from: [number, number]; to: [number, number]; t: number; kind: 'arrow' | 'quarrel' | 'hex' | 'magic' | 'bolt' | 'fire' | 'sparkle' | 'spark' | 'blood' | 'poof'; color?: number };
 /** How much of a fireball's flight is the fall from the sky; it bursts after that. */
 export const FIRE_FALL = 0.35;
 
@@ -219,16 +219,20 @@ export class BattleScreen {
   private readonly overlay: Bitmap;
   private readonly field: Bitmap;
 
-  /** Aldric on his horse at the top left, his pennant in the wind, and the enemy's standard at the top right (beasts have none). */
-  private readonly commander = [...Array<Bitmap>(12).fill(troopFigure('hero', 'blue', 1, STAND, 'battle').sprite), ...everyFrame('hero', 'idle', 'blue', 1, 'battle', 100)];
-  private readonly commanderAt = troopFigure('hero', 'blue', 1, STAND, 'battle');
+  /** Aldric at the top left in his background's figure, and the enemy's standard at the top right (beasts have none). */
+  private readonly commander: Bitmap[];
+  private readonly commanderAt: { x: number; y: number };
   private readonly standard: Bitmap[] | null;
 
-  constructor(battle: BattleState) {
+  constructor(battle: BattleState, hero: ArtId = 'hero') {
     const { frame, overlay } = paintFrame();
     this.frame = frame;
     this.overlay = overlay;
     this.field = paintField(battle.obstacles, (battle.seed >>> 8) & 1023, battle.ground === 'fen');
+    const still = troopFigure(hero, 'blue', 1, STAND, 'battle');
+    const fidget = everyFrame(hero, 'idle', 'blue', 1, 'battle', 100);
+    this.commander = [...Array<Bitmap>(Math.max(12, Math.round(fidget.length * 1.5))).fill(still.sprite), ...(fidget.length > 1 ? fidget : [])];
+    this.commanderAt = still;
     const theirs = standardOf(battle.fighters.filter((f) => f.side === 'enemy').map((f) => f.troop));
     this.standard = theirs && Array.from({ length: 8 }, (_, i) => standard(theirs, i / 8, -1));
   }
@@ -354,16 +358,19 @@ export class BattleScreen {
         this.screen.set(Math.round(px - uy), Math.round(py + ux), head ? STONE[5] : feather ? (bolt ? RED[2] : NEUTRAL[5]) : bolt ? EARTH[1] : WOOD[2]);
         if (feather) this.screen.set(Math.round(px + uy), Math.round(py - ux), bolt ? RED[3] : NEUTRAL[6]);
       }
-    } else if (s.kind === 'hex') {
-      // A witch's hex: a sickly green orb in a plum glow that wobbles across, shedding sparks.
+    } else if (s.kind === 'hex' || s.kind === 'magic') {
+      // A witch's hex: a sickly green orb in a plum glow that wobbles across, shedding sparks. A
+      // wizard's bolt is the same shape in white and gold, in a blue glow, and flies straight.
+      const magic = s.kind === 'magic';
+      const [core, inner, outer, edge] = magic ? [NEUTRAL[7], GOLD[6], BLUE[5], BLUE[3]] : [NEUTRAL[7], LEAF[8], PLUM[4], PLUM[2]];
       const t = Math.min(1, s.t);
-      const at = (k: number) => [ax + (bx - ax) * k, ay + (by - ay) * k - Math.sin(k * Math.PI) * 26 + Math.sin(k * 17) * 4] as const;
+      const at = (k: number) => [ax + (bx - ax) * k, ay + (by - ay) * k - Math.sin(k * Math.PI) * (magic ? 10 : 26) + (magic ? 0 : Math.sin(k * 17) * 4)] as const;
       const [x, y] = at(t);
       for (let k = 1; k < 14; k++) {
         const [sx, sy] = at(Math.max(0, t - k * 0.03));
         const jx = sx + (hash(k, Math.floor(s.t * 40), 17) - 0.5) * 12;
         const jy = sy + (hash(k, Math.floor(s.t * 40), 18) - 0.5) * 12;
-        const c = k % 3 === 0 ? NEUTRAL[7] : k % 2 ? PLUM[4] : LEAF[8];
+        const c = k % 3 === 0 ? NEUTRAL[7] : k % 2 ? outer : inner;
         for (const [dx, dy] of k < 8 ? [[0, 0], [1, 0], [0, 1], [1, 1]] : [[0, 0]]) this.screen.set(Math.round(jx) + dx, Math.round(jy) + dy, c);
       }
       const pulse = 1 + Math.sin(s.t * 40) * 0.8;
@@ -373,7 +380,7 @@ export class BattleScreen {
           if (d > 8 + pulse) continue;
           const glow = d > 6;
           if (glow && bayer(Math.round(x + i), Math.round(y + j)) > 0.5) continue;
-          this.screen.set(Math.round(x + i), Math.round(y + j), d < 2.2 ? NEUTRAL[7] : d < 4.2 ? LEAF[8] : d < 6 ? PLUM[4] : PLUM[2]);
+          this.screen.set(Math.round(x + i), Math.round(y + j), d < 2.2 ? core : d < 4.2 ? inner : d < 6 ? outer : edge);
         }
       }
     } else if (s.kind === 'bolt') {

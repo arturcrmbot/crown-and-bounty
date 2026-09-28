@@ -16,7 +16,7 @@ export class CourtController implements Screen {
   readonly input = NO_INPUT;
   state: GameState;
   private readonly display: Display;
-  private readonly screen = new CourtScreen();
+  private readonly screen: CourtScreen;
   private readonly cards: CardView;
   private readonly hooks: { onChange: (state: GameState) => void; onDone: (state: GameState, rest: GameEvent[]) => void };
   private time = 0;
@@ -25,6 +25,7 @@ export class CourtController implements Screen {
     this.display = display;
     this.state = state;
     this.hooks = hooks;
+    this.screen = new CourtScreen(state.hero.background);
     this.screen.caption = `The King\u2019s Court \u00b7 Commission ${roman(state.campaign.chapter + 1)} complete`;
     this.cards = new CardView((action) => this.choose(action));
     this.showNext();

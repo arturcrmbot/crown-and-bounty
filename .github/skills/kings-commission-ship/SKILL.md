@@ -61,15 +61,18 @@ to a person: goblins small, trolls big, knights on horseback wide.
 
 On the map, one tile is 32 px. Every enemy stack is **one** creature (HoMM2 style) at `MAP_UNIT` 0.9:
 a person about 39 px tall, brightened a touch and inked round so it reads on the grass. Its size
-shows as a word: few, several, pack, lots, horde, throng, swarm. The hero is Wesnoth's Horseman at
-his own size (`MAP_HERO` 1, about 64 px with our blue pennant) in a gold ring: the easiest thing to
-find on the map. Buildings sit on the tile grid: huts are about 1 tile, mills and towers 2 to 3,
-castles 4.
+shows as a word: few, several, pack, lots, horde, throng, swarm. The hero goes at his own size
+(`MAP_HERO` 1) in his background's figure (`heroArtId` in `src/render/units.ts`), in a gold ring: the
+easiest thing to find on the map. The Knight rides Wesnoth's Horseman (about 64 px with our blue
+pennant); the others go on foot, about 45 px: the Wizard an Arch Mage, the Ranger Wesnoth's Ranger in
+his green hood (never to be mistaken for a Poacher), the Courtier a Master at Arms in a plumed hat.
+Their portraits agree with the figures. Buildings sit on the tile grid: huts are about 1 tile, mills
+and towers 2 to 3, castles 4.
 
 In battle, units are drawn at `BATTLE_UNIT` 1.5: a person about 65 px tall, most of two hex rows as
 in HoMM2. Goblins come out about 45 px, trolls 80, a mounted knight 105 with his lance. The three
-villains stand a quarter taller (`VILLAIN`), so the boss reads at a glance. Aldric's commander figure
-at the field's edge is the Horseman at battle size.
+villains stand a quarter taller (`VILLAIN`), so the boss reads at a glance. Aldric's figure at the
+field's edge is his background's, at battle size.
 
 ## Gotchas
 

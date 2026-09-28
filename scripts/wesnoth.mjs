@@ -158,9 +158,14 @@ function writeCredits(unitArt, paths) {
   writeFileSync(cacheFile, JSON.stringify(cache));
 
   const lines = [];
+  // The same figure can go by two names (the Knight's is also plain 'hero'): credit it once.
+  const credited = new Set();
+  const whose = (id) => (id.startsWith('hero') && id !== 'hero' ? `hero, as a ${id.slice(4)}` : id);
   for (const [troop, u] of Object.entries(unitArt)) {
+    if (credited.has(u)) continue;
+    credited.add(u);
     const own = paths.filter((p) => frameList(u).includes(p));
-    lines.push('', `### ${u.unit} (our ${troop === 'hero' ? 'hero' : troop})`, '', `Frames and timings from \`data/core/units/${u.cfg}\`.`, '', '| File | Licence | Artists, from the history | Added | Last changed |', '| --- | --- | --- | --- | --- |');
+    lines.push('', `### ${u.unit} (our ${whose(troop)})`, '', `Frames and timings from \`data/core/units/${u.cfg}\`.`, '', '| File | Licence | Artists, from the history | Added | Last changed |', '| --- | --- | --- | --- | --- |');
     for (const p of own) lines.push(`| \`${p}\` | ${info[p].licence} | ${info[p].names} | ${info[p].made} | ${info[p].changed} |`);
   }
   const credits = readFileSync('public/assets/CREDITS.md', 'utf8');

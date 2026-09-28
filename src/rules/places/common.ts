@@ -23,7 +23,7 @@ const USUAL: Record<Location['kind'], PlaceText> = {
   patrol: { done: ['Nobody here now.'] },
   hideout: { done: ['Nobody here now.'] },
   signpost: { about: ['The arms point every way at once.'] },
-  dig: { about: ['The map says here. Your horse is not convinced.'] },
+  dig: { about: ['The map says here. Your sergeant is not convinced.'] },
   event: { about: ['Something worth a look.'], done: ['Nothing more to see here.'] },
 };
 

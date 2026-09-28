@@ -1,7 +1,8 @@
+import type { BackgroundId } from '../content/backgrounds';
 import { Bitmap, blit, outline, SHADOW } from './bitmap';
 import { BAR, MAP_VIEW, paintFrame, SCREEN } from './frame';
 import { bayer, hash, noise, shade } from './noise';
-import { BLUE, CYCLE_FIRE, GOLD, INK, LIGHT_LUT, NEUTRAL, PARCHMENT, RED, SHADOW_LUT, SKIN, STONE, WOOD } from './palette';
+import { BLUE, CYCLE_FIRE, GOLD, INK, LEAF, LIGHT_LUT, NEUTRAL, PARCHMENT, RED, ROCK, SHADOW_LUT, SKIN, STONE, WOOD } from './palette';
 import { drawText } from './text';
 
 /** Where the wall meets the floor, and where the lines of the floor meet, in room pixels. */
@@ -288,29 +289,68 @@ export function goose(phase: number): Bitmap {
   return shaped;
 }
 
-/** Aldric kneeling on the carpet, seen from behind: red cape, steel helm and pauldrons, sword laid by. */
-function kneeling(): Bitmap {
+/**
+ * Aldric kneeling on the carpet, seen from behind, as his figure is on the map: the Knight in a red
+ * cape, steel helm and pauldrons, his sword laid by; the Wizard in a grey robe and a blue hood, his
+ * staff beside him; the Ranger in his green hooded cloak with a quiver, his bow laid down; the
+ * Courtier in a blue cape, blond under a black plumed hat, his sabre on the carpet.
+ */
+function kneeling(background: BackgroundId): Bitmap {
   const s = new Bitmap(60, 70);
   const cx = 30;
-  // The cape falls from the shoulders and pools on the floor.
+  const cloth = { knight: RED, wizard: [ROCK[2], ROCK[3], ROCK[4], ROCK[5], ROCK[6]], ranger: [LEAF[0], LEAF[1], LEAF[2], LEAF[3], LEAF[4]], courtier: BLUE }[background];
+  // The cape (or robe, or cloak) falls from the shoulders and pools on the floor.
   for (let y = 20; y < 66; y++) {
     for (let x = 2; x < 58; x++) {
-      const half = 13 + (y - 20) * 0.34;
+      const half = 13 + (y - 20) * (background === 'wizard' ? 0.38 : 0.34);
       if (Math.abs(x - cx) > half || (y > 60 && Math.abs(x - cx) > half - (y - 60) * 1.5)) continue;
       const fold = Math.sin((x - cx) / 3.4) * 0.12;
-      s.set(x, y, shade(RED, 0.52 + fold - (x - cx) / 90 - (y - 20) * 0.004, x, y));
+      s.set(x, y, shade(cloth, 0.52 + fold - (x - cx) / 90 - (y - 20) * 0.004, x, y));
+      if (background === 'courtier' && y > 57 && y < 60 && Math.abs(x - cx) < half - 1) s.set(x, y, y === 58 ? GOLD[5] : GOLD[3]);
     }
   }
-  // Pauldrons on both shoulders.
-  for (const px of [cx - 12, cx + 12]) for (let y = 16; y < 28; y++) for (let x = px - 8; x <= px + 8; x++) if (inEllipse(x, y, px, 22, 7.5, 5.5)) s.set(x, y, shade(STONE, 0.8 - (x - px) / 16 - (y - 16) * 0.02, x, y));
-  // Helm and plume.
-  for (let y = 3; y < 22; y++) for (let x = cx - 9; x <= cx + 9; x++) if (inEllipse(x, y, cx, 12, 8, 9)) s.set(x, y, shade(STONE, 0.82 - (x - cx) / 18 - (y - 3) * 0.012, x, y));
-  for (let y = 0; y < 8; y++) for (let x = cx - 2; x <= cx + 3; x++) if (Math.abs(x - cx - 0.5 + (y - 4) * 0.2) < 2.2 - y * 0.12) s.set(x, y, y < 3 ? RED[5] : RED[4]);
-  // Boot soles, and the sword laid on the carpet beside him.
+  const hood = (colour: readonly number[]) => {
+    // A hood over the head, peaked a little, draped on the shoulders.
+    for (let y = 14; y < 31; y++) for (let x = cx - 20; x <= cx + 20; x++) if (inEllipse(x, y, cx, 23, 19, 7)) s.set(x, y, shade(colour, 0.55 - (x - cx) / 40 - (y - 14) * 0.01, x, y));
+    for (let y = 1; y < 24; y++) for (let x = cx - 10; x <= cx + 10; x++) if (inEllipse(x, y, cx, 13, 9, 10) || (y < 6 && Math.abs(x - cx + 1) < (y - 1) * 0.8)) s.set(x, y, shade(colour, 0.66 - (x - cx) / 26 - (y - 3) * 0.012, x, y));
+  };
+  if (background === 'knight') {
+    // Pauldrons on both shoulders, the helm and its plume.
+    for (const px of [cx - 12, cx + 12]) for (let y = 16; y < 28; y++) for (let x = px - 8; x <= px + 8; x++) if (inEllipse(x, y, px, 22, 7.5, 5.5)) s.set(x, y, shade(STONE, 0.8 - (x - px) / 16 - (y - 16) * 0.02, x, y));
+    for (let y = 3; y < 22; y++) for (let x = cx - 9; x <= cx + 9; x++) if (inEllipse(x, y, cx, 12, 8, 9)) s.set(x, y, shade(STONE, 0.82 - (x - cx) / 18 - (y - 3) * 0.012, x, y));
+    for (let y = 0; y < 8; y++) for (let x = cx - 2; x <= cx + 3; x++) if (Math.abs(x - cx - 0.5 + (y - 4) * 0.2) < 2.2 - y * 0.12) s.set(x, y, y < 3 ? RED[5] : RED[4]);
+  } else if (background === 'wizard') hood([BLUE[0], BLUE[1], BLUE[2], BLUE[3], BLUE[4]]);
+  else if (background === 'ranger') {
+    // A quiver on his back, fletching over the right shoulder, under the hood.
+    for (let y = 8; y < 40; y++) for (let x = cx + 5; x < cx + 11; x++) if (Math.abs(x - (cx + 8) + (y - 24) * 0.25) < 2.6) s.set(x, y, y < 14 ? (x % 2 ? NEUTRAL[7] : RED[4]) : shade(WOOD, 0.45 - (x - cx - 8) / 10, x, y));
+    hood([LEAF[0], LEAF[1], LEAF[2], LEAF[3], LEAF[4]]);
+  } else {
+    // A lace collar, blond hair, and a broad black hat with the King's blue plume.
+    for (let y = 15; y < 30; y++) for (let x = cx - 20; x <= cx + 20; x++) if (inEllipse(x, y, cx, 22, 19, 6.5)) s.set(x, y, shade(BLUE, 0.62 - (x - cx) / 36, x, y));
+    for (let x = cx - 7; x <= cx + 7; x++) s.set(x, 17, x % 2 ? NEUTRAL[7] : NEUTRAL[6]);
+    for (let y = 7; y < 19; y++) for (let x = cx - 8; x <= cx + 8; x++) if (inEllipse(x, y, cx, 13, 7.5, 6.5)) s.set(x, y, shade(GOLD, 0.62 - (x - cx) / 22 + ((x + y) % 3 === 0 ? 0.1 : 0), x, y));
+    for (let y = 3; y < 13; y++) for (let x = cx - 15; x <= cx + 15; x++) if (inEllipse(x, y, cx, 9, 14.5, 2.6) || inEllipse(x, y, cx, 6, 7, 4.5)) s.set(x, y, shade([INK, NEUTRAL[0], NEUTRAL[1], NEUTRAL[2]], 0.6 - (x - cx) / 30 - (y - 3) * 0.02, x, y));
+    for (let k = 0; k < 14; k++) for (const dy of [0, 1]) s.set(cx - 3 - k, 3 - Math.round(Math.sin((k / 14) * Math.PI) * 3) + dy + (k > 10 ? k - 10 : 0), dy ? BLUE[3] : BLUE[5]);
+  }
+  // Boot soles, and what he fights with laid on the carpet beside him.
   for (let y = 62; y < 68; y++) for (let x = cx + 12; x < cx + 24; x++) if (y > 64 || x < cx + 19) s.set(x, y, STONE[2]);
-  for (let x = 2; x < 22; x++) s.set(x, 64, x < 4 ? STONE[4] : STONE[6]);
-  for (let y = 61; y < 68; y++) s.set(22, y, GOLD[4]);
-  s.set(24, 64, GOLD[5]);
+  if (background === 'wizard') {
+    for (let x = 1; x < 26; x++) s.set(x, 64, x < 3 ? GOLD[5] : WOOD[3 + (x % 2)]);
+    for (let y = 60; y < 67; y++) for (let x = 0; x < 6; x++) if (inEllipse(x, y, 3, 63, 2.6, 2.6)) s.set(x, y, x < 3 && y < 63 ? NEUTRAL[7] : BLUE[5]);
+  } else if (background === 'ranger') {
+    for (let x = 2; x < 28; x++) {
+      const bow = Math.round(Math.sin(((x - 2) / 26) * Math.PI) * 4);
+      s.set(x, 66 - bow, WOOD[4]);
+      s.set(x, 67 - bow, WOOD[2]);
+      s.set(x, 67, NEUTRAL[5]);
+    }
+  } else {
+    // A sword, or a sabre with its curve.
+    const curve = background === 'courtier';
+    for (let x = 2; x < 22; x++) s.set(x, 64 - (curve ? Math.round(((x - 12) / 10) ** 2 * 2) : 0), x < 4 ? STONE[4] : STONE[6]);
+    for (let y = 61; y < 68; y++) s.set(22, y, GOLD[4]);
+    s.set(24, 64, GOLD[5]);
+  }
   const shaped = outline(s, INK);
   for (let x = 6; x < 56; x++) shaped.under(x + 3, 68, SHADOW);
   return shaped;
@@ -319,13 +359,15 @@ function kneeling(): Bitmap {
 /** The King's court, between commissions: throne, banners, torchlight and the royal goose. */
 export class CourtScreen {
   readonly screen = new Bitmap(SCREEN.width, SCREEN.height);
+  /** The throne room with nobody kneeling in it yet. */
+  private readonly room: Bitmap;
   private readonly base: Bitmap;
   private readonly overlay: Bitmap;
   caption = '';
   /** The royal goose, at the King's feet. Before the first commission, Grimsby has it. */
   goose = true;
 
-  constructor() {
+  constructor(background: BackgroundId = 'knight') {
     const { frame, overlay } = paintFrame();
     this.overlay = overlay;
     const room = new Room();
@@ -349,8 +391,16 @@ export class CourtScreen {
     const b = room.bitmap;
     blit(b, guard(1), MAP_VIEW.x + 286, MAP_VIEW.y + 158);
     blit(b, guard(-1), MAP_VIEW.x + 608, MAP_VIEW.y + 158);
-    blit(b, kneeling(), MAP_VIEW.x + MID - 30, MAP_VIEW.y + 366);
+    this.room = new Bitmap(b.width, b.height);
+    this.room.data.set(b.data);
     this.base = b;
+    this.kneel(background);
+  }
+
+  /** Aldric on the carpet before the throne, as who he was. */
+  kneel(background: BackgroundId) {
+    this.base.data.set(this.room.data);
+    blit(this.base, kneeling(background), MAP_VIEW.x + MID - 30, MAP_VIEW.y + 366);
   }
 
   draw(phase: number): Bitmap {

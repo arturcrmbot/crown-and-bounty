@@ -22,7 +22,12 @@ const at = {
   nan: [1012, 556],
   cache: [772, 800],
   butts: [612, 640],
+  delving: [205, 828],
 } satisfies Record<string, Point>;
+
+/** Where the hero comes up at each end of the dwarf's old delving: beside its mouth, where he can be seen. */
+const DELVING_NORTH: Point = [200, 214];
+const DELVING_SOUTH: Point = [205, 862];
 
 /** The patrol's size: a gate, too strong for a fresh army (see `rules/difficulty.ts`). */
 const PATROL = { swordsmen: 50, crossbowmen: 29 };
@@ -38,6 +43,9 @@ const DESERTERS: Location = {
   recruits: { troop: 'swordsmen', count: 12, price: 60 },
   text: { about: ['Grimsby\u2019s former men, sharpening their swords and their excuses.', 'Swordsmen, for hire.'] },
 };
+
+/** The same camp when Sergeant Pike brings the whole patrol home: more of them, and in a better mood. */
+const PIKES_CAMP: Location = { ...DESERTERS, recruits: { troop: 'swordsmen', count: 20, price: 60 } };
 
 const paths: Point[][] = [
   // Watchtower, past the signpost and the hero, over the bridge to Westmere.
@@ -117,13 +125,38 @@ export const ALDMOOR: Province = {
       name: 'Old Watchtower',
       at: at.tower,
       done: false,
-      reveals: at.hideout,
-      artifact: 'oldBanner',
       text: {
         about: ['Abandoned for nearly a century.', '*Something has disturbed the crows recently.*'],
         done: ['Empty now, apart from some very offended crows.'],
-        visit: ['The crows were guarding an old soldier\u2019s journal: *"Grimsby rides south-west, into Darkwood. He sleeps with the goose."*'],
       },
+      pages: [
+        {
+          id: 'top',
+          when: { notFlag: 'tower' },
+          lines: [
+            'At the top of the stairs, the crows are guarding an old soldier\u2019s things: his **banner**, moth-eaten and much loved, that archers rally to, and his **journal**, which is all about Grimsby and somebody called Pike.',
+            '*The crows will let you take one. They are very clear about this.*',
+          ],
+          choices: [
+            {
+              id: 'banner',
+              label: 'Take the banner',
+              effects: { artifact: 'oldBanner', flags: { tower: 'banner' }, done: true },
+              lines: ['The crows let it go with very bad grace. Your archers stand up straighter just looking at it.'],
+            },
+            {
+              id: 'journal',
+              label: 'Take the journal',
+              effects: { reveal: { at: at.hideout, radius: 90 }, flags: { tower: 'journal', pike: true }, done: true },
+              lines: [
+                '*"Grimsby rides south-west, into Darkwood. He sleeps with the goose."*',
+                'And on the last page: *"My boy is a sergeant in the Baron\u2019s patrol now, God help him. If you see him, tell Pike his mother wants him home."*',
+              ],
+            },
+            { id: 'leave', label: 'Leave them to the crows', lines: ['The crows watch you all the way down the stairs.'] },
+          ],
+        },
+      ],
     },
     {
       id: 'mine',
@@ -131,13 +164,81 @@ export const ALDMOOR: Province = {
       name: 'Old Mine',
       at: at.mine,
       done: false,
-      gold: 400,
-      artifact: 'dwarvenHelm',
       text: {
         about: ['The rails lead into darkness.', 'Something down there is humming.'],
         done: ['The humming has stopped. The dwarf has asked you, twice, to leave.'],
-        visit: ['A forgotten ore cart, still full: **{gold} gold**.', 'The humming was a dwarf, who asks you to leave, and hands you his spare helmet to hurry you along.'],
       },
+      pages: [
+        {
+          id: 'cart',
+          when: { notFlag: 'dwarf' },
+          lines: [
+            'A forgotten ore cart, still full: a good **400 gold** of it. The humming is a dwarf, pushing it the wrong way up the rails.',
+            '*"Mine,"* he says. *"Well. Nobody\u2019s. But mine."* He looks like someone who would remember a favour.',
+          ],
+          choices: [
+            {
+              id: 'take',
+              label: 'Take the cart',
+              effects: { treasure: 400, flags: { dwarf: 'robbed' }, done: true },
+              lines: ['You push the cart out into the daylight. Behind you, the humming starts again, lower, and not at all friendly.'],
+            },
+            {
+              id: 'help',
+              label: 'Help him push it back down',
+              effects: { artifact: 'dwarvenHelm', flags: { dwarf: 'friend', delving: true }, reveal: { at: at.delving, radius: 70 } },
+              lines: [
+                'It takes all afternoon. At the bottom, the dwarf gives you his spare helmet and a long look.',
+                '*"A King\u2019s man with manners. Here: the old delving runs under Darkwood, and comes up behind them wolves. Mind your head."*',
+              ],
+            },
+          ],
+        },
+        {
+          id: 'delving',
+          when: { flag: 'delving' },
+          lines: ['The dwarf nods at the rails. *"South, under Darkwood, and up behind the wolves. Takes all day."*'],
+          choices: [
+            {
+              id: 'south',
+              label: 'Ride the old delving south',
+              effects: { travel: DELVING_SOUTH },
+              lines: ['You ride the old delving all day, in the dark, with your head down. You come up in Darkwood at dusk, well behind the wolves.'],
+            },
+            { id: 'stay', label: 'Not today' },
+          ],
+        },
+      ],
+    },
+    {
+      id: 'delving',
+      kind: 'mine',
+      name: 'The Old Delving',
+      at: at.delving,
+      done: false,
+      text: { about: ['An old mine mouth, in the middle of Darkwood.', '*Somebody has bricked it up from the inside.*'] },
+      pages: [
+        {
+          id: 'shut',
+          when: { notFlag: 'delving' },
+          lines: ['An old mine mouth, bricked up from the inside. Somewhere behind the bricks, very faintly, somebody is humming.'],
+          choices: [],
+        },
+        {
+          id: 'open',
+          when: { flag: 'delving' },
+          lines: ['The bricks are down. The rails run north under Darkwood, all the way back to the Old Mine.'],
+          choices: [
+            {
+              id: 'north',
+              label: 'Ride the old delving north',
+              effects: { travel: DELVING_NORTH },
+              lines: ['A long day in the dark. You come up at the Old Mine at dusk, where the dwarf pretends he hasn\u2019t been waiting.'],
+            },
+            { id: 'stay', label: 'Not today' },
+          ],
+        },
+      ],
     },
     { id: 'village', kind: 'village', name: 'Westmere', at: at.village, done: false, recruits: { troop: 'peasants', count: 20, price: 10 }, text: { about: ['Population 340. Friendly, if nosy.'] } },
     {
@@ -146,12 +247,36 @@ export const ALDMOOR: Province = {
       name: 'Westmere Mill',
       at: at.mill,
       done: false,
-      artifact: 'millersLoaf',
       text: {
         about: ['The wheel turns. The miller waves a floury hand.'],
         done: ['"Next week, officer. Flour doesn\u2019t grow on trees."'],
         visit: ['"Flour for the King\u2019s men!" Your troops eat well and march on.'],
       },
+      pages: [
+        {
+          id: 'miller',
+          when: { notFlag: 'miller' },
+          lines: [
+            '*"And for the King\u2019s officer, something special. One thing, mind: times are hard."*',
+            'He holds up a **loaf** that has not gone stale in living memory (*nobody marches on an empty stomach*), and his old mum\u2019s **charm for a fair wind** (*blows the chaff off the grain, and your lads along with it*).',
+          ],
+          choices: [
+            {
+              id: 'loaf',
+              label: 'Take the Everlasting Loaf',
+              effects: { artifact: 'millersLoaf', flags: { miller: 'loaf' } },
+              lines: ['*"Mind, it\u2019s still warm,"* says the miller. It has been warm for forty years.'],
+            },
+            {
+              id: 'wind',
+              label: 'Learn the fair-wind charm',
+              needs: { notSpell: 'haste' },
+              effects: { spell: 'haste', flags: { miller: 'wind' } },
+              lines: ['He whistles it for you, slowly, three times. The sails turn faster all by themselves.'],
+            },
+          ],
+        },
+      ],
     },
     {
       id: 'signpost',
@@ -179,10 +304,23 @@ export const ALDMOOR: Province = {
         {
           id: 'start',
           when: { notFlag: 'aldhelm' },
-          lines: ['A mossy wayside shrine to St Aldhelm, patron saint of lost geese. Somebody has left a single white feather on the step.'],
+          lines: [
+            'A mossy wayside shrine to St Aldhelm, patron saint of lost geese. Somebody has left a single white feather on the step.',
+            'The saint wears a **crown of hawthorn**, still in flower. With it on, they say, any beast in the greenwood would follow you, as they follow a ranger. And he still listens to anyone who **prays for a goose**.',
+          ],
           choices: [
-            { id: 'pray', label: 'Kneel and pray', effects: { stats: { knowledge: 1 }, flags: { aldhelm: 'prayed' }, done: true }, lines: ['You pray for the goose, and for the Baron\u2019s swift arrest. Your head feels oddly clear.'] },
-            { id: 'give', label: 'Leave an offering', needs: { gold: 150 }, effects: { mana: 20, xp: 150, flags: { aldhelm: 'gave' }, done: true }, lines: ['The coins clink into the box. Somewhere, a goose honks approvingly.'] },
+            {
+              id: 'pray',
+              label: 'Pray for the royal goose',
+              effects: { flags: { aldhelm: 'prayed', goose: true }, done: true },
+              lines: ['You pray for the goose, wherever the Baron keeps her. Far off, in Darkwood, something honks. *She heard. Next time you are near her, whistle the saint\u2019s hymn.*'],
+            },
+            {
+              id: 'crown',
+              label: 'Borrow the saint\u2019s crown',
+              effects: { artifact: 'hawthornCrown', flags: { aldhelm: 'crown' }, done: true },
+              lines: ['You lift it off, with an apology. The saint does not seem to mind. The geese on the pond look scandalised.'],
+            },
             { id: 'leave', label: 'Ride on' },
           ],
         },
@@ -270,6 +408,16 @@ export const ALDMOOR: Province = {
               'A few of them go. The rest decide they have had enough of the Baron, and make camp by the crossroads. *The few will be waiting for you behind Grimsby\u2019s walls.*',
             ],
           },
+          {
+            id: 'pike',
+            label: 'Give Sergeant Pike his father\u2019s journal',
+            needs: { flag: 'pike' },
+            effects: { done: true, xp: 300, place: PIKES_CAMP, flags: { pike: false } },
+            lines: [
+              'Sergeant Pike reads his father\u2019s journal twice, and blows his nose on his sleeve. *"Right, lads. Mum wants us home."*',
+              'The whole patrol follows him off to the crossroads, where they make camp. *They would fight for the Crown now, for the right money.*',
+            ],
+          },
         ],
         spoils: { place: DESERTERS },
         flees: 'Grimsby\u2019s patrol breaks and runs for Darkwood.',
@@ -293,6 +441,13 @@ export const ALDMOOR: Province = {
         reward: 2000,
         threat: 'The Baron shouts from the palisade: *"I have the goose AND the walls!"*',
         parleys: [
+          {
+            id: 'goose',
+            label: 'Whistle St Aldhelm\u2019s hymn',
+            needs: { flag: 'goose' },
+            effects: { desert: { troop: 'crossbowmen', share: 0.5 }, flags: { goose: false } },
+            lines: ['You whistle the saint\u2019s hymn under the palisade. Inside, the royal goose hears it and makes a break for it, honking, and half the crossbowmen go after her. *They catch her in the end. The crossbowmen, you suspect, have kept running.*'],
+          },
           {
             id: 'pardon',
             label: 'Talk the Baron round',
@@ -389,15 +544,7 @@ export const ALDMOOR: Province = {
         army: [{ troop: 'boars', count: 9 }],
         reward: 80,
         threat: 'The biggest one lowers its tusks and scrapes the ground.',
-        parleys: [
-          {
-            id: 'lead',
-            label: 'Lead them off with a trail of acorns',
-            needs: { background: 'ranger' },
-            effects: { done: true, xp: 60 },
-            lines: ['A trail of acorns into the woods, and the boars follow it like a procession.'],
-          },
-        ],
+        tamed: 'You lay a trail of acorns, and the boars follow it like a procession, all the way into your baggage train. They seem to think it was their idea.',
         flees: 'The boars crash off into the woods.',
         loot: 'Truffles where they were rooting! Worth {gold} at market.',
       },
@@ -416,14 +563,8 @@ export const ALDMOOR: Province = {
         army: [{ troop: 'wolves', count: 84 }],
         reward: 300,
         threat: 'They bare their teeth. One of them yawns, which is somehow worse.',
+        tamed: 'You sit down in the heather among them, and wait. At dusk the old grey leader lies down at your feet with a sigh. *The pack is yours now, or you are theirs: it\u2019s hard to say which.*',
         parleys: [
-          {
-            id: 'trail',
-            label: 'Lead the pack off the path',
-            needs: { background: 'ranger' },
-            effects: { done: true, xp: 150 },
-            lines: ['You lay a false trail through the heather, with a little help from the miller\u2019s ham. By noon the wolves are three valleys away, arguing about it.'],
-          },
           {
             id: 'venison',
             label: 'Throw them the King\u2019s venison',

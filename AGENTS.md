@@ -15,16 +15,17 @@ King's Commission (working title) is a browser game: King's Bounty (1990) rebuil
 - `src/content/`: typed game data. Provinces (land, places, decor), troops, spells, backgrounds, skills, perks and artifacts.
 - `src/rules/`: the game rules in plain TypeScript, with no Three.js, DOM or timers. Every change is `(state, action) → { state, events }`, and dice come from the seed in the state. The rules own the logical map (`map/`: 8 px walk grid, pathfinding, movement, fog). Tested with Vitest.
 - **Extending the game.** Most additions are data:
-  - Places: each kind of place is one module in `src/rules/places/` (a `PlaceKind`: its cards, arrival, own choices, payday, bot appetite), registered in `places/index.ts`.
-  - Content choices: shrines, quests, parleys and events are content. They're pages of choices with `Needs` (conditions and costs, including `flag`/`notFlag` and `notSpell`) and `Effects` (gold, stats, spells, troops, flags, reveal, xp, win, a new `place`, `reinforce` another enemy...), interpreted by `src/rules/effects/`, with story state in `state.flags`. A flag set by one place's spoils or choice can open a choice somewhere else: that is how choices come back later.
-  - Relics (`RELICS` in `src/content/artifacts.ts`) carry a background's trick as a `Bonus` (charge, volley, forestWalk, casts, mapSpells, bribes, hires), so any hero can pick one up.
+  - Places: each kind of place is one module in `src/rules/places/` (a `PlaceKind`: its cards, arrival, own choices, payday, bot appetite), registered in `places/index.ts`. Towers, mines and mills show their `pages` when they have them, so a find is a choice written as content.
+  - Beasts (troops with no wages that aren't villains) can be tamed by a hero with `tames`: see `tameOffer` in `places/enemy.ts`.
+  - Content choices: shrines, quests, parleys and events are content. They're pages of choices with `Needs` (conditions and costs, including `flag`/`notFlag` and `notSpell`) and `Effects` (gold, treasure, stats, spells, troops, flags, reveal, xp, win, a new `place`, `reinforce` another enemy, `desert` this one, `travel` by a shortcut...), interpreted by `src/rules/effects/`, with story state in `state.flags`. A flag set by one place's spoils or choice can open a choice somewhere else: that is how choices come back later.
+  - Relics (`RELICS` in `src/content/artifacts.ts`) carry a background's trick as a `Bonus` (charge, volley, forestWalk, casts, mapSpells, bribes, hires, tames), so any hero can pick one up.
   - Battle: spells, statuses and troop abilities are data in `src/content/spells.ts` and `troops.ts`, and the battle engine reads them generically.
   - Battle AI (`rules/battle/ai.ts`): it tries every option with the real rules, so new content needs no AI changes.
   - Map AI (`rules/map/roaming.ts`): an enemy's `behaviour` (guard, roam, hunt), `range` and `grows` are data. Enemies block the walk grid where the state says they stand.
 - `src/game/`: screen controllers (input, riding animation, events into cards and HUD), save/load. `main.ts` only boots.
 - `src/render/`: 2D pixel-art drawing into an indexed 960×540 framebuffer, with one 256-colour palette for everything (the Wesnoth units included). It reads the rules state and never changes it.
 - `src/ui/`: HTML/CSS overlays (parchment cards, hover label).
-- `public/assets/wesnoth/units/`: Battle for Wesnoth's unit PNGs, unchanged, from the pinned tag. `src/render/units.ts` says which unit and frames each troop uses (from its Wesnoth `.cfg`), and `src/render/wesnoth.ts` recolours, scales and matches them to the palette as the game runs. `npm run wesnoth` downloads missing images (`-- --palette` re-picks the palette colours the art adds, `-- --credits` rewrites `public/assets/CREDITS.md`).
+- `public/assets/wesnoth/units/`: Battle for Wesnoth's unit PNGs, unchanged, from the pinned tag. `src/render/units.ts` says which unit and frames each troop uses (from its Wesnoth `.cfg`), and which figure each background's hero is (`heroArtId`); `src/render/wesnoth.ts` recolours, scales and matches them to the palette as the game runs. `npm run wesnoth` downloads missing images (`-- --palette` re-picks the palette colours the art adds, `-- --credits` rewrites `public/assets/CREDITS.md`).
 
 ## Loop
 
