@@ -55,14 +55,21 @@ Do this for every background at least through its first fights. Do the balance n
 
 ## Scale bible
 
-On the map, one tile is 32 px. A standing person is about 32 px tall, and the hero on his horse
-about 52 px. Every enemy stack on the map is drawn as **one** creature at the same scale as in
-battle (HoMM2 style). Its size shows as a word: few, several, pack, lots, horde, throng, swarm.
-Buildings sit on the tile grid: huts are about 1 tile, mills and towers 2 to 3, castles 4.
+The troops and the hero are Battle for Wesnoth's units, whose people stand about 43 px tall in their
+72 px frames (`src/render/scale.ts` holds the numbers). Each unit keeps the size Wesnoth gave it next
+to a person: goblins small, trolls big, knights on horseback wide.
 
-In battle, a person is about 75 px tall, most of two hex rows as in HoMM2 (`BATTLE_PERSON` in
-`src/render/scale.ts`). Goblins are about 0.75× that, trolls about 1.4×, and mounted knights are wider.
-Aldric's commander figure at the field's edge is the map hero drawn at scale 2.3, not blown up.
+On the map, one tile is 32 px. Every enemy stack is **one** creature (HoMM2 style) at `MAP_UNIT` 0.9:
+a person about 39 px tall, brightened a touch and inked round so it reads on the grass. Its size
+shows as a word: few, several, pack, lots, horde, throng, swarm. The hero is Wesnoth's Horseman at
+his own size (`MAP_HERO` 1, about 64 px with our blue pennant) in a gold ring: the easiest thing to
+find on the map. Buildings sit on the tile grid: huts are about 1 tile, mills and towers 2 to 3,
+castles 4.
+
+In battle, units are drawn at `BATTLE_UNIT` 1.5: a person about 65 px tall, most of two hex rows as
+in HoMM2. Goblins come out about 45 px, trolls 80, a mounted knight 105 with his lance. The three
+villains stand a quarter taller (`VILLAIN`), so the boss reads at a glance. Aldric's commander figure
+at the field's edge is the Horseman at battle size.
 
 ## Gotchas
 
@@ -77,4 +84,7 @@ Aldric's commander figure at the field's edge is the map hero drawn at scale 2.3
 - Saves are keyed by version (`src/game/save.ts`). Bump it when the state's shape changes or when
   generated maps come out differently for the same seed.
 - Browsers only allow sound after a click or key press; M mutes.
-- No image-generation models: all art, music and sound are made in code.
+- No image-generation models. The units are Battle for Wesnoth's (`npm run wesnoth`; every file is
+  credited in `public/assets/CREDITS.md`, and the game is GPL-2.0-or-later); all other art, music
+  and sound are made in code. A new unit or frame goes in `src/render/units.ts`, then
+  `npm run wesnoth -- --palette --credits`.

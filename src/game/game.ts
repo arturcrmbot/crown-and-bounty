@@ -10,6 +10,7 @@ import { TitleController } from './title';
 import type { Display } from './display';
 import type { InputHandlers } from './input';
 import { saveGame } from './save';
+import { whenUnitArt } from '../render/wesnoth';
 import type { Screen } from './screen';
 
 const hashOf = (data: Uint8Array) => {
@@ -39,9 +40,9 @@ export class Game {
       new TitleController(this.display, resume, {
         onNew: () => {
           this.clear();
-          this.push(new PrologueController(this.display, fresh(), (state) => this.beginCommission(state, [])));
+          this.push(new PrologueController(this.display, fresh(), (state) => whenUnitArt(() => this.beginCommission(state, []))));
         },
-        onContinue: () => this.resume(resume!),
+        onContinue: () => whenUnitArt(() => this.resume(resume!)),
       }),
     );
   }
@@ -185,6 +186,8 @@ export class Game {
       screen: () => this.top.name,
       battle: () => (this.top instanceof BattleController ? this.top.debug() : null),
       frameHash: () => hashOf(this.top.bitmap.data),
+      /** Moves the clock on by hand, even when frozen: for frame-by-frame screenshots of an animation. */
+      advance: (seconds: number) => this.update(seconds, new Set()),
     };
   }
 }

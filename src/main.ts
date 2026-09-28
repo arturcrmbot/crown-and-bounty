@@ -7,6 +7,7 @@ import { failedCard, welcomeBackCard } from './game/intro';
 import { loadGame, saveGame, stopSaving } from './game/save';
 import { SCREEN } from './render/frame';
 import { paletteWords } from './render/palette';
+import { loadUnitArt } from './render/wesnoth';
 import { toggleMute, wakeAudio } from './audio/context';
 import { MuteButton } from './ui/mute';
 import { beginCommission, commissionAt, hasNextCommission, newGame, startFight, type GameState } from './rules/game';
@@ -55,6 +56,9 @@ function debugStart(): GameState {
   return fightAt ? (startFight({ ...base, opening: undefined }, fightAt)?.state ?? base) : base;
 }
 
+// The troops are Battle for Wesnoth's units: their images load while the title shows, and a
+// debug start (straight onto the map or into a fight) waits for them.
+const unitArt = loadUnitArt();
 const display = new Display(SCREEN.width, SCREEN.height);
 const game = new Game(display, Math.max(1, Number(query.get('speed') ?? 1)));
 const input = new Input(display, game.input);
@@ -62,6 +66,7 @@ const input = new Input(display, game.input);
 // ?quick=1 skips them too; ?title=1 brings them back even when frozen.
 const quick = (frozen && query.get('title') !== '1') || ['quick', 'battle', 'court', 'commission', 'sceptre', 'reveal', 'x', 'hero', 'spells'].some((k) => query.has(k));
 if (quick) {
+  await unitArt;
   // ?reveal=1 lifts the fog, for looking the whole map over.
   const start = resume ?? (query.has('reveal') ? { ...debugStart(), explored: debugStart().explored.map(() => -1) } : debugStart());
   game.resume(start);

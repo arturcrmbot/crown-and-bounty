@@ -1,10 +1,11 @@
 import { SPELLS, type SpellId } from '../content/spells';
-import { TROOPS, troops, type TroopId } from '../content/troops';
+import { TROOPS, troops } from '../content/troops';
 import { chooseAction } from '../rules/battle/ai';
 import { activeFighter, battleAct, canCast, castsLeft, CHARGE_BONUS, fighterById, isCharge, options, spellCost, spellDamage, spellVictims, strike, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
 import { paintBanner } from '../render/banner';
 import { BattleScreen, BUTTONS, hexAt, hexCentre, type BattleView, type Shot } from '../render/battleScreen';
-import { FIGHTER_FOOT } from '../render/battleSprites';
+import { animLength, bodyHeight, hitTime, type AnimName } from '../render/battleSprites';
+import { ART } from '../render/units';
 import { MAP_VIEW } from '../render/frame';
 import { BLUE, GOLD, NEUTRAL, RED } from '../render/palette';
 import { CardView } from '../ui/card';
@@ -15,8 +16,12 @@ import type { Screen } from './screen';
 type Step = { duration: number; elapsed: number; started: boolean; start?: () => void; tick?: (t: number) => void; end?: () => void };
 
 const ENEMY_THINK = 0.35;
-/** How tall the beasts' bodies stand above their feet (their sprites are wider than they are tall). */
-const BODY_HEIGHT: Partial<Record<TroopId, number>> = { wolves: 34, boars: 30 };
+/** Wesnoth's animation milliseconds as our seconds: its own timing, a touch brisker. */
+const MS = 0.00085;
+/** Wesnoth's flinch starts a little before the blow lands. */
+const FLINCH_EARLY = 126;
+/** Wesnoth pulses a unit red twice when it is hit: on for each of these stretches of the first 300 ms. */
+const pulse = (k: number) => (k > 0.05 && k < 0.35) || (k > 0.55 && k < 0.85);
 
 /**
  * A battle on screen. The rules decide everything; this plays each event as a little animation,
@@ -53,6 +58,9 @@ export class BattleController implements Screen {
     });
     this.view = {
       positions: new Map(),
+      offsets: new Map(),
+      facings: new Map(),
+      counts: new Map(),
       poses: new Map(),
       flashing: new Set(),
       dying: new Set(),
@@ -90,7 +98,7 @@ export class BattleController implements Screen {
     const f = fighterById(this.battle, id);
     // Over the stack's own hex, not wherever a blow has knocked it, so it never lands on the attacker.
     const [x, y] = hexCentre(f.at);
-    const top = y + 12 - (BODY_HEIGHT[f.troop] ?? FIGHTER_FOOT(f.troop)) - 16;
+    const top = y + 12 - bodyHeight(f.troop, 'battle') - 16;
     const crowd = this.view.floaters.filter((o) => o.age < 0.6 && Math.abs(o.x - x) < 44 && Math.abs(o.y - top) < 40).length;
     this.view.floaters.push({ x, y: top - crowd * 16, text, color, age: 0 });
   }
@@ -99,13 +107,37 @@ export class BattleController implements Screen {
   private impact(target: number, damage: number, heavy: boolean) {
     const f = fighterById(this.battle, target);
     const [x, y] = hexCentre(f.at);
-    const chest = y + 12 - Math.round((BODY_HEIGHT[f.troop] ?? FIGHTER_FOOT(f.troop)) * 0.5);
+    const chest = y + 12 - Math.round(bodyHeight(f.troop, 'battle') * 0.5);
     for (const kind of ['spark', 'blood'] as const) {
       const shot = { from: [x, chest] as [number, number], to: [x, chest] as [number, number], t: 0, kind };
       this.view.shots.push(shot);
       this.sparks.push(shot);
     }
     this.view.shake = Math.max(this.view.shake, Math.min(8, (heavy ? 2 : 0.8) + damage / 40));
+  }
+
+  /**
+   * A stack that goes down: it plays its death where Wesnoth drew one, and a puff of dust where it
+   * didn't. Then its fallen stay on the field.
+   */
+  private fall(target: number) {
+    const f = fighterById(this.battle, target);
+    if (!ART[f.troop].death) return this.poof(target);
+    const length = animLength(f.troop, 'death');
+    this.step(length * MS, {
+      start: () => this.view.facings.set(target, this.facingOf(f)),
+      tick: (t) => this.view.poses.set(target, { anim: 'death', ms: t * length }),
+      end: () => {
+        this.view.poses.delete(target);
+        this.view.facings.delete(target);
+        this.view.dying.delete(target);
+      },
+    });
+  }
+
+  /** Which way a stack looks when nothing turns it: towards the enemy's side. */
+  private facingOf(f: { side: string }): 1 | -1 {
+    return f.side === 'player' ? 1 : -1;
   }
 
   /** A stack that goes down leaves a puff of dust, then its fallen. */
@@ -119,6 +151,105 @@ export class BattleController implements Screen {
       },
       tick: (t) => (dust.t = t),
       end: () => this.view.shots.splice(this.view.shots.indexOf(dust), 1),
+    });
+  }
+
+  /** Takes `killed` from what is left of a stack; true when that was the last of them. */
+  private wound(left: Map<number, number>, id: number, killed: number): boolean {
+    const was = left.get(id) ?? 0;
+    left.set(id, Math.max(0, was - killed));
+    return was > 0 && was - killed <= 0;
+  }
+
+  /**
+   * One blow or shot, played as Wesnoth plays it. The attacker runs its attack frames (lunging in at
+   * close quarters); at the frame where the blow lands, and not before, come the flash, the sound,
+   * the numbers and the jolt; the target flinches, reels and pulses red twice.
+   */
+  private strike(e: Extract<BattleEvent, { type: 'hit' }>, left: number, dies: boolean) {
+    const v = this.view;
+    const attacker = fighterById(this.battle, e.attacker);
+    const target = fighterById(this.battle, e.target);
+    const [ax, ay] = hexCentre(attacker.at);
+    const [tx, ty] = hexCentre(target.at);
+    const len = Math.hypot(tx - ax, ty - ay) || 1;
+    const [ux, uy] = [(tx - ax) / len, (ty - ay) / len];
+    const art = ART[attacker.troop];
+    const anim = e.ranged ? 'ranged' : e.charge && art.charge ? 'charge' : 'melee';
+    const hit = hitTime(attacker.troop, anim);
+    const total = Math.max(animLength(attacker.troop, anim), hit + 1);
+    const after = Math.max(300, total - hit);
+    // Lunge in: still at first, then hard to about half way at the blow, then back to its hex.
+    const reach = e.ranged ? 0 : Math.min(30, len * 0.45);
+    const lunge = (ms: number) => (ms < hit ? reach * Math.max(0, (ms - hit * 0.4) / (hit * 0.6)) ** 2 : reach * Math.max(0, 1 - (ms - hit) / after));
+    const swing = (ms: number) => {
+      v.poses.set(e.attacker, { anim, ms });
+      v.offsets.set(e.attacker, [ux * lunge(ms), uy * lunge(ms)]);
+    };
+    const flinch = (): AnimName => (e.ranged ? 'defendRanged' : 'defend');
+    const turn = () => {
+      // Each turns to the other for the exchange, whichever side of it they stand.
+      if (Math.abs(tx - ax) > 1) {
+        v.facings.set(e.attacker, tx > ax ? 1 : -1);
+        v.facings.set(e.target, tx > ax ? -1 : 1);
+      }
+    };
+    const missile = e.ranged ? (art.ranged?.missile ?? 'arrow') : null;
+    const release = missile ? Math.max(0, hit - 150) : hit;
+    this.step(release * MS, {
+      start: turn,
+      tick: (t) => {
+        swing(t * release);
+        if (!missile && t * release >= hit - FLINCH_EARLY) v.poses.set(e.target, { anim: flinch(), ms: 0 });
+      },
+    });
+    if (missile) {
+      // The release frame holds while the shot flies, however far.
+      const shot: Shot = { from: [ax + ux * 12, ay - bodyHeight(attacker.troop, 'battle') * 0.55], to: [tx, ty + 12 - bodyHeight(target.troop, 'battle') * 0.5], t: 0, kind: missile };
+      this.step(0.16 + len / 1500, {
+        start: () => {
+          v.shots.push(shot);
+          play(missile === 'hex' ? 'spell' : 'shoot');
+        },
+        tick: (t) => {
+          shot.t = t;
+          swing(release + (hit - release) * t);
+          if (t > 0.8) v.poses.set(e.target, { anim: flinch(), ms: 0 });
+        },
+        end: () => v.shots.splice(v.shots.indexOf(shot), 1),
+      });
+    }
+    const reel = (e.ranged ? 4 : 8) * (e.charge ? 1.6 : 1);
+    this.step(after * MS, {
+      start: () => {
+        v.flashing.add(e.target);
+        v.poses.set(e.target, { anim: flinch(), ms: 0 });
+        v.counts.set(e.target, left);
+        if (!e.ranged) play('hit');
+        this.impact(e.target, e.damage, !e.ranged);
+        if (e.charge) {
+          this.float(e.attacker, 'Charge!', GOLD[6]);
+          play('charge');
+          v.shake = Math.max(v.shake, 6);
+        }
+        this.float(e.target, e.killed ? `-${e.killed}` : `-${e.damage} hp`, e.killed ? RED[5] : RED[6]);
+        v.log = `${this.fighterName(e.attacker)} ${e.ranged ? 'shoot' : e.retaliation ? 'strike back at' : e.charge ? 'charge' : 'hit'} ${this.fighterName(e.target).replace(/^(Your|Their) /, (m) => m.toLowerCase())} for ${e.damage}${e.killed ? `. ${e.killed} perish.` : '.'}${e.hexed ? ' The hex slows them down.' : ''}`;
+      },
+      tick: (t) => {
+        const ms = t * after;
+        swing(hit + ms);
+        v.flashing[pulse(ms / 300) ? 'add' : 'delete'](e.target);
+        const k = Math.sin(Math.min(1, t * 1.8) * Math.PI) * (1 - t * 0.4);
+        v.offsets.set(e.target, [ux * reel * k, uy * reel * k]);
+      },
+      end: () => {
+        for (const map of [v.poses, v.offsets, v.facings]) map.delete(e.attacker);
+        v.flashing.delete(e.target);
+        v.offsets.delete(e.target);
+        if (dies) return;
+        v.poses.delete(e.target);
+        v.facings.delete(e.target);
+      },
     });
   }
 
@@ -137,107 +268,45 @@ export class BattleController implements Screen {
 
   private animate(events: BattleEvent[], before: BattleState) {
     const v = this.view;
+    // Who is left in each stack as the events play, so a stack falls at the blow that kills it, and
+    // its count drops only as each blow lands.
+    const left = new Map(before.fighters.map((f) => [f.id, f.count]));
+    for (const f of before.fighters) if (fighterById(this.battle, f.id).count !== f.count) v.counts.set(f.id, f.count);
     for (const e of events) {
       switch (e.type) {
         case 'move': {
+          const f = fighterById(this.battle, e.fighter);
           const path = e.path.map(hexCentre);
           // The rules already have the stack at the end of its path; start drawing it where it stood.
           const start = hexCentre(fighterById(before, e.fighter).at);
           v.positions.set(e.fighter, start);
+          // Riders gallop and beasts lope, in their own frames; folk on foot hop from hex to hex.
+          const frames = !!ART[f.troop].move;
           for (const [n, to] of path.entries()) {
             const a = n === 0 ? start : path[n - 1];
             this.step(0.12, {
+              start: () => to[0] !== a[0] && v.facings.set(e.fighter, to[0] > a[0] ? 1 : -1),
               tick: (t) => {
-                v.positions.set(e.fighter, [a[0] + (to[0] - a[0]) * t, a[1] + (to[1] - a[1]) * t]);
-                v.poses.set(e.fighter, t < 0.5 ? 'step' : 'idle');
+                const hop = frames ? 0 : Math.sin(t * Math.PI) * 4;
+                v.positions.set(e.fighter, [a[0] + (to[0] - a[0]) * t, a[1] + (to[1] - a[1]) * t - hop]);
+                v.poses.set(e.fighter, frames ? { anim: 'move', ms: (n + t) * 120 } : { anim: 'stand', ms: 0 });
               },
             });
           }
-          this.step(0.01, { end: () => v.positions.delete(e.fighter) });
+          this.step(0.01, {
+            end: () => {
+              v.positions.delete(e.fighter);
+              v.poses.delete(e.fighter);
+              v.facings.delete(e.fighter);
+            },
+          });
           break;
         }
         case 'hit': {
-          const target = fighterById(this.battle, e.target);
-          if (target.count === 0) v.dying.add(e.target);
-          const [ax, ay] = hexCentre(fighterById(this.battle, e.attacker).at);
-          const [tx, ty] = hexCentre(target.at);
-          if (e.ranged) {
-            const shot = { from: [ax, ay - 20] as [number, number], to: [tx, ty - 18] as [number, number], t: 0, kind: 'arrow' as const };
-            this.step(0.3, {
-              start: () => {
-                v.shots.push(shot);
-                play('shoot');
-              },
-              tick: (t) => (shot.t = t),
-              end: () => v.shots.splice(v.shots.indexOf(shot), 1),
-            });
-          } else {
-            // Wind up (lean back), lunge in hard, then the blow lands at the far end of the lunge.
-            const len = Math.hypot(tx - ax, ty - ay) || 1;
-            const [ux, uy] = [(tx - ax) / len, (ty - ay) / len];
-            const reach = Math.min(26, len * 0.42);
-            this.step(0.12, {
-              tick: (t) => {
-                const k = -5 * Math.sin((t * Math.PI) / 2);
-                v.positions.set(e.attacker, [ax + ux * k, ay + uy * k]);
-                v.poses.set(e.attacker, 'step');
-              },
-            });
-            this.step(0.09, {
-              tick: (t) => {
-                const k = -5 + (reach + 5) * t * t;
-                v.positions.set(e.attacker, [ax + ux * k, ay + uy * k]);
-                v.poses.set(e.attacker, 'strike');
-              },
-            });
-          }
-          // The target reels away from the blow while it flashes, and the game holds still for a beat.
-          const reel = (() => {
-            const len = Math.hypot(tx - ax, ty - ay) || 1;
-            return [((tx - ax) / len) * (e.ranged ? 4 : 8), ((ty - ay) / len) * (e.ranged ? 4 : 8)] as const;
-          })();
-          this.step(e.ranged ? 0.2 : 0.26, {
-            tick: (t) => {
-              if (target.count === 0) return;
-              const k = Math.sin(Math.min(1, t * 1.6) * Math.PI) * (1 - t * 0.4);
-              v.positions.set(e.target, [tx + reel[0] * k, ty + reel[1] * k]);
-            },
-            start: () => {
-              v.flashing.add(e.target);
-              if (!e.ranged) play('hit');
-              this.impact(e.target, e.damage, !e.ranged);
-              if (e.charge) {
-                this.float(e.attacker, 'Charge!', GOLD[6]);
-                play('charge');
-                v.shake = Math.max(v.shake, 6);
-              }
-              this.float(e.target, e.killed ? `-${e.killed}` : `-${e.damage} hp`, e.killed ? RED[5] : RED[6]);
-              v.log = `${this.fighterName(e.attacker)} ${e.ranged ? 'shoot' : e.retaliation ? 'strike back at' : e.charge ? 'charge' : 'hit'} ${this.fighterName(e.target).replace(/^(Your|Their) /, (m) => m.toLowerCase())} for ${e.damage}${e.killed ? `. ${e.killed} perish.` : '.'}${e.hexed ? ' The hex slows them down.' : ''}`;
-            },
-            end: () => {
-              v.flashing.delete(e.target);
-              v.positions.delete(e.target);
-              if (!e.ranged) {
-                v.positions.delete(e.attacker);
-                v.poses.delete(e.attacker);
-              }
-              if (!target.count) return;
-              v.dying.delete(e.target);
-            },
-          });
-          if (!e.ranged) {
-            // The attacker steps back to his hex.
-            const len = Math.hypot(tx - ax, ty - ay) || 1;
-            const reach = Math.min(26, len * 0.42);
-            this.step(0.1, {
-              tick: (t) => {
-                const k = reach * (1 - t);
-                v.positions.set(e.attacker, [ax + ((tx - ax) / len) * k, ay + ((ty - ay) / len) * k]);
-              },
-              end: () => v.positions.delete(e.attacker),
-            });
-          }
-          if (target.count === 0) this.poof(e.target);
+          const dies = this.wound(left, e.target, e.killed);
+          if (dies) v.dying.add(e.target);
+          this.strike(e, left.get(e.target) ?? 0, dies);
+          if (dies) this.fall(e.target);
           break;
         }
         case 'regen':
@@ -250,7 +319,9 @@ export class BattleController implements Screen {
           break;
         case 'spell': {
           const target = fighterById(this.battle, e.target);
-          if (target.count === 0) v.dying.add(e.target);
+          const dies = this.wound(left, e.target, e.killed);
+          const remaining = left.get(e.target) ?? 0;
+          if (dies) v.dying.add(e.target);
           const [tx, ty] = hexCentre(target.at);
           const look = SPELLS[e.spell].look;
           if (e.splash) {
@@ -258,14 +329,16 @@ export class BattleController implements Screen {
             this.step(0.08, {
               start: () => {
                 v.flashing.add(e.target);
+                v.poses.set(e.target, { anim: 'defendRanged', ms: 0 });
+                v.counts.set(e.target, remaining);
                 this.float(e.target, e.killed ? `-${e.killed}` : `-${e.damage} hp`, target.side === 'player' ? RED[5] : GOLD[6]);
               },
               end: () => {
                 v.flashing.delete(e.target);
-                if (target.count) v.dying.delete(e.target);
+                if (!dies) v.poses.delete(e.target);
               },
             });
-            if (target.count === 0) this.poof(e.target);
+            if (dies) this.fall(e.target);
             break;
           }
           const colour = look.colour === 'blue' ? BLUE[6] : look.colour === 'red' ? RED[5] : GOLD[6];
@@ -275,29 +348,37 @@ export class BattleController implements Screen {
               v.shots.push(shot);
               play(look.kind === 'sparkle' ? 'spell' : 'bolt');
               v.log = `${this.battle.hero.name ?? 'Aldric'} casts ${SPELLS[e.spell].name} on ${this.fighterName(e.target).toLowerCase()}${e.damage ? `: ${e.damage} damage${e.killed ? `, ${e.killed} perish` : ''}` : ''}.`;
+              v.counts.set(e.target, remaining);
               if (e.damage) {
                 v.flashing.add(e.target);
+                v.poses.set(e.target, { anim: 'defendRanged', ms: 0 });
                 this.float(e.target, e.killed ? `-${e.killed}` : `-${e.damage} hp`, GOLD[6]);
                 if (look.kind !== 'sparkle') v.shake = Math.max(v.shake, look.kind === 'fire' ? 5 : 4);
               }
             },
-            tick: (t) => (shot.t = t),
+            tick: (t) => {
+              shot.t = t;
+              // The spell burns in two red pulses, as Wesnoth flashes a unit that is hit.
+              if (e.damage) v.flashing[pulse(t * 0.95) ? 'add' : 'delete'](e.target);
+            },
             end: () => {
               v.shots.splice(v.shots.indexOf(shot), 1);
               v.flashing.delete(e.target);
-              if (target.count) v.dying.delete(e.target);
+              if (!dies) v.poses.delete(e.target);
             },
           });
-          if (target.count === 0) this.poof(e.target);
+          if (dies) this.fall(e.target);
           break;
         }
         case 'wait':
         case 'defend':
-          this.step(0.25, {
+          this.step(e.type === 'defend' ? 0.45 : 0.25, {
             start: () => {
               this.float(e.fighter, e.type === 'wait' ? 'waits' : 'defends', NEUTRAL[7]);
               v.log = `${this.fighterName(e.fighter)} ${e.type === 'wait' ? 'wait for a better moment' : 'raise their shields'}.`;
+              if (e.type === 'defend') v.poses.set(e.fighter, { anim: 'defend', ms: 0 });
             },
+            end: () => v.poses.delete(e.fighter),
           });
           break;
         case 'round':
@@ -360,6 +441,7 @@ export class BattleController implements Screen {
     }
     const f = activeFighter(this.battle);
     v.active = f?.id ?? null;
+    if (this.queue.length === 0) v.counts.clear();
     if (this.queue.length === 0) {
       if (this.battle.result) {
         if (!this.finished) {
