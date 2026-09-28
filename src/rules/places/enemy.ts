@@ -1,7 +1,7 @@
 import { ARTIFACTS } from '../../content/artifacts';
 import { isBeast, TROOPS } from '../../content/troops';
 import { applyEffects, choiceButton } from '../effects';
-import { battleXp, beat, fight, startFight, winChance } from '../fight';
+import { battleXp, beat, fight, likelyLossesLine, startFight, winChance } from '../fight';
 import { foundNote, gainXp, giveArtifact, heroStats } from '../hero';
 import { addTroops, close, coins, leadershipUsed, show, stillWithYou, update, type Army, type Choice, type ContentChoice, type GameState, type Location, type Result } from '../state';
 import { countsExactly, forceLine, note, option, ride, say, words } from './common';
@@ -231,7 +231,7 @@ export function enemy(kind: 'patrol' | 'hideout'): PlaceKind {
       const yields = cowed(state, place, chance) ? [option(place, 'Demand their surrender', 'surrender')] : [];
       return say(state, place, {
         title: place.name,
-        lines: [foe.threat, oddsLine(chance), ...scouts, ...carriesLine(state, place), ...tameLine(state, place)],
+        lines: [foe.threat, oddsLine(chance), likelyLossesLine(state, place.id), ...scouts, ...carriesLine(state, place), ...tameLine(state, place)],
         choices: [{ ...option(place, foe.charge ?? 'Fight', 'fight'), detail: FIGHT_NOTE }, { ...option(place, 'Let the sergeants handle it', 'auto'), detail: SERGEANTS_NOTE }, ...yields, ...hireButton(state, place), ...tameButton(state, place), ...parleys(state, place), retreat],
       });
     },
