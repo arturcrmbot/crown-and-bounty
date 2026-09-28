@@ -2,7 +2,7 @@ import { RELICS } from '../content/artifacts';
 import type { Commission } from '../content/campaign';
 import { SPELLS, type SpellId } from '../content/spells';
 import type { Band, VillainTemplate } from '../content/villains';
-import { troopPower, troops, type TroopId } from '../content/troops';
+import { troopPower, troops, TROOPS, type TroopId } from '../content/troops';
 import type { Province } from '../content/types';
 import { buildMap, CELL, gridWithEnemies, poolDistance, Terrain } from './map/model';
 import { nearest, smooth, type Point } from './map/geometry';
@@ -108,6 +108,9 @@ function along(path: Point[], share: number): Point {
   }
   return fine[fine.length - 1];
 }
+
+/** A villain who casts and gives orders is worth men: each one leads a hideout this much smaller. */
+const TRICKS = 0.85;
 
 function enemy(band: Band, power: number, reward: number, bosses: TroopId[] = []): Enemy {
   const words: Enemy = { look: band.look, lines: band.lines, threat: band.threat, flees: band.flees, loot: band.loot, army: [...armyOf(band.troops, power), ...bosses.map((troop) => ({ troop, count: 1 }))], reward };
@@ -371,7 +374,7 @@ function attempt(seed: number, v: VillainTemplate, chapter: number): Province {
       name: v.hideout.name,
       at: at(hideout),
       done: false,
-      enemy: { ...enemy(v.hideout, BASE.hideout * s, Math.round(3000 * s), v.hideout.bosses), grows: 0.05, parleys: [weaknessParley(v, s), ...(v.parleys?.hideout ?? [])] },
+      enemy: { ...enemy(v.hideout, BASE.hideout * s * TRICKS ** (v.hideout.bosses ?? []).filter((t) => TROOPS[t].caster).length, Math.round(3000 * s), v.hideout.bosses), grows: 0.05, parleys: [weaknessParley(v, s), ...(v.parleys?.hideout ?? [])] },
       ...(v.hideout.artifact ? { artifact: v.hideout.artifact } : {}),
       text: { done: v.hideout.done },
     },

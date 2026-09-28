@@ -167,6 +167,7 @@ const TROOP_ART: Record<Exclude<TroopId, HeroId>, UnitArt> = {
     melee: attack(250, one(DARK, 'dark-sorcerer+female.png', 50), frames(DARK, 'dark-sorcerer+female-attack-staff-[1~2].png', '100,200'), one(DARK, 'dark-sorcerer+female-magic-1.png', 75), one(DARK, 'dark-sorcerer+female.png', 75)),
     ranged: { ...attack(355, frames(DARK, 'dark-sorcerer+female-magic-[1,2].png', 75), one(DARK, 'dark-sorcerer+female-magic-3.png', 350), frames(DARK, 'dark-sorcerer+female-magic-[2,1].png', 50)), missile: 'hex' },
     defend: DARK + 'dark-sorcerer+female-defend.png',
+    cast: frames(DARK, 'dark-sorcerer+female-magic-[1,2,3,2,1].png', '75,75,300,75,50'),
   },
   poachers: {
     unit: 'Poacher',

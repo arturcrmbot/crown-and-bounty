@@ -93,6 +93,7 @@ export const TROOPS: Record<TroopId, TroopDef> = {
   bramble: {
     id: 'bramble', name: 'Aunt Bramble', one: 'Aunt Bramble', hp: 170, attack: 9, defence: 9, damage: [7, 11], speed: 4, shots: 10, leadership: 99, wage: 0,
     note: 'Mother Mirrow\u2019s big sister. Bigger hat, worse temper.', abilities: ['hexes'],
+    caster: { spellPower: 3, mana: 14, spells: ['frogs', 'bolt', 'brew'] },
   },
   poachers: { id: 'poachers', name: 'Poachers', one: 'Poacher', hp: 7, attack: 3, defence: 2, damage: [1, 3], speed: 4, shots: 6, leadership: 1, wage: 1, note: 'Other people\u2019s deer, other people\u2019s rabbits, and now, other people\u2019s officers.' },
   bandits: { id: 'bandits', name: 'Highwaymen', one: 'Highwayman', hp: 11, attack: 4, defence: 3, damage: [2, 3], speed: 5, leadership: 2, wage: 2, note: 'Stand and deliver. Mostly they stand.' },

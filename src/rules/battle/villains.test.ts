@@ -103,6 +103,16 @@ describe('villains who cast and give orders', () => {
     expect(of(end, 'witch').book!.mana).toBeLessThan(14);
   });
 
+  it('Aunt Bramble turns your stacks into frogs, and throws bolts', () => {
+    const b = createBattle({ place: 'hideout', seed: 5, player: army(['knights', 10], ['archers', 20]), enemy: army(['trolls', 6], ['goblins', 60], ['bramble', 1]), hero });
+    const bramble = of(b, 'bramble');
+    expect(bramble.book).toMatchObject({ name: 'Aunt Bramble', spellPower: 3, spells: ['frogs', 'bolt', 'brew'] });
+    const frogs = battleAct(turnOf(b, 'goblins'), { type: 'cast', spell: 'frogs', target: of(b, 'knights').id, by: bramble.id }).battle;
+    expect(of(frogs, 'knights').status).toContain('frogs');
+    const bolt = battleAct(turnOf(b, 'goblins'), { type: 'cast', spell: 'bolt', target: of(b, 'archers').id, by: bramble.id }).events[0];
+    expect(bolt).toMatchObject({ type: 'spell', spell: 'bolt', by: bramble.id, damage: 60 });
+  });
+
   it('uses his tricks when he fights it out: the enemy AI casts and gives orders', () => {
     const end = autoResolve(baronFight());
     const book = of(end, 'baron').book!;
