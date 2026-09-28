@@ -3,6 +3,36 @@
 Newest first. Each entry says what was played, how it felt to an experienced player (HoMM2, King's Bounty,
 modern RPGs), and what was done about it.
 
+## #9: 28 Sep 2026, a change of scene between screens
+
+**Played:** the whole opening and the first fights with the clock running, and every change of screen frame by
+frame with the clock frozen (`?freeze=1&transitions=1`, stepped with `__kc.advance`): the title into the prologue,
+the prologue onto the map, the map into battle and back (won and lost), the court into the Fenmarch, and a
+commission lost on day C and tried again. The stings rendered offline through the game's own buses and measured
+(`npm run listen`): peaks, their loudest 400 ms against the score's, how long they ring. Then e2e and the visual
+scenes.
+
+**How it felt:** before, every screen cut hard to the next, and the music simply swapped: the map, a battle and
+the court felt like tabs of one window. Now each is a place you go to. The painting sinks into the dark in a dither
+of shadow as a harp sweeps up, and the throne room rises out of it with the King's card unfolding once it's in
+view. Riding into a fight, the map darkens on a drum roll and a gleaming edge sweeps across it like a blade, the
+steel rings and the field behind it flashes, and the battle march starts on the clash. A win is brass climbing into
+E major over the battle's E minor; a defeat, a bell tolling twice. Court opens on two heralds' trumpets. A lost
+commission tolls the knell three times and the dark closes over the map and stays.
+
+**Found and fixed:**
+
+1. A new province's name and fanfare came while the court was still fading out, and the arrival card sat over a
+   black screen. The name, the fanfare and the first card now wait until the new map is in.
+2. The first flash for a battle turned the grass a sickly yellow and read as static. It's now one step brighter
+   behind a narrow gleaming edge, which reads as a sweep of steel.
+3. The harp's sweep into court was 4 dB louder than anything in the score; every sting now sits about as loud as
+   the score's loudest bars, and the score ducks under it.
+4. Cards appeared while the picture was still dark: they now wait for 80% of a fade.
+
+**Checked:** a click skips a change, a key skips it and still counts, and frozen screenshots are unchanged (every
+visual scene hashes the same). Each change costs 1 to 2 ms a frame while it runs.
+
 ## #8: 28 Sep 2026, Artur's second commission; a hero screen, the army, mana, and a UX pass
 
 **What Artur said** (his second time through Aldmoor, after the Wesnoth art and the battle AI):
