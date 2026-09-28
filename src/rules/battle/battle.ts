@@ -148,7 +148,7 @@ export type BattleAction =
 
 export type BattleEvent =
   | { type: 'move'; fighter: number; path: number[] }
-  | { type: 'hit'; attacker: number; target: number; damage: number; killed: number; ranged: boolean; retaliation: boolean; hexed?: boolean; charge?: boolean; lucky?: boolean }
+  | { type: 'hit'; attacker: number; target: number; damage: number; killed: number; ranged: boolean; retaliation: boolean; status?: StatusId; charge?: boolean; lucky?: boolean }
   /** Every shooter on a side looses at once: the ranger's archers before the battle, or at a villain's order (`spell`, `by`). */
   | { type: 'volley'; side?: Side; spell?: SpellId; by?: number }
   /** A fresh stack marches in from its side's edge of the field, called by a spell or an order. */
@@ -157,6 +157,8 @@ export type BattleEvent =
   | { type: 'skip'; fighter: number; status: StatusId }
   /** A troll's wounds close up at the start of its turn. */
   | { type: 'regen'; fighter: number; healed: number }
+  /** A poisoned stack loses a sliver of health at the start of its turn, never past a sliver left. */
+  | { type: 'poison'; fighter: number; hurt: number }
   /**
    * A spell lands. `splash` marks the stacks a burst (or a mass status) caught besides its target;
    * `healed` is health given back and `raised` the fallen who got up; `by` is a villain casting.
@@ -421,6 +423,9 @@ export function strike(b: BattleState, attacker: Fighter, target: Fighter, range
   const attack = t.attack + helpOf(b, attacker).attack + statusAttack(attacker);
   let defence = unitOf(target).defence + helpOf(b, target).defence + statusDefence(target);
   if (target.defending) defence = Math.round(defence * 1.3);
+  // Crossbows and the like punch through armour: a flat cut off the target's defence.
+  const pierce = Math.max(0, ...abilitiesOf(attacker.troop).map((a) => a.pierce ?? 0));
+  if (pierce) defence = Math.max(0, defence - pierce);
   const [min, max] = t.damage;
   // A blessing rolls the best damage, a curse the worst; both at once cancel out.
   const lean = (attacker.status.some((s) => STATUSES[s].bestDamage) ? 1 : 0) - (attacker.status.some((s) => STATUSES[s].worstDamage) ? 1 : 0);
@@ -581,7 +586,18 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
     const w = wound(target, rolled.damage);
     target.count = w.count;
     target.hp = w.hp;
-    events.push({ type: 'hit', attacker: attacker.id, target: target.id, damage: rolled.damage, killed: w.killed, ranged, retaliation, ...(charge ? { charge } : {}), ...(rolled.lucky ? { lucky: true } : {}) });
+    // Its shots or its bite put a status on whatever they hit, at fixed moments the two abilities read.
+    let status: StatusId | undefined;
+    if (alive(target)) {
+      for (const ability of abilitiesOf(attacker.troop)) {
+        const put = ranged ? ability.shotStatus : ability.stingStatus;
+        if (put && !hasStatus(target, put)) {
+          addStatus(target, put, b.round);
+          status = put;
+        }
+      }
+    }
+    events.push({ type: 'hit', attacker: attacker.id, target: target.id, damage: rolled.damage, killed: w.killed, ranged, retaliation, ...(status ? { status } : {}), ...(charge ? { charge } : {}), ...(rolled.lucky ? { lucky: true } : {}) });
   };
 
   switch (action.type) {
@@ -601,9 +617,13 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
         me.at = action.from;
       }
       const target = fighterById(next, action.target);
-      hit(me, target, false, false, charge);
-      // Nobody gets to swing back at a lance coming in at the gallop, nor a stack turned into newts.
-      if (alive(target) && !target.retaliated && !charge && !target.status.some((st) => STATUSES[st].noStrikeBack)) {
+      // Spears and pikes strike first when they defend, unless the attacker has the same knack.
+      const firstStrike = !charge && abilitiesOf(target.troop).some((a) => a.firstStrike) && !abilitiesOf(me.troop).some((a) => a.firstStrike);
+      if (firstStrike) hit(target, me, false, false);
+      if (alive(me)) hit(me, target, false, false, charge);
+      // Nobody gets to swing back at a lance coming in at the gallop, nor a stack turned into newts,
+      // nor at a first strike already spent this blow.
+      if (!firstStrike && alive(target) && !target.retaliated && !charge && !target.status.some((st) => STATUSES[st].noStrikeBack)) {
         target.retaliated = true;
         hit(target, me, false, true);
       }
@@ -614,11 +634,6 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
       me.shots -= 1;
       const target = fighterById(next, action.target);
       hit(me, target, true, false);
-      for (const ability of abilitiesOf(me.troop)) {
-        if (!ability.shotStatus || !alive(target) || hasStatus(target, ability.shotStatus)) continue;
-        addStatus(target, ability.shotStatus, b.round);
-        (events[events.length - 1] as Extract<BattleEvent, { type: 'hit' }>).hexed = true;
-      }
       break;
     }
     case 'wait': {
@@ -786,6 +801,13 @@ function settle(b: BattleState, events: BattleEvent[], endTurn: boolean, expecte
     const hp = Math.min(full, acting.hp + heal);
     next = { ...next, fighters: next.fighters.map((f) => (f.id === acting.id ? { ...f, hp } : f)) };
     events.push({ type: 'regen', fighter: acting.id, healed: hp - acting.hp });
+  }
+  // A poisoned stack loses a sliver of its top troop's health at the start of its turn, never past a sliver left.
+  const poison = Math.round(full * Math.max(0, ...acting.status.map((st) => STATUSES[st].hurtsTopOnTurn ?? 0)));
+  if (poison > 0 && acting.hp > 1) {
+    const hp = Math.max(1, acting.hp - poison);
+    next = { ...next, fighters: next.fighters.map((f) => (f.id === acting.id ? { ...f, hp } : f)) };
+    events.push({ type: 'poison', fighter: acting.id, hurt: acting.hp - hp });
   }
   events.push({ type: 'turn', fighter: acting.id });
   return { battle: next, events };
