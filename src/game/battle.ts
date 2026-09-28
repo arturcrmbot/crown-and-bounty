@@ -125,9 +125,9 @@ export class BattleController implements Screen {
     const [x, y] = hexCentre(f.at);
     const top = Math.max(FLOAT_TOP, y + 12 - bodyHeight(f.troop, 'battle') - 16);
     // Words are 8 px a letter and 16 px a line, and all rise together, so where they are now is where they stay apart.
-    const clash = (at: number) => this.view.floaters.some((o) => o.age < 0.6 && Math.abs(o.x - x) < ((o.text.length + text.length) * 8) / 2 + 4 && Math.abs(o.y - o.age * FLOAT_RISE - at) < 16);
-    const lines = [0, 1, 2, 3, 4].map((k) => top - k * 16).filter((at) => at >= FLOAT_TOP);
-    const at = [...lines, ...[1, 2, 3, 4].map((k) => top + k * 16)].find((a) => !clash(a)) ?? top;
+    const clash = (at: number) => this.view.floaters.some((o) => Math.abs(o.x - x) < ((o.text.length + text.length) * 8) / 2 + 4 && Math.abs(o.y - o.age * FLOAT_RISE - at) < 16);
+    const lines = [0, 1, 2, 3, 4, 5].map((k) => top - k * 16).filter((at) => at >= FLOAT_TOP);
+    const at = [...lines, ...[1, 2, 3, 4, 5, 6].map((k) => top + k * 16)].find((a) => !clash(a)) ?? top;
     this.view.floaters.push({ x, y: at, text, color, age: 0 });
   }
 
