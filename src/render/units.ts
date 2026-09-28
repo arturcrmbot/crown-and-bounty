@@ -1,5 +1,5 @@
 import type { BackgroundId } from '../content/backgrounds';
-import type { TroopId } from '../content/troops';
+import { heroTroop, type HeroId, type TroopId } from '../content/troops';
 
 /** One frame of a Wesnoth animation: an image under `units/`, and how long it shows. */
 export type Frame = { image: string; ms: number };
@@ -25,6 +25,8 @@ export type UnitArt = {
   melee: Attack;
   /** The knights' lance, for a charge. */
   charge?: Attack;
+  /** Aldric raising his hands (or his sabre) as he casts a spell. */
+  cast?: Frame[];
   ranged?: Attack & { missile: Missile };
   /** The frame it flinches to when hit (at close quarters, and by a shot or a spell). */
   defend: string;
@@ -66,7 +68,7 @@ const KNIGHT = 'human-loyalists/knight/';
 const DARK = 'undead-necromancers/';
 
 /** Which Wesnoth unit stands for each troop, and its frames (from its 1.18 `.cfg`). */
-export const UNIT_ART: Record<TroopId, UnitArt> = {
+const TROOP_ART: Record<Exclude<TroopId, HeroId>, UnitArt> = {
   peasants: {
     unit: 'Peasant',
     cfg: 'humans/Peasant.cfg',
@@ -208,14 +210,11 @@ const HORSEMAN: UnitArt = {
   death: frames(HORSE, 'horseman-se-die[1~5].png', 100),
 };
 
-/** The figures Aldric can be. */
-export type HeroArtId = 'heroKnight' | 'heroWizard' | 'heroRanger' | 'heroCourtier';
-
 /**
  * Aldric as each background makes him, the same on the map and in battle. The Knight rides; the
  * others go on foot, as Wesnoth has them (it has no mounted mage), each plainly who he is.
  */
-export const HERO_ART: Record<HeroArtId, UnitArt> = {
+export const HERO_ART: Record<HeroId, UnitArt> = {
   heroKnight: HORSEMAN,
   /** An Arch Mage: the hood, the beard, an orb and a staff. His fidget weighs the orb. */
   heroWizard: {
@@ -226,6 +225,7 @@ export const HERO_ART: Record<HeroArtId, UnitArt> = {
     melee: attack(250, one(MAGI, 'arch-mage.png', 50), frames(MAGI, 'arch-mage-attack-staff-[1~2].png', '100,200'), one(MAGI, 'arch-mage-attack-magic-1.png', 75), one(MAGI, 'arch-mage.png', 75)),
     // His bolt leaves his hands with the second frame, and flies while it holds.
     ranged: { ...attack(300, one(MAGI, 'arch-mage.png', 50), frames(MAGI, 'arch-mage-attack-magic-[1,2,1].png', '100,150,75'), one(MAGI, 'arch-mage.png', 75)), missile: 'magic' },
+    cast: frames(MAGI, 'arch-mage-attack-magic-[1,2,1].png', '100,300,75'),
     defend: MAGI + 'arch-mage-defend.png',
   },
   /** Wesnoth's own Ranger: a green hood and cloak, a longbow and a sword. */
@@ -245,24 +245,28 @@ export const HERO_ART: Record<HeroArtId, UnitArt> = {
     stand: LOYAL + 'master-at-arms.png',
     idle: frames(LOYAL, 'master-at-arms-victory-[1~6,5~1].png', '100*5,1000,100*5'),
     melee: attack(200, one(LOYAL, 'master-at-arms.png', 25), frames(LOYAL, 'master-at-arms-melee-1-[1~3].png', '50*2,150'), frames(LOYAL, 'master-at-arms-recover-[1,2].png', 50), one(LOYAL, 'master-at-arms.png', 25)),
+    // He raises his sabre, as his fidget begins.
+    cast: frames(LOYAL, 'master-at-arms-victory-[1,2,1].png', '100,300,100'),
     defend: LOYAL + 'master-at-arms-defend-2.png',
   },
 };
 
-const HERO_OF: Record<BackgroundId, HeroArtId> = { knight: 'heroKnight', wizard: 'heroWizard', ranger: 'heroRanger', courtier: 'heroCourtier' };
-/** The figure of a background's hero: on the map, in the field and on his cards. */
-export const heroArtId = (background: BackgroundId): ArtId => HERO_OF[background];
+/** Each troop's figure, Aldric's included. */
+export const UNIT_ART: Record<TroopId, UnitArt> = { ...TROOP_ART, ...HERO_ART };
+
+/** The figure of a background's hero, the troop he fights as: on the map, in the field and on his cards. */
+export const heroArtId = (background: BackgroundId): ArtId => heroTroop(background);
 /** Whether a figure is Aldric's (`'hero'` is the Knight's, as before there were others). */
 export const isHeroArt = (id: ArtId) => id === 'hero' || id in HERO_ART;
 
 /** Everyone Wesnoth draws for us: the troops, and the hero. */
-export type ArtId = TroopId | 'hero' | HeroArtId;
-export const ART: Record<ArtId, UnitArt> = { ...UNIT_ART, ...HERO_ART, hero: HORSEMAN };
+export type ArtId = TroopId | 'hero';
+export const ART: Record<ArtId, UnitArt> = { ...UNIT_ART, hero: HORSEMAN };
 
 /** Every image one unit uses. */
 export function artImages(art: UnitArt): string[] {
   const all = [art.stand, art.defend, ...(art.defendRanged ? [art.defendRanged] : [])];
-  for (const list of [art.idle, art.move, art.melee.frames, art.charge?.frames, art.ranged?.frames, art.death]) for (const f of list ?? []) all.push(f.image);
+  for (const list of [art.idle, art.move, art.melee.frames, art.charge?.frames, art.cast, art.ranged?.frames, art.death]) for (const f of list ?? []) all.push(f.image);
   return all;
 }
 

@@ -1,7 +1,7 @@
-import { abilitiesOf, troopPower, TROOPS } from '../../content/troops';
+import { abilitiesOf } from '../../content/troops';
 import { SPELLS, STATUSES } from '../../content/spells';
 import {
-  activeFighter, battleAct, canCast, fighterById, hasStatus, isRanged, options, spellCost, spellDamage, speedOf, statsOf, stepsTo, strike, wound,
+  activeFighter, battleAct, canCast, CHARGE_BONUS, CHARGE_HEXES, fighterById, hasStatus, isRanged, options, powerOf, spellCost, spellDamage, speedOf, statsOf, stepsTo, strike, unitOf, wound,
   type BattleAction, type BattleState, type Fighter, type Options, type Side,
 } from './battle';
 import { distance, HEXES, NEIGHBOURS, reachMask } from './hex';
@@ -9,12 +9,12 @@ import { distance, HEXES, NEIGHBOURS, reachMask } from './hex';
 /** Fighting worth that `damage` would take out of a stack. */
 function worthOf(target: Fighter, damage: number): number {
   const w = wound(target, damage);
-  const partial = (target.hp - (w.count === target.count ? w.hp : 0)) / TROOPS[target.troop].hp;
-  return (w.killed + Math.max(0, partial) * 0.3) * troopPower(target.troop);
+  const partial = (target.hp - (w.count === target.count ? w.hp : 0)) / unitOf(target).hp;
+  return (w.killed + Math.max(0, partial) * 0.3) * powerOf(target);
 }
 
 /** How dangerous a stack is right now: its worth, with archers counted extra. */
-const threatV1 = (f: Fighter) => f.count * troopPower(f.troop) * (isRanged(f) ? 1.3 : 1);
+const threatV1 = (f: Fighter) => f.count * powerOf(f) * (isRanged(f) ? 1.3 : 1);
 
 /** Worth killed, with the enemy's own shooters counted extra: every archer down is fewer arrows back. */
 const payoff = (target: Fighter, damage: number) => worthOf(target, damage) * (isRanged(target) ? 1.5 : 1);
@@ -51,10 +51,10 @@ export function chooseActionV1(b: BattleState): BattleAction {
   if (f.side === 'player' && canCast(b, 'bolt')) {
     const bolt = spellDamage(b, 'bolt');
     const target = foes.reduce((best, o) => (payoff(o, bolt) > payoff(best, bolt) ? o : best));
-    if (worthOf(target, bolt) > troopPower(target.troop) * 0.5) return { type: 'cast', spell: 'bolt', target: target.id };
+    if (worthOf(target, bolt) > powerOf(target) * 0.5) return { type: 'cast', spell: 'bolt', target: target.id };
   }
   if (f.side === 'player' && canCast(b, 'slow')) {
-    const fast = foes.filter((o) => !hasStatus(o, 'slowed') && TROOPS[o.troop].speed >= 6).sort((x, y) => threatV1(y) - threatV1(x))[0];
+    const fast = foes.filter((o) => !hasStatus(o, 'slowed') && unitOf(o).speed >= 6).sort((x, y) => threatV1(y) - threatV1(x))[0];
     if (fast && (!b.hero.spells.includes('bolt') || b.hero.mana >= spellCost(b, 'slow') + spellCost(b, 'bolt'))) return { type: 'cast', spell: 'slow', target: fast.id };
   }
   if (f.side === 'player' && canCast(b, 'bless') && !b.hero.spells.includes('bolt')) {
@@ -127,7 +127,10 @@ export function autoResolve(b: BattleState, choose: Chooser = chooseAction): Bat
 // what's left: the worth of each side's stacks, less what the other side could take back next turn,
 // plus what they could take themselves. So they finish off wounded stacks, gang up on a stack that
 // has already struck back, go for shooters, keep their own shooters shooting, and know that a
-// stack which regenerates shrugs off scratches, all without knowing any spell or troop by name.
+// stack which regenerates shrugs off scratches, all without knowing any spell or troop by name. A
+// hero on the field is worth the spells he could still cast as well as his blows, so the enemy
+// finishes him off when it can, and your sergeants keep him out of harm's way; a stack that charges
+// is feared for the charge.
 // Your sergeants (the commander) may hold back and let the enemy come; the enemy never does (see
 // `onslaught`).
 
@@ -135,9 +138,13 @@ export function autoResolve(b: BattleState, choose: Chooser = chooseAction): Bat
  * How much each side's next strikes count. The careful commander weighs what it could lose; the
  * enemy picks its blows the same way, but closes in bravely, and heads for your shooters (`hunt`).
  */
-type Weights = { theirNow: number; theirLater: number; ourNow: number; ourLater: number; patient: boolean; hunt?: number };
-const CAREFUL: Weights = { theirNow: 0.7, theirLater: 0.3, ourNow: 0.3, ourLater: 0.12, patient: true };
-const STRIKE: Weights = { ...CAREFUL, patient: false };
+type Weights = { theirNow: number; theirLater: number; ourNow: number; ourLater: number; patient: boolean; hunt?: number; keep?: number };
+/**
+ * The careful commander also keeps its own hero out of harm's way: he counts `keep` times over
+ * again, since carried off he casts no more, and he rides no further that day.
+ */
+const CAREFUL: Weights = { theirNow: 0.7, theirLater: 0.3, ourNow: 0.3, ourLater: 0.12, patient: true, keep: 1 };
+const STRIKE: Weights = { ...CAREFUL, patient: false, keep: 0 };
 const BRAVE: Weights = { theirNow: 0.35, theirLater: 0.1, ourNow: 0.6, ourLater: 0.25, patient: false, hunt: 0.05 };
 
 /** A stack still standing is worth this many of its troops more: its turn, its strike back, the hexes it holds. */
@@ -147,7 +154,7 @@ const HEALED = 0.5;
 
 /** What one troop of a stack is worth as it stands: health times damage, with skill, bless, speed and shots. */
 function troopWorth(b: BattleState, f: Fighter): number {
-  const t = TROOPS[f.troop];
+  const t = unitOf(f);
   const { attack, defence } = statsOf(b, f);
   const [min, max] = t.damage;
   const damage = f.status.some((s) => STATUSES[s].bestDamage) ? max : (min + max) / 2;
@@ -166,11 +173,19 @@ const healShare = (troop: Fighter['troop']) => {
   return share;
 };
 
+/**
+ * What a hero on the field is worth to his side besides his blows, while he stands: the spells his
+ * mana can still cast. Each point of mana counts as this much fighting worth for every point of
+ * spell power: about half what a bolt takes with it, so a good spell is still worth its mana.
+ */
+const CASTER = 1;
+
 function stackWorth(b: BattleState, f: Fighter): number {
   if (f.count <= 0) return 0;
-  const hp = TROOPS[f.troop].hp;
+  const hp = unitOf(f).hp;
   const healing = Math.min(hp - f.hp, hp * healShare(f.troop));
-  return troopWorth(b, f) * (f.count - 1 + (f.hp + healing * HEALED) / hp + PRESENCE);
+  const worth = troopWorth(b, f) * (f.count - 1 + (f.hp + healing * HEALED) / hp + PRESENCE);
+  return f.hero && b.hero.spells.length ? worth + CASTER * b.hero.mana * b.hero.spellPower : worth;
 }
 
 /** Worth a stack loses to `damage`. */
@@ -189,11 +204,12 @@ function blockedMask(b: BattleState): Uint8Array {
 
 /**
  * What `side` could take from the other with each stack's best strike: a shot, or a blow from a hex
- * it can reach, less what the target strikes back. `now` is this coming turn; `later` counts blows
- * only reachable the turn after, so stacks see an attack coming and screen their shooters. Blows on
- * one target add up, but never past what that target is worth.
+ * it can reach, less what the target strikes back (nothing, for a charge).
+ * `now` is this coming turn; `later` counts blows only reachable the turn after, so stacks see an
+ * attack coming and screen their shooters. Blows on one target add up, but never past what that
+ * target is worth.
  */
-function threat(b: BattleState, side: Side, mask: Uint8Array): { now: number; later: number } {
+function threat(b: BattleState, side: Side, mask: Uint8Array, keep = 0): { now: number; later: number } {
   const foes = b.fighters.filter((o) => o.count > 0 && o.side !== side);
   const now = new Map<number, number>();
   const later = new Map<number, number>();
@@ -218,20 +234,24 @@ function threat(b: BattleState, side: Side, mask: Uint8Array): { now: number; la
     let target = -1;
     let bestLater = 0;
     let targetLater = -1;
+    // A stack that charges, standing clear of the enemy, finds a run-up to whoever it can reach.
+    const charge = !pinned && speed >= CHARGE_HEXES && f.side === 'player' && (b.hero.charge ?? []).includes(f.troop);
     for (const o of foes) {
       const soon = NEIGHBOURS[o.at].some((n) => reach[n]);
       if (!soon && !NEIGHBOURS[o.at].some((n) => farther[n])) continue;
-      const damage = strike(b, f, o, false).damage;
+      const damage = strike(b, f, o, false, undefined, charge ? CHARGE_BONUS : 1).damage;
       const w = wound(o, damage);
       let gain = stackWorth(b, o) - stackWorth(b, { ...o, count: w.count, hp: w.hp });
-      if (w.count > 0 && !o.retaliated) gain -= loss(b, f, strike(b, { ...o, count: w.count, hp: w.hp }, f, false).damage);
+      if (w.count > 0 && !o.retaliated && !charge) gain -= loss(b, f, strike(b, { ...o, count: w.count, hp: w.hp }, f, false).damage);
       if (soon && gain > best) [best, target] = [gain, o.id];
       else if (!soon && gain > bestLater) [bestLater, targetLater] = [gain, o.id];
     }
     if (target >= 0) add(now, target, best);
     else if (targetLater >= 0) add(later, targetLater, bestLater);
   }
-  const total = (map: Map<number, number>) => [...map].reduce((sum, [id, worth]) => sum + Math.min(worth, stackWorth(b, fighterById(b, id))), 0);
+  // A hero the other side means to keep counts that much more (see `keep`).
+  const kept = (id: number, worth: number) => (fighterById(b, id).hero ? worth * (1 + keep) : worth);
+  const total = (map: Map<number, number>) => [...map].reduce((sum, [id, worth]) => sum + kept(id, Math.min(worth, stackWorth(b, fighterById(b, id)))), 0);
   return { now: total(now), later: total(later) };
 }
 
@@ -240,12 +260,13 @@ const firepowerOf = (b: BattleState, side: Side) => b.fighters.filter((f) => f.c
 
 /** How good the battle looks for `side`, weighing the blows to come as `w` says. */
 export function evaluate(b: BattleState, side: Side, w: Weights = CAREFUL): number {
-  const mine = b.fighters.filter((f) => f.count > 0 && f.side === side).reduce((sum, f) => sum + stackWorth(b, f), 0);
+  const keep = w.keep ?? 0;
+  const mine = b.fighters.filter((f) => f.count > 0 && f.side === side).reduce((sum, f) => sum + stackWorth(b, f) * (f.hero ? 1 + keep : 1), 0);
   const theirs = b.fighters.filter((f) => f.count > 0 && f.side !== side).reduce((sum, f) => sum + stackWorth(b, f), 0);
   if (b.result === 'won' || b.result === 'lost') return (b.result === 'won') === (side === 'player') ? 1e5 + mine : -1e5 - theirs;
   const other: Side = side === 'player' ? 'enemy' : 'player';
   const mask = blockedMask(b);
-  const theirs2 = threat(b, other, mask);
+  const theirs2 = threat(b, other, mask, keep);
   const ours = threat(b, side, mask);
   let score = mine - theirs - w.theirNow * theirs2.now - w.theirLater * theirs2.later + w.ourNow * ours.now + w.ourLater * ours.later;
   if (w.hunt) {

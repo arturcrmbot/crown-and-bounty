@@ -51,6 +51,11 @@ const TROOP_ICONS: Record<TroopId, Bitmap> = {
   poachers: BOW,
   bandits: SWORD,
   boars: FORK,
+  // Aldric is never in the army, but should he ever show there.
+  heroKnight: SWORD,
+  heroWizard: BOW,
+  heroRanger: BOW,
+  heroCourtier: SWORD,
 };
 
 /** The hourglass: click it (or press E) to end the day. It brightens under the pointer. */

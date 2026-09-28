@@ -142,7 +142,8 @@ describe('tamed beasts', () => {
   });
 
   it('and the bot\u2019s ranger tames what will follow him', () => {
-    const runs = simulate([1, 2, 3], 'ranger');
+    // With Aldric on the field too, most of his fights with beasts are no gamble, so he tames only now and then.
+    const runs = simulate([1, 2, 3, 4, 5, 6, 7, 8], 'ranger');
     expect(runs.every((r) => r.won)).toBe(true);
     expect(runs.some((r) => r.log.some((l) => l.includes('tamed')))).toBe(true);
   }, 60_000);

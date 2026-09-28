@@ -78,6 +78,9 @@ function tick() {
   }
 }
 
+/** The track playing now, and the one asked for: for scripts. */
+export const nowPlaying = () => ({ playing: playing?.id ?? null, wanted });
+
 /** Asks for a track (or silence). Takes effect once sound is awake. */
 export function setMusic(id: TrackId | null) {
   if (id === wanted) return;

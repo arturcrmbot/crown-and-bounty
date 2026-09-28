@@ -1,16 +1,22 @@
 import { abilitiesOf, TROOPS, type TroopId } from '../content/troops';
 import { SPELLS, STATUSES } from '../content/spells';
-import { canCast, speedOf, statsOf, type BattleState } from '../rules/battle/battle';
+import { canCast, rallyOf, speedOf, statsOf, unitOf, type BattleState, type Fighter } from '../rules/battle/battle';
 import { COLS, colOf, HEXES, ROWS, rowOf } from '../rules/battle/hex';
 import { Bitmap, blit } from './bitmap';
-import { animLength, corpseSprite, everyFrame, hurtSprite, standard, STAND, troopFigure, type Pose, type Standard } from './battleSprites';
-import { ART, type ArtId } from './units';
+import { animLength, corpseSprite, hurtSprite, standard, STAND, troopFigure, type Pose, type Standard } from './battleSprites';
+import { ART } from './units';
 import { drawBanner } from './banner';
 import { BAR, MAP_VIEW, paintBarBackground, paintFrame, SCREEN, type Rect } from './frame';
 import { bayer, hash, noise, shade } from './noise';
 import { BLUE, CYCLE_BOG, EARTH, GOLD, GRASS, INK, LEAF, LIGHT_LUT, NEUTRAL, PARCHMENT, PLUM, RED, REED, SHADOW_LUT, STONE, WOOD } from './palette';
 import { boulder, oak, pine, willow } from './sprites';
 import { drawText } from './text';
+
+/** The King's blue with his gold star, over Aldric's side. */
+const ROYAL: Standard = { cloth: [BLUE[1], BLUE[2], BLUE[3], BLUE[4]], emblem: 'star' };
+
+/** Aldric, or a villain: one of a kind, a name rather than a number. */
+const oneOfAKind = (f: Fighter) => TROOPS[f.troop].name === TROOPS[f.troop].one;
 
 /** Whose standard flies over the enemy: Grimsby's goose, the fen's moon, a skull for outlaws; beasts carry none. */
 function standardOf(troops: TroopId[]): Standard | null {
@@ -63,7 +69,7 @@ export const FLOAT_RISE = 30;
 /** The message ribbon across the top of the field. */
 const LOG_TOP = MAP_VIEW.y + 6;
 export const LOG_BOTTOM = LOG_TOP + 18;
-export type Shot = { from: [number, number]; to: [number, number]; t: number; kind: 'arrow' | 'quarrel' | 'hex' | 'magic' | 'bolt' | 'fire' | 'sparkle' | 'spark' | 'blood' | 'poof'; color?: number };
+export type Shot = { from: [number, number]; to: [number, number]; t: number; kind: 'arrow' | 'quarrel' | 'hex' | 'magic' | 'gather' | 'bolt' | 'fire' | 'sparkle' | 'spark' | 'blood' | 'poof'; color?: number };
 /** How much of a fireball's flight is the fall from the sky; it bursts after that. */
 export const FIRE_FALL = 0.35;
 
@@ -77,6 +83,8 @@ export type BattleView = {
   facings: Map<number, 1 | -1>;
   /** What a stack's badge says while blows play out: its count from before the action, until each hit lands. */
   counts: Map<number, number>;
+  /** The same for health, for those shown by a health bar (one of a kind): it drops as each blow lands. */
+  health: Map<number, number>;
   poses: Map<number, Pose>;
   flashing: Set<number>;
   /** Fighters still drawn although the rules have them dead, until their hit plays out. */
@@ -219,20 +227,18 @@ export class BattleScreen {
   private readonly overlay: Bitmap;
   private readonly field: Bitmap;
 
-  /** Aldric at the top left in his background's figure, and the enemy's standard at the top right (beasts have none). */
-  private readonly commander: Bitmap[];
-  private readonly commanderAt: { x: number; y: number };
+  /**
+   * The King's star at the top left, over Aldric's side (he's on the field himself now), and the
+   * enemy's standard at the top right (beasts have none).
+   */
+  private readonly ours = Array.from({ length: 8 }, (_, i) => standard(ROYAL, i / 8, 1));
   private readonly standard: Bitmap[] | null;
 
-  constructor(battle: BattleState, hero: ArtId = 'hero') {
+  constructor(battle: BattleState) {
     const { frame, overlay } = paintFrame();
     this.frame = frame;
     this.overlay = overlay;
     this.field = paintField(battle.obstacles, (battle.seed >>> 8) & 1023, battle.ground === 'fen');
-    const still = troopFigure(hero, 'blue', 1, STAND, 'battle');
-    const fidget = everyFrame(hero, 'idle', 'blue', 1, 'battle', 100);
-    this.commander = [...Array<Bitmap>(Math.max(12, Math.round(fidget.length * 1.5))).fill(still.sprite), ...(fidget.length > 1 ? fidget : [])];
-    this.commanderAt = still;
     const theirs = standardOf(battle.fighters.filter((f) => f.side === 'enemy').map((f) => f.troop));
     this.standard = theirs && Array.from({ length: 8 }, (_, i) => standard(theirs, i / 8, -1));
   }
@@ -252,16 +258,16 @@ export class BattleScreen {
     }
     if (view.hover) outlineHex(screen, view.hover.hex, view.hover.kind === 'move' ? GOLD[6] : view.hover.kind === 'spell' ? BLUE[6] : RED[5]);
 
-    // The fallen stay where they fell, under everyone still standing.
+    // The fallen stay where they fell, under everyone still standing. Aldric is carried off.
     for (const f of b.fighters) {
-      if (f.count > 0 || view.dying.has(f.id)) continue;
+      if (f.count > 0 || view.dying.has(f.id) || f.hero) continue;
       const [cx, cy] = hexCentre(f.at);
       const { sprite, x, y } = corpseSprite(f.troop, f.side === 'player' ? 'blue' : 'red', f.side === 'player' ? 1 : -1);
       blit(screen, sprite, Math.round(cx + x), Math.round(cy + 12 + y), MAP_VIEW);
     }
     const flap = Math.floor(view.time * 5) % 8;
-    const rider = this.commander[Math.floor(view.time * 10) % this.commander.length];
-    blit(screen, rider, MAP_VIEW.x + 58 + this.commanderAt.x, Y0 + 92 + this.commanderAt.y, MAP_VIEW);
+    const star = this.ours[flap];
+    blit(screen, star, MAP_VIEW.x + 18, Y0 + 100 - star.height, MAP_VIEW);
     if (this.standard) {
       const flag = this.standard[flap];
       blit(screen, flag, MAP_VIEW.x + MAP_VIEW.width - flag.width - 18, Y0 + 100 - flag.height, MAP_VIEW);
@@ -271,6 +277,13 @@ export class BattleScreen {
     // Where a stack stands: its hex, or wherever it has got to on a walk. Lunges and reels move only
     // the figure, so its count stays put on its hex.
     const place = (id: number, at: number) => view.positions.get(id) ?? hexCentre(at);
+    // Aldric stands in the gold ring he has on the map, so you find him at a glance here too.
+    for (const f of shown) {
+      if (!f.hero) continue;
+      const [px, py] = place(f.id, f.at);
+      const [ox, oy] = view.offsets.get(f.id) ?? [0, 0];
+      this.ring(Math.round(px + ox), Math.round(py + oy + 12));
+    }
     shown.sort((x, y) => place(x.id, x.at)[1] - place(y.id, y.at)[1]);
     for (const f of shown) {
       const [px, py] = place(f.id, f.at);
@@ -283,12 +296,15 @@ export class BattleScreen {
       const breath = pose.anim === 'stand' && !view.positions.has(f.id) && !view.offsets.has(f.id) && Math.sin(view.time * 2.4 + f.id * 1.9) > 0.35 ? 1 : 0;
       blit(screen, sprite, Math.round(px + ox + figure.x), Math.round(py + oy + 12 + figure.y) - breath, MAP_VIEW);
     }
-    // Counts go on last, so a troll never hides the goblins behind him.
+    // Counts go on last, so a troll never hides the goblins behind him. One of a kind (Aldric, a
+    // villain) shows how hurt he is instead: "1" would say nothing.
     for (const f of shown) {
       const count = view.counts.get(f.id) ?? f.count;
       if (count <= 0) continue;
       const [cx, cy] = place(f.id, f.at);
-      this.badge(Math.round(cx + (f.side === 'player' ? 14 : -14)), Math.round(cy + 8), count, f.side === 'player');
+      const x = Math.round(cx + (f.side === 'player' ? 14 : -14));
+      if (oneOfAKind(f)) this.health(x, Math.round(cy + 11), (view.health.get(f.id) ?? f.hp) / unitOf(f).hp, f.side === 'player');
+      else this.badge(x, Math.round(cy + 8), count, f.side === 'player', rallyOf(b, f) !== null);
     }
     for (const s of view.shots) this.shot(s);
     for (const t of view.floaters) drawText(screen, t.text, Math.round(t.x - t.text.length * 4), Math.round(t.y - t.age * FLOAT_RISE), t.color, INK, 15);
@@ -315,7 +331,33 @@ export class BattleScreen {
     }
   }
 
-  private badge(cx: number, y: number, count: number, player: boolean) {
+  /** The gold ring on the ground round Aldric's feet: bright, with a dark edge, as on the map. */
+  private ring(cx: number, cy: number) {
+    const [rx, ry] = [26, 8];
+    for (const [grow, colour] of [[1, INK], [-1, GOLD[3]], [0, GOLD[6]]] as const) {
+      for (let a = 0; a < Math.PI * 2; a += 0.004) {
+        const x = Math.round(cx + Math.cos(a) * (rx + grow));
+        const y = Math.round(cy + Math.sin(a) * (ry + grow * 0.6));
+        if (y >= MAP_VIEW.y && y < MAP_VIEW.y + MAP_VIEW.height) this.screen.set(x, y, colour);
+      }
+    }
+  }
+
+  /** A one-of-a-kind fighter's health: a gold-framed bar in his side's colour, emptying as he's hurt. */
+  private health(cx: number, y: number, share: number, player: boolean) {
+    const w = 30;
+    const x = cx - w / 2;
+    const full = Math.round((w - 2) * Math.max(0, Math.min(1, share)));
+    for (let j = 0; j < 7; j++) {
+      for (let i = 0; i < w; i++) {
+        const edge = i === 0 || j === 0 || i === w - 1 || j === 6;
+        this.screen.set(x + i, y + j, edge ? GOLD[3] : i - 1 < full ? (player ? (j < 3 ? BLUE[5] : BLUE[4]) : j < 3 ? RED[5] : RED[4]) : INK);
+      }
+    }
+  }
+
+  /** A stack's count on its hex. A rallied stack's badge is edged in bright gold, with a little pennant above. */
+  private badge(cx: number, y: number, count: number, player: boolean, rallied = false) {
     const text = String(count);
     const w = text.length * 7 + 7;
     const x = cx - Math.floor(w / 2);
@@ -323,7 +365,15 @@ export class BattleScreen {
     for (let j = 0; j < 13; j++) {
       for (let i = 0; i < w; i++) {
         const edge = i === 0 || j === 0 || i === w - 1 || j === 12;
-        this.screen.set(x + i, y + j, edge ? GOLD[3] : fill);
+        this.screen.set(x + i, y + j, edge ? (rallied ? GOLD[6] : GOLD[3]) : fill);
+      }
+    }
+    if (rallied) {
+      // A little gold pennant on the badge's corner, flying from a dark staff.
+      for (let j = -10; j < 0; j++) for (const i of [0, 1]) this.screen.set(x + i, y + j, i ? WOOD[4] : INK);
+      for (let j = 0; j < 7; j++) {
+        const reach = 7 - Math.abs(j - 3) * 2;
+        for (let i = 0; i <= reach; i++) this.screen.set(x + 2 + i, y - 10 + j, i === reach || j === 0 || j === 6 ? INK : j < 3 ? GOLD[6] : GOLD[4]);
       }
     }
     drawText(this.screen, text, x + 3, y - 2, NEUTRAL[7], INK, 11);
@@ -444,6 +494,21 @@ export class BattleScreen {
         this.screen.set(Math.round(x), Math.round(y), c);
         if (k % 2 === 0) this.screen.set(Math.round(x), Math.round(y) + 1, RED[2]);
       }
+    } else if (s.kind === 'gather') {
+      // Magic gathering at Aldric's hands as he casts: bright motes spiral in, and flare at the end.
+      const colour = s.color ?? GOLD[6];
+      for (let k = 0; k < 18; k++) {
+        const a = k * 0.698 + s.t * 5 + (k % 2) * 0.4;
+        const r = (1 - s.t) * (20 + (k % 4) * 6) + 4;
+        const x = Math.round(bx + Math.cos(a) * r);
+        const y = Math.round(by + Math.sin(a) * r * 0.7);
+        for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) this.screen.set(x + dx, y + dy, k % 3 === 0 ? GOLD[6] : colour);
+        this.screen.set(x, y, NEUTRAL[7]);
+      }
+      if (s.t > 0.6) {
+        const flare = (s.t - 0.6) / 0.4;
+        for (let j = -7; j <= 7; j++) for (let i = -7; i <= 7; i++) if (Math.abs(i) + Math.abs(j) <= 2 + flare * 5) this.screen.set(Math.round(bx + i), Math.round(by + j), Math.abs(i) + Math.abs(j) <= 1 + flare * 2 ? NEUTRAL[7] : colour);
+      }
     } else if (s.kind === 'poof') {
       // Dust where a stack went down: puffs that swell, rise and thin out.
       for (let k = 0; k < 7; k++) {
@@ -476,13 +541,13 @@ export class BattleScreen {
     const f = shownId === null ? null : b.fighters.find((x) => x.id === shownId && countOf(x) > 0);
     if (view.targeting) drawText(screen, `Cast ${view.targeting}: pick a target (Esc to cancel)`, BAR.x + 12, text, GOLD[6], INK);
     else if (f) {
-      const t = TROOPS[f.troop];
-      const tags = [...abilitiesOf(f.troop).map((a) => ` ${a.name}`), ...f.status.filter((s) => s !== 'hasted').map((s) => ` ${STATUSES[s].name}`), f.defending ? ' Defending' : ''].join('');
+      const t = unitOf(f);
+      const tags = [...abilitiesOf(f.troop).map((a) => ` ${a.name}`), ...f.status.filter((s) => s !== 'hasted').map((s) => ` ${STATUSES[s].name}`), rallyOf(b, f) ? ' Rallied' : '', f.defending ? ' Defending' : ''].join('');
       const { attack, defence } = statsOf(b, f);
       const count = countOf(f);
       // A named foe is one of a kind: "Baron Grimsby", not "1 Baron Grimsby".
       const who = t.name === t.one ? t.name : `${count} ${count === 1 ? t.one : t.name}`;
-      const info = `${who}  ·  Att ${attack} Def ${defence} Dmg ${t.damage[0]}-${t.damage[1]} HP ${f.hp}/${t.hp} Spd ${speedOf(f)}${f.shots ? ` Shots ${f.shots}` : ''}${tags}`;
+      const info = `${who}  ·  Att ${attack} Def ${defence} Dmg ${t.damage[0]}-${t.damage[1]} HP ${view.health.get(f.id) ?? f.hp}/${t.hp} Spd ${speedOf(f)}${f.shots ? ` Shots ${f.shots}` : ''}${tags}`;
       drawText(screen, info, BAR.x + 12, text, f.side === 'player' ? PARCHMENT[6] : RED[6], INK);
     }
     const mana = `Mana ${b.hero.mana}`;

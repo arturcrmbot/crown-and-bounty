@@ -8,7 +8,7 @@ import { BLUE, GOLD, NEUTRAL, PARCHMENT, RED } from '../render/palette';
 import { clickable, paintHud, type HudHit } from '../render/hud';
 import { ART, heroArtId } from '../render/units';
 import type { BattleState } from '../rules/battle/battle';
-import { ambushCard, apply, bountyCard, commissionOf, describe, finishFight, levelUpCard, locationById, placeNote, roman, visit, whenThere, type Action, type Card, type GameEvent, type GameState, type Result } from '../rules/game';
+import { ambushCard, apply, bountyCard, commissionOf, describe, finishFight, heroStats, levelUpCard, locationById, placeNote, roman, visit, whenThere, type Action, type Card, type GameEvent, type GameState, type Result } from '../rules/game';
 import { barNote } from '../rules/heroSheet';
 import type { Point } from '../rules/map/geometry';
 import { cellCentre, type MapModel } from '../rules/map/model';
@@ -18,6 +18,8 @@ import { CardView } from '../ui/card';
 import { bitmapUrl } from '../ui/pixels';
 import { play } from '../ui/sound';
 import { sting } from '../audio/stings';
+import type { Place, Soundscape } from '../audio/ambience';
+import { soundscapeOf } from './soundscape';
 import { HoverLabel } from '../ui/label';
 import type { Display } from './display';
 import type { Input } from './input';
@@ -110,6 +112,10 @@ export class AdventureController implements Screen {
   private nightfall: number | null = null;
   /** How far the dark has closed over the map since the commission was lost. */
   private gloom = 0;
+  /** Where the land makes its sounds. */
+  private readonly soundscape: Soundscape;
+  /** The day's full movement, worked out once per state. */
+  private fullDay: { state: GameState; movement: number } | null = null;
   /** Called when the rules start a battle; the game switches screens. */
   onBattle: (() => void) | null = null;
   /** Called when the hero rides to court after a won commission. */
@@ -126,6 +132,7 @@ export class AdventureController implements Screen {
     this.speed = RIDE_SPEED * speed;
     this.pace = speed;
     this.scene = buildAdventureScene(map, state);
+    this.soundscape = soundscapeOf(map, state);
     this.cards = new CardView((action) => this.choose(action));
     this.drawn = { x: state.hero.at[0], y: state.hero.at[1] };
     const tower = state.locations.find((l) => l.kind === 'tower');
@@ -162,6 +169,30 @@ export class AdventureController implements Screen {
 
   get ambience() {
     return this.map.province.fen ? ('fen' as const) : ('heath' as const);
+  }
+
+  /**
+   * How far through the day the hero is: 0 with fresh legs in the morning, 1 when his movement is
+   * spent. The light and the sounds of the land follow it.
+   */
+  get dayGone(): number {
+    if (this.fullDay?.state !== this.state) this.fullDay = { state: this.state, movement: heroStats(this.state).movement };
+    return Math.max(0, Math.min(1, 1 - this.state.movement / Math.max(1, this.fullDay.movement)));
+  }
+
+  /**
+   * Where the land's sounds are heard from, and when. They follow the hero, or the middle of the
+   * view while he's scrolled out of sight. Night comes as the day's riding runs out, and while it
+   * falls between days.
+   */
+  get place(): Place {
+    const gone = this.dayGone;
+    const night = Math.max(Math.min(1, this.view.dusk / 0.8), Math.max(0, Math.min(1, (gone - 0.8) / 0.17)));
+    const { camera } = this.view;
+    const { x, y } = this.drawn;
+    const seen = x > camera.x && x < camera.x + MAP_VIEW.width && y > camera.y && y < camera.y + MAP_VIEW.height;
+    const at = seen ? { x, y } : { x: camera.x + MAP_VIEW.width / 2, y: camera.y + MAP_VIEW.height / 2 };
+    return { scape: this.soundscape, listener: { ...at, night, morning: Math.max(0, 1 - gone / 0.2) } };
   }
 
   get bitmap() {
