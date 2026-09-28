@@ -5,7 +5,7 @@ import { autoResolve } from './battle/ai';
 import { applyEffects } from './effects/core';
 import { CAMPAIGN_LENGTH, campaignLines, commissionOf, hasNextCommission, provinceOf } from './campaign';
 import { revealDisc } from './map/fog';
-import { createBattle, heroFell, survivors, type BattleHero } from './battle/battle';
+import { createBattle, heroFell, SHOOTER_MELEE, survivors, type BattleHero } from './battle/battle';
 import { foundNote, gainXp, giveArtifact, heroStats } from './hero';
 import { again, armyPower, close, coins, locationById, roll, roman, show, stillWithYou, troops, update, VANISHES, type Army, type GameEvent, type GameState, type Location, type Result } from './state';
 
@@ -30,6 +30,7 @@ export function heroInBattle(state: GameState): BattleHero {
     ...(s.charge.length ? { charge: s.charge } : {}),
     ...(s.volley ? { volley: true } : {}),
     ...(s.casts > 1 ? { casts: s.casts } : {}),
+    ...(s.shooterMelee !== SHOOTER_MELEE ? { shooterMelee: s.shooterMelee } : {}),
     unit: { troop: own.troop, hp: own.hp, damage: own.damage },
   };
 }

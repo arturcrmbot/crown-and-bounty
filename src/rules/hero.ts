@@ -3,6 +3,7 @@ import { BACKGROUNDS, type BackgroundId, type Bonus } from '../content/backgroun
 import { PERKS, RANKS, SKILLS, type PerkId, type SkillId } from '../content/skills';
 import type { MapSpellId, SpellId } from '../content/spells';
 import type { TroopId } from '../content/troops';
+import { SHOOTER_MELEE } from './battle/battle';
 import { roll, roman, show, type Card, type GameEvent, type GameState, type Result } from './state';
 
 /** A level-up waiting for the player to choose: skills (`skill:archery`) or perks (`perk:warchest`). */
@@ -77,6 +78,8 @@ export type HeroStats = {
   mapSpells: MapSpellId[];
   /** Battle spells he can cast: his own, and any his gear holds. */
   spells: SpellId[];
+  /** How hard his shooters hit in melee, as a share of a shot. */
+  shooterMelee: number;
   bribes: number;
   hires: boolean;
   tames: boolean;
@@ -135,6 +138,7 @@ export function heroStats(state: GameState): HeroStats {
     casts: 1,
     mapSpells: [],
     spells: [...h.spells],
+    shooterMelee: SHOOTER_MELEE,
     bribes: 0,
     hires: false,
     tames: false,
@@ -179,6 +183,7 @@ export function heroStats(state: GameState): HeroStats {
     s.casts += b.casts ?? 0;
     s.mapSpells.push(...(b.mapSpells ?? []).filter((m) => !s.mapSpells.includes(m)));
     s.spells.push(...(b.spells ?? []).filter((m) => !s.spells.includes(m)));
+    s.shooterMelee = Math.max(s.shooterMelee, b.shooterMelee ?? 0);
     s.bribes += b.bribes ?? 0;
     s.hires ||= Boolean(b.hires);
     s.tames ||= Boolean(b.tames);

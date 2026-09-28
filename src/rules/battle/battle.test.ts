@@ -252,3 +252,18 @@ describe('status fields', () => {
     expect(strike(shielded, shielded.fighters[0], shielded.fighters[1], false).damage).toBe(strike(b, b.fighters[0], b.fighters[1], false).damage);
   });
 });
+
+describe('shooters in melee', () => {
+  it('hit at half strength, unless the hero has taught them better', () => {
+    const hero: BattleHero = { attack: 0, defence: 0, spellPower: 1, mana: 0, spells: [], castRound: 0 };
+    const at = (h: BattleHero) => createBattle({ place: 'x', seed: 1, player: [{ troop: 'archers', count: 20 }], enemy: [{ troop: 'swordsmen', count: 20 }], hero: h, obstacles: 0 });
+    const half = at(hero);
+    const full = at({ ...hero, shooterMelee: 1 });
+    const blow = (b: BattleState) => strike(b, b.fighters[0], b.fighters[1], false).damage;
+    expect(blow(full)).toBe(Math.round(blow(half) * 2));
+    // Only his own: the enemy's crossbowmen still fight at half strength up close.
+    const bows = (h: BattleHero) => createBattle({ place: 'x', seed: 1, player: [{ troop: 'swordsmen', count: 20 }], enemy: [{ troop: 'crossbowmen', count: 20 }], hero: h, obstacles: 0 });
+    const theirs = (b: BattleState) => strike(b, b.fighters[1], b.fighters[0], false).damage;
+    expect(theirs(bows({ ...hero, shooterMelee: 1 }))).toBe(theirs(bows(hero)));
+  });
+});

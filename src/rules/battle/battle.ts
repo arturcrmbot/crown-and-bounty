@@ -57,6 +57,8 @@ export type BattleHero = {
   charge?: TroopId[];
   /** Archers loose a free volley before the first round. */
   volley?: boolean;
+  /** How hard his shooters hit in melee, as a share of a shot: half, unless he has taught them better. */
+  shooterMelee?: number;
   /** Spells he may cast in a round, and how many he has cast in `castRound`. */
   casts?: number;
   castsThisRound?: number;
@@ -66,6 +68,9 @@ export type BattleHero = {
 
 /** Where Aldric takes the field beside an army of so many stacks: in the line, in the first row it leaves free, or between the first two when all five are taken. */
 export const heroHex = (stacks: number) => hexIndex(0, LINE_UP[stacks] ?? 3);
+
+/** How hard a shooter hits in melee, as a share of its shot, unless the hero has taught his better. */
+export const SHOOTER_MELEE = 0.5;
 
 /** A charging stack rides at least this many hexes, from a start clear of the enemy, before it strikes; it hits this much harder, and can't be struck back. */
 export const CHARGE_HEXES = 3;
@@ -359,7 +364,7 @@ export function strike(b: BattleState, attacker: Fighter, target: Fighter, range
     }
     perTroop = sum / rolls;
   }
-  const inMelee = !ranged && t.shots ? 0.5 : 1;
+  const inMelee = !ranged && t.shots ? (attacker.side === 'player' ? (b.hero.shooterMelee ?? SHOOTER_MELEE) : SHOOTER_MELEE) : 1;
   const skill = attacker.side === 'player' ? 1 + ((ranged ? b.hero.ranged : b.hero.melee) ?? 0) : 1;
   const armour = target.side === 'player' ? 1 - (b.hero.armour ?? 0) : 1;
   const shield = ranged ? statusShot(target) : 1;
