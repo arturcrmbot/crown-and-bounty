@@ -6,7 +6,7 @@ import { Terrain, type MapModel } from '../rules/map/model';
 import { AdventureScreen, type Placed } from './adventureScreen';
 import { Bitmap, blit, SHADOW } from './bitmap';
 import { FogMask } from './fog';
-import { GOLD, INK, SILHOUETTE } from './palette';
+import { GOLD, INK, RED, SILHOUETTE } from './palette';
 import { animFrames, bodyHeight, everyFrame, STAND, troopFigure } from './battleSprites';
 import { heroArtId } from './units';
 import {
@@ -112,7 +112,7 @@ function landmark(l: Location): { frames: Bitmap[]; foot: number; animated: bool
       const fidget = animFrames(lead, 'idle').length > 1 ? everyFrame(lead, 'idle', 'red', -1, 'map', 120) : Array<Bitmap>(4).fill(raised(still.sprite));
       const frames = [...Array<Bitmap>(fidget.length > 4 ? 24 : 14).fill(still.sprite), ...fidget];
       const turn = [...l.id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % frames.length;
-      return { frames: [...frames.slice(turn), ...frames.slice(0, turn)], foot: -still.y, animated: true };
+      return { frames: [...frames.slice(turn), ...frames.slice(0, turn)].map((f) => ringed(f, -still.y, RED[2], RED[5])), foot: -still.y, animated: true };
     }
   }
 }
@@ -124,17 +124,17 @@ function raised(sprite: Bitmap): Bitmap {
   return out;
 }
 
-/** The gold ring round the hero's feet that says he is the one you move: bright, with a dark edge. */
-function ringed(sprite: Bitmap, foot: number): Bitmap {
+/** A bright ring round a map figure's feet, with a dark edge. */
+function ringed(sprite: Bitmap, foot: number, shade: number, bright: number): Bitmap {
   const out = new Bitmap(sprite.width, sprite.height + 6);
   out.data.set(sprite.data);
   const rx = Math.round(sprite.width * 0.36);
   const ry = Math.max(4, Math.round(rx * 0.26));
-  for (const [grow, colour] of [[1, INK], [-1, GOLD[3]], [0, GOLD[6]]] as const) {
+  for (const [grow, colour] of [[1, INK], [-1, shade], [0, bright]] as const) {
     for (let a = 0; a < Math.PI * 2; a += 0.005) {
       const x = Math.round(sprite.width / 2 + Math.cos(a) * (rx + grow));
       const y = Math.round(foot - 1 + Math.sin(a) * (ry + grow * 0.6));
-      if (out.get(x, y) === 0 || out.get(x, y) === SHADOW || grow === 0 && (out.get(x, y) === INK || out.get(x, y) === GOLD[3])) out.set(x, y, colour);
+      if (out.get(x, y) === 0 || out.get(x, y) === SHADOW || grow === 0 && (out.get(x, y) === INK || out.get(x, y) === shade)) out.set(x, y, colour);
     }
   }
   return out;
@@ -255,10 +255,10 @@ function heroFrames(background: BackgroundId): Omit<HeroRig, 'object'> {
   const foot = -still.y;
   const fidget = animFrames(art, 'idle').length > 1 ? everyFrame(art, 'idle', 'blue', 1, 'map', 120) : Array<Bitmap>(4).fill(raised(still.sprite));
   // Still for at least half again as long as the fidget lasts, so it comes now and then.
-  const idle = [...Array<Bitmap>(Math.max(16, Math.round(fidget.length * 1.5))).fill(still.sprite), ...fidget].map((f) => ringed(f, foot));
+  const idle = [...Array<Bitmap>(Math.max(16, Math.round(fidget.length * 1.5))).fill(still.sprite), ...fidget].map((f) => ringed(f, foot, GOLD[3], GOLD[6]));
   const up = raised(still.sprite);
   const stride = [still.sprite, still.sprite, up, raised(up), raised(up), up];
-  const walk = (animFrames(art, 'move').length > 1 ? everyFrame(art, 'move', 'blue', 1, 'map', 70) : stride).map((f) => ringed(f, foot));
+  const walk = (animFrames(art, 'move').length > 1 ? everyFrame(art, 'move', 'blue', 1, 'map', 70) : stride).map((f) => ringed(f, foot, GOLD[3], GOLD[6]));
   return { idle, walk, idleLeft: idle.map(mirror), walkLeft: walk.map(mirror), foot, head: bodyHeight(art, 'map') };
 }
 
