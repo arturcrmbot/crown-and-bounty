@@ -5,6 +5,7 @@
 import { audio, isMuted } from '../audio/context';
 import { playNote } from '../audio/instruments';
 import { sting } from '../audio/stings';
+import { Terrain } from '../rules/map/model';
 
 export type Sound = 'click' | 'coins' | 'hit' | 'shoot' | 'bolt' | 'spell' | 'day' | 'levelUp' | 'victory' | 'defeat' | 'dig' | 'fanfare' | 'charge' | 'page' | 'lift' | 'equip' | 'march';
 
@@ -113,5 +114,39 @@ export function play(sound: Sound) {
     }
   } catch {
     // A sound that can't be made is not worth stopping the game for.
+  }
+}
+
+/** One footfall (or hoofbeat, mounted), coloured by the terrain underfoot. */
+export function playStep(terrain: Terrain, rides: boolean) {
+  const a = audio();
+  if (!a || isMuted()) return;
+  try {
+    const t = a.ctx.currentTime + 0.01;
+    // A hoofbeat is two quick clops (the fore and hind foot); a footstep is one, softer fall.
+    const beats = rides ? [0, 0.09] : [0];
+    const loud = rides ? 1 : 0.55;
+    for (const d of beats) {
+      switch (terrain) {
+        case Terrain.Road:
+          noise(t + d, 0.05, 'bandpass', 1300, 0.55 * loud, 0.6);
+          break;
+        case Terrain.Bridge:
+          // Hollow boards underfoot.
+          noise(t + d, 0.05, 'bandpass', 900, 0.4 * loud);
+          tone(200, t + d, 0.08, 'triangle', 0.22 * loud, 0.7);
+          break;
+        case Terrain.Forest:
+          // A soft fall, with a leaf or twig underfoot.
+          noise(t + d, 0.06, 'lowpass', 400, 0.35 * loud, 0.5);
+          noise(t + d + 0.01, 0.03, 'highpass', 2600, 0.12 * loud);
+          break;
+        default:
+          // Grass, and anywhere else: a dull thud.
+          noise(t + d, 0.07, 'lowpass', 320, 0.4 * loud, 0.5);
+      }
+    }
+  } catch {
+    // A step that can't be made is not worth stopping the game for.
   }
 }

@@ -24,7 +24,7 @@ export const PAYDAY_EVERY = 7;
 export const COMMISSION = 1000;
 export const LAST_DAY = 100;
 
-export type LocationKind = 'castle' | 'tower' | 'mine' | 'village' | 'mill' | 'chest' | 'gold' | 'patrol' | 'hideout' | 'signpost' | 'dig' | 'event';
+export type LocationKind = 'castle' | 'tower' | 'mine' | 'village' | 'mill' | 'chest' | 'gold' | 'patrol' | 'hideout' | 'signpost' | 'dig' | 'event' | 'well';
 
 export type Enemy = {
   /** How the enemy is drawn on the map. */
