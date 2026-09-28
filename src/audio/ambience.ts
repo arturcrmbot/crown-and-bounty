@@ -742,7 +742,7 @@ function mix(a: NonNullable<ReturnType<typeof audio>>, place: Place) {
     const spot = nearSpot(spots, RANGE[call.kind], x, y);
     if (!spot) continue;
     call.sound(ctx, outlet(ctx, dest, spot.level * call.level, spot.pan), t);
-    log(call.sound.name);
+    log(CALL_NAMES.get(call.sound) ?? '?');
   }
   // Open country between the places: a skylark by day; frogs in every fen ditch, more of them at night.
   if (night < 0.5 && !scape.fen && Math.random() < 0.035 * TICK * 2) skylark(ctx, outlet(ctx, dest, 0.8, rand(-0.5, 0.5)), t);
@@ -811,5 +811,8 @@ export const heard = () => ({ bed: current?.id ?? null, layers: { ...levels }, r
 
 /** The one-off sounds, by name, for `npm run listen`. */
 export const AMBIENT_CALLS = { songbird, blackbird, cuckoo, woodpecker, skylark, crow, frog, droplet, chatter, anvil, pick, creak, arrow, chapelBell, chant, owl, cockerel, crackle };
+/** Each one-off's name, for the log (the functions' own names don't survive the build). */
+const CALL_NAMES = new Map<OneOff, string>(Object.entries(AMBIENT_CALLS).map(([name, f]) => [f, name]));
+
 /** And the layers that go on while you're near. */
 export const AMBIENT_LAYERS = { brook, falls, gale, crickets };

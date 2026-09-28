@@ -20,6 +20,8 @@ import { play } from '../ui/sound';
 import { sting } from '../audio/stings';
 import type { Place, Soundscape } from '../audio/ambience';
 import { soundscapeOf } from './soundscape';
+import { lairTune, provinceTune } from './tunes';
+import type { TrackId } from '../audio/score';
 import { HoverLabel } from '../ui/label';
 import type { Display } from './display';
 import type { Input } from './input';
@@ -34,6 +36,10 @@ const BANNER_HOLD = 2.4;
 const NIGHT = 1.4;
 /** How dark the map grows once a commission is lost. */
 const GLOOM = 0.6;
+/** How near a castle or village the hero must be for its card to bring the town's tune. */
+const TOWN_REACH = 90;
+/** Seconds the town's tune plays on after its card closes, so a quick visit still hears it. */
+const TOWN_LINGER = 3;
 /** Map pixels per second. */
 const RIDE_SPEED = 95;
 /** Map pixels per step of the trot cycle, so hooves don't slide. */
@@ -96,6 +102,8 @@ export class AdventureController implements Screen {
    * ride there is. `name` is the place's label without it.
    */
   private resting: { key: string; point: Point; approach: boolean; name: string | null; client: [number, number]; still: number; text?: string; asOf?: string } | null = null;
+  /** "Start over?" is on screen: a second Start a new campaign really does. */
+  private restartAsked = false;
   /** The place whose card is open because the player clicked it: a second click there goes to it. */
   private looking: { id: string; go: Action; label: string } | null = null;
   private readonly speed: number;
@@ -114,6 +122,12 @@ export class AdventureController implements Screen {
   private gloom = 0;
   /** Where the land makes its sounds. */
   private readonly soundscape: Soundscape;
+  /** The place whose card is open, if the card came from a visit there. */
+  private cardPlace: string | null = null;
+  /** Settling a battle fought on the field, whose stings have played already. */
+  private fromBattle = false;
+  /** Seconds the town's tune plays on: kept full while its card is open, then running down. */
+  private inTown = 0;
   /** The day's full movement, worked out once per state. */
   private fullDay: { state: GameState; movement: number } | null = null;
   /** Called when the rules start a battle; the game switches screens. */
@@ -163,8 +177,19 @@ export class AdventureController implements Screen {
     play('fanfare');
   }
 
-  get music() {
-    return this.map.province.fen ? ('fen' as const) : ('heath' as const);
+  /**
+   * The province's own tune; a villain's theme near his lair; and while the hero is in a castle or
+   * a village, with its card open, the town's.
+   */
+  get music(): TrackId {
+    if (this.inTown > 0) return 'town';
+    return lairTune(this.state, [this.drawn.x, this.drawn.y]) ?? provinceTune(this.state.campaign.chapter, Boolean(this.map.province.fen));
+  }
+
+  /** Whether the hero is in a castle or village, with its card open: its tune plays, and lingers a moment after. */
+  private visitingTown(): boolean {
+    const here = this.cardPlace && this.cards.isOpen ? this.state.locations.find((l) => l.id === this.cardPlace) : null;
+    return Boolean(here && (here.kind === 'castle' || here.kind === 'village') && !here.look && Math.hypot(here.at[0] - this.drawn.x, here.at[1] - this.drawn.y) < TOWN_REACH);
   }
 
   get ambience() {
@@ -210,6 +235,7 @@ export class AdventureController implements Screen {
   }
 
   showCard(card: Card, at: Point | null) {
+    this.cardPlace = null;
     // A new province's name gets its moment across the sky before any card covers it.
     if (this.banner && this.banner.age < BANNER_HOLD) {
       this.held = { card, at };
@@ -217,12 +243,15 @@ export class AdventureController implements Screen {
     }
     this.cardAnchor = at;
     this.looking = null;
+    this.restartAsked = false;
     this.label.hide();
     this.cards.show(card);
   }
 
   hideCard() {
     this.looking = null;
+    this.cardPlace = null;
+    this.restartAsked = false;
     this.cards.hide();
   }
 
@@ -280,6 +309,9 @@ export class AdventureController implements Screen {
           return;
         case 'card':
           this.showCard(e.card, e.place ? this.anchorOf(e.place) : e.at);
+          this.cardPlace = e.place ?? null;
+          // A fight the sergeants settled gets the same brass, or the same bell, as one fought on the field.
+          if (!this.fromBattle && (e.card.title === 'Victory!' || e.card.title === 'Defeat')) sting(e.card.title === 'Defeat' ? 'defeat' : 'victory');
           break;
         case 'reveal':
           this.scene.fog.reveal(this.state.explored, e.at[0], e.at[1], e.radius);
@@ -299,6 +331,7 @@ export class AdventureController implements Screen {
           this.tiredShown = false;
           this.nightfall = 0;
           play('day');
+          if (e.payday) sting('payday');
           // A quiet dawn has no card: the new day's number rises off the hero as the light comes back.
           if (!events.some((x) => x.type === 'card')) this.view.effects.floatText(this.drawn.x, this.drawn.y - this.scene.hero.head - 12, `Day ${roman(e.day)}`, GOLD[6], NIGHT * 0.55);
           break;
@@ -363,7 +396,9 @@ export class AdventureController implements Screen {
 
   /** Back from the battlefield: the rules settle survivors and rewards, and the card says how it went. */
   finishBattle(battle: BattleState) {
+    this.fromBattle = true;
     this.run(finishFight({ ...this.state, battle }));
+    this.fromBattle = false;
     this.follow = true;
   }
 
@@ -373,8 +408,24 @@ export class AdventureController implements Screen {
         this.hideCard();
         return;
       case 'restart':
-        clearSave();
-        window.location.reload();
+        // A whole campaign goes with one click: ask first, unless it's already won.
+        if (this.restartAsked || this.state.over === 'won') {
+          clearSave();
+          window.location.reload();
+          return;
+        }
+        this.showCard(
+          {
+            title: 'Start over?',
+            lines: ['A new campaign begins with the King, and **this one is gone for good**: the hero, his gear, his army and every commission so far.'],
+            choices: [
+              { label: 'No, carry on', action: { type: 'close' } },
+              { label: 'Yes, start a new campaign', action: { type: 'restart' } },
+            ],
+          },
+          null,
+        );
+        this.restartAsked = true;
         return;
       case 'go': {
         this.hideCard();
@@ -451,6 +502,7 @@ export class AdventureController implements Screen {
   }
 
   update(dt: number, held: ReadonlySet<string>) {
+    this.inTown = this.visitingTown() ? TOWN_LINGER : Math.max(0, this.inTown - dt);
     if (this.banner && (this.banner.age += dt * this.pace) > BANNER_TIME) this.banner = null;
     if (this.held && (!this.banner || this.banner.age >= BANNER_HOLD)) {
       const { card, at } = this.held;
@@ -538,7 +590,14 @@ export class AdventureController implements Screen {
           this.tiredShown = true;
           saveGame(this.state);
           this.showCard(
-            { title: ART[heroArtId(this.state.hero.background)].rides ? 'Your horse is spent' : 'Your legs are spent', lines: ['End the day to rest. Red marks are for tomorrow.'], choices: [{ label: 'End the day (E)', action: { type: 'endDay' } }] },
+            {
+              title: ART[heroArtId(this.state.hero.background)].rides ? 'Your horse is spent' : 'Your legs are spent',
+              lines: ['End the day to rest, and he rides on at dawn. Red marks are for tomorrow.'],
+              choices: [
+                { label: 'End the day (E)', action: { type: 'endDay' } },
+                { label: 'Not yet', detail: 'Look around first: the route waits.', action: { type: 'close' } },
+              ],
+            },
             [this.drawn.x, this.drawn.y - this.scene.hero.foot],
           );
         }
@@ -775,10 +834,9 @@ export class AdventureController implements Screen {
       if (key === 'e' && !this.state.over && !this.state.ambush) this.choose({ type: 'endDay' });
       else if (key === 'h' && !this.state.over && !this.state.ambush) this.openHero();
       else if (key === '?') this.showCard(keysCard(), null);
-      else if (key === 'enter' || key === ' ') {
-        // Space with no card up brings the view back to the hero.
-        if (!this.cards.pressOnly() && key === ' ' && !this.cards.isOpen) this.follow = true;
-      }
+      else if (this.cards.key(key)) return;
+      // Space with no card up brings the view back to the hero.
+      else if (key === ' ' && !this.cards.isOpen) this.follow = true;
       else if (key === 'escape') {
         // Esc puts a card away, or with none up, reins in.
         if (this.cards.isOpen) this.hideCard();

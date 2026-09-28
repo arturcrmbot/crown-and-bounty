@@ -187,7 +187,7 @@ export class HeroScreen {
       </div>
       <div class="stats">${sheet.stats.map(stat).join('')}</div>
       <div class="gauges">
-        <div class="gauge${changed(4)}" data-tip="${escape(mana.line)}"><span class="label"><b>Mana</b><small>${mana.max ? (mana.left < mana.max ? 'full again at dawn' : 'refills every dawn') : ''}</small><span>${mana.left}/${mana.max}</span></span>${bar('mana', mana.max ? mana.left / mana.max : 0)}</div>
+        <div class="gauge${changed(4)}" data-tip="${escape(mana.line)}"><span class="label"><b>Mana</b><small>${mana.max ? escape(mana.back) : ''}</small><span>${mana.left}/${mana.max}</span></span>${bar('mana', mana.max ? mana.left / mana.max : 0)}</div>
         <div class="gauge${changed(6)}" data-tip="${escape(movement.line)}"><span class="label"><b>Movement</b><small>today</small><span>${movement.left}/${movement.max}</span></span>${bar('move', movement.max ? movement.left / movement.max : 0)}</div>
         <div class="gauge${changed(5)}${leadership.used > leadership.max ? ' too-many' : ''}" data-tip="${escape(leadership.line)}"><span class="label"><b>Leadership</b><small>in use</small><span>${leadership.used}/${leadership.max}</span></span>${bar('lead', leadership.max ? leadership.used / leadership.max : 0)}</div>
       </div>
@@ -211,7 +211,11 @@ export class HeroScreen {
     const slots = SLOTS.map((slot) => {
       const id = gear[slot];
       const place: Place = { kind: 'slot', slot };
-      const tip = id ? `**${ARTIFACTS[id].name}** \u00b7 ${SLOT_NAMES[slot]}\n${ARTIFACTS[id].note}\n*Drag it to the pack, or click to pick it up. Double-click takes it off.*` : `**${SLOT_NAMES[slot]}**: nothing yet.\n*Drag an artifact here from the pack.*`;
+      const spare = pack.find((p) => ARTIFACTS[p].slot === slot);
+      const empty = spare
+        ? `**${SLOT_NAMES[slot]}**: nothing on.\n*Drag the ${ARTIFACTS[spare].name} here from the pack, or double-click it there.*`
+        : `**${SLOT_NAMES[slot]}**: nothing yet.\n*Artifacts turn up in chests and old places, as spoils, and in castle armouries.*`;
+      const tip = id ? `**${ARTIFACTS[id].name}** \u00b7 ${SLOT_NAMES[slot]}\n${ARTIFACTS[id].note}\n*Drag it to the pack, or click to pick it up. Double-click takes it off.*` : empty;
       const img = id ? `<img alt="" draggable="false" src="${iconUrl(id)}">` : `<img class="ghostly" alt="" draggable="false" src="${ghostUrl(slot)}">`;
       return `<button class="slot ${slot}${classes(place, Boolean(id))}" data-place="${keyOf(place)}" data-tip="${escape(tip)}" aria-label="${escape(id ? `${SLOT_NAMES[slot]}: ${ARTIFACTS[id].name}` : `${SLOT_NAMES[slot]}: empty`)}">${img}</button>`;
     }).join('');
@@ -243,7 +247,10 @@ export class HeroScreen {
     const tiles = Array.from({ length: 5 }, (_, index) => {
       const stack = army[index];
       const place: Place = { kind: 'stack', index };
-      if (!stack) return `<button class="tile empty" data-place="${keyOf(place)}" aria-label="An empty place in the line" tabindex="-1"></button>`;
+      if (!stack) {
+        const tip = '**An empty place in the line.**\n*Recruit at castles and villages, or win a band over: up to five companies.*';
+        return `<button class="tile empty" data-place="${keyOf(place)}" data-tip="${escape(tip)}" aria-label="An empty place in the line" tabindex="-1"></button>`;
+      }
       const info = stackSheet(this.state, index)!;
       const open = this.card && keyOf(this.card) === keyOf(place) ? ' open' : '';
       const tip = `**${info.title}**\n${info.row}\n*Click for their card. Drag them along the line.*`;
@@ -443,6 +450,9 @@ export class HeroScreen {
       if (act && this.root.contains(act)) return this.clickAct(act.dataset.act!, act as HTMLButtonElement);
       const hit = target.closest<HTMLElement>('[data-place]');
       const place = hit ? parse(hit.dataset.place) : null;
+      // A tap on a chip, a stat or a gauge shows its note, for touch screens and for anyone who clicks.
+      const noted = !place && target.closest<HTMLElement>('[data-tip]');
+      if (noted && this.root.contains(noted)) return this.showTip(noted);
       if (place) this.clickPlace(place);
       else if (this.card && !target.closest('.kc-hero-card')) this.closeCard();
       else if (this.held) this.cancel();

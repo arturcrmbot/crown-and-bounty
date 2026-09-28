@@ -127,7 +127,11 @@
 .kc-hero .bar.move > i {
   background: linear-gradient(#f2e4c4, #c6ab7c 55%, #8c7148);
 }
+/* Leadership in use is warm bronze; it only turns red when he leads more than he can. */
 .kc-hero .bar.lead > i {
+  background: linear-gradient(#e8d4ac, #b07838 55%, #78481e);
+}
+.kc-hero .gauge.too-many .bar.lead > i {
   background: linear-gradient(#f8a276, #d2432b 55%, #82191a);
 }
 .kc-hero .stats {
