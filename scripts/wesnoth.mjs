@@ -43,7 +43,7 @@ try {
  */
 /** Every image a unit's art uses. */
 function frameList(u) {
-  return [u.stand, u.defend, u.defendRanged, ...[u.idle, u.move, u.melee.frames, u.charge?.frames, u.ranged?.frames, u.death].flatMap((l) => (l ?? []).map((f) => f.image))].filter(Boolean);
+  return [u.stand, u.defend, u.defendRanged, ...[u.idle, u.move, u.melee.frames, u.charge?.frames, u.cast, u.ranged?.frames, u.death].flatMap((l) => (l ?? []).map((f) => f.image))].filter(Boolean);
 }
 
 async function pickPalette(paths, units) {

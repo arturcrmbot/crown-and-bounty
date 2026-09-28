@@ -14,7 +14,7 @@ export { meets, needsLabel } from './effects';
 export { ambushCard, endDay } from './days';
 export { briefingCard, CAMPAIGN_LENGTH, campaignLines, chooseBoon, commissionAt, commissionOf, courtCard, hasNextCommission, nextArmy, nextCommission, provinceOf, retry, toCourt, veterans, VETERANS } from './campaign';
 export { beginCommission, chooseBackground, newGame } from './scenario';
-export { battleXp, fight, finishFight, heroInBattle, lossesLine, startFight, winChance } from './fight';
+export { battleXp, fight, finishFight, heroFighter, heroInBattle, lossesLine, startFight, winChance, type HeroFighter } from './fight';
 export { equip, gainXp, gearCard, giveArtifact, heroStats, learn, levelFor, levelUpCard, LEVELS } from './hero';
 
 /** Applies a card choice. `go`, `close`, `restart`, `spell` and `retreat` are for the screens, so they return null here. */

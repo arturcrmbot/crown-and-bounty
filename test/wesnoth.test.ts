@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { SHADOW } from '../src/render/bitmap';
 import { BLUE, CYCLING, RED } from '../src/render/palette';
 import { decodePng } from '../src/render/png';
-import { ART, artImages, heroArtId, UNIT_ART, unitImages } from '../src/render/units';
+import { ART, artImages, heroArtId, isHeroArt, UNIT_ART, unitImages, type ArtId } from '../src/render/units';
 import { MAP_HERO, unitScale } from '../src/render/scale';
 import { loadUnitArt, unitBitmap, unitImage } from '../src/render/wesnoth';
 
@@ -54,7 +54,7 @@ describe('Wesnoth unit art', () => {
     expect(ART[heroArtId('knight')]).toBe(ART.hero);
     expect(backgrounds.filter((b) => ART[heroArtId(b)].rides)).toEqual(['knight']);
     // Nobody the hero fights looks like him: the Ranger is not a Poacher.
-    const foes = new Set(Object.values(UNIT_ART).flatMap(artImages));
+    const foes = new Set(Object.entries(UNIT_ART).flatMap(([id, art]) => (isHeroArt(id as ArtId) ? [] : artImages(art))));
     for (const id of figures) expect(artImages(ART[id]).filter((image) => foes.has(image)), id).toEqual([]);
     for (const id of figures) expect(unitScale('map', id), id).toBe(MAP_HERO);
   });

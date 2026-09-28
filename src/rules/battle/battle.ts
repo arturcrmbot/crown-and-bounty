@@ -1,9 +1,12 @@
 import { SPELLS, STATUSES, type SpellId, type StatusId } from '../../content/spells';
-import { abilitiesOf, troopPower, TROOPS, type TroopId } from '../../content/troops';
+import { ABILITIES, abilitiesOf, TROOPS, unitPower, type TroopDef, type TroopId } from '../../content/troops';
 import { roll, type Army } from '../state';
 import { COLS, HEXES, hexIndex, NEIGHBOURS, neighbours, reachable } from './hex';
 
 export type Side = 'player' | 'enemy';
+
+/** A stack's own health and damage per troop, when they aren't its troop's usual ones: the hero's grow with him. */
+export type UnitNumbers = { hp: number; damage: readonly [number, number] };
 
 /** One stack on the battlefield. `hp` is the health of its top troop; the rest are whole. */
 export type Fighter = {
@@ -20,9 +23,15 @@ export type Fighter = {
   waited: boolean;
   /** Spells and abilities on the stack, for the rest of the battle. */
   status: StatusId[];
+  unit?: UnitNumbers;
+  /**
+   * Aldric himself, a stack of one: the side's spells are his to cast, and only while he stands.
+   * When he falls he's carried from the field, not killed, and the battle goes on without him.
+   */
+  hero?: boolean;
 };
 
-/** The player's hero, watching from the edge of the field: skills for every stack, and spells. */
+/** The player's hero: skills for every stack, his spells, and himself on the field. */
 export type BattleHero = {
   /** What the battle log calls him. */
   name?: string;
@@ -51,7 +60,12 @@ export type BattleHero = {
   /** Spells he may cast in a round, and how many he has cast in `castRound`. */
   casts?: number;
   castsThisRound?: number;
+  /** He takes the field himself, as this troop with these numbers (see `heroFighter` in rules/fight.ts). */
+  unit?: UnitNumbers & { troop: TroopId };
 };
+
+/** Where Aldric takes the field beside an army of so many stacks: in the line, in the first row it leaves free, or between the first two when all five are taken. */
+export const heroHex = (stacks: number) => hexIndex(0, LINE_UP[stacks] ?? 3);
 
 /** A charging stack rides at least this many hexes, from a start clear of the enemy, before it strikes; it hits this much harder, and can't be struck back. */
 export const CHARGE_HEXES = 3;
@@ -125,10 +139,29 @@ export const fighterById = (b: BattleState, id: number) => b.fighters.find((f) =
 export const activeFighter = (b: BattleState): Fighter | null => (b.result || b.order.length === 0 ? null : fighterById(b, b.order[0]));
 export const hasStatus = (f: Fighter, status: StatusId) => f.status.includes(status);
 
+const merged = new WeakMap<UnitNumbers, TroopDef>();
+/** A stack's numbers: its troop's, with its own health and damage where it has them (the hero). */
+export function unitOf(f: Pick<Fighter, 'troop' | 'unit'>): TroopDef {
+  if (!f.unit) return TROOPS[f.troop];
+  let def = merged.get(f.unit);
+  if (!def) merged.set(f.unit, (def = { ...TROOPS[f.troop], ...f.unit }));
+  return def;
+}
+/** A stack's rough fighting worth per troop (see `troopPower`), with its own numbers. */
+export const powerOf = (f: Pick<Fighter, 'troop' | 'unit'>) => unitPower(unitOf(f));
+
+/** Aldric's own fighter, if he took the field. */
+export const heroOnField = (b: BattleState) => b.fighters.find((f) => f.hero) ?? null;
+/** Whether the side's spells can still be cast: by Aldric while he stands, or from the edge of the field in a battle he didn't join. */
+const heroStands = (b: BattleState) => {
+  const hero = heroOnField(b);
+  return !hero || alive(hero);
+};
+
 /** Speed after statuses: additions first, then multipliers, rounded up. */
 export const speedOf = (f: Fighter) => {
   const defs = f.status.map((s) => STATUSES[s]);
-  const base = TROOPS[f.troop].speed + defs.reduce((sum, d) => sum + (d.speedAdd ?? 0), 0);
+  const base = unitOf(f).speed + defs.reduce((sum, d) => sum + (d.speedAdd ?? 0), 0);
   const times = defs.reduce((product, d) => product * (d.speedTimes ?? 1), 1);
   return times === 1 ? base : Math.ceil(base * times);
 };
@@ -143,6 +176,7 @@ function turnOrder(fighters: Fighter[]): number[] {
 
 export function createBattle(args: { place: string; seed: number; player: Army; enemy: Army; hero: BattleHero; obstacles?: number; ground?: BattleState['ground'] }): BattleState {
   const fighters: Fighter[] = [];
+  const shotsOf = (troop: TroopId, side: Side) => (TROOPS[troop].shots ? TROOPS[troop].shots! + (side === 'player' ? (args.hero.troops?.[troop]?.shots ?? 0) : 0) : 0);
   const add = (army: Army, side: Side, col: number) =>
     army.forEach((s, i) =>
       fighters.push({
@@ -153,7 +187,7 @@ export function createBattle(args: { place: string; seed: number; player: Army; 
         startCount: s.count,
         hp: TROOPS[s.troop].hp,
         at: hexIndex(col, LINE_UP[i % LINE_UP.length]),
-        shots: TROOPS[s.troop].shots ? TROOPS[s.troop].shots! + (side === 'player' ? (args.hero.troops?.[s.troop]?.shots ?? 0) : 0) : 0,
+        shots: shotsOf(s.troop, side),
         retaliated: false,
         defending: false,
         waited: false,
@@ -162,6 +196,13 @@ export function createBattle(args: { place: string; seed: number; player: Army; 
     );
   add(args.player.filter((s) => s.count > 0), 'player', 0);
   add(args.enemy.filter((s) => s.count > 0), 'enemy', COLS - 1);
+  // Aldric takes the field himself, a stack of one, in the line with his army (but not one of its five).
+  const hero = args.hero.unit;
+  if (hero) {
+    const { troop, ...unit } = hero;
+    const at = heroHex(fighters.filter((f) => f.side === 'player').length);
+    fighters.push({ id: fighters.length, side: 'player', troop, count: 1, startCount: 1, hp: unit.hp, at, shots: shotsOf(troop, 'player'), retaliated: false, defending: false, waited: false, status: [], unit, hero: true });
+  }
   let seed = args.seed;
   const obstacles: number[] = [];
   const wanted = args.obstacles ?? 5;
@@ -247,11 +288,11 @@ export function options(b: BattleState): Options {
 /** Defence a stack's statuses add (Stone Skin). */
 const statusDefence = (f: Fighter) => f.status.reduce((sum, s) => sum + (STATUSES[s].defenceAdd ?? 0), 0);
 
-/** A stack's attack and defence as they stand, with the hero's help. */
+/** A stack's attack and defence as they stand, with the hero's help and any rally. */
 export function statsOf(b: BattleState, f: Fighter): { attack: number; defence: number } {
-  const t = TROOPS[f.troop];
-  const help = heroSkill(b, f);
-  return { attack: t.attack + help.attack, defence: t.defence + help.defence + statusDefence(f) };
+  const t = unitOf(f);
+  const extra = helpOf(b, f);
+  return { attack: t.attack + extra.attack, defence: t.defence + extra.defence + statusDefence(f) };
 }
 
 /** Attack and defence the hero adds to a stack: his own, plus any bonus for that kind of troop. */
@@ -261,6 +302,31 @@ function heroSkill(b: BattleState, f: Fighter): { attack: number; defence: numbe
   return { attack: b.hero.attack + (troop?.attack ?? 0), defence: b.hero.defence + (troop?.defence ?? 0) };
 }
 
+/** Troops that hearten the stacks of their side standing beside them, and by how much (see `aura` in content/troops.ts). */
+const AURAS = new Map(Object.values(TROOPS).flatMap((t) => (t.abilities ?? []).flatMap((a) => (ABILITIES[a].aura ? [[t.id, ABILITIES[a].aura!] as const] : []))));
+/** Each battle state's stacks that rally their neighbours, found once. */
+const rallying = new WeakMap<readonly Fighter[], Fighter[]>();
+
+/** What friends standing beside a stack add to its attack and defence (Lord Aldric's rally), or null if nobody does. */
+export function rallyOf(b: BattleState, f: Fighter): { attack: number; defence: number } | null {
+  let sources = rallying.get(b.fighters);
+  if (!sources) rallying.set(b.fighters, (sources = b.fighters.filter((o) => alive(o) && AURAS.has(o.troop))));
+  let [attack, defence, rallied] = [0, 0, false];
+  for (const o of sources) {
+    if (o.side !== f.side || o.id === f.id || !NEIGHBOURS[f.at].includes(o.at)) continue;
+    const aura = AURAS.get(o.troop)!;
+    [attack, defence, rallied] = [attack + aura.attack, defence + aura.defence, true];
+  }
+  return rallied ? { attack, defence } : null;
+}
+
+/** Everything a stack gets besides its own attack and defence: the hero's skills, and any rally. */
+function helpOf(b: BattleState, f: Fighter): { attack: number; defence: number } {
+  const skill = heroSkill(b, f);
+  const rally = rallyOf(b, f);
+  return rally ? { attack: skill.attack + rally.attack, defence: skill.defence + rally.defence } : skill;
+}
+
 /** The attack-against-defence multiplier, HoMM2 style. */
 export function skillFactor(attack: number, defence: number): number {
   return attack >= defence ? Math.min(4, 1 + 0.1 * (attack - defence)) : Math.max(0.3, 1 - 0.05 * (defence - attack));
@@ -268,9 +334,9 @@ export function skillFactor(attack: number, defence: number): number {
 
 /** Damage one stack deals another, times `bonus` (a charge). With `seed` it rolls; without, it's the average. */
 export function strike(b: BattleState, attacker: Fighter, target: Fighter, ranged: boolean, seed?: number, bonus = 1): { damage: number; seed?: number } {
-  const t = TROOPS[attacker.troop];
-  const attack = t.attack + heroSkill(b, attacker).attack;
-  let defence = TROOPS[target.troop].defence + heroSkill(b, target).defence + statusDefence(target);
+  const t = unitOf(attacker);
+  const attack = t.attack + helpOf(b, attacker).attack;
+  let defence = unitOf(target).defence + helpOf(b, target).defence + statusDefence(target);
   if (target.defending) defence = Math.round(defence * 1.3);
   const [min, max] = t.damage;
   let perTroop: number;
@@ -290,12 +356,20 @@ export function strike(b: BattleState, attacker: Fighter, target: Fighter, range
   const skill = attacker.side === 'player' ? 1 + ((ranged ? b.hero.ranged : b.hero.melee) ?? 0) : 1;
   const armour = target.side === 'player' ? 1 - (b.hero.armour ?? 0) : 1;
   const damage = Math.max(1, Math.round(attacker.count * perTroop * skillFactor(attack, defence) * inMelee * skill * armour * bonus));
-  return { damage, seed };
+  return { damage: ranged ? shotOn(target, damage) : damage, seed };
+}
+
+/** Troops no single shot can take more than a share of (a hero's bodyguard, shields up). */
+const SHOT_CAPS = new Map(Object.values(TROOPS).flatMap((t) => (t.abilities ?? []).flatMap((a) => (ABILITIES[a].shotCap ? [[t.id, ABILITIES[a].shotCap!] as const] : []))));
+/** What a shot (or a spell) of `damage` really does to a stack, after any cap on it. */
+export function shotOn(target: Pick<Fighter, 'troop' | 'unit'>, damage: number): number {
+  const cap = SHOT_CAPS.get(target.troop);
+  return cap ? Math.min(damage, Math.ceil(unitOf(target).hp * cap)) : damage;
 }
 
 /** What `damage` leaves of a stack. */
 export function wound(target: Fighter, damage: number): { count: number; hp: number; killed: number } {
-  const full = TROOPS[target.troop].hp;
+  const full = unitOf(target).hp;
   const remaining = (target.count - 1) * full + target.hp - damage;
   if (remaining <= 0) return { count: 0, hp: 0, killed: target.count };
   const count = Math.ceil(remaining / full);
@@ -306,7 +380,7 @@ export function wound(target: Fighter, damage: number): { count: number; hp: num
 export const spellCost = (b: BattleState, spell: SpellId) => Math.max(1, SPELLS[spell].mana - (b.hero.manaDiscount ?? 0));
 /** Spells the hero may still cast this round: one, or two for a wizard. */
 export const castsLeft = (b: BattleState) => (b.hero.casts ?? 1) - (b.hero.castRound === b.round ? (b.hero.castsThisRound ?? 1) : 0);
-export const canCast = (b: BattleState, spell: SpellId) => b.hero.spells.includes(spell) && castsLeft(b) > 0 && b.hero.mana >= spellCost(b, spell);
+export const canCast = (b: BattleState, spell: SpellId) => b.hero.spells.includes(spell) && castsLeft(b) > 0 && b.hero.mana >= spellCost(b, spell) && heroStands(b);
 /**
  * Whether a melee attack from `from` would be a charge: a charging troop with a run-up, riding far
  * enough first from a start clear of the enemy (circling a stack it is already fighting isn't one).
@@ -417,8 +491,8 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
         return settle(next, events, false);
       }
       next.struck = true;
-      const damage = spellDamage(b, action.spell);
       for (const victim of spellVictims(next, action.spell, target)) {
+        const damage = shotOn(victim, spellDamage(b, action.spell));
         const w = wound(victim, damage);
         victim.count = w.count;
         victim.hp = w.hp;
@@ -434,7 +508,7 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
       for (const shooter of fighters.filter((x) => x.side === 'player' && alive(x) && x.shots > 0)) {
         const targets = fighters.filter((x) => x.side === 'enemy' && alive(x));
         if (!targets.length) break;
-        const worth = (x: Fighter) => Math.min(x.count, strike(next, shooter, x, true).damage / TROOPS[x.troop].hp) * troopPower(x.troop) * (x.shots > 0 ? 2 : 1);
+        const worth = (x: Fighter) => Math.min(x.count, strike(next, shooter, x, true).damage / unitOf(x).hp) * powerOf(x) * (x.shots > 0 ? 2 : 1);
         const target = targets.reduce((best, x) => (worth(x) > worth(best) ? x : best));
         shooter.shots -= 1;
         hit(shooter, target, true, false);
@@ -468,7 +542,7 @@ function settle(b: BattleState, events: BattleEvent[], endTurn: boolean): Battle
     // Nobody has landed a blow for a while, and nobody will: the battle is called off. Only a side
     // far weaker than the other counts as beaten; otherwise the enemy keeps its army and holds the field.
     if (quiet >= QUIET_ROUNDS) {
-      const worth = (side: Side) => next.fighters.filter((f) => alive(f) && f.side === side).reduce((sum, f) => sum + (((f.count - 1) * TROOPS[f.troop].hp + f.hp) / TROOPS[f.troop].hp) * troopPower(f.troop), 0);
+      const worth = (side: Side) => next.fighters.filter((f) => alive(f) && f.side === side).reduce((sum, f) => sum + (((f.count - 1) * unitOf(f).hp + f.hp) / unitOf(f).hp) * powerOf(f), 0);
       const result = worth('enemy') < worth('player') * ROUTED_BELOW ? 'won' : 'fled';
       events.push({ type: 'end', result, rout: true });
       return { battle: { ...next, result, quiet, gap: reach.gap, ...(result === 'fled' && reach.stuck ? { standoff: true } : {}) }, events };
@@ -479,7 +553,7 @@ function settle(b: BattleState, events: BattleEvent[], endTurn: boolean): Battle
   }
   const acting = fighterById(next, next.order[0]);
   if (acting.defending) next = { ...next, fighters: next.fighters.map((f) => (f.id === acting.id ? { ...f, defending: false } : f)) };
-  const full = TROOPS[acting.troop].hp;
+  const full = unitOf(acting).hp;
   const heal = Math.round(full * Math.max(0, ...abilitiesOf(acting.troop).map((a) => a.healsTopOnTurn ?? 0)));
   if (heal > 0 && acting.hp < full) {
     const hp = Math.min(full, acting.hp + heal);
@@ -490,10 +564,13 @@ function settle(b: BattleState, events: BattleEvent[], endTurn: boolean): Battle
   return { battle: next, events };
 }
 
-/** The survivors of one side, as an army again. */
+/** The survivors of one side, as an army again. Aldric isn't part of his army: he rides on with it. */
 export function survivors(b: BattleState, side: Side): Army {
-  return b.fighters.filter((f) => f.side === side && alive(f)).map((f) => ({ troop: f.troop, count: f.count }));
+  return b.fighters.filter((f) => f.side === side && alive(f) && !f.hero).map((f) => ({ troop: f.troop, count: f.count }));
 }
+
+/** Whether Aldric took the field and was carried from it. */
+export const heroFell = (b: BattleState) => heroOnField(b)?.count === 0;
 
 export const livingHexes = (b: BattleState) => new Set(b.fighters.filter(alive).map((f) => f.at));
 export { HEXES };
