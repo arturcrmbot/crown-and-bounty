@@ -6,7 +6,7 @@ import { INK } from '../render/palette';
 import { portraitOf } from '../render/portraits';
 import { ART, heroArtId, type ArtId } from '../render/units';
 import { unitBitmap } from '../render/wesnoth';
-import { coins, heroSheet, heroStats, leaderTraits, leadershipUsed, SLOT_NAMES, stackSheet, wages, type Action, type GameState, type HeroSheet } from '../rules/game';
+import { coins, heroSheet, heroStats, leaderSheet, leadershipUsed, SLOT_NAMES, stackSheet, wages, type Action, type GameState, type HeroSheet } from '../rules/game';
 import './heroScreen.css';
 import { bitmapUrl, PARCHMENT_SHADOW } from './pixels';
 import { play } from './sound';
@@ -187,7 +187,7 @@ export class HeroScreen {
       </div>
       <div class="stats">${sheet.stats.map(stat).join('')}</div>
       <div class="gauges">
-        <div class="gauge${changed(4)}" data-tip="${escape(mana.line)}"><span class="label"><b>Mana</b><small>${mana.max ? (mana.left < mana.max ? 'full again at dawn' : 'refills every dawn') : ''}</small><span>${mana.left}/${mana.max}</span></span>${bar('mana', mana.max ? mana.left / mana.max : 0)}</div>
+        <div class="gauge${changed(4)}" data-tip="${escape(mana.line)}"><span class="label"><b>Mana</b><small>${mana.max ? escape(mana.back) : ''}</small><span>${mana.left}/${mana.max}</span></span>${bar('mana', mana.max ? mana.left / mana.max : 0)}</div>
         <div class="gauge${changed(6)}" data-tip="${escape(movement.line)}"><span class="label"><b>Movement</b><small>today</small><span>${movement.left}/${movement.max}</span></span>${bar('move', movement.max ? movement.left / movement.max : 0)}</div>
         <div class="gauge${changed(5)}${leadership.used > leadership.max ? ' too-many' : ''}" data-tip="${escape(leadership.line)}"><span class="label"><b>Leadership</b><small>in use</small><span>${leadership.used}/${leadership.max}</span></span>${bar('lead', leadership.max ? leadership.used / leadership.max : 0)}</div>
       </div>
@@ -211,7 +211,11 @@ export class HeroScreen {
     const slots = SLOTS.map((slot) => {
       const id = gear[slot];
       const place: Place = { kind: 'slot', slot };
-      const tip = id ? `**${ARTIFACTS[id].name}** \u00b7 ${SLOT_NAMES[slot]}\n${ARTIFACTS[id].note}\n*Drag it to the pack, or click to pick it up. Double-click takes it off.*` : `**${SLOT_NAMES[slot]}**: nothing yet.\n*Drag an artifact here from the pack.*`;
+      const spare = pack.find((p) => ARTIFACTS[p].slot === slot);
+      const empty = spare
+        ? `**${SLOT_NAMES[slot]}**: nothing on.\n*Drag the ${ARTIFACTS[spare].name} here from the pack, or double-click it there.*`
+        : `**${SLOT_NAMES[slot]}**: nothing yet.\n*Artifacts turn up in chests and old places, as spoils, and in castle armouries.*`;
+      const tip = id ? `**${ARTIFACTS[id].name}** \u00b7 ${SLOT_NAMES[slot]}\n${ARTIFACTS[id].note}\n*Drag it to the pack, or click to pick it up. Double-click takes it off.*` : empty;
       const img = id ? `<img alt="" draggable="false" src="${iconUrl(id)}">` : `<img class="ghostly" alt="" draggable="false" src="${ghostUrl(slot)}">`;
       return `<button class="slot ${slot}${classes(place, Boolean(id))}" data-place="${keyOf(place)}" data-tip="${escape(tip)}" aria-label="${escape(id ? `${SLOT_NAMES[slot]}: ${ARTIFACTS[id].name}` : `${SLOT_NAMES[slot]}: empty`)}">${img}</button>`;
     }).join('');
@@ -243,14 +247,17 @@ export class HeroScreen {
     const tiles = Array.from({ length: 5 }, (_, index) => {
       const stack = army[index];
       const place: Place = { kind: 'stack', index };
-      if (!stack) return `<button class="tile empty" data-place="${keyOf(place)}" aria-label="An empty place in the line" tabindex="-1"></button>`;
+      if (!stack) {
+        const tip = '**An empty place in the line.**\n*Recruit at castles and villages, or win a band over: up to five companies.*';
+        return `<button class="tile empty" data-place="${keyOf(place)}" data-tip="${escape(tip)}" aria-label="An empty place in the line" tabindex="-1"></button>`;
+      }
       const info = stackSheet(this.state, index)!;
       const open = this.card && keyOf(this.card) === keyOf(place) ? ' open' : '';
       const tip = `**${info.title}**\n${info.row}\n*Click for their card. Drag them along the line.*`;
       return `<button class="tile${open}${this.fresh.has(keyOf(place)) ? ' fresh' : ''}" data-place="${keyOf(place)}" data-tip="${escape(tip)}" aria-label="${escape(info.title)}"><img alt="" draggable="false" src="${unitUrl(stack.troop)}"><span class="count">${stack.count}</span></button>`;
     }).join('');
     const pay = Math.round(wages(army) * (1 + s.wages));
-    const leaderTip = `**${sheet.title}**\nHe leads from the field\u2019s edge: every stack adds his attack and defence to its own, and he casts from his spellbook.\n*Click for his numbers.*`;
+    const leaderTip = `**${sheet.title}**\nHe takes the field in the line with his men: every stack adds his attack and defence to its own, and he casts while he stands.\n*Click for his numbers.*`;
     const open = this.card?.kind === 'hero' ? ' open' : '';
     return `<section class="army">
       <h3>Army <small>drag to reorder: the first stands in the middle of the battle line, the rest above and below</small></h3>
@@ -280,19 +287,15 @@ export class HeroScreen {
   private cardHtml(): string {
     if (!this.card) return '';
     if (this.card.kind === 'hero') {
-      const sheet = heroSheet(this.state);
-      const s = heroStats(this.state);
-      return `<div class="kc-hero-card leader-card">
+      // His own card, laid out like his stacks': how he fights, what he brings them, and what happens if he falls.
+      const me = leaderSheet(this.state);
+      return `<div class="kc-hero-card leader-card" role="dialog" aria-label="${escape(me.title)}">
         <img class="pic" alt="" draggable="false" src="${unitUrl(heroArtId(this.state.hero.background), 2)}">
-        <div class="head"><h3>${escape(sheet.title)}</h3><p>${escape(sheet.level)}. He leads from the field\u2019s edge.</p></div>
-        <dl>
-          <dt>Attack</dt><dd><b>+${s.attack}</b> <small>to every stack</small></dd>
-          <dt>Defence</dt><dd><b>+${s.defence}</b> <small>to every stack</small></dd>
-          <dt>Spells</dt><dd><b>${s.casts}</b> <small>a round, from ${this.state.hero.spells.length} in his book</small></dd>
-          <dt>Mana</dt><dd><b>${sheet.mana.left}/${sheet.mana.max}</b> <small>none comes back in battle</small></dd>
-        </dl>
-        ${this.traitList(leaderTraits(this.state))}
-        <div class="acts"><button class="act" data-act="card-close">Close</button></div>
+        <div class="head"><h3>${escape(me.title)}</h3><p><i>${escape(me.note)}</i></p></div>
+        <dl>${this.statList(me.stats)}</dl>
+        ${this.traitList(me.traits)}
+        <p class="cost">${me.lines.map(escape).join('<br>')}</p>
+        <div class="acts"><span class="spacer"></span><button class="act" data-act="card-close">Close</button></div>
       </div>`;
     }
     if (this.card.kind !== 'stack') return '';
@@ -300,7 +303,7 @@ export class HeroScreen {
     if (!info) return '';
     const i = this.card.index;
     const last = this.state.army.length - 1;
-    const stats = info.stats.map((s) => `<dt>${escape(s.name)}</dt><dd><b>${escape(s.value)}</b> <small>${escape(s.note)}</small></dd>`).join('');
+    const stats = this.statList(info.stats);
 
     const acts = this.confirming
       ? `<span class="ask">Send the ${escape(info.title)} home for good?</span><button class="act" data-act="dismiss-yes">Dismiss them</button><button class="act" data-act="dismiss-no">Keep them</button>`
@@ -313,6 +316,10 @@ export class HeroScreen {
       <p class="cost">${escape(info.leadership)}<br>${escape(info.wages)}<br>${escape(info.row)}</p>
       <div class="acts">${acts}</div>
     </div>`;
+  }
+
+  private statList(stats: { name: string; value: string; note: string }[]): string {
+    return stats.map((s) => `<dt>${escape(s.name)}</dt><dd><b>${escape(s.value)}</b> <small>${escape(s.note)}</small></dd>`).join('');
   }
 
   private traitList(traits: { name: string; note: string; trick?: boolean }[]): string {
@@ -443,6 +450,9 @@ export class HeroScreen {
       if (act && this.root.contains(act)) return this.clickAct(act.dataset.act!, act as HTMLButtonElement);
       const hit = target.closest<HTMLElement>('[data-place]');
       const place = hit ? parse(hit.dataset.place) : null;
+      // A tap on a chip, a stat or a gauge shows its note, for touch screens and for anyone who clicks.
+      const noted = !place && target.closest<HTMLElement>('[data-tip]');
+      if (noted && this.root.contains(noted)) return this.showTip(noted);
       if (place) this.clickPlace(place);
       else if (this.card && !target.closest('.kc-hero-card')) this.closeCard();
       else if (this.held) this.cancel();

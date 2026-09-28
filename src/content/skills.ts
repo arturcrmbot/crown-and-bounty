@@ -109,7 +109,7 @@ export const SKILLS: Record<SkillId, Skill> = {
     ranks: [
       { note: '+1 spell power.', bonus: { spellPower: 1 } },
       { note: '+2 spell power, and every spell costs 1 mana less.', bonus: { spellPower: 2, manaDiscount: 1 } },
-      { note: '+3 spell power, every spell costs 1 mana less, and you cast one more spell every round of battle.', bonus: { spellPower: 3, manaDiscount: 1, casts: 1 } },
+      { note: '+3 spell power, every spell costs 1 mana less, and you cast a second spell every round of battle (nobody casts more than two).', bonus: { spellPower: 3, manaDiscount: 1, casts: 1 } },
     ],
   },
   mysticism: {
@@ -173,7 +173,7 @@ export const PERKS: Record<PerkId, Perk> = {
   },
   firstVolley: { id: 'firstVolley', name: 'First Volley', note: 'Your archers loose a free volley before every battle.', bonus: { volley: true }, trick: true },
   woodsman: { id: 'woodsman', name: 'Woodsman', note: 'You ride through the woods, where nothing on the map can follow or hunt you.', bonus: { forestWalk: true }, trick: true },
-  battleMage: { id: 'battleMage', name: 'Battle Mage', note: 'Cast one more spell every round of battle.', bonus: { casts: 1 }, trick: true },
+  battleMage: { id: 'battleMage', name: 'Battle Mage', note: 'Cast a second spell every round of battle.', bonus: { casts: 1 }, trick: true },
   silverTongue: { id: 'silverTongue', name: 'Silver Tongue', note: 'Bribes cost a third less, and small bands will take your coin and join you.', bonus: { bribes: 0.33, hires: true }, trick: true },
   farSight: { id: 'farSight', name: 'Far Sight', note: 'Cast Far Sight from the map: the mist rolls back for a long way around you.', bonus: { mapSpells: ['farsight'] }, trick: true },
   beastFriend: {

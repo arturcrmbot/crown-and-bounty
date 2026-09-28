@@ -66,7 +66,14 @@ async function beatWhenReady(id, tries = 6) {
 async function go(id, action) {
   await settle();
   const [x, y] = await kc.centre(id);
-  await kc.click(x, y);
+  // If the hero stands in front of the place he takes the click, as he should: close his screen
+  // and click another corner of the place, as a player would.
+  for (const [dx, dy] of [[0, 0], [0, -14], [-16, -8], [16, -8], [-16, 6], [16, 6]]) {
+    await kc.click(x + dx, y + dy);
+    if ((await screen()) !== 'hero') break;
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(60);
+  }
   if ((await kc.title()) === 'Unexplored') action = 'Ride there';
   if (!(await kc.choose(action))) throw new Error(`${id}: no "${action}" on "${await kc.title()}": ${await kc.lines()}`);
   for (;;) {
@@ -179,10 +186,12 @@ try {
     await page.waitForTimeout(80);
   };
   if ((await sheet()).slots.banner !== 'oldBanner') await dragTo(`pack:${(await sheet()).pack.indexOf('oldBanner')}`, 'slot:banner');
-  await dragTo('slot:banner', 'pack:0');
+  // Into the first empty square: the highwaymen's black banner may be in the pack already.
+  const free = (await sheet()).pack.length;
+  await dragTo('slot:banner', `pack:${free}`);
   let looked = await sheet();
-  check(looked.slots.banner === null && looked.pack[0] === 'oldBanner', 'the banner comes off, dragged into the pack');
-  await dragTo('pack:0', 'slot:banner');
+  check(looked.slots.banner === null && looked.pack[free] === 'oldBanner', 'the banner comes off, dragged into the pack');
+  await dragTo(`pack:${free}`, 'slot:banner');
   looked = await sheet();
   check(looked.slots.banner === 'oldBanner' && (await kc.state()).hero.gear.banner === 'oldBanner', 'and goes back on, dragged to its slot');
   const line = looked.army;

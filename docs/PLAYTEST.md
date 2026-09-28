@@ -3,6 +3,76 @@
 Newest first. Each entry says what was played, how it felt to an experienced player (HoMM2, King's Bounty,
 modern RPGs), and what was done about it.
 
+## #14: 28 Sep 2026, a Knight fills his paper doll
+
+**Played:** a new Knight from the title, through the real UI in headless Edge: the chest, the highwaymen, St
+Aldhelm's shrine, the watchtower and the castle armoury, then the hero screen, swapping banners. A Knight with
+Grimsby's knife and feather putting on his hat. All twelve new items on the doll and in the pack at once. Then
+the sets, the trade-offs and where everything is found, in tests, `npm run difficulty` and the campaign sim.
+
+**How it felt:** gear is now a string of small decisions. The chest's Surveyor's Chain makes the first
+cross-country ride cheaper at once. The highwaymen's Black Banner goes on by itself, and the castle then asks
+110 for a knight instead of 100: the skull scares off honest recruits but makes weak bands surrender. Then the
+tower's Old Tower Banner turns up, and the banner slot is a real choice between archers and surrenders. St
+Aldhelm's shrine now has three ways to go: the goose, taming, or a pilgrim's hat that brings mana back on the
+road. The armoury sells a Scout's Spyglass that puts numbers on the odds, which is Advanced Scouting in a pocket.
+Putting on Grimsby's hat with his knife and feather completes his Regalia, and the leader card says at once that
+swordsmen and crossbowmen start every battle slowed. That is the Baron's own men, in three commissions.
+
+**Found and fixed:**
+
+1. Putting on the King's Plate mid-day left today's ride as it was ("150/110" on the sheet), so its price could be
+   dodged by swapping it at night. Gear that slows him now slows today's ride too. Nothing a change of gear does
+   gives back what's spent, and the mill's flour stays.
+2. On the hero screen a set piece said nothing about its set. Each piece's note now names the set and what it
+   does, and a find says how many of it are worn, or that it's complete.
+3. After the patrol fight the Deserters' Camp can appear right behind the hero, and his figure takes the click,
+   as it should. e2e now clicks another corner of the place, as a player would.
+4. With the Black Banner on, knights simply cost 110 and nothing said why. The recruit card now says: *"They
+   don't like the look of your Black Banner: that's 10% dearer."*
+
+**Checked:** all tests pass, with new ones for both sets, every trade-off, where each item is found, and old
+saves' armouries stocking the new wares unless he owns them. e2e passes, every visual scene is unchanged, every
+difficulty target holds, and the bot wins all five commissions with every background. On the same four seeds
+the Knight's campaign took 160 days in all, against 189 before: different builds, no slower. Generated maps are
+unchanged, and the new wares roll their own dice.
+
+**Still open:** the hero screen could show a set's progress and celebrate one completed (asked of "Hero screen and
+army"). Gear that grants spells or has charges waits for the engine, and cursed gear for the equip rules. Thirteen
+trinkets share one slot.
+
+## #13: 28 Sep 2026, music that knows where you are
+
+**Played:** every tune rendered offline through the game's own buses and measured (`npm run listen -- tracks`):
+each pass of every form, the seam where it comes round again, and the battle tunes in each mood (calm, just
+begun, heated, winning, losing). Then, with the sound on in headless Edge and `__kc.sound()` reporting: a Knight
+winning and losing against the patrol, storming Grimsby's stockade, and at Mother Mirrow's hut; and Castle
+Aldmoor visited and left. Consonance, forms and ranges checked by tests for all twelve tracks.
+
+**How it felt (in numbers, since nobody here can listen):** the map tunes used to loop every 25 to 40 seconds, and
+a player hears them for hours. Now each has a second strain and a form of four to eight passes, each arranged its
+own way (a fife takes the tune, then the harp over a drone with the drum resting), so it takes two to three
+minutes to come round, and every other time round the recorder and fife swap and a few long notes get a grace
+from the note above. The three provinces beyond the Fenmarch have tunes of their own: a reel for the Baron's
+country, a slow air for Aunt Bramble's fen, and for the last commission a broad tune whose second strain is the
+title's, the King's own, on brass. Riding near a lair brings its villain's theme in, quieter: a lone fife and a
+horn behind Grimsby's walls, a lurching bog waltz at Mother Mirrow's hut, Aunt Bramble's stamping jig. Attack,
+and the same theme swells into the whole band. Every other fight's march builds as it goes: bass, drums and the
+tune at first, then the lute, the brass, more drums; winning, the brass calls over it and a harp rings; losing,
+the lute falls silent and a drone and a bell darken it. A castle or village plays a bright round dance while
+its card is open. Payday has its own ta-da, and a level its harp and brass.
+
+**Found and fixed:**
+
+1. The quiet passes (the fen's harp verse, the marsh's) came in 5 to 7 dB under the rest; now within 3 dB.
+2. Grimsby's battle was 4 dB quieter than any other fight, and his and Bramble's lairs 8 dB under the map's
+   music. Every track now sits within a couple of dB of the others (fights about -18 dB, the map -19, the lairs
+   a hush of 2 to 4 dB below).
+3. A visit to the castle was often shorter than the crossfade into its tune; the town's tune now plays on three
+   seconds after its card closes.
+4. A fight left to the sergeants was silent; it now gets the same brass, or the same bell, as one fought on the
+   field.
+
 ## #12: 28 Sep 2026, the land makes its own sounds
 
 **Played:** a Knight riding round Aldmoor with the sound on (at 8x, listening ten seconds at each stop): the
@@ -211,8 +281,36 @@ swapped and back, Escape), two new visual scenes drawn in the page (the hero scr
 the screenshot), the bot (all four backgrounds win), and the live site with no page errors. Old saves load: the
 state didn't change shape.
 
-**Still open:** the hero's own battle numbers go on his leader card once "Hero on the battlefield" lands them.
-Recruiting takes all you can pay for; there's no taking fewer. Swapping a leadership banner for another leaves
+**The deeper pass, as a new player** (map input, cards, the hero sheet):
+
+12. A click on open ground while a card was up rode off, costing a day's march for a misclick. It now only puts
+    the card away. A second click on a place whose card is open rides there, as in HoMM2 (the label says "click
+    again: Approach"); a right-click only looks.
+13. There was no way to stop a ride. Esc, or a click on the hero, reins in. Shift gallops, the wheel or a
+    trackpad pans, and Space brings the view back to him.
+14. Nothing said how far anything was. Rest the pointer on the ground or a place and the label says "today",
+    "tomorrow" or "in 3 days" (or "no way through yet").
+15. The threat card's odds were only a joke ("Your army looks at you..."). The same joke now ends in plain
+    words ("You'd likely lose"), on the ambush card too, and Fight and the sergeants say what each means.
+16. After recruiting, the castle's card closed, and the armoury needed a new visit. The card comes back with who
+    joined on top.
+17. The bar's hourglass was 7 pixels; it's bigger and lights up, the bar underlines what a click works, and the
+    bounty opens the WANTED poster with the days left.
+18. "Start a new campaign" on the map wiped the save in one click. It asks first.
+19. The prologue and the court needed the mouse. Enter, Space and the number keys press cards' buttons there
+    and on the map; the tired card has "Not yet", and Mysticism's mana on the road shows in the notes.
+20. The leadership bar was red when all was well; it's bronze, red only when he leads more than he can. Empty
+    slots and places in the line say how to fill them, and a tap on a chip shows its note.
+
+21. Since Aldric took the field (#9), his leader tile opened a card that still said he watched from the field's
+    edge. It's now his own stack card, laid out like his men's: his figure, his numbers from `heroFighter`
+    (attack and defence with what his own stats add, damage and health with how they grow, speed, shots), his
+    tricks (the charge, the bodyguard, the rally), what he lends every stack, his spells while he stands, where he
+    stands in the line, and that if he falls he's carried off, not killed, and goes no further that day. Stack
+    cards say "Rallied" beside a courtier instead of counting a rally by where they happen to stand, and a trick
+    taught twice (a Knight with Brannoc's lance, a Ranger with the horn) is one line, naming both.
+
+**Still open:** recruiting takes all you can pay for; there's no taking fewer. Swapping a leadership banner for another leaves
 the army as big as it was: harmless, but a player could use it.
 
 ## #7: 28 Sep 2026, the Ranger tames beasts, and finds offer real choices

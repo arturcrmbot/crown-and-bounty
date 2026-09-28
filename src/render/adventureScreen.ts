@@ -5,6 +5,7 @@ import type { Point } from '../rules/map/geometry';
 import type { FogMask } from './fog';
 import { bayer, hash, noise } from './noise';
 import { FOG_LUT, GOLD, GRAIN_LUT, INK, RED, SHADOW_LUT } from './palette';
+import { CLEAR, type Sky, type Weather } from './weather';
 
 /**
  * `x` and `y` are the sprite's top-left in map pixels. `frames` animate it (flags, wheels);
@@ -28,6 +29,9 @@ export class AdventureScreen {
   readonly effects = new Effects();
   /** How far night has fallen over the map, 0 to 1, while a day ends. */
   dusk = 0;
+  /** The light of the day and the weather (see `weather.ts`), and what draws them. */
+  sky: Sky = CLEAR;
+  weather: Weather | null = null;
   /** The route still ahead of the hero: gold dots for today, red for later days. */
   route: { at: Point; today: boolean }[] = [];
   private readonly map: Bitmap;
@@ -108,7 +112,12 @@ export class AdventureScreen {
       const image = o.frames ? o.frames[(o.frame ?? tick) % o.frames.length] : o.sprite;
       blit(screen, image, MAP_VIEW.x + Math.round(o.x) - cx, MAP_VIEW.y + Math.round(o.y) - cy, MAP_VIEW);
     }
-    this.effects.draw(screen, MAP_VIEW.x - cx, MAP_VIEW.y - cy, MAP_VIEW, (x, y) => !this.isFogged(x, y));
+    const seen = (x: number, y: number) => !this.isFogged(x, y);
+    this.weather?.drawSmoke(screen, MAP_VIEW.x - cx, MAP_VIEW.y - cy, MAP_VIEW, this.sky, seen);
+    this.effects.draw(screen, MAP_VIEW.x - cx, MAP_VIEW.y - cy, MAP_VIEW, seen);
+    this.weather?.light(screen, this.sky, this.camera);
+    this.weather?.drawAir(screen, MAP_VIEW.x - cx, MAP_VIEW.y - cy, MAP_VIEW, this.sky, seen);
+    this.effects.drawWords(screen, MAP_VIEW.x - cx, MAP_VIEW.y - cy, MAP_VIEW);
     for (const i of this.grain) screen.data[i] = GRAIN_LUT[screen.data[i]];
     if (this.dusk > 0) {
       // Night falls over the map, and lifts again, in a dither of shadow.

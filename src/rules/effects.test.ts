@@ -57,7 +57,7 @@ describe('choices written as content', () => {
 
   it('make St Aldhelm\u2019s shrine in Aldmoor, with nothing but content', () => {
     const state = fresh();
-    expect(cardOf(visit(state, 'shrine'))!.card.choices.map((c) => c.label)).toEqual(['Pray for the royal goose', 'Borrow the saint\u2019s crown', 'Ride on']);
+    expect(cardOf(visit(state, 'shrine'))!.card.choices.map((c) => c.label)).toEqual(['Pray for the royal goose', 'Borrow the saint\u2019s crown', 'Take the pilgrim\u2019s hat', 'Ride on']);
     const prayed = apply(state, { type: 'choose', id: 'shrine', choice: 'start/pray' })!.state;
     expect(prayed.flags?.goose).toBe(true);
     expect(locationById(prayed, 'shrine').done).toBe(true);

@@ -1,5 +1,6 @@
 import { ARTIFACTS, type ArtifactId } from '../../content/artifacts';
 import { troopPower } from '../../content/troops';
+import { dismiss } from '../army';
 import { giveArtifact, heroStats } from '../hero';
 import { addTroops, close, coins, joinLine, leadershipUsed, locationById, TROOPS, troops, update, type Card, type GameState, type Location, type Result } from '../state';
 import { found, option, priceOf, ride, say, words } from './common';
@@ -43,6 +44,9 @@ function recruitCard(state: GameState, place: Location, before: string[] = []): 
   const each = priceOf(state, offer.price);
   const purse = Math.floor(state.gold / each);
   const lines = [...before, `**${troops(offer.troop, offer.count)}** will join you for **${coins(each)} gold** each.`];
+  // Gear that puts honest recruits off (the Black Banner) says so, or the price is a mystery.
+  const shunned = Object.values(state.hero.gear).find((id) => id && (ARTIFACTS[id].bonus.recruitPrice ?? 0) > 0);
+  if (shunned) lines.push(`*They don\u2019t like the look of your ${ARTIFACTS[shunned].name.replace(/^The /, '')}: that\u2019s ${Math.round((ARTIFACTS[shunned].bonus.recruitPrice ?? 0) * 100)}% dearer.*`);
   // Say why fewer than are on offer can come: no room in the line, not enough leadership, or not enough gold.
   const slot = Boolean(addTroops(state.army, offer.troop, 1));
   if (!slot) lines.push('Five companies are all one officer can lead. Dismiss one (H) to make room.');
@@ -82,6 +86,19 @@ function buy(state: GameState, place: Location, artifact: ArtifactId): Result | 
   return say(next, place, armouryCard(next, locationById(next, place.id), [`**${ARTIFACTS[artifact].name}** is yours: ${where}.`]));
 }
 
+/**
+ * For the bot: when all five companies are taken and this place offers something much better than
+ * the weakest of them, which company it sends home to make room, and how many then join.
+ */
+function makeRoom(state: GameState, place: Location): { index: number; count: number; loss: number } | null {
+  const offer = place.recruits;
+  if (!offer || offer.count === 0 || state.army.length < 2 || addTroops(state.army, offer.troop, 1)) return null;
+  const worth = (i: number) => state.army[i].count * troopPower(state.army[i].troop);
+  const index = state.army.reduce((weakest, _, i) => (worth(i) < worth(weakest) ? i : weakest), 0);
+  const count = recruitable(dismiss(state, index)?.state ?? state, place.id);
+  return count > 0 && count * troopPower(offer.troop) > worth(index) * 1.5 ? { index, count, loss: worth(index) } : null;
+}
+
 /** Castles and villages: troops to recruit, restocked every payday, and sometimes an armoury. */
 export const dwelling: PlaceKind = {
   about: (_, place) => ({ title: place.name, lines: words(place, 'about'), choices: [ride(place, 'Visit'), close] }),
@@ -95,10 +112,15 @@ export const dwelling: PlaceKind = {
   payday: (place) => (place.recruits ? { ...place, recruits: { ...place.recruits, count: place.recruits.count + RESTOCK } } : place),
   worth(state, place) {
     const n = recruitable(state, place.id);
-    return n > 0 ? n * troopPower(place.recruits!.troop) * 3 : null;
+    if (n > 0) return n * troopPower(place.recruits!.troop) * 3;
+    const room = makeRoom(state, place);
+    return room ? (room.count * troopPower(place.recruits!.troop) - room.loss) * 3 : null;
   },
   bot(state, place) {
     let next = state;
+    // A line full of weaker companies sends the weakest home to make room.
+    const room = recruitable(next, place.id) > 0 ? null : makeRoom(next, place);
+    if (room) next = dismiss(next, room.index)?.state ?? next;
     if (recruitable(next, place.id) > 0) next = recruit(next, place)?.state ?? next;
     for (const ware of locationById(next, place.id).wares ?? []) {
       if (next.gold >= (ARTIFACTS[ware].price ?? 0) + 600) next = buy(next, locationById(next, place.id), ware)?.state ?? next;

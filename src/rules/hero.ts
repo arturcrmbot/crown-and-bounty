@@ -1,8 +1,9 @@
-import { ARTIFACTS, type ArtifactId, type Slot } from '../content/artifacts';
+import { ARTIFACTS, piecesOf, SETS, type ArtifactId, type SetId, type Slot } from '../content/artifacts';
 import { BACKGROUNDS, type BackgroundId, type Bonus } from '../content/backgrounds';
 import { PERKS, RANKS, SKILLS, type PerkId, type SkillId } from '../content/skills';
 import type { MapSpellId, SpellId, StatusId } from '../content/spells';
 import type { TroopId } from '../content/troops';
+import { SHOOTER_MELEE } from './battle/battle';
 import { roll, roman, show, type Card, type GameEvent, type GameState, type Result } from './state';
 
 /** A level-up waiting for the player to choose: skills (`skill:archery`) or perks (`perk:warchest`). */
@@ -37,7 +38,27 @@ export function namedBonuses(state: GameState): { name: string; bonus: Bonus }[]
   }
   for (const id of hero.perks) out.push({ name: PERKS[id].name, bonus: PERKS[id].bonus });
   for (const id of Object.values(hero.gear)) if (id) out.push({ name: ARTIFACTS[id].name, bonus: ARTIFACTS[id].bonus });
+  for (const set of wornSets(state)) out.push({ name: SETS[set].name, bonus: SETS[set].bonus });
   return out;
+}
+
+/** Sets whose every piece the hero wears. */
+export function wornSets(state: GameState): SetId[] {
+  const worn = new Set(Object.values(state.hero.gear));
+  return (Object.keys(SETS) as SetId[]).filter((set) => piecesOf(set).every((id) => worn.has(id)));
+}
+
+/**
+ * How far along an artifact's set the hero is (its own note says what the set does), or that he
+ * has just completed it. Empty for an artifact that belongs to no set.
+ */
+export function setLine(state: GameState, id: ArtifactId): string {
+  const set = ARTIFACTS[id].set;
+  if (!set) return '';
+  const pieces = piecesOf(set);
+  const worn = pieces.filter((p) => Object.values(state.hero.gear).includes(p)).length;
+  if (worn === pieces.length) return `**${SETS[set].name} is complete!** ${SETS[set].note}`;
+  return `*${worn} of ${pieces.length} worn.*`;
 }
 
 export type HeroStats = {
@@ -67,6 +88,13 @@ export type HeroStats = {
   /** Spells he may cast in one round of battle. */
   casts: number;
   mapSpells: MapSpellId[];
+  /** Battle spells he can cast: his own, and any his gear holds. */
+  spells: SpellId[];
+  /** How hard his shooters hit in melee, as a share of a shot. */
+  shooterMelee: number;
+  /** After a won battle: the share of his mana that comes back, and of each company's fallen who get up. */
+  manaBack: number;
+  mend: number;
   bribes: number;
   hires: boolean;
   tames: boolean;
@@ -94,6 +122,9 @@ export const RENOWN = 10;
 
 /** The share of every company that stays on between commissions, before skills. */
 export const VETERANS = 0.25;
+
+/** Nobody casts more spells than this in a round, however many ways he has learned to cast again. */
+export const MAX_CASTS = 2;
 
 export function heroStats(state: GameState): HeroStats {
   const h = state.hero;
@@ -123,6 +154,10 @@ export function heroStats(state: GameState): HeroStats {
     forestWalk: false,
     casts: 1,
     mapSpells: [],
+    spells: [...h.spells],
+    shooterMelee: SHOOTER_MELEE,
+    manaBack: 0,
+    mend: 0,
     bribes: 0,
     hires: false,
     tames: false,
@@ -172,6 +207,10 @@ export function heroStats(state: GameState): HeroStats {
     s.forestWalk ||= Boolean(b.forestWalk);
     s.casts += b.casts ?? 0;
     s.mapSpells.push(...(b.mapSpells ?? []).filter((m) => !s.mapSpells.includes(m)));
+    s.spells.push(...(b.spells ?? []).filter((m) => !s.spells.includes(m)));
+    s.shooterMelee = Math.max(s.shooterMelee, b.shooterMelee ?? 0);
+    s.manaBack += b.manaBack ?? 0;
+    s.mend += b.mend ?? 0;
     s.bribes += b.bribes ?? 0;
     s.hires ||= Boolean(b.hires);
     s.tames ||= Boolean(b.tames);
@@ -194,6 +233,9 @@ export function heroStats(state: GameState): HeroStats {
   s.offRoad = Math.min(0.5, s.offRoad);
   s.veterans = Math.min(0.5, s.veterans);
   s.bribes = Math.min(0.8, s.bribes);
+  s.casts = Math.min(MAX_CASTS, s.casts);
+  s.manaBack = Math.min(1, s.manaBack);
+  s.mend = Math.min(0.5, s.mend);
   s.armour = Math.min(0.6, s.armour);
   s.maxMana = s.knowledge * 10;
   return s;
@@ -214,6 +256,7 @@ export function knowsTrick(state: GameState, b: Bonus): boolean {
   if (b.hires) return s.hires;
   if (b.tames) return s.tames;
   if (b.mapSpells?.length) return b.mapSpells.every((m) => s.mapSpells.includes(m));
+  if (b.casts) return s.casts >= MAX_CASTS;
   return false;
 }
 
@@ -267,7 +310,10 @@ export function describeOption(option: string, state: GameState): { label: strin
   const [kind, id] = option.split(':');
   if (kind === 'perk') return { label: `${PERKS[id as PerkId].name} (${PERKS[id as PerkId].trick ? 'new trick' : 'perk'})`, note: PERKS[id as PerkId].note };
   const rank = Math.min(state.hero.skills[id as SkillId] ?? 0, RANKS.length - 1);
-  return { label: `${RANKS[rank]} ${SKILLS[id as SkillId].name}`, note: SKILLS[id as SkillId].ranks[rank].note };
+  const next = SKILLS[id as SkillId].ranks[rank];
+  // A second cast is nothing new to a hero who casts two already: say so, rather than let him think it's a third.
+  const capped = next.bonus.casts && heroStats(state).casts >= MAX_CASTS ? ' *You cast two spells a round already, and nobody casts more: that part changes nothing for you.*' : '';
+  return { label: `${RANKS[rank]} ${SKILLS[id as SkillId].name}`, note: `${next.note}${capped}` };
 }
 
 /** The card for the first level-up still waiting, or null. */
@@ -331,11 +377,21 @@ export function giveArtifact(state: GameState, id: ArtifactId): GameState {
 /** Says where a just-found artifact went: on him, or into the pack because that slot is taken. */
 export function foundNote(state: GameState, id: ArtifactId): string {
   const a = ARTIFACTS[id];
-  return state.hero.gear[a.slot] === id ? `You put it on. ${a.note}` : `${a.note} It goes in your pack, since you wear something there already: **H** to swap.`;
+  const set = setLine(state, id);
+  const note = state.hero.gear[a.slot] === id ? `You put it on. ${a.note}` : `${a.note} It goes in your pack, since you wear something there already: **H** to swap.`;
+  return set ? `${note} ${set}` : note;
 }
 
-/** Keeps mana within what the hero can now hold: taking off knowledge takes its mana with it. */
-const withinMana = (state: GameState): GameState => ({ ...state, hero: { ...state.hero, mana: Math.min(state.hero.mana, heroStats(state).maxMana) } });
+/**
+ * After a change of gear: taking off knowledge takes its mana with it, and gear that slows him
+ * (heavy plate, or taking off his boots) slows today's ride too, not just tomorrow's. Nothing
+ * a change of gear does gives back mana or movement already spent.
+ */
+const withinMana = (before: GameState, state: GameState): GameState => {
+  const s = heroStats(state);
+  const slower = Math.max(0, heroStats(before).movement - s.movement);
+  return { ...state, movement: Math.max(0, state.movement - slower), hero: { ...state.hero, mana: Math.min(state.hero.mana, s.maxMana) } };
+};
 
 /**
  * Moves one thing in a list from `from` to `to`: onto another, the two swap; past the last, it
@@ -358,7 +414,7 @@ export function wear(state: GameState, from: number): Result | null {
   const slot = ARTIFACTS[id].slot;
   const worn = gear[slot];
   const rest = worn ? pack.map((p, i) => (i === from ? worn : p)) : pack.filter((_, i) => i !== from);
-  return { state: withinMana({ ...state, hero: { ...state.hero, gear: { ...gear, [slot]: id }, pack: rest } }), events: [] };
+  return { state: withinMana(state, { ...state, hero: { ...state.hero, gear: { ...gear, [slot]: id }, pack: rest } }), events: [] };
 }
 
 /** Wears an artifact from the pack, by name. */
@@ -376,7 +432,7 @@ export function unequip(state: GameState, slot: Slot, to = state.hero.pack.lengt
   const at = Math.min(to, pack.length);
   const rest = { ...gear };
   delete rest[slot];
-  return { state: withinMana({ ...state, hero: { ...state.hero, gear: rest, pack: [...pack.slice(0, at), worn, ...pack.slice(at)] } }), events: [] };
+  return { state: withinMana(state, { ...state, hero: { ...state.hero, gear: rest, pack: [...pack.slice(0, at), worn, ...pack.slice(at)] } }), events: [] };
 }
 
 /** Moves an artifact from one pack square to another. */

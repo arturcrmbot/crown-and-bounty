@@ -6,9 +6,9 @@ import { autoResolve } from './battle/ai';
 import { applyEffects } from './effects/core';
 import { CAMPAIGN_LENGTH, campaignLines, commissionOf, hasNextCommission, provinceOf } from './campaign';
 import { revealDisc } from './map/fog';
-import { createBattle, heroFell, survivors, type BattleHero } from './battle/battle';
+import { createBattle, heroFell, SHOOTER_MELEE, survivors, type BattleHero } from './battle/battle';
 import { foundNote, gainXp, giveArtifact, heroStats, namedBonuses } from './hero';
-import { again, armyPower, close, coins, locationById, roll, roman, show, stillWithYou, troops, update, VANISHES, type Army, type GameEvent, type GameState, type Location, type Result } from './state';
+import { addTroops, again, armyPower, close, coins, locationById, roll, roman, show, stillWithYou, troops, update, VANISHES, type Army, type GameEvent, type GameState, type Location, type Result } from './state';
 
 export function heroInBattle(state: GameState): BattleHero {
   const s = heroStats(state);
@@ -20,7 +20,7 @@ export function heroInBattle(state: GameState): BattleHero {
     spellPower: s.spellPower,
     mana: state.hero.mana,
     maxMana: s.maxMana,
-    spells: state.hero.spells,
+    spells: s.spells,
     castRound: 0,
     melee: s.melee,
     ranged: s.ranged,
@@ -34,6 +34,7 @@ export function heroInBattle(state: GameState): BattleHero {
     ...(s.charge.length ? { charge: s.charge } : {}),
     ...(s.volley ? { volley: true } : {}),
     ...(s.casts > 1 ? { casts: s.casts } : {}),
+    ...(s.shooterMelee !== SHOOTER_MELEE ? { shooterMelee: s.shooterMelee } : {}),
     unit: { troop: own.troop, hp: own.hp, damage: own.damage },
   };
 }
@@ -185,6 +186,34 @@ export function beat(state: GameState, id: string, how: { title: string; lines: 
 }
 
 /** Turns a finished battle back into the map: survivors, rewards, and what the card says. */
+/**
+ * What the hero's skills and gear do once a battle is won (`before` is his army as it rode in): a
+ * share of his mana comes back (`manaBack`), and a share of each company's fallen get up (`mend`).
+ */
+export function afterVictory(state: GameState, before: Army): { state: GameState; lines: string[] } {
+  const s = heroStats(state);
+  let next = state;
+  const lines: string[] = [];
+  const back = Math.min(s.maxMana - state.hero.mana, Math.round(s.maxMana * s.manaBack));
+  if (back > 0) {
+    next = { ...next, hero: { ...next.hero, mana: next.hero.mana + back } };
+    lines.push(`As the dust settles, **${back} mana** comes back to you.`);
+  }
+  if (s.mend > 0) {
+    const up: string[] = [];
+    for (const stack of before) {
+      const fallen = stack.count - (next.army.find((a) => a.troop === stack.troop)?.count ?? 0);
+      const count = Math.floor(fallen * s.mend);
+      const army = count > 0 ? addTroops(next.army, stack.troop, count) : null;
+      if (!army) continue;
+      next = { ...next, army };
+      up.push(`**${troops(stack.troop, count)}**`);
+    }
+    if (up.length) lines.push(`${up.join(' and ')} get back on their feet.`);
+  }
+  return { state: next, lines };
+}
+
 export function finishFight(state: GameState): Result {
   const battle = state.battle!;
   const place = locationById(state, battle.place);
@@ -199,8 +228,9 @@ export function finishFight(state: GameState): Result {
   const base: GameState = { ...state, seed: battle.seed, battle: undefined, army, hero: { ...state.hero, mana: battle.hero.mana }, ...(fell ? { movement: 0 } : {}) };
   const lost = lossesLine(state.army, army);
   if (battle.result === 'won') {
-    const opening = place.kind === 'hideout' ? [commissionOf(base).surrender, lost, ...carried] : [enemy.flees, lost, ...carried, enemy.loot.replace('{gold}', `**${coins(enemy.reward)} gold**`)];
-    return beat(base, place.id, { title: 'Victory!', lines: opening, reward: enemy.reward, xp: battleXp(enemy.army) });
+    const after = afterVictory(base, state.army);
+    const opening = place.kind === 'hideout' ? [commissionOf(base).surrender, lost, ...after.lines, ...carried] : [enemy.flees, lost, ...after.lines, ...carried, enemy.loot.replace('{gold}', `**${coins(enemy.reward)} gold**`)];
+    return beat(after.state, place.id, { title: 'Victory!', lines: opening, reward: enemy.reward, xp: battleXp(enemy.army) });
   }
   const castle = state.locations.find((l) => l.kind === 'castle');
   const home = castle ? ([castle.at[0], castle.at[1] + 14] as const) : state.hero.at;

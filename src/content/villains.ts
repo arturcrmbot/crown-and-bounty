@@ -1,4 +1,5 @@
 import type { ContentChoice, Enemy, Location, PlaceLook } from '../rules/state';
+import type { ArtifactId } from './artifacts';
 import type { TroopId } from './troops';
 
 /** What a generated province feels like: Aldmoor's heath and woods, or the Fenmarch's meres and reeds. */
@@ -24,7 +25,8 @@ export type VillainTemplate = {
   bands: Band[];
   /** Guards the only way to the hideout. */
   guardian: Band;
-  hideout: Band & { placeLook?: PlaceLook; bosses: TroopId[]; done: string[] };
+  /** The villain's lair, and what they leave behind in it (`artifact`). */
+  hideout: Band & { placeLook?: PlaceLook; bosses: TroopId[]; done: string[]; artifact?: ArtifactId };
   village: NonNullable<Location['recruits']>;
   names: { province: string[]; castle: string[]; village: string[]; tower: string[]; mine: string[]; mill: string[] };
   towerClue: string;
@@ -74,6 +76,7 @@ export const VILLAINS: VillainTemplate[] = [
       flees: 'The gate falls open.',
       loot: 'The Crown pays {gold}.',
       done: ['Nobody here but a hat stand.'],
+      artifact: 'grimsbysHat',
     },
     village: { troop: 'archers', count: 16, price: 35 },
     names: {
@@ -143,6 +146,7 @@ export const VILLAINS: VillainTemplate[] = [
       flees: 'The hut sits down with a thump and folds its legs.',
       loot: 'The Crown pays {gold}.',
       done: ['The hut is empty, apart from a great many hymn books.'],
+      artifact: 'bramblesLadle',
     },
     village: { troop: 'archers', count: 16, price: 40 },
     names: {

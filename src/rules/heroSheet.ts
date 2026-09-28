@@ -2,22 +2,29 @@ import { ARTIFACTS, type Slot } from '../content/artifacts';
 import { BACKGROUNDS, type BackgroundId, type Bonus } from '../content/backgrounds';
 import { PERKS, RANKS, SKILLS, skillNote, type SkillId } from '../content/skills';
 import { MAP_SPELLS, SPELLS, type MapSpellId } from '../content/spells';
-import { abilitiesOf, TROOPS, troops, type TroopId } from '../content/troops';
+import { ABILITIES, abilitiesOf, TROOPS, troops, type TroopId } from '../content/troops';
 import { createBattle, statsOf } from './battle/battle';
 import { rowOf } from './battle/hex';
 import { CAMPAIGN_LENGTH, commissionOf } from './campaign';
 import type { PortraitId } from '../content/portraits';
-import { heroInBattle } from './fight';
+import { heroFighter, heroInBattle } from './fight';
 import { countsExactly, forceLine } from './places/common';
 import { heroStats, LEVELS, type StatId } from './hero';
 import { close, COMMISSION, coins, LAST_DAY, leadershipUsed, locationById, PAYDAY_EVERY, roman, wages, type Card, type GameState } from './state';
 
+/** How mana comes back, in a few words: at dawn, and for some heroes as they ride. */
+export function manaBack(state: GameState): string {
+  const rate = heroStats(state).manaRate;
+  return rate > 0 ? `a point back every ${Math.round(1 / rate)} movement ridden, and full at dawn` : 'full again at dawn';
+}
+
 /** Mana left, the most he can hold, and how it comes back: "Mana 12/30 · full again at dawn". */
 export function manaNote(state: GameState): string {
-  const max = heroStats(state).maxMana;
+  const s = heroStats(state);
   const mana = state.hero.mana;
-  if (max <= 0) return 'No mana: every point of knowledge holds 10';
-  return `Mana ${mana}/${max} · ${mana >= max ? 'it fills up again every dawn' : 'full again at dawn'}`;
+  if (s.maxMana <= 0) return 'No mana: every point of knowledge holds 10';
+  if (mana >= s.maxMana) return `Mana ${mana}/${s.maxMana} · ${s.manaRate > 0 ? `full: ${manaBack(state)}` : 'it fills up again every dawn'}`;
+  return `Mana ${mana}/${s.maxMana} · ${manaBack(state)}`;
 }
 
 /** The spellbook's mana line: none comes back in battle. `max` is missing from a battle saved before it was kept. */
@@ -124,7 +131,8 @@ export type HeroSheet = {
   /** How far through this level he is (0 to 1), and the words for it. */
   xp: { share: number; line: string };
   stats: { id: StatId; name: string; value: number; note: string }[];
-  mana: { left: number; max: number; line: string };
+  /** `back` is how it comes back, in a few words for under the gauge. */
+  mana: { left: number; max: number; line: string; back: string };
   movement: { left: number; max: number; line: string };
   leadership: { used: number; max: number; line: string };
   signature: Note;
@@ -160,12 +168,12 @@ export function heroSheet(state: GameState): HeroSheet {
       ? { share: Math.max(0, Math.min(1, (h.xp - from) / (to - from))), line: `${coins(h.xp)} / ${coins(to)} experience: ${coins(to - h.xp)} more for level ${roman(h.level + 1)}. Fights and new places bring it.` }
       : { share: 1, line: `${coins(h.xp)} experience: as seasoned as they come` },
     stats: [
-      stat('attack', 'Attack', 'every stack of his adds it to its own attack.'),
-      stat('defence', 'Defence', 'every stack of his adds it to its own defence.'),
+      stat('attack', 'Attack', 'added to his own attack in battle, and to every stack\u2019s.'),
+      stat('defence', 'Defence', 'added to his own defence in battle, and to every stack\u2019s.'),
       stat('spellPower', 'Spell power', `the harder his spells hit: a Lightning Bolt does ${bolt} damage.`),
       stat('knowledge', 'Knowledge', `10 mana a point, ${s.maxMana} in all, full again every dawn.`),
     ],
-    mana: { left: h.mana, max: s.maxMana, line: manaNote(state) },
+    mana: { left: h.mana, max: s.maxMana, line: manaNote(state), back: s.manaRate > 0 ? 'back as you ride' : h.mana < s.maxMana ? 'full again at dawn' : 'refills every dawn' },
     movement: { left: Math.floor(state.movement), max: s.movement, line: `${Math.floor(state.movement)} of ${s.movement} movement left today \u00b7 E ends the day` },
     leadership: {
       used,
@@ -197,7 +205,8 @@ export function leaderTraits(state: GameState): Note[] {
   const out: Note[] = [];
   if (s.casts > 1) out.push({ name: `${s.casts} spells a round`, note: 'He casts again before the round is out.', trick: true });
   if (s.manaDiscount) out.push({ name: 'Hedge magic', note: `Every spell costs ${s.manaDiscount} less mana.` });
-  if (s.charge.length) out.push({ name: 'Charge', note: `His ${names(s.charge)} charge: after a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder, and nobody strikes back.`, trick: true });
+  const chargers = s.charge.filter((t) => !TROOPS[t].hero);
+  if (chargers.length) out.push({ name: 'Charge', note: `His ${names(chargers)} charge: after a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder, and nobody strikes back.`, trick: true });
   if (s.volley) out.push({ name: 'First volley', note: 'His shooters loose a free volley before every battle, except at a villain\u2019s walls.', trick: true });
   if (s.melee) out.push({ name: 'Offence', note: `+${pct(s.melee)} damage in melee, for every stack.` });
   if (s.ranged) out.push({ name: 'Archery', note: `+${pct(s.ranged)} damage with every shot.` });
@@ -236,14 +245,17 @@ export type StackSheet = {
 /** A battle row as words: the stacks line up centre first, then above and below. */
 const ROW_WORDS = ['at the top', 'near the top', 'above the middle', 'just above the middle', 'in the middle', 'just below the middle', 'below the middle', 'near the bottom', 'at the bottom'].map((w) => `${w} of the line`);
 
+/** What the hero's own presence adds to the stacks beside him in battle (Lord Aldric's rally). */
+const rallies = (state: GameState) => (TROOPS[heroFighter(state).troop].abilities ?? []).flatMap((a) => (ABILITIES[a].aura ? [ABILITIES[a].aura!] : []));
+
 export function stackSheet(state: GameState, index: number): StackSheet | null {
   const stack = state.army[index];
   if (!stack) return null;
   const t = TROOPS[stack.troop];
   const s = heroStats(state);
   const who = BACKGROUNDS[state.hero.background].short;
-  // The numbers the battle itself would use.
-  const b = createBattle({ place: 'sheet', seed: 1, player: state.army, enemy: [], hero: heroInBattle(state), obstacles: 0 });
+  // The numbers the battle itself would use: without the hero on the field, whose rally depends on who stands beside him.
+  const b = createBattle({ place: 'sheet', seed: 1, player: state.army, enemy: [], hero: { ...heroInBattle(state), unit: undefined }, obstacles: 0 });
   const mine = b.fighters.filter((f) => f.side === 'player' && f.troop === stack.troop);
   const f = mine.length === 1 ? mine[0] : b.fighters.filter((x) => x.side === 'player')[index];
   const { attack, defence } = f ? statsOf(b, f) : { attack: t.attack, defence: t.defence };
@@ -251,17 +263,23 @@ export function stackSheet(state: GameState, index: number): StackSheet | null {
   const from = (total: number, own: number) => (total === own ? 'their own' : `${own} their own, ${total > own ? '+' : '\u2212'}${Math.abs(total - own)} from ${who}`);
   const pct = (x: number) => `${Math.round(x * 100)}%`;
   const traits: Note[] = abilitiesOf(stack.troop).map((a) => ({ name: a.name, note: a.note }));
+  const chargedBy: string[] = [];
+  const volleyBy: string[] = [];
   if (t.shots) traits.push({ name: 'Shooter', note: 'Shoots from anywhere, unless an enemy stands beside it. In melee it hits at half strength.' });
   for (const { name, bonus } of namedBonuses(state)) {
     const own = bonus.troops?.[stack.troop];
     const parts = [own?.attack && `+${own.attack} attack`, own?.defence && `+${own.defence} defence`, own?.shots && t.shots && `+${own.shots} shots`].filter(Boolean);
     if (parts.length) traits.push({ name, note: `${parts.join(', ')}.` });
-    if (bonus.charge?.includes(stack.troop)) traits.push({ name: `Charge (${name})`, note: 'After a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder, and nobody strikes back.', trick: true });
-    if (bonus.volley && t.shots) traits.push({ name: `First volley (${name})`, note: 'A free volley before every battle, except at a villain\u2019s walls.', trick: true });
+    if (bonus.charge?.includes(stack.troop)) chargedBy.push(name);
+    if (bonus.volley && t.shots) volleyBy.push(name);
     if (bonus.melee) traits.push({ name, note: `+${pct(bonus.melee)} damage in melee.` });
     if (bonus.ranged && t.shots) traits.push({ name, note: `+${pct(bonus.ranged)} damage with their shots.` });
     if (bonus.armour) traits.push({ name, note: `They take ${pct(bonus.armour)} less damage.` });
   }
+  // One charge, however many things teach it.
+  if (chargedBy.length) traits.push({ name: `Charge (${chargedBy.join(', ')})`, note: 'After a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder, and nobody strikes back.', trick: true });
+  if (volleyBy.length) traits.push({ name: `First volley (${volleyBy.join(', ')})`, note: 'A free volley before every battle, except at a villain\u2019s walls.', trick: true });
+  for (const aura of rallies(state)) traits.push({ name: 'Rallied', note: `Beside ${who} they fight with +${aura.attack} attack and +${aura.defence} defence.` });
   const wage = Math.round(stack.count * t.wage * (1 + s.wages));
   const row = f ? ROW_WORDS[rowOf(f.at)] : ROW_WORDS[4];
   return {
@@ -281,5 +299,63 @@ export function stackSheet(state: GameState, index: number): StackSheet | null {
     wages: t.wage ? `Wages: ${coins(wage)} gold every payday` : 'Wages: none. They work for the fun of it.',
     row: `In battle they stand ${row}.`,
     canDismiss: state.army.length > 1,
+  };
+}
+
+/** Who charges when the hero does: "He charges", or "He and his Knights charge". */
+function chargeLine(state: GameState): string {
+  const others = [...new Set(heroStats(state).charge.filter((t) => !TROOPS[t].hero))].map((t) => TROOPS[t].name);
+  const list = others.length > 1 ? `${others.slice(0, -1).join(', ')} and ${others[others.length - 1]}` : others[0];
+  return list ? `He and his ${list} charge` : 'He charges';
+}
+
+/** The hero's own card, laid out like a stack's: how he fights, what he brings the army, and what happens if he falls. */
+export type LeaderSheet = { troop: TroopId; title: string; note: string; stats: StackSheet['stats']; traits: Note[]; lines: string[] };
+
+export function leaderSheet(state: GameState): LeaderSheet {
+  const me = heroFighter(state);
+  const t = TROOPS[me.troop];
+  const s = heroStats(state);
+  const who = BACKGROUNDS[state.hero.background].short;
+  const grow = t.hero;
+  const signed = (n: number) => `${n < 0 ? '\u2212' : '+'}${Math.abs(n)}`;
+  const from = (total: number, own: number, what: string) => (total === own ? 'as a fighter' : `${own} as a fighter, ${signed(total - own)} from his ${what}`);
+  const growth = [grow && `+${grow.perLevel.damage} a level`, grow?.perPower && `+${grow.perPower} per spell power`].filter(Boolean).join(', ');
+  const lends = [s.attack && `${signed(s.attack)} attack`, s.defence && `${signed(s.defence)} defence`].filter(Boolean).join(', ');
+  const spells = state.hero.spells.length;
+  const traits: Note[] = [
+    { name: 'Leads', note: lends ? `Every stack fights with ${lends}.` : 'His stacks fight on their own numbers, for now.' },
+    {
+      name: 'Spells',
+      note: spells
+        ? `${s.casts === 1 ? 'One' : s.casts} a round from the ${spells} in his book, but only while he stands. Mana ${state.hero.mana}/${s.maxMana}: none comes back in battle.`
+        : 'None in his book yet: a teacher or a shrine could help.',
+    },
+    ...(me.charges ? [{ name: 'Charge', note: `${chargeLine(state)}: after a run-up of 3 hexes, started clear of the enemy, a quarter harder, and nobody strikes back.`, trick: true }] : []),
+    ...(me.shots ? [{ name: 'Shooter', note: 'Shoots from anywhere, unless an enemy stands beside him. In melee he hits at half strength.' }] : []),
+    ...me.abilities.map((a) => ({ name: a.name, note: a.note })),
+    // How many spells a round is said above, and who charges too.
+    ...leaderTraits(state).filter((n) => !n.name.endsWith('spells a round') && !(me.charges && n.name === 'Charge')),
+  ];
+  // Where he takes the field: in the line with his army.
+  const b = createBattle({ place: 'sheet', seed: 1, player: state.army, enemy: [], hero: heroInBattle(state), obstacles: 0 });
+  const at = b.fighters.find((f) => f.hero)?.at;
+  return {
+    troop: me.troop,
+    title: BACKGROUNDS[state.hero.background].title,
+    note: t.note,
+    stats: [
+      { name: 'Attack', value: String(me.attack), note: from(me.attack, t.attack, 'Attack') },
+      { name: 'Defence', value: String(me.defence), note: from(me.defence, t.defence, 'Defence') },
+      { name: 'Damage', value: me.damage[0] === me.damage[1] ? `${me.damage[0]}` : `${me.damage[0]}\u2013${me.damage[1]}`, note: `each blow${growth ? `: ${growth}` : ''}` },
+      { name: 'Health', value: String(me.hp), note: grow ? `+${grow.perLevel.hp} a level` : '' },
+      { name: 'Speed', value: String(me.speed), note: 'hexes a turn' },
+      ...(me.shots ? [{ name: 'Shots', value: String(me.shots), note: 'a battle' }] : []),
+    ],
+    traits,
+    lines: [
+      `In battle ${who} stands ${at === undefined ? ROW_WORDS[4] : ROW_WORDS[rowOf(at)]}.`,
+      `If he falls, he\u2019s carried from the field, not killed: the battle goes on without him or his spells, and he goes no further that day.`,
+    ],
   };
 }

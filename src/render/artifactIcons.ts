@@ -5,6 +5,7 @@
  */
 import type { ArtifactId, Slot } from '../content/artifacts';
 import { ARTIFACTS } from '../content/artifacts';
+import { MORE_PICTURES } from './artifactPictures';
 import { Bitmap, outline } from './bitmap';
 import { EARTH, GOLD, INK, LEAF, NEUTRAL, PARCHMENT, PLUM, RED, SAND, STONE, WATER, WOOD, BLUE } from './palette';
 
@@ -547,7 +548,7 @@ function paint(rows: string[]): Bitmap {
 export function artifactIcon(id: ArtifactId): Bitmap {
   let icon = drawn.get(id);
   if (!icon) {
-    icon = outline(paint(PICTURES[id] ?? PICTURES[SLOT_PICTURE[ARTIFACTS[id].slot]]!), INK);
+    icon = outline(paint(PICTURES[id] ?? MORE_PICTURES[id] ?? PICTURES[SLOT_PICTURE[ARTIFACTS[id].slot]]!), INK);
     drawn.set(id, icon);
   }
   return icon;

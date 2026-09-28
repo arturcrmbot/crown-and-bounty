@@ -116,7 +116,7 @@ export const ALDMOOR: Province = {
       at: at.castle,
       done: false,
       recruits: { troop: 'knights', count: 5, price: 100 },
-      wares: ['swordOfAldmoor', 'breastplate', 'helmOfFarSight', 'luckyHorseshoe', 'silverSignet'],
+      wares: ['swordOfAldmoor', 'breastplate', 'helmOfFarSight', 'luckyHorseshoe', 'spyglass', 'silverSignet'],
       text: { about: ['Your castle, flying the King\u2019s banner.', 'The steward is pretending to count spoons.', 'Knights to recruit, and an armoury.'] },
     },
     {
@@ -307,6 +307,8 @@ export const ALDMOOR: Province = {
           lines: [
             'A mossy wayside shrine to St Aldhelm, patron saint of lost geese. Somebody has left a single white feather on the step.',
             'The saint wears a **crown of hawthorn**, still in flower. With it on, they say, any beast in the greenwood would follow you, as they follow a ranger. And he still listens to anyone who **prays for a goose**.',
+            'On a peg by the door hangs a **pilgrim\u2019s hat** with a scallop shell. Whoever wears it on the road finds their strength again as they walk.',
+            '*A saint can only spare so much. Choose one.*',
           ],
           choices: [
             {
@@ -320,6 +322,12 @@ export const ALDMOOR: Province = {
               label: 'Borrow the saint\u2019s crown',
               effects: { artifact: 'hawthornCrown', flags: { aldhelm: 'crown' }, done: true },
               lines: ['You lift it off, with an apology. The saint does not seem to mind. The geese on the pond look scandalised.'],
+            },
+            {
+              id: 'hat',
+              label: 'Take the pilgrim\u2019s hat',
+              effects: { artifact: 'pilgrimsHat', flags: { aldhelm: 'hat' }, done: true },
+              lines: ['You leave a coin in the bowl for the next pilgrim, and take the hat down. It fits as if it had been waiting for you.'],
             },
             { id: 'leave', label: 'Ride on' },
           ],
@@ -372,7 +380,7 @@ export const ALDMOOR: Province = {
       recruits: { troop: 'archers', count: 12, price: 30 },
       text: { about: ['The village archery butts. Straw targets, and a sign: *"MIND THE GOOSE"*.', 'Archers, for hire.'] },
     },
-    { id: 'chest', kind: 'chest', name: 'Treasure Chest', at: at.chest, done: false, gold: 500 },
+    { id: 'chest', kind: 'chest', name: 'Treasure Chest', at: at.chest, done: false, gold: 500, artifact: 'surveyorsChain' },
     { id: 'gold', kind: 'gold', name: 'Pile of Gold', at: at.gold, done: false, gold: 250 },
     {
       id: 'patrol',
@@ -508,10 +516,11 @@ export const ALDMOOR: Province = {
       name: 'Highwaymen',
       at: at.highwaymen,
       done: false,
+      artifact: 'blackBanner',
       enemy: {
         look: 'soldiers',
         tier: 'pest',
-        lines: ['Highwaymen, in a line across the road to the watchtower.'],
+        lines: ['Highwaymen, in a line across the road to the watchtower, under a black banner with a skull on it.'],
         army: [{ troop: 'bandits', count: 14 }],
         reward: 200,
         threat: '*"Stand and deliver!"* They stand. Somebody has to deliver.',

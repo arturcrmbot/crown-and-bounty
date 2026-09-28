@@ -49,7 +49,7 @@ function noise(at: number, length: number, filter: BiquadFilterType, frequency: 
 export function play(sound: Sound) {
   const a = audio();
   if (!a || isMuted()) return;
-  if (sound === 'victory' || sound === 'defeat') return sting(sound);
+  if (sound === 'victory' || sound === 'defeat' || sound === 'levelUp') return sting(sound);
   try {
     const t = a.ctx.currentTime + 0.01;
     switch (sound) {
@@ -76,9 +76,6 @@ export function play(sound: Sound) {
       case 'day':
         tone(392, t, 1.1, 'sine', 0.4);
         tone(784, t, 0.8, 'sine', 0.15);
-        break;
-      case 'levelUp':
-        [523, 659, 784, 1047].forEach((f, i) => tone(f, t + i * 0.11, 0.35, 'triangle', 0.45));
         break;
       case 'fanfare': {
         // Three quick calls up the chord of G, then the whole chord held, on the drum.

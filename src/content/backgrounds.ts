@@ -41,6 +41,13 @@ export type Bonus = {
   casts?: number;
   /** Spells he can cast on the map. */
   mapSpells?: MapSpellId[];
+  /** Battle spells he can cast while he has this (gear that holds a spell). */
+  spells?: SpellId[];
+  /** How hard his shooters hit in melee, as a share of a shot (the best counts): 1 is full strength. */
+  shooterMelee?: number;
+  /** After a won battle: this share of his mana comes back, and this share of each company's fallen get up. */
+  manaBack?: number;
+  mend?: number;
   /** Fraction off every bribe. */
   bribes?: number;
   /** Small bands will take his coin and join him. */

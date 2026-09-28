@@ -77,12 +77,17 @@ export type BattleHero = Spellbook & {
   charge?: TroopId[];
   /** Archers loose a free volley before the first round. */
   volley?: boolean;
+  /** How hard his shooters hit in melee, as a share of a shot: half, unless he has taught them better. */
+  shooterMelee?: number;
   /** He takes the field himself, as this troop with these numbers (see `heroFighter` in rules/fight.ts). */
   unit?: UnitNumbers & { troop: TroopId };
 };
 
 /** Where Aldric takes the field beside an army of so many stacks: in the line, in the first row it leaves free, or between the first two when all five are taken. */
 export const heroHex = (stacks: number) => hexIndex(0, LINE_UP[stacks] ?? 3);
+
+/** How hard a shooter hits in melee, as a share of its shot, unless the hero has taught his better. */
+export const SHOOTER_MELEE = 0.5;
 
 /** A charging stack rides at least this many hexes, from a start clear of the enemy, before it strikes; it hits this much harder, and can't be struck back. */
 export const CHARGE_HEXES = 3;
@@ -353,12 +358,16 @@ export function options(b: BattleState): Options {
 
 /** Defence a stack's statuses add (Stone Skin). */
 const statusDefence = (f: Fighter) => f.status.reduce((sum, s) => sum + (STATUSES[s].defenceAdd ?? 0), 0);
+/** Attack a stack's statuses add, or take away (a curse). */
+const statusAttack = (f: Fighter) => f.status.reduce((sum, s) => sum + (STATUSES[s].attackAdd ?? 0), 0);
+/** What a stack's statuses do to the damage it takes from a shot (a shield against arrows). */
+const statusShot = (f: Fighter) => f.status.reduce((times, s) => times * (STATUSES[s].rangedTaken ?? 1), 1);
 
 /** A stack's attack and defence as they stand, with the hero's help and any rally. */
 export function statsOf(b: BattleState, f: Fighter): { attack: number; defence: number } {
   const t = unitOf(f);
   const extra = helpOf(b, f);
-  return { attack: t.attack + extra.attack, defence: t.defence + extra.defence + statusDefence(f) };
+  return { attack: t.attack + extra.attack + statusAttack(f), defence: t.defence + extra.defence + statusDefence(f) };
 }
 
 /** Attack and defence the hero adds to a stack: his own, plus any bonus for that kind of troop. */
@@ -401,12 +410,15 @@ export function skillFactor(attack: number, defence: number): number {
 /** Damage one stack deals another, times `bonus` (a charge). With `seed` it rolls; without, it's the average. */
 export function strike(b: BattleState, attacker: Fighter, target: Fighter, ranged: boolean, seed?: number, bonus = 1): { damage: number; seed?: number } {
   const t = unitOf(attacker);
-  const attack = t.attack + helpOf(b, attacker).attack;
+  const attack = t.attack + helpOf(b, attacker).attack + statusAttack(attacker);
   let defence = unitOf(target).defence + helpOf(b, target).defence + statusDefence(target);
   if (target.defending) defence = Math.round(defence * 1.3);
   const [min, max] = t.damage;
+  // A blessing rolls the best damage, a curse the worst; both at once cancel out.
+  const lean = (attacker.status.some((s) => STATUSES[s].bestDamage) ? 1 : 0) - (attacker.status.some((s) => STATUSES[s].worstDamage) ? 1 : 0);
   let perTroop: number;
-  if (attacker.status.some((s) => STATUSES[s].bestDamage)) perTroop = max;
+  if (lean > 0) perTroop = max;
+  else if (lean < 0) perTroop = min;
   else if (seed === undefined) perTroop = (min + max) / 2;
   else {
     const rolls = Math.min(attacker.count, 10);
@@ -418,10 +430,11 @@ export function strike(b: BattleState, attacker: Fighter, target: Fighter, range
     }
     perTroop = sum / rolls;
   }
-  const inMelee = !ranged && t.shots ? 0.5 : 1;
+  const inMelee = !ranged && t.shots ? (attacker.side === 'player' ? (b.hero.shooterMelee ?? SHOOTER_MELEE) : SHOOTER_MELEE) : 1;
   const skill = attacker.side === 'player' ? 1 + ((ranged ? b.hero.ranged : b.hero.melee) ?? 0) : 1;
   const armour = target.side === 'player' ? 1 - (b.hero.armour ?? 0) : 1;
-  const damage = Math.max(1, Math.round(attacker.count * perTroop * skillFactor(attack, defence) * inMelee * skill * armour * bonus));
+  const shield = ranged ? statusShot(target) : 1;
+  const damage = Math.max(1, Math.round(attacker.count * perTroop * skillFactor(attack, defence) * inMelee * skill * armour * bonus * shield));
   return { damage: ranged ? shotOn(target, damage) : damage, seed };
 }
 

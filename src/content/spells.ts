@@ -26,6 +26,12 @@ export type StatusDef = {
   speedTimes?: number;
   /** Defence added while it lasts. */
   defenceAdd?: number;
+  /** Attack added while it lasts (a curse takes it away). */
+  attackAdd?: number;
+  /** The stack always rolls its worst damage (a curse). With `bestDamage` too, the two cancel out. */
+  worstDamage?: boolean;
+  /** Damage it takes from shots is multiplied by this (a shield against arrows: 0.5). */
+  rangedTaken?: number;
   /** It wears off after this many rounds (the one it began in counts); otherwise it lasts the battle. */
   rounds?: number;
   /** The stack loses its next turn, and then it wears off. */
