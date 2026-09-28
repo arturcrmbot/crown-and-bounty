@@ -3,7 +3,7 @@ import { isBeast, TROOPS } from '../../content/troops';
 import { applyEffects, choiceButton } from '../effects';
 import { battleXp, fight, startFight, winChance } from '../fight';
 import { foundNote, gainXp, giveArtifact, heroStats } from '../hero';
-import { addTroops, armyLine, close, coins, leadershipUsed, show, update, type Army, type Choice, type ContentChoice, type GameState, type Location, type Result } from '../state';
+import { addTroops, close, coins, leadershipUsed, show, stillWithYou, update, type Army, type Choice, type ContentChoice, type GameState, type Location, type Result } from '../state';
 import { countsExactly, forceLine, note, option, ride, say, words } from './common';
 import type { PlaceKind } from './kind';
 
@@ -194,7 +194,7 @@ export function enemy(kind: 'patrol' | 'hideout'): PlaceKind {
       if (choice === 'auto') return fight(calm, place.id);
       if (choice === 'flee' && state.ambush === place.id) {
         const army = state.army.map((s) => ({ ...s, count: s.count - Math.ceil(s.count * 0.2) })).filter((s) => s.count > 0);
-        return say({ ...calm, army }, place, note(place, ['You leave the camp fires burning and ride hard. Not everyone keeps up.', `*${armyLine(army)} are left.*`]));
+        return say({ ...calm, army }, place, note(place, ['You leave the camp fires burning and ride hard. Not everyone keeps up.', stillWithYou(army)]));
       }
       return null;
     },

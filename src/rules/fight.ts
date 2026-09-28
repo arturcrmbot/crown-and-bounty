@@ -6,7 +6,7 @@ import { CAMPAIGN_LENGTH, campaignLines, commissionOf, hasNextCommission, provin
 import { revealDisc } from './map/fog';
 import { createBattle, survivors, type BattleHero } from './battle/battle';
 import { foundNote, gainXp, giveArtifact, heroStats } from './hero';
-import { again, armyLine, armyPower, close, coins, locationById, roll, roman, show, troops, update, VANISHES, type Army, type GameEvent, type GameState, type Location, type Result } from './state';
+import { again, armyPower, close, coins, locationById, roll, roman, show, stillWithYou, troops, update, VANISHES, type Army, type GameEvent, type GameState, type Location, type Result } from './state';
 
 export function heroInBattle(state: GameState): BattleHero {
   const s = heroStats(state);
@@ -142,7 +142,7 @@ export function finishFight(state: GameState): Result {
     const next = { ...base, movement: 0 };
     return {
       state: next,
-      events: [show({ title: 'A stand-off', lines: ['Neither side can get at the other. As the light goes, both draw off.', lost, `*${armyLine(army)} ride on with you.*`], choices: [close] }, place.at, place.id)],
+      events: [show({ title: 'A stand-off', lines: ['Neither side can get at the other. As the light goes, both draw off.', lost, stillWithYou(army)], choices: [close] }, place.at, place.id)],
     };
   }
   if (battle.result === 'fled') {
@@ -150,7 +150,7 @@ export function finishFight(state: GameState): Result {
     const next = { ...base, army: shaken, movement: 0 };
     return {
       state: next,
-      events: [show({ title: 'Retreat!', lines: ['Your men fall back in good order, mostly.', lossesLine(state.army, shaken), `*${armyLine(shaken)} are left.*`], choices: [close] }, place.at, place.id)],
+      events: [show({ title: 'Retreat!', lines: ['Your men fall back in good order, mostly.', lossesLine(state.army, shaken), stillWithYou(shaken)], choices: [close] }, place.at, place.id)],
     };
   }
   const castle = state.locations.find((l) => l.kind === 'castle');

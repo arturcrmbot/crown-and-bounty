@@ -11,6 +11,7 @@ import { paletteWords } from './render/palette';
 import { loadUnitArt } from './render/wesnoth';
 import { toggleMute, wakeAudio } from './audio/context';
 import { MuteButton } from './ui/mute';
+import { setUiScale } from './ui/scale';
 import { ARTIFACTS, type ArtifactId } from './content/artifacts';
 import { beginCommission, commissionAt, giveArtifact, hasNextCommission, newGame, startFight, type GameState } from './rules/game';
 
@@ -106,6 +107,7 @@ requestAnimationFrame(function frame(now) {
   game.update(dt, input.held);
   const tick = frozen ? 0 : Math.floor(now / TICK_MS);
   display.present(game.frame(tick), paletteWords(tick));
+  setUiScale(display.scale);
   game.placeCards();
   mute.place(display);
   window.__ready = true;

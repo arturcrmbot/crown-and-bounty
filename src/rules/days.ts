@@ -74,6 +74,7 @@ export function endDay(state: GameState): Result {
     events.push(show(ambushCard(next, lines), foe.at, foe.id));
     return { state: next, events };
   }
-  events.push(show({ title: `Day ${roman(day)}`, lines: lines.length ? lines : ['The sun comes up over the province. Somewhere, a cock crows.'], choices: [close] }));
+  // A dawn with news gets a card; a quiet one needs no click: the screens just say which day it is.
+  if (lines.length) events.push(show({ title: `Day ${roman(day)}`, lines, choices: [close] }));
   return { state: next, events };
 }

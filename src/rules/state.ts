@@ -325,6 +325,12 @@ export function armyLine(army: Army): string {
   return parts.length ? parts.join(' · ') : 'No army at all';
 }
 
+/** Who is still with the hero after a retreat, a flight or a stand-off. */
+export const stillWithYou = (army: Army) => (army.some((s) => s.count > 0) ? `*Still with you: ${armyLine(army)}.*` : '*Nobody is left with you.*');
+
+/** "**10 Peasants** join your army.", or "**1 Knight** joins" it. */
+export const joinLine = (troop: TroopId, count: number) => `**${troops(troop, count)}** ${count === 1 ? 'joins' : 'join'} your army.`;
+
 /** Adds troops to the stack of the same kind, or a free slot. Null when all five slots are taken. */
 export function addTroops(army: Army, troop: TroopId, count: number): Army | null {
   if (army.some((s) => s.troop === troop)) return army.map((s) => (s.troop === troop ? { ...s, count: s.count + count } : s));

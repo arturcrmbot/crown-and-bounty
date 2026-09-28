@@ -10,6 +10,8 @@ type Floater = { x: number; y: number; sprite: Bitmap; age: number };
 /** A burst at a point: dust where a foe went down, glitter where treasure was, a golden ring for a level. */
 type Puff = { x: number; y: number; age: number; life: number; kind: 'dust' | 'sparkle' | 'glow' };
 const FLOAT_LIFE = 1.7;
+/** Seconds between words rising from the same spot. */
+const FLOAT_GAP = 0.35;
 
 type Bird = { home: Point; angle: number; radius: number; x: number; y: number; vx: number; vy: number; fleeing: boolean; flap: number };
 
@@ -32,6 +34,8 @@ export class Effects {
         else if ([-1, 0, 1].some((dj) => [-1, 0, 1].some((di) => mask.solid(i + di, j + dj)))) sprite.set(i + 1, j + 1, INK);
       }
     }
+    // Words rising from the same spot keep apart: each waits a moment after the one before.
+    for (const f of this.floaters) if (Math.abs(f.x + f.sprite.width / 2 - x) < 48 && Math.abs(f.y - y) < 48) delay = Math.max(delay, FLOAT_GAP - f.age);
     this.floaters.push({ x: x - sprite.width / 2, y, sprite, age: -delay });
   }
 
