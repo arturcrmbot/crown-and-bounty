@@ -17,7 +17,8 @@
     "sim:battles": "node scripts/battles.mjs",
     "deploy": "node scripts/deploy.mjs",
     "difficulty": "node scripts/difficulty.mjs",
-    "wesnoth": "node scripts/wesnoth.mjs"
+    "wesnoth": "node scripts/wesnoth.mjs",
+    "listen": "node scripts/listen.mjs"
   },
   "devDependencies": {
     "playwright": "^1.63.0",

@@ -11,6 +11,7 @@ import { paletteWords } from './render/palette';
 import { loadUnitArt } from './render/wesnoth';
 import { toggleMute, wakeAudio } from './audio/context';
 import { MuteButton } from './ui/mute';
+import { setUiScale } from './ui/scale';
 import { ARTIFACTS, type ArtifactId } from './content/artifacts';
 import { beginCommission, commissionAt, giveArtifact, hasNextCommission, newGame, startFight, type GameState } from './rules/game';
 
@@ -70,7 +71,8 @@ function debugStart(): GameState {
 // debug start (straight onto the map or into a fight) waits for them.
 const unitArt = loadUnitArt();
 const display = new Display(SCREEN.width, SCREEN.height);
-const game = new Game(display, Math.max(1, Number(query.get('speed') ?? 1)));
+// Screens change with a transition, except when frozen (so screenshots catch them settled); ?transitions=1 keeps them.
+const game = new Game(display, Math.max(1, Number(query.get('speed') ?? 1)), !frozen || query.get('transitions') === '1');
 const input = new Input(display, game.input);
 // The title and the King's welcome come first, unless a debug start (or a frozen screenshot) wants straight in.
 // ?quick=1 skips them too; ?title=1 brings them back even when frozen.
@@ -106,6 +108,7 @@ requestAnimationFrame(function frame(now) {
   game.update(dt, input.held);
   const tick = frozen ? 0 : Math.floor(now / TICK_MS);
   display.present(game.frame(tick), paletteWords(tick));
+  setUiScale(display.scale);
   game.placeCards();
   mute.place(display);
   window.__ready = true;

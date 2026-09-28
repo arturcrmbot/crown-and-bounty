@@ -2,7 +2,7 @@
  * The band, made from oscillators and noise. Each instrument plays one note at a time given: when,
  * which MIDI note, how long, how loud, and where to send it.
  */
-export type InstrumentId = 'lute' | 'harp' | 'harpsichord' | 'recorder' | 'fife' | 'drone' | 'bass' | 'tabor' | 'rim' | 'brass' | 'bell';
+export type InstrumentId = 'lute' | 'harp' | 'harpsichord' | 'recorder' | 'fife' | 'drone' | 'bass' | 'tabor' | 'rim' | 'brass' | 'bell' | 'knell' | 'steel';
 
 export const hz = (midi: number) => 440 * 2 ** ((midi - 69) / 12);
 
@@ -206,6 +206,62 @@ function bell(ctx: BaseAudioContext, dest: AudioNode, at: number, midi: number, 
   }
 }
 
+/**
+ * A church bell tolling: the partials a real bell rings with, named from the note you hear (the
+ * nominal). The hum an octave and more below, and a minor third (the tierce) that makes it mournful.
+ */
+function knell(ctx: BaseAudioContext, dest: AudioNode, at: number, midi: number, volume: number) {
+  const partials: [ratio: number, level: number, ring: number][] = [
+    [0.25, 0.45, 5],
+    [0.5, 0.6, 4],
+    [0.6, 0.5, 3.2],
+    [0.75, 0.22, 2],
+    [1, 0.8, 3],
+    [1.5, 0.3, 1.4],
+    [2, 0.22, 1],
+  ];
+  for (const [ratio, level, ring] of partials) {
+    const o = ctx.createOscillator();
+    o.frequency.value = hz(midi) * ratio;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(volume * level, at + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + ring);
+    o.connect(g).connect(dest);
+    o.start(at);
+    o.stop(at + ring + 0.1);
+  }
+  // The clapper's knock.
+  breath(ctx, dest, at, 900, 0.05, volume * 0.5);
+}
+
+/** Steel on steel: a bright scrape and a ring of clashing, out-of-tune partials. `midi` sets how high it rings. */
+function steel(ctx: BaseAudioContext, dest: AudioNode, at: number, midi: number, volume: number) {
+  const partials: [ratio: number, level: number, ring: number][] = [
+    [1, 1, 0.9],
+    [1.58, 0.7, 0.6],
+    [2.24, 0.6, 0.5],
+    [2.87, 0.45, 0.35],
+    [3.54, 0.35, 0.3],
+    [4.22, 0.25, 0.2],
+  ];
+  for (const [ratio, level, ring] of partials) {
+    // Two blades, not quite the same: a beating shimmer.
+    for (const detune of [1, 1.013]) {
+      const o = ctx.createOscillator();
+      o.frequency.value = hz(midi) * ratio * detune;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(volume * level * 0.35, at);
+      g.gain.exponentialRampToValueAtTime(0.0001, at + ring);
+      o.connect(g).connect(dest);
+      o.start(at);
+      o.stop(at + ring + 0.05);
+    }
+  }
+  breath(ctx, dest, at, 5200, 0.07, volume * 1.4);
+  breath(ctx, dest, at + 0.01, 2600, 0.16, volume * 0.6);
+}
+
 /** Plays one note on an instrument. `length` is in seconds; `volume` about 0 to 1. */
 export function playNote(ctx: BaseAudioContext, dest: AudioNode, instrument: InstrumentId, at: number, midi: number, length: number, volume: number) {
   switch (instrument) {
@@ -231,5 +287,9 @@ export function playNote(ctx: BaseAudioContext, dest: AudioNode, instrument: Ins
       return brass(ctx, dest, at, midi, length, volume);
     case 'bell':
       return bell(ctx, dest, at, midi, volume);
+    case 'knell':
+      return knell(ctx, dest, at, midi, volume);
+    case 'steel':
+      return steel(ctx, dest, at, midi, volume);
   }
 }

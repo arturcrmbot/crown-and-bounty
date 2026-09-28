@@ -3,7 +3,7 @@
 Newest first. Each entry says what was played, how it felt to an experienced player (HoMM2, King's Bounty,
 modern RPGs), and what was done about it.
 
-## #8: 28 Sep 2026, skills that change how you play
+## #10: 28 Sep 2026, skills that change how you play
 
 **Played:** Artur's point that level-ups were "+1 defence, +1 offence", through the real UI in headless Edge. A new
 Courtier from the title: the highwaymen and the poachers, and his first level-up. A Courtier six levels on (Advanced
@@ -35,6 +35,102 @@ are unchanged, so saves still match.
 **Still open:** the battle doesn't say what starts slowed (the stakes, the goose); a line in the opening ribbon would.
 The ambush card still gives the odds only in words. The bot never demands a surrender. Wisdom comes with the
 spellbook.
+
+## #9: 28 Sep 2026, a change of scene between screens
+
+**Played:** the whole opening and the first fights with the clock running, and every change of screen frame by
+frame with the clock frozen (`?freeze=1&transitions=1`, stepped with `__kc.advance`): the title into the prologue,
+the prologue onto the map, the map into battle and back (won and lost), the court into the Fenmarch, and a
+commission lost on day C and tried again. The stings rendered offline through the game's own buses and measured
+(`npm run listen`): peaks, their loudest 400 ms against the score's, how long they ring. Then e2e and the visual
+scenes.
+
+**How it felt:** before, every screen cut hard to the next, and the music simply swapped: the map, a battle and
+the court felt like tabs of one window. Now each is a place you go to. The painting sinks into the dark in a dither
+of shadow as a harp sweeps up, and the throne room rises out of it with the King's card unfolding once it's in
+view. Riding into a fight, the map darkens on a drum roll and a gleaming edge sweeps across it like a blade, the
+steel rings and the field behind it flashes, and the battle march starts on the clash. A win is brass climbing into
+E major over the battle's E minor; a defeat, a bell tolling twice. Court opens on two heralds' trumpets. A lost
+commission tolls the knell three times and the dark closes over the map and stays.
+
+**Found and fixed:**
+
+1. A new province's name and fanfare came while the court was still fading out, and the arrival card sat over a
+   black screen. The name, the fanfare and the first card now wait until the new map is in.
+2. The first flash for a battle turned the grass a sickly yellow and read as static. It's now one step brighter
+   behind a narrow gleaming edge, which reads as a sweep of steel.
+3. The harp's sweep into court was 4 dB louder than anything in the score; every sting now sits about as loud as
+   the score's loudest bars, and the score ducks under it.
+4. Cards appeared while the picture was still dark: they now wait for 80% of a fade.
+
+**Checked:** a click skips a change, a key skips it and still counts, and frozen screenshots are unchanged (every
+visual scene hashes the same). Each change costs 1 to 2 ms a frame while it runs.
+
+## #8: 28 Sep 2026, Artur's second commission; a hero screen, the army, mana, and a UX pass
+
+**What Artur said** (his second time through Aldmoor, after the Wesnoth art and the battle AI):
+
+1. "I'm having fun." The AI makes sense. He beat Baron Grimsby just after the week, when Grimsby's reinforcements
+   had come, and "it wasn't an easy fight". Kept.
+2. Equipment "needs to be like a character where you can drag and drop from the inventory." Done: the hero screen.
+3. "You should also be able to inspect your army... you can borrow this from Heroes of Might and Magic." Done: the
+   army strip and each stack's card.
+4. "You should be able to see how many mana points you've got left, and are you recovering them." Done: the bar,
+   the hero screen and the spellbook say what's left, the most he holds, and that it's full again at dawn.
+5. "There's still some UX stuff that we need to fix." The UX pass below.
+6. The hero as a unit in battle, and a rider who matches the hero: "Hero on the battlefield". Each background's
+   figure is in (05349ce); the hero as a unit is under way.
+
+**Played:** through the real UI in headless Edge, at 960×540 and at 1920×1080: a Wizard with every artifact in
+the game (5 worn, 18 in the pack), dragging, clicking and keying them between the paper doll and the pack; stacks
+dragged along the line, moved from their cards and by Shift and the arrows, dismissed; every troop's card and each
+background's leader card; the bar's troop counts. A Knight through Aldmoor's castle, armoury and village, days
+ending, a level-up, Far Sight; the spellbook and the retreat card in battle. `scripts/playtest.mjs` as a Wizard,
+e2e (now with the hero screen), the bot, and the live site.
+
+**How it felt:** the hero finally feels like a character you kit out. The sheet reads like HoMM2's hero screen on
+parchment: his face, the four stats with their pictures, the gauges, what he's learned, the doll with his own
+figure faint behind the slots, and the army along the bottom in Wesnoth's art. Dragging the lance from the pack
+onto the weapon slot lights the slot, clinks, and the attack number glows as it goes up. A stack's card answers
+the questions a HoMM player asks: attack 10 (8 their own, +2 from Sir Aldric), where they'll stand, what they cost
+a week. Back on the map after it, the rough edges there stood out.
+
+**Found and fixed:**
+
+1. Mana was one number in the hero card. The bar now shows it (a crystal, left and most); every number on the bar
+   says what it is under the pointer ("Mana 20/30 · full again at dawn", when payday comes and what it brings, the
+   wages each stack takes, the days left); and they keep their columns, so nothing shifts as they change. Day
+   LXXXVIII no longer runs into the hourglass. The troop counts open that stack's card, the mana the hero screen.
+2. The old Equipment card could put things on but never take them off. The hero screen does both, and more.
+3. Cards stayed at 15 px on a 1920×1080 window while the pixel art doubled: cards and labels now grow with it.
+4. A card about nothing in particular (a level-up, Far Sight, the keys) sat right on the hero, since the camera
+   centres on him. It now sits beside him.
+5. Every dawn wanted a click on "The sun comes up over the province". A quiet dawn now has no card: the day's
+   number rises off the hero. Payday, a hunter on the trail and a lost commission still get their cards.
+6. The armoury listed every ware twice and ran off the map, with Close scrolled out of sight. Each ware is one
+   button now, with its price and what it does, greyed when it's too dear and saying how much gold is short.
+   Buying says whether it's worn or in the pack; a find that goes in the pack says H swaps it.
+7. "Recruit 10" with 20 on offer said nothing about why. The card says so now: not enough leadership, five
+   companies already (dismiss one on the hero screen), or the purse runs to ten. When none can come, Recruit
+   shows greyed.
+8. Level-ups listed each option twice: the notes now sit under their buttons, and the card is half as tall.
+9. Hover labels only named things. An enemy's now says what it is ("Grimsby's Patrol: a horde of Swordsmen and
+   lots of Crossbowmen"), a castle or village what it has to recruit, and the hero how to open his screen. The
+   pointer over an enemy turns to crossed swords. Labels near the window's edge stay inside it.
+10. Keys: H opens (and closes) the hero screen, ? lists every key, Enter or Space presses a card's only button, and
+    End the day buttons say (E).
+11. Words that didn't agree with their numbers: "1 Archer are left", "1 Knight join your army", "1 Swordsman slip
+    away". Now "Still with you: 1 Archer", "1 Knight joins your army".
+
+**Checked:** all tests (new: the hero sheet and stack cards, wearing, taking off and moving artifacts, moving and
+dismissing stacks, the cards above), e2e (H opens the screen, the banner dragged off and back on, two stacks
+swapped and back, Escape), two new visual scenes drawn in the page (the hero screen and a stack's card, hashed from
+the screenshot), the bot (all four backgrounds win), and the live site with no page errors. Old saves load: the
+state didn't change shape.
+
+**Still open:** the hero's own battle numbers go on his leader card once "Hero on the battlefield" lands them.
+Recruiting takes all you can pay for; there's no taking fewer. Swapping a leadership banner for another leaves
+the army as big as it was: harmless, but a player could use it.
 
 ## #7: 28 Sep 2026, the Ranger tames beasts, and finds offer real choices
 

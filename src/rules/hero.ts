@@ -257,8 +257,8 @@ export function levelUpCard(state: GameState): Card | null {
   const options = offer.options.map((o) => ({ o, ...describeOption(o, state) }));
   return {
     title: `Level ${roman(offer.level)}!`,
-    lines: [`**${STAT_NAMES[offer.stat]} +1, leadership +${RENOWN}.** Choose something to learn:`, ...options.map((x) => `**${x.label}**: ${x.note}`)],
-    choices: options.map((x) => ({ label: x.label, action: { type: 'learn', option: x.o } })),
+    lines: [`**${STAT_NAMES[offer.stat]} +1, leadership +${RENOWN}.** Choose something to learn:`],
+    choices: options.map((x) => ({ label: x.label, detail: x.note, action: { type: 'learn', option: x.o } })),
   };
 }
 
@@ -311,7 +311,7 @@ export function giveArtifact(state: GameState, id: ArtifactId): GameState {
 /** Says where a just-found artifact went: on him, or into the pack because that slot is taken. */
 export function foundNote(state: GameState, id: ArtifactId): string {
   const a = ARTIFACTS[id];
-  return state.hero.gear[a.slot] === id ? `You put it on. ${a.note}` : `${a.note} It goes in your pack: you already wear something there.`;
+  return state.hero.gear[a.slot] === id ? `You put it on. ${a.note}` : `${a.note} It goes in your pack, since you wear something there already: **H** to swap.`;
 }
 
 /** Keeps mana within what the hero can now hold: taking off knowledge takes its mana with it. */

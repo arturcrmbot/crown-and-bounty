@@ -39,9 +39,9 @@ describe('skills', () => {
 
   it('offer the next rank on a level-up, in words', () => {
     const s = { ...skilled({ archery: 1 }), hero: { ...skilled({ archery: 1 }).hero, offers: [{ level: 2, stat: 'attack' as const, options: ['skill:archery', 'skill:diplomacy', 'perk:warchest'] }] } };
-    const lines = levelUpCard(s)!.lines;
-    expect(lines).toContain(`**Advanced Archery**: ${SKILLS.archery.ranks[1].note}`);
-    expect(lines).toContain(`**Basic Diplomacy**: ${SKILLS.diplomacy.ranks[0].note}`);
+    const choices = levelUpCard(s)!.choices;
+    expect(choices).toContainEqual(expect.objectContaining({ label: 'Advanced Archery', detail: SKILLS.archery.ranks[1].note }));
+    expect(choices).toContainEqual(expect.objectContaining({ label: 'Basic Diplomacy', detail: SKILLS.diplomacy.ranks[0].note }));
   });
 
   it('still count for heroes saved with the old nine', () => {

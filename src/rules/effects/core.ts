@@ -9,7 +9,7 @@ import { SKILLS } from '../../content/skills';
 import { SPELLS } from '../../content/spells';
 import { foundNote, gainXp, giveArtifact, heroStats } from '../hero';
 import { revealDisc } from '../map/fog';
-import { addTroops, coins, countOf, leadershipUsed, locationById, MAX_STACKS, TROOPS, troops, update, VANISHES, type Effects, type GameEvent, type GameState, type Location, type Needs } from '../state';
+import { addTroops, coins, countOf, joinLine, leadershipUsed, locationById, MAX_STACKS, TROOPS, troops, update, VANISHES, type Effects, type GameEvent, type GameState, type Location, type Needs } from '../state';
 
 const STAT_WORDS = { attack: 'attack', defence: 'defence', spellPower: 'spell power', knowledge: 'knowledge' } as const;
 
@@ -102,7 +102,7 @@ export function applyEffects(state: GameState, place: Location, effects: Effects
     const count = Math.min(stack.count, room);
     const army = count > 0 ? addTroops(next.army, stack.troop, count) : null;
     if (army) next = { ...next, army };
-    lines.push(army ? `**${troops(stack.troop, count)}** join your army.` : `**${TROOPS[stack.troop].name}** would join you, but you can\u2019t lead any more.`);
+    lines.push(army ? joinLine(stack.troop, count) : `**${TROOPS[stack.troop].name}** would join you, but you can\u2019t lead any more.`);
   }
   if (effects.flags) next = { ...next, flags: { ...next.flags, ...effects.flags } };
   if (effects.reinforce && place.enemy) {
@@ -124,16 +124,18 @@ export function applyEffects(state: GameState, place: Location, effects: Effects
     const { troop, share } = effects.desert;
     const foe = locationById(next, place.id).enemy!;
     const gone: string[] = [];
+    let slipped = 0;
     const army = foe.army
       .map((s) => {
         if ((troop && s.troop !== troop) || TROOPS[s.troop].leadership >= 99) return s;
         const lost = Math.round(s.count * share);
         if (lost > 0) gone.push(`**${troops(s.troop, lost)}**`);
+        slipped += Math.max(0, lost);
         return { ...s, count: s.count - lost };
       })
       .filter((s) => s.count > 0);
     next = update(next, place.id, { enemy: { ...foe, army } });
-    if (gone.length) lines.push(`${gone.join(' and ')} slip away from ${place.name}.`);
+    if (gone.length) lines.push(`${gone.join(' and ')} ${slipped === 1 ? 'slips' : 'slip'} away from ${place.name}.`);
   }
   if (effects.reveal) {
     const { at, radius } = effects.reveal;

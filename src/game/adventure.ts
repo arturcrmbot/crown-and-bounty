@@ -8,18 +8,21 @@ import { BLUE, GOLD, NEUTRAL, PARCHMENT, RED } from '../render/palette';
 import { paintHud, type HudHit } from '../render/hud';
 import { ART, heroArtId } from '../render/units';
 import type { BattleState } from '../rules/battle/battle';
-import { ambushCard, apply, commissionOf, describe, finishFight, levelUpCard, locationById, roman, visit, type Action, type Card, type GameEvent, type GameState, type Result } from '../rules/game';
+import { ambushCard, apply, commissionOf, describe, finishFight, levelUpCard, locationById, placeNote, roman, visit, type Action, type Card, type GameEvent, type GameState, type Result } from '../rules/game';
 import { barNote } from '../rules/heroSheet';
 import type { Point } from '../rules/map/geometry';
 import { cellCentre, type MapModel } from '../rules/map/model';
 import { planRoute, routeCosts, stepAlong } from '../rules/map/movement';
+import { statIcon } from '../render/artifactIcons';
 import { CardView } from '../ui/card';
+import { bitmapUrl } from '../ui/pixels';
 import { play } from '../ui/sound';
+import { sting } from '../audio/stings';
 import { HoverLabel } from '../ui/label';
 import type { Display } from './display';
 import type { Input } from './input';
 import type { Screen } from './screen';
-import { backgroundCard, endCard, storyCard } from './intro';
+import { backgroundCard, endCard, keysCard, storyCard } from './intro';
 import { clearSave, saveGame } from './save';
 import { Walks } from './walks';
 
@@ -27,11 +30,17 @@ import { Walks } from './walks';
 const BANNER_HOLD = 2.4;
 /** How long night takes to fall and lift at the end of a day, in seconds. */
 const NIGHT = 1.4;
+/** How dark the map grows once a commission is lost. */
+const GLOOM = 0.6;
 /** Map pixels per second. */
 const RIDE_SPEED = 95;
 /** Map pixels per step of the trot cycle, so hooves don't slide. */
 const STRIDE = 5;
 const SCROLL_SPEED = 6;
+
+/** The crossed swords, twice their size, for the pointer over an enemy. */
+let swords: string | null = null;
+const swordsCursor = () => (swords ??= `url("${bitmapUrl(statIcon('attack'), 0, 2)}") 16 16, pointer`);
 
 /** Cuts the corners of a cell-by-cell route so the dots curve like the ride does. */
 function curve(points: Point[]): Point[] {
@@ -89,6 +98,8 @@ export class AdventureController implements Screen {
   private celebrating = 0;
   /** Seconds into the night that falls between two days, while it does. */
   private nightfall: number | null = null;
+  /** How far the dark has closed over the map since the commission was lost. */
+  private gloom = 0;
   /** Called when the rules start a battle; the game switches screens. */
   onBattle: (() => void) | null = null;
   /** Called when the hero rides to court after a won commission. */
@@ -164,6 +175,7 @@ export class AdventureController implements Screen {
       return;
     }
     this.cardAnchor = at;
+    this.label.hide();
     this.cards.show(card);
   }
 
@@ -244,6 +256,8 @@ export class AdventureController implements Screen {
           this.tiredShown = false;
           this.nightfall = 0;
           play('day');
+          // A quiet dawn has no card: the new day's number rises off the hero as the light comes back.
+          if (!events.some((x) => x.type === 'card')) this.view.effects.floatText(this.drawn.x, this.drawn.y - this.scene.hero.head - 12, `Day ${roman(e.day)}`, GOLD[6], NIGHT * 0.55);
           break;
         case 'levelUp':
           play('levelUp');
@@ -271,7 +285,8 @@ export class AdventureController implements Screen {
           if (this.target) this.replan();
           break;
         case 'over':
-          play(e.result === 'won' ? 'victory' : 'defeat');
+          // The bounty paid: the brass and the bells. The commission failed: the knell, and the light goes.
+          sting(e.result === 'won' ? 'bounty' : 'lost');
           break;
       }
     }
@@ -398,6 +413,9 @@ export class AdventureController implements Screen {
       this.view.dusk = this.nightfall < NIGHT ? Math.sin((Math.PI * this.nightfall) / NIGHT) * 0.9 : 0;
       if (this.nightfall >= NIGHT) this.nightfall = null;
     }
+    // A lost commission: the dark closes in over the map and stays, until he tries again.
+    this.gloom = this.state.over === 'lost' ? Math.min(GLOOM, this.gloom + dt * 0.35) : 0;
+    if (this.gloom > 0) this.view.dusk = Math.max(this.nightfall === null ? 0 : this.view.dusk, this.gloom);
     this.promptPending();
     this.walks.advance(dt);
     const dx = (held.has('arrowright') || held.has('d') ? 1 : 0) - (held.has('arrowleft') || held.has('a') ? 1 : 0);
@@ -450,7 +468,7 @@ export class AdventureController implements Screen {
           this.tiredShown = true;
           saveGame(this.state);
           this.showCard(
-            { title: ART[heroArtId(this.state.hero.background)].rides ? 'Your horse is spent' : 'Your legs are spent', lines: ['End the day to rest. Red marks are for tomorrow.'], choices: [{ label: 'End the day', action: { type: 'endDay' } }] },
+            { title: ART[heroArtId(this.state.hero.background)].rides ? 'Your horse is spent' : 'Your legs are spent', lines: ['End the day to rest. Red marks are for tomorrow.'], choices: [{ label: 'End the day (E)', action: { type: 'endDay' } }] },
             [this.drawn.x, this.drawn.y - this.scene.hero.foot],
           );
         }
@@ -492,11 +510,15 @@ export class AdventureController implements Screen {
     return dots;
   }
 
-  /** Keeps the open card hanging above whatever it describes. */
+  /** Keeps the open card hanging above whatever it describes; one about nothing in particular keeps clear of the hero. */
   placeCard() {
     const a = this.cardAnchor;
-    const point = a && this.display.toPage(MAP_VIEW.x + a[0] - this.view.camera.x, MAP_VIEW.y + a[1] - this.view.camera.y);
-    this.cards.place(point, this.display.toPage(0, MAP_VIEW.y).y, this.display.toPage(0, MAP_VIEW.y + MAP_VIEW.height).y);
+    const { camera } = this.view;
+    const point = a && this.display.toPage(MAP_VIEW.x + a[0] - camera.x, MAP_VIEW.y + a[1] - camera.y);
+    const hero = this.scene.hero;
+    const from = this.display.toPage(MAP_VIEW.x + hero.object.x - camera.x, MAP_VIEW.y + hero.object.y - camera.y);
+    const to = this.display.toPage(MAP_VIEW.x + hero.object.x + hero.idle[0].width - camera.x, MAP_VIEW.y + hero.object.y + hero.foot + 6 - camera.y);
+    this.cards.place(point, this.display.toPage(0, MAP_VIEW.y).y, this.display.toPage(0, MAP_VIEW.y + MAP_VIEW.height).y, { x0: from.x, y0: from.y, x1: to.x, y1: to.y });
   }
 
   // --- Input ------------------------------------------------------------------------------
@@ -516,11 +538,11 @@ export class AdventureController implements Screen {
     const hits = this.scene.hitboxes.filter((b) => x >= b.x0 && x < b.x1 && y >= b.y0 && y < b.y1 && !gone(b.id));
     const heroFoot = h.y + this.scene.hero.foot;
     const inFront = hits.filter((b) => b.y1 > heroFoot + 2);
-    if (onHero && inFront.length === 0) return { id: 'hero', name: BACKGROUNDS[this.state.hero.background].short };
+    if (onHero && inFront.length === 0) return { id: 'hero', name: `${BACKGROUNDS[this.state.hero.background].short} \u00b7 click (or H) for his gear and army` };
     if (hits.length === 0) return null;
     const box = hits.reduce((front, b) => (b.y1 > front.y1 ? b : front));
     const fogged = this.view.isFogged((box.x0 + box.x1) / 2, box.y1 - 4);
-    return { id: box.id, name: fogged ? 'Unexplored' : locationById(this.state, box.id).name, box, fogged };
+    return { id: box.id, name: fogged ? 'Unexplored' : placeNote(this.state, box.id), box, fogged };
   }
 
   private anchorOf(id: string): Point {
@@ -600,7 +622,9 @@ export class AdventureController implements Screen {
       }
       const point = this.view.toMap(x, y);
       const thing = point ? this.under(point) : null;
-      this.display.canvas.style.cursor = thing ? 'pointer' : 'default';
+      // Crossed swords over an enemy, as in HoMM2: a click there is the start of a fight.
+      const foe = thing?.box && !thing.fogged && this.state.locations.some((l) => l.id === thing.id && l.enemy && !l.done);
+      this.display.canvas.style.cursor = foe ? swordsCursor() : thing ? 'pointer' : 'default';
       if (thing) this.label.show(thing.name, clientX, clientY);
       else this.label.hide();
     },
@@ -613,6 +637,8 @@ export class AdventureController implements Screen {
       if (this.state.opening) return;
       if (key === 'e' && !this.state.over && !this.state.ambush) this.choose({ type: 'endDay' });
       else if (key === 'h' && !this.state.over && !this.state.ambush) this.openHero();
+      else if (key === '?') this.showCard(keysCard(), null);
+      else if (key === 'enter' || key === ' ') this.cards.pressOnly();
       else if (key === 'escape') this.hideCard();
       else if (key.startsWith('arrow') || 'wasd'.includes(key)) this.follow = false;
     },

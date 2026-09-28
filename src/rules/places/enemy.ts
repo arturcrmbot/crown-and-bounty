@@ -3,7 +3,7 @@ import { isBeast, TROOPS } from '../../content/troops';
 import { applyEffects, choiceButton } from '../effects';
 import { battleXp, beat, fight, startFight, winChance } from '../fight';
 import { foundNote, gainXp, giveArtifact, heroStats } from '../hero';
-import { addTroops, armyLine, close, coins, leadershipUsed, show, update, type Army, type Choice, type ContentChoice, type GameState, type Location, type Result } from '../state';
+import { addTroops, close, coins, leadershipUsed, show, stillWithYou, update, type Army, type Choice, type ContentChoice, type GameState, type Location, type Result } from '../state';
 import { countsExactly, forceLine, note, option, ride, say, words } from './common';
 import type { PlaceKind } from './kind';
 
@@ -166,11 +166,12 @@ function tameLine(state: GameState, place: Location): string[] {
 /** Odds the sergeants think are safe: the enemy looks nervous, and a band this weak surrenders to a diplomat. */
 export const SAFE = 0.9;
 
-/** What the sergeants think of the odds, in words. */
+/** The odds of a fight, in the army's own words and then in plain ones: the same on every card. */
 export function oddsLine(chance: number): string {
-  if (chance >= SAFE) return 'They look nervous.';
-  if (chance >= 0.55) return 'It will be close.';
-  return 'Your army looks at you. Then at them. Then at you.';
+  if (chance >= SAFE) return 'They look nervous. *You should win.*';
+  if (chance >= 0.55) return 'It will be close. *The odds are on your side.*';
+  if (chance >= 0.3) return 'Your army looks at you. Then at them. *The odds are against you.*';
+  return 'Your army looks at you. Then at them. Then at you. *You\u2019d likely lose.*';
 }
 
 const TENTHS = ['not one', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
@@ -204,6 +205,10 @@ function surrender(state: GameState, place: Location): Result | null {
   return beat(state, place.id, { title: 'They surrender!', lines, reward: foe.reward, xp: Math.round(battleXp(foe.army) / 2) });
 }
 
+/** What the two ways to fight mean, under their buttons. */
+export const FIGHT_NOTE = 'You command every stack yourself.';
+export const SERGEANTS_NOTE = 'They fight it out for you, by the same rules, in a moment.';
+
 /** An enemy on the map: fight it, let the sergeants fight it, or take one of its parleys. */
 export function enemy(kind: 'patrol' | 'hideout'): PlaceKind {
   return {
@@ -227,7 +232,7 @@ export function enemy(kind: 'patrol' | 'hideout'): PlaceKind {
       return say(state, place, {
         title: place.name,
         lines: [foe.threat, oddsLine(chance), ...scouts, ...carriesLine(state, place), ...tameLine(state, place)],
-        choices: [option(place, foe.charge ?? 'Fight', 'fight'), option(place, 'Let the sergeants handle it', 'auto'), ...yields, ...hireButton(state, place), ...tameButton(state, place), ...parleys(state, place), retreat],
+        choices: [{ ...option(place, foe.charge ?? 'Fight', 'fight'), detail: FIGHT_NOTE }, { ...option(place, 'Let the sergeants handle it', 'auto'), detail: SERGEANTS_NOTE }, ...yields, ...hireButton(state, place), ...tameButton(state, place), ...parleys(state, place), retreat],
       });
     },
     choose(state, place, choice) {
@@ -239,7 +244,7 @@ export function enemy(kind: 'patrol' | 'hideout'): PlaceKind {
       if (choice === 'auto') return fight(calm, place.id);
       if (choice === 'flee' && state.ambush === place.id) {
         const army = state.army.map((s) => ({ ...s, count: s.count - Math.ceil(s.count * 0.2) })).filter((s) => s.count > 0);
-        return say({ ...calm, army }, place, note(place, ['You leave the camp fires burning and ride hard. Not everyone keeps up.', `*${armyLine(army)} are left.*`]));
+        return say({ ...calm, army }, place, note(place, ['You leave the camp fires burning and ride hard. Not everyone keeps up.', stillWithYou(army)]));
       }
       return null;
     },
