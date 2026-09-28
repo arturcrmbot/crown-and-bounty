@@ -29,9 +29,6 @@ function fidget(troop: TroopId, id: number, time: number): Pose {
   return ms >= 0 ? { anim: 'idle', ms } : STAND;
 }
 
-/** The bottom of the message ribbon across the top of the field. */
-const RIBBON_BOTTOM = MAP_VIEW.y + 28;
-
 /** Pointy-top hexes, squashed for HoMM2's oblique view: 64 wide, rows 44 apart. */
 const HEX_W = 64;
 const ROW_H = 44;
@@ -61,6 +58,11 @@ export function hexAt(x: number, y: number): number | null {
 }
 
 export type Floater = { x: number; y: number; text: string; color: number; age: number };
+/** How far a floater rises over its one-second life. */
+export const FLOAT_RISE = 30;
+/** The message ribbon across the top of the field. */
+const LOG_TOP = MAP_VIEW.y + 6;
+export const LOG_BOTTOM = LOG_TOP + 18;
 export type Shot = { from: [number, number]; to: [number, number]; t: number; kind: 'arrow' | 'quarrel' | 'hex' | 'bolt' | 'fire' | 'sparkle' | 'spark' | 'blood' | 'poof'; color?: number };
 
 /** What the battle controller wants drawn this frame, on top of the rules state. */
@@ -71,7 +73,7 @@ export type BattleView = {
   offsets: Map<number, [number, number]>;
   /** Which way a stack looks while it fights or walks against its side's way. */
   facings: Map<number, 1 | -1>;
-  /** The counts to show while blows are still landing: each drops as its blow lands. */
+  /** What a stack's badge says while blows play out: its count from before the action, until each hit lands. */
   counts: Map<number, number>;
   poses: Map<number, Pose>;
   flashing: Set<number>;
@@ -283,8 +285,7 @@ export class BattleScreen {
       this.badge(Math.round(cx + (f.side === 'player' ? 14 : -14)), Math.round(cy + 8), count, f.side === 'player');
     }
     for (const s of view.shots) this.shot(s);
-    // Rising numbers stop short of the message ribbon along the top.
-    for (const t of view.floaters) drawText(screen, t.text, Math.round(t.x - t.text.length * 4), Math.max(RIBBON_BOTTOM, Math.round(t.y - t.age * 30)), t.color, INK, 15);
+    for (const t of view.floaters) drawText(screen, t.text, Math.round(t.x - t.text.length * 4), Math.round(t.y - t.age * FLOAT_RISE), t.color, INK, 15);
     if (view.banner) drawBanner(screen, view.banner.sprite, MAP_VIEW.x + MAP_VIEW.width / 2, MAP_VIEW.y + 150, view.banner.age, view.banner.life);
     if (view.shake > 0.5) this.shake(view.shake, view.time);
     this.logLine(view.preview ?? view.log);
@@ -461,13 +462,15 @@ export class BattleScreen {
     paintBarBackground(screen);
     const text = BAR.y + 5;
     const shownId = view.inspect ?? view.active;
-    const f = shownId === null ? null : b.fighters.find((x) => x.id === shownId && x.count > 0);
+    const countOf = (x: { id: number; count: number }) => view.counts.get(x.id) ?? x.count;
+    const f = shownId === null ? null : b.fighters.find((x) => x.id === shownId && countOf(x) > 0);
     if (view.targeting) drawText(screen, `Cast ${view.targeting}: pick a target (Esc to cancel)`, BAR.x + 12, text, GOLD[6], INK);
     else if (f) {
       const t = TROOPS[f.troop];
       const tags = [...abilitiesOf(f.troop).map((a) => ` ${a.name}`), ...f.status.filter((s) => s !== 'hasted').map((s) => ` ${STATUSES[s].name}`), f.defending ? ' Defending' : ''].join('');
       const { attack, defence } = statsOf(b, f);
-      const info = `${f.count} ${f.count === 1 ? t.one : t.name}  ·  Att ${attack} Def ${defence} Dmg ${t.damage[0]}-${t.damage[1]} HP ${f.hp}/${t.hp} Spd ${speedOf(f)}${f.shots ? ` Shots ${f.shots}` : ''}${tags}`;
+      const count = countOf(f);
+      const info = `${count} ${count === 1 ? t.one : t.name}  ·  Att ${attack} Def ${defence} Dmg ${t.damage[0]}-${t.damage[1]} HP ${f.hp}/${t.hp} Spd ${speedOf(f)}${f.shots ? ` Shots ${f.shots}` : ''}${tags}`;
       drawText(screen, info, BAR.x + 12, text, f.side === 'player' ? PARCHMENT[6] : RED[6], INK);
     }
     const mana = `Mana ${b.hero.mana}`;
@@ -488,8 +491,8 @@ export class BattleScreen {
   /** The last thing that happened, on a dark strip across the top of the field. */
   private logLine(text: string) {
     if (!text) return;
-    const y0 = MAP_VIEW.y + 6;
-    for (let y = y0; y < y0 + 18; y++) for (let x = MAP_VIEW.x + 150; x < MAP_VIEW.x + MAP_VIEW.width - 150; x++) this.screen.set(x, y, SHADOW_LUT[SHADOW_LUT[this.screen.get(x, y)]]);
+    const y0 = LOG_TOP;
+    for (let y = y0; y < LOG_BOTTOM; y++) for (let x = MAP_VIEW.x + 150; x < MAP_VIEW.x + MAP_VIEW.width - 150; x++) this.screen.set(x, y, SHADOW_LUT[SHADOW_LUT[this.screen.get(x, y)]]);
     drawText(this.screen, text, Math.round(MAP_VIEW.x + MAP_VIEW.width / 2 - text.length * 3.3), y0 - 1, PARCHMENT[6], INK, 13);
   }
 }

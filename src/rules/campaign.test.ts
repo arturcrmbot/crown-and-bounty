@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ALDMOOR } from '../content/aldmoor';
 import { COMMISSIONS } from '../content/campaign';
 import { FENMARCH } from '../content/fenmarch';
+import { withNewPlaces } from './campaign';
 import {
   apply, briefingCard, CAMPAIGN_LENGTH, commissionAt, courtCard, heroStats, leadershipUsed, levelUpCard, nextArmy, provinceOf, veterans, visit, type GameState,
 } from './game';
@@ -156,6 +157,15 @@ describe('the campaign', () => {
     const granted = act(court, { type: 'boon', id: court.campaign.court!.boons[0] });
     const next = act(granted, { type: 'nextCommission' });
     for (const s of [court, granted, next]) expect(JSON.parse(JSON.stringify(s))).toEqual(s);
+  });
+
+  it('gives a saved commission the places added to its province since', () => {
+    const played = { ...newGame(7, ALDMOOR, 'knight'), opening: undefined, gold: 123 };
+    const old = { ...played, locations: played.locations.filter((l) => l.id !== 'butts') };
+    const loaded = withNewPlaces(JSON.parse(JSON.stringify(old)));
+    expect(loaded.locations.find((l) => l.id === 'butts')?.recruits).toEqual({ troop: 'archers', count: 12, price: 30 });
+    expect(loaded.gold).toBe(123);
+    expect(withNewPlaces(played)).toBe(played);
   });
 });
 

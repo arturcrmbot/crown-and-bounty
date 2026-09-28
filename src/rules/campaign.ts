@@ -31,6 +31,16 @@ export const commissionOf = (state: GameState) => commissionAt(state.campaign, s
 export const provinceOf = (state: GameState) => commissionOf(state).province;
 export const hasNextCommission = (state: GameState) => state.campaign.chapter + 1 < CAMPAIGN_LENGTH;
 
+/**
+ * A province's places that a saved game doesn't have yet join it, so a commission in progress gets
+ * places added since (Aldmoor's archery butts). Places never leave `locations`, so a missing one is newer than the save.
+ */
+export function withNewPlaces(state: GameState): GameState {
+  const known = new Set(state.locations.map((l) => l.id));
+  const added = provinceOf(state).locations.filter((l) => !known.has(l.id));
+  return added.length ? { ...state, locations: [...state.locations, ...structuredClone(added)] } : state;
+}
+
 /** The share of every stack that stays on between commissions. */
 export const VETERANS = 0.25;
 

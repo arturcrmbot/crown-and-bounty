@@ -1,3 +1,4 @@
+import { withNewPlaces } from '../rules/campaign';
 import type { GameState } from '../rules/game';
 
 /**
@@ -30,7 +31,8 @@ export function loadGame(): GameState | null {
     const text = localStorage.getItem(KEY);
     if (!text) return null;
     const state = JSON.parse(text) as GameState;
-    return state && Array.isArray(state.explored) && Array.isArray(state.army) && typeof state.hero?.level === 'number' && typeof state.campaign?.chapter === 'number' && typeof state.campaign.seed === 'number' ? state : null;
+    const valid = state && Array.isArray(state.explored) && Array.isArray(state.army) && typeof state.hero?.level === 'number' && typeof state.campaign?.chapter === 'number' && typeof state.campaign.seed === 'number';
+    return valid ? withNewPlaces(state) : null;
   } catch {
     return null;
   }

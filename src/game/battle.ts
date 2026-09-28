@@ -3,7 +3,7 @@ import { TROOPS, troops } from '../content/troops';
 import { chooseAction } from '../rules/battle/ai';
 import { activeFighter, battleAct, canCast, castsLeft, CHARGE_BONUS, fighterById, isCharge, options, spellCost, spellDamage, spellVictims, strike, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
 import { paintBanner } from '../render/banner';
-import { BattleScreen, BUTTONS, hexAt, hexCentre, type BattleView, type Shot } from '../render/battleScreen';
+import { BattleScreen, BUTTONS, FLOAT_RISE, hexAt, hexCentre, LOG_BOTTOM, type BattleView, type Shot } from '../render/battleScreen';
 import { animLength, bodyHeight, hitTime, type AnimName } from '../render/battleSprites';
 import { ART } from '../render/units';
 import { MAP_VIEW } from '../render/frame';
@@ -16,6 +16,8 @@ import type { Screen } from './screen';
 type Step = { duration: number; elapsed: number; started: boolean; start?: () => void; tick?: (t: number) => void; end?: () => void };
 
 const ENEMY_THINK = 0.35;
+/** Floaters start at least this low, so they rise and fade under the message ribbon, never into it. */
+const FLOAT_TOP = LOG_BOTTOM + FLOAT_RISE + 2;
 /** Wesnoth's animation milliseconds as our seconds: its own timing, a touch brisker. */
 const MS = 0.00085;
 /** Wesnoth's flinch starts a little before the blow lands. */
@@ -93,14 +95,18 @@ export class BattleController implements Screen {
     this.queue.push({ duration, elapsed: 0, started: false, ...parts });
   }
 
-  /** Words that rise from a stack and fade. Ones that come close together stack up instead of overlapping. */
+  /**
+   * Words that rise from a stack and fade. Ones that come close together stack up instead of
+   * overlapping; near the top of the field, where there's no room above, they stack down over the stack.
+   */
   private float(id: number, text: string, color: number) {
     const f = fighterById(this.battle, id);
     // Over the stack's own hex, not wherever a blow has knocked it, so it never lands on the attacker.
     const [x, y] = hexCentre(f.at);
-    const top = y + 12 - bodyHeight(f.troop, 'battle') - 16;
+    const top = Math.max(FLOAT_TOP, y + 12 - bodyHeight(f.troop, 'battle') - 16);
     const crowd = this.view.floaters.filter((o) => o.age < 0.6 && Math.abs(o.x - x) < 44 && Math.abs(o.y - top) < 40).length;
-    this.view.floaters.push({ x, y: top - crowd * 16, text, color, age: 0 });
+    const above = top - crowd * 16;
+    this.view.floaters.push({ x, y: above >= FLOAT_TOP ? above : top + crowd * 16, text, color, age: 0 });
   }
 
   /** A burst where a blow lands, blood for the wounded, and a jolt that grows with the damage. */
@@ -268,10 +274,10 @@ export class BattleController implements Screen {
 
   private animate(events: BattleEvent[], before: BattleState) {
     const v = this.view;
-    // Who is left in each stack as the events play, so a stack falls at the blow that kills it, and
-    // its count drops only as each blow lands.
-    const left = new Map(before.fighters.map((f) => [f.id, f.count]));
-    for (const f of before.fighters) if (fighterById(this.battle, f.id).count !== f.count) v.counts.set(f.id, f.count);
+    // Who is left in each stack as the events play: a stack falls at the blow that kills it, and its
+    // badge keeps its count from before the action until each blow lands.
+    const left = new Map(before.fighters.map((f) => [f.id, v.counts.get(f.id) ?? f.count]));
+    for (const e of events) if (e.type === 'hit' || e.type === 'spell') v.counts.set(e.target, left.get(e.target)!);
     for (const e of events) {
       switch (e.type) {
         case 'move': {
@@ -439,9 +445,10 @@ export class BattleController implements Screen {
         this.queue.shift();
       }
     }
+    // Once every blow has landed, the badges read the rules' counts again.
+    if (this.queue.length === 0) v.counts.clear();
     const f = activeFighter(this.battle);
     v.active = f?.id ?? null;
-    if (this.queue.length === 0) v.counts.clear();
     if (this.queue.length === 0) {
       if (this.battle.result) {
         if (!this.finished) {
