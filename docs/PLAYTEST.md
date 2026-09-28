@@ -3,6 +3,60 @@
 Newest first. Each entry says what was played, how it felt to an experienced player (HoMM2, King's Bounty,
 modern RPGs), and what was done about it.
 
+## #4: 28 Sep 2026, Artur's first commission as a Knight
+
+**Played:** Artur played the live build from the title, through Aldmoor, as a Knight. Then we checked the fixes
+through the real UI: a Knight who loses his archers to the patrol and buys more, level-ups for all four
+backgrounds, a melee filmed frame by frame, soldiers at map and battle size, a 20-minute session, and the bot's
+five commissions.
+
+**What Artur said, and what was done:**
+
+1. No music until he clicked his hero, so none in the intro. Fixed (c95fdd2): the title waits for "Click
+   anywhere to begin", sound wakes on any first click, and a Sound/Muted button sits top right.
+2. Loves the title screen. The map disappointed: "the characters need to become a lot more cute." Every
+   humanoid soldier is redrawn chibi-style (big head, shining eyes, round body, big boots) for now (308e87c).
+   The troop figures are being replaced with Battle for Wesnoth's art.
+3. Many perks and finds feel meaningless: read some text, get "+1 defence". Six trick perks (Cavalry Charge,
+   First Volley, Woodsman, Battle Mage, Silver Tongue, Far Sight) teach another hero's trick. Every level offers
+   one while any are left, marked "(new trick)". The Old Tower Banner also gives archers +1 attack and +3 shots.
+   The Miller's Everlasting Loaf gives +25 movement a day and makes wages a tenth cheaper (308e87c).
+4. Likes exploring, that losing isn't the end of the world, and recruiting around the map. Kept.
+5. Lost his archers to the patrol and had no ranged troops to hire. Aldmoor Butts, an archery range beside the
+   start, sells 12 archers at 30 gold and 10 more each payday. The first generated province's village sells
+   archers too (308e87c).
+6. "Massive bug": pressing Defend until the wolves and boars ran away won every reward. Fixed (c95fdd2):
+   enemies never wait or defend, and a quiet battle only counts as a win against a far weaker enemy.
+7. "Let the sergeants handle it" beat a grown Grimsby full of crossbowmen when he had no archers. Since
+   c95fdd2, 15 knights and 12 swordsmen lose that fight 8 times out of 8.
+8. Can see how differently a Ranger or a Wizard would play. Kept.
+9. Hitting "just does it". Melee now winds up, lunges and knocks the target back with a flash and a spray of
+   blood. The spark is bigger and the shake grows with the damage (308e87c). Wesnoth's attack frames should
+   finish it.
+
+**Found and fixed while checking:**
+
+1. The game froze after about 12 minutes on one page. The palette's colour cycling went negative and threw on
+   every frame, so the live site had this bug. Fixed, with a test, and a 20-minute session now runs clean.
+2. Counts dropped before the blow landed, because the rules settle the whole exchange at once. Each stack now
+   keeps its count until its own hit lands, so the attacker's loss shows when the strike-back lands.
+3. The new lunge carried the attacker's badge onto the target's, so "15" and "42" read as "1542". Badges stay
+   on their hex and follow a stack only while it walks.
+4. Damage numbers on the top row rose under the message ribbon. They now stop below it and stack downward there.
+5. A save from before this batch had no butts. A save now gains any place added to its province since.
+6. A place drawn in front of the hero takes the click (308e87c). A hero at the butts' foot stands in front of
+   them, so his own card opens, as it should.
+
+**Checked:** a Knight on day 3 loses the patrol fight, buys 12 archers at the butts for 360 gold, and the butts
+restock to 10 on payday. Every level-up offers a trick until all are learnt, never one the hero has, with every
+background. Soldiers read at map size (about 34 px) and in battle. The bot wins all five commissions with every
+background (days: knight 17/3/2/9/5, wizard 6/2/2/3/10, ranger 23/2/2/2/9, courtier 5/4/2/10/10), so the
+courtier's commission III loss is gone. The bot test allows 60 days, since a bot that storms Grimsby too early
+takes weeks to rebuild.
+
+**Still open:** the patrol's card says "They look nervous" to a day-3 Knight with 15 knights and 20 archers.
+The sergeants do win 16 fights out of 16 from there, but careful hand play lost. That goes to the battle AI work.
+
 ## #3: 27 Sep 2026, rewards and choices that come back
 
 **Played:** a Hedge Wizard through the talk-and-trick route (Old Nan's Stone Skin, the highwaymen for their

@@ -63,8 +63,10 @@ export function paletteWords(tick: number): Uint32Array {
   const words = new Uint32Array(256);
   COLORS.forEach(([r, g, b], i) => (words[i] = (255 << 24) | (b << 16) | (g << 8) | r));
   for (const cycle of CYCLES) {
+    const n = cycle.length;
     cycle.forEach((index, i) => {
-      const [r, g, b] = COLORS[cycle[(i - tick + cycle.length * 1000) % cycle.length]];
+      // Wraps however long the page has been open: tick runs past thousands after a few minutes.
+      const [r, g, b] = COLORS[cycle[(((i - tick) % n) + n) % n]];
       words[index] = (255 << 24) | (b << 16) | (g << 8) | r;
     });
   }

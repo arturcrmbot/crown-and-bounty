@@ -3,7 +3,7 @@ import { TROOPS, troops, type TroopId } from '../content/troops';
 import { chooseAction } from '../rules/battle/ai';
 import { activeFighter, battleAct, canCast, castsLeft, CHARGE_BONUS, fighterById, isCharge, options, spellCost, spellDamage, spellVictims, strike, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
 import { paintBanner } from '../render/banner';
-import { BattleScreen, BUTTONS, hexAt, hexCentre, type BattleView, type Shot } from '../render/battleScreen';
+import { BattleScreen, BUTTONS, FLOAT_RISE, hexAt, hexCentre, LOG_BOTTOM, type BattleView, type Shot } from '../render/battleScreen';
 import { FIGHTER_FOOT } from '../render/battleSprites';
 import { MAP_VIEW } from '../render/frame';
 import { BLUE, GOLD, NEUTRAL, RED } from '../render/palette';
@@ -17,6 +17,8 @@ type Step = { duration: number; elapsed: number; started: boolean; start?: () =>
 const ENEMY_THINK = 0.35;
 /** How tall the beasts' bodies stand above their feet (their sprites are wider than they are tall). */
 const BODY_HEIGHT: Partial<Record<TroopId, number>> = { wolves: 34, boars: 30 };
+/** Floaters start at least this low, so they rise and fade under the message ribbon, never into it. */
+const FLOAT_TOP = LOG_BOTTOM + FLOAT_RISE + 2;
 
 /**
  * A battle on screen. The rules decide everything; this plays each event as a little animation,
@@ -56,6 +58,8 @@ export class BattleController implements Screen {
       poses: new Map(),
       flashing: new Set(),
       dying: new Set(),
+      counts: new Map(),
+      walking: new Set(),
       reach: new Set(),
       hover: null,
       floaters: [],
@@ -85,14 +89,18 @@ export class BattleController implements Screen {
     this.queue.push({ duration, elapsed: 0, started: false, ...parts });
   }
 
-  /** Words that rise from a stack and fade. Ones that come close together stack up instead of overlapping. */
+  /**
+   * Words that rise from a stack and fade. Ones that come close together stack up instead of
+   * overlapping; near the top of the field, where there's no room above, they stack down over the stack.
+   */
   private float(id: number, text: string, color: number) {
     const f = fighterById(this.battle, id);
     // Over the stack's own hex, not wherever a blow has knocked it, so it never lands on the attacker.
     const [x, y] = hexCentre(f.at);
-    const top = y + 12 - (BODY_HEIGHT[f.troop] ?? FIGHTER_FOOT(f.troop)) - 16;
+    const top = Math.max(FLOAT_TOP, y + 12 - (BODY_HEIGHT[f.troop] ?? FIGHTER_FOOT(f.troop)) - 16);
     const crowd = this.view.floaters.filter((o) => o.age < 0.6 && Math.abs(o.x - x) < 44 && Math.abs(o.y - top) < 40).length;
-    this.view.floaters.push({ x, y: top - crowd * 16, text, color, age: 0 });
+    const above = top - crowd * 16;
+    this.view.floaters.push({ x, y: above >= FLOAT_TOP ? above : top + crowd * 16, text, color, age: 0 });
   }
 
   /** A burst where a blow lands, blood for the wounded, and a jolt that grows with the damage. */
@@ -137,6 +145,18 @@ export class BattleController implements Screen {
 
   private animate(events: BattleEvent[], before: BattleState) {
     const v = this.view;
+    // A stack about to be hurt keeps its count on its badge until each blow lands (see `landed`).
+    const left = new Map<number, number>();
+    for (const e of events) {
+      if ((e.type === 'hit' || e.type === 'spell') && !left.has(e.target)) left.set(e.target, v.counts.get(e.target) ?? fighterById(before, e.target).count);
+    }
+    for (const [id, count] of left) v.counts.set(id, count);
+    /** What a blow's impact step calls to take the fallen off the target's badge. */
+    const landed = (target: number, killed: number) => {
+      const after = left.get(target)! - killed;
+      left.set(target, after);
+      return () => v.counts.set(target, after);
+    };
     for (const e of events) {
       switch (e.type) {
         case 'move': {
@@ -144,6 +164,7 @@ export class BattleController implements Screen {
           // The rules already have the stack at the end of its path; start drawing it where it stood.
           const start = hexCentre(fighterById(before, e.fighter).at);
           v.positions.set(e.fighter, start);
+          v.walking.add(e.fighter);
           for (const [n, to] of path.entries()) {
             const a = n === 0 ? start : path[n - 1];
             this.step(0.12, {
@@ -153,12 +174,18 @@ export class BattleController implements Screen {
               },
             });
           }
-          this.step(0.01, { end: () => v.positions.delete(e.fighter) });
+          this.step(0.01, {
+            end: () => {
+              v.positions.delete(e.fighter);
+              v.walking.delete(e.fighter);
+            },
+          });
           break;
         }
         case 'hit': {
           const target = fighterById(this.battle, e.target);
           if (target.count === 0) v.dying.add(e.target);
+          const drop = landed(e.target, e.killed);
           const [ax, ay] = hexCentre(fighterById(this.battle, e.attacker).at);
           const [tx, ty] = hexCentre(target.at);
           if (e.ranged) {
@@ -204,6 +231,7 @@ export class BattleController implements Screen {
             },
             start: () => {
               v.flashing.add(e.target);
+              drop();
               if (!e.ranged) play('hit');
               this.impact(e.target, e.damage, !e.ranged);
               if (e.charge) {
@@ -251,6 +279,7 @@ export class BattleController implements Screen {
         case 'spell': {
           const target = fighterById(this.battle, e.target);
           if (target.count === 0) v.dying.add(e.target);
+          const drop = landed(e.target, e.killed);
           const [tx, ty] = hexCentre(target.at);
           const look = SPELLS[e.spell].look;
           if (e.splash) {
@@ -258,6 +287,7 @@ export class BattleController implements Screen {
             this.step(0.08, {
               start: () => {
                 v.flashing.add(e.target);
+                drop();
                 this.float(e.target, e.killed ? `-${e.killed}` : `-${e.damage} hp`, target.side === 'player' ? RED[5] : GOLD[6]);
               },
               end: () => {
@@ -277,6 +307,7 @@ export class BattleController implements Screen {
               v.log = `${this.battle.hero.name ?? 'Aldric'} casts ${SPELLS[e.spell].name} on ${this.fighterName(e.target).toLowerCase()}${e.damage ? `: ${e.damage} damage${e.killed ? `, ${e.killed} perish` : ''}` : ''}.`;
               if (e.damage) {
                 v.flashing.add(e.target);
+                drop();
                 this.float(e.target, e.killed ? `-${e.killed}` : `-${e.damage} hp`, GOLD[6]);
                 if (look.kind !== 'sparkle') v.shake = Math.max(v.shake, look.kind === 'fire' ? 5 : 4);
               }
@@ -358,6 +389,8 @@ export class BattleController implements Screen {
         this.queue.shift();
       }
     }
+    // Once every blow has landed, the badges read the rules' counts again.
+    if (this.queue.length === 0) v.counts.clear();
     const f = activeFighter(this.battle);
     v.active = f?.id ?? null;
     if (this.queue.length === 0) {
