@@ -4,7 +4,8 @@ import { MAP_VIEW, paintFrame, SCREEN } from './frame';
 import type { Point } from '../rules/map/geometry';
 import type { FogMask } from './fog';
 import { bayer, hash, noise } from './noise';
-import { FOG_LUT, GOLD, GRAIN_LUT, INK, RED, SHADOW_LUT, WOOD } from './palette';
+import { FOG_LUT, GRAIN_LUT, SHADOW_LUT } from './palette';
+import { drawRoute, type RouteMark } from './route';
 import { CLEAR, type Sky, type Weather } from './weather';
 
 /**
@@ -33,7 +34,7 @@ export class AdventureScreen {
   sky: Sky = CLEAR;
   weather: Weather | null = null;
   /** The route still ahead of the hero: gold dots for today, red for later days. */
-  route: { at: Point; today: boolean }[] = [];
+  route: RouteMark[] = [];
   /** Where the hero will make camp when the gold part of a route runs out. */
   camp: Point | null = null;
   private readonly map: Bitmap;
@@ -103,12 +104,7 @@ export class AdventureScreen {
         screen.data[o] = fog[i] ? FOG_LUT[wild[i]] : map[i];
       }
     }
-    for (const { at: [x, y], today } of this.route) {
-      const sx = MAP_VIEW.x + x - cx;
-      const sy = MAP_VIEW.y + y - cy;
-      for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) this.dot(sx + i, sy + j, Math.abs(i) === 2 || Math.abs(j) === 2 ? INK : today ? GOLD[6] : RED[5]);
-    }
-    if (this.camp) this.drawCamp(MAP_VIEW.x + this.camp[0] - cx, MAP_VIEW.y + this.camp[1] - cy);
+    drawRoute(screen, MAP_VIEW, MAP_VIEW.x - cx, MAP_VIEW.y - cy, this.route, this.camp);
     this.animated.sort((a, b) => footY(a) - footY(b));
     for (const o of this.animated) {
       if (this.isFogged(o.x + o.sprite.width / 2, footY(o) - 2)) continue;
@@ -135,22 +131,5 @@ export class AdventureScreen {
     }
     blit(screen, this.overlay, 0, 0);
     return screen;
-  }
-
-  private dot(x: number, y: number, color: number) {
-    if (x >= MAP_VIEW.x && y >= MAP_VIEW.y && x < MAP_VIEW.x + MAP_VIEW.width && y < MAP_VIEW.y + MAP_VIEW.height) this.screen.set(x, y, color);
-  }
-
-  private drawCamp(x: number, y: number) {
-    const top = y - 11;
-    for (let row = 0; row < 7; row++) {
-      const half = Math.min(4, row);
-      for (let dx = -half; dx <= half; dx++) {
-        const edge = Math.abs(dx) === half || row === 6;
-        this.dot(x + dx, top + row, edge ? INK : RED[4]);
-      }
-    }
-    for (let row = 2; row < 6; row++) this.dot(x, top + row, WOOD[2]);
-    for (let dx = -5; dx <= 5; dx++) this.dot(x + dx, top + 7, INK);
   }
 }

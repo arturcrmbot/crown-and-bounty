@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { Bitmap } from './bitmap';
-import { FogMask } from './fog';
-import { MAP_VIEW } from './frame';
+import { MAP_VIEW, SCREEN } from './frame';
 import { GOLD, GRAIN_LUT, INK, RED, WOOD } from './palette';
-import { AdventureScreen } from './adventureScreen';
+import { drawRoute, type RouteMark } from './route';
 
 const region = (screen: Bitmap, x: number, y: number, radius: number) => {
   const pixels: number[] = [];
@@ -13,17 +12,13 @@ const region = (screen: Bitmap, x: number, y: number, radius: number) => {
 
 describe('adventure routes', () => {
   it('draws bold day colours and a tent at tonight’s camp', () => {
-    const map = new Bitmap(MAP_VIEW.width, MAP_VIEW.height);
-    const cells = Math.ceil(map.width / 8) * Math.ceil(map.height / 8);
-    const fog = new FogMask(map.width, map.height, new Array(Math.ceil(cells / 32)).fill(0xffffffff));
-    const view = new AdventureScreen(map, map, fog);
-    view.route = [
+    const frame = new Bitmap(SCREEN.width, SCREEN.height);
+    const route: RouteMark[] = [
       { at: [100, 100], today: true },
       { at: [120, 100], today: false },
     ];
-    view.camp = [110, 100];
+    drawRoute(frame, MAP_VIEW, MAP_VIEW.x, MAP_VIEW.y, route, [110, 100]);
 
-    const frame = view.compose(0);
     const today = region(frame, 100, 100, 2);
     const tomorrow = region(frame, 120, 100, 2);
     const tent = region(frame, 110, 92, 6);
