@@ -1,6 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { STATUSES, type StatusDef, type StatusId } from '../../content/spells';
+import { TROOPS } from '../../content/troops';
 import { autoResolve, chooseAction } from './ai';
-import { activeFighter, battleAct, createBattle, enemyReach, fighterById, isCharge, options, QUIET_ROUNDS, spellDamage, strike, wound, type BattleHero, type BattleState } from './battle';
+import { activeFighter, battleAct, createBattle, enemyReach, fighterById, isCharge, options, QUIET_ROUNDS, spellDamage, statsOf, strike, wound, type BattleHero, type BattleState } from './battle';
 import { colOf, distance, hexIndex, neighbours, reachable } from './hex';
 
 const hero: BattleHero = { attack: 1, defence: 1, spellPower: 2, mana: 20, spells: ['bolt', 'bless', 'slow'], castRound: 0 };
@@ -213,5 +215,40 @@ describe('a battle', () => {
     let wins = 0;
     for (let seed = 1; seed <= 30; seed++) if (autoResolve(battle(['knights', 'archers'], [12, 25], ['swordsmen', 'crossbowmen'], [18, 12], seed)).result === 'won') wins++;
     expect(wins).toBeGreaterThanOrEqual(24);
+  });
+});
+
+describe('status fields', () => {
+  const hero: BattleHero = { attack: 0, defence: 0, spellPower: 1, mana: 0, spells: [], castRound: 0 };
+  const field = () => createBattle({ place: 'x', seed: 1, player: [{ troop: 'archers', count: 20 }], enemy: [{ troop: 'swordsmen', count: 20 }], hero, obstacles: 0 });
+  const withStatus = (b: BattleState, id: number, def: StatusDef) => {
+    const key = 'test' as StatusId;
+    (STATUSES as Record<string, StatusDef>)[key] = def;
+    return { ...b, fighters: b.fighters.map((f) => (f.id === id ? { ...f, status: [...f.status, key] } : f)) };
+  };
+  afterEach(() => delete (STATUSES as Record<string, StatusDef>).test);
+
+  it('attackAdd changes attack, in statsOf and in every blow', () => {
+    const b = field();
+    const cursed = withStatus(b, 1, { name: 'Weak', attackAdd: -3 });
+    expect(statsOf(cursed, cursed.fighters[1]).attack).toBe(statsOf(b, b.fighters[1]).attack - 3);
+    expect(strike(cursed, cursed.fighters[1], cursed.fighters[0], false).damage).toBeLessThan(strike(b, b.fighters[1], b.fighters[0], false).damage);
+  });
+
+  it('worstDamage rolls the worst, and cancels out with bestDamage', () => {
+    const b = field();
+    const [min, max] = TROOPS.swordsmen.damage;
+    const worst = withStatus(b, 1, { name: 'Cursed', worstDamage: true });
+    const plain = strike(b, b.fighters[1], b.fighters[0], false).damage;
+    expect(strike(worst, worst.fighters[1], worst.fighters[0], false, 7).damage).toBeCloseTo((plain * min) / ((min + max) / 2), -1);
+    const both = withStatus(withStatus(b, 1, { name: 'Cursed', worstDamage: true }), 1, { name: 'Both', worstDamage: true, bestDamage: true });
+    expect(strike(both, both.fighters[1], both.fighters[0], false).damage).toBe(plain);
+  });
+
+  it('rangedTaken shields against shots, not blows', () => {
+    const b = field();
+    const shielded = withStatus(b, 1, { name: 'Shield', rangedTaken: 0.5 });
+    expect(strike(shielded, shielded.fighters[0], shielded.fighters[1], true).damage).toBe(Math.round(strike(b, b.fighters[0], b.fighters[1], true).damage / 2));
+    expect(strike(shielded, shielded.fighters[0], shielded.fighters[1], false).damage).toBe(strike(b, b.fighters[0], b.fighters[1], false).damage);
   });
 });
