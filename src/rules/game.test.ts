@@ -111,6 +111,7 @@ suite('fights', () => {
   it('beats the poachers with the starting army, with light losses', () => {
     const result = fight(newGame(), 'poachers')!;
     expect(cardOf(result).title).toBe('Victory!');
+    expect(cardOf(result).battleResult?.enemy.length).toBeGreaterThan(0);
     expect(result.events).toContainEqual({ type: 'removed', id: 'poachers' });
     expect(armyPower(result.state.army)).toBeGreaterThan(armyPower(newGame().army) * 0.8);
     expect(locationById(result.state, 'poachers').done).toBe(true);
