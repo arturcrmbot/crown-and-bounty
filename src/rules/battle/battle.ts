@@ -51,7 +51,7 @@ export type BattleHero = {
   castsThisRound?: number;
 };
 
-/** A charging stack rides at least this many hexes before it strikes, hits this much harder, and can't be struck back. */
+/** A charging stack rides at least this many hexes, from a start clear of the enemy, before it strikes; it hits this much harder, and can't be struck back. */
 export const CHARGE_HEXES = 3;
 export const CHARGE_BONUS = 1.25;
 
@@ -305,9 +305,12 @@ export const spellCost = (b: BattleState, spell: SpellId) => Math.max(1, SPELLS[
 /** Spells the hero may still cast this round: one, or two for a wizard. */
 export const castsLeft = (b: BattleState) => (b.hero.casts ?? 1) - (b.hero.castRound === b.round ? (b.hero.castsThisRound ?? 1) : 0);
 export const canCast = (b: BattleState, spell: SpellId) => b.hero.spells.includes(spell) && castsLeft(b) > 0 && b.hero.mana >= spellCost(b, spell);
-/** Whether a melee attack from `from` would be a charge: a charging troop riding far enough first. */
+/**
+ * Whether a melee attack from `from` would be a charge: a charging troop with a run-up, riding far
+ * enough first from a start clear of the enemy (circling a stack it is already fighting isn't one).
+ */
 export const isCharge = (b: BattleState, f: Fighter, from: number, moves = options(b).moves) =>
-  f.side === 'player' && (b.hero.charge ?? []).includes(f.troop) && from !== f.at && (moves.get(from)?.length ?? 0) >= CHARGE_HEXES;
+  f.side === 'player' && (b.hero.charge ?? []).includes(f.troop) && from !== f.at && (moves.get(from)?.length ?? 0) >= CHARGE_HEXES && !adjacentEnemy(b, f);
 /** Damage a spell does, or 0 if it doesn't do damage. */
 export const spellDamage = (b: BattleState, spell: SpellId) => {
   const effect = SPELLS[spell].effect;

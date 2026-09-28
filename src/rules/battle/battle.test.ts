@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { autoResolve, chooseAction } from './ai';
-import { activeFighter, battleAct, createBattle, enemyReach, fighterById, options, QUIET_ROUNDS, spellDamage, strike, wound, type BattleHero, type BattleState } from './battle';
+import { activeFighter, battleAct, createBattle, enemyReach, fighterById, isCharge, options, QUIET_ROUNDS, spellDamage, strike, wound, type BattleHero, type BattleState } from './battle';
 import { colOf, distance, hexIndex, neighbours, reachable } from './hex';
 
 const hero: BattleHero = { attack: 1, defence: 1, spellPower: 2, mana: 20, spells: ['bolt', 'bless', 'slow'], castRound: 0 };
@@ -169,6 +169,17 @@ describe('a battle', () => {
     const b = placed(battle(['knights', 'knights'], [10, 10], ['swordsmen'], [30]), { 0: hexIndex(5, 3), 1: hexIndex(5, 5), 2: hexIndex(6, 4) }, [2]);
     const tired = { ...b, fighters: b.fighters.map((f) => (f.id === 1 ? { ...f, retaliated: true } : f)) };
     expect(chooseAction(tired)).toMatchObject({ type: 'melee', target: 1 });
+  });
+
+  it('lets knights charge only with a run-up, not by circling a stack they are already fighting', () => {
+    const lances = (b: BattleState): BattleState => ({ ...b, hero: { ...b.hero, charge: ['knights'] }, order: [0, 1] });
+    // From across the field: a charge.
+    const clear = lances(placed(battle(['knights'], [10], ['swordsmen'], [30]), { 0: hexIndex(2, 4), 1: hexIndex(6, 4) }, [0, 1]));
+    expect(isCharge(clear, clear.fighters[0], hexIndex(5, 4))).toBe(true);
+    // Already at grips on one side, riding round to the other three hexes away: just a blow.
+    const engaged = lances(placed(battle(['knights'], [10], ['swordsmen'], [30]), { 0: hexIndex(5, 4), 1: hexIndex(6, 4) }, [0, 1]));
+    expect(options(engaged).moves.get(hexIndex(7, 4))?.length).toBeGreaterThanOrEqual(3);
+    expect(isCharge(engaged, engaged.fighters[0], hexIndex(7, 4))).toBe(false);
   });
 
   it('makes defenders harder to hurt, and lets a stack wait until last', () => {
