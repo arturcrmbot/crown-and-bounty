@@ -1,5 +1,5 @@
 import { describe as suite, expect, it } from 'vitest';
-import { apply, armyPower, countOf, endDay, fight, leadershipUsed, locationById, roman, visit, wages, type Result } from './game';
+import { apply, armyPower, countOf, endDay, fight, finishFight, leadershipUsed, locationById, roman, startFight, visit, wages, type Result } from './game';
 import { isExplored } from './map/fog';
 import { buildMap, cellIndex } from './map/model';
 import { newGame } from './scenario';
@@ -82,6 +82,32 @@ suite('places', () => {
 });
 
 suite('fights', () => {
+  it('shows the fallen from both sides and the mana spent', () => {
+    const fresh = newGame(7, undefined, 'wizard');
+    const state = { ...fresh, army: [{ troop: 'knights' as const, count: 10 }], hero: { ...fresh.hero, mana: 30 } };
+    const started = startFight(state, 'poachers')!.state;
+    const battle = started.battle!;
+    const player = battle.fighters.find((fighter) => fighter.side === 'player' && !fighter.hero)!;
+    const enemy = battle.fighters.find((fighter) => fighter.side === 'enemy')!;
+    const ended = {
+      ...battle,
+      result: 'won' as const,
+      hero: { ...battle.hero, mana: 23 },
+      fighters: battle.fighters.map((fighter) =>
+        fighter.id === player.id ? { ...fighter, count: fighter.count - 2 } : fighter.side === 'enemy' ? { ...fighter, count: 0 } : fighter,
+      ),
+    };
+
+    const result = finishFight({ ...started, battle: ended });
+    const report = cardOf(result).battleResult;
+    expect(report).toEqual({
+      player: [{ troop: player.troop, count: 2 }],
+      enemy: [{ troop: enemy.troop, count: enemy.startCount }],
+      manaSpent: 7,
+      manaAvailable: 30,
+    });
+  });
+
   it('beats the poachers with the starting army, with light losses', () => {
     const result = fight(newGame(), 'poachers')!;
     expect(cardOf(result).title).toBe('Victory!');

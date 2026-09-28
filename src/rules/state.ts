@@ -265,14 +265,14 @@ export type Action =
 /** A button on a card. `detail` is a smaller line under the label; `portrait` puts a face beside it. */
 export type Choice = { label: string; action: Action; disabled?: boolean; portrait?: PortraitId; detail?: string };
 
-/** A parchment card: a title, a few lines (with **bold** and *italics*), and choices. `wide` is for big decisions. */
-/**
- * A parchment card. `portrait` puts a face at its top left. `poster` makes it a WANTED poster, with the
- * face in the middle. `tiles` lays the choices side by side, each with its face, for picking a hero.
- */
-/** The fallen in a battle, for the result card. */
+/** A battle's losses and mana spent, for the result card. */
 export type BattleResultCard = { player: Army; enemy: Army; manaSpent: number; manaAvailable: number };
 
+/**
+ * A parchment card with a title, lines (with **bold** and *italics*), and choices. `wide` is for big
+ * decisions. `portrait` puts a face at its top left; `poster` makes it a WANTED poster; `tiles` lays
+ * the choices side by side, each with its face, for picking a hero.
+ */
 export type Card = { title: string; lines: string[]; choices: Choice[]; wide?: boolean; portrait?: PortraitId; poster?: boolean; tiles?: boolean; battleResult?: BattleResultCard };
 
 /** What happened, for the screens to show. The rules never draw anything themselves. */
