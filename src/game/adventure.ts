@@ -38,6 +38,8 @@ const NIGHT = 1.4;
 const GLOOM = 0.6;
 /** How near a castle or village the hero must be for its card to bring the town's tune. */
 const TOWN_REACH = 90;
+/** Seconds the town's tune plays on after its card closes, so a quick visit still hears it. */
+const TOWN_LINGER = 3;
 /** Map pixels per second. */
 const RIDE_SPEED = 95;
 /** Map pixels per step of the trot cycle, so hooves don't slide. */
@@ -122,6 +124,8 @@ export class AdventureController implements Screen {
   private cardPlace: string | null = null;
   /** Settling a battle fought on the field, whose stings have played already. */
   private fromBattle = false;
+  /** Seconds the town's tune plays on: kept full while its card is open, then running down. */
+  private inTown = 0;
   /** The day's full movement, worked out once per state. */
   private fullDay: { state: GameState; movement: number } | null = null;
   /** Called when the rules start a battle; the game switches screens. */
@@ -176,9 +180,14 @@ export class AdventureController implements Screen {
    * a village, with its card open, the town's.
    */
   get music(): TrackId {
-    const here = this.cardPlace && this.cards.isOpen ? this.state.locations.find((l) => l.id === this.cardPlace) : null;
-    if (here && (here.kind === 'castle' || here.kind === 'village') && !here.look && Math.hypot(here.at[0] - this.drawn.x, here.at[1] - this.drawn.y) < TOWN_REACH) return 'town';
+    if (this.inTown > 0) return 'town';
     return lairTune(this.state, [this.drawn.x, this.drawn.y]) ?? provinceTune(this.state.campaign.chapter, Boolean(this.map.province.fen));
+  }
+
+  /** Whether the hero is in a castle or village, with its card open: its tune plays, and lingers a moment after. */
+  private visitingTown(): boolean {
+    const here = this.cardPlace && this.cards.isOpen ? this.state.locations.find((l) => l.id === this.cardPlace) : null;
+    return Boolean(here && (here.kind === 'castle' || here.kind === 'village') && !here.look && Math.hypot(here.at[0] - this.drawn.x, here.at[1] - this.drawn.y) < TOWN_REACH);
   }
 
   get ambience() {
@@ -473,6 +482,7 @@ export class AdventureController implements Screen {
   }
 
   update(dt: number, held: ReadonlySet<string>) {
+    this.inTown = this.visitingTown() ? TOWN_LINGER : Math.max(0, this.inTown - dt);
     if (this.banner && (this.banner.age += dt * this.pace) > BANNER_TIME) this.banner = null;
     if (this.held && (!this.banner || this.banner.age >= BANNER_HOLD)) {
       const { card, at } = this.held;
