@@ -3,6 +3,41 @@
 Newest first. Each entry says what was played, how it felt to an experienced player (HoMM2, King's Bounty,
 modern RPGs), and what was done about it.
 
+## #6: 28 Sep 2026, Battle for Wesnoth's units
+
+**Played:** every Aldmoor fight (the patrol, wolves, boars, poachers, highwaymen and Grimsby's hideout) and the
+Fenmarch's goblins, trolls and Mother Mirrow, filmed through the real UI in headless Edge at 20 frames a second
+with the clock frozen, then studied frame by frame. A Ranger's volley, a Wizard's Fireball, every troop on the
+player's side in blue, and the map in every visual scene.
+
+**How it felt:** far cuter, and readable at a glance. Each troop is plainly what it is: a peasant with a
+pitchfork, a bowman, a knight on horseback with a lance, a goblin half a man tall, a troll with a club, a hooded
+witch, and Grimsby a head taller than his men. Fights now feel like fights. The knight's horse leaps and the lance
+goes in, the goblins flash red with a spark on the frame it lands, "Charge!" rings out, the trolls' wounds close,
+and the witch raises glowing hands and throws her hex. On the map, the hero on his horse in a gold ring is the first
+thing you see, and the enemies stand out in red.
+
+**Found and fixed:**
+
+1. Arrows were thin sticks, lost against the grass. They're longer now, with a steel head, pale fletching and an
+   ink shadow, and easy to follow.
+2. "Charge!" landed on top of the damage number. Words that rise from a stack now keep apart by their width.
+3. A Fireball's damage, flash and number came as it was cast, while the ball was still in the sky. They now come
+   with the burst, and stacks caught beside the target flinch at the same moment, not afterwards.
+4. The gold hex jumped to the next stack as soon as a move was chosen, so the witch threw her hex from under a
+   troll's highlight. A stack now keeps the gold hex until its blows have landed.
+5. The witch's hex was a small dot; it's a size bigger, with a longer trail.
+6. The log said "Their Mother Mirrow shoot your Knights", and the forecast "Attack their mother mirrow... 0
+   perish". Now it's "Mother Mirrow shoots your Knights", "Attack Baron Grimsby: about 40 damage" and "Baron
+   Grimsby falls".
+
+**Checked:** tests, e2e and every visual scene; the eleven that changed were looked at before approval. The 242
+Wesnoth images add 397 KB to the site, loaded once.
+
+**Still open:** the Bowman has little team colour (in Wesnoth too, just his belt and fletching), and wolves and
+boars have none, so their badge says whose they are. If that confuses, Wesnoth's own answer is a thin
+team-coloured ring under each unit.
+
 ## #5: 28 Sep 2026, enemies that really fight, and fair odds
 
 **Played:** fights by hand with every background, through the real UI in headless Edge, one decision at a
