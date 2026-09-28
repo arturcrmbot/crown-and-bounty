@@ -74,7 +74,7 @@ export const ABILITIES: Record<Ability, AbilityDef> = {
   guarded: { name: 'Bodyguard', note: 'His guard raise their shields over him: no shot takes more than a third of his health. Up close, he\u2019s on his own.', shotCap: 1 / 3 },
   firstStrike: { name: 'First Strike', note: 'Pitchforks first: it strikes before whatever attacks it, unless that also strikes first.', firstStrike: true },
   stings: { name: 'Stinging Bite', note: 'Whatever it hits up close is poisoned: a little health lost each turn, though it never falls past a sliver.', stingStatus: 'poisoned' },
-  pierce: { name: 'Piercing Bolts', note: 'Its bolts punch through armour: -2 defence against them.', pierce: 2 },
+  pierce: { name: 'Piercing Bolts', note: 'Its bolts punch through armour: -1 defence against them.', pierce: 1 },
 };
 
 /** The abilities of a kind of troop, with their rules. */

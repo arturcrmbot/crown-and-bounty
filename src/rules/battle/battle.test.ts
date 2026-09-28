@@ -108,13 +108,13 @@ describe('a battle', () => {
     expect(result.events.some((e) => e.type === 'poison' && e.fighter === 0)).toBe(true);
   });
 
-  it('lets crossbows pierce armour: -2 defence against them', () => {
+  it('lets crossbows pierce armour: -1 defence against them', () => {
     const b = battle(['crossbowmen'], [10], ['knights'], [10]);
     const attacker = b.fighters[0];
     const target = b.fighters[1];
     const t = TROOPS.crossbowmen;
     const avg = (t.damage[0] + t.damage[1]) / 2;
-    const factor = skillFactor(t.attack + hero.attack, TROOPS.knights.defence - 2);
+    const factor = skillFactor(t.attack + hero.attack, TROOPS.knights.defence - 1);
     const { damage } = strike(b, attacker, target, true);
     expect(damage).toBe(Math.max(1, Math.round(attacker.count * avg * factor)));
   });
