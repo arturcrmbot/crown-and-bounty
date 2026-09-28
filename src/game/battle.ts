@@ -429,7 +429,7 @@ export class BattleController implements Screen {
         // A stack counts its dead; one of a kind (Aldric, a villain) shows the blow, as his health bar does.
         this.float(e.target, e.killed && !this.named(e.target) ? `-${e.killed}` : `-${e.damage} hp`, e.killed ? RED[5] : RED[6]);
         const fell = !e.killed ? '.' : this.named(e.target) ? `. ${this.fighterName(e.target)} ${target.hero ? 'goes down' : 'falls'}.` : `. ${e.killed} perish.`;
-        v.log = `${this.fighterName(e.attacker)} ${this.verb(e.attacker, e.ranged ? 'shoot' : e.retaliation ? 'strike back at' : e.charge ? 'charge' : 'hit')} ${this.objectName(e.target)} for ${e.damage}${fell}${e.hexed ? ' The hex slows them down.' : ''}`;
+        v.log = `${this.fighterName(e.attacker)} ${this.verb(e.attacker, e.ranged ? 'shoot' : e.retaliation ? 'strike back at' : e.charge ? 'charge' : 'hit')} ${this.objectName(e.target)} for ${e.damage}${fell}${e.status ? ` ${STATUSES[e.status].onHit ?? ''}` : ''}`;
       },
       tick: (t) => {
         const ms = t * after;
@@ -522,6 +522,18 @@ export class BattleController implements Screen {
               v.health.set(e.fighter, healed.hp + e.healed);
               this.float(e.fighter, `+${e.healed}`, GOLD[6]);
               v.log = `${this.fighterName(e.fighter)} ${this.verb(e.fighter, 'regenerate')}: the wounds close up.`;
+            },
+          });
+          break;
+        }
+        case 'poison': {
+          const hurt = left.get(e.fighter)!;
+          left.set(e.fighter, { count: hurt.count, hp: hurt.hp - e.hurt });
+          this.step(0.3, {
+            start: () => {
+              v.health.set(e.fighter, hurt.hp - e.hurt);
+              this.float(e.fighter, `-${e.hurt}`, RED[6]);
+              v.log = `${this.fighterName(e.fighter)} ${this.verb(e.fighter, 'wince')}: the poison bites deep.`;
             },
           });
           break;
