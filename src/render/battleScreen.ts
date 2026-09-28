@@ -5,6 +5,7 @@ import { COLS, colOf, HEXES, ROWS, rowOf } from '../rules/battle/hex';
 import { Bitmap, blit } from './bitmap';
 import { critters, critterSprite, type Critter } from './critters';
 import { animLength, corpseSprite, hurtSprite, standard, STAND, troopFigure, type Pose, type Standard } from './battleSprites';
+import { upcomingFighters } from './battleOrder';
 import { ART } from './units';
 import { drawBanner } from './banner';
 import { BAR, MAP_VIEW, paintBarBackground, paintFrame, SCREEN, type Rect } from './frame';
@@ -73,6 +74,24 @@ export const LOG_BOTTOM = LOG_TOP + 18;
 export type Shot = { from: [number, number]; to: [number, number]; t: number; kind: 'arrow' | 'quarrel' | 'hex' | 'magic' | 'gather' | 'bolt' | 'fire' | 'sparkle' | 'spark' | 'blood' | 'poof'; color?: number };
 /** How much of a fireball's flight is the fall from the sky; it bursts after that. */
 export const FIRE_FALL = 0.35;
+
+const turnIcons = new Map<string, Bitmap>();
+
+function turnIcon(troop: Fighter['troop'], side: Fighter['side']) {
+  const team = side === 'player' ? 'blue' : 'red';
+  const key = `${troop}|${team}`;
+  let icon = turnIcons.get(key);
+  if (!icon) {
+    const figure = troopFigure(troop, team, side === 'player' ? 1 : -1, STAND, 'map').sprite;
+    const scale = Math.min(16 / figure.width, 16 / figure.height, 1);
+    icon = new Bitmap(Math.max(1, Math.round(figure.width * scale)), Math.max(1, Math.round(figure.height * scale)));
+    for (let y = 0; y < icon.height; y++) {
+      for (let x = 0; x < icon.width; x++) icon.set(x, y, figure.get(Math.floor(x / scale), Math.floor(y / scale)));
+    }
+    turnIcons.set(key, icon);
+  }
+  return icon;
+}
 
 /** What the battle controller wants drawn this frame, on top of the rules state. */
 export type BattleView = {
@@ -326,6 +345,7 @@ export class BattleScreen {
     if (view.banner) drawBanner(screen, view.banner.sprite, MAP_VIEW.x + MAP_VIEW.width / 2, MAP_VIEW.y + 150, view.banner.age, view.banner.life);
     if (view.shake > 0.5) this.shake(view.shake, view.time);
     this.logLine(view.preview ?? view.log);
+    this.turnStrip(b);
     this.bar(b, view);
     blit(screen, this.overlay, 0, 0);
     return screen;
@@ -392,6 +412,58 @@ export class BattleScreen {
       }
     }
     drawText(this.screen, text, x + 3, y - 2, NEUTRAL[7], INK, 11);
+  }
+
+  /** The next turns, as small versions of the figures on the field. */
+  private turnStrip(b: BattleState) {
+    const next = b.result ? [] : upcomingFighters(b);
+    if (!next.length) return;
+    const { screen } = this;
+    const labelWidth = 34;
+    const cellWidth = 38;
+    const width = labelWidth + next.length * cellWidth + 6;
+    const height = 20;
+    const x0 = MAP_VIEW.x + Math.floor((MAP_VIEW.width - width) / 2);
+    const y0 = LOG_BOTTOM + 2;
+    screen.fill(x0, y0, width, height, WOOD[1]);
+    for (let x = x0; x < x0 + width; x++) {
+      screen.set(x, y0, GOLD[4]);
+      screen.set(x, y0 + height - 1, INK);
+    }
+    for (let y = y0; y < y0 + height; y++) {
+      screen.set(x0, y, GOLD[4]);
+      screen.set(x0 + width - 1, y, INK);
+    }
+    drawText(screen, 'NEXT', x0 + 4, y0 + 5, GOLD[6], INK, 9);
+
+    next.forEach((fighter, i) => {
+      const x = x0 + labelWidth + i * cellWidth;
+      const border = i === 0 ? GOLD[6] : fighter.side === 'player' ? BLUE[4] : RED[4];
+      for (let dx = 0; dx < cellWidth - 2; dx++) {
+        screen.set(x + dx, y0 + 2, border);
+        screen.set(x + dx, y0 + height - 3, INK);
+      }
+      for (let dy = 2; dy < height - 2; dy++) {
+        screen.set(x, y0 + dy, border);
+        screen.set(x + cellWidth - 3, y0 + dy, INK);
+      }
+      const icon = turnIcon(fighter.troop, fighter.side);
+      const iconX = x + 2;
+      const iconY = y0 + Math.floor((height - icon.height) / 2);
+      if (fighter.hero) this.smallRing(iconX + Math.floor(icon.width / 2), y0 + height / 2);
+      blit(screen, icon, iconX, iconY);
+      if (!fighter.hero) {
+        drawText(screen, String(fighter.count), x + 20, y0 + 5, PARCHMENT[6], INK, 9);
+      }
+    });
+  }
+
+  private smallRing(cx: number, cy: number) {
+    for (const [rx, ry, color] of [[9, 8, INK], [8, 7, GOLD[4]], [7, 6, GOLD[6]]] as const) {
+      for (let a = 0; a < Math.PI * 2; a += 0.08) {
+        this.screen.set(Math.round(cx + Math.cos(a) * rx), Math.round(cy + Math.sin(a) * ry), color);
+      }
+    }
   }
 
   private shot(s: Shot) {
