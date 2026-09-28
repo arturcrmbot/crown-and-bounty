@@ -1,6 +1,7 @@
 import { ARTIFACTS, type ArtifactId } from '../../content/artifacts';
 import { troopPower } from '../../content/troops';
-import { giveArtifact, heroStats } from '../hero';
+import { anySpell, CIRCLES, isMapSpell, type AnySpellId, type Circle } from '../../content/spells';
+import { canRead, circleNeeds, giveArtifact, heroStats, knowsSpell, learnSpell } from '../hero';
 import { addTroops, close, coins, joinLine, leadershipUsed, locationById, TROOPS, troops, update, type Card, type GameState, type Location, type Result } from '../state';
 import { found, option, priceOf, ride, say, words } from './common';
 import type { PlaceKind } from './kind';
@@ -43,7 +44,7 @@ function recruit(state: GameState, place: Location): Result | null {
  */
 function recruitCard(state: GameState, place: Location, before: string[] = []): Card {
   const offer = place.recruits;
-  const armoury = place.wares?.length ? [option(place, 'Visit the armoury', 'armoury')] : [];
+  const armoury = [...(place.wares?.length ? [option(place, 'Visit the armoury', 'armoury')] : []), ...(place.guild?.length ? [option(place, 'Visit the mage guild', 'guild')] : [])];
   const leave = before.length ? close : { label: 'Not today', action: { type: 'close' as const } };
   if (!offer || place.done || offer.count === 0) {
     return { title: place.name, lines: [...before, '"All out of volunteers, officer. Come back after payday."'], choices: [...armoury, close] };
@@ -96,7 +97,39 @@ function buy(state: GameState, place: Location, artifact: ArtifactId): Result | 
   return say(next, place, armouryCard(next, locationById(next, place.id), [`**${ARTIFACTS[artifact].name}** is yours: ${where}.`]));
 }
 
-/** Castles and villages: troops to recruit, restocked every payday, and sometimes an armoury. */
+/** What the mage guild asks to teach a spell, by its circle. */
+export const GUILD_PRICES: Record<Circle, number> = { 1: 300, 2: 700, 3: 1400 };
+
+/** The mage guild's spells: one button each, greyed when he can't read it yet or can't pay. */
+function guildCard(state: GameState, place: Location, before: string[] = []): Card {
+  const spells = (place.guild ?? []).filter((id) => !knowsSpell(state, id));
+  return {
+    title: `${place.name}: the mage guild`,
+    wide: true,
+    lines: [...before, spells.length ? 'An old magister peers at you over three pairs of spectacles. *"Tuition is payable in advance."*' : '*"You know everything we teach,"* says the magister, sounding faintly offended.'],
+    choices: [
+      ...spells.map((id) => {
+        const spell = anySpell(id);
+        const price = GUILD_PRICES[spell.circle];
+        const short = price - state.gold;
+        const unread = !canRead(state, id);
+        const why = unread ? ` Beyond you for now: ${circleNeeds(id)}.` : short > 0 ? ` You\u2019re ${coins(short)} gold short.` : '';
+        const kind = isMapSpell(id) ? 'map spell, ' : '';
+        return { ...option(place, `Learn ${spell.name} (${kind}circle ${CIRCLES[spell.circle - 1]}, ${coins(price)} gold)`, `learn:${id}`, unread || short > 0), detail: `${spell.mana} mana: ${spell.note}${why}` };
+      }),
+      close,
+    ],
+  };
+}
+
+function study(state: GameState, place: Location, id: AnySpellId): Result | null {
+  const price = GUILD_PRICES[anySpell(id)?.circle ?? 3];
+  if (!place.guild?.includes(id) || knowsSpell(state, id) || !canRead(state, id) || state.gold < price) return null;
+  const learned = learnSpell({ ...state, gold: state.gold - price }, id);
+  return say(learned.state, place, guildCard(learned.state, place, [learned.line]));
+}
+
+/** Castles and villages: troops to recruit, restocked every payday, and sometimes an armoury and a mage guild. */
 export const dwelling: PlaceKind = {
   about: (_, place) => ({ title: place.name, lines: words(place, 'about'), choices: [ride(place, 'Visit'), close] }),
   arrive: (state, place) => found(state, place, recruitCard(state, place)),
@@ -104,6 +137,8 @@ export const dwelling: PlaceKind = {
     if (choice === 'recruit') return recruit(state, place);
     if (choice === 'armoury') return say(state, place, armouryCard(state, place));
     if (choice.startsWith('buy:')) return buy(state, place, choice.slice(4) as ArtifactId);
+    if (choice === 'guild') return say(state, place, guildCard(state, place));
+    if (choice.startsWith('learn:')) return study(state, place, choice.slice(6) as AnySpellId);
     return null;
   },
   payday: (place) => (place.recruits ? { ...place, recruits: { ...place.recruits, count: place.recruits.count + RESTOCK } } : place),
@@ -116,6 +151,10 @@ export const dwelling: PlaceKind = {
     if (recruitable(next, place.id) > 0) next = recruit(next, place)?.state ?? next;
     for (const ware of locationById(next, place.id).wares ?? []) {
       if (next.gold >= (ARTIFACTS[ware].price ?? 0) + 600) next = buy(next, locationById(next, place.id), ware)?.state ?? next;
+    }
+    // Battle spells he can read, when the purse allows: the bot never casts on the map.
+    for (const id of locationById(next, place.id).guild ?? []) {
+      if (!isMapSpell(id) && next.gold >= GUILD_PRICES[anySpell(id).circle] + 600) next = study(next, locationById(next, place.id), id)?.state ?? next;
     }
     return next;
   },

@@ -87,6 +87,7 @@ function landmark(l: Location): { frames: Bitmap[]; foot: number; animated: bool
     case 'mine':
       return { frames: [mine()], foot: 44, animated: false };
     case 'village':
+    case 'well':
       return { frames: [well()], foot: 23, animated: false };
     case 'mill':
       return { frames: animation((t) => mill(t / 8)), foot: 44, animated: true };

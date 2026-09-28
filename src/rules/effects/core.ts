@@ -6,9 +6,9 @@
 import { ARTIFACTS, type ArtifactId } from '../../content/artifacts';
 import { BACKGROUNDS } from '../../content/backgrounds';
 import { SKILLS } from '../../content/skills';
-import { SPELLS } from '../../content/spells';
 import { foundNote, gainXp, giveArtifact, heroStats } from '../hero';
 import { revealDisc } from '../map/fog';
+import { knowsSpell, learnSpell } from '../hero';
 import { addTroops, coins, countOf, joinLine, leadershipUsed, locationById, MAX_STACKS, TROOPS, troops, update, VANISHES, type Effects, type GameEvent, type GameState, type Location, type Needs } from '../state';
 
 const STAT_WORDS = { attack: 'attack', defence: 'defence', spellPower: 'spell power', knowledge: 'knowledge' } as const;
@@ -31,7 +31,7 @@ export function meets(state: GameState, needs: Needs | undefined): boolean {
   if (needs.gold && state.gold < needs.gold) return false;
   if (needs.mana && hero.mana < needs.mana) return false;
   if (needs.troop && countOf(state.army, needs.troop) < (needs.count ?? 1)) return false;
-  if (needs.notSpell && hero.spells.includes(needs.notSpell)) return false;
+  if (needs.notSpell && knowsSpell(state, needs.notSpell)) return false;
   // Nobody pays with his whole army.
   if (needs.troop && state.army.reduce((n, s) => n + s.count, 0) <= (needs.count ?? 1)) return false;
   return true;
@@ -93,9 +93,9 @@ export function applyEffects(state: GameState, place: Location, effects: Effects
     lines.push(`You get **${ARTIFACTS[effects.artifact].name}**. ${foundNote(next, effects.artifact)}`);
   }
   if (effects.spell) {
-    const known = next.hero.spells.includes(effects.spell);
-    if (!known) next = { ...next, hero: { ...next.hero, spells: [...next.hero.spells, effects.spell] } };
-    lines.push(known ? `You know **${SPELLS[effects.spell].name}** already.` : `You learn **${SPELLS[effects.spell].name}**: ${SPELLS[effects.spell].note}`);
+    const learned = learnSpell(next, effects.spell);
+    next = learned.state;
+    lines.push(learned.line);
   }
   for (const stack of effects.troops ?? []) {
     const room = Math.floor((heroStats(next).leadership - leadershipUsed(next.army)) / TROOPS[stack.troop].leadership);

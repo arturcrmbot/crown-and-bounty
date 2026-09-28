@@ -7,6 +7,7 @@ import { ARTIFACTS } from '../../content/artifacts';
 import { troopPower } from '../../content/troops';
 import { beat } from '../fight';
 import { heroStats, knowsTrick } from '../hero';
+import { canRead, knowsSpell } from '../hero';
 import { close, leadershipUsed, locationById, show, TROOPS, type Card, type Choice, type ContentChoice, type GameState, type Location, type Page, type Result } from '../state';
 import { applyEffects, meets, needsLabel, owns, pay } from './core';
 
@@ -69,7 +70,7 @@ export function choiceWorth(state: GameState, choice: ContentChoice): number {
     // A relic whose trick he has already is worth only its numbers, if it has any.
     worth += !knowsTrick(state, bonus) ? 400 : Object.keys(bonus).some((k) => !TRICKS.has(k)) ? 150 : 0;
   }
-  if (e.spell && !state.hero.spells.includes(e.spell)) worth += 400;
+  if (e.spell && !knowsSpell(state, e.spell)) worth += canRead(state, e.spell) ? 400 : 60;
   let room = s.leadership - leadershipUsed(state.army);
   for (const stack of e.troops ?? []) {
     const count = Math.max(0, Math.min(stack.count, Math.floor(room / TROOPS[stack.troop].leadership)));

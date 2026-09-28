@@ -9,7 +9,7 @@ import { CAMPAIGN_LENGTH, commissionOf } from './campaign';
 import type { PortraitId } from '../content/portraits';
 import { heroInBattle } from './fight';
 import { countsExactly, forceLine } from './places/common';
-import { heroStats, LEVELS, type StatId } from './hero';
+import { heroStats, LEVELS, manaWays, type StatId } from './hero';
 import { close, COMMISSION, coins, LAST_DAY, leadershipUsed, locationById, PAYDAY_EVERY, roman, wages, type Card, type GameState } from './state';
 
 /** Mana left, the most he can hold, and how it comes back: "Mana 12/30 · full again at dawn". */
@@ -17,7 +17,7 @@ export function manaNote(state: GameState): string {
   const max = heroStats(state).maxMana;
   const mana = state.hero.mana;
   if (max <= 0) return 'No mana: every point of knowledge holds 10';
-  return `Mana ${mana}/${max} · ${mana >= max ? 'it fills up again every dawn' : 'full again at dawn'}`;
+  return [`Mana ${mana}/${max}`, mana >= max ? 'it fills up again every dawn' : 'full again at dawn', ...manaWays(state)].join(' · ');
 }
 
 /** The spellbook's mana line: none comes back in battle. `max` is missing from a battle saved before it was kept. */

@@ -23,6 +23,7 @@ const at = {
   cache: [772, 800],
   butts: [612, 640],
   delving: [205, 828],
+  well: [908, 592],
 } satisfies Record<string, Point>;
 
 /** Where the hero comes up at each end of the dwarf's old delving: beside its mouth, where he can be seen. */
@@ -117,7 +118,8 @@ export const ALDMOOR: Province = {
       done: false,
       recruits: { troop: 'knights', count: 5, price: 100 },
       wares: ['swordOfAldmoor', 'breastplate', 'helmOfFarSight', 'luckyHorseshoe', 'spyglass', 'silverSignet'],
-      text: { about: ['Your castle, flying the King\u2019s banner.', 'The steward is pretending to count spoons.', 'Knights to recruit, and an armoury.'] },
+      guild: ['rust', 'swiftroad', 'bulwark', 'fury'],
+      text: { about: ['Your castle, flying the King\u2019s banner.', 'The steward is pretending to count spoons.', 'Knights to recruit, an armoury, and a mage guild in the old chapel.'] },
     },
     {
       id: 'tower',
@@ -381,6 +383,17 @@ export const ALDMOOR: Province = {
       text: { about: ['The village archery butts. Straw targets, and a sign: *"MIND THE GOOSE"*.', 'Archers, for hire.'] },
     },
     { id: 'chest', kind: 'chest', name: 'Treasure Chest', at: at.chest, done: false, gold: 500, artifact: 'surveyorsChain' },
+    {
+      id: 'well',
+      kind: 'well',
+      name: 'St Aldhelm\u2019s Well',
+      at: at.well,
+      done: false,
+      text: {
+        about: ['A holy well with a tin cup on a chain. The pilgrims say its water clears the head.'],
+        visit: ['You drink. The water is cold enough to hurt, and your head is suddenly very clear.'],
+      },
+    },
     { id: 'gold', kind: 'gold', name: 'Pile of Gold', at: at.gold, done: false, gold: 250 },
     {
       id: 'patrol',
@@ -499,7 +512,7 @@ export const ALDMOOR: Province = {
               done: true,
               xp: 40,
               flags: { poachers: 'spared' },
-              place: { id: 'cache', kind: 'chest', name: 'The Poachers\u2019 Cache', at: at.cache, done: false, gold: 300, artifact: 'poachersHorn' },
+              place: { id: 'cache', kind: 'chest', name: 'The Poachers\u2019 Cache', at: at.cache, done: false, gold: 300, artifact: 'poachersHorn', scroll: 'dowsing' },
               reveal: { at: at.cache, radius: 80 },
             },
             lines: ['They swear on the deer, which seems fair. As they go, the youngest whispers: *"Hollow oak, south of the old bridge. Take the horn, my lord. We won\u2019t be needing it."*'],

@@ -1,6 +1,6 @@
 import { RELICS } from '../content/artifacts';
 import type { Commission } from '../content/campaign';
-import { SPELLS, type SpellId } from '../content/spells';
+import { SPELLS, type MapSpellId, type SpellId } from '../content/spells';
 import type { Band, VillainTemplate } from '../content/villains';
 import { troopPower, troops, type TroopId } from '../content/troops';
 import type { Province } from '../content/types';
@@ -321,6 +321,14 @@ function attempt(seed: number, v: VillainTemplate, chapter: number): Province {
   // So does the armoury's special stock: gear with a price, or gear that changes how you ride and count.
   const shop = rng(seed ^ 0x5409);
   const special = shuffle(shop, ['headsmansAxe', 'kingsPlate', 'friarsHabit', 'stewardsLedger', 'recruitingDrum', 'spyglass'] as const).slice(0, 2);
+  // And the mage guild: a spell of each circle, and one more of the second; and a scroll in the first chest.
+  const books = rng(seed ^ 0x6d1d);
+  const guild: (SpellId | MapSpellId)[] = [
+    pick(books, ['rust', 'swiftroad', 'dowsing', 'fireball', 'stoneskin'] as const),
+    ...shuffle(books, ['fury', 'quagmire', 'bulwark', 'thunderclap', 'scry'] as const).slice(0, 2),
+    pick(books, ['meteor', 'heroism', 'wither', 'recall'] as const),
+  ];
+  const scroll = pick(books, ['fury', 'quagmire', 'thunderclap', 'meteor', 'heroism', 'wither'] as const);
   const guardian: Enemy = { ...enemy(v.guardian, BASE.guardian * s, Math.round(600 * s)), ...(v.parleys?.guardian ? { parleys: v.parleys.guardian } : {}) };
   const names = v.names;
   const words = WORDS[v.land];
@@ -344,13 +352,14 @@ function attempt(seed: number, v: VillainTemplate, chapter: number): Province {
       text: { about: pick(random, words.castle) },
       recruits: { troop: 'knights', count: 6, price: 110 },
       wares: [...shuffle(random, ['harrowgateMail', 'fenBanner', 'astrolabe', 'swordOfAldmoor', 'breastplate', 'luckyHorseshoe'] as const).slice(0, 3), ...special, forSale],
+      guild,
     },
     { id: 'village', kind: 'village', name: pick(random, names.village), at: at(village), done: false, recruits: { ...v.village }, text: { about: pick(random, words.village) } },
     { id: 'tower', kind: 'tower', ...(fen ? { look: 'abbey' as const } : {}), name: pick(random, names.tower), at: at(tower), done: false, text: { about: pick(random, words.tower), done: words.towerDone }, pages: [towerPage(v, at(hideout), towerCharm)] },
     { id: 'mine', kind: 'mine', ...(fen ? { look: 'peathut' as const } : {}), name: pick(random, names.mine), at: at(mine), done: false, text: { about: pick(random, words.mine), done: words.mineDone }, pages: [minePage(v, Math.round(500 * s), deepRelic)] },
     { id: 'mill', kind: 'mill', look: 'windmill', name: pick(random, names.mill), at: at(mill), done: false, text: { about: pick(random, words.mill), visit: words.millVisit, done: words.millDone }, pages: [millPage(v, Math.round(10 * s), millCharm)] },
     { id: 'signpost', kind: 'signpost', name: 'Signpost', at: at(signpost), done: false, text: { about: [`**THIS WAY:** ${v.villain}, probably. Somebody has added *"DON\u2019T"* in charcoal.`] } },
-    ...chests.map((p, i): Location => ({ id: `chest${i}`, kind: 'chest', name: 'Treasure Chest', at: at(p), done: false, gold: Math.round((500 + i * 150) * s) })),
+    ...chests.map((p, i): Location => ({ id: `chest${i}`, kind: 'chest', name: 'Treasure Chest', at: at(p), done: false, gold: Math.round((500 + i * 150) * s), ...(i === 0 ? { scroll } : {}) })),
     ...piles.map((p, i): Location => ({ id: `gold${i}`, kind: 'gold', name: 'Pile of Gold', at: at(p), done: false, gold: Math.round((300 + i * 150) * s) })),
     ...bandLocations,
     {

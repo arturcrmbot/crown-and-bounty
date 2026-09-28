@@ -2,7 +2,7 @@ import type { Bonus } from './backgrounds';
 import type { TroopId } from './troops';
 
 /** Skills have three ranks: each rank adds its number, and Advanced and Expert also teach a trick. */
-export type SkillId = 'archery' | 'offence' | 'armourer' | 'logistics' | 'scouting' | 'leadership' | 'estates' | 'sorcery' | 'mysticism' | 'diplomacy';
+export type SkillId = 'archery' | 'offence' | 'armourer' | 'logistics' | 'scouting' | 'leadership' | 'estates' | 'sorcery' | 'mysticism' | 'diplomacy' | 'wisdom';
 
 /** One rank of a skill: everything the skill does at that rank, in words and as a bonus. */
 export type SkillRank = { note: string; bonus: Bonus };
@@ -119,6 +119,15 @@ export const SKILLS: Record<SkillId, Skill> = {
       { note: '+1 knowledge: 10 more mana.', bonus: { knowledge: 1 } },
       { note: '+2 knowledge (20 more mana), and your mana comes back as you ride: a point for every 15 movement.', bonus: { knowledge: 2, manaRide: 15 } },
       { note: '+3 knowledge (30 more mana), and your mana comes back twice as fast as you ride: a point for every 7 movement.', bonus: { knowledge: 3, manaRide: 7 } },
+    ],
+  },
+  wisdom: {
+    id: 'wisdom',
+    name: 'Wisdom',
+    ranks: [
+      { note: '+5 mana, and you can learn spells of the second circle.', bonus: { mana: 5, circle: 1 } },
+      { note: '+10 mana, and you can learn spells of every circle, the third included.', bonus: { mana: 10, circle: 2 } },
+      { note: '+15 mana, spells of every circle, and every level-up teaches you a spell you can read.', bonus: { mana: 15, circle: 2, lessons: true } },
     ],
   },
   diplomacy: {

@@ -18,6 +18,7 @@ const at = {
   hideout: [1160, 866],
   landing: [1030, 810],
   boars: [1040, 470],
+  well: [764, 448],
 } satisfies Record<string, Point>;
 
 /** Where the hero steps ashore at each end of the peat cutters' channel: beside the hut, and on the road by the landing. */
@@ -108,7 +109,8 @@ export const FENMARCH: Province = {
       done: false,
       recruits: { troop: 'knights', count: 6, price: 110 },
       wares: ['harrowgateMail', 'fenBanner', 'astrolabe', 'recruitingDrum', 'stewardsLedger', 'helmOfFarSight'],
-      text: { about: ['The King\u2019s keep in the Fenmarch, damp to the battlements.', 'The castellan wears waders indoors.', 'Knights to recruit, and an armoury.'] },
+      guild: ['quagmire', 'dowsing', 'thunderclap', 'scry'],
+      text: { about: ['The King\u2019s keep in the Fenmarch, damp to the battlements.', 'The castellan wears waders indoors.', 'Knights to recruit, an armoury, and a mage guild up a very wet staircase.'] },
     },
     {
       id: 'abbey',
@@ -303,8 +305,19 @@ export const FENMARCH: Province = {
         ],
       },
     },
-    { id: 'chest', kind: 'chest', name: 'Treasure Chest', at: at.chest, done: false, gold: 700 },
-    { id: 'chest2', kind: 'chest', name: 'Treasure Chest', at: at.chest2, done: false, gold: 600 },
+    { id: 'chest', kind: 'chest', name: 'Treasure Chest', at: at.chest, done: false, gold: 700, scroll: 'fury' },
+    { id: 'chest2', kind: 'chest', name: 'Treasure Chest', at: at.chest2, done: false, gold: 600, scroll: 'heroism' },
+    {
+      id: 'well',
+      kind: 'well',
+      name: 'St Wendel\u2019s Spring',
+      at: at.well,
+      done: false,
+      text: {
+        about: ['A spring bubbling up through the peat, clear as glass, with a tin cup on a nail.'],
+        visit: ['It tastes of peat and something older. Your head clears like a mist at sunrise.'],
+      },
+    },
     { id: 'gold', kind: 'gold', name: 'Pile of Gold', at: at.gold, done: false, gold: 350 },
     { id: 'gold2', kind: 'gold', name: 'Pile of Gold', at: at.gold2, done: false, gold: 500 },
     {

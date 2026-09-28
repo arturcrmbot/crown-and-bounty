@@ -24,7 +24,7 @@ export const PAYDAY_EVERY = 7;
 export const COMMISSION = 1000;
 export const LAST_DAY = 100;
 
-export type LocationKind = 'castle' | 'tower' | 'mine' | 'village' | 'mill' | 'chest' | 'gold' | 'patrol' | 'hideout' | 'signpost' | 'dig' | 'event';
+export type LocationKind = 'castle' | 'tower' | 'mine' | 'village' | 'mill' | 'chest' | 'gold' | 'patrol' | 'hideout' | 'signpost' | 'dig' | 'event' | 'well';
 
 export type Enemy = {
   /** How the enemy is drawn on the map. */
@@ -90,7 +90,7 @@ export type Needs = {
   count?: number;
   mana?: number;
   /** A spell the hero must not know yet (so a teacher doesn't teach it twice). */
-  notSpell?: SpellId;
+  notSpell?: SpellId | MapSpellId;
 };
 
 /** What a choice does, all of it optional, applied in this order. */
@@ -104,7 +104,8 @@ export type Effects = {
   /** Primary stats, for good. */
   stats?: Partial<Record<'attack' | 'defence' | 'spellPower' | 'knowledge', number>>;
   artifact?: ArtifactId;
-  spell?: SpellId;
+  /** A spell to learn, for battle or the map, if his circle allows; a scroll he can't read yet he keeps. */
+  spell?: SpellId | MapSpellId;
   /** Troops that join, as many as leadership and free slots allow. */
   troops?: Army;
   flags?: Record<string, FlagValue>;
@@ -153,6 +154,10 @@ export type Location = {
   artifact?: ArtifactId;
   /** For sale here (the castle armoury). */
   wares?: ArtifactId[];
+  /** Taught here, for gold (the castle's mage guild). */
+  guild?: (SpellId | MapSpellId)[];
+  /** A scroll that comes with the place's treasure: learned, or kept until he can read it. */
+  scroll?: SpellId | MapSpellId;
   /** This province's words for the place, instead of the usual ones for its kind. */
   text?: PlaceText;
   /** Which sprite stands for it, when not the usual one for its kind. */
@@ -220,6 +225,10 @@ export type Hero = {
   knowledge: number;
   mana: number;
   spells: SpellId[];
+  /** Map spells he has learned (gear and tricks can teach others while he has them). */
+  mapSpells?: MapSpellId[];
+  /** Scrolls he found but can't read yet: he learns them once his circle allows. */
+  scrolls?: (SpellId | MapSpellId)[];
   skills: Partial<Record<SkillId, number>>;
   perks: PerkId[];
   gear: Partial<Record<Slot, ArtifactId>>;

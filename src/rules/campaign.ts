@@ -32,7 +32,7 @@ export const provinceOf = (state: GameState) => commissionOf(state).province;
 export const hasNextCommission = (state: GameState) => state.campaign.chapter + 1 < CAMPAIGN_LENGTH;
 
 /** What a place says and offers, as opposed to what has happened to it: a save takes the newest. */
-const WORDS = ['text', 'pages', 'artifact', 'reveals', 'gold'] as const;
+const WORDS = ['text', 'pages', 'artifact', 'reveals', 'gold', 'scroll'] as const;
 const ENEMY_WORDS = ['lines', 'threat', 'flees', 'loot', 'tamed', 'parleys', 'spoils'] as const;
 const pick = <T extends object>(from: T | undefined, keys: readonly (keyof T)[]) => JSON.stringify(keys.map((k) => from?.[k] ?? null));
 
@@ -56,6 +56,11 @@ export function withNewPlaces(state: GameState): GameState {
     if (stock.length) {
       changed = true;
       l = { ...l, wares: [...(l.wares ?? []), ...stock] };
+    }
+    // A castle that has a mage guild now opens it, even one he has visited.
+    if (now?.guild && !l.guild) {
+      changed = true;
+      l = { ...l, guild: [...now.guild] };
     }
     if (!now || l.done || l.seen) return l;
     let next: Location = l;

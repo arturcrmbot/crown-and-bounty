@@ -78,6 +78,12 @@ export type Bonus = {
   /** More choices at every level-up, and more boons at court. */
   choices?: number;
   boons?: number;
+  /** Spell circles he can read beyond the first. */
+  circle?: number;
+  /** Mana he can hold beyond his knowledge's. */
+  mana?: number;
+  /** Every level-up teaches him a spell he can read. */
+  lessons?: boolean;
 };
 
 export type Background = {
@@ -129,13 +135,17 @@ export const BACKGROUNDS: Record<BackgroundId, Background> = {
     title: 'Aldric the Hedge Wizard',
     short: 'Aldric',
     pitch: 'Fewer swords, more lightning. Spells are cheaper and hit much harder.',
-    playstyle: 'Win with magic. Four spells, two casts a round, and Far Sight on the map.',
+    playstyle: 'Win with magic. Four spells, two casts a round, spells of every circle, and Far Sight on the map.',
     stats: { attack: 0, defence: 1, spellPower: 3, knowledge: 3 },
     leadership: 110,
     gold: 1250,
     army: [{ troop: 'knights', count: 8 }, { troop: 'archers', count: 22 }],
     spells: ['bolt', 'bless', 'slow', 'haste'],
-    signature: { name: 'Hedge Magic', note: 'Every spell costs 2 less mana, he can cast two spells a round, and on the map he knows Far Sight.', bonus: { manaDiscount: 2, casts: 1, mapSpells: ['farsight'] } },
+    signature: {
+      name: 'Hedge Magic',
+      note: 'Every spell costs 2 less mana, he can cast two spells a round, he can learn spells of every circle, and on the map he knows Far Sight.',
+      bonus: { manaDiscount: 2, casts: 1, mapSpells: ['farsight'], circle: 2 },
+    },
     growth: { attack: 1, defence: 1, spellPower: 4, knowledge: 3 },
     favours: ['sorcery', 'mysticism', 'scouting'],
   },

@@ -1,12 +1,12 @@
 import { ARTIFACTS, piecesOf, SETS, type ArtifactId, type SetId, type Slot } from '../content/artifacts';
 import { BACKGROUNDS, type BackgroundId, type Bonus } from '../content/backgrounds';
 import { PERKS, RANKS, SKILLS, type PerkId, type SkillId } from '../content/skills';
-import type { MapSpellId, SpellId } from '../content/spells';
+import { anySpell, CIRCLES, isMapSpell, MAP_SPELLS, SPELLS, type AnySpellId, type MapSpellId, type SpellId } from '../content/spells';
 import type { TroopId } from '../content/troops';
-import { roll, roman, show, type Card, type GameEvent, type GameState, type Result } from './state';
+import { close, roll, roman, show, type Card, type GameEvent, type GameState, type Result } from './state';
 
 /** A level-up waiting for the player to choose: skills (`skill:archery`) or perks (`perk:warchest`). */
-export type Offer = { level: number; stat: StatId; options: string[] };
+export type Offer = { level: number; stat: StatId; options: string[]; lesson?: AnySpellId };
 export type StatId = 'attack' | 'defence' | 'spellPower' | 'knowledge';
 
 export const BASE_MOVEMENT = 150;
@@ -103,7 +103,13 @@ export type HeroStats = {
   /** Extra choices at a level-up, and extra boons at court. */
   choices: number;
   boons: number;
+  /** The highest spell circle he can learn, and whether every level-up teaches him a spell. */
+  circle: number;
+  lessons: boolean;
 };
+
+/** The highest circle a spell can have. */
+export const TOP_CIRCLE = 3;
 
 /** The most interest the King's bankers pay on one payday. */
 export const MAX_INTEREST = 500;
@@ -161,6 +167,8 @@ export function heroStats(state: GameState): HeroStats {
     interest: 0,
     choices: 0,
     boons: 0,
+    circle: 1,
+    lessons: false,
   };
   let interest = 0;
   let gearDefence = 0;
@@ -212,7 +220,12 @@ export function heroStats(state: GameState): HeroStats {
     interest += b.interest ?? 0;
     s.choices += b.choices ?? 0;
     s.boons += b.boons ?? 0;
+    s.circle += b.circle ?? 0;
+    s.maxMana += b.mana ?? 0;
+    s.lessons ||= Boolean(b.lessons);
   }
+  s.circle = Math.min(TOP_CIRCLE, s.circle);
+  s.mapSpells.push(...(h.mapSpells ?? []).filter((m) => !s.mapSpells.includes(m)));
   s.interest = Math.min(MAX_INTEREST, Math.floor(Math.max(0, state.gold) * interest));
   s.defence += gearDefence * Object.values(h.gear).filter(Boolean).length;
   s.rents = rentPerTown * state.locations.filter((l) => (l.kind === 'castle' || l.kind === 'village') && l.seen).length;
@@ -221,7 +234,7 @@ export function heroStats(state: GameState): HeroStats {
   s.veterans = Math.min(0.5, s.veterans);
   s.bribes = Math.min(0.8, s.bribes);
   s.armour = Math.min(0.6, s.armour);
-  s.maxMana = s.knowledge * 10;
+  s.maxMana += s.knowledge * 10;
   return s;
 }
 
@@ -304,9 +317,73 @@ export function levelUpCard(state: GameState): Card | null {
   const options = offer.options.map((o) => ({ o, ...describeOption(o, state) }));
   return {
     title: `Level ${roman(offer.level)}!`,
-    lines: [`**${STAT_NAMES[offer.stat]} +1, leadership +${RENOWN}.** Choose something to learn:`],
+    lines: [
+      `**${STAT_NAMES[offer.stat]} +1, leadership +${RENOWN}.**`,
+      ...(offer.lesson ? [`Your studies pay off: you learn **${anySpell(offer.lesson).name}**. ${anySpell(offer.lesson).note}`] : []),
+      'Choose something to learn:',
+    ],
     choices: options.map((x) => ({ label: x.label, detail: x.note, action: { type: 'learn', option: x.o } })),
   };
+}
+
+// --- Spells he learns -------------------------------------------------------------------
+
+/** Whether the hero knows a spell already, for battle or the map. */
+export const knowsSpell = (state: GameState, id: AnySpellId) => (isMapSpell(id) ? heroStats(state).mapSpells.includes(id) : state.hero.spells.includes(id));
+
+/** Whether his circle lets him learn a spell. */
+export const canRead = (state: GameState, id: AnySpellId) => anySpell(id).circle <= heroStats(state).circle;
+
+/** What stands between him and a spell's circle, in words: "circle II: Basic Wisdom". */
+export function circleNeeds(id: AnySpellId): string {
+  const circle = anySpell(id).circle;
+  return `circle ${CIRCLES[circle - 1]}: ${circle === 2 ? 'Basic' : 'Advanced'} Wisdom`;
+}
+
+/**
+ * Teaches a spell, or keeps its scroll until he can read it. Returns the state and a line for the
+ * card; a spell he knows already is left alone.
+ */
+export function learnSpell(state: GameState, id: AnySpellId): { state: GameState; line: string } {
+  const spell = anySpell(id);
+  if (knowsSpell(state, id)) return { state, line: `You know **${spell.name}** already.` };
+  if (!canRead(state, id)) {
+    const scrolls = [...(state.hero.scrolls ?? []).filter((s) => s !== id), id];
+    return { state: { ...state, hero: { ...state.hero, scrolls } }, line: `**${spell.name}** is beyond you for now (${circleNeeds(id)}). You keep the scroll until you can read it.` };
+  }
+  const hero = isMapSpell(id) ? { ...state.hero, mapSpells: [...(state.hero.mapSpells ?? []), id] } : { ...state.hero, spells: [...state.hero.spells, id] };
+  const scrolls = (hero.scrolls ?? []).filter((s) => s !== id);
+  return { state: { ...state, hero: { ...hero, ...(hero.scrolls ? { scrolls } : {}) } }, line: `You learn **${spell.name}**${isMapSpell(id) ? ', a spell for the map' : ''}: ${spell.note}` };
+}
+
+/** Scrolls he couldn't read before and can now: learned, each with a line. */
+export function readScrolls(state: GameState): { state: GameState; lines: string[] } {
+  let next = state;
+  const lines: string[] = [];
+  for (const id of state.hero.scrolls ?? []) {
+    if (!canRead(next, id)) continue;
+    const learned = learnSpell(next, id);
+    next = learned.state;
+    lines.push(`At last you can make sense of the scroll you've been carrying. ${learned.line}`);
+  }
+  return { state: next, lines };
+}
+
+/** A spell a wise hero teaches himself at a level-up: one he can read and doesn't know, if any is left. */
+function lessonFor(state: GameState, seed: number): { id: AnySpellId | null; seed: number } {
+  const all = [...Object.keys(SPELLS), ...Object.keys(MAP_SPELLS)] as AnySpellId[];
+  const open = all.filter((id) => !knowsSpell(state, id) && canRead(state, id));
+  if (!open.length) return { id: null, seed };
+  const [r, next] = roll(seed);
+  return { id: open[Math.floor(r * open.length)], seed: next };
+}
+
+/** How his mana comes back besides the dawn: riding (Mysticism, a pilgrim's hat) and the wells he has found. */
+export function manaWays(state: GameState): string[] {
+  const rate = heroStats(state).manaRate;
+  const ways = rate > 0 ? [`a point back for every ${Math.round(1 / rate)} movement you ride`] : [];
+  for (const l of state.locations) if (l.kind === 'well' && l.seen) ways.push(`${l.name} fills it, once a day`);
+  return ways;
 }
 
 /** Adds experience; every level gained raises a stat now and queues a choice for the player. */
@@ -320,8 +397,13 @@ export function gainXp(state: GameState, amount: number): Result {
     const grown = growStat(next, seed);
     const drawn = drawOptions(next, grown.seed);
     seed = drawn.seed;
+    // Expert Wisdom: every level teaches him a spell he can read.
+    const lesson = heroStats(next).lessons ? lessonFor(next, seed) : { id: null, seed };
+    seed = lesson.seed;
+    if (lesson.id) next = learnSpell(next, lesson.id).state;
     const hero = next.hero;
-    next = { ...next, hero: { ...hero, level, [grown.stat]: hero[grown.stat] + 1, offers: [...hero.offers, { level, stat: grown.stat, options: drawn.options }] } };
+    const offer: Offer = { level, stat: grown.stat, options: drawn.options, ...(lesson.id ? { lesson: lesson.id } : {}) };
+    next = { ...next, hero: { ...hero, level, [grown.stat]: hero[grown.stat] + 1, offers: [...hero.offers, offer] } };
     events.push({ type: 'levelUp', level });
   }
   return { state: { ...next, seed }, events };
@@ -344,8 +426,12 @@ export function learn(state: GameState, option: string): Result | null {
     return { ...o, options: drawn.options };
   });
   next = { ...next, seed, hero: { ...hero, offers } };
+  // What he learned may let him read the scrolls he has been carrying.
+  const read = readScrolls(next);
+  next = read.state;
   const card = levelUpCard(next);
-  return { state: next, events: card ? [show(card)] : [] };
+  if (card) return { state: next, events: [show(read.lines.length ? { ...card, lines: [...read.lines, ...card.lines] } : card)] };
+  return { state: next, events: read.lines.length ? [show({ title: 'Your scrolls', lines: read.lines, choices: [close] })] : [] };
 }
 
 /** Puts an artifact in the pack, and wears it straight away if its slot is free. */

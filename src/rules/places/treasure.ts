@@ -1,5 +1,5 @@
 import { ARTIFACTS } from '../../content/artifacts';
-import { foundNote, giveArtifact, heroStats } from '../hero';
+import { foundNote, giveArtifact, heroStats, learnSpell } from '../hero';
 import { close, coins, leadershipUsed, update, type GameState, type Location, type Result } from '../state';
 import { loot, note, option, ride, say, words } from './common';
 import type { PlaceKind } from './kind';
@@ -14,6 +14,11 @@ function openChest(state: GameState, place: Location, take: 'keep' | 'give'): Re
   if (place.artifact) {
     opened = giveArtifact(opened, place.artifact);
     found.push(`And under the coins: **${ARTIFACTS[place.artifact].name}**. ${foundNote(opened, place.artifact)}`);
+  }
+  if (place.scroll) {
+    const read = learnSpell(opened, place.scroll);
+    opened = read.state;
+    found.push(`Rolled up at the bottom: a scroll. ${read.line}`);
   }
   if (take === 'keep') return say({ ...opened, gold: state.gold + gold }, place, note(place, [`**+${coins(gold)} gold.** The villagers will never know.`, ...found]), removed);
   const leadership = Math.round(gold / 20);

@@ -40,6 +40,7 @@ const FOOTPRINTS: Record<string, [number, number]> = {
   mine: [56, 24],
   mill: [40, 18],
   village: [18, 8],
+  well: [18, 8],
   signpost: [4, 4],
   hideout: [72, 28],
   hut: [24, 12],
