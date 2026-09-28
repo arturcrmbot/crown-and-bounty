@@ -20,9 +20,10 @@ Working title. A small browser game, not commercial. The goal is quirky and fun,
 
 - **Target:** the look and feel of Heroes of Might and Magic 2's adventure map. **2D only.** On 25 Sep 2026 Artur rejected a 3D look test (pixel-art and toy-diorama renders of KayKit models): "it doesn't need to be 3D at all".
 - **Plan:** pixel art at HoMM2's own 640×480, scaled up in whole pixels, with square 32 px tiles and HoMM2's screen layout (map view in a carved frame, right-hand panel with minimap, hero, buttons and status). A 256-colour indexed palette, with water animated by palette cycling as HoMM2 did.
-- **Art sources:** CC0 packs where one fits, and code for everything else. No CC0 pack looks like HoMM2, so the look test draws its art in code.
+- **Art sources:** Battle for Wesnoth's hand-painted units for the troops and the hero, and code for everything else (terrain, buildings, portraits, the title painting, the interface). Code-drawn figures couldn't reach HoMM2, and HoMM2's own art belongs to Ubisoft, so on 28 Sep 2026 Artur chose Wesnoth's sprites (https://units.wesnoth.org/1.18/mainline/en_US/era_default.html) and accepted that the game becomes open source under the GPL. The PNGs come unchanged from Wesnoth's repository at tag 1.18.8, are recoloured and scaled in code, and every file is credited in `public/assets/CREDITS.md`.
 - **Real HoMM2 art is possible only locally:** loading your own copy of the game's data files, as the fheroes2 project does. The game couldn't then be shared publicly.
 - **No image-model art.** Artur rejected generated images.
+- **Licence:** the game is GPL-2.0-or-later (`LICENSE`), as Wesnoth's art asks. Wesnoth's images keep their own licences: GPL-2.0-or-later, and CC BY-SA 4.0 for what was added after 30 Jul 2017.
 
 ## Stack
 

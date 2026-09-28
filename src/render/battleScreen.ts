@@ -3,12 +3,13 @@ import { SPELLS, STATUSES } from '../content/spells';
 import { canCast, speedOf, statsOf, type BattleState } from '../rules/battle/battle';
 import { COLS, colOf, HEXES, ROWS, rowOf } from '../rules/battle/hex';
 import { Bitmap, blit } from './bitmap';
-import { corpseSprite, flashSprite, FIGHTER_FOOT, standard, troopSprite, type Pose, type Standard } from './battleSprites';
+import { animLength, corpseSprite, everyFrame, hurtSprite, standard, STAND, troopFigure, type Pose, type Standard } from './battleSprites';
+import { ART } from './units';
 import { drawBanner } from './banner';
 import { BAR, MAP_VIEW, paintBarBackground, paintFrame, SCREEN, type Rect } from './frame';
 import { bayer, hash, noise, shade } from './noise';
-import { BLUE, CYCLE_BOG, EARTH, GOLD, GRASS, INK, LEAF, LIGHT_LUT, NEUTRAL, PARCHMENT, PLUM, RED, REED, SHADOW_LUT, STONE } from './palette';
-import { boulder, hero, oak, pine, willow } from './sprites';
+import { BLUE, CYCLE_BOG, EARTH, GOLD, GRASS, INK, LEAF, LIGHT_LUT, NEUTRAL, PARCHMENT, PLUM, RED, REED, SHADOW_LUT, STONE, WOOD } from './palette';
+import { boulder, oak, pine, willow } from './sprites';
 import { drawText } from './text';
 
 /** Whose standard flies over the enemy: Grimsby's goose, the fen's moon, a skull for outlaws; beasts carry none. */
@@ -18,6 +19,14 @@ function standardOf(troops: TroopId[]): Standard | null {
   if (has('witch', 'bramble', 'goblins', 'trolls')) return { cloth: [PLUM[1], PLUM[2], PLUM[3], PLUM[4]], emblem: 'moon' };
   if (has('bandits', 'poachers')) return { cloth: [LEAF[0], LEAF[1], LEAF[2], LEAF[3]], emblem: 'skull' };
   return null;
+}
+
+/** Now and then a stack that waits fidgets, as its Wesnoth unit does, each on its own clock. */
+function fidget(troop: TroopId, id: number, time: number): Pose {
+  if (!ART[troop].idle || time === 0) return STAND;
+  const period = 6 + ((id * 2.3) % 5);
+  const ms = (((time + id * 1.7) % period) - (period - animLength(troop, 'idle') / 1000)) * 1000;
+  return ms >= 0 ? { anim: 'idle', ms } : STAND;
 }
 
 /** Pointy-top hexes, squashed for HoMM2's oblique view: 64 wide, rows 44 apart. */
@@ -54,19 +63,24 @@ export const FLOAT_RISE = 30;
 /** The message ribbon across the top of the field. */
 const LOG_TOP = MAP_VIEW.y + 6;
 export const LOG_BOTTOM = LOG_TOP + 18;
-export type Shot = { from: [number, number]; to: [number, number]; t: number; kind: 'arrow' | 'bolt' | 'fire' | 'sparkle' | 'spark' | 'blood' | 'poof'; color?: number };
+export type Shot = { from: [number, number]; to: [number, number]; t: number; kind: 'arrow' | 'quarrel' | 'hex' | 'bolt' | 'fire' | 'sparkle' | 'spark' | 'blood' | 'poof'; color?: number };
+/** How much of a fireball's flight is the fall from the sky; it bursts after that. */
+export const FIRE_FALL = 0.35;
 
 /** What the battle controller wants drawn this frame, on top of the rules state. */
 export type BattleView = {
+  /** Where a stack is drawn while it walks, instead of its hex. */
   positions: Map<number, [number, number]>;
+  /** A lunge or a reel: the figure moves, its count stays on its hex. */
+  offsets: Map<number, [number, number]>;
+  /** Which way a stack looks while it fights or walks against its side's way. */
+  facings: Map<number, 1 | -1>;
+  /** What a stack's badge says while blows play out: its count from before the action, until each hit lands. */
+  counts: Map<number, number>;
   poses: Map<number, Pose>;
   flashing: Set<number>;
   /** Fighters still drawn although the rules have them dead, until their hit plays out. */
   dying: Set<number>;
-  /** What a stack's badge says while blows play out: its count from before the action, until each hit lands. */
-  counts: Map<number, number>;
-  /** Stacks walking across the field, whose badge goes with them. Other badges stay on their hex while blows knock fighters about. */
-  walking: Set<number>;
   reach: Set<number>;
   hover: { hex: number; kind: 'move' | 'melee' | 'shoot' | 'spell' } | null;
   floaters: Floater[];
@@ -205,8 +219,9 @@ export class BattleScreen {
   private readonly overlay: Bitmap;
   private readonly field: Bitmap;
 
-  /** Aldric on his horse at the top left, and the enemy's standard at the top right (beasts have none). */
-  private readonly commander = Array.from({ length: 8 }, (_, i) => hero((i / 8) * Math.PI * 2, false, false, 2.3));
+  /** Aldric on his horse at the top left, his pennant in the wind, and the enemy's standard at the top right (beasts have none). */
+  private readonly commander = [...Array<Bitmap>(12).fill(troopFigure('hero', 'blue', 1, STAND, 'battle').sprite), ...everyFrame('hero', 'idle', 'blue', 1, 'battle', 100)];
+  private readonly commanderAt = troopFigure('hero', 'blue', 1, STAND, 'battle');
   private readonly standard: Bitmap[] | null;
 
   constructor(battle: BattleState) {
@@ -237,35 +252,38 @@ export class BattleScreen {
     for (const f of b.fighters) {
       if (f.count > 0 || view.dying.has(f.id)) continue;
       const [cx, cy] = hexCentre(f.at);
-      const { sprite, dx, dy } = corpseSprite(f.troop, f.side === 'player' ? 1 : -1);
-      blit(screen, sprite, Math.round(cx - dx), Math.round(cy + 12 - dy), MAP_VIEW);
+      const { sprite, x, y } = corpseSprite(f.troop, f.side === 'player' ? 'blue' : 'red', f.side === 'player' ? 1 : -1);
+      blit(screen, sprite, Math.round(cx + x), Math.round(cy + 12 + y), MAP_VIEW);
     }
     const flap = Math.floor(view.time * 5) % 8;
-    const rider = this.commander[flap];
-    blit(screen, rider, MAP_VIEW.x + 4, Y0 + 96 - rider.height, MAP_VIEW);
+    const rider = this.commander[Math.floor(view.time * 10) % this.commander.length];
+    blit(screen, rider, MAP_VIEW.x + 58 + this.commanderAt.x, Y0 + 92 + this.commanderAt.y, MAP_VIEW);
     if (this.standard) {
       const flag = this.standard[flap];
       blit(screen, flag, MAP_VIEW.x + MAP_VIEW.width - flag.width - 18, Y0 + 100 - flag.height, MAP_VIEW);
     }
 
     const shown = b.fighters.filter((f) => f.count > 0 || view.dying.has(f.id));
+    // Where a stack stands: its hex, or wherever it has got to on a walk. Lunges and reels move only
+    // the figure, so its count stays put on its hex.
     const place = (id: number, at: number) => view.positions.get(id) ?? hexCentre(at);
     shown.sort((x, y) => place(x.id, x.at)[1] - place(y.id, y.at)[1]);
     for (const f of shown) {
-      const [cx, cy] = place(f.id, f.at);
-      const facing = f.side === 'player' ? 1 : -1;
-      const pose = view.poses.get(f.id) ?? 'idle';
-      let sprite = troopSprite(f.troop, facing, pose);
-      if (view.flashing.has(f.id)) sprite = flashSprite(sprite);
+      const [px, py] = place(f.id, f.at);
+      const [ox, oy] = view.offsets.get(f.id) ?? [0, 0];
+      const facing = view.facings.get(f.id) ?? (f.side === 'player' ? 1 : -1);
+      const pose = view.poses.get(f.id) ?? (view.positions.has(f.id) ? STAND : fidget(f.troop, f.id, view.time));
+      const figure = troopFigure(f.troop, f.side === 'player' ? 'blue' : 'red', facing, pose, 'battle');
+      const sprite = view.flashing.has(f.id) ? hurtSprite(figure.sprite) : figure.sprite;
       // Standing about, everyone breathes: a pixel up and down, each stack in its own time.
-      const breath = pose === 'idle' && !view.positions.has(f.id) && Math.sin(view.time * 2.4 + f.id * 1.9) > 0.35 ? 1 : 0;
-      blit(screen, sprite, Math.round(cx - sprite.width / 2), Math.round(cy + 12 - FIGHTER_FOOT(f.troop)) - breath, MAP_VIEW);
+      const breath = pose.anim === 'stand' && !view.positions.has(f.id) && !view.offsets.has(f.id) && Math.sin(view.time * 2.4 + f.id * 1.9) > 0.35 ? 1 : 0;
+      blit(screen, sprite, Math.round(px + ox + figure.x), Math.round(py + oy + 12 + figure.y) - breath, MAP_VIEW);
     }
     // Counts go on last, so a troll never hides the goblins behind him.
     for (const f of shown) {
       const count = view.counts.get(f.id) ?? f.count;
       if (count <= 0) continue;
-      const [cx, cy] = view.walking.has(f.id) ? place(f.id, f.at) : hexCentre(f.at);
+      const [cx, cy] = place(f.id, f.at);
       this.badge(Math.round(cx + (f.side === 'player' ? 14 : -14)), Math.round(cy + 8), count, f.side === 'player');
     }
     for (const s of view.shots) this.shot(s);
@@ -310,13 +328,54 @@ export class BattleScreen {
   private shot(s: Shot) {
     const [ax, ay] = s.from;
     const [bx, by] = s.to;
-    if (s.kind === 'arrow') {
+    if (s.kind === 'arrow' || s.kind === 'quarrel') {
+      // An arrow arcs high; a crossbow bolt flies flatter, shorter and thicker. Either points along
+      // its flight, with a steel head and pale fletching, big enough to follow across the field.
+      const bolt = s.kind === 'quarrel';
+      const arc = bolt ? 14 : 44;
       const t = Math.min(1, s.t);
       const x = ax + (bx - ax) * t;
-      const y = ay + (by - ay) * t - Math.sin(t * Math.PI) * 40;
-      const dx = bx - ax;
-      const len = Math.hypot(dx, by - ay) || 1;
-      for (let k = 0; k < 7; k++) this.screen.set(Math.round(x - (dx / len) * k), Math.round(y - ((by - ay) / len) * k + (1 - 2 * t) * k * 0.4), k === 0 ? STONE[6] : k > 5 ? NEUTRAL[7] : PARCHMENT[2]);
+      const y = ay + (by - ay) * t - Math.sin(t * Math.PI) * arc;
+      const vx = bx - ax;
+      const vy = by - ay - Math.PI * arc * Math.cos(t * Math.PI);
+      const n = Math.hypot(vx, vy) || 1;
+      const [ux, uy] = [vx / n, vy / n];
+      const length = bolt ? 11 : 16;
+      for (let k = 0; k <= length; k++) {
+        const px = x - ux * k;
+        const py = y - uy * k;
+        const head = k < 3;
+        const feather = k > length - 4;
+        const colour = head ? STONE[7] : feather ? (bolt ? RED[4] : NEUTRAL[7]) : bolt ? EARTH[3] : WOOD[5];
+        // Ink under the shaft first, so it reads against the grass as the figures do.
+        if (!feather) this.screen.set(Math.round(px - uy * 2), Math.round(py + ux * 2), INK);
+        this.screen.set(Math.round(px), Math.round(py), colour);
+        // A second row, darker, for body: the shaft, and fletching that splays both ways.
+        this.screen.set(Math.round(px - uy), Math.round(py + ux), head ? STONE[5] : feather ? (bolt ? RED[2] : NEUTRAL[5]) : bolt ? EARTH[1] : WOOD[2]);
+        if (feather) this.screen.set(Math.round(px + uy), Math.round(py - ux), bolt ? RED[3] : NEUTRAL[6]);
+      }
+    } else if (s.kind === 'hex') {
+      // A witch's hex: a sickly green orb in a plum glow that wobbles across, shedding sparks.
+      const t = Math.min(1, s.t);
+      const at = (k: number) => [ax + (bx - ax) * k, ay + (by - ay) * k - Math.sin(k * Math.PI) * 26 + Math.sin(k * 17) * 4] as const;
+      const [x, y] = at(t);
+      for (let k = 1; k < 14; k++) {
+        const [sx, sy] = at(Math.max(0, t - k * 0.03));
+        const jx = sx + (hash(k, Math.floor(s.t * 40), 17) - 0.5) * 12;
+        const jy = sy + (hash(k, Math.floor(s.t * 40), 18) - 0.5) * 12;
+        const c = k % 3 === 0 ? NEUTRAL[7] : k % 2 ? PLUM[4] : LEAF[8];
+        for (const [dx, dy] of k < 8 ? [[0, 0], [1, 0], [0, 1], [1, 1]] : [[0, 0]]) this.screen.set(Math.round(jx) + dx, Math.round(jy) + dy, c);
+      }
+      const pulse = 1 + Math.sin(s.t * 40) * 0.8;
+      for (let j = -11; j <= 11; j++) {
+        for (let i = -11; i <= 11; i++) {
+          const d = Math.hypot(i, j);
+          if (d > 8 + pulse) continue;
+          const glow = d > 6;
+          if (glow && bayer(Math.round(x + i), Math.round(y + j)) > 0.5) continue;
+          this.screen.set(Math.round(x + i), Math.round(y + j), d < 2.2 ? NEUTRAL[7] : d < 4.2 ? LEAF[8] : d < 6 ? PLUM[4] : PLUM[2]);
+        }
+      }
     } else if (s.kind === 'bolt') {
       let x = bx + 30;
       for (let y = MAP_VIEW.y + 4; y < by; y += 2) {
@@ -325,10 +384,9 @@ export class BattleScreen {
         for (const dx of [-1, 0, 1]) this.screen.set(Math.round(x + dx), y, dx === 0 ? NEUTRAL[7] : GOLD[6]);
       }
     } else if (s.kind === 'fire') {
-      const FALL = 0.35;
-      if (s.t < FALL) {
+      if (s.t < FIRE_FALL) {
         // A ball of fire drops out of the sky onto the stack, trailing sparks.
-        const k = s.t / FALL;
+        const k = s.t / FIRE_FALL;
         const x = bx + 70 * (1 - k);
         const y = MAP_VIEW.y + 10 + (by - 20 - MAP_VIEW.y) * k;
         for (let n = 1; n < 9; n++) this.screen.set(Math.round(x + n * 5), Math.round(y - n * 6), n % 2 ? GOLD[5] : RED[4]);
@@ -340,7 +398,7 @@ export class BattleScreen {
         }
       } else {
         // It bursts over the stack and everyone beside it: a sheet of flame that swells, then gutters out.
-        const k = (s.t - FALL) / (1 - FALL);
+        const k = (s.t - FIRE_FALL) / (1 - FIRE_FALL);
         const rx = 22 + k * 50;
         const ry = rx * 0.6;
         const flicker = Math.floor(s.t * 30);
@@ -415,7 +473,9 @@ export class BattleScreen {
       const tags = [...abilitiesOf(f.troop).map((a) => ` ${a.name}`), ...f.status.filter((s) => s !== 'hasted').map((s) => ` ${STATUSES[s].name}`), f.defending ? ' Defending' : ''].join('');
       const { attack, defence } = statsOf(b, f);
       const count = countOf(f);
-      const info = `${count} ${count === 1 ? t.one : t.name}  ·  Att ${attack} Def ${defence} Dmg ${t.damage[0]}-${t.damage[1]} HP ${f.hp}/${t.hp} Spd ${speedOf(f)}${f.shots ? ` Shots ${f.shots}` : ''}${tags}`;
+      // A named foe is one of a kind: "Baron Grimsby", not "1 Baron Grimsby".
+      const who = t.name === t.one ? t.name : `${count} ${count === 1 ? t.one : t.name}`;
+      const info = `${who}  ·  Att ${attack} Def ${defence} Dmg ${t.damage[0]}-${t.damage[1]} HP ${f.hp}/${t.hp} Spd ${speedOf(f)}${f.shots ? ` Shots ${f.shots}` : ''}${tags}`;
       drawText(screen, info, BAR.x + 12, text, f.side === 'player' ? PARCHMENT[6] : RED[6], INK);
     }
     const mana = `Mana ${b.hero.mana}`;

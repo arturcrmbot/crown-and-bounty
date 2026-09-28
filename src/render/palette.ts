@@ -1,3 +1,5 @@
+import { UNIT_COLOURS } from './unitPalette';
+
 /**
  * One 256-colour palette for the whole screen, as in HoMM2. Index 0 is "transparent" in sprites.
  * Ramps run dark to light and hue-shift: shadows lean blue, lights lean yellow.
@@ -49,6 +51,13 @@ export const PLUM = ramp('#241029', '#3b1a44', '#5a2a66', '#7c4088', '#a466ac');
 /** Reeds and fen grass: straw-gold stems. */
 export const REED = ramp('#3a3418', '#5a4f22', '#7d6e30', '#a08e44', '#c2ae62');
 
+/**
+ * The colours Wesnoth's painted units need that the ramps above lack: steel with a cold tint, horse
+ * and hide browns, troll greys. `npm run wesnoth` picks them from the unit art (k-means over every
+ * frame, the colours above held fixed), and writes them into `unitPalette.ts`.
+ */
+export const UNIT = ramp(...UNIT_COLOURS);
+
 export const PALETTE_SIZE = hexes.length;
 
 function rgb(hex: string): [number, number, number] {
@@ -56,7 +65,8 @@ function rgb(hex: string): [number, number, number] {
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
-const COLORS = hexes.map(rgb);
+/** Every palette colour as [r, g, b], by index. */
+export const COLORS = hexes.map(rgb);
 
 /** Packs the palette as little-endian RGBA words, ready to write into ImageData. */
 export function paletteWords(tick: number): Uint32Array {
@@ -88,8 +98,10 @@ function nearest(r: number, g: number, b: number, exclude: Set<number>): number 
 }
 
 const cycling = new Set(CYCLES.flat());
+/** Colours that turn with the clock: sprites must never be painted in them. */
+export const CYCLING: ReadonlySet<number> = cycling;
 /** Colours the lookup tables never map to: cycling ones, and ramps added after the tables were tuned. */
-const excluded = new Set([...cycling, ...PLUM, ...REED]);
+const excluded = new Set([...cycling, ...PLUM, ...REED, ...UNIT]);
 
 /** For each colour, the palette colour of the same thing in shadow: darker and a little bluer. */
 export const SHADOW_LUT = new Uint8Array(256).map((_, i) => {

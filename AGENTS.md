@@ -7,7 +7,7 @@ King's Commission (working title) is a browser game: King's Bounty (1990) rebuil
 - Reply fast and keep it short. Before any step that will take more than a minute or two, post a one-line status. Never go silent.
 - Show, don't tell. Open the game in the browser side panel and screenshot it. Use a mermaid diagram for flows.
 - Build in small, visible steps. Check in before any big build or long design deep-dive.
-- No image-generation models for art. Use CC0 packs, and code for everything else.
+- No image-generation models for art. The troops and the hero are Battle for Wesnoth's units (GPL-2.0-or-later and CC BY-SA 4.0, credited file by file in `public/assets/CREDITS.md`); everything else is drawn in code. The game is GPL-2.0-or-later (`LICENSE`).
 - Commit, push and deploy (`npm run deploy`) after every improvement, and playtest it properly yourself first. Follow `.github/skills/kings-commission-ship/SKILL.md` (Artur, 27 Sep). Never bring him obvious issues.
 
 ## Architecture
@@ -23,9 +23,9 @@ King's Commission (working title) is a browser game: King's Bounty (1990) rebuil
   - Battle AI (`rules/battle/ai.ts`): it tries every option with the real rules, so new content needs no AI changes.
   - Map AI (`rules/map/roaming.ts`): an enemy's `behaviour` (guard, roam, hunt), `range` and `grows` are data. Enemies block the walk grid where the state says they stand.
 - `src/game/`: screen controllers (input, riding animation, events into cards and HUD), save/load. `main.ts` only boots.
-- `src/render/`: 2D pixel-art drawing into an indexed 960×540 framebuffer. It reads the rules state and never changes it.
+- `src/render/`: 2D pixel-art drawing into an indexed 960×540 framebuffer, with one 256-colour palette for everything (the Wesnoth units included). It reads the rules state and never changes it.
 - `src/ui/`: HTML/CSS overlays (parchment cards, hover label).
-- `public/assets/`: CC0 art, if any. `public/assets/CREDITS.md` lists the source and licence of each pack.
+- `public/assets/wesnoth/units/`: Battle for Wesnoth's unit PNGs, unchanged, from the pinned tag. `src/render/units.ts` says which unit and frames each troop uses (from its Wesnoth `.cfg`), and `src/render/wesnoth.ts` recolours, scales and matches them to the palette as the game runs. `npm run wesnoth` downloads missing images (`-- --palette` re-picks the palette colours the art adds, `-- --credits` rewrites `public/assets/CREDITS.md`).
 
 ## Loop
 

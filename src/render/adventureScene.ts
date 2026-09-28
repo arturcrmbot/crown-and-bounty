@@ -5,11 +5,11 @@ import { Terrain, type MapModel } from '../rules/map/model';
 import { AdventureScreen, type Placed } from './adventureScreen';
 import { Bitmap, blit, SHADOW } from './bitmap';
 import { FogMask } from './fog';
-import { SILHOUETTE } from './palette';
-import { figureFoot, troopFigure } from './battleSprites';
+import { GOLD, INK, SILHOUETTE } from './palette';
+import { animFrames, everyFrame, STAND, troopFigure } from './battleSprites';
 import {
   abbey, boulder, camp,
-  butts, cottage, castle, standingStones, chest, crag, goldPile, hero, hideout, hut, mill, mine, mirror, oak, peatHut, pine, signpost, stiltHut, shrine, stoneBridge,
+  butts, cottage, castle, standingStones, chest, crag, goldPile, hideout, hut, mill, mine, mirror, oak, peatHut, pine, signpost, stiltHut, shrine, stoneBridge,
   watchtower, well, willow, windmill, xMark,
 } from './sprites';
 import { paintTerrain } from './terrain';
@@ -100,13 +100,40 @@ function landmark(l: Location): { frames: Bitmap[]; foot: number; animated: bool
     case 'hideout':
       return { frames: [hideout(0.4)], foot: 64, animated: false };
     case 'patrol': {
-      // One creature stands for the stack, HoMM2 style, at the same scale as everything else.
+      // One creature stands for the stack, HoMM2 style, at the same scale as everything else. Now
+      // and then it fidgets, as its Wesnoth unit does, each band in its own time.
       const lead = leadTroop(l.enemy!.army);
-      const idle = troopFigure(lead, -1, 'idle', 'map');
-      const step = troopFigure(lead, -1, 'step', 'map');
-      return { frames: [idle, idle, idle, idle, step, step, idle, idle], foot: figureFoot(lead, 'map'), animated: true };
+      const still = troopFigure(lead, 'red', -1, STAND, 'map');
+      // Those Wesnoth gave no fidget just breathe: a pixel up for a moment, every couple of seconds.
+      const fidget = animFrames(lead, 'idle').length > 1 ? everyFrame(lead, 'idle', 'red', -1, 'map', 120) : Array<Bitmap>(4).fill(raised(still.sprite));
+      const frames = [...Array<Bitmap>(fidget.length > 4 ? 24 : 14).fill(still.sprite), ...fidget];
+      const turn = [...l.id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % frames.length;
+      return { frames: [...frames.slice(turn), ...frames.slice(0, turn)], foot: -still.y, animated: true };
     }
   }
+}
+
+/** The same sprite a pixel higher. */
+function raised(sprite: Bitmap): Bitmap {
+  const out = new Bitmap(sprite.width, sprite.height);
+  out.data.set(sprite.data.subarray(sprite.width));
+  return out;
+}
+
+/** The gold ring round the hero's feet that says he is the one you move: bright, with a dark edge. */
+function ringed(sprite: Bitmap, foot: number): Bitmap {
+  const out = new Bitmap(sprite.width, sprite.height + 6);
+  out.data.set(sprite.data);
+  const rx = Math.round(sprite.width * 0.36);
+  const ry = Math.max(4, Math.round(rx * 0.26));
+  for (const [grow, colour] of [[1, INK], [-1, GOLD[3]], [0, GOLD[6]]] as const) {
+    for (let a = 0; a < Math.PI * 2; a += 0.005) {
+      const x = Math.round(sprite.width / 2 + Math.cos(a) * (rx + grow));
+      const y = Math.round(foot - 1 + Math.sin(a) * (ry + grow * 0.6));
+      if (out.get(x, y) === 0 || out.get(x, y) === SHADOW || grow === 0 && (out.get(x, y) === INK || out.get(x, y) === GOLD[3])) out.set(x, y, colour);
+    }
+  }
+  return out;
 }
 
 /** Puts a place on the map after the scene was built, like the X once the map is whole. */
@@ -205,9 +232,12 @@ export function buildAdventureScene(map: MapModel, state: GameState): AdventureS
     });
   }
 
-  const idle = animation((t) => hero(t * Math.PI * 2));
-  const walk = animation((t) => hero(t, true, true));
-  const rig: HeroRig = { object: { ...place(idle[0], state.hero.at, 57), frames: idle }, idle, walk, idleLeft: idle.map(mirror), walkLeft: walk.map(mirror), foot: 57 };
+  // The hero is Wesnoth's Horseman with our pennant: it flutters as he waits, and he gallops when he rides.
+  const still = troopFigure('hero', 'blue', 1, STAND, 'map');
+  const foot = -still.y;
+  const idle = [...Array<Bitmap>(16).fill(still.sprite), ...everyFrame('hero', 'idle', 'blue', 1, 'map', 120)].map((f) => ringed(f, foot));
+  const walk = everyFrame('hero', 'move', 'blue', 1, 'map', 70).map((f) => ringed(f, foot));
+  const rig: HeroRig = { object: { ...place(idle[0], state.hero.at, foot), frames: idle }, idle, walk, idleLeft: idle.map(mirror), walkLeft: walk.map(mirror), foot };
   if (state.hero.facing < 0) rig.object.frames = rig.idleLeft;
   view.animate(rig.object);
   return { view, fog, hero: rig, hitboxes, pickups };

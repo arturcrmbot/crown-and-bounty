@@ -16,6 +16,7 @@ export function heroInBattle(state: GameState): BattleHero {
     defence: s.defence,
     spellPower: s.spellPower,
     mana: state.hero.mana,
+    maxMana: s.maxMana,
     spells: state.hero.spells,
     castRound: 0,
     melee: s.melee,

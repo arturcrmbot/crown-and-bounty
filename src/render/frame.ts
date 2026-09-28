@@ -30,9 +30,10 @@ export function trim(screen: Bitmap, { x, y, width, height }: Rect, inset = 0) {
 /**
  * The static interface: dark slate around everything, a parchment band round the map with a
  * torn inner edge, gold trims and the bottom bar. Returns the frame and an overlay with the torn
- * parchment that is drawn over the map every frame.
+ * parchment that is drawn over the map every frame. `dividers` split the bar into sections; a bar
+ * with one line across it, like the title's, has none.
  */
-export function paintFrame(): { frame: Bitmap; overlay: Bitmap } {
+export function paintFrame(dividers: readonly number[] = BAR_DIVIDERS): { frame: Bitmap; overlay: Bitmap } {
   const { width, height } = SCREEN;
   const frame = new Bitmap(width, height);
   const overlay = new Bitmap(width, height);
@@ -62,20 +63,20 @@ export function paintFrame(): { frame: Bitmap; overlay: Bitmap } {
   }
   trim(frame, { x: v.x - band, y: v.y - band, width: v.width + band * 2, height: v.height + band * 2 });
   trim(frame, BAR);
-  paintBarBackground(frame);
+  paintBarBackground(frame, dividers);
   return { frame, overlay };
 }
 
 /** Where the dividers of the bottom bar sit, from the bar's left edge. */
 export const BAR_DIVIDERS = [470, 760];
 
-export function paintBarBackground(frame: Bitmap) {
+export function paintBarBackground(frame: Bitmap, dividers: readonly number[] = BAR_DIVIDERS) {
   for (let y = BAR.y; y < BAR.y + BAR.height; y++) {
     for (let x = BAR.x; x < BAR.x + BAR.width; x++) {
       frame.set(x, y, shade(SLATE, 0.32 + (noise(x / 4, y / 4, 57) - 0.5) * 0.2 - (y - BAR.y) * 0.008, x, y));
     }
   }
-  for (const divider of BAR_DIVIDERS) {
+  for (const divider of dividers) {
     for (let y = BAR.y + 3; y < BAR.y + BAR.height - 3; y++) {
       frame.set(BAR.x + divider, y, WOOD[0]);
       frame.set(BAR.x + divider + 1, y, GOLD[2]);
