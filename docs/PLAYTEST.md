@@ -3,6 +3,89 @@
 Newest first. Each entry says what was played, how it felt to an experienced player (HoMM2, King's Bounty,
 modern RPGs), and what was done about it.
 
+## #12: 28 Sep 2026, the land makes its own sounds
+
+**Played:** a Knight riding round Aldmoor with the sound on (at 8x, listening ten seconds at each stop): the
+archery butts by the start, the watchtower, the mine, the falls and the mill, the castle and Westmere, and
+through the evening into night. Then the Fenmarch: the abbey, the keep, the peat hut. What the ambience played
+was read back through `__kc.sound()`, and each sound was rendered offline and measured (`npm run listen --
+ambience`).
+
+**How it felt:** the map used to hum one wind and scatter birds anywhere, so a castle, a river and a forest all
+sounded alike. Now riding across Aldmoor is a walk through places. By the start, arrows thock into the straw at
+the butts and the river runs to the right; up at the tower the crows caw over a wind that whistles off the
+crags; at the mine a pick knocks on stone; the falls roar below the cliff and the mill's wheel creaks; at the
+castle people talk and the smith rings his anvil; in the woods there are blackbirds, a cuckoo, a woodpecker.
+Each is louder the nearer he rides and on its own side. As the day's riding runs out the birds go quiet, crickets
+start and an owl calls from the trees; when the night lifts, a cockerel crows if there's a farm in earshot. In the
+Fenmarch the frogs are thickest by the meres, and Brother Anselm's abbey rings its bell and chants in the fen's
+own key.
+
+**Found and fixed:**
+
+1. Heard from the middle of the view, the castle was faint and off to one side while the hero stood at its gate:
+   near the map's edge the view can't centre on him. The land is heard from the hero, and from the middle of the
+   view only while he's scrolled out of sight.
+2. The crows, frogs, voices and cockerel were 10 to 20 dB quieter than the birds; all now sit together, 15 to
+   20 dB under the music.
+3. The archery range counted as a village and chattered. It has its own sound now.
+
+## #11: 28 Sep 2026, Aldric looks like who he is, and fights on the field
+
+**What Artur asked** (after his second commission): the hero should be a unit you fight with, "the way the Baron
+was basically a hero which we had to beat", and "the main character riding on the map is actually the appropriate
+character, so it's not always a knight".
+
+**Played:** each background's figure on the map (beside the red poachers for the Ranger), at court and on his
+portrait. Then battles through the real UI in headless Edge with the clock frozen, filmed frame by frame: the
+Wizard against the patrol (his bolts, two casts a round, Slow and Lightning Bolt picked from the spellbook card
+and aimed with a click), the Knight charging the wolves beside his knights, the Ranger's volley and his bow, the
+Courtier rallying his line, and the Courtier carried off at Grimsby's hideout. Every background's Aldric turns by
+hand, the army's too, and on auto. `scripts/playtest.mjs` as a Wizard, a Ranger and a Courtier; the difficulty
+model, the campaign sim, and how much bigger the army must be to win half the time, with and without him.
+
+**How it felt:** the first thing you see on the map is now plainly *your* man: a knight on his horse, an old mage
+with his orb and staff, a hooded ranger with a longbow, a dandy in a plumed hat who doffs it now and then. In
+battle Aldric stands in his gold ring in the line, and you use him the way his background plays. The Wizard is a
+glass cannon at the back: motes gather at his hands, the bolt falls, and you keep him out of the swordsmen's way.
+The Knight rides out with his knights and his lance goes in with "Charge!". The Courtier walks his line and the
+stacks beside him fly a little gold pennant (+2 attack and defence). He matters without taking over: a level-I
+hero is worth about a tenth of his army, the gates stay gates, and Grimsby still needs 1.6 to 1.8 times the army
+you start with.
+
+**Found and fixed:**
+
+1. Aldric stood between his knights and archers, and their figures ran together. He now takes the first row of
+   the line his stacks leave free (between the first two only when all five are out).
+2. In the crowd of blue he was hard to pick out. He stands in the gold ring he has on the map.
+3. A stack of one wore a badge saying "1". He and the villains show a health bar instead, and it drops as each
+   blow lands, like the counts. Their floaters say "-196 hp", not "-1".
+4. The patrol's crossbows killed the frail Wizard in two volleys, before he'd cast much. His guard raise their
+   shields over him: no shot or spell takes more than a third of his health. Up close he's on his own, so where you
+   put him matters.
+5. With him in the field, the Knight beat the wolves on day 1 (88%; a gate should be under 35%). The enemy didn't
+   see a charge coming: it thought the knights would take a strike back. Both sides now count a charge as a charge,
+   and the wolves are a gate again (0% at the start, 100% once explored).
+6. The sergeants left the Knight in harm's way at Grimsby's: carried off in 11 fights of 16. Your own hero counts
+   double to them now (he's your spells, and the rest of your day), so they keep him back: 2 in 16. The enemy
+   counts him at his worth plus the spells he could still cast, and finishes him off when it can.
+7. A cast came out of thin air. He raises his hands (the Arch Mage's casting frames; the Courtier lifts his
+   sabre) and motes spiral in and flare before the spell flies.
+8. Aldric on his horse at the field's edge doubled up with Aldric in the field. The King's star flies there now,
+   facing the enemy's standard.
+9. A hero on foot heard that his horse was spent, and wolves fell in "behind your horse". The words fit him now.
+
+**Checked:** falling costs him the rest of the day and his spells for that battle; the battle goes on; a battle
+saved before this plays on without him. The odds on every card count him. Difficulty targets hold for every
+background. The bot wins all five commissions with every background (days: knight 6/5/8/9/10, wizard
+6/5/2/4/5, ranger 4/3/2/4/10, courtier 9/5/2/23/10). `duel.test.ts` and a new `heroField.test.ts` pass. The
+new figures add 37 Wesnoth images (42 KB), credited file by file.
+
+**Still open:** the Courtier, who has to stand beside his men to rally them, is carried off in most fights at
+Grimsby's walls (he wins them, and loses only the rest of the day). Naive hand play (bolt the crossbowmen, shoot,
+charge what's in reach) still loses the patrol that the sergeants win 15 times in 16 with a Hasted, timed charge;
+a careful player does as well as they do.
+
 ## #10: 28 Sep 2026, skills that change how you play
 
 **Played:** Artur's point that level-ups were "+1 defence, +1 offence", through the real UI in headless Edge. A new

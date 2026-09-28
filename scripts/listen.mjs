@@ -17,6 +17,7 @@ try {
     const { STINGS } = await import('/src/audio/stings.ts');
     const { TRACKS, notesOf, loopUnits, midiOf } = await import('/src/audio/score.ts');
     const { LEVELS, masterChain } = await import('/src/audio/context.ts');
+    const { AMBIENT_CALLS, AMBIENT_LAYERS } = await import('/src/audio/ambience.ts');
     const RATE = 44100;
     const want = (group, name) => !wanted.length || wanted.includes(group) || wanted.includes(name);
 
@@ -50,7 +51,17 @@ try {
       for (let i = data.length - win; i > 0; i -= win) if (rms(data, i, i + win) > 10 ** (-50 / 20)) return Math.round(((i + win) / RATE) * 100) / 100;
       return 0;
     }
-    const out = { stings: [], tracks: [] };
+    const out = { stings: [], tracks: [], ambience: [] };
+    for (const [id, make] of Object.entries(AMBIENT_LAYERS)) {
+      if (!want('ambience', id)) continue;
+      const data = await render(4, LEVELS.ambience, (ctx, dest) => make(ctx, dest));
+      out.ambience.push({ id, kind: 'layer', ...stats(data.subarray(RATE)) });
+    }
+    for (const [id, make] of Object.entries(AMBIENT_CALLS)) {
+      if (!want('ambience', id)) continue;
+      const data = await render(8, LEVELS.ambience, (ctx, dest) => make(ctx, dest, 0.05));
+      out.ambience.push({ id, kind: 'call', ...stats(data), rings: tail(data) });
+    }
     for (const [id, def] of Object.entries(STINGS)) {
       if (!want('stings', id)) continue;
       const data = await render(6, LEVELS.music, (ctx, dest) => {
@@ -84,6 +95,11 @@ try {
     console.log('\nTracks (the second lap, as heard in the game)');
     console.log('id        loop    peak   rms   loudest   seam: last s -> first s');
     for (const t of report.tracks) console.log(`${t.id.padEnd(9)} ${String(t.seconds).padStart(5)}s ${String(t.peak).padStart(6)} ${String(t.rms).padStart(6)} ${String(t.loudest).padStart(7)}   ${t.seamBefore} -> ${t.seamAfter}`);
+  }
+  if (report.ambience.length) {
+    console.log('\nAmbience at its loudest (right on top of it; through the ambience bus and the master)');
+    console.log('id          kind    peak   loudest  rings');
+    for (const a of report.ambience) console.log(`${a.id.padEnd(11)} ${a.kind.padEnd(5)} ${String(a.peak).padStart(6)}  ${String(a.loudest).padStart(6)}  ${a.rings === undefined ? '' : `${a.rings}s`}`);
   }
   if (errors.length) console.log(`page errors: ${errors.join(' | ')}`);
 } finally {

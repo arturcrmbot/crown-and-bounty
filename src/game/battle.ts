@@ -2,11 +2,11 @@ import { SPELLS, type SpellId } from '../content/spells';
 import { TROOPS, troops } from '../content/troops';
 import { chooseAction } from '../rules/battle/ai';
 import { manaInBattle } from '../rules/heroSheet';
-import { activeFighter, battleAct, canCast, castsLeft, CHARGE_BONUS, fighterById, isCharge, options, spellCost, spellDamage, spellVictims, strike, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
+import { activeFighter, battleAct, canCast, castsLeft, CHARGE_BONUS, fighterById, heroOnField, isCharge, options, spellCost, spellDamage, spellVictims, strike, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
 import { paintBanner } from '../render/banner';
 import { BattleScreen, BUTTONS, FIRE_FALL, FLOAT_RISE, hexAt, hexCentre, LOG_BOTTOM, type BattleView, type Shot } from '../render/battleScreen';
 import { animLength, bodyHeight, hitTime, type AnimName } from '../render/battleSprites';
-import { ART, type ArtId } from '../render/units';
+import { ART } from '../render/units';
 import { MAP_VIEW } from '../render/frame';
 import { BLUE, GOLD, NEUTRAL, RED } from '../render/palette';
 import { CardView } from '../ui/card';
@@ -15,6 +15,8 @@ import type { Display } from './display';
 import type { Screen } from './screen';
 
 type Step = { duration: number; elapsed: number; started: boolean; start?: () => void; tick?: (t: number) => void; end?: () => void };
+/** What is left of each stack as an action's events play out: its count, and its top troop's health. */
+type Left = Map<number, { count: number; hp: number }>;
 
 const ENEMY_THINK = 0.35;
 /** Floaters start at least this low, so they rise and fade under the message ribbon, never into it. */
@@ -50,12 +52,12 @@ export class BattleController implements Screen {
   private acting: number | null = null;
   private pointer: [number, number] | null = null;
 
-  constructor(display: Display, battle: BattleState, hooks: BattleController['hooks'], pace = 1, hero: ArtId = 'hero') {
+  constructor(display: Display, battle: BattleState, hooks: BattleController['hooks'], pace = 1) {
     this.display = display;
     this.battle = battle;
     this.hooks = hooks;
     this.pace = pace;
-    this.screen = new BattleScreen(battle, hero);
+    this.screen = new BattleScreen(battle);
     this.cards = new CardView((action) => {
       this.cards.hide();
       if (action.type === 'spell') this.view.targeting = action.spell;
@@ -66,6 +68,7 @@ export class BattleController implements Screen {
       offsets: new Map(),
       facings: new Map(),
       counts: new Map(),
+      health: new Map(),
       poses: new Map(),
       flashing: new Set(),
       dying: new Set(),
@@ -147,10 +150,11 @@ export class BattleController implements Screen {
 
   /**
    * A stack that goes down: it plays its death where Wesnoth drew one, and a puff of dust where it
-   * didn't. Then its fallen stay on the field.
+   * didn't. Then its fallen stay on the field. Aldric is carried off instead.
    */
   private fall(target: number) {
     const f = fighterById(this.battle, target);
+    if (f.hero) return this.carried(target);
     if (!ART[f.troop].death) return this.poof(target);
     const length = animLength(f.troop, 'death');
     this.step(length * MS, {
@@ -160,6 +164,68 @@ export class BattleController implements Screen {
         this.view.poses.delete(target);
         this.view.facings.delete(target);
         this.view.dying.delete(target);
+      },
+    });
+  }
+
+  /**
+   * Aldric falls, and his men carry him from the field: he sinks down, and a puff of dust takes
+   * him. No body stays: he'll be on his feet by evening. His spells go with him.
+   */
+  private carried(target: number) {
+    const v = this.view;
+    const f = fighterById(this.battle, target);
+    const [x, y] = hexCentre(f.at);
+    const dust = { from: [x, y] as [number, number], to: [x, y] as [number, number], t: 0, kind: 'poof' as const };
+    const sink = ART[f.troop].death ? animLength(f.troop, 'death') * 0.6 : 0;
+    this.step(0.25 + sink * MS, {
+      start: () => {
+        v.facings.set(target, this.facingOf(f));
+        play('defeat');
+        this.float(target, 'carried off!', GOLD[6]);
+        v.log = `${this.fighterName(target)} is carried from the field! No more spells this battle.`;
+      },
+      tick: (t) => v.poses.set(target, sink ? { anim: 'death', ms: t * sink } : { anim: 'defend', ms: 0 }),
+    });
+    this.step(0.45, {
+      start: () => {
+        v.shots.push(dust);
+        v.dying.delete(target);
+        v.poses.delete(target);
+        v.facings.delete(target);
+      },
+      tick: (t) => (dust.t = t),
+      end: () => v.shots.splice(v.shots.indexOf(dust), 1),
+    });
+  }
+
+  /**
+   * Aldric casts from where he stands: he raises his hands (in his casting frames, if Wesnoth drew
+   * him any) and the magic gathers round him before it flies. Nothing plays for a hero who isn't on
+   * the field.
+   */
+  private cast(spell: SpellId) {
+    const v = this.view;
+    const hero = heroOnField(this.battle);
+    if (!hero || hero.count <= 0) return;
+    const [x, y] = hexCentre(hero.at);
+    const art = ART[hero.troop];
+    const look = SPELLS[spell].look;
+    const hands: [number, number] = [x + 4 * this.facingOf(hero), y + 12 - bodyHeight(hero.troop, 'battle') * 0.5];
+    const glow: Shot = { from: hands, to: hands, t: 0, kind: 'gather', color: look.colour === 'blue' ? BLUE[6] : look.colour === 'red' ? RED[5] : GOLD[6] };
+    const length = art.cast ? art.cast.reduce((t, f) => t + f.ms, 0) : 300;
+    this.step(length * MS, {
+      start: () => {
+        v.shots.push(glow);
+        v.log = `${this.fighterName(hero.id)} ${this.verb(hero.id, 'raise')} ${this.named(hero.id) ? 'his' : 'their'} hands...`;
+      },
+      tick: (t) => {
+        glow.t = t;
+        if (art.cast) v.poses.set(hero.id, { anim: 'cast', ms: t * length });
+      },
+      end: () => {
+        v.shots.splice(v.shots.indexOf(glow), 1);
+        v.poses.delete(hero.id);
       },
     });
   }
@@ -183,11 +249,12 @@ export class BattleController implements Screen {
     });
   }
 
-  /** Takes `killed` from what is left of a stack; true when that was the last of them. */
-  private wound(left: Map<number, number>, id: number, killed: number): boolean {
-    const was = left.get(id) ?? 0;
-    left.set(id, Math.max(0, was - killed));
-    return was > 0 && was - killed <= 0;
+  /** Takes a blow from what is left of a stack (its count, and its top troop's health); true when that was the last of them. */
+  private wound(left: Left, id: number, damage: number): boolean {
+    const was = left.get(id)!;
+    const w = wound({ ...fighterById(this.battle, id), count: was.count, hp: was.hp }, damage);
+    left.set(id, { count: w.count, hp: w.hp });
+    return was.count > 0 && w.count <= 0;
   }
 
   /**
@@ -195,7 +262,7 @@ export class BattleController implements Screen {
    * close quarters); at the frame where the blow lands, and not before, come the flash, the sound,
    * the numbers and the jolt; the target flinches, reels and pulses red twice.
    */
-  private strike(e: Extract<BattleEvent, { type: 'hit' }>, left: number, dies: boolean) {
+  private strike(e: Extract<BattleEvent, { type: 'hit' }>, left: { count: number; hp: number }, dies: boolean) {
     const v = this.view;
     const attacker = fighterById(this.battle, e.attacker);
     const target = fighterById(this.battle, e.target);
@@ -253,7 +320,8 @@ export class BattleController implements Screen {
       start: () => {
         v.flashing.add(e.target);
         v.poses.set(e.target, { anim: flinch(), ms: 0 });
-        v.counts.set(e.target, left);
+        v.counts.set(e.target, left.count);
+        v.health.set(e.target, left.hp);
         if (!e.ranged) play('hit');
         this.impact(e.target, e.damage, !e.ranged);
         if (e.charge) {
@@ -261,8 +329,9 @@ export class BattleController implements Screen {
           play('charge');
           v.shake = Math.max(v.shake, 6);
         }
-        this.float(e.target, e.killed ? `-${e.killed}` : `-${e.damage} hp`, e.killed ? RED[5] : RED[6]);
-        const fell = !e.killed ? '.' : this.named(e.target) ? `. ${this.fighterName(e.target)} falls.` : `. ${e.killed} perish.`;
+        // A stack counts its dead; one of a kind (Aldric, a villain) shows the blow, as his health bar does.
+        this.float(e.target, e.killed && !this.named(e.target) ? `-${e.killed}` : `-${e.damage} hp`, e.killed ? RED[5] : RED[6]);
+        const fell = !e.killed ? '.' : this.named(e.target) ? `. ${this.fighterName(e.target)} ${target.hero ? 'goes down' : 'falls'}.` : `. ${e.killed} perish.`;
         v.log = `${this.fighterName(e.attacker)} ${this.verb(e.attacker, e.ranged ? 'shoot' : e.retaliation ? 'strike back at' : e.charge ? 'charge' : 'hit')} ${this.objectName(e.target)} for ${e.damage}${fell}${e.hexed ? ' The hex slows them down.' : ''}`;
       },
       tick: (t) => {
@@ -300,9 +369,13 @@ export class BattleController implements Screen {
   private animate(events: BattleEvent[], before: BattleState) {
     const v = this.view;
     // Who is left in each stack as the events play: a stack falls at the blow that kills it, and its
-    // badge keeps its count from before the action until each blow lands.
-    const left = new Map(before.fighters.map((f) => [f.id, v.counts.get(f.id) ?? f.count]));
-    for (const e of events) if (e.type === 'hit' || e.type === 'spell') v.counts.set(e.target, left.get(e.target)!);
+    // badge (or health bar) keeps what it showed before the action until each blow lands.
+    const left: Left = new Map(before.fighters.map((f) => [f.id, { count: v.counts.get(f.id) ?? f.count, hp: v.health.get(f.id) ?? f.hp }]));
+    for (const e of events) {
+      if (e.type !== 'hit' && e.type !== 'spell') continue;
+      v.counts.set(e.target, left.get(e.target)!.count);
+      v.health.set(e.target, left.get(e.target)!.hp);
+    }
     for (const e of events) {
       switch (e.type) {
         case 'move': {
@@ -334,20 +407,24 @@ export class BattleController implements Screen {
           break;
         }
         case 'hit': {
-          const dies = this.wound(left, e.target, e.killed);
+          const dies = this.wound(left, e.target, e.damage);
           if (dies) v.dying.add(e.target);
-          this.strike(e, left.get(e.target) ?? 0, dies);
+          this.strike(e, { ...left.get(e.target)! }, dies);
           if (dies) this.fall(e.target);
           break;
         }
-        case 'regen':
+        case 'regen': {
+          const healed = left.get(e.fighter)!;
+          left.set(e.fighter, { count: healed.count, hp: healed.hp + e.healed });
           this.step(0.3, {
             start: () => {
+              v.health.set(e.fighter, healed.hp + e.healed);
               this.float(e.fighter, `+${e.healed}`, GOLD[6]);
               v.log = `${this.fighterName(e.fighter)} ${this.verb(e.fighter, 'regenerate')}: the wounds close up.`;
             },
           });
           break;
+        }
         case 'spell': {
           // Stacks caught in a burst beside the target take their damage with it, at the same moment.
           if (e.splash) break;
@@ -355,10 +432,11 @@ export class BattleController implements Screen {
           const stop = events.findIndex((n, k) => k >= from && !(n.type === 'spell' && n.splash));
           const caught = events.slice(from, stop < 0 ? events.length : stop).filter((n) => n.type === 'spell');
           const victims = [e, ...caught].map((h) => {
-            const dies = this.wound(left, h.target, h.killed);
+            const dies = this.wound(left, h.target, h.damage);
             if (dies) v.dying.add(h.target);
-            return { h, dies, remaining: left.get(h.target) ?? 0, ours: fighterById(this.battle, h.target).side === 'player' };
+            return { h, dies, remaining: { ...left.get(h.target)! }, ours: fighterById(this.battle, h.target).side === 'player' };
           });
+          this.cast(e.spell);
           const target = fighterById(this.battle, e.target);
           const [tx, ty] = hexCentre(target.at);
           const look = SPELLS[e.spell].look;
@@ -371,10 +449,11 @@ export class BattleController implements Screen {
             landed = true;
             play(look.kind === 'sparkle' ? 'spell' : 'bolt');
             for (const { h, remaining, ours } of victims) {
-              v.counts.set(h.target, remaining);
+              v.counts.set(h.target, remaining.count);
+              v.health.set(h.target, remaining.hp);
               if (!h.damage) continue;
               v.poses.set(h.target, { anim: 'defendRanged', ms: 0 });
-              this.float(h.target, h.killed ? `-${h.killed}` : `-${h.damage} hp`, ours ? RED[5] : GOLD[6]);
+              this.float(h.target, h.killed && !this.named(h.target) ? `-${h.killed}` : `-${h.damage} hp`, ours ? RED[5] : GOLD[6]);
             }
             if (e.damage && look.kind !== 'sparkle') v.shake = Math.max(v.shake, look.kind === 'fire' ? 5 : 4);
           };
@@ -472,7 +551,10 @@ export class BattleController implements Screen {
       }
     }
     // Once every blow has landed, the badges read the rules' counts again.
-    if (this.queue.length === 0) v.counts.clear();
+    if (this.queue.length === 0) {
+      v.counts.clear();
+      v.health.clear();
+    }
     const f = activeFighter(this.battle);
     v.active = this.queue.length > 0 ? this.acting : (f?.id ?? null);
     if (this.queue.length === 0) {
@@ -621,9 +703,11 @@ export class BattleController implements Screen {
   private openSpellbook() {
     const { hero } = this.battle;
     const spells = hero.spells.map((id) => SPELLS[id]);
+    const own = heroOnField(this.battle);
+    const gone = own && own.count <= 0 ? [`*${hero.name ?? 'Aldric'} has been carried from the field: no more spells this battle.*`] : [];
     this.cards.show({
       title: 'Spellbook',
-      lines: [manaInBattle(hero.mana, hero.maxMana), `${(hero.casts ?? 1) > 1 ? `Two spells a round: ${castsLeft(this.battle)} left this round.` : 'One spell a round.'}`, ...spells.map((s) => `**${s.name}** (${spellCost(this.battle, s.id)}): ${s.note}`)],
+      lines: [...gone, manaInBattle(hero.mana, hero.maxMana), `${(hero.casts ?? 1) > 1 ? `Two spells a round: ${castsLeft(this.battle)} left this round.` : 'One spell a round.'}`, ...spells.map((s) => `**${s.name}** (${spellCost(this.battle, s.id)}): ${s.note}`)],
       choices: [
         ...spells.filter((s) => canCast(this.battle, s.id)).map((s) => ({ label: `Cast ${s.name}`, action: { type: 'spell' as const, spell: s.id } })),
         { label: 'Close', action: { type: 'close' } },
@@ -670,6 +754,15 @@ export class BattleController implements Screen {
       log: () => this.view.log,
       act: (action: BattleAction) => this.perform(action),
       moves: () => [...options(this.battle).moves.keys()],
+      /** The blows the acting stack could strike, with the length of the ride to each (a charge needs 3). */
+      melee: () => {
+        const opts = options(this.battle);
+        return opts.melee.map((m) => ({ ...m, run: m.from === activeFighter(this.battle)?.at ? 0 : (opts.moves.get(m.from)?.length ?? 0) }));
+      },
+      /** What the forecast line would say for an action, as when pointing at it. */
+      forecast: (action: BattleAction) => this.forecast(action),
+      /** Whether the sergeants have command. */
+      isAuto: () => this.auto,
       intent: (hex: number) => {
         const [x, y] = hexCentre(hex);
         return this.intent(hex, x, y)?.action ?? null;

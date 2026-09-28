@@ -6,7 +6,7 @@ import { ART, type ArtId, type Frame } from './units';
 import { nearestTint, unitBitmap, unitImage, type Team } from './wesnoth';
 
 /** What a stack is doing, and how far into it: a Wesnoth animation and the milliseconds since it began. */
-export type AnimName = 'stand' | 'idle' | 'move' | 'melee' | 'charge' | 'ranged' | 'defend' | 'defendRanged' | 'death';
+export type AnimName = 'stand' | 'idle' | 'move' | 'melee' | 'charge' | 'cast' | 'ranged' | 'defend' | 'defendRanged' | 'death';
 export type Pose = { anim: AnimName; ms: number };
 export const STAND: Pose = { anim: 'stand', ms: 0 };
 
@@ -23,6 +23,8 @@ export function animFrames(troop: ArtId, anim: AnimName): Frame[] {
       return art.melee.frames;
     case 'charge':
       return (art.charge ?? art.melee).frames;
+    case 'cast':
+      return art.cast ?? still(art.stand);
     case 'ranged':
       return (art.ranged ?? art.melee).frames;
     case 'defend':

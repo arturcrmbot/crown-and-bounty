@@ -1,15 +1,17 @@
 import { BACKGROUNDS } from '../content/backgrounds';
 import { ARTIFACTS, type ArtifactId } from '../content/artifacts';
+import { ABILITIES, heroTroop, TROOPS, type HeroId } from '../content/troops';
 import { autoResolve } from './battle/ai';
 import { applyEffects } from './effects/core';
 import { CAMPAIGN_LENGTH, campaignLines, commissionOf, hasNextCommission, provinceOf } from './campaign';
 import { revealDisc } from './map/fog';
-import { createBattle, survivors, type BattleHero } from './battle/battle';
+import { createBattle, heroFell, survivors, type BattleHero } from './battle/battle';
 import { foundNote, gainXp, giveArtifact, heroStats } from './hero';
 import { again, armyPower, close, coins, locationById, roll, roman, show, stillWithYou, troops, update, VANISHES, type Army, type GameEvent, type GameState, type Location, type Result } from './state';
 
 export function heroInBattle(state: GameState): BattleHero {
   const s = heroStats(state);
+  const own = heroFighter(state);
   return {
     name: BACKGROUNDS[state.hero.background].short,
     attack: s.attack,
@@ -28,6 +30,50 @@ export function heroInBattle(state: GameState): BattleHero {
     ...(s.charge.length ? { charge: s.charge } : {}),
     ...(s.volley ? { volley: true } : {}),
     ...(s.casts > 1 ? { casts: s.casts } : {}),
+    unit: { troop: own.troop, hp: own.hp, damage: own.damage },
+  };
+}
+
+/** Aldric as he'd take the field in the next battle: the troop he fights as, and his numbers. */
+export type HeroFighter = {
+  troop: HeroId;
+  name: string;
+  /** With his own attack and defence, and his troop's bonus, as in battle (before spells and rallies). */
+  attack: number;
+  defence: number;
+  damage: readonly [number, number];
+  hp: number;
+  speed: number;
+  shots: number;
+  /** Charges, as a Knight does: a run-up of 3 hexes, a quarter harder, and no strike-back. */
+  charges: boolean;
+  abilities: { name: string; note: string }[];
+};
+
+/**
+ * Aldric's own numbers on the field, from his troop and himself. A level-I hero is modest; every
+ * level adds health and damage (see `hero` in content/troops.ts), a caster's damage grows with his
+ * spell power, and his attack and defence (level-ups and gear) count for him as for every stack.
+ */
+export function heroFighter(state: GameState): HeroFighter {
+  const s = heroStats(state);
+  const troop = heroTroop(state.hero.background);
+  const t = TROOPS[troop];
+  const grow = t.hero!;
+  const levels = state.hero.level - 1;
+  const more = levels * grow.perLevel.damage + (grow.perPower ?? 0) * s.spellPower;
+  const bonus = s.troops[troop];
+  return {
+    troop,
+    name: t.name,
+    attack: t.attack + s.attack + (bonus?.attack ?? 0),
+    defence: t.defence + s.defence + (bonus?.defence ?? 0),
+    damage: [t.damage[0] + more, t.damage[1] + more],
+    hp: t.hp + levels * grow.perLevel.hp,
+    speed: t.speed,
+    shots: t.shots ? t.shots + (bonus?.shots ?? 0) : 0,
+    charges: s.charge.includes(troop),
+    abilities: (t.abilities ?? []).map((a) => ({ name: ABILITIES[a].name, note: ABILITIES[a].note })),
   };
 }
 
@@ -130,11 +176,16 @@ export function finishFight(state: GameState): Result {
   const place = locationById(state, battle.place);
   const enemy = place.enemy!;
   const army = survivors(battle, 'player');
+  // Carried from the field, he's on his feet again by evening: it costs him only the rest of the day.
+  const fell = heroFell(battle);
+  const who = BACKGROUNDS[state.hero.background].short;
+  const alone = !fell && army.length === 0 && battle.fighters.some((f) => f.hero);
+  const carried = fell ? [`**${who} was carried from the field.** He's on his feet by evening, sore and cross, but goes no further today.`] : alone ? [`*Only ${who} is left standing.*`] : [];
   // The battle rolled its own dice from the state's seed: carry on from where it stopped, not from the start again.
-  const base: GameState = { ...state, seed: battle.seed, battle: undefined, army, hero: { ...state.hero, mana: battle.hero.mana } };
+  const base: GameState = { ...state, seed: battle.seed, battle: undefined, army, hero: { ...state.hero, mana: battle.hero.mana }, ...(fell ? { movement: 0 } : {}) };
   const lost = lossesLine(state.army, army);
   if (battle.result === 'won') {
-    const opening = place.kind === 'hideout' ? [commissionOf(base).surrender, lost] : [enemy.flees, lost, enemy.loot.replace('{gold}', `**${coins(enemy.reward)} gold**`)];
+    const opening = place.kind === 'hideout' ? [commissionOf(base).surrender, lost, ...carried] : [enemy.flees, lost, ...carried, enemy.loot.replace('{gold}', `**${coins(enemy.reward)} gold**`)];
     return beat(base, place.id, { title: 'Victory!', lines: opening, reward: enemy.reward, xp: battleXp(enemy.army) });
   }
   if (battle.result === 'fled' && battle.standoff) {
@@ -142,7 +193,7 @@ export function finishFight(state: GameState): Result {
     const next = { ...base, movement: 0 };
     return {
       state: next,
-      events: [show({ title: 'A stand-off', lines: ['Neither side can get at the other. As the light goes, both draw off.', lost, stillWithYou(army)], choices: [close] }, place.at, place.id)],
+      events: [show({ title: 'A stand-off', lines: ['Neither side can get at the other. As the light goes, both draw off.', lost, ...carried, stillWithYou(army)], choices: [close] }, place.at, place.id)],
     };
   }
   if (battle.result === 'fled') {
@@ -150,7 +201,7 @@ export function finishFight(state: GameState): Result {
     const next = { ...base, army: shaken, movement: 0 };
     return {
       state: next,
-      events: [show({ title: 'Retreat!', lines: ['Your men fall back in good order, mostly.', lossesLine(state.army, shaken), stillWithYou(shaken)], choices: [close] }, place.at, place.id)],
+      events: [show({ title: 'Retreat!', lines: ['Your men fall back in good order, mostly.', lossesLine(state.army, shaken), ...carried, stillWithYou(shaken)], choices: [close] }, place.at, place.id)],
     };
   }
   const castle = state.locations.find((l) => l.kind === 'castle');
