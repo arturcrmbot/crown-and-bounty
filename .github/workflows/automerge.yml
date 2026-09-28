@@ -1,11 +1,12 @@
 # Factory PRs merge themselves once CI is green; CI then runs on main and deploys.
 #
-# A PR merges when it has the `factory` label and no `hold`, isn't a draft, targets main, was opened by
-# the factory's bot, doesn't touch .github/, LICENSE, scripts/deploy.mjs or the package files, can merge
-# cleanly, and CI's PR jobs passed on its current head. The factory runs as Copilot's cloud agent, whose
-# PRs are opened by the `Copilot` bot (its REST login); if the first factory PR shows another login, add
-# it to FACTORY_BOTS. A PR that fails a check a person must settle (the author or the files) gets `hold`
-# and a comment saying why; the rest just wait for the next run.
+# A PR merges when it has the `factory` label and no `hold`, targets main, was opened by the factory's
+# bot, doesn't touch .github/, LICENSE, scripts/deploy.mjs or the package files, can merge cleanly, CI's
+# PR jobs passed on its current head, and the factory has stopped working on it. The factory runs as
+# Copilot's cloud agent: its PRs come from the `Copilot` bot (the REST login) and stay drafts, so this
+# waits until no agent run is going on the PR's branch, then marks it ready. A PR that fails a check a
+# person must settle (the author or the files) gets `hold` and a comment saying why; the rest wait for
+# the next run. `gh workflow run automerge.yml` checks every factory PR again by hand.
 #
 # A merge made with GITHUB_TOKEN doesn't start the push run on main, so this dispatches CI on main
 # afterwards, and CI deploys on dispatch. It never checks out or runs the PR's code.
@@ -17,6 +18,7 @@ on:
     types: [completed]
   pull_request_target:
     types: [unlabeled, ready_for_review]
+  workflow_dispatch:
 
 permissions: {}
 
@@ -35,8 +37,9 @@ jobs:
       || (github.event_name == 'pull_request_target'
         && (github.event.action == 'ready_for_review'
           || (github.event.action == 'unlabeled' && github.event.label.name == 'hold')))
+      || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 20
     permissions:
       actions: write
       contents: write
@@ -73,7 +76,6 @@ jobs:
             author=$(jq -r .user.login <<< "$pr")
 
             if jq -e 'any(.labels[]; .name == "hold")' <<< "$pr" > /dev/null; then say "#$n: on hold"; continue; fi
-            if [ "$(jq -r .draft <<< "$pr")" = true ]; then say "#$n: still a draft"; continue; fi
             base=$(jq -r .base.ref <<< "$pr")
             if [ "$base" != main ]; then say "#$n: targets $base, not main"; continue; fi
 
@@ -112,6 +114,26 @@ jobs:
               if [ -n "$job" ] && ! grep -qxF -- "$job" <<< "$green"; then missing="${missing:+$missing, }$job"; fi
             done <<< "$REQUIRED_JOBS"
             if [ -n "$missing" ]; then say "#$n: not green on ${sha:0:7}: $missing"; continue; fi
+
+            # Copilot's agent runs as a dynamic workflow on the PR's branch; give it up to ten minutes to finish.
+            ref=$(jq -r .head.ref <<< "$pr")
+            for _ in $(seq 20); do
+              busy=$(gh api -X GET "repos/$GH_REPO/actions/runs" -f branch="$ref" -f event=dynamic -f per_page=20 \
+                --jq '[.workflow_runs[] | select(.status != "completed")] | length')
+              if [ "$busy" = 0 ]; then break; fi
+              sleep 30
+            done
+            if [ "$busy" != 0 ]; then say "#$n: the factory is still working on it"; continue; fi
+            pr=$(gh api "repos/$GH_REPO/pulls/$n")
+            if [ "$(jq -r .head.sha <<< "$pr")" != "$sha" ] || jq -e 'any(.labels[]; .name == "hold")' <<< "$pr" > /dev/null; then
+              say "#$n: changed while the factory worked on it"
+              continue
+            fi
+            if [ "$(jq -r .draft <<< "$pr")" = true ] && ! gh pr ready "$n"; then
+              say "#$n: couldn't mark it ready for review"
+              failed=1
+              continue
+            fi
 
             mergeable=$(jq -r .mergeable <<< "$pr")
             for _ in 1 2 3 4 5 6; do
