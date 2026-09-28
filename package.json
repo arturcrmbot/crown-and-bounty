@@ -17,6 +17,7 @@
     "e2e": "node scripts/e2e.mjs",
     "visual": "node scripts/visual.mjs",
     "sim:battles": "node scripts/battles.mjs",
+    "sim:boss": "node scripts/bossmargin.mjs",
     "deploy": "node scripts/deploy.mjs",
     "difficulty": "node scripts/difficulty.mjs",
     "wesnoth": "node scripts/wesnoth.mjs",
