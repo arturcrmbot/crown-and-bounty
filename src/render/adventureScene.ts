@@ -104,13 +104,20 @@ function landmark(l: Location): { frames: Bitmap[]; foot: number; animated: bool
       // and then it fidgets, as its Wesnoth unit does, each band in its own time.
       const lead = leadTroop(l.enemy!.army);
       const still = troopFigure(lead, 'red', -1, STAND, 'map');
-      const idle = animFrames(lead, 'idle');
-      const fidget = idle.length > 1 ? Array.from({ length: Math.round(idle.reduce((t, f) => t + f.ms, 0) / 120) }, (_, i) => troopFigure(lead, 'red', -1, { anim: 'idle', ms: i * 120 }, 'map').sprite) : [];
-      const frames = [...Array<Bitmap>(24).fill(still.sprite), ...fidget];
+      // Those Wesnoth gave no fidget just breathe: a pixel up for a moment, every couple of seconds.
+      const fidget = animFrames(lead, 'idle').length > 1 ? everyFrame(lead, 'idle', 'red', -1, 'map', 120) : Array<Bitmap>(4).fill(raised(still.sprite));
+      const frames = [...Array<Bitmap>(fidget.length > 4 ? 24 : 14).fill(still.sprite), ...fidget];
       const turn = [...l.id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % frames.length;
       return { frames: [...frames.slice(turn), ...frames.slice(0, turn)], foot: -still.y, animated: true };
     }
   }
+}
+
+/** The same sprite a pixel higher. */
+function raised(sprite: Bitmap): Bitmap {
+  const out = new Bitmap(sprite.width, sprite.height);
+  out.data.set(sprite.data.subarray(sprite.width));
+  return out;
 }
 
 /** The gold ring round the hero's feet that says he is the one you move: bright, with a dark edge. */
