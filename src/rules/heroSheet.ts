@@ -12,12 +12,19 @@ import { countsExactly, forceLine } from './places/common';
 import { heroStats, LEVELS, type StatId } from './hero';
 import { close, COMMISSION, coins, LAST_DAY, leadershipUsed, locationById, PAYDAY_EVERY, roman, wages, type Card, type GameState } from './state';
 
+/** How mana comes back, in a few words: at dawn, and for some heroes as they ride. */
+export function manaBack(state: GameState): string {
+  const rate = heroStats(state).manaRate;
+  return rate > 0 ? `a point back every ${Math.round(1 / rate)} movement ridden, and full at dawn` : 'full again at dawn';
+}
+
 /** Mana left, the most he can hold, and how it comes back: "Mana 12/30 · full again at dawn". */
 export function manaNote(state: GameState): string {
-  const max = heroStats(state).maxMana;
+  const s = heroStats(state);
   const mana = state.hero.mana;
-  if (max <= 0) return 'No mana: every point of knowledge holds 10';
-  return `Mana ${mana}/${max} · ${mana >= max ? 'it fills up again every dawn' : 'full again at dawn'}`;
+  if (s.maxMana <= 0) return 'No mana: every point of knowledge holds 10';
+  if (mana >= s.maxMana) return `Mana ${mana}/${s.maxMana} · ${s.manaRate > 0 ? `full: ${manaBack(state)}` : 'it fills up again every dawn'}`;
+  return `Mana ${mana}/${s.maxMana} · ${manaBack(state)}`;
 }
 
 /** The spellbook's mana line: none comes back in battle. `max` is missing from a battle saved before it was kept. */
@@ -124,7 +131,8 @@ export type HeroSheet = {
   /** How far through this level he is (0 to 1), and the words for it. */
   xp: { share: number; line: string };
   stats: { id: StatId; name: string; value: number; note: string }[];
-  mana: { left: number; max: number; line: string };
+  /** `back` is how it comes back, in a few words for under the gauge. */
+  mana: { left: number; max: number; line: string; back: string };
   movement: { left: number; max: number; line: string };
   leadership: { used: number; max: number; line: string };
   signature: Note;
@@ -165,7 +173,7 @@ export function heroSheet(state: GameState): HeroSheet {
       stat('spellPower', 'Spell power', `the harder his spells hit: a Lightning Bolt does ${bolt} damage.`),
       stat('knowledge', 'Knowledge', `10 mana a point, ${s.maxMana} in all, full again every dawn.`),
     ],
-    mana: { left: h.mana, max: s.maxMana, line: manaNote(state) },
+    mana: { left: h.mana, max: s.maxMana, line: manaNote(state), back: s.manaRate > 0 ? 'back as you ride' : h.mana < s.maxMana ? 'full again at dawn' : 'refills every dawn' },
     movement: { left: Math.floor(state.movement), max: s.movement, line: `${Math.floor(state.movement)} of ${s.movement} movement left today \u00b7 E ends the day` },
     leadership: {
       used,

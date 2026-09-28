@@ -96,6 +96,15 @@ export class CardView {
     this.wrap.hidden = true;
   }
 
+  /** A number key presses that button of the card, counting from 1, if it can be pressed. */
+  pressNumber(n: number): boolean {
+    if (this.wrap.hidden) return false;
+    const button = this.card.querySelectorAll<HTMLButtonElement>('.choices button')[n - 1];
+    if (!button || button.disabled) return false;
+    button.click();
+    return true;
+  }
+
   /**
    * Enter or Space on a card with one thing to do ("Close", "Ride out") does it; a card with a real
    * choice waits for one. A focused button answers the key itself. True if a button was pressed.

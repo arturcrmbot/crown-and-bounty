@@ -187,7 +187,7 @@ export class HeroScreen {
       </div>
       <div class="stats">${sheet.stats.map(stat).join('')}</div>
       <div class="gauges">
-        <div class="gauge${changed(4)}" data-tip="${escape(mana.line)}"><span class="label"><b>Mana</b><small>${mana.max ? (mana.left < mana.max ? 'full again at dawn' : 'refills every dawn') : ''}</small><span>${mana.left}/${mana.max}</span></span>${bar('mana', mana.max ? mana.left / mana.max : 0)}</div>
+        <div class="gauge${changed(4)}" data-tip="${escape(mana.line)}"><span class="label"><b>Mana</b><small>${mana.max ? escape(mana.back) : ''}</small><span>${mana.left}/${mana.max}</span></span>${bar('mana', mana.max ? mana.left / mana.max : 0)}</div>
         <div class="gauge${changed(6)}" data-tip="${escape(movement.line)}"><span class="label"><b>Movement</b><small>today</small><span>${movement.left}/${movement.max}</span></span>${bar('move', movement.max ? movement.left / movement.max : 0)}</div>
         <div class="gauge${changed(5)}${leadership.used > leadership.max ? ' too-many' : ''}" data-tip="${escape(leadership.line)}"><span class="label"><b>Leadership</b><small>in use</small><span>${leadership.used}/${leadership.max}</span></span>${bar('lead', leadership.max ? leadership.used / leadership.max : 0)}</div>
       </div>
@@ -443,6 +443,9 @@ export class HeroScreen {
       if (act && this.root.contains(act)) return this.clickAct(act.dataset.act!, act as HTMLButtonElement);
       const hit = target.closest<HTMLElement>('[data-place]');
       const place = hit ? parse(hit.dataset.place) : null;
+      // A tap on a chip, a stat or a gauge shows its note, for touch screens and for anyone who clicks.
+      const noted = !place && target.closest<HTMLElement>('[data-tip]');
+      if (noted && this.root.contains(noted)) return this.showTip(noted);
       if (place) this.clickPlace(place);
       else if (this.card && !target.closest('.kc-hero-card')) this.closeCard();
       else if (this.held) this.cancel();

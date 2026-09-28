@@ -507,7 +507,14 @@ export class AdventureController implements Screen {
           this.tiredShown = true;
           saveGame(this.state);
           this.showCard(
-            { title: ART[heroArtId(this.state.hero.background)].rides ? 'Your horse is spent' : 'Your legs are spent', lines: ['End the day to rest. Red marks are for tomorrow.'], choices: [{ label: 'End the day (E)', action: { type: 'endDay' } }] },
+            {
+              title: ART[heroArtId(this.state.hero.background)].rides ? 'Your horse is spent' : 'Your legs are spent',
+              lines: ['End the day to rest, and he rides on at dawn. Red marks are for tomorrow.'],
+              choices: [
+                { label: 'End the day (E)', action: { type: 'endDay' } },
+                { label: 'Not yet', detail: 'Look around first: the route waits.', action: { type: 'close' } },
+              ],
+            },
             [this.drawn.x, this.drawn.y - this.scene.hero.foot],
           );
         }
@@ -744,6 +751,7 @@ export class AdventureController implements Screen {
       if (key === 'e' && !this.state.over && !this.state.ambush) this.choose({ type: 'endDay' });
       else if (key === 'h' && !this.state.over && !this.state.ambush) this.openHero();
       else if (key === '?') this.showCard(keysCard(), null);
+      else if (key >= '1' && key <= '9' && key.length === 1) this.cards.pressNumber(Number(key));
       else if (key === 'enter' || key === ' ') {
         // Space with no card up brings the view back to the hero.
         if (!this.cards.pressOnly() && key === ' ' && !this.cards.isOpen) this.follow = true;

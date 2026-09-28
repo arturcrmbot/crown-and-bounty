@@ -58,7 +58,7 @@ export function storyCard(background: BackgroundId, briefed = false): Card {
       ...(briefed ? [] : [`${b.title}: ${COMMISSIONS[0].brief.join(' ')}`]),
       `You ride out with ${b.army.map((s) => troops(s.troop, s.count)).join(' and ')}${b.spells.length ? `, and ${b.spells.map((s) => SPELLS[s].name).join(', ')} in your spellbook` : ''}.`,
       `**${b.signature.name}.** ${b.signature.note}`,
-      'Click the map to ride, and click anything that looks interesting. Red marks on your route are for tomorrow.',
+      'Click the map to ride. Click anything to look at it, and again to go there. Red marks on your route are for tomorrow.',
       `The hourglass (or **E**) ends the day. Every seventh day is payday. Click ${b.short} (or press **H**) for his gear and his army. **M** turns the sound off, and **?** lists every key.`,
     ],
     choices: [{ label: 'Ride out', action: { type: 'close' } }],
@@ -92,7 +92,8 @@ export function keysCard(): Card {
     title: 'Keys',
     wide: true,
     lines: [
-      '**On the map.** Click to ride: rest the pointer on the ground first to see how many days it is. Hold **Shift** to gallop, and **Esc** (or a click on him) stops. Click anything to look at it, and click it again to go there; a right-click only looks. Drag, scroll, the arrows or **WASD** look around, and **Space** brings the view back to him. **E** ends the day, **H** opens the hero and his army, **M** turns the sound off. **Esc** closes a card, and **Enter** or **Space** presses its only button.',
+      '**On cards.** **Enter** or **Space** presses a card\u2019s only button, the number keys press the first, second or third, and **Esc** puts it away.',
+      '**On the map.** Click to ride: rest the pointer on the ground first to see how many days it is. Hold **Shift** to gallop, and **Esc** (or a click on him) stops. Click anything to look at it, and click it again to go there; a right-click only looks. Drag, scroll, the arrows or **WASD** look around, and **Space** brings the view back to him. **E** ends the day, **H** opens the hero and his army, **M** turns the sound off.',
       '**In battle.** Click a hex to move, or an enemy to attack. **S** opens the spellbook, **W** waits, **D** defends, **A** hands over to the sergeants, and **R** retreats.',
       '**On the hero screen.** Drag an artifact or a stack where you want it, or click it, then click where it goes. A double-click wears an artifact or takes it off. The arrows move between squares, **Enter** picks up and puts down, **Shift** and an arrow moves what\u2019s there, and **Delete** dismisses a stack. **H** or **Esc** closes it.',
     ],
