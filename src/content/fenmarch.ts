@@ -11,6 +11,7 @@ const at = {
   signpost: [398, 300],
   chest: [770, 640],
   chest2: [196, 590],
+  well: [764, 448],
   gold: [470, 402],
   gold2: [1046, 772],
   goblins: [552, 590],
@@ -305,6 +306,17 @@ export const FENMARCH: Province = {
     },
     { id: 'chest', kind: 'chest', name: 'Treasure Chest', at: at.chest, done: false, gold: 700 },
     { id: 'chest2', kind: 'chest', name: 'Treasure Chest', at: at.chest2, done: false, gold: 600 },
+    {
+      id: 'well',
+      kind: 'well',
+      name: 'St Wendel\u2019s Spring',
+      at: at.well,
+      done: false,
+      text: {
+        about: ['A spring bubbling up through the peat, clear as glass, with a tin cup on a nail.'],
+        visit: ['It tastes of peat and something older. Your head clears like a mist at sunrise.'],
+      },
+    },
     { id: 'gold', kind: 'gold', name: 'Pile of Gold', at: at.gold, done: false, gold: 350 },
     { id: 'gold2', kind: 'gold', name: 'Pile of Gold', at: at.gold2, done: false, gold: 500 },
     {

@@ -25,6 +25,7 @@ const USUAL: Record<Location['kind'], PlaceText> = {
   signpost: { about: ['The arms point every way at once.'] },
   dig: { about: ['The map says here. Your sergeant is not convinced.'] },
   event: { about: ['Something worth a look.'], done: ['Nothing more to see here.'] },
+  well: { about: ['A holy well with a tin cup on a chain.'], visit: ['You drink. The water is cold and very good.'] },
 };
 
 /** A place's words: the province's own if it has them, else the usual ones for its kind. */
