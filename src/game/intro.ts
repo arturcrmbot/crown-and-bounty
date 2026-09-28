@@ -92,7 +92,7 @@ export function keysCard(): Card {
     title: 'Keys',
     wide: true,
     lines: [
-      '**On the map.** Click to ride, and click anything to look at it. Drag, the arrows or **WASD** look around. **E** ends the day, **H** opens the hero and his army, **M** turns the sound off, and **Esc** closes a card.',
+      '**On the map.** Click to ride: rest the pointer on the ground first to see how many days it is. Hold **Shift** to gallop, and **Esc** (or a click on him) stops. Click anything to look at it, and click it again to go there; a right-click only looks. Drag, scroll, the arrows or **WASD** look around, and **Space** brings the view back to him. **E** ends the day, **H** opens the hero and his army, **M** turns the sound off. **Esc** closes a card, and **Enter** or **Space** presses its only button.',
       '**In battle.** Click a hex to move, or an enemy to attack. **S** opens the spellbook, **W** waits, **D** defends, **A** hands over to the sergeants, and **R** retreats.',
       '**On the hero screen.** Drag an artifact or a stack where you want it, or click it, then click where it goes. A double-click wears an artifact or takes it off. The arrows move between squares, **Enter** picks up and puts down, **Shift** and an arrow moves what\u2019s there, and **Delete** dismisses a stack. **H** or **Esc** closes it.',
     ],

@@ -171,6 +171,8 @@ export class Game {
 
   readonly input: InputHandlers = {
     click: (x, y) => this.top.input.click(x, y),
+    look: (x, y) => this.top.input.look?.(x, y),
+    wheel: (dx, dy) => this.top.input.wheel?.(dx, dy),
     hover: (x, y, cx, cy) => this.top.input.hover(x, y, cx, cy),
     drag: (dx, dy) => this.top.input.drag(dx, dy),
     leave: () => this.top.input.leave(),

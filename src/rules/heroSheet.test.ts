@@ -43,7 +43,7 @@ describe('the bottom bar', () => {
     expect(barNote(w, { kind: 'stack', index: 0 })).toContain('8 Knights');
     expect(barNote(w, { kind: 'mana' })).toContain('Mana 30/30');
     expect(barNote(w, { kind: 'movement' })).toBe('150 movement left today, of 150 · E ends the day');
-    expect(barNote(w, { kind: 'bounty' })).toBe('Wanted: Baron Grimsby, by day 100 · 99 days left');
+    expect(barNote(w, { kind: 'bounty' })).toBe('Wanted: Baron Grimsby, by day 100 · 99 days left · click for the poster');
     expect(barNote(w, { kind: 'day' })).toContain('next on day VIII');
     expect(barNote(w, { kind: 'hourglass' })).toBe('End the day (E)');
   });
@@ -128,7 +128,7 @@ describe('the hero screen', () => {
     const sheet = heroSheet(wizard());
     expect(sheet.title).toBe('Aldric the Hedge Wizard');
     expect(sheet.level).toBe('Level I');
-    expect(sheet.xp).toEqual({ share: 0, line: '0 / 150 experience: 150 more for level II' });
+    expect(sheet.xp).toEqual({ share: 0, line: '0 / 150 experience: 150 more for level II. Fights and new places bring it.' });
     expect(sheet.stats.map((s) => s.value)).toEqual([0, 1, 3, 3]);
     expect(sheet.stats[2].note).toContain('a Lightning Bolt does 60 damage');
     expect(sheet.mana).toEqual({ left: 30, max: 30, line: 'Mana 30/30 · it fills up again every dawn' });

@@ -1,8 +1,12 @@
 import type { Display } from './display';
 
 export type InputHandlers = {
-  /** A press and release without dragging, in screen pixels. */
+  /** A press and release of the main button without dragging, in screen pixels. */
   click(x: number, y: number): void;
+  /** A right-click: look at what's there, never act on it. Screens without it ignore right-clicks. */
+  look?(x: number, y: number): void;
+  /** A mouse wheel or a trackpad's two-finger swipe, in screen pixels. */
+  wheel?(dx: number, dy: number): void;
   hover(x: number, y: number, clientX: number, clientY: number): void;
   /** Dragged by this many screen pixels. */
   drag(dx: number, dy: number): void;
@@ -16,9 +20,12 @@ export class Input {
 
   constructor(display: Display, handlers: InputHandlers) {
     const { canvas } = display;
-    let press: { x: number; y: number; dragged: boolean } | null = null;
+    let press: { x: number; y: number; dragged: boolean; right: boolean } | null = null;
+    // The game's own right-click, not the browser's menu.
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     canvas.addEventListener('pointerdown', (e) => {
-      press = { x: e.clientX, y: e.clientY, dragged: false };
+      if (e.button !== 0 && e.button !== 2) return;
+      press = { x: e.clientX, y: e.clientY, dragged: false, right: e.button === 2 };
       canvas.setPointerCapture(e.pointerId);
     });
     canvas.addEventListener('pointermove', (e) => {
@@ -29,7 +36,7 @@ export class Input {
       }
       const dx = e.clientX - press.x;
       const dy = e.clientY - press.y;
-      if (!press.dragged && Math.hypot(dx, dy) < 5) return;
+      if (press.right || (!press.dragged && Math.hypot(dx, dy) < 5)) return;
       press.dragged = true;
       handlers.leave();
       handlers.drag(dx / display.scale, dy / display.scale);
@@ -37,10 +44,21 @@ export class Input {
       press.y = e.clientY;
     });
     canvas.addEventListener('pointerleave', () => handlers.leave());
+    canvas.addEventListener(
+      'wheel',
+      (e) => {
+        e.preventDefault();
+        // Lines or pages from a mouse wheel, pixels from a trackpad.
+        const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1;
+        handlers.wheel?.((e.deltaX * unit) / display.scale, (e.deltaY * unit) / display.scale);
+      },
+      { passive: false },
+    );
     canvas.addEventListener('pointerup', (e) => {
       if (press && !press.dragged) {
         const [x, y] = display.toScreen(e.clientX, e.clientY);
-        handlers.click(x, y);
+        if (press.right) handlers.look?.(x, y);
+        else handlers.click(x, y);
       }
       press = null;
     });

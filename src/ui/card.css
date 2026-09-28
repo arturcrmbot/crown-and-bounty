@@ -106,10 +106,10 @@
   color: #b9a47c;
 }
 
-/* The name of whatever is under the pointer, like HoMM2's status line. */
+/* The name of whatever is under the pointer, like HoMM2's status line: over any card beside it. */
 .kc-label {
   position: fixed;
-  z-index: 9;
+  z-index: 13;
   transform-origin: 0 0;
   padding: 1px 7px 2px;
   color: #f2e4c4;
