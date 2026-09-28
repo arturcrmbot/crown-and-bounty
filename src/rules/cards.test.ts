@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { ALDMOOR } from '../content/aldmoor';
-import { apply, endDay, joinLine, stillWithYou, visit, type Card, type GameState, type Result } from './game';
+import { apply, bountyCard, endDay, joinLine, locationById, stillWithYou, visit, whenThere, type Card, type GameState, type Result } from './game';
+import { mapOf } from './map/maps';
+import { daysAway } from './map/movement';
 import { newGame } from './scenario';
 
 const knight = (): GameState => ({ ...newGame(1066, ALDMOOR, 'knight'), opening: undefined });
@@ -80,6 +82,32 @@ describe('recruiting', () => {
     const village = cardOf(apply({ ...knight(), gold: 55 }, { type: 'choose', id: 'village', choice: 'recruit' }));
     expect(village.lines.slice(0, 2)).toEqual(['**5 Peasants** join your army.', '**15 Peasants** will join you for **10 gold** each.']);
     expect(village.choices.map((c) => c.label)).toEqual(['Recruit', 'Close']);
+  });
+});
+
+describe('the map', () => {
+  it('knows how many days a ride is', () => {
+    const s = knight();
+    const map = mapOf(s);
+    const near: [number, number] = [s.hero.at[0] + 40, s.hero.at[1]];
+    expect(daysAway(s, map, near)).toBe(0);
+    // With his legs spent, even the nearest ride waits for tomorrow.
+    expect(daysAway({ ...s, movement: 0 }, map, near)).toBe(1);
+    // The castle is a day's ride from the start, and Grimsby is out of reach behind his patrol.
+    const castle = locationById(s, 'castle').at;
+    expect(daysAway(s, map, castle, true)).toBe(0);
+    expect(daysAway({ ...s, movement: 10 }, map, castle, true)).toBe(1);
+    expect(daysAway(s, map, locationById(s, 'hideout').at, true)).toBeNull();
+    expect(whenThere(0)).toBe('today');
+    expect(whenThere(1)).toBe('tomorrow');
+    expect(whenThere(3)).toBe('in 3 days');
+  });
+
+  it('puts up the bounty poster from the bar', () => {
+    const poster = bountyCard(knight());
+    expect(poster).toMatchObject({ title: 'WANTED', poster: true, portrait: 'grimsby' });
+    expect(poster.lines[0]).toBe('**Baron Grimsby** of Aldmoor');
+    expect(poster.lines).toContain('Reward: **1,500 gold**. By day 100: **99 days** left.');
   });
 });
 

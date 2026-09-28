@@ -2,7 +2,7 @@ import { BACKGROUNDS } from '../content/backgrounds';
 import { BOON_IDS, BOONS, COMMISSIONS, type Commission } from '../content/campaign';
 import { VILLAINS } from '../content/villains';
 import { generateCommission } from './generate';
-import { heroStats } from './hero';
+import { heroStats, VETERANS } from './hero';
 import { beginCommission } from './scenario';
 import { addTroops, armyLine, close, coins, leadershipUsed, roll, roman, show, TROOPS, type Army, type BoonId, type Campaign, type Card, type GameState, type Location, type Result } from './state';
 
@@ -62,18 +62,18 @@ export function withNewPlaces(state: GameState): GameState {
   return changed ? { ...state, locations: [...locations, ...structuredClone(added)] } : state;
 }
 
-/** The share of every stack that stays on between commissions. */
-export const VETERANS = 0.25;
+/** The share of every stack that stays on between commissions, before the hero's skills. */
+export { VETERANS };
 
-export function veterans(army: Army): Army {
-  return army.map((s) => ({ troop: s.troop, count: Math.floor(s.count * VETERANS) })).filter((s) => s.count > 0);
+export function veterans(army: Army, share = VETERANS): Army {
+  return army.map((s) => ({ troop: s.troop, count: Math.floor(s.count * share) })).filter((s) => s.count > 0);
 }
 
 /** The army for the next commission: the background's levy, then as many veterans as leadership allows. */
 export function nextArmy(state: GameState): Army {
   let army: Army = BACKGROUNDS[state.hero.background].army.map((s) => ({ ...s }));
-  const leadership = heroStats(state).leadership;
-  for (const v of veterans(state.army).sort((a, b) => TROOPS[b.troop].leadership - TROOPS[a.troop].leadership)) {
+  const { leadership, veterans: share } = heroStats(state);
+  for (const v of veterans(state.army, share).sort((a, b) => TROOPS[b.troop].leadership - TROOPS[a.troop].leadership)) {
     const count = Math.min(v.count, Math.floor((leadership - leadershipUsed(army)) / TROOPS[v.troop].leadership));
     const joined = count > 0 ? addTroops(army, v.troop, count) : null;
     if (joined) army = joined;

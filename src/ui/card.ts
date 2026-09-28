@@ -114,9 +114,10 @@ export class CardView {
   }
 
   /**
-   * Puts the card's bottom edge just above `point` (page pixels), or just below it when there is no
-   * room above, kept between `top` and `bottom`. With no point, the card sits in the middle, or beside
-   * `keepout` if the middle would cover it. Cards grow with the canvas, as the pixel art does.
+   * Puts the card's bottom edge just above `point` (page pixels), kept between `top` and `bottom`.
+   * With no room above, it goes below or beside `keepout` (what the card is about), so it never
+   * covers it. With no point, the card sits in the middle, or beside `keepout` (the hero) if the
+   * middle would cover him. Cards grow with the canvas, as the pixel art does.
    */
   place(point: ScreenPoint | null, top: number, bottom: number, keepout?: Keepout) {
     if (this.wrap.hidden) return;
@@ -136,22 +137,30 @@ export class CardView {
     const [minY, maxY] = [top + 8, Math.max(top + 8, bottom - h - 8)];
     const clampY = (y: number) => Math.min(maxY, Math.max(minY, y));
     let x = Math.min(window.innerWidth - w - 8, Math.max(8, (point ? point.x : window.innerWidth / 2) - w / 2));
-    let y: number;
+    let y = top;
+    const k = keepout;
+    /** Beside `k`, on the side with more room, level with it; false if neither side has room. */
+    const beside = () => {
+      if (!k) return false;
+      const [left, right] = [k.x0 - 14 - w, k.x1 + 14];
+      const leftFits = left >= 8;
+      const rightFits = right + w <= window.innerWidth - 8;
+      if (!leftFits && !rightFits) return false;
+      x = leftFits && (!rightFits || k.x0 > window.innerWidth - k.x1) ? left : right;
+      y = clampY((k.y0 + k.y1 - h) / 2);
+      return true;
+    };
     if (!point) {
       y = clampY((top + bottom - h) / 2);
-      const k = keepout;
-      if (k && x < k.x1 && x + w > k.x0 && y < k.y1 && y + h > k.y0) {
-        // Beside him, on the side with more room, or else above or below him.
-        const [left, right] = [k.x0 - 14 - w, k.x1 + 14];
-        const leftFits = left >= 8;
-        const rightFits = right + w <= window.innerWidth - 8;
-        if (leftFits || rightFits) x = leftFits && (!rightFits || k.x0 > window.innerWidth - k.x1) ? left : right;
-        else if (k.y0 - h - 10 >= minY) y = k.y0 - h - 10;
+      if (k && x < k.x1 && x + w > k.x0 && y < k.y1 && y + h > k.y0 && !beside()) {
+        if (k.y0 - h - 10 >= minY) y = k.y0 - h - 10;
         else if (k.y1 + 10 <= maxY) y = k.y1 + 10;
       }
     } else {
       const above = point.y - h - 10;
-      y = above >= minY ? above : clampY(point.y + 30);
+      if (above >= minY) y = above;
+      else if (k && k.y1 + 10 <= maxY) y = k.y1 + 10;
+      else if (!beside()) y = clampY(point.y + 30);
     }
     this.wrap.style.left = `${Math.round(x)}px`;
     this.wrap.style.top = `${Math.round(y)}px`;
