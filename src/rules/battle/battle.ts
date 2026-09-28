@@ -1,4 +1,4 @@
-import { SPELLS, STATUSES, type SpellId, type StatusId } from '../../content/spells';
+import { needsTarget, SPELLS, STATUSES, type SpellId, type StatusId } from '../../content/spells';
 import { ABILITIES, abilitiesOf, TROOPS, unitPower, type TroopDef, type TroopId } from '../../content/troops';
 import { roll, type Army } from '../state';
 import { COLS, HEXES, hexIndex, NEIGHBOURS, neighbours, reachable } from './hex';
@@ -21,28 +21,44 @@ export type Fighter = {
   retaliated: boolean;
   defending: boolean;
   waited: boolean;
-  /** Spells and abilities on the stack, for the rest of the battle. */
+  /** Spells and abilities on the stack, for the rest of the battle unless `until` says otherwise. */
   status: StatusId[];
+  /** The round a status wears off at the start of (those with `rounds`). */
+  until?: Partial<Record<StatusId, number>>;
   unit?: UnitNumbers;
   /**
    * Aldric himself, a stack of one: the side's spells are his to cast, and only while he stands.
    * When he falls he's carried from the field, not killed, and the battle goes on without him.
    */
   hero?: boolean;
+  /** A villain who leads his side as Aldric does his: his own spellbook, cast from where he stands, while he stands. */
+  book?: Spellbook;
 };
 
-/** The player's hero: skills for every stack, his spells, and himself on the field. */
-export type BattleHero = {
+/**
+ * What a caster knows: spell power, mana, spells, and charges (casts that cost no mana, but take
+ * one of the round's casts all the same: a wand's bolts, a villain's orders).
+ */
+export type Spellbook = {
   /** What the battle log calls him. */
   name?: string;
-  attack: number;
-  defence: number;
   spellPower: number;
   mana: number;
   /** The most mana he holds, for the spellbook: none comes back in battle, it's full again at dawn. */
   maxMana?: number;
   spells: SpellId[];
+  /** Spells he may cast in a round, and how many he has cast in `castRound`. */
   castRound: number;
+  casts?: number;
+  castsThisRound?: number;
+  manaDiscount?: number;
+  charges?: { spell: SpellId; uses: number }[];
+};
+
+/** The player's hero: skills for every stack, his spellbook, and himself on the field. */
+export type BattleHero = Spellbook & {
+  attack: number;
+  defence: number;
   /** Damage multipliers from skills and gear, as fractions (0.15 is 15% more). */
   melee?: number;
   ranged?: number;
@@ -53,13 +69,14 @@ export type BattleHero = {
   troops?: Partial<Record<TroopId, { attack: number; defence: number; shots: number }>>;
   /** Enemy troops that start slowed. */
   slows?: TroopId[];
+  /** His own troops that start with these statuses on them (a ward). */
+  wards?: Partial<Record<TroopId, StatusId[]>>;
+  /** Where each status he brings comes from, for the battle's opening words: "Advanced Archery: the Wolves start slowed". */
+  brought?: { source: string; side: Side; troops: TroopId[]; status: StatusId }[];
   /** Troops that charge (see CHARGE_HEXES). */
   charge?: TroopId[];
   /** Archers loose a free volley before the first round. */
   volley?: boolean;
-  /** Spells he may cast in a round, and how many he has cast in `castRound`. */
-  casts?: number;
-  castsThisRound?: number;
   /** He takes the field himself, as this troop with these numbers (see `heroFighter` in rules/fight.ts). */
   unit?: UnitNumbers & { troop: TroopId };
 };
@@ -92,6 +109,8 @@ export type BattleState = {
   standoff?: boolean;
   /** The hero's archers are about to loose their free volley, before anyone moves. */
   volley?: boolean;
+  /** The statuses the hero brought to the field, and where from: said as the battle opens. */
+  opening?: { source: string; status: StatusId; fighters: number[] }[];
 };
 
 /**
@@ -111,19 +130,27 @@ export type BattleAction =
   | { type: 'shoot'; target: number }
   | { type: 'wait' }
   | { type: 'defend' }
-  | { type: 'cast'; spell: SpellId; target: number }
+  /** A spell or an order. `target` for those aimed at a stack; `by` for a villain's (none for Aldric's). */
+  | { type: 'cast'; spell: SpellId; target?: number; by?: number }
   | { type: 'volley' }
   | { type: 'retreat' };
 
 export type BattleEvent =
   | { type: 'move'; fighter: number; path: number[] }
   | { type: 'hit'; attacker: number; target: number; damage: number; killed: number; ranged: boolean; retaliation: boolean; hexed?: boolean; charge?: boolean }
-  /** The ranger's archers open the battle with a free volley. */
-  | { type: 'volley' }
+  /** Every shooter on a side looses at once: the ranger's archers before the battle, or at a villain's order (`spell`, `by`). */
+  | { type: 'volley'; side?: Side; spell?: SpellId; by?: number }
+  /** A fresh stack marches in from its side's edge of the field, called by a spell or an order. */
+  | { type: 'summon'; fighter: number; spell: SpellId; by?: number }
+  /** A stack loses its turn to a status (newts), which then wears off. */
+  | { type: 'skip'; fighter: number; status: StatusId }
   /** A troll's wounds close up at the start of its turn. */
   | { type: 'regen'; fighter: number; healed: number }
-  /** A spell lands. `splash` marks the stacks a burst caught besides its target. */
-  | { type: 'spell'; spell: SpellId; target: number; damage: number; killed: number; splash?: boolean }
+  /**
+   * A spell lands. `splash` marks the stacks a burst (or a mass status) caught besides its target;
+   * `healed` is health given back and `raised` the fallen who got up; `by` is a villain casting.
+   */
+  | { type: 'spell'; spell: SpellId; target: number; damage: number; killed: number; splash?: boolean; healed?: number; raised?: number; by?: number }
   | { type: 'wait' | 'defend'; fighter: number }
   | { type: 'turn'; fighter: number }
   | { type: 'round'; round: number }
@@ -152,11 +179,28 @@ export const powerOf = (f: Pick<Fighter, 'troop' | 'unit'>) => unitPower(unitOf(
 
 /** Aldric's own fighter, if he took the field. */
 export const heroOnField = (b: BattleState) => b.fighters.find((f) => f.hero) ?? null;
-/** Whether the side's spells can still be cast: by Aldric while he stands, or from the edge of the field in a battle he didn't join. */
-const heroStands = (b: BattleState) => {
-  const hero = heroOnField(b);
-  return !hero || alive(hero);
-};
+
+/** The book a cast draws on: a villain's own (`by`), or the player's hero's. */
+export const bookOf = (b: BattleState, by?: number): Spellbook | null => (by === undefined ? b.hero : (b.fighters.find((f) => f.id === by)?.book ?? null));
+/** Who casts from a book on the field: the villain, or Aldric's own fighter (none if he watches from the edge). */
+export const casterOf = (b: BattleState, by?: number): Fighter | null => (by === undefined ? heroOnField(b) : (b.fighters.find((f) => f.id === by) ?? null));
+/** The side a book casts for. */
+export const casterSide = (b: BattleState, by?: number): Side => casterOf(b, by)?.side ?? 'player';
+/**
+ * Whether a caster can cast at all: standing, and not turned into something that can't. A hero who
+ * watches from the edge of the field always can.
+ */
+export function canCastAt(b: BattleState, by?: number): boolean {
+  const f = casterOf(b, by);
+  if (!f) return by === undefined;
+  return alive(f) && !f.status.some((s) => STATUSES[s].silences);
+}
+/** The villains on the field who can cast for `side` right now. */
+export const castersOf = (b: BattleState, side: Side) => b.fighters.filter((f) => f.side === side && f.book && canCastAt(b, f.id));
+/** How much of a stack is left, as a share of all it began with. */
+const healthShare = (f: Fighter) => ((f.count - 1) * unitOf(f).hp + f.hp) / (f.startCount * unitOf(f).hp);
+/** What a status's look is while it lasts (newts, frogs), if any. */
+export const lookOf = (f: Fighter) => f.status.map((s) => STATUSES[s].look).find(Boolean) ?? null;
 
 /** Speed after statuses: additions first, then multipliers, rounded up. */
 export const speedOf = (f: Fighter) => {
@@ -177,6 +221,8 @@ function turnOrder(fighters: Fighter[]): number[] {
 export function createBattle(args: { place: string; seed: number; player: Army; enemy: Army; hero: BattleHero; obstacles?: number; ground?: BattleState['ground'] }): BattleState {
   const fighters: Fighter[] = [];
   const shotsOf = (troop: TroopId, side: Side) => (TROOPS[troop].shots ? TROOPS[troop].shots! + (side === 'player' ? (args.hero.troops?.[troop]?.shots ?? 0) : 0) : 0);
+  // What the hero brings: enemy troops slowed, his own warded.
+  const brought = (troop: TroopId, side: Side): StatusId[] => (side === 'enemy' ? ((args.hero.slows ?? []).includes(troop) ? ['slowed'] : []) : [...(args.hero.wards?.[troop] ?? [])]);
   const add = (army: Army, side: Side, col: number) =>
     army.forEach((s, i) =>
       fighters.push({
@@ -191,7 +237,9 @@ export function createBattle(args: { place: string; seed: number; player: Army; 
         retaliated: false,
         defending: false,
         waited: false,
-        status: side === 'enemy' && (args.hero.slows ?? []).includes(s.troop) ? ['slowed'] : [],
+        status: brought(s.troop, side),
+        // A villain leads his side with his own spellbook.
+        ...(side === 'enemy' && TROOPS[s.troop].caster ? { book: newBook(TROOPS[s.troop]) } : {}),
       }),
     );
   add(args.player.filter((s) => s.count > 0), 'player', 0);
@@ -201,8 +249,13 @@ export function createBattle(args: { place: string; seed: number; player: Army; 
   if (hero) {
     const { troop, ...unit } = hero;
     const at = heroHex(fighters.filter((f) => f.side === 'player').length);
-    fighters.push({ id: fighters.length, side: 'player', troop, count: 1, startCount: 1, hp: unit.hp, at, shots: shotsOf(troop, 'player'), retaliated: false, defending: false, waited: false, status: [], unit, hero: true });
+    fighters.push({ id: fighters.length, side: 'player', troop, count: 1, startCount: 1, hp: unit.hp, at, shots: shotsOf(troop, 'player'), retaliated: false, defending: false, waited: false, status: brought(troop, 'player'), unit, hero: true });
   }
+  for (const f of fighters) for (const status of f.status) wearsOff(f, status, 1);
+  // The opening words: what each thing he brought does to whom.
+  const opening = (args.hero.brought ?? [])
+    .map((x) => ({ source: x.source, status: x.status, fighters: fighters.filter((f) => f.side === x.side && x.troops.includes(f.troop) && f.status.includes(x.status)).map((f) => f.id) }))
+    .filter((x) => x.fighters.length > 0);
   let seed = args.seed;
   const obstacles: number[] = [];
   const wanted = args.obstacles ?? 5;
@@ -214,7 +267,20 @@ export function createBattle(args: { place: string; seed: number; player: Army; 
     if (!obstacles.includes(i)) obstacles.push(i);
   }
   const volley = Boolean(args.hero.volley) && fighters.some((f) => f.side === 'player' && f.shots > 0);
-  return { place: args.place, round: 1, fighters, order: turnOrder(fighters), obstacles, seed, hero: args.hero, ...(args.ground === 'fen' ? { ground: 'fen' as const } : {}), ...(volley ? { volley } : {}) };
+  const book: BattleHero = args.hero.charges ? { ...args.hero, charges: args.hero.charges.map((c) => ({ ...c })) } : args.hero;
+  return { place: args.place, round: 1, fighters, order: turnOrder(fighters), obstacles, seed, hero: book, ...(args.ground === 'fen' ? { ground: 'fen' as const } : {}), ...(volley ? { volley } : {}), ...(opening.length ? { opening } : {}) };
+}
+
+/** A villain's spellbook as the battle opens, from his troop's data. */
+function newBook(t: TroopDef): Spellbook {
+  const c = t.caster!;
+  return { name: t.one, spellPower: c.spellPower, mana: c.mana, maxMana: c.mana, spells: [...(c.spells ?? [])], castRound: 0, ...(c.casts ? { casts: c.casts } : {}), ...(c.charges ? { charges: c.charges.map((x) => ({ ...x })) } : {}) };
+}
+
+/** Sets when a status wears off, if it has `rounds`: it counts the round it began in. */
+function wearsOff(f: Fighter, status: StatusId, round: number) {
+  const rounds = STATUSES[status].rounds;
+  if (rounds) f.until = { ...f.until, [status]: round + rounds };
 }
 
 /** Whether a hex is taken by a rock or by a living stack (other than `except`). */
@@ -376,11 +442,31 @@ export function wound(target: Fighter, damage: number): { count: number; hp: num
   return { count, hp: remaining - (count - 1) * full, killed: target.count - count };
 }
 
-/** Mana a spell costs this hero. */
-export const spellCost = (b: BattleState, spell: SpellId) => Math.max(1, SPELLS[spell].mana - (b.hero.manaDiscount ?? 0));
-/** Spells the hero may still cast this round: one, or two for a wizard. */
-export const castsLeft = (b: BattleState) => (b.hero.casts ?? 1) - (b.hero.castRound === b.round ? (b.hero.castsThisRound ?? 1) : 0);
-export const canCast = (b: BattleState, spell: SpellId) => b.hero.spells.includes(spell) && castsLeft(b) > 0 && b.hero.mana >= spellCost(b, spell) && heroStands(b);
+/** Mana a spell costs a caster (the hero, unless `by` names a villain). An order costs none. */
+export const spellCost = (b: BattleState, spell: SpellId, by?: number) => (SPELLS[spell].mana === 0 ? 0 : Math.max(1, SPELLS[spell].mana - (bookOf(b, by)?.manaDiscount ?? 0)));
+/** Spells a caster may still cast this round: one, or two for a wizard. */
+export const castsLeft = (b: BattleState, by?: number) => {
+  const book = bookOf(b, by);
+  return book ? (book.casts ?? 1) - (book.castRound === b.round ? (book.castsThisRound ?? 1) : 0) : 0;
+};
+/** A charge left for a spell (a wand's bolt, an order), if any. */
+export const chargeOf = (b: BattleState, spell: SpellId, by?: number) => bookOf(b, by)?.charges?.find((c) => c.spell === spell && c.uses > 0) ?? null;
+/** Every spell a caster could cast, if he had the mana and the round's casts: those he knows, and those he has charges for. */
+export const spellsOf = (b: BattleState, by?: number): SpellId[] => {
+  const book = bookOf(b, by);
+  return book ? [...new Set([...book.spells, ...(book.charges ?? []).filter((c) => c.uses > 0).map((c) => c.spell)])] : [];
+};
+/** Whether a caster may cast a spell now: a cast left this round, standing, a charge or the mana, and hurt enough if the spell asks it. */
+export function canCast(b: BattleState, spell: SpellId, by?: number): boolean {
+  const book = bookOf(b, by);
+  if (!book || castsLeft(b, by) <= 0 || !canCastAt(b, by)) return false;
+  const hurt = SPELLS[spell].hurt;
+  if (hurt !== undefined) {
+    const me = casterOf(b, by);
+    if (!me || healthShare(me) > hurt) return false;
+  }
+  return Boolean(chargeOf(b, spell, by)) || (book.spells.includes(spell) && book.mana >= spellCost(b, spell, by));
+}
 /**
  * Whether a melee attack from `from` would be a charge: a charging troop with a run-up, riding far
  * enough first from a start clear of the enemy (circling a stack it is already fighting isn't one).
@@ -388,9 +474,9 @@ export const canCast = (b: BattleState, spell: SpellId) => b.hero.spells.include
 export const isCharge = (b: BattleState, f: Fighter, from: number, moves = options(b).moves) =>
   f.side === 'player' && (b.hero.charge ?? []).includes(f.troop) && from !== f.at && (moves.get(from)?.length ?? 0) >= CHARGE_HEXES && !adjacentEnemy(b, f);
 /** Damage a spell does, or 0 if it doesn't do damage. */
-export const spellDamage = (b: BattleState, spell: SpellId) => {
+export const spellDamage = (b: BattleState, spell: SpellId, by?: number) => {
   const effect = SPELLS[spell].effect;
-  return effect.kind === 'damage' || effect.kind === 'burst' ? effect.perPower * b.hero.spellPower : 0;
+  return effect.kind === 'damage' || effect.kind === 'burst' ? effect.perPower * (bookOf(b, by)?.spellPower ?? 0) : 0;
 };
 
 /** Who a spell cast at `target` would hit: the target, and for a burst everyone next to it too. */
@@ -401,9 +487,42 @@ export function spellVictims(b: BattleState, spell: SpellId, target: Fighter): F
 }
 
 /** Puts a status on a stack, once. */
-const addStatus = (f: Fighter, status: StatusId) => {
+const addStatus = (f: Fighter, status: StatusId, round: number) => {
   if (!f.status.includes(status)) f.status = [...f.status, status];
+  wearsOff(f, status, round);
 };
+
+/** A free hex at a side's own edge of the field, for a stack that marches in: the line's rows first, then the next column in. */
+function edgeHex(b: BattleState, side: Side): number | null {
+  for (let step = 0; step < COLS; step++) {
+    const col = side === 'player' ? step : COLS - 1 - step;
+    for (const row of [...LINE_UP, 1, 3, 5, 7]) if (!blocked(b, hexIndex(col, row))) return hexIndex(col, row);
+  }
+  return null;
+}
+
+/**
+ * Every stack on `side` that can shoot (and isn't caught in melee) looses once, where its shots take
+ * the most: the other side's shooters count double, and a hero on the field three times over.
+ */
+function loose(next: BattleState, side: Side, fighters: Fighter[], hit: (a: Fighter, t: Fighter, ranged: boolean, retaliation: boolean) => void) {
+  for (const shooter of fighters.filter((x) => x.side === side && alive(x) && x.shots > 0 && !adjacentEnemy(next, x))) {
+    const targets = fighters.filter((x) => x.side !== side && alive(x));
+    if (!targets.length) break;
+    const worth = (x: Fighter) => Math.min(x.count, strike(next, shooter, x, true).damage / unitOf(x).hp) * powerOf(x) * (x.shots > 0 ? 2 : 1) * (x.hero ? 3 : 1);
+    const target = targets.reduce((best, x) => (worth(x) > worth(best) ? x : best));
+    shooter.shots -= 1;
+    hit(shooter, target, true, false);
+  }
+}
+
+/** How many a summons brings: a share of how many of that troop the side began with, or as much fighting worth. */
+function summoned(b: BattleState, side: Side, troop: TroopId, share: number): number {
+  const own = b.fighters.filter((f) => f.side === side && f.troop === troop).reduce((sum, f) => sum + f.startCount, 0);
+  if (own > 0) return Math.max(1, Math.round(own * share));
+  const worth = b.fighters.filter((f) => f.side === side && !f.book && !f.hero).reduce((sum, f) => sum + f.startCount * powerOf(f), 0);
+  return Math.max(1, Math.round((worth * share) / unitPower(TROOPS[troop])));
+}
 
 /**
  * Applies one action for the acting stack (or the hero's spell) and moves the battle on. With
@@ -447,8 +566,8 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
       }
       const target = fighterById(next, action.target);
       hit(me, target, false, false, charge);
-      // Nobody gets to swing back at a lance coming in at the gallop.
-      if (alive(target) && !target.retaliated && !charge) {
+      // Nobody gets to swing back at a lance coming in at the gallop, nor a stack turned into newts.
+      if (alive(target) && !target.retaliated && !charge && !target.status.some((st) => STATUSES[st].noStrikeBack)) {
         target.retaliated = true;
         hit(target, me, false, true);
       }
@@ -461,7 +580,7 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
       hit(me, target, true, false);
       for (const ability of abilitiesOf(me.troop)) {
         if (!ability.shotStatus || !alive(target) || hasStatus(target, ability.shotStatus)) continue;
-        addStatus(target, ability.shotStatus);
+        addStatus(target, ability.shotStatus, b.round);
         (events[events.length - 1] as Extract<BattleEvent, { type: 'hit' }>).hexed = true;
       }
       break;
@@ -478,25 +597,74 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
       events.push({ type: 'defend', fighter: me.id });
       break;
     case 'cast': {
+      // Aldric casts on his side's turns, a villain on his: each from his own book, while he stands.
+      const by = action.by;
+      const side = casterSide(b, by);
       const spell = SPELLS[action.spell];
-      const target = fighters.find((x) => x.id === action.target && alive(x));
-      if (!target || !canCast(b, action.spell) || (spell.on === 'enemy') !== (target.side === 'enemy')) return { battle: b, events: [] };
-      next.hero.mana -= spellCost(b, action.spell);
-      next.hero.castsThisRound = b.hero.castRound === b.round ? (b.hero.castsThisRound ?? 1) + 1 : 1;
-      next.hero.castRound = b.round;
+      const aimed = needsTarget(action.spell);
+      const target = aimed ? fighters.find((x) => x.id === action.target && alive(x)) : undefined;
+      if (side !== f.side || !canCast(b, action.spell, by) || (aimed && (!target || (spell.on === 'enemy') !== (target.side !== side)))) return { battle: b, events: [] };
+      // It costs a charge if there is one, and mana if not; either way, one of the round's casts.
+      const book: Spellbook = { ...bookOf(b, by)! };
+      const charge = chargeOf(b, action.spell, by);
+      if (charge) book.charges = book.charges!.map((c) => (c === charge ? { ...c, uses: c.uses - 1 } : c));
+      else book.mana -= spellCost(b, action.spell, by);
+      book.castsThisRound = book.castRound === b.round ? (book.castsThisRound ?? 1) + 1 : 1;
+      book.castRound = b.round;
+      if (by === undefined) next.hero = { ...next.hero, ...book };
+      else fighterById(next, by).book = book;
+      const cast = { spell: action.spell, ...(by !== undefined ? { by } : {}) };
       const effect = spell.effect;
-      if (effect.kind === 'status') {
-        addStatus(target, effect.status);
-        events.push({ type: 'spell', spell: action.spell, target: target.id, damage: 0, killed: 0 });
-        return settle(next, events, false);
-      }
-      next.struck = true;
-      for (const victim of spellVictims(next, action.spell, target)) {
-        const damage = shotOn(victim, spellDamage(b, action.spell));
-        const w = wound(victim, damage);
-        victim.count = w.count;
-        victim.hp = w.hp;
-        events.push({ type: 'spell', spell: action.spell, target: victim.id, damage, killed: w.killed, ...(victim.id !== target.id ? { splash: true } : {}) });
+      const power = book.spellPower;
+      switch (effect.kind) {
+        case 'status':
+          addStatus(target!, effect.status, b.round);
+          events.push({ type: 'spell', ...cast, target: target!.id, damage: 0, killed: 0 });
+          break;
+        case 'mass': {
+          const on = fighters.filter((x) => alive(x) && (x.side === side) === (spell.on === 'friend'));
+          on.forEach((x, i) => {
+            addStatus(x, effect.status, b.round);
+            events.push({ type: 'spell', ...cast, target: x.id, damage: 0, killed: 0, ...(i > 0 ? { splash: true } : {}) });
+          });
+          break;
+        }
+        case 'heal': {
+          // Health back, up to all the stack began with: the fallen get up again.
+          const t = target!;
+          const full = unitOf(t).hp;
+          const had = (t.count - 1) * full + t.hp;
+          const total = Math.min(t.startCount * full, had + effect.perPower * power);
+          const count = Math.ceil(total / full);
+          events.push({ type: 'spell', ...cast, target: t.id, damage: 0, killed: 0, healed: total - had, raised: count - t.count });
+          t.count = count;
+          t.hp = total - (count - 1) * full;
+          break;
+        }
+        case 'volley':
+          events.push({ type: 'volley', side, ...cast });
+          next.struck = true;
+          loose(next, side, fighters, hit);
+          break;
+        case 'summon': {
+          const at = edgeHex(next, side);
+          const count = summoned(next, side, effect.troop, effect.share);
+          if (at === null || count <= 0) return { battle: b, events: [] };
+          const t = TROOPS[effect.troop];
+          fighters.push({ id: fighters.length, side, troop: effect.troop, count, startCount: count, hp: t.hp, at, shots: t.shots ?? 0, retaliated: false, defending: false, waited: false, status: [] });
+          events.push({ type: 'summon', ...cast, fighter: fighters.length - 1 });
+          break;
+        }
+        default: {
+          next.struck = true;
+          for (const victim of spellVictims(next, action.spell, target!)) {
+            const damage = shotOn(victim, effect.perPower * power);
+            const w = wound(victim, damage);
+            victim.count = w.count;
+            victim.hp = w.hp;
+            events.push({ type: 'spell', ...cast, target: victim.id, damage, killed: w.killed, ...(victim.id !== target!.id ? { splash: true } : {}) });
+          }
+        }
       }
       return settle(next, events, false);
     }
@@ -504,15 +672,7 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
       if (!b.volley) return { battle: b, events: [] };
       next.volley = undefined;
       events.push({ type: 'volley' });
-      // Every stack that can shoot looses once, where its arrows take the most: their shooters count double.
-      for (const shooter of fighters.filter((x) => x.side === 'player' && alive(x) && x.shots > 0)) {
-        const targets = fighters.filter((x) => x.side === 'enemy' && alive(x));
-        if (!targets.length) break;
-        const worth = (x: Fighter) => Math.min(x.count, strike(next, shooter, x, true).damage / unitOf(x).hp) * powerOf(x) * (x.shots > 0 ? 2 : 1);
-        const target = targets.reduce((best, x) => (worth(x) > worth(best) ? x : best));
-        shooter.shots -= 1;
-        hit(shooter, target, true, false);
-      }
+      loose(next, 'player', fighters, hit);
       return settle(next, events, false);
     }
     case 'retreat':
@@ -535,21 +695,34 @@ function settle(b: BattleState, events: BattleEvent[], endTurn: boolean): Battle
     events.push({ type: 'end', result });
     return { battle: { ...next, result }, events };
   }
-  if (order.length === 0) {
-    // A round with no blow struck, and the enemy no closer to you, is a quiet one.
-    const reach = enemyReach(next);
-    const quiet = next.struck || reach.gap < (next.gap ?? Infinity) ? 0 : (next.quiet ?? 0) + 1;
-    // Nobody has landed a blow for a while, and nobody will: the battle is called off. Only a side
-    // far weaker than the other counts as beaten; otherwise the enemy keeps its army and holds the field.
-    if (quiet >= QUIET_ROUNDS) {
-      const worth = (side: Side) => next.fighters.filter((f) => alive(f) && f.side === side).reduce((sum, f) => sum + (((f.count - 1) * unitOf(f).hp + f.hp) / unitOf(f).hp) * powerOf(f), 0);
-      const result = worth('enemy') < worth('player') * ROUTED_BELOW ? 'won' : 'fled';
-      events.push({ type: 'end', result, rout: true });
-      return { battle: { ...next, result, quiet, gap: reach.gap, ...(result === 'fled' && reach.stuck ? { standoff: true } : {}) }, events };
+  for (let guard = 0; guard < 64; guard++) {
+    if (next.order.length === 0) {
+      // A round with no blow struck, and the enemy no closer to you, is a quiet one.
+      const reach = enemyReach(next);
+      const quiet = next.struck || reach.gap < (next.gap ?? Infinity) ? 0 : (next.quiet ?? 0) + 1;
+      // Nobody has landed a blow for a while, and nobody will: the battle is called off. Only a side
+      // far weaker than the other counts as beaten; otherwise the enemy keeps its army and holds the field.
+      if (quiet >= QUIET_ROUNDS) {
+        const worth = (side: Side) => next.fighters.filter((f) => alive(f) && f.side === side).reduce((sum, f) => sum + (((f.count - 1) * unitOf(f).hp + f.hp) / unitOf(f).hp) * powerOf(f), 0);
+        const result = worth('enemy') < worth('player') * ROUTED_BELOW ? 'won' : 'fled';
+        events.push({ type: 'end', result, rout: true });
+        return { battle: { ...next, result, quiet, gap: reach.gap, ...(result === 'fled' && reach.stuck ? { standoff: true } : {}) }, events };
+      }
+      const round = next.round + 1;
+      // Statuses that last a few rounds wear off as a new one begins.
+      const fighters = next.fighters.map((f) => {
+        const gone = f.until ? f.status.filter((st) => (f.until![st] ?? Infinity) <= round) : [];
+        return { ...f, retaliated: false, waited: false, ...(gone.length ? { status: f.status.filter((st) => !gone.includes(st)) } : {}) };
+      });
+      next = { ...next, round, fighters, order: turnOrder(fighters), struck: false, quiet, gap: reach.gap };
+      events.push({ type: 'round', round });
     }
-    const fighters = next.fighters.map((f) => ({ ...f, retaliated: false, waited: false }));
-    next = { ...next, round: next.round + 1, fighters, order: turnOrder(fighters), struck: false, quiet, gap: reach.gap };
-    events.push({ type: 'round', round: next.round });
+    // A stack turned into newts loses its turn, and then it wears off.
+    const first = fighterById(next, next.order[0]);
+    const skip = first.status.find((st) => STATUSES[st].skipsTurn);
+    if (!skip) break;
+    next = { ...next, order: next.order.slice(1), fighters: next.fighters.map((f) => (f.id === first.id ? { ...f, status: f.status.filter((st) => st !== skip) } : f)) };
+    events.push({ type: 'skip', fighter: first.id, status: skip });
   }
   const acting = fighterById(next, next.order[0]);
   if (acting.defending) next = { ...next, fighters: next.fighters.map((f) => (f.id === acting.id ? { ...f, defending: false } : f)) };

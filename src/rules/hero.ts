@@ -1,7 +1,7 @@
 import { ARTIFACTS, type ArtifactId, type Slot } from '../content/artifacts';
 import { BACKGROUNDS, type BackgroundId, type Bonus } from '../content/backgrounds';
 import { PERKS, RANKS, SKILLS, type PerkId, type SkillId } from '../content/skills';
-import type { MapSpellId, SpellId } from '../content/spells';
+import type { MapSpellId, SpellId, StatusId } from '../content/spells';
 import type { TroopId } from '../content/troops';
 import { roll, roman, show, type Card, type GameEvent, type GameState, type Result } from './state';
 
@@ -22,11 +22,21 @@ export const levelFor = (xp: number) => {
 
 /** Everything that adds to the hero: the background's signature, skills at their rank, perks and worn gear. */
 export function bonusesOf(state: GameState): Bonus[] {
+  return namedBonuses(state).map((x) => x.bonus);
+}
+
+/** The same, each with what it's called ("Advanced Archery", "Goose Whisperer"), for words that say where a bonus comes from. */
+export function namedBonuses(state: GameState): { name: string; bonus: Bonus }[] {
   const hero = state.hero;
-  const out: Bonus[] = [BACKGROUNDS[hero.background].signature.bonus];
-  for (const [id, rank] of Object.entries(hero.skills) as [SkillId, number][]) if (SKILLS[id] && rank > 0) out.push(SKILLS[id].ranks[Math.min(rank, RANKS.length) - 1].bonus);
-  for (const id of hero.perks) out.push(PERKS[id].bonus);
-  for (const id of Object.values(hero.gear)) if (id) out.push(ARTIFACTS[id].bonus);
+  const signature = BACKGROUNDS[hero.background].signature;
+  const out = [{ name: signature.name, bonus: signature.bonus }];
+  for (const [id, rank] of Object.entries(hero.skills) as [SkillId, number][]) {
+    if (!SKILLS[id] || rank <= 0) continue;
+    const r = Math.min(rank, RANKS.length);
+    out.push({ name: `${RANKS[r - 1]} ${SKILLS[id].name}`, bonus: SKILLS[id].ranks[r - 1].bonus });
+  }
+  for (const id of hero.perks) out.push({ name: PERKS[id].name, bonus: PERKS[id].bonus });
+  for (const id of Object.values(hero.gear)) if (id) out.push({ name: ARTIFACTS[id].name, bonus: ARTIFACTS[id].bonus });
   return out;
 }
 
@@ -49,6 +59,8 @@ export type HeroStats = {
   manaDiscount: number;
   troops: Partial<Record<TroopId, { attack: number; defence: number; shots: number }>>;
   slows: TroopId[];
+  wards: Partial<Record<TroopId, StatusId[]>>;
+  charges: { spell: SpellId; uses: number }[];
   charge: TroopId[];
   volley: boolean;
   forestWalk: boolean;
@@ -104,6 +116,8 @@ export function heroStats(state: GameState): HeroStats {
     manaDiscount: 0,
     troops: {},
     slows: [],
+    wards: {},
+    charges: [],
     charge: [],
     volley: false,
     forestWalk: false,
@@ -147,6 +161,12 @@ export function heroStats(state: GameState): HeroStats {
       s.troops[troop] = { attack: prev.attack + (t.attack ?? 0), defence: prev.defence + (t.defence ?? 0), shots: prev.shots + (t.shots ?? 0) };
     }
     s.slows.push(...(b.slows ?? []));
+    for (const [troop, statuses] of Object.entries(b.wards ?? {}) as [TroopId, StatusId[]][]) s.wards[troop] = [...new Set([...(s.wards[troop] ?? []), ...statuses])];
+    for (const c of b.charges ?? []) {
+      const had = s.charges.find((x) => x.spell === c.spell);
+      if (had) had.uses += c.uses;
+      else s.charges.push({ ...c });
+    }
     s.charge.push(...(b.charge ?? []));
     s.volley ||= Boolean(b.volley);
     s.forestWalk ||= Boolean(b.forestWalk);

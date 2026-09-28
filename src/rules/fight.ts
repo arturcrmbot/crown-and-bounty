@@ -1,12 +1,13 @@
 import { BACKGROUNDS } from '../content/backgrounds';
 import { ARTIFACTS, type ArtifactId } from '../content/artifacts';
-import { ABILITIES, heroTroop, TROOPS, type HeroId } from '../content/troops';
+import { ABILITIES, heroTroop, TROOPS, type HeroId, type TroopId } from '../content/troops';
+import type { StatusId } from '../content/spells';
 import { autoResolve } from './battle/ai';
 import { applyEffects } from './effects/core';
 import { CAMPAIGN_LENGTH, campaignLines, commissionOf, hasNextCommission, provinceOf } from './campaign';
 import { revealDisc } from './map/fog';
 import { createBattle, heroFell, survivors, type BattleHero } from './battle/battle';
-import { foundNote, gainXp, giveArtifact, heroStats } from './hero';
+import { foundNote, gainXp, giveArtifact, heroStats, namedBonuses } from './hero';
 import { again, armyPower, close, coins, locationById, roll, roman, show, stillWithYou, troops, update, VANISHES, type Army, type GameEvent, type GameState, type Location, type Result } from './state';
 
 export function heroInBattle(state: GameState): BattleHero {
@@ -27,11 +28,24 @@ export function heroInBattle(state: GameState): BattleHero {
     manaDiscount: s.manaDiscount,
     troops: s.troops,
     slows: s.slows,
+    ...(Object.keys(s.wards).length ? { wards: s.wards } : {}),
+    ...(s.charges.length ? { charges: s.charges } : {}),
+    ...(broughtBy(state).length ? { brought: broughtBy(state) } : {}),
     ...(s.charge.length ? { charge: s.charge } : {}),
     ...(s.volley ? { volley: true } : {}),
     ...(s.casts > 1 ? { casts: s.casts } : {}),
     unit: { troop: own.troop, hp: own.hp, damage: own.damage },
   };
+}
+
+/** Where each status the hero brings to a battle comes from, for its opening words. */
+function broughtBy(state: GameState): NonNullable<BattleHero['brought']> {
+  const out: NonNullable<BattleHero['brought']> = [];
+  for (const { name, bonus } of namedBonuses(state)) {
+    if (bonus.slows?.length) out.push({ source: name, side: 'enemy', troops: bonus.slows, status: 'slowed' });
+    for (const [troop, statuses] of Object.entries(bonus.wards ?? {}) as [TroopId, StatusId[]][]) for (const status of statuses) out.push({ source: name, side: 'player', troops: [troop], status });
+  }
+  return out;
 }
 
 /** Aldric as he'd take the field in the next battle: the troop he fights as, and his numbers. */
@@ -188,6 +202,19 @@ export function finishFight(state: GameState): Result {
     const opening = place.kind === 'hideout' ? [commissionOf(base).surrender, lost, ...carried] : [enemy.flees, lost, ...carried, enemy.loot.replace('{gold}', `**${coins(enemy.reward)} gold**`)];
     return beat(base, place.id, { title: 'Victory!', lines: opening, reward: enemy.reward, xp: battleXp(enemy.army) });
   }
+  const castle = state.locations.find((l) => l.kind === 'castle');
+  const home = castle ? ([castle.at[0], castle.at[1] + 14] as const) : state.hero.at;
+  const shaken = battle.result === 'fled' && !battle.standoff ? army.map((s) => ({ ...s, count: s.count - Math.ceil(s.count * 0.25) })).filter((s) => s.count > 0) : army;
+  if (battle.result === 'fled' && shaken.length === 0 && battle.fighters.some((f) => f.hero && f.count > 0)) {
+    // Nobody who rode with him is left: Aldric gets away alone, and rides home to raise another army.
+    return {
+      state: { ...base, army: [], movement: 0, hero: { ...base.hero, at: home } },
+      events: [
+        { type: 'moved', at: home, facing: base.hero.facing },
+        show({ title: 'Retreat!', lines: [`${who} gets away alone: nobody who rode with him is left standing.`, lossesLine(state.army, []), `He rides back to ${castle?.name ?? 'safety'} to raise another army.`], choices: [close] }, null),
+      ],
+    };
+  }
   if (battle.result === 'fled' && battle.standoff) {
     // They had no way through to you, and you didn't go to them: both sides draw off, nobody cut down.
     const next = { ...base, movement: 0 };
@@ -197,15 +224,12 @@ export function finishFight(state: GameState): Result {
     };
   }
   if (battle.result === 'fled') {
-    const shaken = army.map((s) => ({ ...s, count: s.count - Math.ceil(s.count * 0.25) })).filter((s) => s.count > 0);
     const next = { ...base, army: shaken, movement: 0 };
     return {
       state: next,
       events: [show({ title: 'Retreat!', lines: ['Your men fall back in good order, mostly.', lossesLine(state.army, shaken), ...carried, stillWithYou(shaken)], choices: [close] }, place.at, place.id)],
     };
   }
-  const castle = state.locations.find((l) => l.kind === 'castle');
-  const home = castle ? ([castle.at[0], castle.at[1] + 14] as const) : state.hero.at;
   return {
     state: { ...base, army: [], movement: 0, hero: { ...base.hero, at: home } },
     events: [

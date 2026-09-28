@@ -1,7 +1,7 @@
 import { abilitiesOf } from '../../content/troops';
-import { SPELLS, STATUSES } from '../../content/spells';
+import { needsTarget, SPELLS, STATUSES } from '../../content/spells';
 import {
-  activeFighter, battleAct, canCast, CHARGE_BONUS, CHARGE_HEXES, fighterById, hasStatus, isRanged, options, powerOf, spellCost, spellDamage, speedOf, statsOf, stepsTo, strike, unitOf, wound,
+  activeFighter, battleAct, canCast, casterSide, castersOf, CHARGE_BONUS, CHARGE_HEXES, fighterById, spellsOf, hasStatus, isRanged, options, powerOf, spellCost, spellDamage, speedOf, statsOf, stepsTo, strike, unitOf, wound,
   type BattleAction, type BattleState, type Fighter, type Options, type Side,
 } from './battle';
 import { distance, HEXES, NEIGHBOURS, reachMask } from './hex';
@@ -174,18 +174,23 @@ const healShare = (troop: Fighter['troop']) => {
 };
 
 /**
- * What a hero on the field is worth to his side besides his blows, while he stands: the spells his
- * mana can still cast. Each point of mana counts as this much fighting worth for every point of
- * spell power: about half what a bolt takes with it, so a good spell is still worth its mana.
+ * What a caster on the field (Aldric, or a villain) is worth to his side besides his blows, while he
+ * stands: the spells his mana can still cast, and his charges (orders) at `CHARGE` mana each. Each
+ * point counts as this much fighting worth for every point of spell power: about half what a bolt
+ * takes with it, so a good spell is still worth its mana.
  */
 const CASTER = 1;
+const CHARGE = 5;
 
 function stackWorth(b: BattleState, f: Fighter): number {
   if (f.count <= 0) return 0;
   const hp = unitOf(f).hp;
   const healing = Math.min(hp - f.hp, hp * healShare(f.troop));
   const worth = troopWorth(b, f) * (f.count - 1 + (f.hp + healing * HEALED) / hp + PRESENCE);
-  return f.hero && b.hero.spells.length ? worth + CASTER * b.hero.mana * b.hero.spellPower : worth;
+  const book = f.hero ? b.hero : f.book;
+  if (!book) return worth;
+  const charges = (book.charges ?? []).reduce((sum, c) => sum + c.uses, 0);
+  return book.spells.length || charges ? worth + CASTER * book.spellPower * (book.mana + CHARGE * charges) : worth;
 }
 
 /** Worth a stack loses to `damage`. */
@@ -215,7 +220,8 @@ function threat(b: BattleState, side: Side, mask: Uint8Array, keep = 0): { now: 
   const later = new Map<number, number>();
   const add = (map: Map<number, number>, id: number, worth: number) => map.set(id, (map.get(id) ?? 0) + worth);
   for (const f of b.fighters) {
-    if (f.count <= 0 || f.side !== side) continue;
+    // A stack that will lose its turn (turned into newts) threatens nobody this time.
+    if (f.count <= 0 || f.side !== side || f.status.some((st) => STATUSES[st].skipsTurn)) continue;
     const pinned = foes.some((o) => NEIGHBOURS[f.at].includes(o.at));
     if (f.shots > 0 && !pinned) {
       let best = 0;
@@ -308,11 +314,23 @@ export function stackActions(b: BattleState): BattleAction[] {
 
 /** Every spell the hero could cast now, on every stack it could be cast on. */
 export function castActions(b: BattleState): BattleAction[] {
+  const acting = activeFighter(b);
+  if (!acting) return [];
+  // Aldric's book for your side's turns; each villain's own for theirs.
+  const casters: (number | undefined)[] = acting.side === 'player' ? [undefined] : castersOf(b, acting.side).map((f) => f.id);
   const actions: BattleAction[] = [];
-  for (const spell of b.hero.spells) {
-    if (!canCast(b, spell)) continue;
-    const on = SPELLS[spell].on;
-    for (const f of b.fighters) if (f.count > 0 && (f.side === 'enemy') === (on === 'enemy')) actions.push({ type: 'cast', spell, target: f.id });
+  for (const by of casters) {
+    const side = casterSide(b, by);
+    for (const spell of spellsOf(b, by)) {
+      if (!canCast(b, spell, by)) continue;
+      const who = by === undefined ? {} : { by };
+      if (!needsTarget(spell)) {
+        actions.push({ type: 'cast', spell, ...who });
+        continue;
+      }
+      const on = SPELLS[spell].on;
+      for (const f of b.fighters) if (f.count > 0 && (f.side === side) === (on === 'friend')) actions.push({ type: 'cast', spell, target: f.id, ...who });
+    }
   }
   return actions;
 }
@@ -361,6 +379,9 @@ export function commander(b: BattleState): BattleAction {
 export function onslaught(b: BattleState): BattleAction {
   const f = activeFighter(b)!;
   const side = f.side;
+  // A villain casts, or gives an order, when that beats doing without (the stack still acts after).
+  const cast = best(b, castActions(b), side, STRIKE);
+  if (cast && cast.score > evaluate(b, side, STRIKE) + 1) return cast.action;
   const opts = options(b);
   if (opts.shoot.length > 0) return best(b, opts.shoot.map((target): BattleAction => ({ type: 'shoot', target })), side, STRIKE)!.action;
   const blow = best(b, opts.melee.map((m): BattleAction => ({ type: 'melee', target: m.target, from: m.from })), side, STRIKE);

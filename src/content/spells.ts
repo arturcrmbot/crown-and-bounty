@@ -1,9 +1,12 @@
+import type { TroopId } from './troops';
 /**
  * The hero's spells, and the statuses spells (and some troops) put on stacks. Everything a spell
  * or status does is written here as data; the battle engine and the AI read it, and never name a
  * spell themselves.
  */
-export type SpellId = 'bolt' | 'bless' | 'slow' | 'haste' | 'fireball' | 'stoneskin';
+export type SpellId = 'bolt' | 'bless' | 'slow' | 'haste' | 'fireball' | 'stoneskin' | OrderId | 'newts' | 'frogs' | 'brew';
+/** A villain's orders to his men: shouted, not cast, so they cost no mana, only a few uses a battle (see `charges`). */
+export type OrderId = 'shieldwall' | 'crossbows' | 'guard';
 
 /** Spells for the adventure map, cast from the hero's card. */
 export type MapSpellId = 'farsight';
@@ -12,7 +15,7 @@ export const MAP_SPELLS: Record<MapSpellId, { id: MapSpellId; name: string; mana
 };
 
 /** Lasting effects on a stack. Each one changes numbers the engine already uses. */
-export type StatusId = 'blessed' | 'slowed' | 'hasted' | 'stoneskin';
+export type StatusId = 'blessed' | 'slowed' | 'hasted' | 'stoneskin' | 'shieldwall' | 'newts' | 'frogs';
 
 export type StatusDef = {
   name: string;
@@ -23,6 +26,16 @@ export type StatusDef = {
   speedTimes?: number;
   /** Defence added while it lasts. */
   defenceAdd?: number;
+  /** It wears off after this many rounds (the one it began in counts); otherwise it lasts the battle. */
+  rounds?: number;
+  /** The stack loses its next turn, and then it wears off. */
+  skipsTurn?: boolean;
+  /** The stack can't strike back while it lasts. */
+  noStrikeBack?: boolean;
+  /** A caster under it can't cast. */
+  silences?: boolean;
+  /** Drawn as this creature while it lasts. */
+  look?: 'newt' | 'frog';
 };
 
 export const STATUSES: Record<StatusId, StatusDef> = {
@@ -30,16 +43,30 @@ export const STATUSES: Record<StatusId, StatusDef> = {
   slowed: { name: 'Slowed', speedTimes: 0.5 },
   hasted: { name: 'Hasted', speedAdd: 2 },
   stoneskin: { name: 'Stone Skin', defenceAdd: 3 },
+  shieldwall: { name: 'Shield Wall', defenceAdd: 3, rounds: 2 },
+  newts: { name: 'Newts', skipsTurn: true, noStrikeBack: true, silences: true, look: 'newt' },
+  frogs: { name: 'Frogs', skipsTurn: true, noStrikeBack: true, silences: true, look: 'frog' },
 };
 
-/** What casting a spell does to its target. */
+/** What casting a spell does. `on` says whose stacks: the caster's own side (`friend`) or the other. */
 export type SpellEffect =
-  /** Damage: this much for every point of the hero's spell power. */
+  /** Damage: this much for every point of the caster's spell power. */
   | { kind: 'damage'; perPower: number }
-  /** A status on the target, for the rest of the battle. */
+  /** A status on the target (see its `rounds` for how long). */
   | { kind: 'status'; status: StatusId }
   /** Damage like `damage`, to the target and to every stack standing next to it, friend or foe. */
-  | { kind: 'burst'; perPower: number };
+  | { kind: 'burst'; perPower: number }
+  /** Health back, this much for every point of spell power: the fallen get up again, as many as the stack began with. */
+  | { kind: 'heal'; perPower: number }
+  /** A status on every stack of one side at once. It needs no target. */
+  | { kind: 'mass'; status: StatusId }
+  /** Every shooter on the caster's side looses at once, where its shots take the most. It needs no target. */
+  | { kind: 'volley' }
+  /**
+   * A fresh stack of `troop` marches in from the caster's edge of the field: `share` of how many of
+   * them his side began with (or, with none of them, as much fighting worth). It needs no target.
+   */
+  | { kind: 'summon'; troop: TroopId; share: number };
 
 export type SpellDef = {
   id: SpellId;
@@ -50,7 +77,14 @@ export type SpellDef = {
   effect: SpellEffect;
   /** How it looks and sounds: a bolt from the sky, a ball of fire, or a sparkle in a colour. */
   look: { kind: 'bolt' | 'fire' | 'sparkle'; colour: 'gold' | 'blue' | 'red' };
+  /** An order: what the caster bellows, and how ("bellows", "roars"). The log says it that way. */
+  shout?: { verb: string; words: string };
+  /** Only once the caster is down to this share of his health. */
+  hurt?: number;
 };
+
+/** Whether a spell is aimed at a stack; the others (a mass status, a volley, a summons) take the whole field. */
+export const needsTarget = (spell: SpellId) => !['mass', 'volley', 'summon'].includes(SPELLS[spell].effect.kind);
 
 export const SPELLS: Record<SpellId, SpellDef> = {
   bolt: { id: 'bolt', name: 'Lightning Bolt', mana: 7, on: 'enemy', note: 'Twenty damage for every point of spell power.', effect: { kind: 'damage', perPower: 20 }, look: { kind: 'bolt', colour: 'gold' } },
@@ -67,4 +101,29 @@ export const SPELLS: Record<SpellId, SpellDef> = {
     look: { kind: 'fire', colour: 'red' },
   },
   stoneskin: { id: 'stoneskin', name: 'Stone Skin', mana: 5, on: 'friend', note: '+3 defence for the stack, for the rest of the battle.', effect: { kind: 'status', status: 'stoneskin' }, look: { kind: 'sparkle', colour: 'blue' } },
+  // Villains' spells and orders. Heroes could learn them too.
+  newts: {
+    id: 'newts', name: 'Newts', mana: 6, on: 'enemy', effect: { kind: 'status', status: 'newts' }, look: { kind: 'sparkle', colour: 'gold' },
+    note: 'Turns a stack into newts: it loses its next turn, and can\u2019t strike back till then.',
+  },
+  frogs: {
+    id: 'frogs', name: 'Frogs', mana: 6, on: 'enemy', effect: { kind: 'status', status: 'frogs' }, look: { kind: 'sparkle', colour: 'gold' },
+    note: 'Turns a stack into frogs: it loses its next turn, and can\u2019t strike back till then.',
+  },
+  brew: {
+    id: 'brew', name: 'Witch\u2019s Brew', mana: 6, on: 'friend', effect: { kind: 'heal', perPower: 15 }, look: { kind: 'sparkle', colour: 'gold' },
+    note: 'Fifteen health back for every point of spell power: the fallen get up again, as many as the stack began with.',
+  },
+  shieldwall: {
+    id: 'shieldwall', name: 'Shield Wall', mana: 0, on: 'friend', effect: { kind: 'mass', status: 'shieldwall' }, look: { kind: 'sparkle', colour: 'blue' },
+    shout: { verb: 'bellows', words: 'Shield wall!' }, note: 'Every stack of his locks shields: +3 defence for two rounds.',
+  },
+  crossbows: {
+    id: 'crossbows', name: 'Crossbows, Fire!', mana: 0, on: 'enemy', effect: { kind: 'volley' }, look: { kind: 'sparkle', colour: 'red' },
+    shout: { verb: 'bellows', words: 'Crossbows, fire!' }, note: 'Every shooter of his looses at once, at whoever it would hurt most.',
+  },
+  guard: {
+    id: 'guard', name: 'Call the Guard', mana: 0, on: 'friend', effect: { kind: 'summon', troop: 'swordsmen', share: 0.3 }, look: { kind: 'sparkle', colour: 'red' },
+    shout: { verb: 'roars', words: 'Call the guard!' }, hurt: 0.6, note: 'Once he\u2019s hurt: fresh swordsmen march in from his edge of the field, near a third as many as he began with.',
+  },
 };

@@ -1,4 +1,4 @@
-import type { MapSpellId, SpellId } from './spells';
+import type { MapSpellId, SpellId, StatusId } from './spells';
 import type { TroopId } from './troops';
 
 /** Who Sir Aldric was before the King found him. Chosen once, at the start of the campaign. */
@@ -27,6 +27,10 @@ export type Bonus = {
   troops?: Partial<Record<TroopId, { attack?: number; defence?: number; shots?: number }>>;
   /** Enemy troops that start every battle slowed. */
   slows?: TroopId[];
+  /** His own troops that start every battle with these statuses on them (a ward). */
+  wards?: Partial<Record<TroopId, StatusId[]>>;
+  /** Casts that cost no mana, a few a battle, but take one of the round's casts all the same (a wand's bolts). */
+  charges?: { spell: SpellId; uses: number }[];
   /** Troops that charge: after a run-up of 3 hexes or more, started clear of the enemy, they hit a quarter harder, and can't be struck back. */
   charge?: TroopId[];
   /** His archers loose a free volley before every battle. */

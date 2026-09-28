@@ -89,6 +89,8 @@ export type BattleView = {
   flashing: Set<number>;
   /** Fighters still drawn although the rules have them dead, until their hit plays out. */
   dying: Set<number>;
+  /** Stacks the rules have on the field that haven't got there yet: a summoned stack, till it marches in. */
+  hidden: Set<number>;
   reach: Set<number>;
   hover: { hex: number; kind: 'move' | 'melee' | 'shoot' | 'spell' } | null;
   floaters: Floater[];
@@ -273,7 +275,7 @@ export class BattleScreen {
       blit(screen, flag, MAP_VIEW.x + MAP_VIEW.width - flag.width - 18, Y0 + 100 - flag.height, MAP_VIEW);
     }
 
-    const shown = b.fighters.filter((f) => f.count > 0 || view.dying.has(f.id));
+    const shown = b.fighters.filter((f) => (f.count > 0 || view.dying.has(f.id)) && !view.hidden.has(f.id));
     // Where a stack stands: its hex, or wherever it has got to on a walk. Lunges and reels move only
     // the figure, so its count stays put on its hex.
     const place = (id: number, at: number) => view.positions.get(id) ?? hexCentre(at);
@@ -550,8 +552,9 @@ export class BattleScreen {
       const info = `${who}  ·  Att ${attack} Def ${defence} Dmg ${t.damage[0]}-${t.damage[1]} HP ${view.health.get(f.id) ?? f.hp}/${t.hp} Spd ${speedOf(f)}${f.shots ? ` Shots ${f.shots}` : ''}${tags}`;
       drawText(screen, info, BAR.x + 12, text, f.side === 'player' ? PARCHMENT[6] : RED[6], INK);
     }
-    const mana = `Mana ${b.hero.mana}`;
-    drawText(screen, mana, BUTTONS[0].rect.x - 70, text, BLUE[6], INK);
+    // A villain's mana while you look at him; your own otherwise.
+    const mana = f?.book ? `Mana ${f.book.mana}` : `Mana ${b.hero.mana}`;
+    drawText(screen, mana, BUTTONS[0].rect.x - 70, text, f?.book ? RED[6] : BLUE[6], INK);
     for (const button of BUTTONS) {
       const { x, y, width, height } = button.rect;
       const disabled = button.id === 'spells' && !Object.values(SPELLS).some((s) => canCast(b, s.id));

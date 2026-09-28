@@ -1,8 +1,8 @@
-import { SPELLS, type SpellId } from '../content/spells';
+import { needsTarget, SPELLS, STATUSES, type SpellId } from '../content/spells';
 import { TROOPS, troops } from '../content/troops';
 import { chooseAction } from '../rules/battle/ai';
 import { manaInBattle } from '../rules/heroSheet';
-import { activeFighter, battleAct, canCast, castsLeft, CHARGE_BONUS, fighterById, heroOnField, isCharge, options, spellCost, spellDamage, spellVictims, strike, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
+import { activeFighter, battleAct, canCast, casterOf, castsLeft, chargeOf, CHARGE_BONUS, fighterById, heroOnField, isCharge, options, spellCost, spellDamage, spellsOf, spellVictims, strike, unitOf, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
 import { paintBanner } from '../render/banner';
 import { BattleScreen, BUTTONS, FIRE_FALL, FLOAT_RISE, hexAt, hexCentre, LOG_BOTTOM, type BattleView, type Shot } from '../render/battleScreen';
 import { animLength, bodyHeight, hitTime, type AnimName } from '../render/battleSprites';
@@ -60,7 +60,9 @@ export class BattleController implements Screen {
     this.screen = new BattleScreen(battle);
     this.cards = new CardView((action) => {
       this.cards.hide();
-      if (action.type === 'spell') this.view.targeting = action.spell;
+      // A spell aimed at a stack waits for its target; one that takes the whole field goes at once.
+      if (action.type === 'spell' && needsTarget(action.spell)) this.view.targeting = action.spell;
+      else if (action.type === 'spell') this.perform({ type: 'cast', spell: action.spell });
       else if (action.type === 'retreat') this.perform({ type: 'retreat' });
     });
     this.view = {
@@ -72,6 +74,7 @@ export class BattleController implements Screen {
       poses: new Map(),
       flashing: new Set(),
       dying: new Set(),
+      hidden: new Set(),
       reach: new Set(),
       hover: null,
       floaters: [],
@@ -112,6 +115,11 @@ export class BattleController implements Screen {
   /** "their Trolls" mid-sentence, but "Mother Mirrow" keeps her capital. */
   private objectName(id: number) {
     return this.fighterName(id).replace(/^(Your|Their) /, (m) => m.toLowerCase());
+  }
+
+  /** Who casts from a book: Aldric (no `by`), or the villain. */
+  private casterName(by?: number) {
+    return by === undefined ? (this.battle.hero.name ?? 'Aldric') : this.fighterName(by);
   }
 
   private step(duration: number, parts: Omit<Step, 'duration' | 'elapsed' | 'started'>) {
@@ -200,32 +208,68 @@ export class BattleController implements Screen {
   }
 
   /**
-   * Aldric casts from where he stands: he raises his hands (in his casting frames, if Wesnoth drew
-   * him any) and the magic gathers round him before it flies. Nothing plays for a hero who isn't on
-   * the field.
+   * A caster casts from where he stands: he raises his hands (in his casting frames, if Wesnoth drew
+   * him any) and the magic gathers round him before it flies. An order is bellowed instead, for
+   * all to hear. Nothing plays for a hero who isn't on the field.
    */
-  private cast(spell: SpellId) {
+  private cast(spell: SpellId, before: BattleState, by?: number) {
     const v = this.view;
-    const hero = heroOnField(this.battle);
-    if (!hero || hero.count <= 0) return;
-    const [x, y] = hexCentre(hero.at);
-    const art = ART[hero.troop];
-    const look = SPELLS[spell].look;
-    const hands: [number, number] = [x + 4 * this.facingOf(hero), y + 12 - bodyHeight(hero.troop, 'battle') * 0.5];
+    const caster = casterOf(before, by);
+    if (!caster || caster.count <= 0) return;
+    const [x, y] = hexCentre(caster.at);
+    const art = ART[caster.troop];
+    const { look, shout } = SPELLS[spell];
+    const hands: [number, number] = [x + 4 * this.facingOf(caster), y + 12 - bodyHeight(caster.troop, 'battle') * 0.5];
     const glow: Shot = { from: hands, to: hands, t: 0, kind: 'gather', color: look.colour === 'blue' ? BLUE[6] : look.colour === 'red' ? RED[5] : GOLD[6] };
-    const length = art.cast ? art.cast.reduce((t, f) => t + f.ms, 0) : 300;
+    const frames = art.cast ? art.cast.reduce((t, f) => t + f.ms, 0) : 300;
+    // An order takes long enough to be heard.
+    const length = shout ? Math.max(frames, 900) : frames;
     this.step(length * MS, {
       start: () => {
-        v.shots.push(glow);
-        v.log = `${this.fighterName(hero.id)} ${this.verb(hero.id, 'raise')} ${this.named(hero.id) ? 'his' : 'their'} hands...`;
+        if (!shout) v.shots.push(glow);
+        if (shout) {
+          v.log = `${this.casterName(by)} ${shout.verb}: ${shout.words}`;
+          this.float(caster.id, shout.words, GOLD[6]);
+          play('charge');
+        } else v.log = by === undefined ? `${this.casterName(by)} raises his hands...` : `${this.casterName(by)} mutters a spell...`;
       },
       tick: (t) => {
         glow.t = t;
-        if (art.cast) v.poses.set(hero.id, { anim: 'cast', ms: t * length });
+        if (art.cast) v.poses.set(caster.id, { anim: 'cast', ms: Math.min(frames, t * length) });
       },
       end: () => {
-        v.shots.splice(v.shots.indexOf(glow), 1);
-        v.poses.delete(hero.id);
+        if (!shout) v.shots.splice(v.shots.indexOf(glow), 1);
+        v.poses.delete(caster.id);
+      },
+    });
+  }
+
+  /** A stack called to the field marches in from its side's edge. */
+  private marchIn(e: Extract<BattleEvent, { type: 'summon' }>) {
+    const v = this.view;
+    const f = fighterById(this.battle, e.fighter);
+    const [x, y] = hexCentre(f.at);
+    const edge = f.side === 'player' ? MAP_VIEW.x + 8 : MAP_VIEW.x + MAP_VIEW.width - 8;
+    const frames = !!ART[f.troop].move;
+    const length = 0.25 + Math.abs(edge - x) / 160;
+    v.hidden.add(f.id);
+    this.step(length, {
+      start: () => {
+        v.hidden.delete(f.id);
+        v.facings.set(f.id, this.facingOf(f));
+        play('march');
+        v.log = `${this.fighterName(f.id, f.count)} march in from the edge of the field!`;
+      },
+      tick: (t) => {
+        const hop = frames ? 0 : Math.abs(Math.sin(t * Math.PI * 4)) * 3;
+        v.positions.set(f.id, [edge + (x - edge) * t, y - hop]);
+        v.poses.set(f.id, frames ? { anim: 'move', ms: t * length * 1000 } : { anim: 'stand', ms: 0 });
+      },
+      end: () => {
+        v.positions.delete(f.id);
+        v.poses.delete(f.id);
+        v.facings.delete(f.id);
+        this.float(f.id, `+${f.count}`, f.side === 'player' ? GOLD[6] : RED[5]);
       },
     });
   }
@@ -247,6 +291,25 @@ export class BattleController implements Screen {
       tick: (t) => (dust.t = t),
       end: () => this.view.shots.splice(this.view.shots.indexOf(dust), 1),
     });
+  }
+
+  /** Gives health back to what is left of a stack, raising its fallen. */
+  private mend(left: Left, id: number, healed: number) {
+    const was = left.get(id)!;
+    const full = unitOf(fighterById(this.battle, id)).hp;
+    const total = Math.max(0, was.count - 1) * full + (was.count > 0 ? was.hp : 0) + healed;
+    const count = Math.ceil(total / full);
+    left.set(id, { count, hp: total - (count - 1) * full });
+  }
+
+  /** What the ribbon says as a spell lands. */
+  private spellLine(e: Extract<BattleEvent, { type: 'spell' }>, stacks: number) {
+    const spell = SPELLS[e.spell];
+    const who = this.casterName(e.by);
+    if (spell.effect.kind === 'mass') return `${who} casts ${spell.name} on ${stacks === 1 ? this.objectName(e.target) : `all ${stacks} of ${fighterById(this.battle, e.target).side === 'player' ? 'your' : 'their'} stacks`}.`;
+    if (e.healed) return `${who} casts ${spell.name} on ${this.objectName(e.target)}: ${e.healed} health back${e.raised ? `, and ${e.raised} get up again` : ''}.`;
+    const fell = e.killed ? (this.named(e.target) ? `, and ${this.fighterName(e.target)} falls` : `, ${e.killed} perish`) : '';
+    return `${who} casts ${spell.name} on ${this.objectName(e.target)}${e.damage ? `: ${e.damage} damage${fell}` : ''}.`;
   }
 
   /** Takes a blow from what is left of a stack (its count, and its top troop's health); true when that was the last of them. */
@@ -357,7 +420,8 @@ export class BattleController implements Screen {
     const before = this.battle;
     const { battle, events } = battleAct(before, action);
     if (events.length === 0) return false;
-    this.acting = action.type === 'volley' ? null : (activeFighter(before)?.id ?? null);
+    // A villain's spell or order is his to show, whoever's turn it is.
+    this.acting = action.type === 'volley' ? null : action.type === 'cast' && action.by !== undefined ? action.by : (activeFighter(before)?.id ?? null);
     this.battle = battle;
     this.view.targeting = null;
     this.view.hover = null;
@@ -370,7 +434,10 @@ export class BattleController implements Screen {
     const v = this.view;
     // Who is left in each stack as the events play: a stack falls at the blow that kills it, and its
     // badge (or health bar) keeps what it showed before the action until each blow lands.
-    const left: Left = new Map(before.fighters.map((f) => [f.id, { count: v.counts.get(f.id) ?? f.count, hp: v.health.get(f.id) ?? f.hp }]));
+    const left: Left = new Map(this.battle.fighters.map((now) => {
+      const f = before.fighters.find((o) => o.id === now.id) ?? now;
+      return [f.id, { count: v.counts.get(f.id) ?? f.count, hp: v.health.get(f.id) ?? f.hp }];
+    }));
     for (const e of events) {
       if (e.type !== 'hit' && e.type !== 'spell') continue;
       v.counts.set(e.target, left.get(e.target)!.count);
@@ -426,7 +493,8 @@ export class BattleController implements Screen {
           break;
         }
         case 'spell': {
-          // Stacks caught in a burst beside the target take their damage with it, at the same moment.
+          // Stacks caught in a burst beside the target take their damage with it, at the same moment;
+          // a spell on a whole side lands on every stack of it together.
           if (e.splash) break;
           const from = events.indexOf(e) + 1;
           const stop = events.findIndex((n, k) => k >= from && !(n.type === 'spell' && n.splash));
@@ -434,14 +502,21 @@ export class BattleController implements Screen {
           const victims = [e, ...caught].map((h) => {
             const dies = this.wound(left, h.target, h.damage);
             if (dies) v.dying.add(h.target);
+            if (h.healed) this.mend(left, h.target, h.healed);
             return { h, dies, remaining: { ...left.get(h.target)! }, ours: fighterById(this.battle, h.target).side === 'player' };
           });
-          this.cast(e.spell);
+          this.cast(e.spell, before, e.by);
+          const spell = SPELLS[e.spell];
           const target = fighterById(this.battle, e.target);
-          const [tx, ty] = hexCentre(target.at);
-          const look = SPELLS[e.spell].look;
+          const look = spell.look;
           const colour = look.colour === 'blue' ? BLUE[6] : look.colour === 'red' ? RED[5] : GOLD[6];
-          const shot = { from: [tx, 0] as [number, number], to: [tx, ty - 10] as [number, number], t: 0, kind: look.kind, color: colour };
+          // One bolt or fireball at the target; a sparkle on each stack a spell on a whole side lands on.
+          const struck = spell.effect.kind === 'mass' ? victims.map((x) => fighterById(this.battle, x.h.target)) : [target];
+          const shots = struck.map((x) => {
+            const [tx, ty] = hexCentre(x.at);
+            return { from: [tx, 0] as [number, number], to: [tx, ty - 10] as [number, number], t: 0, kind: look.kind, color: colour };
+          });
+          const status = spell.effect.kind === 'status' || spell.effect.kind === 'mass' ? STATUSES[spell.effect.status] : null;
           // A fireball has to fall before it bursts: the sound, the numbers, the flinch and the jolt land with the burst.
           const land = look.kind === 'fire' ? FIRE_FALL : 0;
           let landed = false;
@@ -451,6 +526,8 @@ export class BattleController implements Screen {
             for (const { h, remaining, ours } of victims) {
               v.counts.set(h.target, remaining.count);
               v.health.set(h.target, remaining.hp);
+              if (h.healed) this.float(h.target, h.raised && !this.named(h.target) ? `+${h.raised}` : `+${h.healed} hp`, GOLD[6]);
+              if (status) this.float(h.target, status.name, BLUE[6]);
               if (!h.damage) continue;
               v.poses.set(h.target, { anim: 'defendRanged', ms: 0 });
               this.float(h.target, h.killed && !this.named(h.target) ? `-${h.killed}` : `-${h.damage} hp`, ours ? RED[5] : GOLD[6]);
@@ -459,19 +536,20 @@ export class BattleController implements Screen {
           };
           this.step(look.kind === 'fire' ? 0.95 : 0.4, {
             start: () => {
-              v.shots.push(shot);
-              v.log = `${this.battle.hero.name ?? 'Aldric'} casts ${SPELLS[e.spell].name} on ${this.objectName(e.target)}${e.damage ? `: ${e.damage} damage${e.killed ? (this.named(e.target) ? `, and ${this.fighterName(e.target)} falls` : `, ${e.killed} perish`) : ''}` : ''}.`;
+              v.shots.push(...shots);
+              // An order was bellowed for all to hear: the ribbon keeps his words.
+              if (!spell.shout) v.log = this.spellLine(e, victims.length);
               if (!land) impact();
             },
             tick: (t) => {
-              shot.t = t;
+              for (const shot of shots) shot.t = t;
               if (!landed && t >= land) impact();
               // The spell burns in two red pulses, as Wesnoth flashes a unit that is hit.
               const k = landed ? ((t - land) / (1 - land)) * 0.95 : 0;
               for (const { h } of victims) if (h.damage) v.flashing[pulse(k) ? 'add' : 'delete'](h.target);
             },
             end: () => {
-              v.shots.splice(v.shots.indexOf(shot), 1);
+              for (const shot of shots) v.shots.splice(v.shots.indexOf(shot), 1);
               for (const { h, dies } of victims) {
                 v.flashing.delete(h.target);
                 if (!dies) v.poses.delete(h.target);
@@ -496,8 +574,24 @@ export class BattleController implements Screen {
           this.step(0.05, { start: () => (v.log = `Round ${e.round}.`) });
           break;
         case 'volley':
-          this.step(0.3, { start: () => (v.log = 'From the treeline, your archers loose a volley before anyone moves!') });
+          // An order: he bellows it, and the shots that follow are his men's.
+          if (e.spell) this.cast(e.spell, before, e.by);
+          else this.step(0.3, { start: () => (v.log = 'From the treeline, your archers loose a volley before anyone moves!') });
           break;
+        case 'summon':
+          this.cast(e.spell, before, e.by);
+          this.marchIn(e);
+          break;
+        case 'skip': {
+          const status = STATUSES[e.status];
+          this.step(0.7, {
+            start: () => {
+              this.float(e.fighter, status.name, GOLD[6]);
+              v.log = `${this.fighterName(e.fighter)} ${this.named(e.fighter) ? 'loses a turn' : 'lose their turn'}: ${status.name.toLowerCase()} can't do much. Then the spell wears off.`;
+            },
+          });
+          break;
+        }
         case 'end':
           this.step(2.2, {
             start: () => {
@@ -640,15 +734,24 @@ export class BattleController implements Screen {
     const intent = hex === null ? null : this.intent(hex, x, y);
     this.view.hover = intent && hex !== null ? { hex, kind: intent.kind } : null;
     this.view.inspect = hex === null ? null : (this.battle.fighters.find((f) => f.count > 0 && f.at === hex)?.id ?? null);
-    this.view.preview = intent ? this.forecast(intent.action) : null;
+    const under = this.view.inspect === null ? null : fighterById(this.battle, this.view.inspect);
+    this.view.preview = intent ? this.forecast(intent.action) : under?.book ? this.bookLine(under.id) : null;
     this.display.canvas.style.cursor = intent ? 'pointer' : 'default';
+  }
+
+  /** A villain's spells and orders, for when you look him over. */
+  private bookLine(id: number) {
+    const book = fighterById(this.battle, id).book!;
+    const spells = book.spells.map((s) => SPELLS[s].name);
+    const orders = (book.charges ?? []).filter((c) => c.uses > 0).map((c) => `${SPELLS[c.spell].shout?.words ?? SPELLS[c.spell].name}${c.uses > 1 ? ` x${c.uses}` : ''}`);
+    return `${this.fighterName(id)}: ${[spells.length ? `spells ${spells.join(', ')} (${book.mana} mana)` : '', orders.length ? `orders ${orders.join(' ')}` : ''].filter(Boolean).join('; ')}`;
   }
 
   /** What an attack would probably do: average damage, how many fall, and whether they strike back. */
   private forecast(action: BattleAction): string | null {
     const f = activeFighter(this.battle);
     if (!f) return null;
-    const target = 'target' in action ? fighterById(this.battle, action.target) : null;
+    const target = 'target' in action && action.target !== undefined ? fighterById(this.battle, action.target) : null;
     if (!target) return null;
     const t = TROOPS[target.troop];
     const one = this.named(target.id);
@@ -702,12 +805,17 @@ export class BattleController implements Screen {
 
   private openSpellbook() {
     const { hero } = this.battle;
-    const spells = hero.spells.map((id) => SPELLS[id]);
+    const spells = spellsOf(this.battle).map((id) => SPELLS[id]);
+    // A charge (a wand's bolt) costs no mana: the book says how many are left instead.
+    const cost = (id: SpellId) => {
+      const charge = chargeOf(this.battle, id);
+      return charge ? `${charge.uses} left` : `${spellCost(this.battle, id)}`;
+    };
     const own = heroOnField(this.battle);
     const gone = own && own.count <= 0 ? [`*${hero.name ?? 'Aldric'} has been carried from the field: no more spells this battle.*`] : [];
     this.cards.show({
       title: 'Spellbook',
-      lines: [...gone, manaInBattle(hero.mana, hero.maxMana), `${(hero.casts ?? 1) > 1 ? `Two spells a round: ${castsLeft(this.battle)} left this round.` : 'One spell a round.'}`, ...spells.map((s) => `**${s.name}** (${spellCost(this.battle, s.id)}): ${s.note}`)],
+      lines: [...gone, manaInBattle(hero.mana, hero.maxMana), `${(hero.casts ?? 1) > 1 ? `Two spells a round: ${castsLeft(this.battle)} left this round.` : 'One spell a round.'}`, ...spells.map((s) => `**${s.name}** (${cost(s.id)}): ${s.note}`)],
       choices: [
         ...spells.filter((s) => canCast(this.battle, s.id)).map((s) => ({ label: `Cast ${s.name}`, action: { type: 'spell' as const, spell: s.id } })),
         { label: 'Close', action: { type: 'close' } },
