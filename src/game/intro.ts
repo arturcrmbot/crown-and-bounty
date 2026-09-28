@@ -59,7 +59,7 @@ export function storyCard(background: BackgroundId, briefed = false): Card {
       `You ride out with ${b.army.map((s) => troops(s.troop, s.count)).join(' and ')}${b.spells.length ? `, and ${b.spells.map((s) => SPELLS[s].name).join(', ')} in your spellbook` : ''}.`,
       `**${b.signature.name}.** ${b.signature.note}`,
       'Click the map to ride, and click anything that looks interesting. Red marks on your route are for tomorrow.',
-      `The hourglass (or **E**) ends the day. Every seventh day is payday. Click ${b.short} to see what he has learned. **M** turns the sound off.`,
+      `The hourglass (or **E**) ends the day. Every seventh day is payday. Click ${b.short} (or press **H**) for his gear and his army. **M** turns the sound off, and **?** lists every key.`,
     ],
     choices: [{ label: 'Ride out', action: { type: 'close' } }],
     wide: true,
@@ -84,4 +84,18 @@ export function endCard(state: GameState): Card {
   if (state.over === 'lost') return failedCard(state);
   if (hasNextCommission(state)) return { title: 'The bounty is paid!', lines: [`${commissionOf(state).villain} is on the way to the King.`], choices: [{ label: 'Ride to the King\u2019s court', action: { type: 'court' } }] };
   return { title: 'The campaign is won!', lines: campaignLines(state).slice(1), choices: [{ label: 'Start a new campaign', action: { type: 'restart' } }] };
+}
+
+/** Every key, on one card: press ? on the map. */
+export function keysCard(): Card {
+  return {
+    title: 'Keys',
+    wide: true,
+    lines: [
+      '**On the map.** Click to ride, and click anything to look at it. Drag, the arrows or **WASD** look around. **E** ends the day, **H** opens the hero and his army, **M** turns the sound off, and **Esc** closes a card.',
+      '**In battle.** Click a hex to move, or an enemy to attack. **S** opens the spellbook, **W** waits, **D** defends, **A** hands over to the sergeants, and **R** retreats.',
+      '**On the hero screen.** Drag an artifact or a stack where you want it, or click it, then click where it goes. A double-click wears an artifact or takes it off. The arrows move between squares, **Enter** picks up and puts down, **Shift** and an arrow moves what\u2019s there, and **Delete** dismisses a stack. **H** or **Esc** closes it.',
+    ],
+    choices: [{ label: 'Close', action: { type: 'close' } }],
+  };
 }

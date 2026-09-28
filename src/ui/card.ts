@@ -3,9 +3,12 @@ import { portraitOf } from '../render/portraits';
 import type { Action, Card } from '../rules/game';
 import './card.css';
 import { bitmapUrl } from './pixels';
+import { uiScale } from './scale';
 import { play } from './sound';
 
 type ScreenPoint = { x: number; y: number };
+/** A box on the page (page pixels) that a card with nowhere in particular to be should keep clear of. */
+export type Keepout = { x0: number; y0: number; x1: number; y1: number };
 
 const escape = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const format = (text: string) => escape(text).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\*(.+?)\*/g, '<i>$1</i>');
@@ -27,6 +30,8 @@ export class CardView {
   private readonly card = document.createElement('div');
   private onChoice: (action: Action) => void;
   private title: string | null = null;
+  private scale = 1;
+  private tallest = 0;
 
   constructor(onChoice: (action: Action) => void) {
     this.onChoice = onChoice;
@@ -91,6 +96,18 @@ export class CardView {
     this.wrap.hidden = true;
   }
 
+  /**
+   * Enter or Space on a card with one thing to do ("Close", "Ride out") does it; a card with a real
+   * choice waits for one. A focused button answers the key itself. True if a button was pressed.
+   */
+  pressOnly(): boolean {
+    if (this.wrap.hidden || this.card.contains(document.activeElement)) return false;
+    const buttons = [...this.card.querySelectorAll<HTMLButtonElement>('.choices button:not(:disabled)')];
+    if (buttons.length !== 1) return false;
+    buttons[0].click();
+    return true;
+  }
+
   /** Takes the card off the page for good, when its screen goes away. */
   dispose() {
     this.wrap.remove();
@@ -98,19 +115,41 @@ export class CardView {
 
   /**
    * Puts the card's bottom edge just above `point` (page pixels), or just below it when there is no
-   * room above, kept between `top` and `bottom`. With no point, the card sits in the middle.
+   * room above, kept between `top` and `bottom`. With no point, the card sits in the middle, or beside
+   * `keepout` if the middle would cover it. Cards grow with the canvas, as the pixel art does.
    */
-  place(point: ScreenPoint | null, top: number, bottom: number) {
+  place(point: ScreenPoint | null, top: number, bottom: number, keepout?: Keepout) {
     if (this.wrap.hidden) return;
-    const { offsetWidth: w, offsetHeight: h } = this.wrap;
+    const s = uiScale();
+    if (s !== this.scale) {
+      this.scale = s;
+      this.wrap.style.transform = s === 1 ? '' : `scale(${s})`;
+    }
+    const tallest = Math.floor((window.innerHeight - 46) / s);
+    if (tallest !== this.tallest) {
+      this.tallest = tallest;
+      this.card.style.maxHeight = `${tallest}px`;
+    }
+    const [w, h] = [this.wrap.offsetWidth * s, this.wrap.offsetHeight * s];
     // Too tall for the map area: use the whole window, so the buttons at the bottom stay on screen.
     if (h > bottom - top - 16) [top, bottom] = [0, window.innerHeight];
     const [minY, maxY] = [top + 8, Math.max(top + 8, bottom - h - 8)];
     const clampY = (y: number) => Math.min(maxY, Math.max(minY, y));
-    const x = Math.min(window.innerWidth - w - 8, Math.max(8, (point ? point.x : window.innerWidth / 2) - w / 2));
+    let x = Math.min(window.innerWidth - w - 8, Math.max(8, (point ? point.x : window.innerWidth / 2) - w / 2));
     let y: number;
-    if (!point) y = clampY((top + bottom - h) / 2);
-    else {
+    if (!point) {
+      y = clampY((top + bottom - h) / 2);
+      const k = keepout;
+      if (k && x < k.x1 && x + w > k.x0 && y < k.y1 && y + h > k.y0) {
+        // Beside him, on the side with more room, or else above or below him.
+        const [left, right] = [k.x0 - 14 - w, k.x1 + 14];
+        const leftFits = left >= 8;
+        const rightFits = right + w <= window.innerWidth - 8;
+        if (leftFits || rightFits) x = leftFits && (!rightFits || k.x0 > window.innerWidth - k.x1) ? left : right;
+        else if (k.y0 - h - 10 >= minY) y = k.y0 - h - 10;
+        else if (k.y1 + 10 <= maxY) y = k.y1 + 10;
+      }
+    } else {
       const above = point.y - h - 10;
       y = above >= minY ? above : clampY(point.y + 30);
     }

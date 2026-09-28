@@ -11,7 +11,9 @@ import { paletteWords } from './render/palette';
 import { loadUnitArt } from './render/wesnoth';
 import { toggleMute, wakeAudio } from './audio/context';
 import { MuteButton } from './ui/mute';
-import { beginCommission, commissionAt, hasNextCommission, newGame, startFight, type GameState } from './rules/game';
+import { setUiScale } from './ui/scale';
+import { ARTIFACTS, type ArtifactId } from './content/artifacts';
+import { beginCommission, commissionAt, giveArtifact, hasNextCommission, newGame, startFight, type GameState } from './rules/game';
 
 declare global {
   interface Window {
@@ -37,9 +39,13 @@ const seed = query.has('seed') ? Number(query.get('seed')) : frozen ? 1066 : cry
 
 /** Debug starts: ?commission=2 rides into the second province, ?court=1 opens the court after the first. */
 function debugStart(): GameState {
-  // ?hero=ranger (or knight, wizard, courtier) picks the background for a debug start.
+  // ?hero=ranger (or knight, wizard, courtier) picks the background for a debug start, so the opening card doesn't ask.
   const who = query.get('hero');
-  const picked = newGame(seed, undefined, who && who in BACKGROUNDS ? (who as BackgroundId) : 'knight');
+  const chosen = who && who in BACKGROUNDS ? (who as BackgroundId) : null;
+  const drafted = newGame(seed, undefined, chosen ?? 'knight');
+  // ?gear=swordOfAldmoor,oldBanner gives artifacts: worn if their slot is free, in the pack if not.
+  const gear = (query.get('gear') ?? '').split(',').filter((id): id is ArtifactId => id in ARTIFACTS);
+  const picked = gear.reduce(giveArtifact, chosen ? { ...drafted, opening: undefined } : drafted);
   // ?spells=fireball,stoneskin teaches spells for a debug start.
   const taught = (query.get('spells') ?? '').split(',').filter((id): id is SpellId => id in SPELLS && !picked.hero.spells.includes(id as SpellId));
   const first = taught.length ? { ...picked, hero: { ...picked.hero, spells: [...picked.hero.spells, ...taught] } } : picked;
@@ -69,7 +75,7 @@ const game = new Game(display, Math.max(1, Number(query.get('speed') ?? 1)));
 const input = new Input(display, game.input);
 // The title and the King's welcome come first, unless a debug start (or a frozen screenshot) wants straight in.
 // ?quick=1 skips them too; ?title=1 brings them back even when frozen.
-const quick = (frozen && query.get('title') !== '1') || ['quick', 'battle', 'court', 'commission', 'sceptre', 'reveal', 'x', 'hero', 'spells', 'army'].some((k) => query.has(k));
+const quick = (frozen && query.get('title') !== '1') || ['quick', 'battle', 'court', 'commission', 'sceptre', 'reveal', 'x', 'hero', 'spells', 'army', 'gear'].some((k) => query.has(k));
 if (quick) {
   await unitArt;
   // ?reveal=1 lifts the fog, for looking the whole map over.
@@ -101,6 +107,7 @@ requestAnimationFrame(function frame(now) {
   game.update(dt, input.held);
   const tick = frozen ? 0 : Math.floor(now / TICK_MS);
   display.present(game.frame(tick), paletteWords(tick));
+  setUiScale(display.scale);
   game.placeCards();
   mute.place(display);
   window.__ready = true;

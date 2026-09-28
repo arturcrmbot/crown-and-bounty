@@ -242,7 +242,16 @@ export type Action =
   | { type: 'retreat' }
   | { type: 'learn'; option: string }
   | { type: 'equip'; artifact: ArtifactId }
-  | { type: 'gear' }
+  /** Wears the artifact in pack square `from`; whatever its slot held takes that square. */
+  | { type: 'wear'; from: number }
+  /** Takes off what's worn in `slot`, into pack square `to` (or the end). */
+  | { type: 'unequip'; slot: Slot; to?: number }
+  /** Moves an artifact between pack squares: onto another, the two swap. */
+  | { type: 'movePack'; from: number; to: number }
+  /** Moves a stack along the army line, which sets its row in battle: onto another, the two swap. */
+  | { type: 'moveStack'; from: number; to: number }
+  /** Sends a stack home. The last one stays. */
+  | { type: 'dismiss'; index: number }
   | { type: 'background'; id: BackgroundId }
   | { type: 'mapSpell'; spell: MapSpellId }
   /** After a won commission: ride to the King. */
@@ -315,6 +324,12 @@ export function armyLine(army: Army): string {
   const parts = army.filter((s) => s.count > 0).map((s) => troops(s.troop, s.count));
   return parts.length ? parts.join(' · ') : 'No army at all';
 }
+
+/** Who is still with the hero after a retreat, a flight or a stand-off. */
+export const stillWithYou = (army: Army) => (army.some((s) => s.count > 0) ? `*Still with you: ${armyLine(army)}.*` : '*Nobody is left with you.*');
+
+/** "**10 Peasants** join your army.", or "**1 Knight** joins" it. */
+export const joinLine = (troop: TroopId, count: number) => `**${troops(troop, count)}** ${count === 1 ? 'joins' : 'join'} your army.`;
 
 /** Adds troops to the stack of the same kind, or a free slot. Null when all five slots are taken. */
 export function addTroops(army: Army, troop: TroopId, count: number): Army | null {

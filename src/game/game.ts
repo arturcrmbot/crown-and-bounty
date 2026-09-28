@@ -5,6 +5,7 @@ import { hasNextCommission, toCourt, type GameEvent, type GameState } from '../r
 import { AdventureController } from './adventure';
 import { BattleController } from './battle';
 import { CourtController } from './court';
+import { HeroController } from './hero';
 import { PrologueController } from './prologue';
 import { TitleController } from './title';
 import type { Display } from './display';
@@ -96,7 +97,14 @@ export class Game {
     adventure.onBattle = () => this.openBattle();
     adventure.onCourt = () => this.openCourt();
     adventure.onCommission = (next, rest) => this.beginCommission(next, rest);
+    adventure.onHero = (stack) => this.openHero(stack);
     return adventure;
+  }
+
+  /** The hero screen over the map, maybe with a stack's card open; closing it goes back to the map. */
+  private openHero(stack: number | null) {
+    if (this.top !== this.adventure) return;
+    this.push(new HeroController(this.display, this.adventure, () => this.top instanceof HeroController && this.pop(), stack));
   }
 
   private openBattle() {
@@ -172,9 +180,9 @@ export class Game {
     const adventure = () => (this.stack[0] instanceof AdventureController ? this.stack[0].debug() : null);
     return {
       click: (x: number, y: number) => adventure()?.click(x, y),
-      /** Presses the first button on the card on screen whose text starts with `label`. */
+      /** Presses the first button that can be pressed on the card (or the hero screen) on screen whose text starts with `label`. */
       choose: (label: string) => {
-        const button = [...document.querySelectorAll<HTMLButtonElement>('.kc-card-wrap:not([hidden]) .kc-card button')].find((b) => b.textContent?.startsWith(label));
+        const button = [...document.querySelectorAll<HTMLButtonElement>('.kc-card-wrap:not([hidden]) .kc-card button, .kc-hero button.act')].find((b) => !b.disabled && b.textContent?.startsWith(label));
         button?.click();
         return Boolean(button);
       },
@@ -185,6 +193,8 @@ export class Game {
       hover: () => adventure()?.hover() ?? null,
       screen: () => this.top.name,
       battle: () => (this.top instanceof BattleController ? this.top.debug() : null),
+      /** What the hero screen shows, while it's open. */
+      hero: () => (this.top instanceof HeroController ? this.top.sheet.describe() : null),
       frameHash: () => hashOf(this.top.bitmap.data),
       /** Moves the clock on by hand, even when frozen: for frame-by-frame screenshots of an animation. */
       advance: (seconds: number) => this.update(seconds, new Set()),

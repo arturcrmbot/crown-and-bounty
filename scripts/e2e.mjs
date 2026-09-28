@@ -155,6 +155,39 @@ try {
   const tops = await kc.state();
   check(tops.hero.gear.banner === 'oldBanner' || tops.hero.pack.includes('oldBanner'), 'he takes the Old Tower Banner');
   await close();
+
+  // The hero screen: H opens it; artifacts and stacks move by drag and drop, through the rules.
+  await page.keyboard.press('h');
+  await page.waitForTimeout(100);
+  const sheet = () => kc.call(() => window.__kc.hero());
+  check((await screen()) === 'hero' && (await sheet())?.title === 'Sir Aldric, Knight of the Realm', 'H opens the hero screen');
+  const dragTo = async (from, to) => {
+    const at = async (place) => {
+      const b = await page.locator(`.kc-hero [data-place="${place}"]`).boundingBox();
+      return [b.x + b.width / 2, b.y + b.height / 2];
+    };
+    const [[x0, y0], [x1, y1]] = [await at(from), await at(to)];
+    await page.mouse.move(x0, y0);
+    await page.mouse.down();
+    await page.mouse.move(x0 + 8, y0 + 8, { steps: 2 });
+    await page.mouse.move(x1, y1, { steps: 6 });
+    await page.mouse.up();
+    await page.waitForTimeout(80);
+  };
+  if ((await sheet()).slots.banner !== 'oldBanner') await dragTo(`pack:${(await sheet()).pack.indexOf('oldBanner')}`, 'slot:banner');
+  await dragTo('slot:banner', 'pack:0');
+  let looked = await sheet();
+  check(looked.slots.banner === null && looked.pack[0] === 'oldBanner', 'the banner comes off, dragged into the pack');
+  await dragTo('pack:0', 'slot:banner');
+  looked = await sheet();
+  check(looked.slots.banner === 'oldBanner' && (await kc.state()).hero.gear.banner === 'oldBanner', 'and goes back on, dragged to its slot');
+  const line = looked.army;
+  await dragTo('stack:1', 'stack:0');
+  check(JSON.stringify((await sheet()).army) === JSON.stringify([line[1], line[0], ...line.slice(2)]), 'a stack dragged onto another swaps places with it in the line');
+  await dragTo('stack:1', 'stack:0');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(60);
+  check((await screen()) === 'adventure' && JSON.stringify((await kc.state()).army.map((a) => `${a.count} ${a.troop}`)) === JSON.stringify(line), 'Escape closes it, with the army as it was');
   await go('mine', 'Enter');
   check(await kc.choose('Take the cart'), 'the dwarf gives up his ore cart');
   await close();
