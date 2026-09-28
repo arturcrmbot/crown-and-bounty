@@ -1,8 +1,10 @@
-# Every push to main is checked and, once typecheck, the build and the fast unit tests pass, deployed
-# to GitHub Pages: live about three minutes after the push. The bot's slow tests, the play-through, a
-# playtest with each background, the visual scenes and the balance report run alongside and report in
-# the run's summary and artifacts. If main breaks, an issue labelled `ci` opens itself, and closes when
-# main is green.
+# Every pull request (the factory's too) gets typecheck, the build and the fast unit tests, the bot
+# playing whole commissions, and the play-through with a playtest per background. Main, on a push or a
+# dispatch (auto-merge dispatches, as its merges start no run), gets typecheck, the build and the fast
+# unit tests, which gate the deploy to GitHub Pages, then the play-through and the balance report,
+# which the factory's daily check reads. The visual scenes only run by hand (Run workflow > visual),
+# on a Mac, where they were approved. If main breaks, an issue labelled `ci` opens itself, and closes
+# when main is green. The repo is private: minutes count, so nothing here runs twice for one commit.
 name: CI
 
 on:
@@ -10,6 +12,15 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      visual:
+        description: Compare the frozen scenes too (a Mac runner, 10x the minutes)
+        type: boolean
+        default: false
+      bot:
+        description: Run the bot's whole-commission tests too
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -21,9 +32,9 @@ defaults:
 
 jobs:
   check:
-    name: Typecheck and build
+    name: Typecheck, unit tests, build
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     concurrency:
       group: check-${{ github.ref }}
       cancel-in-progress: true
@@ -36,6 +47,7 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npx vite build
+      - run: npm run test:fast -- --maxWorkers=2
       - name: Size of the build
         run: |
           {
@@ -46,33 +58,14 @@ jobs:
             echo "| Everything | $(du -sh dist | cut -f1) |"
           } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-pages-artifact@v3
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         with:
           path: dist
 
-  test:
-    name: Unit tests (${{ matrix.shard }}/2)
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    strategy:
-      matrix:
-        shard: [1, 2]
-    concurrency:
-      group: test-${{ matrix.shard }}-${{ github.ref }}
-      cancel-in-progress: true
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-      - run: npm ci
-      - run: npm run test:fast -- --shard=${{ matrix.shard }}/2
-
   deploy:
     name: Deploy to GitHub Pages
-    needs: [check, test]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: check
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -91,9 +84,10 @@ jobs:
 
   bot:
     name: The bot plays whole commissions
-    # Slow (minutes on these runners), so it doesn't hold up the deploy.
+    # Minutes long, so it runs on pull requests (before they merge) and by hand, not again on main.
+    if: github.event_name == 'pull_request' || inputs.bot
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     concurrency:
       group: bot-${{ github.ref }}
       cancel-in-progress: true
@@ -161,7 +155,8 @@ jobs:
 
   visual:
     name: Visual scenes (report)
-    # Scenes were approved on a Mac, so they're drawn on one here too; it only reports.
+    # Scenes were approved on a Mac, so they're drawn on one here too; it only reports, and only by hand.
+    if: inputs.visual
     runs-on: macos-latest
     timeout-minutes: 20
     continue-on-error: true
@@ -193,6 +188,7 @@ jobs:
 
   balance:
     name: Balance report
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     continue-on-error: true
@@ -221,8 +217,8 @@ jobs:
 
   alert:
     name: Issue when main breaks
-    needs: [check, test, bot, play]
-    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [check, play]
+    if: always() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       issues: write
@@ -231,8 +227,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           CHECK: ${{ needs.check.result }}
-          TEST: ${{ needs.test.result }}
-          BOT: ${{ needs.bot.result }}
           PLAY: ${{ needs.play.result }}
           RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           SHA: ${{ github.sha }}
@@ -240,13 +234,11 @@ jobs:
           title="Main is broken"
           open=$(gh issue list --state open --label ci --search "\"$title\" in:title" --json number --jq '.[0].number // empty')
           what=""
-          [ "$CHECK" = failure ] && what="typecheck or the build"
-          [ "$TEST" = failure ] && what="${what:+$what, }the unit tests"
-          [ "$BOT" = failure ] && what="${what:+$what, }the bot's whole-commission tests"
+          [ "$CHECK" = failure ] && what="typecheck, the unit tests or the build"
           [ "$PLAY" = failure ] && what="${what:+$what, }the play-through"
           if [ -n "$what" ]; then
             body=$(printf 'Commit %s broke %s.\n\nRun: %s' "${SHA:0:7}" "$what" "$RUN")
             if [ -n "$open" ]; then gh issue comment "$open" --body "$body"; else gh issue create --title "$title" --label ci --label bug --body "$body"; fi
-          elif [ "$CHECK$TEST$BOT$PLAY" = successsuccesssuccesssuccess ] && [ -n "$open" ]; then
+          elif [ "$CHECK$PLAY" = successsuccess ] && [ -n "$open" ]; then
             gh issue close "$open" --comment "Green again at ${SHA:0:7}: $RUN"
           fi
