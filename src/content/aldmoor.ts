@@ -12,6 +12,7 @@ const at = {
   patrol: [404, 586],
   signpost: [520, 520],
   chest: [458, 702],
+  well: [908, 592],
   gold: [640, 560],
   hideout: [104, 850],
   wolves: [256, 700],
@@ -381,6 +382,17 @@ export const ALDMOOR: Province = {
       text: { about: ['The village archery butts. Straw targets, and a sign: *"MIND THE GOOSE"*.', 'Archers, for hire.'] },
     },
     { id: 'chest', kind: 'chest', name: 'Treasure Chest', at: at.chest, done: false, gold: 500, artifact: 'surveyorsChain' },
+    {
+      id: 'well',
+      kind: 'well',
+      name: 'St Aldhelm\u2019s Well',
+      at: at.well,
+      done: false,
+      text: {
+        about: ['A holy well with a tin cup on a chain. The pilgrims say its water clears the head.'],
+        visit: ['You drink. The water is cold enough to hurt, and your head is suddenly very clear.'],
+      },
+    },
     { id: 'gold', kind: 'gold', name: 'Pile of Gold', at: at.gold, done: false, gold: 250 },
     {
       id: 'patrol',

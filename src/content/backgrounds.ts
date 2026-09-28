@@ -82,6 +82,17 @@ export type Bonus = {
   luck?: number;
   /** Chance, as a fraction, that a stack's good spirits win it another turn before the round moves on. */
   morale?: number;
+  /** Recruiters throw in this share more, free. */
+  freeRecruits?: number;
+  /** Share of a day's movement he can leave unused and ride tomorrow. */
+  carry?: number;
+  /** He can smell treasure this far off: at dawn the mist lifts over it. */
+  smells?: number;
+  /** Share of his purse the King's bankers pay on payday (up to 500). */
+  interest?: number;
+  /** More choices at every level-up, and more boons at court. */
+  choices?: number;
+  boons?: number;
 };
 
 export type Background = {
