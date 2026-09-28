@@ -3,6 +3,38 @@
 Newest first. Each entry says what was played, how it felt to an experienced player (HoMM2, King's Bounty,
 modern RPGs), and what was done about it.
 
+## #13: 28 Sep 2026, music that knows where you are
+
+**Played:** every tune rendered offline through the game's own buses and measured (`npm run listen -- tracks`):
+each pass of every form, the seam where it comes round again, and the battle tunes in each mood (calm, just
+begun, heated, winning, losing). Then, with the sound on in headless Edge and `__kc.sound()` reporting: a Knight
+winning and losing against the patrol, storming Grimsby's stockade, and at Mother Mirrow's hut; and Castle
+Aldmoor visited and left. Consonance, forms and ranges checked by tests for all twelve tracks.
+
+**How it felt (in numbers, since nobody here can listen):** the map tunes used to loop every 25 to 40 seconds, and
+a player hears them for hours. Now each has a second strain and a form of four to eight passes, each arranged its
+own way (a fife takes the tune, then the harp over a drone with the drum resting), so it takes two to three
+minutes to come round, and every other time round the recorder and fife swap and a few long notes get a grace
+from the note above. The three provinces beyond the Fenmarch have tunes of their own: a reel for the Baron's
+country, a slow air for Aunt Bramble's fen, and for the last commission a broad tune whose second strain is the
+title's, the King's own, on brass. Riding near a lair brings its villain's theme in, quieter: a lone fife and a
+horn behind Grimsby's walls, a lurching bog waltz at Mother Mirrow's hut, Aunt Bramble's stamping jig. Attack,
+and the same theme swells into the whole band. Every other fight's march builds as it goes: bass, drums and the
+tune at first, then the lute, the brass, more drums; winning, the brass calls over it and a harp rings; losing,
+the lute falls silent and a drone and a bell darken it. A castle or village plays a bright round dance while
+its card is open. Payday has its own ta-da, and a level its harp and brass.
+
+**Found and fixed:**
+
+1. The quiet passes (the fen's harp verse, the marsh's) came in 5 to 7 dB under the rest; now within 3 dB.
+2. Grimsby's battle was 4 dB quieter than any other fight, and his and Bramble's lairs 8 dB under the map's
+   music. Every track now sits within a couple of dB of the others (fights about -18 dB, the map -19, the lairs
+   a hush of 2 to 4 dB below).
+3. A visit to the castle was often shorter than the crossfade into its tune; the town's tune now plays on three
+   seconds after its card closes.
+4. A fight left to the sergeants was silent; it now gets the same brass, or the same bell, as one fought on the
+   field.
+
 ## #12: 28 Sep 2026, the land makes its own sounds
 
 **Played:** a Knight riding round Aldmoor with the sound on (at 8x, listening ten seconds at each stop): the
