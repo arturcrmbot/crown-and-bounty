@@ -250,3 +250,26 @@ describe('old saves', () => {
     expect(withNewPlaces(f)).toBe(f);
   });
 });
+
+describe('wells', () => {
+  it('fill his mana once a day, in both provinces', () => {
+    const thirsty = { ...fresh('wizard'), hero: { ...fresh('wizard').hero, mana: 4 } };
+    const map = mapOf(thirsty);
+    expect(planRoute(thirsty, map, locationById(thirsty, 'well').at)).not.toBeNull();
+    const drunk = visit(thirsty, 'well').state;
+    expect(drunk.hero.mana).toBe(heroStats(thirsty).maxMana);
+    // Waits for tomorrow: a second drink the same day does nothing more.
+    const again = visit({ ...drunk, hero: { ...drunk.hero, mana: 4 } }, 'well').state;
+    expect(again.hero.mana).toBe(4);
+    // The Fenmarch has its own.
+    const fenThirsty = { ...fen('wizard'), hero: { ...fen('wizard').hero, mana: 4 } };
+    expect(visit(fenThirsty, 'well').state.hero.mana).toBe(heroStats(fenThirsty).maxMana);
+  });
+
+  it('waits for a day he needs it: full mana already drinks nothing', () => {
+    const full = fresh('wizard');
+    expect(full.hero.mana).toBe(heroStats(full).maxMana);
+    expect(visit(full, 'well').state.flags?.['drank:well']).toBeUndefined();
+  });
+});
+
