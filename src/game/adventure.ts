@@ -1,11 +1,12 @@
 import { BACKGROUNDS } from '../content/backgrounds';
 import { troops } from '../content/troops';
-import { addPlace, buildAdventureScene, type AdventureScene, type Hitbox } from '../render/adventureScene';
+import { addPlace, buildAdventureScene, setHeroFigure, type AdventureScene, type Hitbox } from '../render/adventureScene';
 import { BANNER_TIME, drawBanner, paintBanner } from '../render/banner';
 import type { Bitmap } from '../render/bitmap';
 import { MAP_VIEW } from '../render/frame';
 import { BLUE, GOLD, NEUTRAL, PARCHMENT, RED } from '../render/palette';
 import { HOURGLASS, HOURGLASS_AT, paintHud } from '../render/hud';
+import { ART, heroArtId } from '../render/units';
 import type { BattleState } from '../rules/battle/battle';
 import { ambushCard, apply, commissionOf, describe, describeHero, finishFight, levelUpCard, locationById, roman, visit, type Action, type Card, type GameEvent, type GameState, type Result } from '../rules/game';
 import type { Point } from '../rules/map/geometry';
@@ -195,7 +196,7 @@ export class AdventureController implements Screen {
   /** Gains wait until no card is in the way, then rise one after another; a level-up card waits for them. */
   private releaseGains() {
     if (this.cards.isOpen || !this.gains.length) return;
-    for (const [i, [text, colour]] of this.gains.entries()) this.view.effects.floatText(this.drawn.x, this.drawn.y - 76, text, colour, i * 0.35);
+    for (const [i, [text, colour]] of this.gains.entries()) this.view.effects.floatText(this.drawn.x, this.drawn.y - this.scene.hero.head - 12, text, colour, i * 0.35);
     this.celebrating = 0.6 + this.gains.length * 0.35;
     if (this.gains.some(([text]) => text.startsWith('Level'))) this.view.effects.puff(this.drawn.x, this.drawn.y, 'glow');
     this.gains = [];
@@ -298,7 +299,12 @@ export class AdventureController implements Screen {
         return;
       }
       case 'background': {
-        this.run(apply(this.state, action));
+        // Who he was, not something gained: no gold or troops rise off him for it.
+        const chosen = apply(this.state, action);
+        if (chosen) this.state = chosen.state;
+        saveGame(this.state);
+        this.repaintHud();
+        setHeroFigure(this.scene, action.id, this.state.hero.facing);
         this.showCard(storyCard(action.id), null);
         return;
       }
@@ -427,7 +433,7 @@ export class AdventureController implements Screen {
           this.tiredShown = true;
           saveGame(this.state);
           this.showCard(
-            { title: 'Your horse is spent', lines: ['End the day to rest. Red marks are for tomorrow.'], choices: [{ label: 'End the day', action: { type: 'endDay' } }] },
+            { title: ART[heroArtId(this.state.hero.background)].rides ? 'Your horse is spent' : 'Your legs are spent', lines: ['End the day to rest. Red marks are for tomorrow.'], choices: [{ label: 'End the day', action: { type: 'endDay' } }] },
             [this.drawn.x, this.drawn.y - this.scene.hero.foot],
           );
         }

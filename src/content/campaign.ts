@@ -45,7 +45,7 @@ export const COMMISSIONS: Commission[] = [
     homecoming: 'The tax collector is un-newted by teatime, and only slightly damp.',
     timeout: 'Word comes from court: the tax collector has settled into newt life. The King is not pleased.',
     praise: '"The fen is quiet, and my tax collector is dry," says King Osric. "Well done, well done."',
-    arrival: ['Reeds to the horizon, and the smell of eels.', 'Your horse steps in something that squelches, and gives you a look.'],
+    arrival: ['Reeds to the horizon, and the smell of eels.', 'Your boots find something that squelches, and your men give you a look.'],
     reward: 2500,
   },
 ];

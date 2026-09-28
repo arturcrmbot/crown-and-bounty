@@ -6,7 +6,7 @@
  */
 import { Bitmap, outline } from './bitmap';
 import { hash, shade } from './noise';
-import { BLUE, EARTH, FOG, GOLD, INK, LEAF, NEUTRAL, PLUM, RED, SKIN, SLATE, STONE } from './palette';
+import { BLUE, EARTH, FOG, GOLD, INK, LEAF, NEUTRAL, PLUM, RED, ROCK, SKIN, SLATE, STONE } from './palette';
 
 import type { PortraitId } from '../content/portraits';
 
@@ -14,7 +14,7 @@ export type { PortraitId };
 
 export const PORTRAIT_SIZE = 64;
 
-type Hat = 'crown' | 'helm' | 'wizard' | 'hood' | 'feathercap' | 'witch' | 'coif' | 'none' | 'kettle';
+type Hat = 'crown' | 'helm' | 'hood' | 'feathercap' | 'witch' | 'coif' | 'none' | 'kettle';
 type Recipe = {
   skin: readonly number[];
   hair?: readonly number[];
@@ -22,6 +22,10 @@ type Recipe = {
   beardColour?: readonly number[];
   hat: Hat;
   hatColour?: readonly number[];
+  /** A gold edge round a hood's opening, as the Arch Mage's has. */
+  hoodTrim?: boolean;
+  /** The feather in a cap: its light and dark (white, unless it's the team's plume). */
+  plume?: readonly [number, number];
   clothes: readonly number[];
   collar?: 'ermine' | 'mail' | 'ruff' | 'none';
   eyes: number;
@@ -34,15 +38,17 @@ const WHITE = [NEUTRAL[3], NEUTRAL[5], NEUTRAL[6], NEUTRAL[7]];
 const BROWN = [EARTH[1], EARTH[2], EARTH[4], EARTH[5]];
 const DARK = [SLATE[0], SLATE[1], SLATE[3], SLATE[4]];
 const GINGER = [RED[1], RED[3], RED[4], GOLD[4]];
+const BLOND = [GOLD[1], GOLD[3], GOLD[4], GOLD[5]];
 const GREENSKIN = [LEAF[1], LEAF[3], LEAF[5], LEAF[6], LEAF[7]];
 const GREY = [FOG[3], FOG[5], FOG[7], FOG[8]];
 
+/** The heroes' faces agree with their figures on the map: the Horseman's helm, the Arch Mage's hood and beard, the Ranger's green hood, the Master at Arms' plumed hat. */
 const RECIPES: Record<PortraitId, Recipe> = {
   king: { skin: SKIN, hair: WHITE, beard: 'full', beardColour: WHITE, hat: 'crown', clothes: [RED[1], RED[2], RED[3], RED[4]], collar: 'ermine', eyes: BLUE[4], mood: 'smile' },
   knight: { skin: SKIN, hair: BROWN, beard: 'stubble', beardColour: BROWN, hat: 'helm', hatColour: [STONE[2], STONE[4], STONE[5], STONE[6]], clothes: [BLUE[1], BLUE[2], BLUE[3], BLUE[4]], collar: 'mail', eyes: BLUE[5], mood: 'stern' },
-  wizard: { skin: SKIN, hair: WHITE, beard: 'full', beardColour: WHITE, hat: 'wizard', hatColour: [BLUE[0], BLUE[1], BLUE[2], BLUE[3]], clothes: [BLUE[0], BLUE[1], BLUE[2], BLUE[3]], eyes: GOLD[5], mood: 'smile' },
+  wizard: { skin: SKIN, hair: WHITE, beard: 'full', beardColour: WHITE, hat: 'hood', hatColour: [BLUE[0], BLUE[1], BLUE[3], BLUE[4]], hoodTrim: true, clothes: [ROCK[2], ROCK[3], ROCK[4], ROCK[5]], eyes: GOLD[5], mood: 'smile' },
   ranger: { skin: SKIN, hair: GINGER, beard: 'goatee', beardColour: [EARTH[1], EARTH[2], EARTH[3], RED[2]], hat: 'hood', hatColour: [LEAF[1], LEAF[2], LEAF[4], LEAF[5]], clothes: [LEAF[1], LEAF[2], LEAF[3], LEAF[4]], eyes: LEAF[6], mood: 'sly' },
-  courtier: { skin: SKIN, hair: DARK, beard: 'moustache', beardColour: DARK, hat: 'feathercap', hatColour: [PLUM[1], PLUM[2], PLUM[3], PLUM[4]], clothes: [PLUM[1], PLUM[2], PLUM[3], PLUM[4]], collar: 'ruff', eyes: EARTH[3], mood: 'smile' },
+  courtier: { skin: SKIN, hair: BLOND, beard: 'goatee', beardColour: BLOND, hat: 'feathercap', hatColour: [INK, SLATE[1], SLATE[3], SLATE[5]], plume: [BLUE[5], BLUE[3]], clothes: [BLUE[1], BLUE[2], BLUE[3], BLUE[4]], collar: 'ruff', eyes: BLUE[4], mood: 'smile' },
   grimsby: { skin: SKIN, hair: GINGER, beard: 'moustache', beardColour: GINGER, hat: 'kettle', hatColour: [PLUM[0], PLUM[1], PLUM[2], GOLD[4]], clothes: [PLUM[0], PLUM[1], PLUM[2], PLUM[3]], collar: 'ruff', eyes: EARTH[2], mood: 'sly', goose: true },
   mirrow: { skin: GREENSKIN, hair: GREY, hat: 'witch', hatColour: [PLUM[0], PLUM[0], PLUM[1], PLUM[2]], clothes: [PLUM[0], PLUM[1], PLUM[2], PLUM[3]], eyes: GOLD[6], mood: 'cackle', wart: true },
   bramble: { skin: GREENSKIN, hair: WHITE, hat: 'witch', hatColour: [INK, SLATE[0], SLATE[1], SLATE[2]], clothes: [LEAF[1], LEAF[2], LEAF[3], LEAF[4]], eyes: RED[5], mood: 'stern', wart: true },
@@ -69,7 +75,7 @@ export function portrait(id: PortraitId): Bitmap {
   if (p.collar === 'ermine') fill((x, y) => inEllipse(x, y, cx, 50, 22, 6), (x, y) => ((x * 7 + y * 3) % 17 === 0 ? INK : x < cx ? NEUTRAL[7] : NEUTRAL[6]), 44);
   if (p.collar === 'mail') fill((x, y) => inEllipse(x, y, cx, 49, 16, 5), (x, y) => ((x + y) % 2 === 0 ? STONE[5] : STONE[3]), 44);
   if (p.collar === 'ruff') fill((x, y) => inEllipse(x, y, cx, 48, 14, 4), (x) => (x % 3 === 0 ? NEUTRAL[5] : NEUTRAL[7]), 43);
-  if (p.hat === 'wizard' || p.hat === 'hood') {
+  if (p.hat === 'hood') {
     // Robes: a V at the neck.
     fill((x, y) => y > 46 && Math.abs(x - cx) < (y - 44) * 0.8 && Math.abs(x - cx) > (y - 44) * 0.8 - 2, () => GOLD[4], 44);
   }
@@ -148,26 +154,22 @@ export function portrait(id: PortraitId): Bitmap {
       fill((x, y) => inEllipse(x, y, cx + 6, cy - 22, 7, 4), (x, y) => shade([BLUE[2], BLUE[3], BLUE[5], BLUE[6]], lit(x, y, cx + 6, cy - 22, 7), x, y));
       break;
     }
-    case 'wizard': {
-      fill((x, y) => y >= 13 && y < 18 && Math.abs(x - cx) <= 18, (x, y) => shade(hat, lit(x, y, cx, 15, 18) + 0.1, x, y));
-      fill((x, y) => y >= 0 && y < 14 && Math.abs(x - cx - (13 - y) * 0.35) <= (y + 1) * 0.75, (x, y) => shade(hat, lit(x, y, cx + 3, 6, 10) + 0.1, x, y));
-      for (const [sx, sy] of [[cx - 3, 10], [cx + 4, 6], [cx - 8, 15]]) b.set(sx, sy, GOLD[6]);
-      break;
-    }
     case 'hood': {
       fill((x, y) => inEllipse(x, y, cx, cy + 1, 17, 20) && !inEllipse(x, y, cx, cy + 4, 11, 15) && y < 52, (x, y) => shade(hat, lit(x, y, cx, cy, 17), x, y));
       fill((x, y) => inEllipse(x, y, cx, cy - 12, 13, 8), (x, y) => shade(hat, lit(x, y, cx, cy - 12, 13) + 0.05, x, y));
+      if (p.hoodTrim) fill((x, y) => inEllipse(x, y, cx, cy + 4, 12.5, 16.5) && !inEllipse(x, y, cx, cy + 4, 11, 15) && y < 50, (x) => (x < cx ? GOLD[5] : GOLD[4]));
       break;
     }
     case 'feathercap': {
       fill((x, y) => inEllipse(x, y, cx - 1, 15, 16, 6), (x, y) => shade(hat, lit(x, y, cx, 15, 16), x, y));
       for (let x = cx - 16; x <= cx + 14; x++) b.set(x, 19, shade(hat, 0.2, x, 19));
-      // A long white feather, sweeping back.
+      // A long feather, sweeping back.
+      const [light, dark] = p.plume ?? [NEUTRAL[7], NEUTRAL[5]];
       for (let k = 0; k < 20; k++) {
         const x = cx + 8 + k;
         const y = 12 - Math.round(Math.sin((k / 20) * Math.PI) * 9);
-        b.set(x, y, NEUTRAL[7]);
-        b.set(x, y + 1, NEUTRAL[5]);
+        b.set(x, y, light);
+        b.set(x, y + 1, dark);
       }
       break;
     }

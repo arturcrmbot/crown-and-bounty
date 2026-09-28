@@ -74,6 +74,6 @@ export function endDay(state: GameState): Result {
     events.push(show(ambushCard(next, lines), foe.at, foe.id));
     return { state: next, events };
   }
-  events.push(show({ title: `Day ${roman(day)}`, lines: lines.length ? lines : ['The sun comes up over the province. Your horse looks rested.'], choices: [close] }));
+  events.push(show({ title: `Day ${roman(day)}`, lines: lines.length ? lines : ['The sun comes up over the province. Somewhere, a cock crows.'], choices: [close] }));
   return { state: next, events };
 }

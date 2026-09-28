@@ -5,7 +5,7 @@ import { activeFighter, battleAct, canCast, castsLeft, CHARGE_BONUS, fighterById
 import { paintBanner } from '../render/banner';
 import { BattleScreen, BUTTONS, FIRE_FALL, FLOAT_RISE, hexAt, hexCentre, LOG_BOTTOM, type BattleView, type Shot } from '../render/battleScreen';
 import { animLength, bodyHeight, hitTime, type AnimName } from '../render/battleSprites';
-import { ART } from '../render/units';
+import { ART, type ArtId } from '../render/units';
 import { MAP_VIEW } from '../render/frame';
 import { BLUE, GOLD, NEUTRAL, RED } from '../render/palette';
 import { CardView } from '../ui/card';
@@ -49,12 +49,12 @@ export class BattleController implements Screen {
   private acting: number | null = null;
   private pointer: [number, number] | null = null;
 
-  constructor(display: Display, battle: BattleState, hooks: BattleController['hooks'], pace = 1) {
+  constructor(display: Display, battle: BattleState, hooks: BattleController['hooks'], pace = 1, hero: ArtId = 'hero') {
     this.display = display;
     this.battle = battle;
     this.hooks = hooks;
     this.pace = pace;
-    this.screen = new BattleScreen(battle);
+    this.screen = new BattleScreen(battle, hero);
     this.cards = new CardView((action) => {
       this.cards.hide();
       if (action.type === 'spell') this.view.targeting = action.spell;
@@ -237,7 +237,7 @@ export class BattleController implements Screen {
       this.step(0.16 + len / 1500, {
         start: () => {
           v.shots.push(shot);
-          play(missile === 'hex' ? 'spell' : 'shoot');
+          play(missile === 'hex' || missile === 'magic' ? 'spell' : 'shoot');
         },
         tick: (t) => {
           shot.t = t;

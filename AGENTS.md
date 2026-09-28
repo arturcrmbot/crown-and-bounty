@@ -24,7 +24,7 @@ King's Commission (working title) is a browser game: King's Bounty (1990) rebuil
 - `src/game/`: screen controllers (input, riding animation, events into cards and HUD), save/load. `main.ts` only boots.
 - `src/render/`: 2D pixel-art drawing into an indexed 960×540 framebuffer, with one 256-colour palette for everything (the Wesnoth units included). It reads the rules state and never changes it.
 - `src/ui/`: HTML/CSS overlays (parchment cards, hover label).
-- `public/assets/wesnoth/units/`: Battle for Wesnoth's unit PNGs, unchanged, from the pinned tag. `src/render/units.ts` says which unit and frames each troop uses (from its Wesnoth `.cfg`), and `src/render/wesnoth.ts` recolours, scales and matches them to the palette as the game runs. `npm run wesnoth` downloads missing images (`-- --palette` re-picks the palette colours the art adds, `-- --credits` rewrites `public/assets/CREDITS.md`).
+- `public/assets/wesnoth/units/`: Battle for Wesnoth's unit PNGs, unchanged, from the pinned tag. `src/render/units.ts` says which unit and frames each troop uses (from its Wesnoth `.cfg`), and which figure each background's hero is (`heroArtId`); `src/render/wesnoth.ts` recolours, scales and matches them to the palette as the game runs. `npm run wesnoth` downloads missing images (`-- --palette` re-picks the palette colours the art adds, `-- --credits` rewrites `public/assets/CREDITS.md`).
 
 ## Loop
 

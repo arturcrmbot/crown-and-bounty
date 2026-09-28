@@ -186,7 +186,7 @@ export const FENMARCH: Province = {
         look: 'goblins',
         behaviour: 'hunt',
         range: 170,
-        lines: ['A great many **bog goblins**, squabbling over a boot.', 'They stop squabbling when they see your horse, and start following it.', '*One of them is dragging a knight\u2019s lance through the mud.*'],
+        lines: ['A great many **bog goblins**, squabbling over a boot.', 'They stop squabbling when they see your baggage, and start following it.', '*One of them is dragging a knight\u2019s lance through the mud.*'],
         army: [{ troop: 'goblins', count: 180 }],
         reward: 400,
         threat: 'They giggle, which is worse than shouting.',

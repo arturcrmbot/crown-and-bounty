@@ -5,12 +5,13 @@
  *   in HoMM2. Goblins come out about 45 px, trolls 80, mounted knights 105 with the lance.
  * - On the map, one creature stands for a whole stack at `MAP_UNIT`: a person about 39 px on 32 px
  *   tiles, brightened a touch (`MAP_LIFT`) and inked round, as HoMM2's map creatures are bright.
- * - The hero rides at `MAP_HERO`, Wesnoth's own size (about 64 px on his horse, the pennant in our
- *   blue): the easiest thing to find on the map.
+ * - The hero goes at `MAP_HERO`, Wesnoth's own size, in his background's figure: the Knight on his
+ *   horse about 64 px with the pennant in our blue, the others on foot about 45 px (the wizard's
+ *   staff a little more). A gold ring and our blue make him the easiest thing to find on the map.
  * - Each unit keeps the size Wesnoth gave it next to a person, on the map and in battle alike, but
  *   the villains stand a quarter taller (`VILLAIN`), so the one you came for reads at a glance.
  */
-import type { ArtId } from './units';
+import { isHeroArt, type ArtId } from './units';
 
 export const TILE = 32;
 export const BATTLE_UNIT = 1.5;
@@ -22,6 +23,6 @@ const VILLAINS: ReadonlySet<ArtId> = new Set(['baron', 'witch', 'bramble']);
 
 export type Size = 'battle' | 'map';
 /** The scale a unit is drawn at. */
-export const unitScale = (size: Size, id: ArtId) => (VILLAINS.has(id) ? VILLAIN : 1) * (size === 'battle' ? BATTLE_UNIT : id === 'hero' ? MAP_HERO : MAP_UNIT);
+export const unitScale = (size: Size, id: ArtId) => (VILLAINS.has(id) ? VILLAIN : 1) * (size === 'battle' ? BATTLE_UNIT : isHeroArt(id) ? MAP_HERO : MAP_UNIT);
 /** How much brighter and more vivid units are drawn at each size (see `brighten` in wesnoth.ts). */
 export const unitLift = (size: Size) => (size === 'battle' ? 0 : MAP_LIFT);

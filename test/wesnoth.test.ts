@@ -3,7 +3,8 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { SHADOW } from '../src/render/bitmap';
 import { BLUE, CYCLING, RED } from '../src/render/palette';
 import { decodePng } from '../src/render/png';
-import { ART, unitImages } from '../src/render/units';
+import { ART, artImages, heroArtId, UNIT_ART, unitImages } from '../src/render/units';
+import { MAP_HERO, unitScale } from '../src/render/scale';
 import { loadUnitArt, unitBitmap, unitImage } from '../src/render/wesnoth';
 
 const file = (path: string) => `public/assets/wesnoth/units/${path}`;
@@ -44,6 +45,18 @@ describe('Wesnoth unit art', () => {
         }
       }
     }
+  });
+
+  it('gives each background his own figure: the Knight on horseback, the others on foot, none an enemy', () => {
+    const backgrounds = ['knight', 'wizard', 'ranger', 'courtier'] as const;
+    const figures = backgrounds.map(heroArtId);
+    expect(new Set(figures.map((id) => ART[id])).size).toBe(4);
+    expect(ART[heroArtId('knight')]).toBe(ART.hero);
+    expect(backgrounds.filter((b) => ART[heroArtId(b)].rides)).toEqual(['knight']);
+    // Nobody the hero fights looks like him: the Ranger is not a Poacher.
+    const foes = new Set(Object.values(UNIT_ART).flatMap(artImages));
+    for (const id of figures) expect(artImages(ART[id]).filter((image) => foes.has(image)), id).toEqual([]);
+    for (const id of figures) expect(unitScale('map', id), id).toBe(MAP_HERO);
   });
 
   it('keeps going when an image never arrives: its unit stands in its usual pose', async () => {

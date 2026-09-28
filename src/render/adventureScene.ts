@@ -1,3 +1,4 @@
+import type { BackgroundId } from '../content/backgrounds';
 import { troopPower, TROOPS, type TroopId } from '../content/troops';
 import { VANISHES, type Army, type GameState, type Location } from '../rules/game';
 import type { Point } from '../rules/map/geometry';
@@ -6,7 +7,8 @@ import { AdventureScreen, type Placed } from './adventureScreen';
 import { Bitmap, blit, SHADOW } from './bitmap';
 import { FogMask } from './fog';
 import { GOLD, INK, SILHOUETTE } from './palette';
-import { animFrames, everyFrame, STAND, troopFigure } from './battleSprites';
+import { animFrames, bodyHeight, everyFrame, STAND, troopFigure } from './battleSprites';
+import { heroArtId } from './units';
 import {
   abbey, boulder, camp,
   butts, cottage, castle, standingStones, chest, crag, goldPile, hideout, hut, mill, mine, mirror, oak, peatHut, pine, signpost, stiltHut, shrine, stoneBridge,
@@ -32,8 +34,9 @@ export type HeroRig = {
   walk: Bitmap[];
   idleLeft: Bitmap[];
   walkLeft: Bitmap[];
-  /** Pixels from the sprite's top to the hooves. */
+  /** Pixels from the sprite's top to his feet (or the hooves), and from his feet to the top of his head. */
   foot: number;
+  head: number;
 };
 
 /** A clickable area in map pixels, for one location of the rules. */
@@ -232,13 +235,38 @@ export function buildAdventureScene(map: MapModel, state: GameState): AdventureS
     });
   }
 
-  // The hero is Wesnoth's Horseman with our pennant: it flutters as he waits, and he gallops when he rides.
-  const still = troopFigure('hero', 'blue', 1, STAND, 'map');
-  const foot = -still.y;
-  const idle = [...Array<Bitmap>(16).fill(still.sprite), ...everyFrame('hero', 'idle', 'blue', 1, 'map', 120)].map((f) => ringed(f, foot));
-  const walk = everyFrame('hero', 'move', 'blue', 1, 'map', 70).map((f) => ringed(f, foot));
-  const rig: HeroRig = { object: { ...place(idle[0], state.hero.at, foot), frames: idle }, idle, walk, idleLeft: idle.map(mirror), walkLeft: walk.map(mirror), foot };
+  // The hero, in his background's figure, in a gold ring (see `heroFrames`).
+  const figure = heroFrames(state.hero.background);
+  const rig: HeroRig = { object: { ...place(figure.idle[0], state.hero.at, figure.foot), frames: figure.idle }, ...figure };
   if (state.hero.facing < 0) rig.object.frames = rig.idleLeft;
   view.animate(rig.object);
   return { view, fog, hero: rig, hitboxes, pickups };
+}
+
+/**
+ * The hero's frames on the map, in his background's figure. He fidgets now and then as he waits, as
+ * his Wesnoth unit does (the Knight's pennant flutters; those Wesnoth gave no fidget just breathe).
+ * A rider gallops when he rides; anyone on foot steps along, bobbing with each stride.
+ */
+function heroFrames(background: BackgroundId): Omit<HeroRig, 'object'> {
+  const art = heroArtId(background);
+  const still = troopFigure(art, 'blue', 1, STAND, 'map');
+  const foot = -still.y;
+  const fidget = animFrames(art, 'idle').length > 1 ? everyFrame(art, 'idle', 'blue', 1, 'map', 120) : Array<Bitmap>(4).fill(raised(still.sprite));
+  // Still for at least half again as long as the fidget lasts, so it comes now and then.
+  const idle = [...Array<Bitmap>(Math.max(16, Math.round(fidget.length * 1.5))).fill(still.sprite), ...fidget].map((f) => ringed(f, foot));
+  const up = raised(still.sprite);
+  const stride = [still.sprite, still.sprite, up, raised(up), raised(up), up];
+  const walk = (animFrames(art, 'move').length > 1 ? everyFrame(art, 'move', 'blue', 1, 'map', 70) : stride).map((f) => ringed(f, foot));
+  return { idle, walk, idleLeft: idle.map(mirror), walkLeft: walk.map(mirror), foot, head: bodyHeight(art, 'map') };
+}
+
+/** Puts the hero in another background's figure, where he stands: when the choice on the opening card changes who he was. */
+export function setHeroFigure(scene: AdventureScene, background: BackgroundId, facing: 1 | -1) {
+  const rig = scene.hero;
+  const feet = rig.object.y + rig.foot;
+  Object.assign(rig, heroFrames(background));
+  rig.object.frames = facing < 0 ? rig.idleLeft : rig.idle;
+  rig.object.sprite = rig.idle[0];
+  rig.object.y = feet - rig.foot;
 }

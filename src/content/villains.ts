@@ -104,7 +104,7 @@ export const VILLAINS: VillainTemplate[] = [
     homecoming: 'The choir is un-frogged by Sunday, and sings better than ever.',
     timeout: 'The royal choir has settled in the palace pond. The King has stopped going to chapel.',
     praise: '"My choir is back, and in tune!" says King Osric. "Well, nearly in tune."',
-    arrival: ['Meres and reeds again, and somewhere, a great deal of croaking.', 'Your horse sighs, and steps into the mud.'],
+    arrival: ['Meres and reeds again, and somewhere, a great deal of croaking.', 'Somebody behind you sighs, and steps into the mud.'],
     bands: [
       { name: 'Goblin Raiders', look: 'goblins', troops: [['goblins', 1]], lines: ['Bog goblins, raiding for anything shiny.', 'They have taken all the church bells. Nobody knows why.'], threat: 'They giggle and sharpen their spears.', flees: 'The goblins scatter into the reeds.', loot: 'In their sack: {gold}, and a bell.' },
       { name: 'Troll Ford', look: 'troll', troops: [['trolls', 0.7], ['goblins', 0.3]], lines: ['A troll sits in the ford, charging goblins to cross. Business is bad.'], threat: 'The troll gets up, slowly and completely.', flees: 'The troll wades away downstream.', loot: 'In the ford: {gold} in old tolls.' },

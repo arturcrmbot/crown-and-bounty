@@ -344,7 +344,7 @@ Frames and timings from `data/core/units/monsters/Boar.cfg`.
 | `monsters/boar/woodland-charge4.png` | CC BY-SA 4.0 | doofus-01 | 2021-04-19 | 2021-04-19 |
 | `monsters/boar/woodland-charge5.png` | CC BY-SA 4.0 | doofus-01 | 2021-04-19 | 2021-04-19 |
 
-### Horseman (our hero)
+### Horseman (our hero, as a Knight)
 
 Frames and timings from `data/core/units/humans/Horseman.cfg`.
 
@@ -382,4 +382,62 @@ Frames and timings from `data/core/units/humans/Horseman.cfg`.
 | `human-loyalists/horseman/horseman-se-die3.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01 | 2013-06-10 | 2022-06-04 |
 | `human-loyalists/horseman/horseman-se-die4.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01 | 2013-06-10 | 2022-06-04 |
 | `human-loyalists/horseman/horseman-se-die5.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01 | 2013-06-10 | 2022-06-04 |
+
+### Arch Mage (our hero, as a Wizard)
+
+Frames and timings from `data/core/units/humans/Mage_Arch.cfg`.
+
+| File | Licence | Artists, from the history | Added | Last changed |
+| --- | --- | --- | --- | --- |
+| `human-magi/arch-mage.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-07-25 |
+| `human-magi/arch-mage-defend.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-07-25 |
+| `human-magi/arch-mage-idle-1.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2008-10-31 | 2022-07-25 |
+| `human-magi/arch-mage-idle-2.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2008-10-31 | 2022-07-25 |
+| `human-magi/arch-mage-idle-3.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2008-10-31 | 2022-07-25 |
+| `human-magi/arch-mage-idle-4.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2008-10-31 | 2022-07-25 |
+| `human-magi/arch-mage-idle-5.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2008-10-31 | 2022-07-25 |
+| `human-magi/arch-mage-attack-staff-1.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-07-25 |
+| `human-magi/arch-mage-attack-staff-2.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-07-25 |
+| `human-magi/arch-mage-attack-magic-1.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-07-25 |
+| `human-magi/arch-mage-attack-magic-2.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-07-25 |
+
+### Ranger (our hero, as a Ranger)
+
+Frames and timings from `data/core/units/humans/Woodsman_Ranger.cfg`.
+
+| File | Licence | Artists, from the history | Added | Last changed |
+| --- | --- | --- | --- | --- |
+| `human-outlaws/ranger.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Charles Dang, Richard Kettering | 2007-07-22 | 2022-04-29 |
+| `human-outlaws/ranger-sword-defend-2.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Charles Dang, Richard Kettering | 2007-12-24 | 2022-04-29 |
+| `human-outlaws/ranger-bow-defend.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Charles Dang, Richard Kettering | 2007-12-24 | 2022-04-29 |
+| `human-outlaws/ranger-sword-defend-1.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Charles Dang, Richard Kettering | 2007-12-24 | 2022-04-29 |
+| `human-outlaws/ranger-sword-attack1.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Charles Dang, Richard Kettering | 2007-12-24 | 2022-04-29 |
+| `human-outlaws/ranger-sword-attack2.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Charles Dang, Richard Kettering | 2007-12-24 | 2022-04-29 |
+| `human-outlaws/ranger-sword-attack3.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Charles Dang, Richard Kettering | 2007-12-24 | 2022-04-29 |
+| `human-outlaws/ranger-sword-attack4.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Charles Dang, Richard Kettering | 2008-04-27 | 2022-04-29 |
+| `human-outlaws/ranger-bow.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Charles Dang, Richard Kettering | 2007-12-24 | 2022-04-29 |
+| `human-outlaws/ranger-bow-attack1.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Charles Dang, Richard Kettering | 2007-12-24 | 2022-04-29 |
+| `human-outlaws/ranger-bow-attack2.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Charles Dang, Richard Kettering | 2007-12-24 | 2022-04-29 |
+| `human-outlaws/ranger-bow-attack3.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Charles Dang, Richard Kettering | 2007-12-24 | 2022-04-29 |
+| `human-outlaws/ranger-bow-attack4.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Charles Dang, Richard Kettering | 2007-12-24 | 2022-04-29 |
+
+### Master at Arms (our hero, as a Courtier)
+
+Frames and timings from `data/core/units/humans/Loyalist_Master_at_Arms.cfg`.
+
+| File | Licence | Artists, from the history | Added | Last changed |
+| --- | --- | --- | --- | --- |
+| `human-loyalists/master-at-arms.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-06-04 |
+| `human-loyalists/master-at-arms-defend-2.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering, Lari Nieminen | 2007-06-08 | 2022-06-04 |
+| `human-loyalists/master-at-arms-victory-1.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Jérémy Rosen | 2010-01-30 | 2022-06-04 |
+| `human-loyalists/master-at-arms-victory-2.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Jérémy Rosen | 2010-01-30 | 2022-06-04 |
+| `human-loyalists/master-at-arms-victory-3.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Jérémy Rosen | 2010-01-30 | 2022-06-04 |
+| `human-loyalists/master-at-arms-victory-4.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Jérémy Rosen | 2010-01-30 | 2022-06-04 |
+| `human-loyalists/master-at-arms-victory-5.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Jérémy Rosen | 2010-01-30 | 2022-06-04 |
+| `human-loyalists/master-at-arms-victory-6.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Jérémy Rosen | 2010-01-30 | 2022-06-04 |
+| `human-loyalists/master-at-arms-melee-1-1.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-06-04 |
+| `human-loyalists/master-at-arms-melee-1-2.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-06-04 |
+| `human-loyalists/master-at-arms-melee-1-3.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-06-04 |
+| `human-loyalists/master-at-arms-recover-1.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-06-04 |
+| `human-loyalists/master-at-arms-recover-2.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-06-04 |
 <!-- /wesnoth-files -->

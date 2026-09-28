@@ -75,4 +75,10 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   +3 shots, and the Miller's Everlasting Loaf gives +25 movement a day and makes wages a tenth cheaper. In
   battle, melee winds up, lunges, knocks the target back and sprays blood, and each count drops as its blow
   lands. Soldiers are redrawn chibi-style.
+- **The hero looks like who he is (28 Sep, from Artur's second playtest):** each background has its own Wesnoth
+  figure, on the map, at the field's edge and on his portrait. The Knight rides the Horseman with our pennant.
+  The others go on foot, since Wesnoth has no mounted mage and each should read as himself at a glance: the
+  Hedge Wizard is an Arch Mage (hood, beard, orb and staff), the Ranger is Wesnoth's own Ranger in his green hood
+  (nothing like the red poachers), and the Courtier is a Master at Arms in a plumed hat, who doffs it with a bow
+  now and then. A tired hero on foot hears that his legs are spent, not his horse.
 - **Sound and music:** everything is synthesised with Web Audio, with no files. There are five original pieces for a small medieval band: "The Heather Road" (a jig for open country), "Mist on the Meres" (the fen), "Steel and Feathers" (battle), "The King's Pavane" (court) and a title theme. The band is plucked lute, harp and harpsichord, recorder, fife, hurdy-gurdy drone, frame drum, brass and bells. Music crossfades between screens. Under it runs ambience: birds and wind on the heath, frogs in the fen, a crackling fire at court. Plus effects for clicks, coins, the day bell, fanfares, hits, arrows and spells. A test checks that every strong-beat melody note sits on its chord. The title waits for a click, so the music starts with it. M or the Sound button in the top right corner mutes.
