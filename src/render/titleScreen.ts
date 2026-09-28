@@ -344,7 +344,7 @@ export class TitleScreen {
     bigTree(set, 918, H + 4, 132, 250, 8);
 
     this.logo = this.paintLogo(textMask('KING\u2019S COMMISSION', 58, 3));
-    drawText(b, 'A tribute to King\u2019s Bounty (1990) and Heroes of Might and Magic II \u00b7 every picture and note made in code', BAR.x + 12, BAR.y + 5, PARCHMENT[6], INK);
+    drawText(b, 'A tribute to King\u2019s Bounty (1990) and Heroes of Might and Magic II \u00b7 units from Battle for Wesnoth (GPL, CC BY-SA)', BAR.x + 12, BAR.y + 5, PARCHMENT[6], INK);
     this.base = b;
   }
 
