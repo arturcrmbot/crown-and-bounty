@@ -3,6 +3,37 @@
 Newest first. Each entry says what was played, how it felt to an experienced player (HoMM2, King's Bounty,
 modern RPGs), and what was done about it.
 
+## #15: 28 Sep 2026, perks that bend rules
+
+**Played:** saves built with the rules and loaded as a player would load them, through the real UI in headless
+Edge. A Scholar's level-up. A Quartermaster at Westmere with a thin purse. A Night Rider with a War Chest ending
+the day before payday. The King's Favourite at court. Then every perk in tests, `npm run difficulty` and the
+campaign sim.
+
+**How it felt:** perks now change the rules a little. A Scholar's level-up offers four choices, and all four are worth
+reading. At Westmere the button says *"Recruit 10 + 2 free (100 gold)"*, and the card after it thanks the
+quartermaster. The Night Rider stopped early, and next morning the bar read 225/150: "one more place today?" is
+now a real question. The War Chest's payday says *"Of that, 300 gold is the bankers' interest on your purse"*, so a
+full purse is worth keeping as well as spending. At court the favourite gets four boons to choose from, and the
+card still fits.
+
+**Found and fixed:**
+
+1. The interest line counted the purse after payday (416) while the payday paid on the purse before it (300).
+   Both now use the purse as it was.
+2. The quartermaster's extras came out of the village's own offer, so buying all of it (the usual case) got nothing
+   free. They now come on top.
+3. "Recruit 10 (+2 free) (100 gold)" had a bracket too many, and the card said "12 Peasants join" and then "2 more".
+   Now: *"Recruit 10 + 2 free (100 gold)"*, then *"10 Peasants join your army. Your quartermaster talks them into
+   throwing in 2 more, free."*
+
+**Checked:** all tests pass, with a new test for each perk's rule. e2e and every difficulty target hold, and the bot
+wins all five commissions with every background. Old saves keep their perks: the ids haven't changed, only what
+they do.
+
+**Still open:** Drill Sergeant and Goose Whisperer stay as they were, since they were rules already. A field surgeon
+who puts the fallen back on their feet waits for the victory hook.
+
 ## #14: 28 Sep 2026, a Knight fills his paper doll
 
 **Played:** a new Knight from the title, through the real UI in headless Edge: the chest, the highwaymen, St
