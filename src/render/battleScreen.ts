@@ -64,6 +64,8 @@ export const FLOAT_RISE = 30;
 const LOG_TOP = MAP_VIEW.y + 6;
 export const LOG_BOTTOM = LOG_TOP + 18;
 export type Shot = { from: [number, number]; to: [number, number]; t: number; kind: 'arrow' | 'quarrel' | 'hex' | 'bolt' | 'fire' | 'sparkle' | 'spark' | 'blood' | 'poof'; color?: number };
+/** How much of a fireball's flight is the fall from the sky; it bursts after that. */
+export const FIRE_FALL = 0.35;
 
 /** What the battle controller wants drawn this frame, on top of the rules state. */
 export type BattleView = {
@@ -338,13 +340,15 @@ export class BattleScreen {
       const vy = by - ay - Math.PI * arc * Math.cos(t * Math.PI);
       const n = Math.hypot(vx, vy) || 1;
       const [ux, uy] = [vx / n, vy / n];
-      const length = bolt ? 9 : 13;
+      const length = bolt ? 11 : 16;
       for (let k = 0; k <= length; k++) {
         const px = x - ux * k;
         const py = y - uy * k;
-        const head = k < 2;
-        const feather = k > length - 3;
-        const colour = head ? STONE[7] : feather ? (bolt ? RED[4] : NEUTRAL[7]) : bolt ? EARTH[3] : WOOD[4];
+        const head = k < 3;
+        const feather = k > length - 4;
+        const colour = head ? STONE[7] : feather ? (bolt ? RED[4] : NEUTRAL[7]) : bolt ? EARTH[3] : WOOD[5];
+        // Ink under the shaft first, so it reads against the grass as the figures do.
+        if (!feather) this.screen.set(Math.round(px - uy * 2), Math.round(py + ux * 2), INK);
         this.screen.set(Math.round(px), Math.round(py), colour);
         // A second row, darker, for body: the shaft, and fletching that splays both ways.
         this.screen.set(Math.round(px - uy), Math.round(py + ux), head ? STONE[5] : feather ? (bolt ? RED[2] : NEUTRAL[5]) : bolt ? EARTH[1] : WOOD[2]);
@@ -355,21 +359,21 @@ export class BattleScreen {
       const t = Math.min(1, s.t);
       const at = (k: number) => [ax + (bx - ax) * k, ay + (by - ay) * k - Math.sin(k * Math.PI) * 26 + Math.sin(k * 17) * 4] as const;
       const [x, y] = at(t);
-      for (let k = 1; k < 12; k++) {
+      for (let k = 1; k < 14; k++) {
         const [sx, sy] = at(Math.max(0, t - k * 0.03));
-        const jx = sx + (hash(k, Math.floor(s.t * 40), 17) - 0.5) * 10;
-        const jy = sy + (hash(k, Math.floor(s.t * 40), 18) - 0.5) * 10;
+        const jx = sx + (hash(k, Math.floor(s.t * 40), 17) - 0.5) * 12;
+        const jy = sy + (hash(k, Math.floor(s.t * 40), 18) - 0.5) * 12;
         const c = k % 3 === 0 ? NEUTRAL[7] : k % 2 ? PLUM[4] : LEAF[8];
-        for (const [dx, dy] of k < 6 ? [[0, 0], [1, 0], [0, 1], [1, 1]] : [[0, 0]]) this.screen.set(Math.round(jx) + dx, Math.round(jy) + dy, c);
+        for (const [dx, dy] of k < 8 ? [[0, 0], [1, 0], [0, 1], [1, 1]] : [[0, 0]]) this.screen.set(Math.round(jx) + dx, Math.round(jy) + dy, c);
       }
       const pulse = 1 + Math.sin(s.t * 40) * 0.8;
-      for (let j = -9; j <= 9; j++) {
-        for (let i = -9; i <= 9; i++) {
+      for (let j = -11; j <= 11; j++) {
+        for (let i = -11; i <= 11; i++) {
           const d = Math.hypot(i, j);
-          if (d > 6.5 + pulse) continue;
-          const glow = d > 5;
+          if (d > 8 + pulse) continue;
+          const glow = d > 6;
           if (glow && bayer(Math.round(x + i), Math.round(y + j)) > 0.5) continue;
-          this.screen.set(Math.round(x + i), Math.round(y + j), d < 1.8 ? NEUTRAL[7] : d < 3.4 ? LEAF[8] : d < 5 ? PLUM[4] : PLUM[2]);
+          this.screen.set(Math.round(x + i), Math.round(y + j), d < 2.2 ? NEUTRAL[7] : d < 4.2 ? LEAF[8] : d < 6 ? PLUM[4] : PLUM[2]);
         }
       }
     } else if (s.kind === 'bolt') {
@@ -380,10 +384,9 @@ export class BattleScreen {
         for (const dx of [-1, 0, 1]) this.screen.set(Math.round(x + dx), y, dx === 0 ? NEUTRAL[7] : GOLD[6]);
       }
     } else if (s.kind === 'fire') {
-      const FALL = 0.35;
-      if (s.t < FALL) {
+      if (s.t < FIRE_FALL) {
         // A ball of fire drops out of the sky onto the stack, trailing sparks.
-        const k = s.t / FALL;
+        const k = s.t / FIRE_FALL;
         const x = bx + 70 * (1 - k);
         const y = MAP_VIEW.y + 10 + (by - 20 - MAP_VIEW.y) * k;
         for (let n = 1; n < 9; n++) this.screen.set(Math.round(x + n * 5), Math.round(y - n * 6), n % 2 ? GOLD[5] : RED[4]);
@@ -395,7 +398,7 @@ export class BattleScreen {
         }
       } else {
         // It bursts over the stack and everyone beside it: a sheet of flame that swells, then gutters out.
-        const k = (s.t - FALL) / (1 - FALL);
+        const k = (s.t - FIRE_FALL) / (1 - FIRE_FALL);
         const rx = 22 + k * 50;
         const ry = rx * 0.6;
         const flicker = Math.floor(s.t * 30);

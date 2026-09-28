@@ -3,7 +3,7 @@ import { TROOPS, troops } from '../content/troops';
 import { chooseAction } from '../rules/battle/ai';
 import { activeFighter, battleAct, canCast, castsLeft, CHARGE_BONUS, fighterById, isCharge, options, spellCost, spellDamage, spellVictims, strike, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
 import { paintBanner } from '../render/banner';
-import { BattleScreen, BUTTONS, FLOAT_RISE, hexAt, hexCentre, LOG_BOTTOM, type BattleView, type Shot } from '../render/battleScreen';
+import { BattleScreen, BUTTONS, FIRE_FALL, FLOAT_RISE, hexAt, hexCentre, LOG_BOTTOM, type BattleView, type Shot } from '../render/battleScreen';
 import { animLength, bodyHeight, hitTime, type AnimName } from '../render/battleSprites';
 import { ART } from '../render/units';
 import { MAP_VIEW } from '../render/frame';
@@ -45,6 +45,8 @@ export class BattleController implements Screen {
   private sparks: Shot[] = [];
   private think = 0;
   private finished = false;
+  /** The stack whose move is playing out: it keeps the gold hex until its blows have landed. */
+  private acting: number | null = null;
   private pointer: [number, number] | null = null;
 
   constructor(display: Display, battle: BattleState, hooks: BattleController['hooks'], pace = 1) {
@@ -87,8 +89,25 @@ export class BattleController implements Screen {
 
   private fighterName(id: number, count?: number) {
     const f = fighterById(this.battle, id);
+    if (this.named(id)) return TROOPS[f.troop].name;
     const who = f.side === 'player' ? 'Your' : 'Their';
     return count === undefined ? `${who} ${TROOPS[f.troop].name}` : `${who} ${troops(f.troop, count)}`;
+  }
+
+  /** One of a kind, like Mother Mirrow or Baron Grimsby, so "she shoots", not "their Mother Mirrow shoot". */
+  private named(id: number) {
+    const t = TROOPS[fighterById(this.battle, id).troop];
+    return t.name === t.one;
+  }
+
+  /** "shoot" for a stack, "shoots" for a named foe. */
+  private verb(id: number, phrase: string) {
+    return this.named(id) ? phrase.replace(/^(\w+)/, '$1s') : phrase;
+  }
+
+  /** "their Trolls" mid-sentence, but "Mother Mirrow" keeps her capital. */
+  private objectName(id: number) {
+    return this.fighterName(id).replace(/^(Your|Their) /, (m) => m.toLowerCase());
   }
 
   private step(duration: number, parts: Omit<Step, 'duration' | 'elapsed' | 'started'>) {
@@ -97,16 +116,19 @@ export class BattleController implements Screen {
 
   /**
    * Words that rise from a stack and fade. Ones that come close together stack up instead of
-   * overlapping; near the top of the field, where there's no room above, they stack down over the stack.
+   * overlapping, however long the words; near the top of the field, where there's no room above,
+   * they stack down over the stack.
    */
   private float(id: number, text: string, color: number) {
     const f = fighterById(this.battle, id);
     // Over the stack's own hex, not wherever a blow has knocked it, so it never lands on the attacker.
     const [x, y] = hexCentre(f.at);
     const top = Math.max(FLOAT_TOP, y + 12 - bodyHeight(f.troop, 'battle') - 16);
-    const crowd = this.view.floaters.filter((o) => o.age < 0.6 && Math.abs(o.x - x) < 44 && Math.abs(o.y - top) < 40).length;
-    const above = top - crowd * 16;
-    this.view.floaters.push({ x, y: above >= FLOAT_TOP ? above : top + crowd * 16, text, color, age: 0 });
+    // Words are 8 px a letter and 16 px a line, and all rise together, so where they are now is where they stay apart.
+    const clash = (at: number) => this.view.floaters.some((o) => o.age < 0.6 && Math.abs(o.x - x) < ((o.text.length + text.length) * 8) / 2 + 4 && Math.abs(o.y - o.age * FLOAT_RISE - at) < 16);
+    const lines = [0, 1, 2, 3, 4].map((k) => top - k * 16).filter((at) => at >= FLOAT_TOP);
+    const at = [...lines, ...[1, 2, 3, 4].map((k) => top + k * 16)].find((a) => !clash(a)) ?? top;
+    this.view.floaters.push({ x, y: at, text, color, age: 0 });
   }
 
   /** A burst where a blow lands, blood for the wounded, and a jolt that grows with the damage. */
@@ -239,7 +261,8 @@ export class BattleController implements Screen {
           v.shake = Math.max(v.shake, 6);
         }
         this.float(e.target, e.killed ? `-${e.killed}` : `-${e.damage} hp`, e.killed ? RED[5] : RED[6]);
-        v.log = `${this.fighterName(e.attacker)} ${e.ranged ? 'shoot' : e.retaliation ? 'strike back at' : e.charge ? 'charge' : 'hit'} ${this.fighterName(e.target).replace(/^(Your|Their) /, (m) => m.toLowerCase())} for ${e.damage}${e.killed ? `. ${e.killed} perish.` : '.'}${e.hexed ? ' The hex slows them down.' : ''}`;
+        const fell = !e.killed ? '.' : this.named(e.target) ? `. ${this.fighterName(e.target)} falls.` : `. ${e.killed} perish.`;
+        v.log = `${this.fighterName(e.attacker)} ${this.verb(e.attacker, e.ranged ? 'shoot' : e.retaliation ? 'strike back at' : e.charge ? 'charge' : 'hit')} ${this.objectName(e.target)} for ${e.damage}${fell}${e.hexed ? ' The hex slows them down.' : ''}`;
       },
       tick: (t) => {
         const ms = t * after;
@@ -264,6 +287,7 @@ export class BattleController implements Screen {
     const before = this.battle;
     const { battle, events } = battleAct(before, action);
     if (events.length === 0) return false;
+    this.acting = action.type === 'volley' ? null : (activeFighter(before)?.id ?? null);
     this.battle = battle;
     this.view.targeting = null;
     this.view.hover = null;
@@ -319,61 +343,62 @@ export class BattleController implements Screen {
           this.step(0.3, {
             start: () => {
               this.float(e.fighter, `+${e.healed}`, GOLD[6]);
-              v.log = `${this.fighterName(e.fighter)} regenerate: the wounds close up.`;
+              v.log = `${this.fighterName(e.fighter)} ${this.verb(e.fighter, 'regenerate')}: the wounds close up.`;
             },
           });
           break;
         case 'spell': {
+          // Stacks caught in a burst beside the target take their damage with it, at the same moment.
+          if (e.splash) break;
+          const from = events.indexOf(e) + 1;
+          const stop = events.findIndex((n, k) => k >= from && !(n.type === 'spell' && n.splash));
+          const caught = events.slice(from, stop < 0 ? events.length : stop).filter((n) => n.type === 'spell');
+          const victims = [e, ...caught].map((h) => {
+            const dies = this.wound(left, h.target, h.killed);
+            if (dies) v.dying.add(h.target);
+            return { h, dies, remaining: left.get(h.target) ?? 0, ours: fighterById(this.battle, h.target).side === 'player' };
+          });
           const target = fighterById(this.battle, e.target);
-          const dies = this.wound(left, e.target, e.killed);
-          const remaining = left.get(e.target) ?? 0;
-          if (dies) v.dying.add(e.target);
           const [tx, ty] = hexCentre(target.at);
           const look = SPELLS[e.spell].look;
-          if (e.splash) {
-            // Caught in the burst beside the target: the flames already there, so just the damage.
-            this.step(0.08, {
-              start: () => {
-                v.flashing.add(e.target);
-                v.poses.set(e.target, { anim: 'defendRanged', ms: 0 });
-                v.counts.set(e.target, remaining);
-                this.float(e.target, e.killed ? `-${e.killed}` : `-${e.damage} hp`, target.side === 'player' ? RED[5] : GOLD[6]);
-              },
-              end: () => {
-                v.flashing.delete(e.target);
-                if (!dies) v.poses.delete(e.target);
-              },
-            });
-            if (dies) this.fall(e.target);
-            break;
-          }
           const colour = look.colour === 'blue' ? BLUE[6] : look.colour === 'red' ? RED[5] : GOLD[6];
           const shot = { from: [tx, 0] as [number, number], to: [tx, ty - 10] as [number, number], t: 0, kind: look.kind, color: colour };
+          // A fireball has to fall before it bursts: the sound, the numbers, the flinch and the jolt land with the burst.
+          const land = look.kind === 'fire' ? FIRE_FALL : 0;
+          let landed = false;
+          const impact = () => {
+            landed = true;
+            play(look.kind === 'sparkle' ? 'spell' : 'bolt');
+            for (const { h, remaining, ours } of victims) {
+              v.counts.set(h.target, remaining);
+              if (!h.damage) continue;
+              v.poses.set(h.target, { anim: 'defendRanged', ms: 0 });
+              this.float(h.target, h.killed ? `-${h.killed}` : `-${h.damage} hp`, ours ? RED[5] : GOLD[6]);
+            }
+            if (e.damage && look.kind !== 'sparkle') v.shake = Math.max(v.shake, look.kind === 'fire' ? 5 : 4);
+          };
           this.step(look.kind === 'fire' ? 0.95 : 0.4, {
             start: () => {
               v.shots.push(shot);
-              play(look.kind === 'sparkle' ? 'spell' : 'bolt');
-              v.log = `${this.battle.hero.name ?? 'Aldric'} casts ${SPELLS[e.spell].name} on ${this.fighterName(e.target).toLowerCase()}${e.damage ? `: ${e.damage} damage${e.killed ? `, ${e.killed} perish` : ''}` : ''}.`;
-              v.counts.set(e.target, remaining);
-              if (e.damage) {
-                v.flashing.add(e.target);
-                v.poses.set(e.target, { anim: 'defendRanged', ms: 0 });
-                this.float(e.target, e.killed ? `-${e.killed}` : `-${e.damage} hp`, GOLD[6]);
-                if (look.kind !== 'sparkle') v.shake = Math.max(v.shake, look.kind === 'fire' ? 5 : 4);
-              }
+              v.log = `${this.battle.hero.name ?? 'Aldric'} casts ${SPELLS[e.spell].name} on ${this.objectName(e.target)}${e.damage ? `: ${e.damage} damage${e.killed ? (this.named(e.target) ? `, and ${this.fighterName(e.target)} falls` : `, ${e.killed} perish`) : ''}` : ''}.`;
+              if (!land) impact();
             },
             tick: (t) => {
               shot.t = t;
+              if (!landed && t >= land) impact();
               // The spell burns in two red pulses, as Wesnoth flashes a unit that is hit.
-              if (e.damage) v.flashing[pulse(t * 0.95) ? 'add' : 'delete'](e.target);
+              const k = landed ? ((t - land) / (1 - land)) * 0.95 : 0;
+              for (const { h } of victims) if (h.damage) v.flashing[pulse(k) ? 'add' : 'delete'](h.target);
             },
             end: () => {
               v.shots.splice(v.shots.indexOf(shot), 1);
-              v.flashing.delete(e.target);
-              if (!dies) v.poses.delete(e.target);
+              for (const { h, dies } of victims) {
+                v.flashing.delete(h.target);
+                if (!dies) v.poses.delete(h.target);
+              }
             },
           });
-          if (dies) this.fall(e.target);
+          for (const { h, dies } of victims) if (dies) this.fall(h.target);
           break;
         }
         case 'wait':
@@ -381,7 +406,7 @@ export class BattleController implements Screen {
           this.step(e.type === 'defend' ? 0.45 : 0.25, {
             start: () => {
               this.float(e.fighter, e.type === 'wait' ? 'waits' : 'defends', NEUTRAL[7]);
-              v.log = `${this.fighterName(e.fighter)} ${e.type === 'wait' ? 'wait for a better moment' : 'raise their shields'}.`;
+              v.log = `${this.fighterName(e.fighter)} ${this.verb(e.fighter, e.type === 'wait' ? 'wait for a better moment' : this.named(e.fighter) ? 'stand guard' : 'raise their shields')}.`;
               if (e.type === 'defend') v.poses.set(e.fighter, { anim: 'defend', ms: 0 });
             },
             end: () => v.poses.delete(e.fighter),
@@ -448,7 +473,7 @@ export class BattleController implements Screen {
     // Once every blow has landed, the badges read the rules' counts again.
     if (this.queue.length === 0) v.counts.clear();
     const f = activeFighter(this.battle);
-    v.active = f?.id ?? null;
+    v.active = this.queue.length > 0 ? this.acting : (f?.id ?? null);
     if (this.queue.length === 0) {
       if (this.battle.result) {
         if (!this.finished) {
@@ -542,15 +567,19 @@ export class BattleController implements Screen {
     if (!f) return null;
     const target = 'target' in action ? fighterById(this.battle, action.target) : null;
     if (!target) return null;
-    const name = TROOPS[target.troop].name.toLowerCase();
+    const t = TROOPS[target.troop];
+    const one = this.named(target.id);
+    const whom = one ? t.name : `${target.side === 'player' ? 'your' : 'their'} ${t.name.toLowerCase()}`;
+    const losses = (killed: number) => (one ? (killed ? `, and ${t.name} falls` : '') : `, ${killed} perish`);
     if (action.type === 'cast') {
       const damage = spellDamage(this.battle, action.spell);
-      if (!damage) return `${SPELLS[action.spell].name} on ${target.side === 'player' ? 'your' : 'their'} ${name}.`;
+      if (!damage) return `${SPELLS[action.spell].name} on ${whom}.`;
       const [, ...caught] = spellVictims(this.battle, action.spell, target);
       const ours = caught.filter((c) => c.side === 'player').map((c) => TROOPS[c.troop].name.toLowerCase());
       const theirs = caught.length - ours.length;
       const more = [theirs ? `${theirs} more of theirs` : '', ours.length ? `your own ${ours.join(' and ')}!` : ''].filter(Boolean).join(', and ');
-      return `${SPELLS[action.spell].name}: ${damage} damage, ${wound(target, damage).killed} of their ${name} perish.${more ? ` It also hits ${more}` : ''}`;
+      const killed = wound(target, damage).killed;
+      return `${SPELLS[action.spell].name}: ${damage} damage${one ? losses(killed) : `, ${killed} of ${whom} perish`}.${more ? ` It also hits ${more}` : ''}`;
     }
     if (action.type !== 'melee' && action.type !== 'shoot') return null;
     const ranged = action.type === 'shoot';
@@ -558,8 +587,8 @@ export class BattleController implements Screen {
     const from = action.type === 'melee' ? { ...f, at: action.from } : f;
     const damage = strike(this.battle, from, target, ranged, undefined, charge ? CHARGE_BONUS : 1).damage;
     const left = wound(target, damage);
-    const back = !ranged && !charge && left.count > 0 && !target.retaliated ? ' They will strike back.' : '';
-    return `${charge ? 'Charge! ' : ''}${ranged ? 'Shoot' : 'Attack'} their ${name}: about ${damage} damage, ${left.killed} perish.${back}${charge ? ' No one can strike back at a charge.' : ''}`;
+    const back = !ranged && !charge && left.count > 0 && !target.retaliated ? ` ${one ? `${t.name} will` : 'They will'} strike back.` : '';
+    return `${charge ? 'Charge! ' : ''}${ranged ? 'Shoot' : 'Attack'} ${whom}: about ${damage} damage${losses(left.killed)}.${back}${charge ? ' No one can strike back at a charge.' : ''}`;
   }
 
   private button(id: (typeof BUTTONS)[number]['id']) {
