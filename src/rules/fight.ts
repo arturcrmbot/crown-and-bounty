@@ -7,7 +7,7 @@ import { applyEffects } from './effects/core';
 import { CAMPAIGN_LENGTH, campaignLines, commissionOf, hasNextCommission, provinceOf } from './campaign';
 import { revealDisc } from './map/fog';
 import { createBattle, heroFell, SHOOTER_MELEE, survivors, type BattleHero } from './battle/battle';
-import { foundNote, gainXp, giveArtifact, heroStats, namedBonuses } from './hero';
+import { artifactChoices, foundNote, gainXp, giveArtifact, heroStats, namedBonuses } from './hero';
 import { addTroops, again, armyPower, close, coins, locationById, roll, roman, show, stillWithYou, troops, update, VANISHES, type Army, type GameEvent, type GameState, type Location, type Result } from './state';
 
 export function heroInBattle(state: GameState): BattleHero {
@@ -183,7 +183,7 @@ export function beat(state: GameState, id: string, how: { title: string; lines: 
     return { state: paid.state, events: [...events, ...paid.events] };
   }
   const gold = how.sayGold && how.reward ? [`**+${coins(how.reward)} gold.**`] : [];
-  events.push(show({ title: how.title, lines: [...how.lines, ...spoils, ...gold], choices: [close] }, place.at, place.id));
+  events.push(show({ title: how.title, lines: [...how.lines, ...spoils, ...gold], choices: place.artifact ? artifactChoices(next, place.artifact) : [close] }, place.at, place.id));
   return { state: next, events };
 }
 

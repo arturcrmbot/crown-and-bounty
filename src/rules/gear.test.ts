@@ -14,7 +14,10 @@ import { costsFor } from './map/movement';
 import { beginCommission, newGame } from './scenario';
 
 const fresh = (background: BackgroundId = 'knight'): GameState => ({ ...newGame(1066, ALDMOOR, background), opening: undefined });
-const wearing = (ids: ArtifactId[], base = fresh()) => ids.reduce((s, id) => (s.hero.gear[ARTIFACTS[id].slot] ? equip(giveArtifact(s, id), id)!.state : giveArtifact(s, id)), base);
+const wearing = (ids: ArtifactId[], base = fresh()) => ids.reduce((s, id) => {
+  const found = giveArtifact(s, id);
+  return found.hero.gear[ARTIFACTS[id].slot] === id ? found : equip(found, id)!.state;
+}, base);
 const cardOf = (result: Result): Card => {
   const e = result.events.find((x) => x.type === 'card');
   if (!e || e.type !== 'card') throw new Error('no card');
@@ -96,6 +99,18 @@ describe('gear with a price', () => {
     const shod = giveArtifact(giveArtifact(fed, 'luckyHorseshoe'), 'wizardsButton');
     expect(equip(shod, 'wizardsButton')!.state.movement).toBe(shod.movement - 20);
   });
+
+  it('asks before drawback gear goes on, while ordinary gear still goes straight on', () => {
+    const banner = apply(fresh(), { type: 'choose', id: 'highwaymen', choice: 'auto' })!;
+    expect(banner.state.hero.gear.banner).toBeUndefined();
+    expect(banner.state.hero.pack).toContain('blackBanner');
+    expect(cardOf(banner).choices.map((choice) => choice.label)).toEqual(['Wear it', 'Put it in your pack']);
+    const worn = apply(banner.state, cardOf(banner).choices[0].action)!;
+    expect(worn.state.hero.gear.banner).toBe('blackBanner');
+
+    const ordinary = giveArtifact(fresh(), 'oldBanner');
+    expect(ordinary.hero.gear.banner).toBe('oldBanner');
+  });
 });
 
 describe('gear that holds a spell', () => {
@@ -154,7 +169,7 @@ describe('where the gear is', () => {
     const chest = apply(fresh(), { type: 'choose', id: 'chest', choice: 'keep' })!;
     expect(chest.state.hero.gear.trinket).toBe('surveyorsChain');
     const beaten = apply(fresh(), { type: 'choose', id: 'highwaymen', choice: 'auto' })!.state;
-    expect(beaten.hero.gear.banner).toBe('blackBanner');
+    expect(beaten.hero.pack).toContain('blackBanner');
     const shrine = cardOf(visit(fresh(), 'shrine'));
     expect(shrine.choices.map((c) => c.label)).toContain('Take the pilgrim\u2019s hat');
     const hatted = apply(fresh(), { type: 'choose', id: 'shrine', choice: 'start/hat' })!.state;

@@ -4,7 +4,7 @@ import { PERKS, RANKS, SKILLS, type PerkId, type SkillId } from '../content/skil
 import type { MapSpellId, SpellId, StatusId } from '../content/spells';
 import type { TroopId } from '../content/troops';
 import { SHOOTER_MELEE } from './battle/battle';
-import { roll, roman, show, type Card, type GameEvent, type GameState, type Result } from './state';
+import { close, roll, roman, show, type Card, type Choice, type GameEvent, type GameState, type Result } from './state';
 
 /** A level-up waiting for the player to choose: skills (`skill:archery`) or perks (`perk:warchest`). */
 export type Offer = { level: number; stat: StatId; options: string[] };
@@ -404,19 +404,33 @@ export function learn(state: GameState, option: string): Result | null {
   return { state: next, events: card ? [show(card)] : [] };
 }
 
-/** Puts an artifact in the pack, and wears it straight away if its slot is free. */
+/** Puts an artifact in the pack, and wears it straight away if its slot is free and it has no drawback. */
 export function giveArtifact(state: GameState, id: ArtifactId): GameState {
-  const slot = ARTIFACTS[id].slot;
-  if (!state.hero.gear[slot]) return { ...state, hero: { ...state.hero, gear: { ...state.hero.gear, [slot]: id } } };
+  const artifact = ARTIFACTS[id];
+  const slot = artifact.slot;
+  if (!artifact.drawback && !state.hero.gear[slot]) return { ...state, hero: { ...state.hero, gear: { ...state.hero.gear, [slot]: id } } };
   return { ...state, hero: { ...state.hero, pack: [...state.hero.pack, id] } };
 }
 
-/** Says where a just-found artifact went: on him, or into the pack because that slot is taken. */
+/** Says where a just-found artifact went, or asks before gear with a drawback goes on. */
 export function foundNote(state: GameState, id: ArtifactId): string {
   const a = ARTIFACTS[id];
   const set = setLine(state, id);
-  const note = state.hero.gear[a.slot] === id ? `You put it on. ${a.note}` : `${a.note} It goes in your pack, since you wear something there already: **H** to swap.`;
+  const note = a.drawback && state.hero.pack.includes(id)
+    ? `${a.note} Wear it, or put it in your pack?`
+    : state.hero.gear[a.slot] === id
+      ? `You put it on. ${a.note}`
+      : `${a.note} It goes in your pack, since you wear something there already: **H** to swap.`;
   return set ? `${note} ${set}` : note;
+}
+
+/** The explicit choice shown when newly found gear has a drawback and could otherwise go straight on. */
+export function artifactChoices(state: GameState, id: ArtifactId, otherwise: Choice[] = [close]): Choice[] {
+  if (!ARTIFACTS[id].drawback || !state.hero.pack.includes(id)) return otherwise;
+  return [
+    { label: 'Wear it', action: { type: 'equip', artifact: id } },
+    { label: 'Put it in your pack', action: { type: 'close' } },
+  ];
 }
 
 /**
