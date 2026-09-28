@@ -265,20 +265,30 @@ function castActions(b: BattleState): BattleAction[] {
   return actions;
 }
 
-/** The action that leaves the battle looking best for the side whose turn it is. */
-function best(b: BattleState, actions: BattleAction[], side: Side): { action: BattleAction; score: number } | null {
+/** The action that leaves the battle looking best for the side whose turn it is (by `judge`, if given). */
+function best(b: BattleState, actions: BattleAction[], side: Side, judge?: (after: BattleState) => number): { action: BattleAction; score: number } | null {
   let top: { action: BattleAction; score: number } | null = null;
   for (const action of actions) {
     const { battle, events } = battleAct(b, action, true);
     if (events.length === 0) continue;
-    const score = evaluate(battle, side);
+    const score = judge ? judge(battle) : evaluate(battle, side);
     if (!top || score > top.score) top = { action, score };
   }
   return top;
 }
 
+/**
+ * What the side whose turn it is does. The enemy always attacks: you chose to fight, so they fight
+ * (see `onslaught`). Your own stacks, on auto, are played by the commander, who may hold back.
+ */
 export function chooseAction(b: BattleState): BattleAction {
   // The ranger's free volley comes before anything else.
+  if (b.volley) return { type: 'volley' };
+  return activeFighter(b)!.side === 'enemy' ? onslaught(b) : commander(b);
+}
+
+/** The careful commander: casts what's worth casting, then takes whatever leaves the battle looking best. */
+export function commander(b: BattleState): BattleAction {
   if (b.volley) return { type: 'volley' };
   const f = activeFighter(b)!;
   if (!b.fighters.some((o) => o.count > 0 && o.side !== f.side)) return { type: 'defend' };
@@ -288,4 +298,46 @@ export function chooseAction(b: BattleState): BattleAction {
     if (cast && cast.score > evaluate(b, 'player') + 1) return cast.action;
   }
   return best(b, stackActions(b), f.side)?.action ?? { type: 'defend' };
+}
+
+/**
+ * The enemy's way: never wait, never turtle, never back off. A stack shoots or strikes the best
+ * target it can, and if nobody is in reach it closes in on the nearest of yours, round the rocks.
+ */
+export function onslaught(b: BattleState): BattleAction {
+  const f = activeFighter(b)!;
+  const acts = stackActions(b);
+  const attack = best(b, acts.filter((a) => a.type === 'melee' || a.type === 'shoot'), f.side);
+  if (attack) return attack.action;
+  const steps = stepsToFoes(b, f);
+  const moves = acts.filter((a): a is Extract<BattleAction, { type: 'move' }> => a.type === 'move');
+  if (!moves.length) return { type: 'defend' };
+  // How far from striking distance each move leaves the stack; hexes cut off from everyone count by straight distance.
+  const gap = (to: number) => (steps[to] >= 0 ? steps[to] : HEXES + Math.min(...b.fighters.filter((o) => o.count > 0 && o.side !== f.side).map((o) => distance(to, o.at))));
+  const nearest = Math.min(...moves.map((m) => gap(m.to)));
+  return best(b, moves.filter((m) => gap(m.to) === nearest), f.side)!.action;
+}
+
+/** Steps from every hex to the nearest hex beside one of `f`'s foes, going round rocks and stacks (-1: no way). */
+function stepsToFoes(b: BattleState, f: Fighter): Int16Array {
+  const mask = blockedMask(b);
+  mask[f.at] = 0;
+  const steps = new Int16Array(HEXES).fill(-1);
+  const queue: number[] = [];
+  for (const o of b.fighters) {
+    if (o.count <= 0 || o.side === f.side) continue;
+    for (const n of NEIGHBOURS[o.at]) {
+      if (mask[n] || steps[n] >= 0) continue;
+      steps[n] = 0;
+      queue.push(n);
+    }
+  }
+  for (let k = 0; k < queue.length; k++) {
+    for (const n of NEIGHBOURS[queue[k]]) {
+      if (mask[n] || steps[n] >= 0) continue;
+      steps[n] = steps[queue[k]] + 1;
+      queue.push(n);
+    }
+  }
+  return steps;
 }

@@ -22,9 +22,14 @@ const listeners: (() => void)[] = [];
 export const audio = () => buses;
 export const isMuted = () => muted;
 
-/** Called on the first click or key: only then may a page make sound. */
+/** Called on every click or key until sound is running: only then may a page make sound. */
 export function wakeAudio() {
-  if (buses || typeof AudioContext === 'undefined') return;
+  if (buses) {
+    // A context made on the wrong sort of event can start suspended; the next click lets it go.
+    if (buses.ctx.state === 'suspended') void buses.ctx.resume();
+    return;
+  }
+  if (typeof AudioContext === 'undefined') return;
   try {
     const ctx = new AudioContext();
     const squash = ctx.createDynamicsCompressor();

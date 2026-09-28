@@ -18,12 +18,20 @@ export class TitleController implements Screen {
   private readonly resume: GameState | null;
   private time = 0;
 
+  /** Browsers only allow sound after a click, so the painting waits for one: then the tune starts and the menu opens. */
+  private waiting = true;
+
   constructor(display: Display, resume: GameState | null, hooks: TitleController['hooks']) {
     this.display = display;
     this.resume = resume;
     this.hooks = hooks;
     this.cards = new CardView((action) => this.choose(action));
-    this.cards.show(titleCard(resume));
+  }
+
+  private begin() {
+    if (!this.waiting) return;
+    this.waiting = false;
+    this.cards.show(titleCard(this.resume));
   }
 
   private choose(action: Action) {
@@ -31,15 +39,22 @@ export class TitleController implements Screen {
     else if (action.type === 'restart') this.hooks.onNew();
   }
 
-  /** Enter picks the first choice: carry on if there is a save, a new campaign if not. */
-  readonly input = { ...NO_INPUT, key: (key: string) => key === 'enter' && this.choose(this.resume ? { type: 'close' } : { type: 'restart' }) };
+  /** Any click or key opens the menu; then Enter picks its first choice: carry on if there is a save, a new campaign if not. */
+  readonly input = {
+    ...NO_INPUT,
+    click: () => this.begin(),
+    key: (key: string) => {
+      if (this.waiting) this.begin();
+      else if (key === 'enter') this.choose(this.resume ? { type: 'close' } : { type: 'restart' });
+    },
+  };
 
   update(dt: number) {
     this.time += dt;
   }
 
   render(): Uint8Array {
-    return this.screen.draw(this.time).data;
+    return this.screen.draw(this.time, this.waiting).data;
   }
 
   get bitmap() {

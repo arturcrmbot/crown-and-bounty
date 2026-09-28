@@ -74,8 +74,14 @@ export type BattleState = {
   volley?: boolean;
 };
 
-/** Rounds in a row with nobody hurt before the weaker side gives up the field. */
+/**
+ * Rounds in a row with nobody hurt before the battle is called off (the enemy always attacks, so
+ * this only happens when it can't get at you). It counts as beaten only if it is much the weaker;
+ * otherwise it keeps its army, and you leave the field.
+ */
 export const QUIET_ROUNDS = 3;
+/** A side this much weaker than the other (in fighting worth) is beaten when a quiet battle is called off. */
+export const ROUTED_BELOW = 1 / 3;
 
 export type BattleAction =
   | { type: 'move'; to: number }
@@ -401,10 +407,11 @@ function settle(b: BattleState, events: BattleEvent[], endTurn: boolean): Battle
   }
   if (order.length === 0) {
     const quiet = next.struck ? 0 : (next.quiet ?? 0) + 1;
-    // Nobody can land a blow (someone fast keeps running, say): the weaker side gives up the field.
+    // Nobody has landed a blow for a while: the battle is called off. Only a side far weaker than
+    // the other counts as beaten; otherwise the enemy keeps its army and slips away (and so do you).
     if (quiet >= QUIET_ROUNDS) {
       const worth = (side: Side) => next.fighters.filter((f) => alive(f) && f.side === side).reduce((sum, f) => sum + (((f.count - 1) * TROOPS[f.troop].hp + f.hp) / TROOPS[f.troop].hp) * troopPower(f.troop), 0);
-      const result = worth('enemy') < worth('player') ? 'won' : 'fled';
+      const result = worth('enemy') < worth('player') * ROUTED_BELOW ? 'won' : 'fled';
       events.push({ type: 'end', result, rout: true });
       return { battle: { ...next, result, quiet }, events };
     }

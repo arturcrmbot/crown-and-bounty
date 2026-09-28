@@ -87,14 +87,41 @@ describe('a battle', () => {
     expect(hexed.events.some((e) => e.type === 'hit' && e.hexed)).toBe(true);
   });
 
-  it('ends a battle nobody can land a blow in: the weaker side gives up the field', () => {
-    const b = battle(['knights'], [10], ['goblins'], [5]);
-    const quiet = { ...b, order: [0], quiet: QUIET_ROUNDS - 1, struck: false };
-    const end = battleAct(quiet, { type: 'defend' });
+  it('calls off a battle nobody can land a blow in: a far weaker enemy is beaten, any other slips away', () => {
+    const quietly = (b: BattleState) => ({ ...b, order: [0], quiet: QUIET_ROUNDS - 1, struck: false });
+    const end = battleAct(quietly(battle(['knights'], [10], ['goblins'], [5])), { type: 'defend' });
     expect(end.battle.result).toBe('won');
     expect(end.events.at(-1)).toMatchObject({ type: 'end', result: 'won', rout: true });
-    const busy = battleAct({ ...quiet, struck: true }, { type: 'defend' });
+    // Waiting out a real enemy doesn't win anything: it keeps its army, and you leave the field.
+    const even = battleAct(quietly(battle(['knights'], [10], ['boars'], [20])), { type: 'defend' });
+    expect(even.battle.result).toBe('fled');
+    const busy = battleAct({ ...quietly(battle(['knights'], [10], ['goblins'], [5])), struck: true }, { type: 'defend' });
     expect(busy.battle.result).toBeUndefined();
+  });
+
+  it('never lets the enemy wait or turtle: it strikes if it can, and otherwise closes in', () => {
+    // Boars across the field from the knights: every one of their turns is a step closer, or a blow.
+    let b = battle(['knights'], [15], ['boars'], [20]);
+    const gap = (s: BattleState) => distance(s.fighters[0].at, s.fighters[1].at);
+    for (let i = 0; i < 40 && !b.result; i++) {
+      const f = activeFighter(b)!;
+      if (f.side === 'enemy') {
+        const action = chooseAction(b);
+        expect(['move', 'melee', 'shoot']).toContain(action.type);
+        const before = gap(b);
+        b = battleAct(b, action).battle;
+        if (action.type === 'move') expect(gap(b)).toBeLessThan(before);
+      } else b = battleAct(b, { type: 'defend' }).battle;
+    }
+    // Turtling doesn't make them go away: the knights fought them off, blow by blow.
+    expect(b.result).toBe('won');
+    expect(b.quiet ?? 0).toBeLessThan(QUIET_ROUNDS);
+  });
+
+  it('keeps its shooters shooting', () => {
+    const b = battle(['knights'], [10], ['crossbowmen'], [20]);
+    const turn = { ...b, order: [1, 0] };
+    expect(chooseAction(turn)).toMatchObject({ type: 'shoot', target: 0 });
   });
 
   it('makes defenders harder to hurt, and lets a stack wait until last', () => {

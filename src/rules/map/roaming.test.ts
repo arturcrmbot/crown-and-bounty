@@ -67,9 +67,10 @@ describe('enemies on the map', () => {
 
   it('let villains recruit every payday, though the villain stays one', () => {
     let s = aldmoor();
+    const start = locationById(s, 'hideout').enemy!.army.find((a) => a.troop === 'swordsmen')!.count;
     for (let day = 1; day < 8; day++) s = endDay(s).state;
     const army = locationById(s, 'hideout').enemy!.army;
-    expect(army.find((a) => a.troop === 'swordsmen')!.count).toBe(Math.round(48 * 1.05));
+    expect(army.find((a) => a.troop === 'swordsmen')!.count).toBe(Math.round(start * 1.05));
     expect(army.find((a) => a.troop === 'baron')!.count).toBe(1);
   });
 });

@@ -8,6 +8,7 @@ import { loadGame, saveGame, stopSaving } from './game/save';
 import { SCREEN } from './render/frame';
 import { paletteWords } from './render/palette';
 import { toggleMute, wakeAudio } from './audio/context';
+import { MuteButton } from './ui/mute';
 import { beginCommission, commissionAt, hasNextCommission, newGame, startFight, type GameState } from './rules/game';
 
 declare global {
@@ -70,11 +71,13 @@ if (quick) {
   if (game.top.name === 'adventure' && resume && !resume.opening) game.adventure.showCard(resume.over === 'lost' ? failedCard(resume) : welcomeBackCard(resume), null);
 } else game.showTitle(resume, () => newGame(seed));
 window.__kc = game.debug();
-// Sound may only start once the player has done something; M turns it off and on.
-for (const type of ['pointerdown', 'keydown'] as const) window.addEventListener(type, wakeAudio, { once: true });
+// Sound may only start once the player has done something. Listen as the event comes in, before
+// anything (a card, the sound button) can stop it on the way. M, or the button, turns it off and on.
+for (const type of ['pointerdown', 'pointerup', 'keydown', 'touchend'] as const) window.addEventListener(type, wakeAudio, { capture: true });
 window.addEventListener('keydown', (e) => {
   if (e.key.toLowerCase() === 'm') toggleMute();
 });
+const mute = new MuteButton();
 window.addEventListener('pagehide', () => {
   const state = game.saveable;
   if (state) saveGame(state);
@@ -89,6 +92,7 @@ requestAnimationFrame(function frame(now) {
   const tick = frozen ? 0 : Math.floor(now / TICK_MS);
   display.present(game.frame(tick), paletteWords(tick));
   game.placeCards();
+  mute.place(display);
   window.__ready = true;
   requestAnimationFrame(frame);
 });

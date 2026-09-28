@@ -73,6 +73,8 @@ try {
   await page.goto(`${base}?fresh=1&speed=4&seed=${process.env.SEED ?? 1066}`);
   await kc.ready();
   await look('title');
+  await kc.begin();
+  await look('menu');
   await press('New campaign');
   await look('king');
   await press('At your service');

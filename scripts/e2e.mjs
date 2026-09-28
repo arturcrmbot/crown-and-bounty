@@ -82,7 +82,9 @@ async function go(id, action) {
 try {
   await page.goto(`${server.url}?fresh=1&speed=8&seed=1066`);
   await kc.ready();
-  check((await screen()) === 'title', 'the game opens on the title');
+  check((await screen()) === 'title' && (await kc.title()) === null, 'the game opens on the title, waiting for a click');
+  await kc.begin();
+  check((await kc.lines())?.includes('goose'), 'a click opens the menu');
   check(!(await kc.choose('Continue')) && (await kc.choose('New campaign')), 'with no save, the title only offers a new campaign');
   check((await screen()) === 'prologue' && (await kc.title()) === 'King Osric', 'the King explains the trouble');
   await kc.choose('At your service');
@@ -109,6 +111,7 @@ try {
   const before = await kc.state();
   await page.goto(`${server.url}?speed=8`);
   await kc.ready();
+  await kc.begin();
   check((await kc.lines()) !== null && (await kc.choose('Continue')), 'a reload offers to carry on from the title');
   const after = await kc.state();
   check(after.gold === before.gold && after.day === before.day, 'the save keeps gold and day');
@@ -196,6 +199,7 @@ try {
   check(atCourt.gold === final.gold + 1500 && atCourt.campaign.court.boons.length === 3, 'the King adds 1,500 gold and offers three boons');
   await page.goto(`${server.url}?speed=8`);
   await kc.ready();
+  await kc.begin();
   await kc.choose('Continue');
   check((await screen()) === 'court' && (await kc.title()) === 'The King\u2019s Court', 'a reload at court comes back to court');
   const boon = await first();
@@ -221,12 +225,14 @@ try {
 
   await page.goto(`${server.url}?speed=8`);
   await kc.ready();
+  await kc.begin();
   const buttons = await kc.call(() => [...document.querySelectorAll('.kc-card-wrap:not([hidden]) button')].map((b) => b.textContent).join(' / '));
   check(buttons.includes('Commission II') && (await kc.choose('Continue')), 'a reload in the Fenmarch offers to carry on there');
   const resumed = await kc.state();
   check(resumed.campaign.chapter === 1 && resumed.gold === midFen.gold && resumed.locations.find((l) => l.id === 'goblins').done, 'the save keeps the province, gold and the beaten goblins');
   await page.goto(`${server.url}?speed=8`);
   await kc.ready();
+  await kc.begin();
   await kc.choose('New campaign');
   check((await kc.title()) === 'King Osric' && (await kc.state()).campaign.chapter === 0, 'a new campaign starts over with the King');
   check(errors.length === 0, `no page errors${errors.length ? `: ${errors.join(' | ')}` : ''}`);

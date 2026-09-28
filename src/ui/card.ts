@@ -1,8 +1,8 @@
 import type { PortraitId } from '../content/portraits';
-import { paletteWords } from '../render/palette';
 import { portraitOf } from '../render/portraits';
 import type { Action, Card } from '../rules/game';
 import './card.css';
+import { bitmapUrl } from './pixels';
 import { play } from './sound';
 
 type ScreenPoint = { x: number; y: number };
@@ -15,17 +15,7 @@ const images = new Map<PortraitId, string>();
 function portraitImage(id: PortraitId): string {
   let url = images.get(id);
   if (!url) {
-    const bitmap = portraitOf(id);
-    const canvas = document.createElement('canvas');
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
-    const ctx = canvas.getContext('2d')!;
-    const image = ctx.createImageData(bitmap.width, bitmap.height);
-    const pixels = new Uint32Array(image.data.buffer);
-    const words = paletteWords(0);
-    for (let i = 0; i < bitmap.data.length; i++) pixels[i] = bitmap.data[i] ? words[bitmap.data[i]] : 0;
-    ctx.putImageData(image, 0, 0);
-    url = canvas.toDataURL();
+    url = bitmapUrl(portraitOf(id));
     images.set(id, url);
   }
   return url;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { activeFighter, createBattle, type BattleHero } from './battle';
-import { autoResolve, chooseAction, chooseActionV1, type Chooser } from './ai';
+import { autoResolve, chooseActionV1, commander, type Chooser } from './ai';
 import type { Army } from '../state';
 
 const none: BattleHero = { attack: 0, defence: 0, spellPower: 0, mana: 0, spells: [], castRound: 0 };
@@ -11,7 +11,7 @@ function duel(army: Army, seeds: number) {
   for (let seed = 1; seed <= seeds; seed++) {
     for (const v2player of [true, false]) {
       const b = createBattle({ place: 'duel', seed: seed * 7919, player: army, enemy: army, hero: none, obstacles: 5 });
-      const choose: Chooser = (s) => ((activeFighter(s)!.side === 'player') === v2player ? chooseAction(s) : chooseActionV1(s));
+      const choose: Chooser = (s) => ((activeFighter(s)!.side === 'player') === v2player ? commander(s) : chooseActionV1(s));
       const end = autoResolve(b, choose);
       score.games++;
       score.rounds += end.round;

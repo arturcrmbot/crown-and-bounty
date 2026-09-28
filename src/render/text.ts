@@ -34,3 +34,15 @@ export function drawText(target: Bitmap, text: string, x: number, y: number, col
   }
   return width;
 }
+
+/** Draws text centred on `cx`, with a one-pixel `outline` all the way round, so it reads over anything. */
+export function drawOutlined(target: Bitmap, text: string, cx: number, y: number, color: number, outline: number, size = 13) {
+  const { width, height, solid } = textMask(text, size);
+  const x0 = Math.round(cx - width / 2);
+  for (let j = -1; j <= height; j++) {
+    for (let i = -1; i <= width; i++) {
+      if (solid(i, j)) target.set(x0 + i, y + j, color);
+      else if ([-1, 0, 1].some((dj) => [-1, 0, 1].some((di) => solid(i + di, j + dj)))) target.set(x0 + i, y + j, outline);
+    }
+  }
+}

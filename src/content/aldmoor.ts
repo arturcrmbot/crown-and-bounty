@@ -24,7 +24,7 @@ const at = {
 } satisfies Record<string, Point>;
 
 /** The patrol's size: a gate, too strong for a fresh army (see `rules/difficulty.ts`). */
-const PATROL = { swordsmen: 48, crossbowmen: 29 };
+const PATROL = { swordsmen: 50, crossbowmen: 29 };
 
 /** Where Grimsby's men make camp once they've had enough of him: beaten, or sent home with his orders. */
 const DESERTERS: Location = {
@@ -278,7 +278,7 @@ export const ALDMOOR: Province = {
         grows: 0.05,
         charge: 'Storm the stockade',
         lines: ['A muddy stockade deep in Darkwood. Someone inside is honking.'],
-        army: [{ troop: 'swordsmen', count: 48 }, { troop: 'crossbowmen', count: 24 }, { troop: 'baron', count: 1 }],
+        army: [{ troop: 'swordsmen', count: 56 }, { troop: 'crossbowmen', count: 30 }, { troop: 'baron', count: 1 }],
         reward: 2000,
         threat: 'The Baron shouts from the palisade: *"I have the goose AND the walls!"*',
         parleys: [
@@ -402,7 +402,7 @@ export const ALDMOOR: Province = {
         look: 'wolves',
         tier: 'gate',
         lines: ['Wolves, sitting on the path like they own it.', 'Your archers are pretending not to have seen them.'],
-        army: [{ troop: 'wolves', count: 80 }],
+        army: [{ troop: 'wolves', count: 84 }],
         reward: 300,
         threat: 'They bare their teeth. One of them yawns, which is somehow worse.',
         parleys: [

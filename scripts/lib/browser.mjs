@@ -16,6 +16,11 @@ export function kc(page) {
   return {
     call,
     ready: () => page.waitForFunction(() => window.__ready === true),
+    /** Clicks the title's "Click anywhere to begin", which starts the sound and opens the menu. */
+    begin: async () => {
+      await page.mouse.click(480, 360);
+      await page.waitForTimeout(80);
+    },
     title: () => call(() => document.querySelector('.kc-card-wrap:not([hidden]) h3')?.textContent ?? null),
     lines: () => call(() => [...document.querySelectorAll('.kc-card-wrap:not([hidden]) p')].map((p) => p.textContent).join(' / ')),
     choose: async (label) => {
