@@ -25,6 +25,8 @@ export function heroInBattle(state: GameState): BattleHero {
     melee: s.melee,
     ranged: s.ranged,
     armour: s.armour,
+    luck: s.luck,
+    morale: s.morale,
     manaDiscount: s.manaDiscount,
     troops: s.troops,
     slows: s.slows,

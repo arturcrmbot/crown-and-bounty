@@ -211,6 +211,8 @@ export function leaderTraits(state: GameState): Note[] {
   if (s.melee) out.push({ name: 'Offence', note: `+${pct(s.melee)} damage in melee, for every stack.` });
   if (s.ranged) out.push({ name: 'Archery', note: `+${pct(s.ranged)} damage with every shot.` });
   if (s.armour) out.push({ name: 'Armour', note: `His troops take ${pct(s.armour)} less damage.` });
+  if (s.luck) out.push({ name: 'Luck', note: `${pct(s.luck)} chance a blow lands lucky: twice as hard.` });
+  if (s.morale) out.push({ name: 'Morale', note: `${pct(s.morale)} chance a stack's spirits win it another turn before the round moves on.` });
   if (s.slows.length) out.push({ name: 'Slowed from the start', note: `${names(s.slows)} start every battle slowed.` });
   return out;
 }
@@ -275,6 +277,8 @@ export function stackSheet(state: GameState, index: number): StackSheet | null {
     if (bonus.melee) traits.push({ name, note: `+${pct(bonus.melee)} damage in melee.` });
     if (bonus.ranged && t.shots) traits.push({ name, note: `+${pct(bonus.ranged)} damage with their shots.` });
     if (bonus.armour) traits.push({ name, note: `They take ${pct(bonus.armour)} less damage.` });
+    if (bonus.luck) traits.push({ name, note: `${pct(bonus.luck)} chance a blow lands lucky: twice as hard.` });
+    if (bonus.morale) traits.push({ name, note: `${pct(bonus.morale)} chance they go again before the round moves on.` });
   }
   // One charge, however many things teach it.
   if (chargedBy.length) traits.push({ name: `Charge (${chargedBy.join(', ')})`, note: 'After a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder, and nobody strikes back.', trick: true });

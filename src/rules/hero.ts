@@ -114,6 +114,10 @@ export type HeroStats = {
   manaRate: number;
   cows: boolean;
   hiresGates: boolean;
+  /** Chance a blow lands lucky: twice as hard. */
+  luck: number;
+  /** Chance a stack's good spirits win it another turn before the round moves on. */
+  morale: number;
 };
 
 /** The hero's numbers with everything added up. The rules use these, never the raw fields. */
@@ -172,6 +176,8 @@ export function heroStats(state: GameState): HeroStats {
     manaRate: 0,
     cows: false,
     hiresGates: false,
+    luck: 0,
+    morale: 0,
   };
   let gearDefence = 0;
   let rentPerTown = 0;
@@ -225,6 +231,8 @@ export function heroStats(state: GameState): HeroStats {
     s.manaRate += b.manaRide ? 1 / b.manaRide : 0;
     s.cows ||= Boolean(b.cows);
     s.hiresGates ||= Boolean(b.hiresGates);
+    s.luck += b.luck ?? 0;
+    s.morale += b.morale ?? 0;
     gearDefence += b.gearDefence ?? 0;
   }
   s.defence += gearDefence * Object.values(h.gear).filter(Boolean).length;
@@ -237,6 +245,8 @@ export function heroStats(state: GameState): HeroStats {
   s.manaBack = Math.min(1, s.manaBack);
   s.mend = Math.min(0.5, s.mend);
   s.armour = Math.min(0.6, s.armour);
+  s.luck = Math.min(0.5, s.luck);
+  s.morale = Math.min(0.5, s.morale);
   s.maxMana = s.knowledge * 10;
   return s;
 }

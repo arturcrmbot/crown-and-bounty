@@ -116,7 +116,7 @@ export const ALDMOOR: Province = {
       at: at.castle,
       done: false,
       recruits: { troop: 'knights', count: 5, price: 100 },
-      wares: ['swordOfAldmoor', 'breastplate', 'helmOfFarSight', 'luckyHorseshoe', 'spyglass', 'silverSignet'],
+      wares: ['swordOfAldmoor', 'breastplate', 'helmOfFarSight', 'luckyHorseshoe', 'spyglass', 'silverSignet', 'bonesDice'],
       text: { about: ['Your castle, flying the King\u2019s banner.', 'The steward is pretending to count spoons.', 'Knights to recruit, and an armoury.'] },
     },
     {

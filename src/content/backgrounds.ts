@@ -78,6 +78,10 @@ export type Bonus = {
   cows?: boolean;
   /** Gatekeepers will take his coin and join him too, at twice the price. */
   hiresGates?: boolean;
+  /** Chance, as a fraction, that a blow lands lucky: twice as hard. */
+  luck?: number;
+  /** Chance, as a fraction, that a stack's good spirits win it another turn before the round moves on. */
+  morale?: number;
 };
 
 export type Background = {
