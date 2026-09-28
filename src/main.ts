@@ -40,12 +40,12 @@ if (frozen) stopSaving();
 
 // Every new campaign gets its own seed, so its later provinces are its own. ?seed=N (or ?freeze=1) fixes it.
 const seed = query.has('seed') ? Number(query.get('seed')) : frozen ? 1066 : crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000;
+const who = query.get('hero');
+const chosen = who && who in BACKGROUNDS ? (who as BackgroundId) : null;
 
 /** Debug starts: ?commission=2 rides into the second province, ?court=1 opens the court after the first. */
 function debugStart(): GameState {
   // ?hero=ranger (or knight, wizard, courtier) picks the background for a debug start, so the opening card doesn't ask.
-  const who = query.get('hero');
-  const chosen = who && who in BACKGROUNDS ? (who as BackgroundId) : null;
   const drafted = newGame(seed, undefined, chosen ?? 'knight');
   // ?gear=swordOfAldmoor,oldBanner gives artifacts: worn if their slot is free, in the pack if not.
   const gear = (query.get('gear') ?? '').split(',').filter((id): id is ArtifactId => id in ARTIFACTS);
@@ -80,7 +80,7 @@ const game = new Game(display, Math.max(1, Number(query.get('speed') ?? 1)), !fr
 const input = new Input(display, game.input);
 // The title and the King's welcome come first, unless a debug start (or a frozen screenshot) wants straight in.
 // ?quick=1 skips them too; ?title=1 brings them back even when frozen.
-const quick = (frozen && query.get('title') !== '1') || ['quick', 'battle', 'court', 'commission', 'sceptre', 'reveal', 'x', 'hero', 'spells', 'army', 'gear'].some((k) => query.has(k));
+const quick = (frozen && query.get('title') !== '1') || ['quick', 'battle', 'chapter', 'court', 'commission', 'sceptre', 'reveal', 'x', 'hero', 'spells', 'army', 'gear'].some((k) => query.has(k));
 if (quick) {
   if (requestedChapter !== null) {
     game.showTitle(null, () => newGame(seed));

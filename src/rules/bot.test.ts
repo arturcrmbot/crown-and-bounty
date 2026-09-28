@@ -23,7 +23,7 @@ describe('the bot', () => {
   }, 600_000);
 
   it('starts chapter III with the same state as the campaign bot', () => {
-    const start = newGame(1066, undefined, 'wizard');
+    const start = newGame(1, undefined, 'wizard');
     const chapter = 2;
     const runs = playCampaign(start, chapter);
     const journey = playCampaignStarts(start);
@@ -37,7 +37,9 @@ describe('the bot', () => {
   it('offers each background as the beginning of a bot campaign', () => {
     for (const background of ['knight', 'wizard', 'ranger', 'courtier'] as const) {
       const journey = playCampaignStarts(newGame(1066, undefined, background));
-      expect(journey.next().value?.hero.background).toBe(background);
+      const step = journey.next();
+      expect(step.done).toBe(false);
+      if (!step.done) expect(step.value.hero.background).toBe(background);
     }
   });
 });
