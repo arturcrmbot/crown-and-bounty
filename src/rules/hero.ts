@@ -38,8 +38,8 @@ export function wornSets(state: GameState): SetId[] {
 }
 
 /**
- * What an artifact's set means for the hero: how many of it he wears, and what all of them do; or
- * that he has just completed it. Empty for an artifact that belongs to no set.
+ * How far along an artifact's set the hero is (its own note says what the set does), or that he
+ * has just completed it. Empty for an artifact that belongs to no set.
  */
 export function setLine(state: GameState, id: ArtifactId): string {
   const set = ARTIFACTS[id].set;
@@ -47,7 +47,7 @@ export function setLine(state: GameState, id: ArtifactId): string {
   const pieces = piecesOf(set);
   const worn = pieces.filter((p) => Object.values(state.hero.gear).includes(p)).length;
   if (worn === pieces.length) return `**${SETS[set].name} is complete!** ${SETS[set].note}`;
-  return `*One of ${SETS[set].name} (${worn} of ${pieces.length} worn): with all ${pieces.length === 3 ? 'three' : pieces.length}, ${SETS[set].note.charAt(0).toLowerCase()}${SETS[set].note.slice(1)}*`;
+  return `*${worn} of ${pieces.length} worn.*`;
 }
 
 export type HeroStats = {

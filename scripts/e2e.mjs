@@ -63,7 +63,14 @@ async function beatWhenReady(id, tries = 6) {
 async function go(id, action) {
   await settle();
   const [x, y] = await kc.centre(id);
-  await kc.click(x, y);
+  // If the hero stands in front of the place he takes the click, as he should: close his screen
+  // and click another corner of the place, as a player would.
+  for (const [dx, dy] of [[0, 0], [0, -14], [-16, -8], [16, -8], [-16, 6], [16, 6]]) {
+    await kc.click(x + dx, y + dy);
+    if ((await screen()) !== 'hero') break;
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(60);
+  }
   if ((await kc.title()) === 'Unexplored') action = 'Ride there';
   if (!(await kc.choose(action))) throw new Error(`${id}: no "${action}" on "${await kc.title()}": ${await kc.lines()}`);
   for (;;) {
