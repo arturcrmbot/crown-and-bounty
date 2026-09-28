@@ -1,24 +1,142 @@
 import type { Bonus } from './backgrounds';
+import type { TroopId } from './troops';
 
-/** Skills have three ranks; each rank adds its bonus again. */
-export type SkillId = 'archery' | 'offence' | 'armourer' | 'logistics' | 'scouting' | 'leadership' | 'estates' | 'sorcery' | 'mysticism';
+/** Skills have three ranks: each rank adds its number, and Advanced and Expert also teach a trick. */
+export type SkillId = 'archery' | 'offence' | 'armourer' | 'logistics' | 'scouting' | 'leadership' | 'estates' | 'sorcery' | 'mysticism' | 'diplomacy';
 
-export type Skill = { id: SkillId; name: string; note: string; perRank: Bonus };
+/** One rank of a skill: everything the skill does at that rank, in words and as a bonus. */
+export type SkillRank = { note: string; bonus: Bonus };
+
+/** A skill: its three ranks, Basic, Advanced and Expert. */
+export type Skill = { id: SkillId; name: string; ranks: readonly [SkillRank, SkillRank, SkillRank] };
 
 export const RANKS = ['Basic', 'Advanced', 'Expert'] as const;
 
+/** Fast troops that rush a line of archers: stakes in the ground slow them down. */
+const RUSHERS: TroopId[] = ['wolves', 'boars', 'goblins'];
+/** Everyone who fights hand to hand. */
+const FIGHTERS: TroopId[] = ['knights', 'swordsmen', 'peasants', 'bandits', 'wolves', 'boars', 'goblins', 'trolls'];
+const MAIL = { archers: { defence: 2 }, crossbowmen: { defence: 2 }, poachers: { defence: 2 } };
+
 export const SKILLS: Record<SkillId, Skill> = {
-  archery: { id: 'archery', name: 'Archery', note: 'Ranged attacks deal 15% more damage a rank.', perRank: { ranged: 0.15 } },
-  offence: { id: 'offence', name: 'Offence', note: 'Melee attacks deal 10% more damage a rank.', perRank: { melee: 0.1 } },
-  armourer: { id: 'armourer', name: 'Armourer', note: 'Your troops take 7% less damage a rank.', perRank: { armour: 0.07 } },
-  logistics: { id: 'logistics', name: 'Logistics', note: '+20 movement a day a rank.', perRank: { movement: 20 } },
-  scouting: { id: 'scouting', name: 'Scouting', note: 'See 40 paces further a rank, and count every enemy exactly.', perRank: { sight: 40 } },
-  leadership: { id: 'leadership', name: 'Leadership', note: '+25 leadership a rank.', perRank: { leadership: 25 } },
-  estates: { id: 'estates', name: 'Estates', note: '+150 gold every payday a rank.', perRank: { payday: 150 } },
-  sorcery: { id: 'sorcery', name: 'Sorcery', note: '+1 spell power a rank.', perRank: { spellPower: 1 } },
-  mysticism: { id: 'mysticism', name: 'Mysticism', note: '+1 knowledge (10 mana) a rank.', perRank: { knowledge: 1 } },
+  archery: {
+    id: 'archery',
+    name: 'Archery',
+    ranks: [
+      { note: 'Every shot hits 15% harder.', bonus: { ranged: 0.15 } },
+      { note: 'Every shot hits 30% harder, and your archers plant stakes: wolves, boars and goblins start every battle slowed.', bonus: { ranged: 0.3, slows: RUSHERS } },
+      {
+        note: 'Every shot hits 45% harder, your archers get +1 attack, the stakes slow wolves, boars and goblins, and your shooters loose a free volley before every battle.',
+        bonus: { ranged: 0.45, slows: RUSHERS, volley: true, troops: { archers: { attack: 1 } } },
+      },
+    ],
+  },
+  offence: {
+    id: 'offence',
+    name: 'Offence',
+    ranks: [
+      { note: 'Blows in melee land 10% harder.', bonus: { melee: 0.1 } },
+      {
+        note: 'Blows in melee land 20% harder, and your knights and swordsmen charge: after a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder, and nobody strikes back.',
+        bonus: { melee: 0.2, charge: ['knights', 'swordsmen'] },
+      },
+      {
+        note: 'Blows in melee land 30% harder, and everyone who fights hand to hand charges: after a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder, and nobody strikes back.',
+        bonus: { melee: 0.3, charge: FIGHTERS },
+      },
+    ],
+  },
+  armourer: {
+    id: 'armourer',
+    name: 'Armourer',
+    ranks: [
+      { note: 'Your troops take 7% less damage.', bonus: { armour: 0.07 } },
+      { note: 'Your troops take 14% less damage, and your shooters wear mail: +2 defence for archers, crossbowmen and poachers.', bonus: { armour: 0.14, troops: MAIL } },
+      {
+        note: 'Your troops take 21% less damage, your shooters wear mail, and you keep your gear like new: +1 defence for every piece you wear.',
+        bonus: { armour: 0.21, troops: MAIL, gearDefence: 1 },
+      },
+    ],
+  },
+  logistics: {
+    id: 'logistics',
+    name: 'Logistics',
+    ranks: [
+      { note: '+20 movement a day.', bonus: { movement: 20 } },
+      { note: '+40 movement a day, and riding off the road costs a quarter less (in the woods too, if you can ride them).', bonus: { movement: 40, offRoad: 0.25 } },
+      { note: '+60 movement a day, and off the road you ride as fast as on it (the woods cost half, if you can ride them).', bonus: { movement: 60, offRoad: 0.5 } },
+    ],
+  },
+  scouting: {
+    id: 'scouting',
+    name: 'Scouting',
+    ranks: [
+      { note: 'See 40 paces further, and count every enemy exactly.', bonus: { sight: 40, counts: true } },
+      { note: 'See 80 paces further, count every enemy, and your scouts put a number on your chances and say what the enemy carries.', bonus: { sight: 80, counts: true, odds: true } },
+      {
+        note: 'See 120 paces further, with counts, chances and what they carry, and your scouts shadow every band in the province: you see them all through the mist, and nothing can hunt you.',
+        bonus: { sight: 120, counts: true, odds: true, shadow: true },
+      },
+    ],
+  },
+  leadership: {
+    id: 'leadership',
+    name: 'Leadership',
+    ranks: [
+      { note: '+25 leadership.', bonus: { leadership: 25 } },
+      { note: '+50 leadership, and a third of every company stays on with you between commissions, not a quarter.', bonus: { leadership: 50, veterans: 1 / 12 } },
+      {
+        note: '+75 leadership, a third of every company stays on between commissions, and every payday volunteers join your biggest company, for your name alone.',
+        bonus: { leadership: 75, veterans: 1 / 12, volunteers: 20 },
+      },
+    ],
+  },
+  estates: {
+    id: 'estates',
+    name: 'Estates',
+    ranks: [
+      { note: '+150 gold every payday.', bonus: { payday: 150 } },
+      { note: '+300 gold every payday, and every castle and village finds half as many volunteers again.', bonus: { payday: 300, restock: 0.5 } },
+      {
+        note: '+450 gold every payday, fuller castles and villages, and rents: every castle and village you have visited pays you 100 gold on payday.',
+        bonus: { payday: 450, restock: 0.5, rents: 100 },
+      },
+    ],
+  },
+  sorcery: {
+    id: 'sorcery',
+    name: 'Sorcery',
+    ranks: [
+      { note: '+1 spell power.', bonus: { spellPower: 1 } },
+      { note: '+2 spell power, and every spell costs 1 mana less.', bonus: { spellPower: 2, manaDiscount: 1 } },
+      { note: '+3 spell power, every spell costs 1 mana less, and you cast one more spell every round of battle.', bonus: { spellPower: 3, manaDiscount: 1, casts: 1 } },
+    ],
+  },
+  mysticism: {
+    id: 'mysticism',
+    name: 'Mysticism',
+    ranks: [
+      { note: '+1 knowledge: 10 more mana.', bonus: { knowledge: 1 } },
+      { note: '+2 knowledge (20 more mana), and your mana comes back as you ride: a point for every 15 movement.', bonus: { knowledge: 2, manaRide: 15 } },
+      { note: '+3 knowledge (30 more mana), and your mana comes back twice as fast as you ride: a point for every 7 movement.', bonus: { knowledge: 3, manaRide: 7 } },
+    ],
+  },
+  diplomacy: {
+    id: 'diplomacy',
+    name: 'Diplomacy',
+    ranks: [
+      { note: 'Bribes cost 15% less, and bands far weaker than you surrender when you ride up: their gold and half the experience, without a fight.', bonus: { bribes: 0.15, cows: true } },
+      { note: 'Bribes cost 30% less, weak bands surrender, and small bands will take your coin and join you.', bonus: { bribes: 0.3, cows: true, hires: true } },
+      {
+        note: 'Bribes cost 45% less, weak bands surrender, and any band that draws wages will take your coin and join you: gatekeepers too, at twice the price.',
+        bonus: { bribes: 0.45, cows: true, hires: true, hiresGates: true },
+      },
+    ],
+  },
 };
 
+/** What a skill does at a rank (from 1), in words. */
+export const skillNote = (id: SkillId, rank: number) => SKILLS[id].ranks[Math.max(0, Math.min(RANKS.length, rank) - 1)].note;
 /** Perks are taken once and bend a rule, in the game's voice. */
 export type PerkId =
   | 'quartermaster'

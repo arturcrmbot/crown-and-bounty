@@ -3,7 +3,7 @@
 Newest first. Each entry says what was played, how it felt to an experienced player (HoMM2, King's Bounty,
 modern RPGs), and what was done about it.
 
-## #10: 28 Sep 2026, the land makes its own sounds
+## #11: 28 Sep 2026, the land makes its own sounds
 
 **Played:** a Knight riding round Aldmoor with the sound on (at 8x, listening ten seconds at each stop): the
 archery butts by the start, the watchtower, the mine, the falls and the mill, the castle and Westmere, and
@@ -31,6 +31,38 @@ own key.
 3. The archery range counted as a village and chattered. It has its own sound now.
 4. `npm run e2e` could fail on a busy machine: just after a reload, Continue waits for the troops' art. It now
    waits for the title to go (it happened on main before these changes too, about 1 in 16).
+## #10: 28 Sep 2026, skills that change how you play
+
+**Played:** Artur's point that level-ups were "+1 defence, +1 offence", through the real UI in headless Edge. A new
+Courtier from the title: the highwaymen and the poachers, and his first level-up. A Courtier six levels on (Advanced
+Diplomacy, Expert Estates, Advanced Scouting) at his level-up card, the patrol, the wolves and a payday. A Courtier
+with a big army at the highwaymen with Basic Diplomacy. A Knight with Advanced Archery and Expert Offence against the
+wolves. Then every rank in tests, `npm run difficulty` and the campaign sim.
+
+**How it felt:** a level-up is now a real choice. *"Expert Diplomacy: any band that draws wages will take your coin
+and join you: gatekeepers too, at twice the price"* against *"War Chest: every payday brings 400 more gold"* made me
+stop and think, and the gatekeepers turned out to cost 6,888 gold: a real price for the whole patrol. Scouting earns
+its keep on the patrol's card: *"Your scouts don't give you one chance in ten"*, and they have seen the Carving Knife
+in the baggage, so I know what the fight is worth before I pick it. The payday card with rents and fuller villages
+reads like an estate paying off. Riding up to the highwaymen with a big army and a diplomat, *"Demand their
+surrender"* is quicker and cheaper than a fight, for half the experience. In battle the stakes show at once: the
+wolves come on at speed 4, "Slowed", into the knights and 30 peasants who can now charge too.
+
+**Found and fixed:**
+
+1. The hero screen called the stakes "Dread" (the Goose Whisperer's word) and listed "Wolves and Wild Boars and Bog
+   Goblins". It now says *"Slowed from the start: Wolves, Wild Boars and Bog Goblins start every battle slowed."*
+2. A surrender came up under the band's name like any visit. It now says *"They surrender!"*.
+3. Rents arrived at the end of the payday card, after the villain's news. They now follow the King's gold they are
+   part of.
+
+**Checked:** all tests pass, with a new test for every rank's trick and for heroes saved with the old nine skills.
+Every Aldmoor difficulty target holds, and the bot wins all five commissions with every background. Generated maps
+are unchanged, so saves still match.
+
+**Still open:** the battle doesn't say what starts slowed (the stakes, the goose); a line in the opening ribbon would.
+The ambush card still gives the odds only in words. The bot never demands a surrender. Wisdom comes with the
+spellbook.
 
 ## #9: 28 Sep 2026, a change of scene between screens
 

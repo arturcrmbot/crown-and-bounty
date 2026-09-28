@@ -20,11 +20,11 @@ export const levelFor = (xp: number) => {
   return level;
 };
 
-/** Everything that adds to the hero: the background's signature, skills by rank, perks and worn gear. */
+/** Everything that adds to the hero: the background's signature, skills at their rank, perks and worn gear. */
 export function bonusesOf(state: GameState): Bonus[] {
   const hero = state.hero;
   const out: Bonus[] = [BACKGROUNDS[hero.background].signature.bonus];
-  for (const [id, rank] of Object.entries(hero.skills) as [SkillId, number][]) for (let r = 0; r < rank; r++) out.push(SKILLS[id].perRank);
+  for (const [id, rank] of Object.entries(hero.skills) as [SkillId, number][]) if (SKILLS[id] && rank > 0) out.push(SKILLS[id].ranks[Math.min(rank, RANKS.length) - 1].bonus);
   for (const id of hero.perks) out.push(PERKS[id].bonus);
   for (const id of Object.values(hero.gear)) if (id) out.push(ARTIFACTS[id].bonus);
   return out;
@@ -58,11 +58,30 @@ export type HeroStats = {
   bribes: number;
   hires: boolean;
   tames: boolean;
+  /** Share off riding off the road (and through woods he can ride). */
+  offRoad: number;
+  /** His scouts count every enemy, put a number on his chances and say what an enemy carries, or shadow every band. */
+  counts: boolean;
+  odds: boolean;
+  shadow: boolean;
+  /** Share of every company that stays on between commissions. */
+  veterans: number;
+  /** Leadership's worth of volunteers every payday, a share more recruits everywhere, and rents (included in `payday`). */
+  volunteers: number;
+  restock: number;
+  rents: number;
+  /** Mana that comes back for every point of movement ridden. */
+  manaRate: number;
+  cows: boolean;
+  hiresGates: boolean;
 };
 
 /** The hero's numbers with everything added up. The rules use these, never the raw fields. */
 /** Leadership each level brings: troops follow a famous officer. */
 export const RENOWN = 10;
+
+/** The share of every company that stays on between commissions, before skills. */
+export const VETERANS = 0.25;
 
 export function heroStats(state: GameState): HeroStats {
   const h = state.hero;
@@ -93,7 +112,20 @@ export function heroStats(state: GameState): HeroStats {
     bribes: 0,
     hires: false,
     tames: false,
+    offRoad: 0,
+    counts: false,
+    odds: false,
+    shadow: false,
+    veterans: VETERANS,
+    volunteers: 0,
+    restock: 0,
+    rents: 0,
+    manaRate: 0,
+    cows: false,
+    hiresGates: false,
   };
+  let gearDefence = 0;
+  let rentPerTown = 0;
   for (const b of bonusesOf(state)) {
     s.attack += b.attack ?? 0;
     s.defence += b.defence ?? 0;
@@ -123,7 +155,24 @@ export function heroStats(state: GameState): HeroStats {
     s.bribes += b.bribes ?? 0;
     s.hires ||= Boolean(b.hires);
     s.tames ||= Boolean(b.tames);
+    s.offRoad += b.offRoad ?? 0;
+    s.counts ||= Boolean(b.counts);
+    s.odds ||= Boolean(b.odds);
+    s.shadow ||= Boolean(b.shadow);
+    s.veterans += b.veterans ?? 0;
+    s.volunteers += b.volunteers ?? 0;
+    s.restock += b.restock ?? 0;
+    rentPerTown += b.rents ?? 0;
+    s.manaRate += b.manaRide ? 1 / b.manaRide : 0;
+    s.cows ||= Boolean(b.cows);
+    s.hiresGates ||= Boolean(b.hiresGates);
+    gearDefence += b.gearDefence ?? 0;
   }
+  s.defence += gearDefence * Object.values(h.gear).filter(Boolean).length;
+  s.rents = rentPerTown * state.locations.filter((l) => (l.kind === 'castle' || l.kind === 'village') && l.seen).length;
+  s.payday += s.rents;
+  s.offRoad = Math.min(0.5, s.offRoad);
+  s.veterans = Math.min(0.5, s.veterans);
   s.bribes = Math.min(0.8, s.bribes);
   s.armour = Math.min(0.6, s.armour);
   s.maxMana = s.knowledge * 10;
@@ -197,8 +246,8 @@ const STAT_NAMES: Record<StatId, string> = { attack: 'Attack', defence: 'Defence
 export function describeOption(option: string, state: GameState): { label: string; note: string } {
   const [kind, id] = option.split(':');
   if (kind === 'perk') return { label: `${PERKS[id as PerkId].name} (${PERKS[id as PerkId].trick ? 'new trick' : 'perk'})`, note: PERKS[id as PerkId].note };
-  const rank = state.hero.skills[id as SkillId] ?? 0;
-  return { label: `${RANKS[rank]} ${SKILLS[id as SkillId].name}`, note: SKILLS[id as SkillId].note };
+  const rank = Math.min(state.hero.skills[id as SkillId] ?? 0, RANKS.length - 1);
+  return { label: `${RANKS[rank]} ${SKILLS[id as SkillId].name}`, note: SKILLS[id as SkillId].ranks[rank].note };
 }
 
 /** The card for the first level-up still waiting, or null. */

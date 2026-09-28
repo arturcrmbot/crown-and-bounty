@@ -182,7 +182,7 @@ export class HeroScreen {
         <div class="name">
           <h2>${escape(sheet.title)}</h2>
           <div class="level" data-tip="${escape(sheet.xp.line)}"><b>${sheet.level}</b>${bar('xp', sheet.xp.share)}<small>${escape(sheet.xp.line)}</small></div>
-          <div class="when">${escape(sheet.day)} \u00b7 ${escape(sheet.pieces)}</div>
+          <div class="when" data-tip="${escape(sheet.piecesNote)}">${escape(sheet.day)} \u00b7 ${escape(sheet.pieces)}</div>
         </div>
       </div>
       <div class="stats">${sheet.stats.map(stat).join('')}</div>
@@ -253,7 +253,7 @@ export class HeroScreen {
     const leaderTip = `**${sheet.title}**\nHe leads from the field\u2019s edge: every stack adds his attack and defence to its own, and he casts from his spellbook.\n*Click for his numbers.*`;
     const open = this.card?.kind === 'hero' ? ' open' : '';
     return `<section class="army">
-      <h3>Army <small>drag to set the line: the first stands in the middle, the next above and below it</small></h3>
+      <h3>Army <small>drag to reorder: the first stands in the middle of the battle line, the rest above and below</small></h3>
       <div class="strip">
         <button class="tile leader${open}" data-place="hero" data-tip="${escape(leaderTip)}" aria-label="${escape(sheet.title)}"><img alt="" draggable="false" src="${unitUrl(heroArtId(this.state.hero.background))}"><span class="count">Leader</span></button>
         <span class="sep"></span>
@@ -448,6 +448,8 @@ export class HeroScreen {
       else if (this.held) this.cancel();
     });
     root.addEventListener('keydown', (e) => this.key(e));
+    // A right-click is the game's, not the browser's menu.
+    root.addEventListener('contextmenu', (e) => e.preventDefault());
     root.addEventListener('focusin', (e) => {
       if (this.quiet) return this.hideTip();
       const el = (e.target as HTMLElement).closest<HTMLElement>('[data-tip]');

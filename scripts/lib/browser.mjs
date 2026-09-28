@@ -19,6 +19,8 @@ export function kc(page) {
     /** Clicks the title's "Click anywhere to begin", which starts the sound and opens the menu. */
     begin: async () => {
       await page.mouse.click(480, 360);
+      // The menu comes up on the click; on a busy machine that can take a moment.
+      await page.waitForFunction(() => document.querySelector('.kc-card-wrap:not([hidden])'), null, { timeout: 5000 }).catch(() => {});
       await page.waitForTimeout(80);
     },
     title: () => call(() => document.querySelector('.kc-card-wrap:not([hidden]) h3')?.textContent ?? null),

@@ -5,6 +5,9 @@ import { addTroops, close, coins, joinLine, leadershipUsed, locationById, TROOPS
 import { found, option, priceOf, ride, say, words } from './common';
 import type { PlaceKind } from './kind';
 
+/** Volunteers every castle and village finds on payday. */
+export const RESTOCK = 10;
+
 /** How many of a recruiter's troops the hero can take now: capped by the offer, leadership and gold. */
 export function recruitable(state: GameState, id: string): number {
   const offer = locationById(state, id).recruits;
@@ -89,7 +92,7 @@ export const dwelling: PlaceKind = {
     if (choice.startsWith('buy:')) return buy(state, place, choice.slice(4) as ArtifactId);
     return null;
   },
-  payday: (place) => (place.recruits ? { ...place, recruits: { ...place.recruits, count: place.recruits.count + 10 } } : place),
+  payday: (place) => (place.recruits ? { ...place, recruits: { ...place.recruits, count: place.recruits.count + RESTOCK } } : place),
   worth(state, place) {
     const n = recruitable(state, place.id);
     return n > 0 ? n * troopPower(place.recruits!.troop) * 3 : null;

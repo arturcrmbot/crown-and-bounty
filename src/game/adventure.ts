@@ -5,14 +5,14 @@ import { BANNER_TIME, drawBanner, paintBanner } from '../render/banner';
 import type { Bitmap } from '../render/bitmap';
 import { BAR, MAP_VIEW } from '../render/frame';
 import { BLUE, GOLD, NEUTRAL, PARCHMENT, RED } from '../render/palette';
-import { paintHud, type HudHit } from '../render/hud';
+import { clickable, paintHud, type HudHit } from '../render/hud';
 import { ART, heroArtId } from '../render/units';
 import type { BattleState } from '../rules/battle/battle';
-import { ambushCard, apply, commissionOf, describe, finishFight, heroStats, levelUpCard, locationById, placeNote, roman, visit, type Action, type Card, type GameEvent, type GameState, type Result } from '../rules/game';
+import { ambushCard, apply, bountyCard, commissionOf, describe, finishFight, heroStats, levelUpCard, locationById, placeNote, roman, visit, whenThere, type Action, type Card, type GameEvent, type GameState, type Result } from '../rules/game';
 import { barNote } from '../rules/heroSheet';
 import type { Point } from '../rules/map/geometry';
 import { cellCentre, type MapModel } from '../rules/map/model';
-import { planRoute, routeCosts, stepAlong } from '../rules/map/movement';
+import { daysAway, planRoute, routeCosts, stepAlong } from '../rules/map/movement';
 import { statIcon } from '../render/artifactIcons';
 import { CardView } from '../ui/card';
 import { bitmapUrl } from '../ui/pixels';
@@ -39,6 +39,8 @@ const RIDE_SPEED = 95;
 /** Map pixels per step of the trot cycle, so hooves don't slide. */
 const STRIDE = 5;
 const SCROLL_SPEED = 6;
+/** How much faster he rides while Shift is held. */
+const GALLOP = 3;
 
 /** The crossed swords, twice their size, for the pointer over an enemy. */
 let swords: string | null = null;
@@ -86,8 +88,16 @@ export class AdventureController implements Screen {
   private tiredShown = false;
   private cardAnchor: Point | null = null;
   private hudMovement = -1;
-  /** Where each thing on the bottom bar sits, as last painted. */
+  /** Where each thing on the bottom bar sits, as last painted, and which one the pointer is on. */
   private hud: HudHit[] = [];
+  private hudHover: HudHit | null = null;
+  /**
+   * What the pointer rests on, open ground or a place: after a moment, its label adds how long the
+   * ride there is. `name` is the place's label without it.
+   */
+  private resting: { key: string; point: Point; approach: boolean; name: string | null; client: [number, number]; still: number; text?: string; asOf?: string } | null = null;
+  /** The place whose card is open because the player clicked it: a second click there goes to it. */
+  private looking: { id: string; go: Action; label: string } | null = null;
   private readonly speed: number;
   /** How much faster than life scripts run the map (?speed=8). */
   private readonly pace: number;
@@ -206,11 +216,13 @@ export class AdventureController implements Screen {
       return;
     }
     this.cardAnchor = at;
+    this.looking = null;
     this.label.hide();
     this.cards.show(card);
   }
 
   hideCard() {
+    this.looking = null;
     this.cards.hide();
   }
 
@@ -326,7 +338,15 @@ export class AdventureController implements Screen {
 
   private repaintHud() {
     this.hudMovement = Math.floor(this.state.movement);
-    this.hud = paintHud(this.view.frame, this.state);
+    this.hud = paintHud(this.view.frame, this.state, this.hudHover && this.barClickable(this.hudHover) ? this.hudHover.item : null);
+  }
+
+  /** Underlines what a click on the bar would work, as the pointer moves over it. */
+  private hoverBar(hit: HudHit | null) {
+    const key = (h: HudHit | null) => (h ? `${h.item.kind}:${h.item.kind === 'stack' ? h.item.index : ''}` : '');
+    if (key(hit) === key(this.hudHover)) return;
+    this.hudHover = hit;
+    this.repaintHud();
   }
 
   /** The thing on the bottom bar under a screen point, if any. */
@@ -448,6 +468,7 @@ export class AdventureController implements Screen {
     this.gloom = this.state.over === 'lost' ? Math.min(GLOOM, this.gloom + dt * 0.35) : 0;
     if (this.gloom > 0) this.view.dusk = Math.max(this.nightfall === null ? 0 : this.view.dusk, this.gloom);
     this.promptPending();
+    this.showRide(dt);
     this.walks.advance(dt);
     const dx = (held.has('arrowright') || held.has('d') ? 1 : 0) - (held.has('arrowleft') || held.has('a') ? 1 : 0);
     const dy = (held.has('arrowdown') || held.has('s') ? 1 : 0) - (held.has('arrowup') || held.has('w') ? 1 : 0);
@@ -455,7 +476,8 @@ export class AdventureController implements Screen {
       this.follow = false;
       this.view.scrollTo(this.view.camera.x + dx * SCROLL_SPEED, this.view.camera.y + dy * SCROLL_SPEED);
     }
-    this.ride(dt);
+    // Shift gallops: three times the pace, for long rides.
+    this.ride(held.has('shift') ? dt * GALLOP : dt);
     const { hero } = this.scene;
     this.view.effects.update(dt, [this.drawn.x, this.drawn.y]);
     const walking = this.isRiding();
@@ -473,6 +495,23 @@ export class AdventureController implements Screen {
       if (!walking && Math.hypot(tx - this.view.camera.x, ty - this.view.camera.y) < 2) this.follow = false;
     }
     if (Math.floor(this.state.movement) !== this.hudMovement) this.repaintHud();
+  }
+
+  /** Once the pointer has rested on open ground a moment, how many days' ride away it is. */
+  private showRide(dt: number) {
+    const r = this.resting;
+    if (!r || this.cards.isOpen || this.state.opening || this.state.over || this.state.ambush) return;
+    // Worked out again as he rides or a day passes, but not every frame.
+    const asOf = `${this.state.hero.at}|${this.state.day}|${Math.floor(this.state.movement)}`;
+    if (r.text && r.asOf === asOf) return;
+    r.still += dt;
+    if (r.still < (r.text ? 0.3 : 0.15)) return;
+    r.still = 0;
+    r.asOf = asOf;
+    const days = daysAway(this.state, this.map, r.point, r.approach);
+    if (r.name) r.text = `${r.name} \u00b7 ${days === null ? 'no way through yet' : whenThere(days)}`;
+    else r.text = days === null ? 'No way through' : `Ride here: ${whenThere(days)}`;
+    this.label.show(r.text, r.client[0], r.client[1]);
   }
 
   /** Trotting only while the drawn hero is actually on the move, not while a tired route waits. */
@@ -541,14 +580,22 @@ export class AdventureController implements Screen {
     return dots;
   }
 
-  /** Keeps the open card hanging above whatever it describes; one about nothing in particular keeps clear of the hero. */
+  /**
+   * Keeps the open card hanging above whatever it describes, or beside it, never over it; one about
+   * nothing in particular keeps clear of the hero.
+   */
   placeCard() {
     const a = this.cardAnchor;
     const { camera } = this.view;
     const point = a && this.display.toPage(MAP_VIEW.x + a[0] - camera.x, MAP_VIEW.y + a[1] - camera.y);
     const hero = this.scene.hero;
-    const from = this.display.toPage(MAP_VIEW.x + hero.object.x - camera.x, MAP_VIEW.y + hero.object.y - camera.y);
-    const to = this.display.toPage(MAP_VIEW.x + hero.object.x + hero.idle[0].width - camera.x, MAP_VIEW.y + hero.object.y + hero.foot + 6 - camera.y);
+    const heroBox = { x0: hero.object.x, y0: hero.object.y, x1: hero.object.x + hero.idle[0].width, y1: hero.object.y + hero.foot + 6 };
+    const inside = (b: { x0: number; y0: number; x1: number; y1: number }) => a && a[0] >= b.x0 && a[0] < b.x1 && a[1] >= b.y0 && a[1] < b.y1;
+    // What the card is about: the place (or the hero) its anchor is on, or a little space round the point.
+    const place = a && this.scene.hitboxes.filter((b) => inside(b)).reduce<Hitbox | null>((front, b) => (!front || b.y1 > front.y1 ? b : front), null);
+    const box = !a ? heroBox : inside(heroBox) ? heroBox : (place ?? { x0: a[0] - 12, y0: a[1] - 12, x1: a[0] + 12, y1: a[1] + 12 });
+    const from = this.display.toPage(MAP_VIEW.x + box.x0 - camera.x, MAP_VIEW.y + box.y0 - camera.y);
+    const to = this.display.toPage(MAP_VIEW.x + box.x1 - camera.x, MAP_VIEW.y + box.y1 - camera.y);
     this.cards.place(point, this.display.toPage(0, MAP_VIEW.y).y, this.display.toPage(0, MAP_VIEW.y + MAP_VIEW.height).y, { x0: from.x, y0: from.y, x1: to.x, y1: to.y });
   }
 
@@ -569,7 +616,7 @@ export class AdventureController implements Screen {
     const hits = this.scene.hitboxes.filter((b) => x >= b.x0 && x < b.x1 && y >= b.y0 && y < b.y1 && !gone(b.id));
     const heroFoot = h.y + this.scene.hero.foot;
     const inFront = hits.filter((b) => b.y1 > heroFoot + 2);
-    if (onHero && inFront.length === 0) return { id: 'hero', name: `${BACKGROUNDS[this.state.hero.background].short} \u00b7 click (or H) for his gear and army` };
+    if (onHero && inFront.length === 0) return { id: 'hero', name: `${BACKGROUNDS[this.state.hero.background].short} \u00b7 ${this.moving() ? 'click (or Esc) to stop here' : 'click (or H) for his gear and army'}` };
     if (hits.length === 0) return null;
     const box = hits.reduce((front, b) => (b.y1 > front.y1 ? b : front));
     const fogged = this.view.isFogged((box.x0 + box.x1) / 2, box.y1 - 4);
@@ -587,31 +634,64 @@ export class AdventureController implements Screen {
     if (this.state.over || this.state.opening || this.state.ambush) return;
     const thing = this.under(point);
     if (thing?.id === 'hero') {
-      this.openHero();
-    } else if (thing?.box && thing.fogged) {
-      this.showCard(
-        { title: 'Unexplored', lines: ['You cannot see what lies there.'], choices: [{ label: 'Ride there', action: { type: 'go', id: thing.id } }, { label: 'Close', action: { type: 'close' } }] },
-        this.anchorOf(thing.id),
-      );
+      // On the move, a click on him reins in; standing, it opens his screen.
+      if (this.moving()) this.stop();
+      else this.openHero();
     } else if (thing?.box) {
-      this.showCard(describe(this.state, thing.id), this.anchorOf(thing.id));
-    } else {
+      // A second click on a place whose card is open goes there, as in HoMM2.
+      if (this.looking?.id === thing.id && this.cards.isOpen) return this.choose(this.looking.go);
+      this.lookAt(thing.id, Boolean(thing.fogged));
+    } else if (this.cards.isOpen) {
+      // A click away from an open card only puts the card away: riding off by accident costs a day's march.
       this.hideCard();
+    } else {
       this.plan(point, null);
     }
+  }
+
+  /** A place's card (or the mist's), remembering how to go there. */
+  private lookAt(id: string, fogged: boolean) {
+    const card = fogged
+      ? { title: 'Unexplored', lines: ['You cannot see what lies there.'], choices: [{ label: 'Ride there', action: { type: 'go', id } as Action }, { label: 'Close', action: { type: 'close' } as Action }] }
+      : describe(this.state, id);
+    this.showCard(card, this.anchorOf(id));
+    const go = card.choices.find((c) => c.action.type === 'go' && !c.disabled);
+    this.looking = go ? { id, go: go.action, label: go.label } : null;
+  }
+
+  /** A right-click looks, and never rides: at a place, at the hero, or nothing at all. */
+  lookMap(point: Point) {
+    if (this.state.over || this.state.opening || this.state.ambush) return;
+    const thing = this.under(point);
+    if (thing?.id === 'hero') this.openHero();
+    else if (thing?.box) this.lookAt(thing.id, Boolean(thing.fogged));
+    else this.hideCard();
   }
 
   /** Whether a click on this part of the bar does anything right now. */
   private barClickable({ item }: HudHit) {
     if (this.state.opening || this.state.over || this.state.ambush) return false;
-    return item.kind === 'hourglass' || item.kind === 'stack' || item.kind === 'mana';
+    return clickable(item);
   }
 
-  /** The hourglass ends the day; the army and the mana open the hero. */
+  /** The hourglass ends the day; the army and the mana open the hero; the bounty shows the poster. */
   private clickBar(hit: HudHit) {
     if (!this.barClickable(hit)) return;
     if (hit.item.kind === 'hourglass') this.choose({ type: 'endDay' });
+    else if (hit.item.kind === 'bounty') this.showCard(bountyCard(this.state), null);
     else this.openHero(hit.item.kind === 'stack' ? hit.item.index : null);
+  }
+
+  /** On the road right now: a route, and the legs to follow it today. */
+  private moving() {
+    return this.route.length > 0 && Boolean(stepAlong(this.state, this.map, this.route));
+  }
+
+  /** Reins in: the hero stops where he is, and keeps the rest of today's movement. */
+  private stop() {
+    this.route = [];
+    this.target = null;
+    this.visiting = null;
   }
 
   /** The hero screen: who he is, what he carries, his army. H, a click on him, or the bar's army and mana open it. */
@@ -644,9 +724,15 @@ export class AdventureController implements Screen {
       const point = this.view.toMap(x, y);
       if (point) this.clickMap(point);
     },
+    look: (x: number, y: number) => {
+      const point = this.view.toMap(x, y);
+      if (point) this.lookMap(point);
+    },
     hover: (x: number, y: number, clientX: number, clientY: number) => {
       const bar = this.onBar(x, y);
+      this.hoverBar(bar);
       if (bar) {
+        this.resting = null;
         this.display.canvas.style.cursor = this.barClickable(bar) ? 'pointer' : 'default';
         this.label.show(barNote(this.state, bar.item), clientX, clientY);
         return;
@@ -656,21 +742,48 @@ export class AdventureController implements Screen {
       // Crossed swords over an enemy, as in HoMM2: a click there is the start of a fight.
       const foe = thing?.box && !thing.fogged && this.state.locations.some((l) => l.id === thing.id && l.enemy && !l.done);
       this.display.canvas.style.cursor = foe ? swordsCursor() : thing ? 'pointer' : 'default';
-      if (thing) this.label.show(thing.name, clientX, clientY);
+      const again = thing && this.looking?.id === thing.id && this.cards.isOpen ? ` \u00b7 click again: ${this.looking.label}` : '';
+      // On open ground, or a place seen clearly, the ride's length comes up once the pointer rests.
+      const place = thing?.box && !thing.fogged ? locationById(this.state, thing.id) : null;
+      const key = place ? `place:${place.id}` : !thing && point ? `cell:${Math.floor(point[1] / 8) * this.map.width + Math.floor(point[0] / 8)}` : null;
+      if (!key) this.resting = null;
+      else if (this.resting?.key !== key) this.resting = { key, point: place ? place.at : point!, approach: Boolean(place?.enemy && !place.done), name: thing?.name ?? null, client: [clientX, clientY], still: 0 };
+      else this.resting.client = [clientX, clientY];
+      const known = this.resting?.text && !again ? this.resting.text : null;
+      if (known) this.label.show(known, clientX, clientY);
+      else if (thing) this.label.show(`${thing.name}${again}`, clientX, clientY);
       else this.label.hide();
     },
     drag: (dx: number, dy: number) => {
       this.follow = false;
       this.view.scrollTo(this.view.camera.x - dx, this.view.camera.y - dy);
     },
-    leave: () => this.label.hide(),
+    wheel: (dx: number, dy: number) => {
+      this.follow = false;
+      this.view.scrollTo(this.view.camera.x + dx, this.view.camera.y + dy);
+      // The ground under the pointer has moved: its label comes back when the pointer does.
+      this.resting = null;
+      this.label.hide();
+    },
+    leave: () => {
+      this.label.hide();
+      this.hoverBar(null);
+      this.resting = null;
+    },
     key: (key: string) => {
       if (this.state.opening) return;
       if (key === 'e' && !this.state.over && !this.state.ambush) this.choose({ type: 'endDay' });
       else if (key === 'h' && !this.state.over && !this.state.ambush) this.openHero();
       else if (key === '?') this.showCard(keysCard(), null);
-      else if (key === 'enter' || key === ' ') this.cards.pressOnly();
-      else if (key === 'escape') this.hideCard();
+      else if (key === 'enter' || key === ' ') {
+        // Space with no card up brings the view back to the hero.
+        if (!this.cards.pressOnly() && key === ' ' && !this.cards.isOpen) this.follow = true;
+      }
+      else if (key === 'escape') {
+        // Esc puts a card away, or with none up, reins in.
+        if (this.cards.isOpen) this.hideCard();
+        else this.stop();
+      }
       else if (key.startsWith('arrow') || 'wasd'.includes(key)) this.follow = false;
     },
   } satisfies ConstructorParameters<typeof Input>[1];

@@ -30,10 +30,10 @@ const cellOf = ([x, y]: Point) => ({ x: Math.floor(x / CELL), y: Math.floor(y / 
 /** Whether the hero is sheltering in a castle or a village tonight. */
 export const inTown = (state: GameState) => state.locations.some((l) => (l.kind === 'castle' || l.kind === 'village') && dist(l.at, state.hero.at) <= SHELTER);
 
-/** Whether a hunter comes for the hero tonight: he is near, inside its territory, weaker, and out in the open. */
+/** Whether a hunter comes for the hero tonight: he is near, inside its territory, weaker, and out in the open, and his scouts aren't shadowing it. */
 export function hunting(state: GameState, l: Location): boolean {
   const e = l.enemy!;
-  if (e.behaviour !== 'hunt' || (e.rest ?? 0) > 0 || inTheWoods(state) || inTown(state)) return false;
+  if (e.behaviour !== 'hunt' || (e.rest ?? 0) > 0 || inTheWoods(state) || inTown(state) || heroStats(state).shadow) return false;
   const home = e.home ?? l.at;
   const hero = state.hero.at;
   const theirs = armyPower(state.army);

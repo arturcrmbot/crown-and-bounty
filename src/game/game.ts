@@ -246,6 +246,8 @@ export class Game {
   readonly input: InputHandlers = {
     // A click while the screen changes only skips the change; a key skips it and still counts.
     click: (x, y) => this.skip() || this.top.input.click(x, y),
+    look: (x, y) => this.skip() || this.top.input.look?.(x, y),
+    wheel: (dx, dy) => this.top.input.wheel?.(dx, dy),
     hover: (x, y, cx, cy) => this.top.input.hover(x, y, cx, cy),
     drag: (dx, dy) => this.top.input.drag(dx, dy),
     leave: () => this.top.input.leave(),
