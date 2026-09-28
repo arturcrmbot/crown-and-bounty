@@ -24,13 +24,14 @@ describe('the battle turn strip', () => {
 
   it('omits dead fighters, keeps repeated turns, and shows no more than six', () => {
     const battle = makeBattle();
-    const ordered = battle.order[0];
+    const dead = battle.order[1];
+    const queue = [...battle.order, ...battle.order, battle.order[0]];
     const state: BattleState = {
       ...battle,
-      order: [ordered, ...battle.order, ordered],
-      fighters: battle.fighters.map((fighter) => (fighter.id === battle.order[1] ? { ...fighter, count: 0 } : fighter)),
+      order: queue,
+      fighters: battle.fighters.map((fighter) => (fighter.id === dead ? { ...fighter, count: 0 } : fighter)),
     };
 
-    expect(upcomingFighters(state, 6).map((fighter) => fighter.id)).toEqual([ordered, ordered, ...battle.order.slice(2), ordered].slice(0, 6));
+    expect(upcomingFighters(state, 6).map((fighter) => fighter.id)).toEqual(queue.filter((id) => id !== dead).slice(0, 6));
   });
 });
