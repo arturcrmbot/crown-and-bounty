@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { ALDMOOR } from '../content/aldmoor';
+import type { Slot } from '../content/artifacts';
 import { COMMISSIONS } from '../content/campaign';
 import { FENMARCH } from '../content/fenmarch';
 import { withNewPlaces } from './campaign';
 import {
   apply, briefingCard, CAMPAIGN_LENGTH, commissionAt, courtCard, heroStats, leadershipUsed, levelUpCard, nextArmy, provinceOf, veterans, visit, type GameState,
 } from './game';
-import { equip, gainXp, giveArtifact, learn } from './hero';
+import { gainXp, giveArtifact, learn, unequip } from './hero';
 import { buildMap, CELL } from './map/model';
 import { planRoute } from './map/movement';
 import { findPath, nearestPassable } from './map/pathfinding';
@@ -192,9 +193,12 @@ describe('level-ups and gear', () => {
     s = { ...s, hero: { ...s.hero, mana: heroStats(s).maxMana } };
     s = giveArtifact(s, 'wizardsButton');
     s = giveArtifact(s, 'luckyHorseshoe');
-    const swapped = equip(s, 'luckyHorseshoe')!.state;
-    expect(swapped.hero.mana).toBe(heroStats(swapped).maxMana);
-    expect(swapped.hero.mana).toBeLessThan(s.hero.mana);
+    const knowledge = (Object.keys(s.hero.gear) as Slot[]).find((slot) => s.hero.gear[slot] === 'astrolabe')!;
+    expect(knowledge).toBeDefined();
+    const off = unequip(s, knowledge)!.state;
+    expect(off.hero.gear[knowledge]).toBeUndefined();
+    expect(off.hero.mana).toBe(heroStats(off).maxMana);
+    expect(off.hero.mana).toBeLessThan(s.hero.mana);
   });
 });
 
