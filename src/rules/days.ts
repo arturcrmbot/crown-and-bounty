@@ -2,8 +2,10 @@ import { commissionOf } from './campaign';
 import { TROOPS } from '../content/troops';
 import { heroStats } from './hero';
 import { mapOf } from './map/maps';
-import { hunting, moveEnemies } from './map/roaming';
+import { moveEnemies } from './map/roaming';
 import { payday as reopen } from './places';
+import { oddsLine } from './places/enemy';
+import { winChance } from './fight';
 import { again, close, COMMISSION, coins, LAST_DAY, locationById, PAYDAY_EVERY, roman, show, wages, type Card, type Choice, type GameEvent, type GameState, type Location, type Result } from './state';
 
 /** The card while an enemy has fallen on the camp: fight, or run. It stays until answered. */
@@ -14,7 +16,7 @@ export function ambushCard(state: GameState, before: string[] = []): Card {
     { label: 'Let the sergeants handle it', action: { type: 'choose', id: foe.id, choice: 'auto' } },
     { label: 'Run for it (lose a fifth of the army)', action: { type: 'choose', id: foe.id, choice: 'flee' } },
   ];
-  return { title: `Day ${roman(state.day)}: ambush!`, lines: [...before, `At first light, **${foe.name}** fall on your camp!`, foe.enemy!.threat], choices };
+  return { title: `Day ${roman(state.day)}: ambush!`, lines: [...before, `At first light, **${foe.name}** fall on your camp!`, foe.enemy!.threat, oddsLine(winChance(state, foe.id))], choices };
 }
 
 /** A villain recruits on payday; the villain himself stays one. */
@@ -64,8 +66,8 @@ export function endDay(state: GameState): Result {
   const night = moveEnemies(next, mapOf(next));
   next = night.state;
   events.push(...night.events);
-  const trailing = next.locations.filter((l) => l.enemy && !l.done && l.id !== night.ambush && hunting(next, l));
-  for (const l of trailing) lines.push(`**${l.name}** are on your trail.`);
+  const trailing = next.locations.filter((l) => l.enemy?.trailing && !l.done);
+  for (const l of trailing) lines.push(`**${l.name}** are on your trail. Camp near them tonight and they’ll fall on you at dawn: ride clear, shelter in a town, or turn and fight.`);
   if (night.ambush) {
     next = { ...next, ambush: night.ambush };
     const foe = locationById(next, night.ambush);

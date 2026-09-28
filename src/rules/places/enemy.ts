@@ -75,7 +75,7 @@ function hireButton(state: GameState, place: Location): Choice[] {
 }
 
 /** What the sergeants think of the odds, in words. */
-function hint(chance: number): string {
+export function oddsLine(chance: number): string {
   if (chance >= 0.9) return 'They look nervous.';
   if (chance >= 0.55) return 'It will be close.';
   return 'Your army looks at you. Then at them. Then at you.';
@@ -88,7 +88,10 @@ export function enemy(kind: 'patrol' | 'hideout'): PlaceKind {
       const exact = countsExactly(state);
       const force = forceLine(place.enemy!.army, exact);
       const line = exact ? `Your scouts count ${force}.` : `${force.replace(/^\*\*(.)/, (_, c: string) => `**${c.toUpperCase()}`)}.`;
-      return { title: place.name, lines: [...place.enemy!.lines, line], choices: [ride(place, 'Approach'), { label: 'Close', action: { type: 'close' } }] };
+      const e = place.enemy!;
+      // Hunters say so, and say when they have your scent, so an ambush is never a surprise.
+      const hunt = e.behaviour !== 'hunt' ? [] : [e.trailing ? '*They have your scent. Camp near them tonight and they\u2019ll fall on you at dawn.*' : '*They hunt anyone weaker who camps near their ground, though never in a town.*'];
+      return { title: place.name, lines: [...e.lines, line, ...hunt], choices: [ride(place, 'Approach'), { label: 'Close', action: { type: 'close' } }] };
     },
     arrive(state, place) {
       const foe = place.enemy!;
@@ -96,7 +99,7 @@ export function enemy(kind: 'patrol' | 'hideout'): PlaceKind {
       if (state.army.length === 0) return say(state, place, { title: place.name, lines: [foe.threat, 'You have no troops to fight with. Recruit some first.'], choices: [...parleys(state, place), retreat] });
       return say(state, place, {
         title: place.name,
-        lines: [foe.threat, hint(winChance(state, place.id))],
+        lines: [foe.threat, oddsLine(winChance(state, place.id))],
         choices: [option(place, foe.charge ?? 'Fight', 'fight'), option(place, 'Let the sergeants handle it', 'auto'), ...hireButton(state, place), ...parleys(state, place), retreat],
       });
     },

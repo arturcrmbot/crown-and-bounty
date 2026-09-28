@@ -1,4 +1,4 @@
-import { apply, armyPower, choose, endDay, fight, hasNextCommission, learn, locationById, PLACE_KINDS, provinceOf, visit, type BoonId, type GameState, type Location } from './game';
+import { apply, armyPower, choose, endDay, fight, hasNextCommission, learn, locationById, PLACE_KINDS, provinceOf, visit, winChance, type BoonId, type GameState, type Location } from './game';
 import { buildMap, type MapModel } from './map/model';
 import { planRoute, routeCosts, stepAlong } from './map/movement';
 import { hireOffer } from './places/enemy';
@@ -18,20 +18,30 @@ export function playCommission(start: GameState, map: MapModel, maxSteps = 20000
   const log: string[] = [];
   let fights = 0;
   let retreats = 0;
-  /** The night passes; if something falls on the camp at dawn, the sergeants deal with it. */
+  /** The night passes; if something falls on the camp at dawn, the sergeants fight it, or the army runs if they'd lose. */
   const nextDay = () => {
     state = endDay(state).state;
     if (state.ambush) {
       fights++;
       const id = state.ambush;
-      state = choose(state, id, 'auto')?.state ?? { ...state, ambush: undefined };
+      const odds = winChance(state, id, 8);
+      state = choose(state, id, odds >= 0.5 ? 'auto' : 'flee')?.state ?? { ...state, ambush: undefined };
       if (!locationById(state, id).done) retreats++;
-      log.push(`day ${state.day}: ambushed by ${locationById(state, id).name}`);
+      log.push(`day ${state.day}: ambushed by ${locationById(state, id).name}${odds >= 0.5 ? '' : ', ran'}`);
     }
   };
+  /** A hunter on the trail that would beat us, if any: then the day ends behind a town's walls. */
+  const hunted = () => state.locations.find((l) => l.enemy?.trailing && !l.done && winChance(state, l.id, 8) < 0.6);
   for (let guard = 0; guard < 400 && !state.over && !limits.stop?.(state); guard++) {
     let best: { id: string; route: number[]; score: number } | null = null;
-    for (const l of state.locations) {
+    const shelter = hunted() ? state.locations.filter((l) => l.kind === 'castle' || l.kind === 'village') : [];
+    for (const l of shelter) {
+      const route = planRoute(state, map, l.at);
+      if (!route) continue;
+      const score = -(route.length ? routeCosts(state, map, route).at(-1)! : 0);
+      if (!best || score > best.score) best = { id: l.id, route, score };
+    }
+    for (const l of best ? [] : state.locations) {
       if (limits.allow && !limits.allow(l)) continue;
       const value = PLACE_KINDS[l.kind].worth(state, l);
       if (value === null) continue;
@@ -77,7 +87,9 @@ export function playCommission(start: GameState, map: MapModel, maxSteps = 20000
       state = PLACE_KINDS[place.kind].bot?.(state, locationById(state, place.id)) ?? state;
     }
     while (state.hero.offers.length > 0) state = learn(state, state.hero.offers[0].options[0])!.state;
-    log.push(`day ${state.day}: ${place.name}`);
+    log.push(`day ${state.day}: ${place.name}${shelter.length ? ' (sheltering)' : ''}`);
+    // Sheltering: stay behind the walls until morning.
+    if (shelter.length) nextDay();
   }
   return { won: state.over === 'won', day: state.day, gold: state.gold, power: armyPower(state.army), fights, retreats, level: state.hero.level, log, state };
 }

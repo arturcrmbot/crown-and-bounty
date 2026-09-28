@@ -1,7 +1,7 @@
 import { SPELLS, STATUSES, type SpellId, type StatusId } from '../../content/spells';
 import { abilitiesOf, troopPower, TROOPS, type TroopId } from '../../content/troops';
 import { roll, type Army } from '../state';
-import { COLS, HEXES, hexIndex, neighbours, reachable } from './hex';
+import { COLS, HEXES, hexIndex, NEIGHBOURS, neighbours, reachable } from './hex';
 
 export type Side = 'player' | 'enemy';
 
@@ -67,17 +67,23 @@ export type BattleState = {
   result?: 'won' | 'lost' | 'fled';
   /** What the field looks like: Aldmoor's meadows or the Fenmarch's reeds. It changes nothing else. */
   ground?: 'meadow' | 'fen';
-  /** Whether anyone has been hurt this round, and how many rounds in a row nobody was. */
+  /** Whether anyone has been hurt this round, and how many rounds in a row nobody was, with the enemy getting no closer. */
   struck?: boolean;
   quiet?: number;
+  /** How far the enemy had still to go to reach your stacks when the last round ended (see `enemyGap`). */
+  gap?: number;
+  /** The battle was called off because the enemy couldn't get at you at all: nobody broke and ran. */
+  standoff?: boolean;
   /** The hero's archers are about to loose their free volley, before anyone moves. */
   volley?: boolean;
 };
 
 /**
- * Rounds in a row with nobody hurt before the battle is called off (the enemy always attacks, so
- * this only happens when it can't get at you). It counts as beaten only if it is much the weaker;
- * otherwise it keeps its army, and you leave the field.
+ * Rounds in a row with nobody hurt, and the enemy getting no closer, before the battle is called
+ * off. The enemy always attacks, so this only happens when it can't get at you: you kept out of its
+ * way, or it has no way through. A far weaker enemy then counts as beaten. Otherwise it keeps its
+ * army: if you kept away, you left the field as in a retreat; if it had no way to you, both sides
+ * simply draw off.
  */
 export const QUIET_ROUNDS = 3;
 /** A side this much weaker than the other (in fighting worth) is beaten when a quiet battle is called off. */
@@ -176,10 +182,53 @@ export function blocked(b: BattleState, i: number, except?: number): boolean {
 const enemiesOf = (b: BattleState, f: Fighter) => b.fighters.filter((o) => alive(o) && o.side !== f.side);
 export const adjacentEnemy = (b: BattleState, f: Fighter) => enemiesOf(b, f).some((e) => neighbours(f.at).includes(e.at));
 
+/**
+ * Steps from every hex to the nearest free hex beside one of `targets`, round rocks and living
+ * stacks (-1: no way there). `mover`'s own hex counts as free, so it can be measured from.
+ */
+export function stepsTo(b: BattleState, targets: readonly Fighter[], mover?: Fighter): Int16Array {
+  const mask = new Uint8Array(HEXES);
+  for (const i of b.obstacles) mask[i] = 1;
+  for (const f of b.fighters) if (alive(f) && f.id !== mover?.id) mask[f.at] = 1;
+  const steps = new Int16Array(HEXES).fill(-1);
+  const queue: number[] = [];
+  const visit = (hex: number, n: number) => {
+    if (mask[hex] || steps[hex] >= 0) return;
+    steps[hex] = n;
+    queue.push(hex);
+  };
+  for (const t of targets) for (const n of NEIGHBOURS[t.at]) visit(n, 0);
+  for (let k = 0; k < queue.length; k++) for (const n of NEIGHBOURS[queue[k]]) visit(n, steps[queue[k]] + 1);
+  return steps;
+}
+
+/**
+ * How far the enemy still has to go to strike: each of its stacks' steps to the nearest hex beside
+ * one of yours, added up. A stack with no way through counts the whole field, and `stuck` says
+ * whether none of them has one.
+ */
+export function enemyReach(b: BattleState): { gap: number; stuck: boolean } {
+  const players = b.fighters.filter((f) => alive(f) && f.side === 'player');
+  let gap = 0;
+  let stuck = true;
+  for (const e of b.fighters) {
+    if (!alive(e) || e.side !== 'enemy') continue;
+    const steps = stepsTo(b, players, e)[e.at];
+    if (steps >= 0) stuck = false;
+    gap += steps < 0 ? HEXES : steps;
+  }
+  return { gap, stuck };
+}
+
 export type Options = { moves: Map<number, number[]>; melee: { target: number; from: number }[]; shoot: number[] };
 
-/** Everything the acting stack can do right now. */
+/** Options worked out already: a battle state never changes once made, and the AI asks about the same one many times. */
+const known = new WeakMap<BattleState, Options>();
+
+/** Everything the acting stack can do right now. Don't change what it returns. */
 export function options(b: BattleState): Options {
+  const cached = known.get(b);
+  if (cached) return cached;
   const f = activeFighter(b);
   if (!f) return { moves: new Map(), melee: [], shoot: [] };
   const moves = reachable(f.at, speedOf(f), (i) => blocked(b, i, f.id));
@@ -188,7 +237,9 @@ export function options(b: BattleState): Options {
     for (const n of neighbours(e.at)) if (n === f.at || moves.has(n)) melee.push({ target: e.id, from: n });
   }
   const shoot = isRanged(f) && !adjacentEnemy(b, f) ? enemiesOf(b, f).map((e) => e.id) : [];
-  return { moves, melee, shoot };
+  const opts = { moves, melee, shoot };
+  known.set(b, opts);
+  return opts;
 }
 
 /** Defence a stack's statuses add (Stone Skin). */
@@ -406,17 +457,19 @@ function settle(b: BattleState, events: BattleEvent[], endTurn: boolean): Battle
     return { battle: { ...next, result }, events };
   }
   if (order.length === 0) {
-    const quiet = next.struck ? 0 : (next.quiet ?? 0) + 1;
-    // Nobody has landed a blow for a while: the battle is called off. Only a side far weaker than
-    // the other counts as beaten; otherwise the enemy keeps its army and slips away (and so do you).
+    // A round with no blow struck, and the enemy no closer to you, is a quiet one.
+    const reach = enemyReach(next);
+    const quiet = next.struck || reach.gap < (next.gap ?? Infinity) ? 0 : (next.quiet ?? 0) + 1;
+    // Nobody has landed a blow for a while, and nobody will: the battle is called off. Only a side
+    // far weaker than the other counts as beaten; otherwise the enemy keeps its army and holds the field.
     if (quiet >= QUIET_ROUNDS) {
       const worth = (side: Side) => next.fighters.filter((f) => alive(f) && f.side === side).reduce((sum, f) => sum + (((f.count - 1) * TROOPS[f.troop].hp + f.hp) / TROOPS[f.troop].hp) * troopPower(f.troop), 0);
       const result = worth('enemy') < worth('player') * ROUTED_BELOW ? 'won' : 'fled';
       events.push({ type: 'end', result, rout: true });
-      return { battle: { ...next, result, quiet }, events };
+      return { battle: { ...next, result, quiet, gap: reach.gap, ...(result === 'fled' && reach.stuck ? { standoff: true } : {}) }, events };
     }
     const fighters = next.fighters.map((f) => ({ ...f, retaliated: false, waited: false }));
-    next = { ...next, round: next.round + 1, fighters, order: turnOrder(fighters), struck: false, quiet };
+    next = { ...next, round: next.round + 1, fighters, order: turnOrder(fighters), struck: false, quiet, gap: reach.gap };
     events.push({ type: 'round', round: next.round });
   }
   const acting = fighterById(next, next.order[0]);

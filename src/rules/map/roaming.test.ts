@@ -65,6 +65,19 @@ describe('enemies on the map', () => {
     expect(nights(strong, 6).ambush).toBeUndefined();
   });
 
+  it('give a day\u2019s warning before they fall on the camp, and never come into a town', () => {
+    const weak = fen([{ troop: 'peasants', count: 10 }], [470, 590]);
+    const first = endDay(weak);
+    expect(first.state.ambush).toBeUndefined();
+    expect(locationById(first.state, 'goblins').enemy!.trailing).toBe(true);
+    const dawn = first.events.find((e) => e.type === 'card');
+    expect(dawn?.type === 'card' && dawn.card.lines.some((l) => l.includes('on your trail'))).toBe(true);
+    // Behind a town's walls, nothing comes for him.
+    const town = weak.locations.find((l) => l.kind === 'village')!;
+    const safe = { ...weak, hero: { ...weak.hero, at: town.at } };
+    expect(hunting(safe, locationById(safe, 'goblins'))).toBe(false);
+  });
+
   it('let villains recruit every payday, though the villain stays one', () => {
     let s = aldmoor();
     const start = locationById(s, 'hideout').enemy!.army.find((a) => a.troop === 'swordsmen')!.count;

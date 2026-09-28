@@ -136,6 +136,14 @@ export function finishFight(state: GameState): Result {
     const opening = place.kind === 'hideout' ? [commissionOf(base).surrender, lost] : [enemy.flees, lost, enemy.loot.replace('{gold}', `**${coins(enemy.reward)} gold**`)];
     return beat(base, place.id, { title: 'Victory!', lines: opening, reward: enemy.reward, xp: battleXp(enemy.army) });
   }
+  if (battle.result === 'fled' && battle.standoff) {
+    // They had no way through to you, and you didn't go to them: both sides draw off, nobody cut down.
+    const next = { ...base, movement: 0 };
+    return {
+      state: next,
+      events: [show({ title: 'A stand-off', lines: ['Neither side can get at the other. As the light goes, both draw off.', lost, `*${armyLine(army)} ride on with you.*`], choices: [close] }, place.at, place.id)],
+    };
+  }
   if (battle.result === 'fled') {
     const shaken = army.map((s) => ({ ...s, count: s.count - Math.ceil(s.count * 0.25) })).filter((s) => s.count > 0);
     const next = { ...base, army: shaken, movement: 0 };
