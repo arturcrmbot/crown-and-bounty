@@ -3,6 +3,35 @@
 Newest first. Each entry says what was played, how it felt to an experienced player (HoMM2, King's Bounty,
 modern RPGs), and what was done about it.
 
+## #10: 28 Sep 2026, the land makes its own sounds
+
+**Played:** a Knight riding round Aldmoor with the sound on (at 8x, listening ten seconds at each stop): the
+archery butts by the start, the watchtower, the mine, the falls and the mill, the castle and Westmere, and
+through the evening into night. Then the Fenmarch: the abbey, the keep, the peat hut. What the ambience played
+was read back through `__kc.sound()`, and each sound was rendered offline and measured (`npm run listen --
+ambience`).
+
+**How it felt:** the map used to hum one wind and scatter birds anywhere, so a castle, a river and a forest all
+sounded alike. Now riding across Aldmoor is a walk through places. By the start, arrows thock into the straw at
+the butts and the river runs to the right; up at the tower the crows caw over a wind that whistles off the
+crags; at the mine a pick knocks on stone; the falls roar below the cliff and the mill's wheel creaks; at the
+castle people talk and the smith rings his anvil; in the woods there are blackbirds, a cuckoo, a woodpecker.
+Each is louder the nearer he rides and on its own side. As the day's riding runs out the birds go quiet, crickets
+start and an owl calls from the trees; when the night lifts, a cockerel crows if there's a farm in earshot. In the
+Fenmarch the frogs are thickest by the meres, and Brother Anselm's abbey rings its bell and chants in the fen's
+own key.
+
+**Found and fixed:**
+
+1. Heard from the middle of the view, the castle was faint and off to one side while the hero stood at its gate:
+   near the map's edge the view can't centre on him. The land is heard from the hero, and from the middle of the
+   view only while he's scrolled out of sight.
+2. The crows, frogs, voices and cockerel were 10 to 20 dB quieter than the birds; all now sit together, 15 to
+   20 dB under the music.
+3. The archery range counted as a village and chattered. It has its own sound now.
+4. `npm run e2e` could fail on a busy machine: just after a reload, Continue waits for the troops' art. It now
+   waits for the title to go (it happened on main before these changes too, about 1 in 16).
+
 ## #9: 28 Sep 2026, a change of scene between screens
 
 **Played:** the whole opening and the first fights with the clock running, and every change of screen frame by

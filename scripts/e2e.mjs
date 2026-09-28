@@ -6,6 +6,8 @@ const server = await startServer();
 const { browser, page, errors } = await openPage();
 const kc = hooks(page);
 const screen = () => kc.call(() => window.__kc.screen());
+/** Continue waits for the troops' art, which can still be loading just after a reload: wait for the title to go. */
+const onward = () => page.waitForFunction(() => window.__kc.screen() !== 'title', null, { timeout: 20_000 });
 let failed = false;
 const check = (ok, message) => {
   console.log(`${ok ? 'ok  ' : 'FAIL'} ${message}`);
@@ -113,6 +115,7 @@ try {
   await kc.ready();
   await kc.begin();
   check((await kc.lines()) !== null && (await kc.choose('Continue')), 'a reload offers to carry on from the title');
+  await onward();
   const after = await kc.state();
   check(after.gold === before.gold && after.day === before.day, 'the save keeps gold and day');
   check(after.locations.find((l) => l.id === 'chest').done && String(after.hero.at) === String(before.hero.at), 'the save keeps the opened chest and where the hero stands');
@@ -236,6 +239,7 @@ try {
   await kc.ready();
   await kc.begin();
   await kc.choose('Continue');
+  await onward();
   check((await screen()) === 'court' && (await kc.title()) === 'The King\u2019s Court', 'a reload at court comes back to court');
   const boon = await first();
   await kc.choose(boon);
@@ -263,6 +267,7 @@ try {
   await kc.begin();
   const buttons = await kc.call(() => [...document.querySelectorAll('.kc-card-wrap:not([hidden]) button')].map((b) => b.textContent).join(' / '));
   check(buttons.includes('Commission II') && (await kc.choose('Continue')), 'a reload in the Fenmarch offers to carry on there');
+  await onward();
   const resumed = await kc.state();
   check(resumed.campaign.chapter === 1 && resumed.gold === midFen.gold && resumed.locations.find((l) => l.id === 'goblins').done, 'the save keeps the province, gold and the beaten goblins');
   await page.goto(`${server.url}?speed=8`);

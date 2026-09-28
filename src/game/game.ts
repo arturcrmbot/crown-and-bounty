@@ -1,5 +1,5 @@
-import { setAmbience } from '../audio/ambience';
-import { setMusic } from '../audio/music';
+import { heard, setAmbience } from '../audio/ambience';
+import { nowPlaying, setMusic } from '../audio/music';
 import { sting, type StingId } from '../audio/stings';
 import { SCREEN } from '../render/frame';
 import { Transition, type TransitionStyle } from '../render/transition';
@@ -227,7 +227,9 @@ export class Game {
     }
     this.top.update(dt, held);
     setMusic(this.top.music ?? null);
-    setAmbience(this.top.ambience ?? null);
+    // On the map (and with the hero screen over it) the land makes its own sounds around the view.
+    const map = this.stack[0] instanceof AdventureController && (this.top === this.stack[0] || this.top instanceof HeroController) ? this.stack[0] : null;
+    setAmbience(this.top.ambience ?? null, map?.place ?? null);
   }
 
   frame(tick: number): Uint8Array {
@@ -274,6 +276,8 @@ export class Game {
       /** What the hero screen shows, while it's open. */
       hero: () => (this.top instanceof HeroController ? this.top.sheet.describe() : null),
       frameHash: () => hashOf(this.top.bitmap.data),
+      /** What's playing and what the land sounds like, once sound is awake. */
+      sound: () => ({ music: nowPlaying(), ambience: heard() }),
       /** Moves the clock on by hand, even when frozen: for frame-by-frame screenshots of an animation. */
       advance: (seconds: number) => this.update(seconds, new Set()),
     };
