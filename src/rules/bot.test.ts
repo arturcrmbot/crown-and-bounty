@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { newGame } from './scenario';
+import { playCampaign, playCampaignStarts } from './bot';
 import { simulate, simulateCampaign } from './sim';
 
 describe('the bot', () => {
@@ -19,4 +21,23 @@ describe('the bot', () => {
       expect(last.state.campaign.record).toHaveLength(1);
     }
   }, 600_000);
+
+  it('starts chapter III with the same state as the campaign bot', () => {
+    const start = newGame(1066, undefined, 'wizard');
+    const chapter = 2;
+    const runs = playCampaign(start, chapter);
+    const journey = playCampaignStarts(start);
+    let step = journey.next();
+    while (!step.done && step.value.campaign.chapter < chapter) step = journey.next();
+
+    expect(step.done).toBe(false);
+    if (!step.done) expect(step.value).toEqual(runs[chapter].start);
+  }, 600_000);
+
+  it('offers each background as the beginning of a bot campaign', () => {
+    for (const background of ['knight', 'wizard', 'ranger', 'courtier'] as const) {
+      const journey = playCampaignStarts(newGame(1066, undefined, background));
+      expect(journey.next().value?.hero.background).toBe(background);
+    }
+  });
 });
