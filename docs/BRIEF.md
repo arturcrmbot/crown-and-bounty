@@ -109,6 +109,7 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   without his spells; he's on his feet by evening, but goes no further that day. The enemy finishes him off when
   it can, and the sergeants keep him out of harm's way; both now see a charge coming. The odds on every card count
   him. He stands in the gold ring he has on the map, and he and the villains show a health bar instead of a count.
+  His current health stays on the battle bar beside his mana, whoever is taking a turn or under the pointer.
 - **The hero screen and the army (28 Sep, from Artur's second playtest):** H, a click on the hero, or the bar's
   troop counts open a HoMM2-style sheet over the map (the map stands still under it): his portrait, level and
   experience, the four stats, mana (left, most, and when it comes back), movement and leadership, his signature,
