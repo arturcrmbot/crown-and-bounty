@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { BACKGROUNDS } from '../content/backgrounds';
 import { FirstTimeHints } from './hints';
 import { storyCard } from './intro';
 
@@ -23,7 +24,7 @@ describe('first-time hints', () => {
   it('keeps the prologue card about Aldric, not controls', () => {
     const card = storyCard('knight');
     expect(card.lines).toHaveLength(3);
-    expect(card.lines.join(' ')).toContain('Royal Charge');
+    expect(card.lines.join(' ')).toContain(BACKGROUNDS.knight.signature.name);
     expect(card.lines.join(' ')).not.toMatch(/click|Shift|hourglass|payday|\*\*H\*\*|\*\*M\*\*|\*\*\?\*\*/i);
   });
 });

@@ -513,10 +513,8 @@ export class AdventureController implements Screen {
     this.visiting = null;
     this.target = null;
     const result = visit(this.state, id);
-    if (this.hints.take('place')) {
-      const arrival = result.events.find((e) => e.type === 'card');
-      if (arrival?.type === 'card') arrival.card = { ...arrival.card, lines: [...arrival.card.lines, '*Click a place once to look, then again to ride there. Click Aldric or press **H** for his gear and army.*'] };
-    }
+    const arrival = result.events.find((e) => e.type === 'card');
+    if (arrival?.type === 'card' && this.hints.take('place')) arrival.card = { ...arrival.card, lines: [...arrival.card.lines, '*Click a place once to look, then again to ride there. Click Aldric or press **H** for his gear and army.*'] };
     this.run(result);
   }
 
@@ -625,20 +623,22 @@ export class AdventureController implements Screen {
           this.handle(step.events.filter((e) => e.type !== 'moved'));
           continue;
         }
-        if (!this.tiredShown && this.hints.take('tired')) {
+        if (!this.tiredShown) {
           this.tiredShown = true;
-          saveGame(this.state);
-          this.showCard(
-            {
-              title: ART[heroArtId(this.state.hero.background)].rides ? 'Your horse is spent' : 'Your legs are spent',
-              lines: ['The hourglass (or **E**) ends the day; red marks on the route wait for tomorrow.'],
-              choices: [
-                { label: 'End the day (E)', action: { type: 'endDay' } },
-                { label: 'Not yet', detail: 'Look around first: the route waits.', action: { type: 'close' } },
-              ],
-            },
-            [this.drawn.x, this.drawn.y - this.scene.hero.foot],
-          );
+          if (this.hints.take('tired')) {
+            saveGame(this.state);
+            this.showCard(
+              {
+                title: ART[heroArtId(this.state.hero.background)].rides ? 'Your horse is spent' : 'Your legs are spent',
+                lines: ['The hourglass (or **E**) ends the day; red marks on the route wait for tomorrow.'],
+                choices: [
+                  { label: 'End the day (E)', action: { type: 'endDay' } },
+                  { label: 'Not yet', detail: 'Look around first: the route waits.', action: { type: 'close' } },
+                ],
+              },
+              [this.drawn.x, this.drawn.y - this.scene.hero.foot],
+            );
+          }
         }
       }
       if (d === 0) break;
