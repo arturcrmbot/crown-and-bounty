@@ -97,7 +97,13 @@ export class Game {
             this.clear();
             this.push(new PrologueController(this.display, fresh(), (state) => whenUnitArt(() => this.change('dissolve', null, () => this.beginCommission(state, [])))));
           }),
-        onContinue: () => whenUnitArt(() => this.change('fade', null, () => this.resume(resume!))),
+        onContinue: () =>
+          whenUnitArt(() =>
+            this.change('fade', null, () => {
+              this.resume(resume!);
+              if (this.top === this.stack[0]) this.adventure.resumeFacing();
+            }),
+          ),
       }),
     );
   }

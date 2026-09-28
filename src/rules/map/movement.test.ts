@@ -3,7 +3,7 @@ import { ALDMOOR } from '../../content/aldmoor';
 import { newGame } from '../scenario';
 import { isExplored } from './fog';
 import { buildMap, cellIndex } from './model';
-import { planRoute, routeCosts, stepAlong } from './movement';
+import { facingEnemy, planRoute, routeCosts, stepAlong } from './movement';
 
 const map = buildMap(ALDMOOR);
 
@@ -54,5 +54,20 @@ describe('riding', () => {
     expect(planRoute(state, map, [256, 690])).not.toBeNull();
     const beaten = { ...state, locations: state.locations.map((l) => (l.id === 'wolves' ? { ...l, done: true } : l)) };
     expect(planRoute(beaten, map, [104, 850])).not.toBeNull();
+  });
+
+  it('knows the enemy he has ridden up to, until it is beaten', () => {
+    let s = { ...newGame(), movement: 999 };
+    expect(facingEnemy(s)).toBeNull();
+    const patrol = s.locations.find((l) => l.id === 'patrol')!;
+    let route = planRoute(s, map, patrol.at, true)!;
+    while (route.length) {
+      s = stepAlong(s, map, route)!.state;
+      route = route.slice(1);
+    }
+    expect(facingEnemy(s)?.id).toBe('patrol');
+    expect(planRoute(s, map, patrol.at, true)).toEqual([]);
+    const beaten = { ...s, locations: s.locations.map((l) => (l.id === 'patrol' ? { ...l, done: true } : l)) };
+    expect(facingEnemy(beaten)?.id).not.toBe('patrol');
   });
 });
