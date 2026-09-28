@@ -667,7 +667,8 @@ export class AdventureController implements Screen {
       for (let t = 10 - carry; t <= d; t += 10) dots.push({ at: [Math.round(ax + ((bx - ax) * t) / d), Math.round(ay + ((by - ay) * t) / d)], today });
       carry = (carry + d) % 10;
     }
-    const lastToday = costs.findLastIndex((cost) => cost <= this.state.movement);
+    let lastToday = -1;
+    for (let i = 0; i < costs.length && costs[i] <= this.state.movement; i++) lastToday = i;
     const camp = costs.at(-1)! > this.state.movement ? (lastToday >= 0 ? cellCentre(this.map, this.route[lastToday]) : ([this.drawn.x, this.drawn.y] as Point)) : null;
     return { dots, camp };
   }
