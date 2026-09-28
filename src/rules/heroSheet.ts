@@ -6,10 +6,11 @@ import { abilitiesOf, TROOPS, troops, type TroopId } from '../content/troops';
 import { createBattle, statsOf } from './battle/battle';
 import { rowOf } from './battle/hex';
 import { CAMPAIGN_LENGTH, commissionOf } from './campaign';
+import type { PortraitId } from '../content/portraits';
 import { heroInBattle } from './fight';
 import { countsExactly, forceLine } from './places/common';
 import { heroStats, LEVELS, type StatId } from './hero';
-import { COMMISSION, coins, LAST_DAY, leadershipUsed, locationById, PAYDAY_EVERY, roman, wages, type GameState } from './state';
+import { close, COMMISSION, coins, LAST_DAY, leadershipUsed, locationById, PAYDAY_EVERY, roman, wages, type Card, type GameState } from './state';
 
 /** Mana left, the most he can hold, and how it comes back: "Mana 12/30 · full again at dawn". */
 export function manaNote(state: GameState): string {
@@ -58,7 +59,7 @@ export function barNote(state: GameState, item: BarItem): string {
     case 'bounty': {
       const villain = commissionOf(state).villain;
       if (state.bounty === 'paid') return `The bounty on ${villain} is paid`;
-      return `Wanted: ${villain}, by day ${LAST_DAY} · ${LAST_DAY - state.day} days left`;
+      return `Wanted: ${villain}, by day ${LAST_DAY} · ${LAST_DAY - state.day} days left · click for the poster`;
     }
     case 'movement':
       return `${Math.floor(state.movement)} movement left today, of ${heroStats(state).movement} · E ends the day`;
@@ -69,6 +70,32 @@ export function barNote(state: GameState, item: BarItem): string {
     case 'hourglass':
       return 'End the day (E)';
   }
+}
+
+/** How far away a place is, for the label under the pointer: "today", "tomorrow", "in 3 days". */
+export const whenThere = (days: number) => (days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`);
+
+/** Faces for the villains' posters, by the name the commission gives. */
+const VILLAIN_FACES: [string, PortraitId][] = [['Grimsby', 'grimsby'], ['Mirrow', 'mirrow'], ['Bramble', 'bramble']];
+
+/** The WANTED poster again, from the bar: who, why, the reward, and the days left. */
+export function bountyCard(state: GameState): Card {
+  const c = commissionOf(state);
+  const face = VILLAIN_FACES.find(([name]) => c.villain.includes(name))?.[1];
+  const pieces = state.campaign.record.length + (state.bounty === 'paid' ? 1 : 0);
+  const left = LAST_DAY - state.day;
+  return {
+    title: state.bounty === 'paid' ? 'CAUGHT' : 'WANTED',
+    poster: true,
+    ...(face ? { portrait: face } : {}),
+    lines: [
+      `**${c.villain}** of ${c.province.name.replace(/^the /, 'the ')}`,
+      ...c.brief,
+      state.bounty === 'paid' ? 'The bounty is paid.' : `Reward: **${coins(c.reward)} gold**. By day ${LAST_DAY}: **${left} day${left === 1 ? '' : 's'}** left.`,
+      `*Pieces of the old map: ${pieces} of ${CAMPAIGN_LENGTH}.*`,
+    ],
+    choices: [close],
+  };
 }
 
 /** What the map's hover label says about a place: its name, and what's there at a glance. */
@@ -106,6 +133,7 @@ export type HeroSheet = {
   spells: Note[];
   mapSpells: { spell: MapSpellId; label: string; note: string; disabled: boolean }[];
   pieces: string;
+  piecesNote: string;
   day: string;
 };
 
@@ -129,7 +157,7 @@ export function heroSheet(state: GameState): HeroSheet {
     background: h.background,
     level: `Level ${roman(h.level)}`,
     xp: to
-      ? { share: Math.max(0, Math.min(1, (h.xp - from) / (to - from))), line: `${coins(h.xp)} / ${coins(to)} experience: ${coins(to - h.xp)} more for level ${roman(h.level + 1)}` }
+      ? { share: Math.max(0, Math.min(1, (h.xp - from) / (to - from))), line: `${coins(h.xp)} / ${coins(to)} experience: ${coins(to - h.xp)} more for level ${roman(h.level + 1)}. Fights and new places bring it.` }
       : { share: 1, line: `${coins(h.xp)} experience: as seasoned as they come` },
     stats: [
       stat('attack', 'Attack', 'every stack of his adds it to its own attack.'),
@@ -139,13 +167,21 @@ export function heroSheet(state: GameState): HeroSheet {
     ],
     mana: { left: h.mana, max: s.maxMana, line: manaNote(state) },
     movement: { left: Math.floor(state.movement), max: s.movement, line: `${Math.floor(state.movement)} of ${s.movement} movement left today \u00b7 E ends the day` },
-    leadership: { used, max: s.leadership, line: `Leadership ${used}/${s.leadership}: every troop needs some, and no more will join past it` },
+    leadership: {
+      used,
+      max: s.leadership,
+      line:
+        used > s.leadership
+          ? `Leadership ${used}/${s.leadership}: more than he can lead, so nobody new will join until there's room`
+          : `Leadership ${used}/${s.leadership}: every troop needs some, and no more will join past it`,
+    },
     signature: { name: b.signature.name, note: b.signature.note, trick: true },
     skills: (Object.entries(h.skills) as [SkillId, number][]).filter(([, rank]) => rank > 0).map(([id, rank]) => ({ name: `${RANKS[Math.min(rank, RANKS.length) - 1]} ${SKILLS[id].name}`, note: skillNote(id, rank) })),
     perks: h.perks.map((id) => ({ name: PERKS[id].name, note: PERKS[id].note, ...(PERKS[id].trick ? { trick: true } : {}) })),
     spells: h.spells.map((id) => ({ name: SPELLS[id].name, note: `${Math.max(1, SPELLS[id].mana - discount)} mana: ${SPELLS[id].note}` })),
     mapSpells: s.mapSpells.map((id) => ({ spell: id, label: `Cast ${MAP_SPELLS[id].name} (${MAP_SPELLS[id].mana} mana)`, note: MAP_SPELLS[id].note, disabled: h.mana < MAP_SPELLS[id].mana })),
     pieces: `Pieces of the old map: ${state.campaign.record.length + (state.bounty === 'paid' ? 1 : 0)} of ${CAMPAIGN_LENGTH}`,
+    piecesNote: 'Every bounty brings a torn piece of an old map. With the last one, an X shows where the Sceptre of Order lies.',
     day: `Day ${roman(state.day)} of ${LAST_DAY}`,
   };
 }

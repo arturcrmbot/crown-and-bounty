@@ -59,6 +59,18 @@ export function planRoute(state: GameState, map: MapModel, target: Point, approa
   return cells.slice(1).map((c) => c.y * map.width + c.x);
 }
 
+/**
+ * Days until the hero gets to `target`: 0 for today, 1 for tomorrow, and so on, or null if there is
+ * no way there. Each new day brings his full movement.
+ */
+export function daysAway(state: GameState, map: MapModel, target: Point, approach = false): number | null {
+  const route = planRoute(state, map, target, approach);
+  if (!route) return null;
+  const total = route.length ? routeCosts(state, map, route)[route.length - 1] : 0;
+  if (total <= state.movement) return 0;
+  return Math.ceil((total - state.movement) / Math.max(1, heroStats(state).movement));
+}
+
 /** Movement points for one step between neighbouring cells. Matches the A* costs. */
 export function stepCost(map: MapModel, from: number, to: number, cost = map.grid.cost): number {
   const a = cellXY(map, from);

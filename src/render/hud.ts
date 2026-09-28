@@ -53,12 +53,11 @@ const TROOP_ICONS: Record<TroopId, Bitmap> = {
   boars: FORK,
 };
 
-/** The hourglass: click it (or press E) to end the day. */
-export const HOURGLASS = icon(
-  ['wwwwwww', '.oyyyo.', '..oyo..', '...o...', '..o.o..', '.oyyyo.', 'wwwwwww'],
-  { w: WOOD[4], o: INK, y: GOLD[5] },
-);
-export const HOURGLASS_AT = { x: BAR.x + BAR.width - 22, y: BAR.y + 10 };
+/** The hourglass: click it (or press E) to end the day. It brightens under the pointer. */
+const GLASS = ['WWWWWWWWW', 'wwwwwwwww', '.g.....g.', '.gyyyyyg.', '..gyyyg..', '...gyg...', '....g....', '...g.g...', '..g...g..', '.g..y..g.', '.gyyyyyg.', 'wwwwwwwww', 'WWWWWWWWW'];
+export const HOURGLASS = icon(GLASS, { W: WOOD[5], w: WOOD[3], g: STONE[5], y: GOLD[4] });
+const HOURGLASS_LIT = icon(GLASS, { W: GOLD[6], w: GOLD[4], g: NEUTRAL[7], y: GOLD[6] });
+export const HOURGLASS_AT = { x: BAR.x + BAR.width - 20, y: BAR.y + 7 };
 
 /** Where the map bar's dividers sit, from its left edge: the army, the bounty, then the day's numbers. */
 export const HUD_DIVIDERS = [440, 670];
@@ -66,12 +65,16 @@ export const HUD_DIVIDERS = [440, 670];
 /** One thing on the bar, and the stretch of it (screen pixels) that answers the pointer. */
 export type HudHit = { item: BarItem; x0: number; x1: number };
 
+/** Which things on the bar a click does something with. */
+export const clickable = (item: BarItem) => item.kind === 'hourglass' || item.kind === 'stack' || item.kind === 'mana' || item.kind === 'bounty';
+const same = (a: BarItem, b: BarItem) => a.kind === b.kind && (a.kind !== 'stack' || (b.kind === 'stack' && a.index === b.index));
+
 /**
  * Repaints the bottom bar from the game state: gold, army, bounty, movement, mana and the day.
- * Everything keeps its own column, so nothing shifts as the numbers change. Returns where each
- * thing sits, for hover labels and clicks.
+ * Everything keeps its own column, so nothing shifts as the numbers change. What a click would
+ * work (`hover`) is underlined in gold. Returns where each thing sits, for hover labels and clicks.
  */
-export function paintHud(frame: Bitmap, state: GameState): HudHit[] {
+export function paintHud(frame: Bitmap, state: GameState, hover: BarItem | null = null): HudHit[] {
   paintBarBackground(frame, HUD_DIVIDERS);
   const hits: HudHit[] = [];
   const text = BAR.y + 5;
@@ -98,7 +101,10 @@ export function paintHud(frame: Bitmap, state: GameState): HudHit[] {
   item({ kind: 'movement' }, right, 50, HORSESHOE, String(Math.floor(state.movement)), state.movement < 2 ? RED[5] : PARCHMENT[6]);
   item({ kind: 'mana' }, right + 50, 62, CRYSTAL, `${state.hero.mana}/${heroStats(state).maxMana}`, state.hero.mana > 0 ? BLUE[6] : STONE[5]);
   item({ kind: 'day' }, right + 112, 0, null, `DAY  ${roman(state.day)}`);
-  blit(frame, HOURGLASS, HOURGLASS_AT.x, HOURGLASS_AT.y);
-  hits.push({ item: { kind: 'hourglass' }, x0: HOURGLASS_AT.x - 5, x1: HOURGLASS_AT.x + HOURGLASS.width + 5 });
+  const lit = hover?.kind === 'hourglass';
+  blit(frame, lit ? HOURGLASS_LIT : HOURGLASS, HOURGLASS_AT.x, HOURGLASS_AT.y);
+  hits.push({ item: { kind: 'hourglass' }, x0: HOURGLASS_AT.x - 6, x1: HOURGLASS_AT.x + HOURGLASS.width + 6 });
+  const under = hover && clickable(hover) && hover.kind !== 'hourglass' ? hits.find((h) => same(h.item, hover)) : null;
+  if (under) for (let x = under.x0 + 5; x < under.x1 - 5; x++) frame.set(x, BAR.y + BAR.height - 5, GOLD[4]);
   return hits;
 }
