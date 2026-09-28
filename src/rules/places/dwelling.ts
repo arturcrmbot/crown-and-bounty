@@ -17,14 +17,24 @@ export function recruitable(state: GameState, id: string): number {
   return Math.max(0, Math.min(offer.count, room, Math.floor(state.gold / priceOf(state, offer.price))));
 }
 
+/** Recruits a quartermaster talks them into throwing in with `count`, on top of the offer: as many as he can lead. */
+function thrownIn(state: GameState, place: Location, count: number): number {
+  const offer = place.recruits!;
+  const room = Math.floor((heroStats(state).leadership - leadershipUsed(state.army)) / TROOPS[offer.troop].leadership) - count;
+  return Math.max(0, Math.min(Math.floor(count * heroStats(state).freeRecruits), room));
+}
+
 function recruit(state: GameState, place: Location): Result | null {
   const offer = place.recruits;
   const count = recruitable(state, place.id);
-  const army = offer && count > 0 ? addTroops(state.army, offer.troop, count) : null;
-  if (!offer || !army) return null;
+  if (!offer || count <= 0) return null;
+  const free = thrownIn(state, place, count);
+  const army = addTroops(state.army, offer.troop, count + free);
+  if (!army) return null;
   const next = update({ ...state, gold: state.gold - count * priceOf(state, offer.price), army }, place.id, { recruits: { ...offer, count: offer.count - count } });
+  const extra = free > 0 ? [`Your quartermaster talks them into throwing in **${free} more**, free.`] : [];
   // The place's card again, with who joined on top: the armoury is still a click away.
-  return say(next, place, recruitCard(next, locationById(next, place.id), [joinLine(offer.troop, count)]));
+  return say(next, place, recruitCard(next, locationById(next, place.id), [joinLine(offer.troop, count), ...extra]));
 }
 
 /**
@@ -51,7 +61,8 @@ function recruitCard(state: GameState, place: Location, before: string[] = []): 
   if (!slot) lines.push('Five companies are all one officer can lead. Dismiss one (H) to make room.');
   else if (room < offer.count) lines.push(room > 0 ? `You can only lead ${room} more.` : 'You can\u2019t lead any more troops. Find some leadership first.');
   if (slot && room > 0 && purse < Math.min(offer.count, room)) lines.push(purse > 0 ? `Your purse runs to ${purse}.` : `You can\u2019t pay for even one.`);
-  const hire = count > 0 ? option(place, `Recruit ${count} (${coins(count * each)} gold)`, 'recruit') : option(place, 'Recruit', 'recruit', true);
+  const free = count > 0 ? thrownIn(state, place, count) : 0;
+  const hire = count > 0 ? option(place, `Recruit ${count}${free ? ` + ${free} free` : ''} (${coins(count * each)} gold)`, 'recruit') : option(place, 'Recruit', 'recruit', true);
   return { title: place.name, lines, choices: [hire, ...armoury, leave] };
 }
 
