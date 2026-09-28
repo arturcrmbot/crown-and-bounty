@@ -39,7 +39,7 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
 - **Hero builds (M2):** four backgrounds (Knight, Hedge Wizard, Ranger and Courtier), each with its own army, stats, purse and signature perk. Battles and discoveries give experience. Each level raises a stat and offers a pick of three, drawn from 9 skills (three ranks each) and 6 perks. There are 10 artifacts in 5 slots, found on the map or bought at the castle armoury. The bot wins Aldmoor with every background, by day 7 to 10.
 - **Campaign (M3):** two commissions. After Aldmoor comes the King's court: a code-drawn throne room with King Osric and the returned goose. There, any waiting level-ups are taken, the King adds gold and offers a boon (pick one of three), and the next commission is read out. Commission II is the Fenmarch: meres, reeds and willows, bog goblins, a bridge troll who guards the only way south, and Mother Mirrow, a bog witch in a hut on chicken legs who turned the King's tax collector into a newt. Levels also bring leadership (+10 each). A lost commission can be tried again from its start. The bot wins both commissions with every background: Aldmoor by day 9 to 10, the Fenmarch by day 9 to 16.
 - **Generated commissions and parleys (M4):** the campaign is five commissions. After Aldmoor and the Fenmarch, each province is generated from the campaign's seed: roads join the places, woods and meres or crags fill the land, bands stand on the roads, and the villain's hideout sits in a ringed wood behind gatekeepers. Every map is checked playable with the same pathfinding the hero uses. The villains are Baron Grimsby again (he escaped, with the King's hat) and Aunt Bramble, Mother Mirrow's big sister, who turned the royal choir into frogs. Each commission is a fifth stronger than the last. Enemies can offer parleys, other ways past than a fight: pay, talk or trick. Some need a background or skill, and options the hero can't take show greyed out as a hint. Trolls regenerate, and the witches' hexes slow what they hit.
-- **The ending:** every bounty comes with a torn piece of an old map (the hero card counts them). In the fifth commission, the last piece puts an X on the map: ride there and dig up the Sceptre of Order to win the campaign. The bot plays all five commissions, including the dig, with every background.
+- **The ending:** every bounty comes with a torn piece of an old map (the hero screen counts them). In the fifth commission, the last piece puts an X on the map: ride there and dig up the Sceptre of Order to win the campaign. The bot plays all five commissions, including the dig, with every background.
 - **Title and prologue (R1, 27 Sep):** the game opens on a painted sunset over the King's country (castle,
   fields, river, the hero setting out) with the name in beaten gold and the title tune. A new campaign starts at
   court: King Osric explains the trouble, his clerk hands over a WANTED poster for Grimsby, and Aldric picks who
@@ -97,4 +97,19 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   Hedge Wizard is an Arch Mage (hood, beard, orb and staff), the Ranger is Wesnoth's own Ranger in his green hood
   (nothing like the red poachers), and the Courtier is a Master at Arms in a plumed hat, who doffs it with a bow
   now and then. A tired hero on foot hears that his legs are spent, not his horse.
+- **The hero screen and the army (28 Sep, from Artur's second playtest):** H, a click on the hero, or the bar's
+  troop counts open a HoMM2-style sheet over the map (the map stands still under it): his portrait, level and
+  experience, the four stats, mana (left, most, and when it comes back), movement and leadership, his signature,
+  skills, perks and spells with their notes. A paper doll of his five slots, with his own figure faint behind
+  them like an engraving, and the pack below. Artifacts move by drag and drop, by click (pick up, put down,
+  double-click to wear or take off) or by keys. The army strip shows each stack as its Wesnoth unit with its
+  count, beside the hero as leader. A stack's card gives its battle numbers with what the hero adds, its traits,
+  leadership, wages and where it stands in the line; stacks are dragged along the line (it sets their battle rows)
+  and can be dismissed, though never the last. Mana also shows on the map's bar and in the spellbook. The bar's
+  numbers say what they mean under the pointer.
+- **UX pass (28 Sep):** cards and labels grow with the page; a card about nothing in particular keeps clear of
+  the hero; a quiet dawn needs no click (the day's number rises off him, news still gets a card); the armoury
+  shows each ware once with its price, greyed when too dear; recruit cards say why fewer can come; hover labels
+  say what's at a place; crossed swords over enemies; **?** lists every key, and Enter or Space presses a card's
+  only button.
 - **Sound and music:** everything is synthesised with Web Audio, with no files. There are five original pieces for a small medieval band: "The Heather Road" (a jig for open country), "Mist on the Meres" (the fen), "Steel and Feathers" (battle), "The King's Pavane" (court) and a title theme. The band is plucked lute, harp and harpsichord, recorder, fife, hurdy-gurdy drone, frame drum, brass and bells. Music crossfades between screens. Under it runs ambience: birds and wind on the heath, frogs in the fen, a crackling fire at court. Plus effects for clicks, coins, the day bell, fanfares, hits, arrows and spells. A test checks that every strong-beat melody note sits on its chord. The title waits for a click, so the music starts with it. M or the Sound button in the top right corner mutes.

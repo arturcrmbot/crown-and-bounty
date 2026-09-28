@@ -224,7 +224,7 @@ export class HeroScreen {
     const hint = this.held ? this.holdingHint(this.held) : pack.length ? 'drag to wear, or click, then click where' : 'finds go here when their slot is taken';
     return `<section class="gear">
       <h3>Equipment</h3>
-      <div class="doll">${slots}</div>
+      <div class="doll"><img class="figure" alt="" draggable="false" src="${unitUrl(heroArtId(this.state.hero.background), 2)}">${slots}</div>
       <p class="caption"><b>Pack</b> <small>${escape(hint)}</small></p>
       <div class="pack">${squares}</div>
     </section>`;
