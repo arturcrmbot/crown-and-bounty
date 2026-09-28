@@ -187,7 +187,8 @@ export class TitleScreen {
   private readonly logo: Bitmap;
 
   constructor() {
-    const { frame, overlay } = paintFrame();
+    // The bar carries one line of credits, so it has no sections to divide.
+    const { frame, overlay } = paintFrame([]);
     this.overlay = overlay;
     const b = new Bitmap(SCREEN.width, SCREEN.height);
     b.data.set(frame.data);
