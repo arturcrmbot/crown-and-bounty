@@ -15,7 +15,7 @@ export const MAP_SPELLS: Record<MapSpellId, { id: MapSpellId; name: string; mana
 };
 
 /** Lasting effects on a stack. Each one changes numbers the engine already uses. */
-export type StatusId = 'blessed' | 'slowed' | 'hasted' | 'stoneskin' | 'shieldwall' | 'newts' | 'frogs';
+export type StatusId = 'blessed' | 'slowed' | 'hasted' | 'stoneskin' | 'shieldwall' | 'newts' | 'frogs' | 'poisoned';
 
 export type StatusDef = {
   name: string;
@@ -42,16 +42,21 @@ export type StatusDef = {
   silences?: boolean;
   /** Drawn as this creature while it lasts. */
   look?: 'newt' | 'frog';
+  /** At the start of the stack's turn, its top troop loses this share of its health (never past a sliver). */
+  hurtsTopOnTurn?: number;
+  /** What the log says when a blow puts this status on a stack. */
+  onHit?: string;
 };
 
 export const STATUSES: Record<StatusId, StatusDef> = {
   blessed: { name: 'Blessed', bestDamage: true },
-  slowed: { name: 'Slowed', speedTimes: 0.5 },
+  slowed: { name: 'Slowed', speedTimes: 0.5, onHit: 'The hex slows them down.' },
   hasted: { name: 'Hasted', speedAdd: 2 },
   stoneskin: { name: 'Stone Skin', defenceAdd: 3 },
   shieldwall: { name: 'Shield Wall', defenceAdd: 3, rounds: 2 },
   newts: { name: 'Newts', skipsTurn: true, noStrikeBack: true, silences: true, look: 'newt' },
   frogs: { name: 'Frogs', skipsTurn: true, noStrikeBack: true, silences: true, look: 'frog' },
+  poisoned: { name: 'Poisoned', hurtsTopOnTurn: 0.1, onHit: 'The bite leaves them poisoned.' },
 };
 
 /** What casting a spell does. `on` says whose stacks: the caster's own side (`friend`) or the other. */

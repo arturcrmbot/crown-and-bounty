@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { STATUSES, type StatusDef, type StatusId } from '../../content/spells';
 import { TROOPS } from '../../content/troops';
 import { autoResolve, chooseAction } from './ai';
-import { activeFighter, battleAct, createBattle, enemyReach, fighterById, isCharge, options, QUIET_ROUNDS, spellDamage, statsOf, strike, wound, type BattleHero, type BattleState } from './battle';
+import { activeFighter, battleAct, createBattle, enemyReach, fighterById, isCharge, options, QUIET_ROUNDS, skillFactor, spellDamage, statsOf, strike, wound, type BattleHero, type BattleEvent, type BattleState } from './battle';
 import { colOf, distance, hexIndex, neighbours, reachable } from './hex';
 
 const hero: BattleHero = { attack: 1, defence: 1, spellPower: 2, mana: 20, spells: ['bolt', 'bless', 'slow'], castRound: 0 };
@@ -86,7 +86,37 @@ describe('a battle', () => {
     const ready = { ...b, order: [1, 0] };
     const hexed = battleAct(ready, { type: 'shoot', target: 0 });
     expect(fighterById(hexed.battle, 0).status).toContain('slowed');
-    expect(hexed.events.some((e) => e.type === 'hit' && e.hexed)).toBe(true);
+    expect(hexed.events.some((e) => e.type === 'hit' && e.status === 'slowed')).toBe(true);
+  });
+
+  it('lets a stack with first strike hit first when it defends, unless the attacker has it too', () => {
+    let b = battle(['swordsmen'], [10], ['peasants'], [50]);
+    b = { ...b, fighters: b.fighters.map((f) => (f.side === 'enemy' ? { ...f, at: hexIndex(1, 4) } : f)), order: [0, 1] };
+    const result = battleAct(b, { type: 'melee', target: 1, from: hexIndex(0, 4) });
+    const hits = result.events.filter((e): e is Extract<BattleEvent, { type: 'hit' }> => e.type === 'hit');
+    expect(hits).toHaveLength(2);
+    expect(hits[0].attacker).toBe(1); // the peasants, defending, strike first
+    expect(hits[1].attacker).toBe(0); // the swordsmen strike back
+  });
+
+  it('poisons whatever a goblin bites: a sliver of health lost at the start of its next turn', () => {
+    let b = battle(['knights'], [10], ['goblins'], [50]);
+    b = { ...b, fighters: b.fighters.map((f) => (f.side === 'enemy' ? { ...f, at: hexIndex(1, 4) } : f)), order: [1, 0] };
+    const result = battleAct(b, { type: 'melee', target: 0, from: hexIndex(1, 4) });
+    expect(result.events.some((e) => e.type === 'hit' && e.status === 'poisoned')).toBe(true);
+    expect(fighterById(result.battle, 0).status).toContain('poisoned');
+    expect(result.events.some((e) => e.type === 'poison' && e.fighter === 0)).toBe(true);
+  });
+
+  it('lets crossbows pierce armour: -2 defence against them', () => {
+    const b = battle(['crossbowmen'], [10], ['knights'], [10]);
+    const attacker = b.fighters[0];
+    const target = b.fighters[1];
+    const t = TROOPS.crossbowmen;
+    const avg = (t.damage[0] + t.damage[1]) / 2;
+    const factor = skillFactor(t.attack + hero.attack, TROOPS.knights.defence - 2);
+    const { damage } = strike(b, attacker, target, true);
+    expect(damage).toBe(Math.max(1, Math.round(attacker.count * avg * factor)));
   });
 
   it('calls off a battle nobody can land a blow in: a far weaker enemy is beaten, any other slips away', () => {
