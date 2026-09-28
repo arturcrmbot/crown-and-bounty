@@ -1,4 +1,4 @@
-import { abilitiesOf } from '../../content/troops';
+import { abilitiesOf, type TroopId } from '../../content/troops';
 import { needsTarget, SPELLS, STATUSES } from '../../content/spells';
 import {
   activeFighter, battleAct, canCast, casterSide, castersOf, CHARGE_BONUS, CHARGE_HEXES, fighterById, spellsOf, hasStatus, isRanged, options, powerOf, spellCost, spellDamage, speedOf, statsOf, stepsTo, strike, unitOf, wound,
@@ -119,6 +119,37 @@ export function autoResolve(b: BattleState, choose: Chooser = chooseAction): Bat
     battle = next;
   }
   return battle;
+}
+
+export type FinishEstimate = {
+  wins: number;
+  samples: number;
+  losses: { troop: TroopId; count: number }[];
+};
+
+const finishSeed = (seed: number, sample: number) => (Math.imul(seed + sample, 0x9e3779b1) ^ 0x85ebca6b) >>> 0;
+
+/** A cautious estimate for finishing a decided battle with the sergeants. */
+export function finishEstimate(b: BattleState, samples = 10): FinishEstimate | null {
+  if (b.result || b.fighters.some((f) => f.side === 'enemy' && f.count > 0 && isRanged(f))) return null;
+
+  let wins = 0;
+  const lostByTroop = new Map<TroopId, number>();
+  for (let i = 0; i < samples; i++) {
+    const end = autoResolve({ ...b, seed: finishSeed(b.seed, i) });
+    if (end.result !== 'won') continue;
+    wins++;
+    for (const before of b.fighters) {
+      if (before.side !== 'player' || before.count === 0 || before.hero) continue;
+      const after = fighterById(end, before.id);
+      const lost = Math.max(0, before.count - after.count);
+      if (lost > 0) lostByTroop.set(before.troop, (lostByTroop.get(before.troop) ?? 0) + lost);
+    }
+  }
+
+  if (wins < Math.ceil(samples * 0.9)) return null;
+  const losses = [...lostByTroop].map(([troop, total]) => ({ troop, count: Math.round(total / wins) })).filter((loss) => loss.count > 0);
+  return { wins, samples, losses };
 }
 
 // --- The commander (v2) and the enemy ------------------------------------------------------------
