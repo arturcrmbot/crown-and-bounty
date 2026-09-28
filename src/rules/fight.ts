@@ -173,24 +173,24 @@ const sampleSeed = (i: number) => (Math.imul(i + 1, 0x9e3779b1) ^ 0x85ebca6b) >>
 /** Recent answers, since the same odds get asked for again and again (every card, every bot step). */
 const chances = new Map<string, number>();
 
-export function winChance(state: GameState, id: string, samples = 16): number {
+/** `army` asks about only part of the enemy: the beasts among a band, say. */
+export function winChance(state: GameState, id: string, samples = 16, army?: Army): number {
   const place = locationById(state, id);
   if (!place.enemy || state.army.length === 0) return 0;
-  const key = JSON.stringify([state.army, heroInBattle(state), place.enemy.army, place.kind, provinceOf(state).fen ?? false, samples]);
+  const enemy = army ?? place.enemy.army;
+  const key = JSON.stringify([state.army, heroInBattle(state), enemy, place.kind, provinceOf(state).fen ?? false, samples]);
   const known = chances.get(key);
   if (known !== undefined) return known;
-  const chance = simulateChance(state, id, samples);
+  const chance = simulateChance(state, place, enemy, samples);
   if (chances.size > 2000) chances.clear();
   chances.set(key, chance);
   return chance;
 }
 
-function simulateChance(state: GameState, id: string, samples: number): number {
-  const place = locationById(state, id);
-  if (!place.enemy) return 0;
+function simulateChance(state: GameState, place: Location, enemy: Army, samples: number): number {
   let wins = 0;
   for (let i = 1; i <= samples; i++) {
-    const battle = createBattle({ place: id, seed: sampleSeed(i), player: state.army, enemy: place.enemy.army, hero: heroAgainst(state, place), obstacles: place.kind === 'hideout' ? 3 : 5 });
+    const battle = createBattle({ place: place.id, seed: sampleSeed(i), player: state.army, enemy, hero: heroAgainst(state, place), obstacles: place.kind === 'hideout' ? 3 : 5 });
     if (autoResolve(battle).result === 'won') wins++;
   }
   return wins / samples;

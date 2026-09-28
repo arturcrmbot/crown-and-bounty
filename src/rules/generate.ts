@@ -2,14 +2,14 @@ import { RELICS } from '../content/artifacts';
 import type { Commission } from '../content/campaign';
 import { SPELLS, type SpellId } from '../content/spells';
 import type { Band, VillainTemplate } from '../content/villains';
-import { troopPower, type TroopId } from '../content/troops';
+import { troopPower, troops, type TroopId } from '../content/troops';
 import type { Province } from '../content/types';
 import { buildMap, CELL, gridWithEnemies, poolDistance, Terrain } from './map/model';
 import { nearest, smooth, type Point } from './map/geometry';
 import { APPROACH } from './map/movement';
 import { findPath, nearestPassable, reachableNear } from './map/pathfinding';
 import { rng } from './noise';
-import type { Army, Enemy, Location } from './state';
+import type { Army, ContentChoice, Enemy, Location, Page } from './state';
 
 const W = 40 * 32;
 const H = 30 * 32;
@@ -27,6 +27,12 @@ const WORDS = {
     mine: [['The rails lead down into the dark. Something is clanking.']],
     mineVisit: ['A cart of ore nobody came back for: **{gold} gold**.'],
     mineDone: ['Nothing down there now but echoes.'],
+    mineStash: ['A cart of ore nobody came back for, a good **{gold} gold** of it. And the rails go on down into the dark, where something glints.', '*The props are creaking. There\u2019s time for one of them.*'],
+    mineGold: 'You push the cart out as the props give way behind you.',
+    mineDeep: 'You climb down, find it, and climb back up as the props give way. Worth it.',
+    deepLabel: 'Follow the rails down',
+    towerFinds: ['At the top, a watcher\u2019s things: a **note** for the King\u2019s officer, and a **charm** scratched into the windowsill.', '*The pigeons are eating the note. Save it, or copy down the charm before the light goes: not both.*'],
+    towerCharm: 'You copy it into your book. The pigeons finish the note.',
     mill: [['The sails creak round. The miller is singing, badly.']],
     millVisit: ['"Bread for the King\u2019s men!" Your troops eat well and march on.'],
     millDone: ['"Next week, officer. The wind has to rest too."'],
@@ -39,6 +45,12 @@ const WORDS = {
     mine: [['Peat stacked high, and a door off its hinges.']],
     mineVisit: ['A tin box of wages nobody came back for: **{gold} gold**.'],
     mineDone: ['The peat stacks lean in the wind.'],
+    mineStash: ['A tin box of wages nobody came back for: **{gold} gold**. And under the floorboards, something wrapped in oilcloth.', '*The hut is sinking. There\u2019s time to save one of them.*'],
+    mineGold: 'You wade out with the box as the floor goes under.',
+    mineDeep: 'You fish it out as the floor goes under, and unwrap it on the bank.',
+    deepLabel: 'Fish out the oilcloth',
+    towerFinds: ['In the ruin, a watcher\u2019s things: a **note** for the King\u2019s officer, and a **charm** written in candle wax.', '*The damp is eating the note. Save it, or copy down the charm before the candle goes: not both.*'],
+    towerCharm: 'You copy it down by the last of the candle. The damp finishes the note.',
     mill: [['It pumps the fen dry, one bucket at a time.']],
     millVisit: ['The miller opens every sluice, and your troops march on firm ground.'],
     millDone: ['"Come back next week. The fen came back first."'],
@@ -130,6 +142,60 @@ function charmShrine(at: Point, fen: boolean, bought: SpellId, earned: SpellId, 
         ],
       },
     ],
+  };
+}
+
+/** The watcher's things at the tower: the note (where the villain hides, and their weakness) or a charm. */
+function towerPage(v: VillainTemplate, hideout: Point, charm: SpellId): Page {
+  const words = WORDS[v.land];
+  return {
+    id: 'watch',
+    when: { notFlag: 'tower' },
+    lines: words.towerFinds,
+    choices: [
+      { id: 'note', label: 'Save the note', effects: { reveal: { at: hideout, radius: 90 }, flags: { tower: 'note', weakness: true }, done: true }, lines: [v.towerClue, v.weakness.note] },
+      { id: 'charm', label: `Copy down ${SPELLS[charm].name}`, needs: { notSpell: charm }, effects: { spell: charm, flags: { tower: 'charm' }, done: true }, lines: [words.towerCharm] },
+    ],
+  };
+}
+
+/** The mine's stash, or what lies deeper: a relic that teaches another hero's trick. */
+function minePage(v: VillainTemplate, gold: number, relic: (typeof RELICS)[number]): Page {
+  const words = WORDS[v.land];
+  return {
+    id: 'stash',
+    when: { notFlag: 'mine' },
+    lines: words.mineStash.map((line) => line.replace('{gold}', gold.toLocaleString('en-GB'))),
+    choices: [
+      { id: 'gold', label: 'Take the gold', effects: { treasure: gold, flags: { mine: 'gold' }, done: true }, lines: [words.mineGold] },
+      { id: 'deep', label: words.deepLabel, needs: { notArtifact: relic }, effects: { artifact: relic, flags: { mine: 'deep' }, done: true }, lines: [words.mineDeep] },
+    ],
+  };
+}
+
+/** On the first visit, the miller offers his sons (the village's troops) or his old mum's charm. */
+function millPage(v: VillainTemplate, count: number, charm: SpellId): Page {
+  const sons = troops(v.village.troop, count);
+  return {
+    id: 'miller',
+    when: { notFlag: 'miller' },
+    lines: [`*"And for the King\u2019s officer, one thing, mind: my sons and their cousins, **${sons}**, if you can lead them, or my old mum\u2019s **${SPELLS[charm].name}** charm."*`],
+    choices: [
+      { id: 'sons', label: 'Take on his sons', effects: { troops: [{ troop: v.village.troop, count }], flags: { miller: 'sons' } }, lines: ['They turn up with their bows, a great many opinions and a basket of pies.'] },
+      { id: 'charm', label: `Learn ${SPELLS[charm].name}`, needs: { notSpell: charm }, effects: { spell: charm, flags: { miller: 'charm' } }, lines: ['He teaches it to you between the millstones, shouting over the noise.'] },
+    ],
+  };
+}
+
+/** What the watcher's note makes possible at the hideout: some of the villain's troops slip away. */
+function weaknessParley(v: VillainTemplate, s: number): ContentChoice {
+  const w = v.weakness;
+  return {
+    id: 'weakness',
+    label: w.label,
+    needs: { flag: 'weakness', ...(w.gold ? { gold: Math.round((w.gold * s) / 10) * 10 } : {}) },
+    effects: { desert: { troop: w.troop, share: w.share }, flags: { weakness: false } },
+    lines: w.lines,
   };
 }
 
@@ -239,7 +305,9 @@ function attempt(seed: number, v: VillainTemplate, chapter: number): Province {
   const extra = rng(seed ^ 0x51ed);
   const relic = pick(extra, RELICS);
   const forSale = pick(extra, ['crystalBall', 'silverSignet'] as const);
-  const [firstCharm, secondCharm] = shuffle(extra, ['fireball', 'stoneskin', 'haste', 'slow', 'bless', 'bolt'] as SpellId[]);
+  // The stones teach the first two charms; the watcher at the tower and the miller know the next two.
+  const charms = shuffle(extra, ['fireball', 'stoneskin', 'haste', 'slow', 'bless', 'bolt'] as SpellId[]);
+  const [firstCharm, secondCharm, towerCharm, millCharm] = charms;
   const clearOf = (p: Point, areas: readonly [number, number, number, number][], room: number) => areas.every(([x, y, rx, ry]) => ((p[0] - x) / rx) ** 2 + ((p[1] - y) / ry) ** 2 > room);
   let stones: Point | null = null;
   for (let i = 0; i < 120 && !stones; i++) {
@@ -247,6 +315,9 @@ function attempt(seed: number, v: VillainTemplate, chapter: number): Province {
     if (free(p, 120) && dist(p, hideout) > 300 && dist(p, hero) > 220 && clearOf(p, forests, 1.4) && clearOf(p, crags, 2) && poolDistance({ pools } as Province, p[0], p[1]) > 30) stones = p;
   }
 
+  // Finds roll dice of their own, after everything else, so they never move what was drawn above.
+  const finds = rng(seed ^ 0xf1d5);
+  const deepRelic = pick(finds, RELICS.filter((r) => r !== relic && r !== forSale));
   const guardian: Enemy = { ...enemy(v.guardian, BASE.guardian * s, Math.round(600 * s)), ...(v.parleys?.guardian ? { parleys: v.parleys.guardian } : {}) };
   const names = v.names;
   const words = WORDS[v.land];
@@ -272,9 +343,9 @@ function attempt(seed: number, v: VillainTemplate, chapter: number): Province {
       wares: [...shuffle(random, ['harrowgateMail', 'fenBanner', 'astrolabe', 'swordOfAldmoor', 'breastplate', 'luckyHorseshoe'] as const).slice(0, 3), forSale],
     },
     { id: 'village', kind: 'village', name: pick(random, names.village), at: at(village), done: false, recruits: { ...v.village }, text: { about: pick(random, words.village) } },
-    { id: 'tower', kind: 'tower', ...(fen ? { look: 'abbey' as const } : {}), name: pick(random, names.tower), at: at(tower), done: false, reveals: at(hideout), text: { about: pick(random, words.tower), done: words.towerDone, visit: [v.towerClue] } },
-    { id: 'mine', kind: 'mine', ...(fen ? { look: 'peathut' as const } : {}), name: pick(random, names.mine), at: at(mine), done: false, gold: Math.round(500 * s), text: { about: pick(random, words.mine), visit: words.mineVisit, done: words.mineDone } },
-    { id: 'mill', kind: 'mill', look: 'windmill', name: pick(random, names.mill), at: at(mill), done: false, text: { about: pick(random, words.mill), visit: words.millVisit, done: words.millDone } },
+    { id: 'tower', kind: 'tower', ...(fen ? { look: 'abbey' as const } : {}), name: pick(random, names.tower), at: at(tower), done: false, text: { about: pick(random, words.tower), done: words.towerDone }, pages: [towerPage(v, at(hideout), towerCharm)] },
+    { id: 'mine', kind: 'mine', ...(fen ? { look: 'peathut' as const } : {}), name: pick(random, names.mine), at: at(mine), done: false, text: { about: pick(random, words.mine), done: words.mineDone }, pages: [minePage(v, Math.round(500 * s), deepRelic)] },
+    { id: 'mill', kind: 'mill', look: 'windmill', name: pick(random, names.mill), at: at(mill), done: false, text: { about: pick(random, words.mill), visit: words.millVisit, done: words.millDone }, pages: [millPage(v, Math.round(10 * s), millCharm)] },
     { id: 'signpost', kind: 'signpost', name: 'Signpost', at: at(signpost), done: false, text: { about: [`**THIS WAY:** ${v.villain}, probably. Somebody has added *"DON\u2019T"* in charcoal.`] } },
     ...chests.map((p, i): Location => ({ id: `chest${i}`, kind: 'chest', name: 'Treasure Chest', at: at(p), done: false, gold: Math.round((500 + i * 150) * s) })),
     ...piles.map((p, i): Location => ({ id: `gold${i}`, kind: 'gold', name: 'Pile of Gold', at: at(p), done: false, gold: Math.round((300 + i * 150) * s) })),
@@ -297,7 +368,7 @@ function attempt(seed: number, v: VillainTemplate, chapter: number): Province {
       name: v.hideout.name,
       at: at(hideout),
       done: false,
-      enemy: { ...enemy(v.hideout, BASE.hideout * s, Math.round(3000 * s), v.hideout.bosses), grows: 0.05, ...(v.parleys?.hideout ? { parleys: v.parleys.hideout } : {}) },
+      enemy: { ...enemy(v.hideout, BASE.hideout * s, Math.round(3000 * s), v.hideout.bosses), grows: 0.05, parleys: [weaknessParley(v, s), ...(v.parleys?.hideout ?? [])] },
       text: { done: v.hideout.done },
     },
   ];

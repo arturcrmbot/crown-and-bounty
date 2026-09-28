@@ -1,7 +1,7 @@
 import { apply, armyPower, choose, endDay, fight, hasNextCommission, learn, locationById, PLACE_KINDS, provinceOf, visit, winChance, type BoonId, type GameState, type Location } from './game';
 import { buildMap, type MapModel } from './map/model';
 import { planRoute, routeCosts, stepAlong } from './map/movement';
-import { hireOffer } from './places/enemy';
+import { hireOffer, tameOffer } from './places/enemy';
 
 export type BotRun = { won: boolean; day: number; gold: number; power: number; fights: number; retreats: number; level: number; log: string[]; state: GameState };
 
@@ -76,6 +76,14 @@ export function playCommission(start: GameState, map: MapModel, maxSteps = 20000
     if (offer && offer.all && state.gold >= offer.price + 300) {
       state = choose(state, place.id, 'hire')?.state ?? state;
       log.push(`day ${state.day}: hired ${place.name}`);
+      continue;
+    }
+    // A ranger (or anyone with a way with beasts) takes a pack that would follow him, when they'd all come or a fight would be a gamble.
+    const pack = place.enemy && !place.done ? tameOffer(state, place, 8) : null;
+    const tamed = pack?.whole && pack.respected && pack.joining.length && (pack.all || winChance(state, place.id, 8) < 0.9) ? choose(state, place.id, 'tame') : null;
+    if (tamed) {
+      state = tamed.state;
+      log.push(`day ${state.day}: tamed ${place.name}`);
       continue;
     }
     if (place.enemy && !place.done) {

@@ -32,7 +32,8 @@ export type PerkId =
   | 'woodsman'
   | 'battleMage'
   | 'silverTongue'
-  | 'farSight';
+  | 'farSight'
+  | 'beastFriend';
 
 /** A perk. `trick` marks one that changes what you can do, not just a number: those come first on a level-up. */
 export type Perk = { id: PerkId; name: string; note: string; bonus: Bonus; trick?: boolean };
@@ -57,4 +58,11 @@ export const PERKS: Record<PerkId, Perk> = {
   battleMage: { id: 'battleMage', name: 'Battle Mage', note: 'Cast one more spell every round of battle.', bonus: { casts: 1 }, trick: true },
   silverTongue: { id: 'silverTongue', name: 'Silver Tongue', note: 'Bribes cost a third less, and small bands will take your coin and join you.', bonus: { bribes: 0.33, hires: true }, trick: true },
   farSight: { id: 'farSight', name: 'Far Sight', note: 'Cast Far Sight from the map: the mist rolls back for a long way around you.', bonus: { mapSpells: ['farsight'] }, trick: true },
+  beastFriend: {
+    id: 'beastFriend',
+    name: 'Beast Friend',
+    note: 'Beasts that couldn\u2019t beat you follow you instead of fighting: as many as you can lead, and they draw no wages.',
+    bonus: { tames: true },
+    trick: true,
+  },
 };

@@ -247,8 +247,14 @@ export class AdventureController implements Screen {
           this.onBattle?.();
           break;
         case 'moved':
+          // Steps are ridden, so only a jump comes this way (a tunnel, or home after a defeat): dust at both ends, and the camera follows.
+          this.view.effects.puff(this.drawn.x, this.drawn.y, 'dust');
           this.drawn.x = e.at[0];
           this.drawn.y = e.at[1];
+          this.view.effects.puff(e.at[0], e.at[1], 'dust');
+          this.route = [];
+          this.target = null;
+          this.follow = true;
           break;
         case 'enemyMoved':
           {

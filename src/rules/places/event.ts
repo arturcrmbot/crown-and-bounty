@@ -1,4 +1,4 @@
-import { firstPage, meets, pageCard, takeChoice } from '../effects';
+import { bestChoice, firstPage, pageCard, takeChoice } from '../effects';
 import { close } from '../state';
 import { found, note, ride, words } from './common';
 import type { PlaceKind } from './kind';
@@ -13,9 +13,9 @@ export const event: PlaceKind = {
     const page = firstPage(state, place);
     return found(state, place, page ? pageCard(state, place, page) : note(place, words(place, 'done')));
   },
-  worth: (state, place) => (firstPage(state, place)?.choices.some((c) => c.effects && meets(state, c.needs)) ? 150 : null),
+  worth: (state, place) => bestChoice(state, place)?.worth ?? null,
   bot(state, place) {
-    const choice = firstPage(state, place)?.choices.find((c) => c.effects && meets(state, c.needs));
-    return choice ? (takeChoice(state, place, choice)?.state ?? state) : state;
+    const best = bestChoice(state, place);
+    return best ? (takeChoice(state, place, best.choice)?.state ?? state) : state;
   },
 };
