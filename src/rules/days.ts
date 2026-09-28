@@ -49,7 +49,7 @@ export function endDay(state: GameState): Result {
       gold: next.gold + commission - pay,
       locations: next.locations.map((l) => grow(reopen(l))),
     };
-    const estates = heroPayday(next, stats);
+    const estates = heroPayday(next);
     next = estates.state;
     lines.push(`**Payday!** The King sends **${coins(commission)} gold**. Your troops take **${coins(pay)}** in wages.`, ...estates.rents, 'The mill has flour again, and there are fresh volunteers.', ...estates.lines);
     for (const l of state.locations) if (l.enemy?.grows && !l.done && (l.enemy.grown ?? 0) < MAX_GROWTH) lines.push(`Word on the road: **${l.name}** has taken on more men.`);
@@ -67,7 +67,7 @@ export function endDay(state: GameState): Result {
   }
   // The night: stacks on the move, and a hunter may reach the camp.
   const night = moveEnemies(next, mapOf(next));
-  const morning = heroMorning(night.state, state);
+  const morning = heroMorning(night.state);
   next = morning.state;
   events.push(...night.events, ...morning.events);
   const trailing = next.locations.filter((l) => l.enemy?.trailing && !l.done);

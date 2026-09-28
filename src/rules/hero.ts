@@ -94,19 +94,7 @@ export type HeroStats = {
   manaRate: number;
   cows: boolean;
   hiresGates: boolean;
-  /** Share more recruits, free; share of today's movement that carries over; how far he smells treasure. */
-  freeRecruits: number;
-  carry: number;
-  smells: number;
-  /** Interest the King's bankers pay on payday (included in `payday`). */
-  interest: number;
-  /** Extra choices at a level-up, and extra boons at court. */
-  choices: number;
-  boons: number;
 };
-
-/** The most interest the King's bankers pay on one payday. */
-export const MAX_INTEREST = 500;
 
 /** The hero's numbers with everything added up. The rules use these, never the raw fields. */
 /** Leadership each level brings: troops follow a famous officer. */
@@ -155,14 +143,7 @@ export function heroStats(state: GameState): HeroStats {
     manaRate: 0,
     cows: false,
     hiresGates: false,
-    freeRecruits: 0,
-    carry: 0,
-    smells: 0,
-    interest: 0,
-    choices: 0,
-    boons: 0,
   };
-  let interest = 0;
   let gearDefence = 0;
   let rentPerTown = 0;
   for (const b of bonusesOf(state)) {
@@ -206,17 +187,10 @@ export function heroStats(state: GameState): HeroStats {
     s.cows ||= Boolean(b.cows);
     s.hiresGates ||= Boolean(b.hiresGates);
     gearDefence += b.gearDefence ?? 0;
-    s.freeRecruits += b.freeRecruits ?? 0;
-    s.carry = Math.max(s.carry, b.carry ?? 0);
-    s.smells = Math.max(s.smells, b.smells ?? 0);
-    interest += b.interest ?? 0;
-    s.choices += b.choices ?? 0;
-    s.boons += b.boons ?? 0;
   }
-  s.interest = Math.min(MAX_INTEREST, Math.floor(Math.max(0, state.gold) * interest));
   s.defence += gearDefence * Object.values(h.gear).filter(Boolean).length;
   s.rents = rentPerTown * state.locations.filter((l) => (l.kind === 'castle' || l.kind === 'village') && l.seen).length;
-  s.payday += s.rents + s.interest;
+  s.payday += s.rents;
   s.offRoad = Math.min(0.5, s.offRoad);
   s.veterans = Math.min(0.5, s.veterans);
   s.bribes = Math.min(0.8, s.bribes);
@@ -253,8 +227,8 @@ function candidates(state: GameState): string[] {
 const isTrick = (option: string) => option.startsWith('perk:') && Boolean(PERKS[option.slice(5) as PerkId].trick);
 
 /**
- * Draws three different options (four for a scholar), favouring the background's skills and the
- * skills already learned. One is always a trick while any are left: something that changes how he plays.
+ * Draws three different options, favouring the background's skills and the skills already learned.
+ * One of the three is always a trick while any are left: something that changes how he plays.
  */
 function drawOptions(state: GameState, seed: number): { options: string[]; seed: number } {
   const favours = BACKGROUNDS[state.hero.background].favours;
@@ -275,8 +249,7 @@ function drawOptions(state: GameState, seed: number): { options: string[]; seed:
   };
   const tricks = pool.filter((p) => isTrick(p.option));
   if (tricks.length) take(tricks);
-  const wanted = 3 + heroStats(state).choices;
-  while (options.length < wanted && pool.length > 0) take(pool);
+  while (options.length < 3 && pool.length > 0) take(pool);
   return { options, seed };
 }
 

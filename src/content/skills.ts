@@ -151,42 +151,18 @@ export type PerkId =
   | 'battleMage'
   | 'silverTongue'
   | 'farSight'
-  | 'beastFriend'
-  | 'scholar'
-  | 'favourite';
+  | 'beastFriend';
 
 /** A perk. `trick` marks one that changes what you can do, not just a number: those come first on a level-up. */
 export type Perk = { id: PerkId; name: string; note: string; bonus: Bonus; trick?: boolean };
 
 export const PERKS: Record<PerkId, Perk> = {
-  quartermaster: {
-    id: 'quartermaster',
-    name: 'Quartermaster',
-    note: 'Wages cost a fifth less, and every castle and village throws in one recruit free for every five you take. The troops have noticed.',
-    bonus: { wages: -0.2, freeRecruits: 0.2 },
-  },
-  nightRider: {
-    id: 'nightRider',
-    name: 'Night Rider',
-    note: 'You ride on after dark: movement you leave unused today carries over to tomorrow, up to half a day\u2019s ride. The horse has opinions about this.',
-    bonus: { carry: 0.5 },
-  },
+  quartermaster: { id: 'quartermaster', name: 'Quartermaster', note: 'Wages cost a fifth less. The troops have noticed.', bonus: { wages: -0.2 } },
+  nightRider: { id: 'nightRider', name: 'Night Rider', note: '+35 movement a day. The horse has opinions about this.', bonus: { movement: 35 } },
   gooseWhisperer: { id: 'gooseWhisperer', name: 'Goose Whisperer', note: 'The royal goose likes you, and word gets round. Every villain starts a battle slowed, looking over their shoulder.', bonus: { slows: ['baron', 'witch', 'bramble'] } },
-  treasureHunter: {
-    id: 'treasureHunter',
-    name: 'Treasure Hunter',
-    note: 'Chests, piles and old mines give half as much again, and you can smell them: every dawn the mist lifts over any treasure within 300 paces.',
-    bonus: { loot: 0.5, smells: 300 },
-  },
+  treasureHunter: { id: 'treasureHunter', name: 'Treasure Hunter', note: 'Chests, piles and old mines give half as much again.', bonus: { loot: 0.5 } },
   drillSergeant: { id: 'drillSergeant', name: 'Drill Sergeant', note: 'Peasants fight like militia: +3 attack, +2 defence.', bonus: { troops: { peasants: { attack: 3, defence: 2 } } } },
-  warchest: {
-    id: 'warchest',
-    name: 'War Chest',
-    note: 'The King\u2019s bankers pay you a tenth of what\u2019s in your purse every payday, up to 500 gold. Spend it, or let it grow.',
-    bonus: { interest: 0.1 },
-  },
-  scholar: { id: 'scholar', name: 'Scholar', note: 'Every level-up offers you four choices, not three. You read the small print.', bonus: { choices: 1 } },
-  favourite: { id: 'favourite', name: 'The King\u2019s Favourite', note: 'At court the King offers you four boons, not three. The other courtiers are furious.', bonus: { boons: 1 } },
+  warchest: { id: 'warchest', name: 'War Chest', note: 'Every payday brings 400 more gold.', bonus: { payday: 400 } },
   // The heroes' tricks, to learn: a level can teach any hero another's way of winning.
   cavalryCharge: {
     id: 'cavalryCharge',
