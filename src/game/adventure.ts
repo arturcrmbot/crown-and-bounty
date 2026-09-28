@@ -3,12 +3,13 @@ import { troops } from '../content/troops';
 import { addPlace, buildAdventureScene, setHeroFigure, type AdventureScene, type Hitbox } from '../render/adventureScene';
 import { BANNER_TIME, drawBanner, paintBanner } from '../render/banner';
 import type { Bitmap } from '../render/bitmap';
-import { MAP_VIEW } from '../render/frame';
+import { BAR, MAP_VIEW } from '../render/frame';
 import { BLUE, GOLD, NEUTRAL, PARCHMENT, RED } from '../render/palette';
-import { HOURGLASS, HOURGLASS_AT, paintHud } from '../render/hud';
+import { paintHud, type HudHit } from '../render/hud';
 import { ART, heroArtId } from '../render/units';
 import type { BattleState } from '../rules/battle/battle';
 import { ambushCard, apply, commissionOf, describe, describeHero, finishFight, levelUpCard, locationById, roman, visit, type Action, type Card, type GameEvent, type GameState, type Result } from '../rules/game';
+import { barNote } from '../rules/heroSheet';
 import type { Point } from '../rules/map/geometry';
 import { cellCentre, type MapModel } from '../rules/map/model';
 import { planRoute, routeCosts, stepAlong } from '../rules/map/movement';
@@ -74,6 +75,8 @@ export class AdventureController implements Screen {
   private tiredShown = false;
   private cardAnchor: Point | null = null;
   private hudMovement = -1;
+  /** Where each thing on the bottom bar sits, as last painted. */
+  private hud: HudHit[] = [];
   private readonly speed: number;
   /** How much faster than life scripts run the map (?speed=8). */
   private readonly pace: number;
@@ -248,8 +251,14 @@ export class AdventureController implements Screen {
           this.onBattle?.();
           break;
         case 'moved':
+          // Steps are ridden, so only a jump comes this way (a tunnel, or home after a defeat): dust at both ends, and the camera follows.
+          this.view.effects.puff(this.drawn.x, this.drawn.y, 'dust');
           this.drawn.x = e.at[0];
           this.drawn.y = e.at[1];
+          this.view.effects.puff(e.at[0], e.at[1], 'dust');
+          this.route = [];
+          this.target = null;
+          this.follow = true;
           break;
         case 'enemyMoved':
           {
@@ -269,7 +278,13 @@ export class AdventureController implements Screen {
 
   private repaintHud() {
     this.hudMovement = Math.floor(this.state.movement);
-    paintHud(this.view.frame, this.state);
+    this.hud = paintHud(this.view.frame, this.state);
+  }
+
+  /** The thing on the bottom bar under a screen point, if any. */
+  private onBar(x: number, y: number): HudHit | null {
+    if (y < BAR.y || y >= BAR.y + BAR.height) return null;
+    return this.hud.find((h) => x >= h.x0 && x < h.x1) ?? null;
   }
 
   /** Keeps the battle in the saved state as it goes. */
@@ -517,7 +532,7 @@ export class AdventureController implements Screen {
     if (this.state.over || this.state.opening || this.state.ambush) return;
     const thing = this.under(point);
     if (thing?.id === 'hero') {
-      this.showCard(describeHero(this.state), [this.drawn.x, this.scene.hero.object.y + 6]);
+      this.openHero();
     } else if (thing?.box && thing.fogged) {
       this.showCard(
         { title: 'Unexplored', lines: ['You cannot see what lies there.'], choices: [{ label: 'Ride there', action: { type: 'go', id: thing.id } }, { label: 'Close', action: { type: 'close' } }] },
@@ -531,15 +546,39 @@ export class AdventureController implements Screen {
     }
   }
 
+  /** Whether a click on this part of the bar does anything right now. */
+  private barClickable({ item }: HudHit) {
+    if (this.state.opening || this.state.over || this.state.ambush) return false;
+    return item.kind === 'hourglass' || item.kind === 'stack' || item.kind === 'mana';
+  }
+
+  /** The hourglass ends the day; the army and the mana open the hero. */
+  private clickBar(hit: HudHit) {
+    if (!this.barClickable(hit)) return;
+    if (hit.item.kind === 'hourglass') this.choose({ type: 'endDay' });
+    else this.openHero();
+  }
+
+  /** The hero's card: who he is, what he carries, his army. H or a click on him opens it. */
+  private openHero() {
+    this.showCard(describeHero(this.state), [this.drawn.x, this.scene.hero.object.y + 6]);
+  }
+
   /** Handlers for `Input`: screen pixels in. */
   readonly input = {
     click: (x: number, y: number) => {
-      const onHourglass = x >= HOURGLASS_AT.x - 3 && x < HOURGLASS_AT.x + HOURGLASS.width + 3 && y >= HOURGLASS_AT.y - 3 && y < HOURGLASS_AT.y + HOURGLASS.height + 3;
-      if (onHourglass && !this.state.opening && !this.state.over && !this.state.ambush) return this.choose({ type: 'endDay' });
+      const bar = this.onBar(x, y);
+      if (bar) return this.clickBar(bar);
       const point = this.view.toMap(x, y);
       if (point) this.clickMap(point);
     },
     hover: (x: number, y: number, clientX: number, clientY: number) => {
+      const bar = this.onBar(x, y);
+      if (bar) {
+        this.display.canvas.style.cursor = this.barClickable(bar) ? 'pointer' : 'default';
+        this.label.show(barNote(this.state, bar.item), clientX, clientY);
+        return;
+      }
       const point = this.view.toMap(x, y);
       const thing = point ? this.under(point) : null;
       this.display.canvas.style.cursor = thing ? 'pointer' : 'default';
@@ -554,6 +593,7 @@ export class AdventureController implements Screen {
     key: (key: string) => {
       if (this.state.opening) return;
       if (key === 'e' && !this.state.over && !this.state.ambush) this.choose({ type: 'endDay' });
+      else if (key === 'h' && !this.state.over && !this.state.ambush) this.openHero();
       else if (key === 'escape') this.hideCard();
       else if (key.startsWith('arrow') || 'wasd'.includes(key)) this.follow = false;
     },

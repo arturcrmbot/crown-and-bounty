@@ -65,14 +65,19 @@ suite('places', () => {
     expect(apply(broke, { type: 'choose', id: 'village', choice: 'recruit' })).toBeNull();
   });
 
-  it('points the way to the hideout from the watchtower', () => {
-    const result = visit(newGame(), 'tower');
+  it('points the way to the hideout from the watchtower, for a hero who takes the journal over the banner', () => {
+    expect(cardOf(visit(newGame(), 'tower')).choices.map((c) => c.label)).toEqual(['Take the banner', 'Take the journal', 'Leave them to the crows']);
+    const result = apply(newGame(), { type: 'choose', id: 'tower', choice: 'top/journal' })!;
     expect(result.events).toContainEqual({ type: 'reveal', at: locationById(result.state, 'hideout').at, radius: 90 });
     const map = buildMap(ALDMOOR);
     const [hx, hy] = locationById(result.state, 'hideout').at;
     expect(isExplored(newGame().explored, cellIndex(map, hx, hy))).toBe(false);
     expect(isExplored(result.state.explored, cellIndex(map, hx, hy))).toBe(true);
-    expect(result.state.hero.gear.banner).toBe('oldBanner');
+    expect(result.state.hero.gear.banner).toBeUndefined();
+    const banner = apply(newGame(), { type: 'choose', id: 'tower', choice: 'top/banner' })!.state;
+    expect(banner.hero.gear.banner).toBe('oldBanner');
+    expect(isExplored(banner.explored, cellIndex(map, hx, hy))).toBe(false);
+    expect(apply(banner, { type: 'choose', id: 'tower', choice: 'top/journal' })).toBeNull();
   });
 });
 

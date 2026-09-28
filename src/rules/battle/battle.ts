@@ -30,6 +30,8 @@ export type BattleHero = {
   defence: number;
   spellPower: number;
   mana: number;
+  /** The most mana he holds, for the spellbook: none comes back in battle, it's full again at dawn. */
+  maxMana?: number;
   spells: SpellId[];
   castRound: number;
   /** Damage multipliers from skills and gear, as fractions (0.15 is 15% more). */

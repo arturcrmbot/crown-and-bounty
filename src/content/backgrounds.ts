@@ -41,6 +41,8 @@ export type Bonus = {
   bribes?: number;
   /** Small bands will take his coin and join him. */
   hires?: boolean;
+  /** Beasts that couldn't beat him follow him instead of fighting. */
+  tames?: boolean;
 };
 
 export type Background = {
@@ -108,7 +110,7 @@ export const BACKGROUNDS: Record<BackgroundId, Background> = {
     title: 'Aldric of the Greenwood',
     short: 'Aldric',
     pitch: 'Rides further, sees further, and his archers never miss twice.',
-    playstyle: 'Scout and shoot. Rides through the woods, and his archers fire first.',
+    playstyle: 'Scout and shoot. Rides the woods, fires first, and wild beasts follow him.',
     stats: { attack: 1, defence: 1, spellPower: 1, knowledge: 1 },
     leadership: 120,
     gold: 1000,
@@ -116,8 +118,8 @@ export const BACKGROUNDS: Record<BackgroundId, Background> = {
     spells: ['slow'],
     signature: {
       name: 'Pathfinder',
-      note: 'Rides through the woods, where nothing on the map can follow. +30 movement a day, sees further and counts every foe. His archers get +1 attack and +4 shots, and loose a free volley before every battle.',
-      bonus: { movement: 30, sight: 50, troops: { archers: { attack: 1, shots: 4 } }, volley: true, forestWalk: true },
+      note: 'Rides through the woods, where nothing on the map can follow. +30 movement a day, sees further and counts every foe. His archers get +1 attack and +4 shots, and loose a free volley before every battle. Beasts that couldn\u2019t beat him follow him instead, and draw no wages.',
+      bonus: { movement: 30, sight: 50, troops: { archers: { attack: 1, shots: 4 } }, volley: true, forestWalk: true, tames: true },
     },
     growth: { attack: 3, defence: 2, spellPower: 1, knowledge: 1 },
     favours: ['archery', 'logistics', 'scouting'],

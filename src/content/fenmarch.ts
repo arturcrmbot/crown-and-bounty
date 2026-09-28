@@ -16,7 +16,13 @@ const at = {
   goblins: [552, 590],
   troll: [902, 744],
   hideout: [1160, 866],
+  landing: [1030, 810],
+  boars: [1040, 470],
 } satisfies Record<string, Point>;
+
+/** Where the hero steps ashore at each end of the peat cutters' channel: beside the hut, and on the road by the landing. */
+const CHANNEL_NORTH: Point = [170, 724];
+const CHANNEL_SOUTH: Point = [1065, 812];
 
 const paths: Point[][] = [
   // The King's road from the north, past the signpost to Eelby.
@@ -111,13 +117,44 @@ export const FENMARCH: Province = {
       name: 'St Wendel\u2019s Abbey',
       at: at.abbey,
       done: false,
-      reveals: at.hideout,
-      artifact: 'abbotsStaff',
       text: {
         about: ['A ruined abbey on a hump of dry ground.', '*Someone has been lighting candles in the cloister.*'],
         done: ['The candles are out. A heron has taken over the pulpit.'],
-        visit: ['The last monk, Brother Anselm, is still here, praying for drier weather. He points south-east: *"The witch lives past the troll\u2019s bridge, in a hut on legs. The legs are the worst part."*'],
       },
+      pages: [
+        {
+          id: 'anselm',
+          when: { notFlag: 'abbey' },
+          lines: [
+            'The last monk, Brother Anselm, is still here, praying for drier weather. The abbey has three things left worth giving the King\u2019s man, he says, and he can spare one:',
+            'the old abbot\u2019s **staff**, for a clever head; St Wendel\u2019s **thunderbolt prayer**, for smiting, in moderation; or a **letter** for the witch, who turns out to be his big sister.',
+          ],
+          choices: [
+            {
+              id: 'staff',
+              label: 'Take the abbot\u2019s staff',
+              effects: { artifact: 'abbotsStaff', flags: { abbey: 'staff' }, done: true },
+              lines: ['*"He won\u2019t be needing it,"* says Brother Anselm. *"He was eaten by eels in twelve hundred and four."*'],
+            },
+            {
+              id: 'bolt',
+              label: 'Learn the thunderbolt prayer',
+              needs: { notSpell: 'bolt' },
+              effects: { spell: 'bolt', flags: { abbey: 'bolt' }, done: true },
+              lines: ['You learn it on your knees in the wet cloister. Out over the fen, the sky rumbles, interested.'],
+            },
+            {
+              id: 'letter',
+              label: 'Take his letter for the witch',
+              effects: { reveal: { at: at.hideout, radius: 90 }, flags: { abbey: 'letter', anselm: true }, done: true },
+              lines: [
+                '*"She lives past the troll\u2019s bridge, in a hut on legs. The legs are the worst part."* He points south-east.',
+                '*"Give her this, and tell her to write to her brother."*',
+              ],
+            },
+          ],
+        },
+      ],
     },
     {
       id: 'peathut',
@@ -126,13 +163,85 @@ export const FENMARCH: Province = {
       name: 'Peat Cutters\u2019 Hut',
       at: at.peathut,
       done: false,
-      gold: 500,
-      artifact: 'eelskinBoots',
       text: {
         about: ['Stacks of peat, and a hut sinking gently into the fen.', 'Nobody has answered the door in weeks.'],
-        done: ['The door swings in the wind. The peat stacks have not moved.'],
-        visit: ['The cutters fled from the goblins and left their wages behind: **{gold} gold** in a tin box.', 'And by the stove, a pair of boots that fit you perfectly, which is suspicious.'],
+        done: ['The hut is up to its windows in the fen. The peat stacks have not moved.'],
       },
+      pages: [
+        {
+          id: 'hut',
+          when: { notFlag: 'peat' },
+          lines: [
+            'The cutters fled from the goblins in a hurry. The hut is sinking into the fen as you watch: *there\u2019s time to save one thing.*',
+            'Their **wages**, in a tin box; a pair of **eelskin boots** by the stove that fit you perfectly, which is suspicious; or their **punt**, with the pole notched for a secret channel through the reeds that comes out south of the meres, behind the troll.',
+          ],
+          choices: [
+            {
+              id: 'wages',
+              label: 'Save the wages',
+              effects: { treasure: 500, flags: { peat: 'wages' }, done: true },
+              lines: ['You wade out with the tin box as the hut settles, with a sigh, up to its windows.'],
+            },
+            {
+              id: 'boots',
+              label: 'Save the boots',
+              effects: { artifact: 'eelskinBoots', flags: { peat: 'boots' }, done: true },
+              lines: ['You pull them on as the hut settles up to its windows. They are slippery, but only on the inside.'],
+            },
+            {
+              id: 'punt',
+              label: 'Save the punt',
+              effects: { flags: { peat: 'punt', punt: true }, reveal: { at: at.landing, radius: 70 } },
+              lines: ['You drag the punt clear as the hut settles up to its windows. The notches on the pole show the way: south through the reeds, behind the troll, to the cutters\u2019 landing.'],
+            },
+          ],
+        },
+        {
+          id: 'punt',
+          when: { flag: 'punt' },
+          lines: ['The cutters\u2019 punt, tied up by the sunken hut. The channel runs south through the reeds, behind the troll, to their landing.'],
+          choices: [
+            {
+              id: 'south',
+              label: 'Pole the punt south',
+              effects: { travel: CHANNEL_SOUTH },
+              lines: ['You pole through the reeds all day, past herons, eels and one very surprised goblin, and come ashore south of the meres at dusk. The troll never saw you.'],
+            },
+            { id: 'stay', label: 'Not today' },
+          ],
+        },
+      ],
+    },
+    {
+      id: 'landing',
+      kind: 'mine',
+      look: 'peathut',
+      name: 'The Cutters\u2019 Landing',
+      at: at.landing,
+      done: false,
+      text: { about: ['A little boathouse at the end of a channel through the reeds.', '*Nobody has tied up here in weeks.*'] },
+      pages: [
+        {
+          id: 'empty',
+          when: { notFlag: 'punt' },
+          lines: ['A little boathouse at the end of a channel through the reeds. There is no boat, and the channel is far too deep to wade.'],
+          choices: [],
+        },
+        {
+          id: 'punt',
+          when: { flag: 'punt' },
+          lines: ['The cutters\u2019 punt, tied up at the landing. The channel runs north through the reeds, back to the sunken hut.'],
+          choices: [
+            {
+              id: 'north',
+              label: 'Pole the punt north',
+              effects: { travel: CHANNEL_NORTH },
+              lines: ['A long day among the reeds. You come ashore by the sunken hut at dusk, smelling strongly of eel.'],
+            },
+            { id: 'stay', label: 'Not today' },
+          ],
+        },
+      ],
     },
     {
       id: 'village',
@@ -150,12 +259,35 @@ export const FENMARCH: Province = {
       name: 'Fen Windmill',
       at: at.windmill,
       done: false,
-      artifact: 'goblinCharm',
       text: {
         about: ['It pumps the fen dry, one bucket at a time.'],
         done: ['"Come back next week, officer. The fen came back first."'],
         visit: ['"Dry lanes for the King\u2019s men!" The miller opens every sluice, and your troops march on firm ground.'],
       },
+      pages: [
+        {
+          id: 'miller',
+          when: { notFlag: 'windmill' },
+          lines: [
+            '*"And something for the King\u2019s man, since you\u2019re here about the goblins."* He has fished a **goblin\u2019s lucky charm** out of the sluice (*goblins are very good at finding things that aren\u2019t theirs*).',
+            'Or there are his **two tall sons**, who can hit a heron at a hundred paces and would rather not, if you have room to lead a dozen archers.',
+          ],
+          choices: [
+            {
+              id: 'charm',
+              label: 'Take the goblin charm',
+              effects: { artifact: 'goblinCharm', flags: { windmill: 'charm' } },
+              lines: ['It smells of eels and mischief. Already you have a feeling there is gold nearby.'],
+            },
+            {
+              id: 'sons',
+              label: 'Take on his sons',
+              effects: { troops: [{ troop: 'archers', count: 12 }], flags: { windmill: 'sons' } },
+              lines: ['They turn up with their bows, their cousins and a basket of eel pies. *"Write to your mother,"* says the miller. They won\u2019t.'],
+            },
+          ],
+        },
+      ],
     },
     {
       id: 'signpost',
@@ -204,6 +336,24 @@ export const FENMARCH: Province = {
       },
     },
     {
+      id: 'boars',
+      kind: 'patrol',
+      name: 'Wild Boars',
+      at: at.boars,
+      done: false,
+      enemy: {
+        look: 'wolves',
+        tier: 'pest',
+        lines: ['Wild boars, wallowing in a peat bog by the alder copse.', 'They look very happy about it, and would like to be left alone.'],
+        army: [{ troop: 'boars', count: 14 }],
+        reward: 150,
+        threat: 'The biggest one stands up, dripping, and lowers its tusks.',
+        tamed: 'You wade in and scratch the biggest one behind the ears. That settles it: they follow you out of the bog, delighted, and very, very muddy.',
+        flees: 'The boars crash off into the alders.',
+        loot: 'Truffles in the peat where they were wallowing! Worth {gold} at market.',
+      },
+    },
+    {
       id: 'troll',
       kind: 'patrol',
       name: 'The Bridge Troll',
@@ -246,6 +396,13 @@ export const FENMARCH: Province = {
         reward: 3000,
         threat: 'Mother Mirrow leans out of the window. *"Newts are happier, dearie. Ask him."*',
         parleys: [
+          {
+            id: 'letter',
+            label: 'Give her Brother Anselm\u2019s letter',
+            needs: { flag: 'anselm' },
+            effects: { desert: { troop: 'goblins', share: 0.5 }, flags: { anselm: false } },
+            lines: ['Mother Mirrow reads her little brother\u2019s letter twice, and sniffs. *"He always did write a lovely letter."* To show she isn\u2019t a monster, she sends half her goblins home to their mothers. She keeps the trolls.'],
+          },
           {
             id: 'outhex',
             label: 'Out-hex her',

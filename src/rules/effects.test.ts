@@ -57,11 +57,11 @@ describe('choices written as content', () => {
 
   it('make St Aldhelm\u2019s shrine in Aldmoor, with nothing but content', () => {
     const state = fresh();
-    expect(cardOf(visit(state, 'shrine'))!.card.choices.map((c) => c.label)).toEqual(['Kneel and pray', 'Leave an offering (150 gold)', 'Ride on']);
+    expect(cardOf(visit(state, 'shrine'))!.card.choices.map((c) => c.label)).toEqual(['Pray for the royal goose', 'Borrow the saint\u2019s crown', 'Ride on']);
     const prayed = apply(state, { type: 'choose', id: 'shrine', choice: 'start/pray' })!.state;
-    expect(prayed.hero.knowledge).toBe(state.hero.knowledge + 1);
+    expect(prayed.flags?.goose).toBe(true);
     expect(locationById(prayed, 'shrine').done).toBe(true);
-    expect(apply(prayed, { type: 'choose', id: 'shrine', choice: 'start/give' })).toBeNull();
+    expect(apply(prayed, { type: 'choose', id: 'shrine', choice: 'start/crown' })).toBeNull();
     expect(cardOf(visit(prayed, 'shrine'))!.card.lines).toEqual(['The shrine is quiet. The feather has gone.']);
   });
 });

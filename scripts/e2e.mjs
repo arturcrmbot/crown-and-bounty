@@ -151,10 +151,12 @@ try {
 
   const tower = await go('tower', 'Enter');
   check(tower === 'Old Watchtower', 'the fogged watchtower can be reached and entered');
+  check((await kc.lines()).includes('take one') && (await kc.choose('Take the banner')), 'the crows let him take the banner or the journal');
   const tops = await kc.state();
-  check(tops.hero.gear.banner === 'oldBanner' || tops.hero.pack.includes('oldBanner'), 'the watchtower holds the Old Tower Banner');
+  check(tops.hero.gear.banner === 'oldBanner' || tops.hero.pack.includes('oldBanner'), 'he takes the Old Tower Banner');
   await close();
   await go('mine', 'Enter');
+  check(await kc.choose('Take the cart'), 'the dwarf gives up his ore cart');
   await close();
   check(learned.length > 0 && (await kc.state()).hero.level >= 2, `a first fight and some finds bring a level-up (${learned.join(', ')})`);
   await go('boars', 'Approach');

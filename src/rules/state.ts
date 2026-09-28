@@ -54,6 +54,8 @@ export type Enemy = {
   lines: string[];
   army: Army;
   reward: number;
+  /** What the card says when a hero with a way with beasts wins them over, instead of each beast's usual words. */
+  tamed?: string;
   /** What they do when you ride up, how they lose, and where the gold was. */
   threat: string;
   flees: string;
@@ -78,6 +80,8 @@ export type Needs = {
   spellPower?: number;
   level?: number;
   artifact?: ArtifactId;
+  /** Something he must not have yet (so a find doesn't hand him a second one). */
+  notArtifact?: ArtifactId;
   /** A story flag that must be set, or must not be. */
   flag?: string;
   notFlag?: string;
@@ -92,6 +96,8 @@ export type Needs = {
 /** What a choice does, all of it optional, applied in this order. */
 export type Effects = {
   gold?: number;
+  /** Gold found lying about, which a hero with a knack for treasure finds more of. */
+  treasure?: number;
   leadership?: number;
   movement?: number;
   mana?: number;
@@ -114,6 +120,10 @@ export type Effects = {
   place?: Location;
   /** A share of this place's enemy marches off to join another's (by id): the road clears, the villain grows. */
   reinforce?: { id: string; share: number };
+  /** A share of this place's enemy (or of one troop in it) slips away: someone has talked them out of it. */
+  desert?: { troop?: TroopId; share: number };
+  /** The hero goes there by a way of his own, a tunnel or a punt, and that is the day's riding done. */
+  travel?: Point;
 };
 
 /** A choice written as content: a button, what it needs, what it does, and what the card then says. */

@@ -131,7 +131,7 @@ describe('relics', () => {
   it('each carries a trick, not just a number', () => {
     for (const id of RELICS) {
       const b = ARTIFACTS[id].bonus;
-      expect(Boolean(b.charge?.length || b.volley || b.forestWalk || b.casts || b.mapSpells?.length || b.hires), id).toBe(true);
+      expect(Boolean(b.charge?.length || b.volley || b.forestWalk || b.casts || b.mapSpells?.length || b.hires || b.tames), id).toBe(true);
     }
   });
 });

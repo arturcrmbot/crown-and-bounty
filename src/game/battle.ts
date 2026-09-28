@@ -1,6 +1,7 @@
 import { SPELLS, type SpellId } from '../content/spells';
 import { TROOPS, troops } from '../content/troops';
 import { chooseAction } from '../rules/battle/ai';
+import { manaInBattle } from '../rules/heroSheet';
 import { activeFighter, battleAct, canCast, castsLeft, CHARGE_BONUS, fighterById, isCharge, options, spellCost, spellDamage, spellVictims, strike, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
 import { paintBanner } from '../render/banner';
 import { BattleScreen, BUTTONS, FIRE_FALL, FLOAT_RISE, hexAt, hexCentre, LOG_BOTTOM, type BattleView, type Shot } from '../render/battleScreen';
@@ -622,7 +623,7 @@ export class BattleController implements Screen {
     const spells = hero.spells.map((id) => SPELLS[id]);
     this.cards.show({
       title: 'Spellbook',
-      lines: [`**${hero.mana}** mana. ${(hero.casts ?? 1) > 1 ? `Two spells a round: ${castsLeft(this.battle)} left this round.` : 'One spell a round.'}`, ...spells.map((s) => `**${s.name}** (${spellCost(this.battle, s.id)}): ${s.note}`)],
+      lines: [manaInBattle(hero.mana, hero.maxMana), `${(hero.casts ?? 1) > 1 ? `Two spells a round: ${castsLeft(this.battle)} left this round.` : 'One spell a round.'}`, ...spells.map((s) => `**${s.name}** (${spellCost(this.battle, s.id)}): ${s.note}`)],
       choices: [
         ...spells.filter((s) => canCast(this.battle, s.id)).map((s) => ({ label: `Cast ${s.name}`, action: { type: 'spell' as const, spell: s.id } })),
         { label: 'Close', action: { type: 'close' } },

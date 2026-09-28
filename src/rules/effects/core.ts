@@ -3,15 +3,18 @@
  * and everything a choice or a victory can bring (`Effects`). Nothing here knows about places'
  * kinds or fights, so the fight rules can use it too.
  */
-import { ARTIFACTS } from '../../content/artifacts';
+import { ARTIFACTS, type ArtifactId } from '../../content/artifacts';
 import { BACKGROUNDS } from '../../content/backgrounds';
 import { SKILLS } from '../../content/skills';
 import { SPELLS } from '../../content/spells';
 import { foundNote, gainXp, giveArtifact, heroStats } from '../hero';
 import { revealDisc } from '../map/fog';
-import { addTroops, coins, countOf, leadershipUsed, MAX_STACKS, TROOPS, troops, update, VANISHES, type Effects, type GameEvent, type GameState, type Location, type Needs } from '../state';
+import { addTroops, coins, countOf, leadershipUsed, locationById, MAX_STACKS, TROOPS, troops, update, VANISHES, type Effects, type GameEvent, type GameState, type Location, type Needs } from '../state';
 
 const STAT_WORDS = { attack: 'attack', defence: 'defence', spellPower: 'spell power', knowledge: 'knowledge' } as const;
+
+/** Whether the hero wears or carries an artifact. */
+export const owns = (state: GameState, id: ArtifactId) => Object.values(state.hero.gear).includes(id) || state.hero.pack.includes(id);
 
 /** Whether the hero is the right sort, knows enough, carries the right thing, and can spare what it costs. */
 export function meets(state: GameState, needs: Needs | undefined): boolean {
@@ -21,7 +24,8 @@ export function meets(state: GameState, needs: Needs | undefined): boolean {
   if (needs.skill && !hero.skills[needs.skill]) return false;
   if (needs.spellPower && heroStats(state).spellPower < needs.spellPower) return false;
   if (needs.level && hero.level < needs.level) return false;
-  if (needs.artifact && !Object.values(hero.gear).includes(needs.artifact) && !hero.pack.includes(needs.artifact)) return false;
+  if (needs.artifact && !owns(state, needs.artifact)) return false;
+  if (needs.notArtifact && owns(state, needs.notArtifact)) return false;
   if (needs.flag && !state.flags?.[needs.flag]) return false;
   if (needs.notFlag && state.flags?.[needs.notFlag]) return false;
   if (needs.gold && state.gold < needs.gold) return false;
@@ -65,6 +69,11 @@ export function applyEffects(state: GameState, place: Location, effects: Effects
   if (effects.gold) {
     next = { ...next, gold: next.gold + effects.gold };
     lines.push(`**${effects.gold > 0 ? '+' : ''}${coins(effects.gold)} gold.**`);
+  }
+  if (effects.treasure) {
+    const gold = Math.round(effects.treasure * (1 + heroStats(next).loot));
+    next = { ...next, gold: next.gold + gold };
+    lines.push(`**+${coins(gold)} gold.**`);
   }
   if (effects.leadership) {
     next = { ...next, leadership: next.leadership + effects.leadership };
@@ -111,10 +120,31 @@ export function applyEffects(state: GameState, place: Location, effects: Effects
       lines.push(`**${joined.name}** grows stronger.`);
     }
   }
+  if (effects.desert && place.enemy) {
+    const { troop, share } = effects.desert;
+    const foe = locationById(next, place.id).enemy!;
+    const gone: string[] = [];
+    const army = foe.army
+      .map((s) => {
+        if ((troop && s.troop !== troop) || TROOPS[s.troop].leadership >= 99) return s;
+        const lost = Math.round(s.count * share);
+        if (lost > 0) gone.push(`**${troops(s.troop, lost)}**`);
+        return { ...s, count: s.count - lost };
+      })
+      .filter((s) => s.count > 0);
+    next = update(next, place.id, { enemy: { ...foe, army } });
+    if (gone.length) lines.push(`${gone.join(' and ')} slip away from ${place.name}.`);
+  }
   if (effects.reveal) {
     const { at, radius } = effects.reveal;
     next = { ...next, explored: revealDisc(next.explored, next.world, at[0], at[1], radius).bits };
     events.push({ type: 'reveal', at, radius });
+  }
+  if (effects.travel) {
+    const at = effects.travel;
+    const sight = heroStats(next).sight;
+    next = { ...next, movement: 0, hero: { ...next.hero, at }, explored: revealDisc(next.explored, next.world, at[0], at[1], sight).bits };
+    events.push({ type: 'moved', at, facing: next.hero.facing }, { type: 'reveal', at, radius: sight });
   }
   if (effects.xp) {
     const grown = gainXp(next, effects.xp);

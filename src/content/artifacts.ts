@@ -26,7 +26,8 @@ export type ArtifactId =
   | 'brannocsLance'
   | 'twinWand'
   | 'crystalBall'
-  | 'silverSignet';
+  | 'silverSignet'
+  | 'hawthornCrown';
 
 export type Artifact = { id: ArtifactId; name: string; slot: Slot; note: string; bonus: Bonus; price?: number };
 
@@ -73,7 +74,14 @@ export const ARTIFACTS: Record<ArtifactId, Artifact> = {
   twinWand: { id: 'twinWand', name: 'The Twin Wand', slot: 'weapon', note: 'One more spell every round of battle. The two halves argue.', bonus: { casts: 1 } },
   crystalBall: { id: 'crystalBall', name: 'Crystal of Far Sight', slot: 'helm', note: 'Cast Far Sight on the map, and see 40 paces further.', bonus: { mapSpells: ['farsight'], sight: 40 }, price: 800 },
   silverSignet: { id: 'silverSignet', name: 'Silver Signet', slot: 'trinket', note: 'Bribes cost a third less, and small bands will take your coin and join you.', bonus: { bribes: 0.33, hires: true }, price: 900 },
+  hawthornCrown: {
+    id: 'hawthornCrown',
+    name: 'The Hawthorn Crown',
+    slot: 'helm',
+    note: 'Beasts that couldn\u2019t beat you follow you instead, as a ranger\u2019s do, and draw no wages. The King must never see you in it.',
+    bonus: { tames: true },
+  },
 };
 
-/** Relics carry another hero's trick: a charge, a volley, the woods, a second spell, Far Sight, a silver tongue. */
-export const RELICS: ArtifactId[] = ['poachersHorn', 'greenwoodCloak', 'brannocsLance', 'twinWand', 'crystalBall', 'silverSignet'];
+/** Relics carry another hero's trick: a charge, a volley, the woods, a second spell, Far Sight, a silver tongue, a way with beasts. */
+export const RELICS: ArtifactId[] = ['poachersHorn', 'greenwoodCloak', 'brannocsLance', 'twinWand', 'crystalBall', 'silverSignet', 'hawthornCrown'];
