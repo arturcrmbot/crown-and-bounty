@@ -11,6 +11,8 @@
     "typecheck": "tsc",
     "shots": "node scripts/shots.mjs",
     "test": "vitest run",
+    "test:fast": "vitest run --testTimeout=30000 --exclude src/rules/bot.test.ts --exclude src/rules/taming.test.ts --exclude src/rules/difficulty.test.ts",
+    "test:bot": "vitest run src/rules/bot.test.ts src/rules/taming.test.ts src/rules/difficulty.test.ts",
     "sim": "node scripts/sim.mjs",
     "e2e": "node scripts/e2e.mjs",
     "visual": "node scripts/visual.mjs",

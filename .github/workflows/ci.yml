@@ -1,7 +1,8 @@
-# Every push to main is checked and, once typecheck, the unit tests and the build pass, deployed to
-# GitHub Pages: live about three minutes after the push. The play-through, a playtest with each
-# background, the visual scenes and the balance report run alongside and report in the run's summary
-# and artifacts. If main breaks, an issue labelled `ci` opens itself, and closes when main is green.
+# Every push to main is checked and, once typecheck, the build and the fast unit tests pass, deployed
+# to GitHub Pages: live about three minutes after the push. The bot's slow tests, the play-through, a
+# playtest with each background, the visual scenes and the balance report run alongside and report in
+# the run's summary and artifacts. If main breaks, an issue labelled `ci` opens itself, and closes when
+# main is green.
 name: CI
 
 on:
@@ -13,11 +14,16 @@ on:
 permissions:
   contents: read
 
+defaults:
+  run:
+    # -eo pipefail, so a step piped through `tee` still fails when its command does.
+    shell: bash
+
 jobs:
   check:
-    name: Typecheck, unit tests, build
+    name: Typecheck and build
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     concurrency:
       group: check-${{ github.ref }}
       cancel-in-progress: true
@@ -29,7 +35,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
-      - run: npx vitest run
       - run: npx vite build
       - name: Size of the build
         run: |
@@ -45,9 +50,28 @@ jobs:
         with:
           path: dist
 
+  test:
+    name: Unit tests (${{ matrix.shard }}/2)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        shard: [1, 2]
+    concurrency:
+      group: test-${{ matrix.shard }}-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run test:fast -- --shard=${{ matrix.shard }}/2
+
   deploy:
     name: Deploy to GitHub Pages
-    needs: check
+    needs: [check, test]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -64,6 +88,23 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  bot:
+    name: The bot plays whole commissions
+    # Slow (minutes on these runners), so it doesn't hold up the deploy.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: bot-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run test:bot
 
   play:
     name: Play-through and playtests
@@ -95,7 +136,7 @@ jobs:
           for bg in "Knight of the Realm" "Hedge Wizard" "Ranger of the Greenwood" "Courtier"; do
             slug=$(echo "$bg" | cut -d' ' -f1 | tr 'A-Z' 'a-z')
             BG="$bg" node scripts/playtest.mjs > "playtest-$slug.txt" 2>&1 || true
-            [ -d screenshots/playtest ] && mv screenshots/playtest "screenshots/playtest-$slug"
+            if [ -d screenshots/playtest ]; then mv screenshots/playtest "screenshots/playtest-$slug"; fi
           done
       - name: Report
         if: always()
@@ -174,13 +215,13 @@ jobs:
         if: always()
         run: |
           {
-            echo "### Campaign, played by the bot"; echo '```'; grep -v "^>" sim.txt | sed '/^$/d'; echo '```'
-            echo "### Difficulty (a ! is outside its target)"; echo '```'; grep -v "^>" difficulty.txt | sed '/^$/d'; echo '```'
+            echo "### Campaign, played by the bot"; echo '```'; grep -v "^>" sim.txt | sed '/^$/d' || true; echo '```'
+            echo "### Difficulty (a ! is outside its target)"; echo '```'; grep -v "^>" difficulty.txt | sed '/^$/d' || true; echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
   alert:
     name: Issue when main breaks
-    needs: [check, play]
+    needs: [check, test, bot, play]
     if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
@@ -190,18 +231,22 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           CHECK: ${{ needs.check.result }}
+          TEST: ${{ needs.test.result }}
+          BOT: ${{ needs.bot.result }}
           PLAY: ${{ needs.play.result }}
           RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           SHA: ${{ github.sha }}
         run: |
           title="Main is broken"
           open=$(gh issue list --state open --label ci --search "\"$title\" in:title" --json number --jq '.[0].number // empty')
-          if [ "$CHECK" = failure ] || [ "$PLAY" = failure ]; then
-            what=""
-            [ "$CHECK" = failure ] && what="typecheck, the unit tests or the build"
-            [ "$PLAY" = failure ] && what="${what:+$what, and }the play-through"
+          what=""
+          [ "$CHECK" = failure ] && what="typecheck or the build"
+          [ "$TEST" = failure ] && what="${what:+$what, }the unit tests"
+          [ "$BOT" = failure ] && what="${what:+$what, }the bot's whole-commission tests"
+          [ "$PLAY" = failure ] && what="${what:+$what, }the play-through"
+          if [ -n "$what" ]; then
             body=$(printf 'Commit %s broke %s.\n\nRun: %s' "${SHA:0:7}" "$what" "$RUN")
             if [ -n "$open" ]; then gh issue comment "$open" --body "$body"; else gh issue create --title "$title" --label ci --label bug --body "$body"; fi
-          elif [ "$CHECK" = success ] && [ "$PLAY" = success ] && [ -n "$open" ]; then
+          elif [ "$CHECK$TEST$BOT$PLAY" = successsuccesssuccesssuccess ] && [ -n "$open" ]; then
             gh issue close "$open" --comment "Green again at ${SHA:0:7}: $RUN"
           fi

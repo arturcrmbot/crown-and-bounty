@@ -146,5 +146,5 @@ describe('tamed beasts', () => {
     const runs = simulate([1, 2, 3, 4, 5, 6, 7, 8], 'ranger');
     expect(runs.every((r) => r.won)).toBe(true);
     expect(runs.some((r) => r.log.some((l) => l.includes('tamed')))).toBe(true);
-  }, 60_000);
+  }, 600_000);
 });
