@@ -1,8 +1,9 @@
 import { abilitiesOf, TROOPS, type TroopId } from '../content/troops';
 import { SPELLS, STATUSES } from '../content/spells';
-import { canCast, rallyOf, speedOf, statsOf, unitOf, type BattleState, type Fighter } from '../rules/battle/battle';
+import { canCast, lookOf, rallyOf, speedOf, statsOf, unitOf, type BattleState, type Fighter } from '../rules/battle/battle';
 import { COLS, colOf, HEXES, ROWS, rowOf } from '../rules/battle/hex';
 import { Bitmap, blit } from './bitmap';
+import { critters, critterSprite, type Critter } from './critters';
 import { animLength, corpseSprite, hurtSprite, standard, STAND, troopFigure, type Pose, type Standard } from './battleSprites';
 import { ART } from './units';
 import { drawBanner } from './banner';
@@ -91,6 +92,8 @@ export type BattleView = {
   dying: Set<number>;
   /** Stacks the rules have on the field that haven't got there yet: a summoned stack, till it marches in. */
   hidden: Set<number>;
+  /** What a stack looks like while a change plays out (newts, or null for itself), instead of what its statuses say. */
+  looks: Map<number, Critter | null>;
   reach: Set<number>;
   hover: { hex: number; kind: 'move' | 'melee' | 'shoot' | 'spell' } | null;
   floaters: Floater[];
@@ -291,6 +294,16 @@ export class BattleScreen {
       const [px, py] = place(f.id, f.at);
       const [ox, oy] = view.offsets.get(f.id) ?? [0, 0];
       const facing = view.facings.get(f.id) ?? (f.side === 'player' ? 1 : -1);
+      // Turned into newts or frogs, a stack is those creatures till the spell wears off.
+      const look = view.looks.has(f.id) ? view.looks.get(f.id)! : lookOf(f);
+      if (look) {
+        for (const c of critters(look, !oneOfAKind(f), view.time, f.id)) {
+          const sprite = critterSprite(look, facing, c.phase);
+          const shown = view.flashing.has(f.id) ? hurtSprite(sprite) : sprite;
+          blit(screen, shown, Math.round(px + ox + c.dx - sprite.width / 2), Math.round(py + oy + 12 + c.dy - sprite.height), MAP_VIEW);
+        }
+        continue;
+      }
       const pose = view.poses.get(f.id) ?? (view.positions.has(f.id) ? STAND : fidget(f.troop, f.id, view.time));
       const figure = troopFigure(f.troop, f.side === 'player' ? 'blue' : 'red', facing, pose, 'battle');
       const sprite = view.flashing.has(f.id) ? hurtSprite(figure.sprite) : figure.sprite;

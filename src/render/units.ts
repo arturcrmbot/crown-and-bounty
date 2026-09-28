@@ -158,6 +158,7 @@ const TROOP_ART: Record<Exclude<TroopId, HeroId>, UnitArt> = {
       missile: 'hex',
     },
     defend: DARK + 'adept+female-defend-2.png',
+    cast: frames(DARK, 'adept+female-magic-[1,2,3,2,1].png', '75,100,300,75,50'),
   },
   bramble: {
     unit: 'Dark Sorcerer (female)',

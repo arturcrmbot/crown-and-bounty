@@ -88,6 +88,21 @@ describe('villains who cast and give orders', () => {
     expect(castActions(down).some((a) => a.type === 'cast')).toBe(false);
   });
 
+  it('Mother Mirrow turns your stacks into newts, slows them, and brews her own back up; a newt can\u2019t cast', () => {
+    const b = createBattle({ place: 'hideout', seed: 3, player: army(['knights', 10], ['archers', 20]), enemy: army(['trolls', 6], ['goblins', 60], ['witch', 1]), hero: { ...hero, unit: { troop: 'heroWizard', hp: 50, damage: [4, 6] } } });
+    const witch = of(b, 'witch');
+    expect(witch.book).toMatchObject({ name: 'Mother Mirrow', mana: 14, spells: ['newts', 'slow', 'brew'] });
+    // She turns Aldric himself into a newt: no spells till he's himself again.
+    const aldric = b.fighters.find((f) => f.hero)!;
+    const newt = battleAct(turnOf(b, 'goblins'), { type: 'cast', spell: 'newts', target: aldric.id, by: witch.id }).battle;
+    expect(fighterById(newt, aldric.id).status).toContain('newts');
+    expect(fighterById(newt, witch.id).book!.mana).toBe(8);
+    expect(canCast(turnOf(newt, 'archers'), 'bolt')).toBe(false);
+    // Left to herself, she casts.
+    const end = autoResolve(b);
+    expect(of(end, 'witch').book!.mana).toBeLessThan(14);
+  });
+
   it('uses his tricks when he fights it out: the enemy AI casts and gives orders', () => {
     const end = autoResolve(baronFight());
     const book = of(end, 'baron').book!;

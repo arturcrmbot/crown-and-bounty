@@ -75,6 +75,7 @@ export class BattleController implements Screen {
       flashing: new Set(),
       dying: new Set(),
       hidden: new Set(),
+      looks: new Map(),
       reach: new Set(),
       hover: null,
       floaters: [],
@@ -279,6 +280,14 @@ export class BattleController implements Screen {
     return f.side === 'player' ? 1 : -1;
   }
 
+  /** A puff of smoke where a stack changes shape, over the next moment (it doesn't hold up the queue). */
+  private puff(id: number) {
+    const [x, y] = hexCentre(fighterById(this.battle, id).at);
+    const dust: Shot = { from: [x, y], to: [x, y], t: 0, kind: 'poof' };
+    this.view.shots.push(dust);
+    this.sparks.push(dust);
+  }
+
   /** A stack that goes down leaves a puff of dust, then its fallen. */
   private poof(target: number) {
     const [x, y] = hexCentre(fighterById(this.battle, target).at);
@@ -309,7 +318,8 @@ export class BattleController implements Screen {
     if (spell.effect.kind === 'mass') return `${who} casts ${spell.name} on ${stacks === 1 ? this.objectName(e.target) : `all ${stacks} of ${fighterById(this.battle, e.target).side === 'player' ? 'your' : 'their'} stacks`}.`;
     if (e.healed) return `${who} casts ${spell.name} on ${this.objectName(e.target)}: ${e.healed} health back${e.raised ? `, and ${e.raised} get up again` : ''}.`;
     const fell = e.killed ? (this.named(e.target) ? `, and ${this.fighterName(e.target)} falls` : `, ${e.killed} perish`) : '';
-    return `${who} casts ${spell.name} on ${this.objectName(e.target)}${e.damage ? `: ${e.damage} damage${fell}` : ''}.`;
+    const on = e.by === undefined && fighterById(this.battle, e.target).hero ? 'himself' : this.objectName(e.target);
+    return `${who} casts ${spell.name} on ${on}${e.damage ? `: ${e.damage} damage${fell}` : ''}.`;
   }
 
   /** Takes a blow from what is left of a stack (its count, and its top troop's health); true when that was the last of them. */
@@ -517,12 +527,19 @@ export class BattleController implements Screen {
             return { from: [tx, 0] as [number, number], to: [tx, ty - 10] as [number, number], t: 0, kind: look.kind, color: colour };
           });
           const status = spell.effect.kind === 'status' || spell.effect.kind === 'mass' ? STATUSES[spell.effect.status] : null;
+          // A stack turned into something else stays itself till the spell lands, then goes in a puff.
+          const changes = status?.look ? victims.map((x) => x.h.target) : [];
+          for (const id of changes) v.looks.set(id, before.fighters.find((o) => o.id === id)?.status.map((st) => STATUSES[st].look).find(Boolean) ?? null);
           // A fireball has to fall before it bursts: the sound, the numbers, the flinch and the jolt land with the burst.
           const land = look.kind === 'fire' ? FIRE_FALL : 0;
           let landed = false;
           const impact = () => {
             landed = true;
             play(look.kind === 'sparkle' ? 'spell' : 'bolt');
+            for (const id of changes) {
+              v.looks.delete(id);
+              this.puff(id);
+            }
             for (const { h, remaining, ours } of victims) {
               v.counts.set(h.target, remaining.count);
               v.health.set(h.target, remaining.hp);
@@ -584,10 +601,16 @@ export class BattleController implements Screen {
           break;
         case 'skip': {
           const status = STATUSES[e.status];
-          this.step(0.7, {
+          if (status.look) v.looks.set(e.fighter, status.look);
+          this.step(0.8, {
             start: () => {
               this.float(e.fighter, status.name, GOLD[6]);
               v.log = `${this.fighterName(e.fighter)} ${this.named(e.fighter) ? 'loses a turn' : 'lose their turn'}: ${status.name.toLowerCase()} can't do much. Then the spell wears off.`;
+            },
+            end: () => {
+              if (!status.look) return;
+              v.looks.delete(e.fighter);
+              this.puff(e.fighter);
             },
           });
           break;
@@ -648,6 +671,7 @@ export class BattleController implements Screen {
     if (this.queue.length === 0) {
       v.counts.clear();
       v.health.clear();
+      v.looks.clear();
     }
     const f = activeFighter(this.battle);
     v.active = this.queue.length > 0 ? this.acting : (f?.id ?? null);
@@ -812,7 +836,13 @@ export class BattleController implements Screen {
       return charge ? `${charge.uses} left` : `${spellCost(this.battle, id)}`;
     };
     const own = heroOnField(this.battle);
-    const gone = own && own.count <= 0 ? [`*${hero.name ?? 'Aldric'} has been carried from the field: no more spells this battle.*`] : [];
+    const silenced = own?.status.map((st) => STATUSES[st]).find((st) => st.silences);
+    const gone =
+      own && own.count <= 0
+        ? [`*${hero.name ?? 'Aldric'} has been carried from the field: no more spells this battle.*`]
+        : silenced
+          ? [`*${hero.name ?? 'Aldric'} is one of the ${silenced.name.toLowerCase()} for now: no spells till he's himself again.*`]
+          : [];
     this.cards.show({
       title: 'Spellbook',
       lines: [...gone, manaInBattle(hero.mana, hero.maxMana), `${(hero.casts ?? 1) > 1 ? `Two spells a round: ${castsLeft(this.battle)} left this round.` : 'One spell a round.'}`, ...spells.map((s) => `**${s.name}** (${cost(s.id)}): ${s.note}`)],

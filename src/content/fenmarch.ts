@@ -393,7 +393,7 @@ export const FENMARCH: Province = {
         grows: 0.05,
         charge: 'Storm the hut',
         lines: ['A hut on long chicken legs, deep in the fen. Something inside is croaking.', 'Trolls doze under it, and goblins everywhere else.'],
-        army: [{ troop: 'trolls', count: 18 }, { troop: 'goblins', count: 220 }, { troop: 'witch', count: 1 }],
+        army: [{ troop: 'trolls', count: 15 }, { troop: 'goblins', count: 190 }, { troop: 'witch', count: 1 }],
         reward: 3000,
         threat: 'Mother Mirrow leans out of the window. *"Newts are happier, dearie. Ask him."*',
         parleys: [

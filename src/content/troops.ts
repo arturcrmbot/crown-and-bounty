@@ -88,6 +88,7 @@ export const TROOPS: Record<TroopId, TroopDef> = {
   witch: {
     id: 'witch', name: 'Mother Mirrow', one: 'Mother Mirrow', hp: 140, attack: 8, defence: 8, damage: [6, 10], speed: 4, shots: 8, leadership: 99, wage: 0,
     note: 'Throws hexes, and the occasional ladle.', abilities: ['hexes'],
+    caster: { spellPower: 2, mana: 14, spells: ['newts', 'slow', 'brew'] },
   },
   bramble: {
     id: 'bramble', name: 'Aunt Bramble', one: 'Aunt Bramble', hp: 170, attack: 9, defence: 9, damage: [7, 11], speed: 4, shots: 10, leadership: 99, wage: 0,
