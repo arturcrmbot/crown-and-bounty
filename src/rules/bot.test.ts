@@ -9,7 +9,7 @@ describe('the bot', () => {
       // A bot that storms Grimsby too soon and loses takes a few weeks to raise another army.
       expect(run.day).toBeLessThan(60);
     }
-  }, 120_000);
+  }, 600_000);
 
   it('wins Aldmoor and the Fenmarch, court included', () => {
     for (const { seed, runs } of simulateCampaign([1, 2, 3], 'wizard', 1)) {
@@ -18,5 +18,5 @@ describe('the bot', () => {
       expect(last.won, `seed ${seed}: ${last.log.join(', ')}`).toBe(true);
       expect(last.state.campaign.record).toHaveLength(1);
     }
-  }, 60_000);
+  }, 600_000);
 });

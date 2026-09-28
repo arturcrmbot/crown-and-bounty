@@ -26,8 +26,9 @@ export function kc(page) {
     },
     title: () => call(() => document.querySelector('.kc-card-wrap:not([hidden]) h3')?.textContent ?? null),
     lines: () => call(() => [...document.querySelectorAll('.kc-card-wrap:not([hidden]) p')].map((p) => p.textContent).join(' / ')),
-    choose: async (label) => {
-      const ok = await call((l) => window.__kc.choose(l), label);
+    /** Presses the card's button starting with `label`, waiting a moment for it: a new screen's cards wait for its transition. */
+    choose: async (label, wait = 3000) => {
+      const ok = await page.waitForFunction((l) => window.__kc.choose(l), label, { timeout: wait, polling: 50 }).then(() => true, () => false);
       await page.waitForTimeout(60);
       return ok;
     },
