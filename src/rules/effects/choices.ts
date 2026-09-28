@@ -46,6 +46,8 @@ export function takeChoice(state: GameState, place: Location, choice: ContentCho
   const after = locationById(done.state, place.id);
   const lines = [...(choice.lines ?? []), ...done.lines];
   const page = effects.page ? after.pages?.find((p) => p.id === effects.page) : undefined;
+  // A choice with nothing to say, like "Not today", just closes the card.
+  if (!page && !lines.length) return { state: done.state, events: done.events };
   const card = page ? pageCard(done.state, after, page, lines) : { title: place.name, lines, choices: [close] };
   return { state: done.state, events: [...done.events, show(card, place.at, place.id)] };
 }

@@ -389,8 +389,13 @@ export class BattleController implements Screen {
     };
     const missile = e.ranged ? (art.ranged?.missile ?? 'arrow') : null;
     const release = missile ? Math.max(0, hit - 150) : hit;
+    // The ribbon names the blow as it starts, and says what it did when it lands.
+    const blow = `${this.fighterName(e.attacker)} ${this.verb(e.attacker, e.ranged ? 'shoot' : e.retaliation ? 'strike back at' : e.charge ? 'charge' : 'hit')} ${this.objectName(e.target)}`;
     this.step(release * MS, {
-      start: turn,
+      start: () => {
+        turn();
+        v.log = `${blow}...`;
+      },
       tick: (t) => {
         swing(t * release);
         if (!missile && t * release >= hit - FLINCH_EARLY) v.poses.set(e.target, { anim: flinch(), ms: 0 });
@@ -430,7 +435,7 @@ export class BattleController implements Screen {
         // A stack counts its dead; one of a kind (Aldric, a villain) shows the blow, as his health bar does.
         this.float(e.target, e.killed && !this.named(e.target) ? `-${e.killed}` : `-${e.damage} hp`, e.killed ? RED[5] : RED[6]);
         const fell = !e.killed ? '.' : this.named(e.target) ? `. ${this.fighterName(e.target)} ${target.hero ? 'goes down' : 'falls'}.` : `. ${e.killed} perish.`;
-        v.log = `${this.fighterName(e.attacker)} ${this.verb(e.attacker, e.ranged ? 'shoot' : e.retaliation ? 'strike back at' : e.charge ? 'charge' : 'hit')} ${this.objectName(e.target)} for ${e.damage}${fell}${e.lucky ? ' A lucky blow!' : ''}${e.status ? ` ${STATUSES[e.status].onHit ?? ''}` : ''}`;
+        v.log = `${blow} for ${e.damage}${fell}${e.lucky ? ' A lucky blow!' : ''}${e.status ? ` ${STATUSES[e.status].onHit ?? ''}` : ''}`;
       },
       tick: (t) => {
         const ms = t * after;
@@ -491,7 +496,10 @@ export class BattleController implements Screen {
           for (const [n, to] of path.entries()) {
             const a = n === 0 ? start : path[n - 1];
             this.step(0.12, {
-              start: () => to[0] !== a[0] && v.facings.set(e.fighter, to[0] > a[0] ? 1 : -1),
+              start: () => {
+                if (n === 0) v.log = `${this.fighterName(e.fighter)} ${this.verb(e.fighter, 'advance')}...`;
+                if (to[0] !== a[0]) v.facings.set(e.fighter, to[0] > a[0] ? 1 : -1);
+              },
               tick: (t) => {
                 const hop = frames ? 0 : Math.sin(t * Math.PI) * 4;
                 v.positions.set(e.fighter, [a[0] + (to[0] - a[0]) * t, a[1] + (to[1] - a[1]) * t - hop]);

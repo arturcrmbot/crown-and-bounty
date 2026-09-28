@@ -48,7 +48,8 @@ describe('the bottom bar', () => {
     expect(barNote(w, { kind: 'mana' })).toContain('Mana 30/30');
     expect(barNote(w, { kind: 'movement' })).toBe('150 movement left today, of 150 · E ends the day');
     expect(barNote(w, { kind: 'bounty' })).toBe('Wanted: Baron Grimsby, by day 100 · 99 days left · click for the poster');
-    expect(barNote(w, { kind: 'day' })).toContain('next on day VIII');
+    expect(barNote(w, { kind: 'day' })).toBe('Day I of 100 · payday once a week, next on day VIII');
+    expect(barNote({ ...w, day: 7 }, { kind: 'day' })).toContain('next on day VIII');
     expect(barNote(w, { kind: 'hourglass' })).toBe('End the day (E)');
   });
 });

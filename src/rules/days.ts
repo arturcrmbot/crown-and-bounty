@@ -32,7 +32,7 @@ function grow(l: Location): Location {
 const MAX_GROWTH = 5;
 
 /**
- * Next day: fresh legs. Every seventh day is payday: the King pays, troops take wages, places
+ * Next day: fresh legs. Payday comes once a week, from day VIII: the King pays, troops take wages, places
  * restock, villains recruit. In the night, stacks on the move take their walk.
  */
 export function endDay(state: GameState): Result {

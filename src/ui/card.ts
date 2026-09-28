@@ -7,6 +7,12 @@ import { uiScale } from './scale';
 import { play } from './sound';
 
 type ScreenPoint = { x: number; y: number };
+/** A card's padding and border, top and bottom (CSS pixels): `max-height` doesn't count them. */
+const CHROME = 30;
+/** The space above a card's buttons (`.choices` margin). */
+const CHOICES_GAP = 9;
+/** How much of a card's words should show above its buttons before it may cover the bar. */
+const SOME_WORDS = 72;
 /** A box on the page (page pixels) that a card with nowhere in particular to be should keep clear of. */
 export type Keepout = { x0: number; y0: number; x1: number; y1: number };
 
@@ -28,15 +34,19 @@ function portraitImage(id: PortraitId): string {
 export class CardView {
   private readonly wrap = document.createElement('div');
   private readonly card = document.createElement('div');
+  /** The card's words (face, title, lines): they scroll when the card is too tall, and the buttons stay put. */
+  private readonly body = document.createElement('div');
   private onChoice: (action: Action) => void;
   private title: string | null = null;
   private scale = 1;
-  private tallest = 0;
+  private tallest = '';
 
   constructor(onChoice: (action: Action) => void) {
     this.onChoice = onChoice;
     this.wrap.className = 'kc-card-wrap';
     this.card.className = 'kc-card';
+    this.body.className = 'kc-card-body';
+    this.card.append(this.body);
     this.wrap.append(this.card);
     this.wrap.hidden = true;
     document.body.append(this.wrap);
@@ -49,7 +59,8 @@ export class CardView {
 
   show(card: Card) {
     // A new card unfolds like a letter; the same card shown again just updates.
-    if (this.wrap.hidden || this.title !== card.title) {
+    const fresh = this.wrap.hidden || this.title !== card.title;
+    if (fresh) {
       this.card.classList.remove('unfold');
       void this.card.offsetWidth;
       this.card.classList.add('unfold');
@@ -60,7 +71,9 @@ export class CardView {
     this.card.classList.toggle('tiled', Boolean(card.tiles));
     const face = card.portrait ? `<img class="portrait" alt="" src="${portraitImage(card.portrait)}">` : '';
     const title = card.title ? `<h3>${escape(card.title)}</h3>` : '';
-    this.card.innerHTML = `${card.poster ? title + face : face + title}${card.lines.map((l) => `<p>${format(l)}</p>`).join('')}`;
+    this.body.innerHTML = `${card.poster ? title + face : face + title}${card.lines.map((l) => `<p>${format(l)}</p>`).join('')}`;
+    this.card.querySelector('.choices')?.remove();
+    if (fresh) this.body.scrollTop = 0;
     if (card.choices.length) {
       const choices = document.createElement('div');
       choices.className = card.tiles ? 'choices tiles' : 'choices';
@@ -142,14 +155,17 @@ export class CardView {
       this.scale = s;
       this.wrap.style.transform = s === 1 ? '' : `scale(${s})`;
     }
-    const tallest = Math.floor((window.innerHeight - 46) / s);
+    // A tall card fits the map area, its words scrolling above its buttons. Only if the buttons
+    // (and a few lines of words) can't fit there does it take the whole window, over the bar.
+    const choices = this.card.querySelector<HTMLElement>('.choices');
+    const needs = CHROME + (choices ? choices.offsetHeight + CHOICES_GAP : 0) + Math.min(this.body.scrollHeight, SOME_WORDS);
+    if (needs * s > bottom - top - 16) [top, bottom] = [0, window.innerHeight];
+    const tallest = `${Math.max(0, Math.floor((bottom - top - 16) / s) - CHROME)}px`;
     if (tallest !== this.tallest) {
       this.tallest = tallest;
-      this.card.style.maxHeight = `${tallest}px`;
+      this.card.style.maxHeight = tallest;
     }
     const [w, h] = [this.wrap.offsetWidth * s, this.wrap.offsetHeight * s];
-    // Too tall for the map area: use the whole window, so the buttons at the bottom stay on screen.
-    if (h > bottom - top - 16) [top, bottom] = [0, window.innerHeight];
     const [minY, maxY] = [top + 8, Math.max(top + 8, bottom - h - 8)];
     const clampY = (y: number) => Math.min(maxY, Math.max(minY, y));
     let x = Math.min(window.innerWidth - w - 8, Math.max(8, (point ? point.x : window.innerWidth / 2) - w / 2));

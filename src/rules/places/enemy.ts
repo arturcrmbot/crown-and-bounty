@@ -188,7 +188,7 @@ export function scoutsLine(chance: number): string {
 function carriesLine(state: GameState, place: Location): string[] {
   if (!place.artifact || !heroStats(state).odds || place.done) return [];
   const a = ARTIFACTS[place.artifact];
-  return [`*Your scouts have seen what they carry: **${a.name}**. ${a.note}*`];
+  return [`*Your scouts have seen what they carry:* **${a.name}**. ${a.note}`];
 }
 
 /** A band of people (no beasts, no villain) far weaker than him lays down its arms to a diplomat. */

@@ -2,6 +2,8 @@ import { BACKGROUNDS, type BackgroundId } from '../content/backgrounds';
 import { COMMISSIONS } from '../content/campaign';
 import { SPELLS } from '../content/spells';
 import { troops } from '../content/troops';
+import { ARTIFACTS, type ArtifactId } from '../content/artifacts';
+import { PERKS, RANKS, SKILLS } from '../content/skills';
 import { campaignLines, commissionOf, hasNextCommission, roman, type Card, type GameState } from '../rules/game';
 
 /** The title screen's menu: carry on with a save, or begin again. */
@@ -59,7 +61,41 @@ export function storyCard(background: BackgroundId, briefed = false): Card {
       `You ride out with ${b.army.map((s) => troops(s.troop, s.count)).join(' and ')}${b.spells.length ? `, and ${b.spells.map((s) => SPELLS[s].name).join(', ')} in your spellbook` : ''}.`,
       `**${b.signature.name}.** ${b.signature.note}`,
       'Click the map to ride (hold **Shift** to gallop). Click anything to look at it, and again to go there. Red marks on your route are for tomorrow.',
-      `The hourglass (or **E**) ends the day. Every seventh day is payday. Click ${b.short} (or press **H**) for his gear and his army. **M** turns the sound off, and **?** lists every key.`,
+      `The hourglass (or **E**) ends the day. Payday comes once a week: on day VIII, and every seven days after. Click ${b.short} (or press **H**) for his gear and his army. **M** turns the sound off, and **?** lists every key.`,
+    ],
+    choices: [{ label: 'Ride out', action: { type: 'close' } }],
+    wide: true,
+  };
+}
+
+export const botRideCard = (chapter: number, target: number): Card => ({
+  title: 'The bot is riding ahead',
+  lines: [`He is riding Commission ${roman(chapter + 1)} for you. Then you take the reins in Commission ${roman(target)}.`],
+  choices: [],
+  wide: true,
+});
+
+export function chapterStartCard(state: GameState): Card {
+  const hero = state.hero;
+  const skills = Object.entries(hero.skills).filter((entry): entry is [keyof typeof hero.skills, number] => Boolean(entry[1]))
+    .map(([id, rank]) => `${SKILLS[id].name} (${RANKS[rank - 1]})`);
+  const perks = hero.perks.map((id) => PERKS[id].name);
+  const spells = hero.spells.map((id) => SPELLS[id].name);
+  const worn = Object.values(hero.gear).filter((id): id is ArtifactId => Boolean(id)).map((id) => ARTIFACTS[id].name);
+  const pack = hero.pack.map((id) => ARTIFACTS[id].name);
+  const army = state.army.map((stack) => troops(stack.troop, stack.count));
+  const flags = Object.entries(state.flags ?? {}).map(([flag, value]) => `${flag}: ${value}`);
+  return {
+    title: `Commission ${roman(state.campaign.chapter + 1)}: your turn`,
+    lines: [
+      `The bot rode ${state.campaign.record.length} earlier commission${state.campaign.record.length === 1 ? '' : 's'} and took the King\u2019s court boons. Now the reins are yours.`,
+      `Level ${hero.level}. Attack ${hero.attack}, defence ${hero.defence}, spell power ${hero.spellPower}, knowledge ${hero.knowledge}. Leadership ${state.leadership}.`,
+      `Skills: ${skills.join(', ') || 'none'}. Perks: ${perks.join(', ') || 'none'}.`,
+      `Spellbook: ${spells.join(', ') || 'empty'}.`,
+      `Wearing: ${worn.join(', ') || 'nothing'}. Pack: ${pack.join(', ') || 'empty'}.`,
+      `Army: ${army.join(', ') || 'none'}.`,
+      `Gold: ${state.gold.toLocaleString('en-GB')}. Map pieces: ${state.campaign.record.length} of 5.`,
+      `Story flags: ${flags.join(', ') || 'none in this chapter yet'}.`,
     ],
     choices: [{ label: 'Ride out', action: { type: 'close' } }],
     wide: true,

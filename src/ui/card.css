@@ -24,10 +24,21 @@
 .kc-card.wide {
   width: 400px;
 }
-/* Never taller than the window (padding and border included): a very long card scrolls rather than losing its buttons. */
+/* Never taller than the room it's given (padding and border included): a very long card scrolls its
+   words and keeps its buttons in sight. Only if the buttons alone don't fit does the whole card scroll. */
 .kc-card {
+  display: flex;
+  flex-direction: column;
   max-height: calc(100vh - 46px);
   overflow-y: auto;
+}
+.kc-card-body {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+.kc-card .choices {
+  flex: none;
 }
 /* A face on the card, in a little gilt frame, top left. */
 .kc-card img.portrait {
