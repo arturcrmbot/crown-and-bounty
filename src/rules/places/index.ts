@@ -12,6 +12,7 @@ import { event } from './event';
 import type { PlaceKind } from './kind';
 import { mill, mine, signpost, tower } from './sights';
 import { chest, pile } from './treasure';
+import { well } from './well';
 
 export const PLACE_KINDS: Record<LocationKind, PlaceKind> = {
   castle: dwelling,
@@ -26,6 +27,7 @@ export const PLACE_KINDS: Record<LocationKind, PlaceKind> = {
   hideout: enemy('hideout'),
   dig: x,
   event,
+  well,
 };
 
 /** The card for a place before the hero rides there. */

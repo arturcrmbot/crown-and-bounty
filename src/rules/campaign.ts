@@ -88,11 +88,11 @@ export function nextArmy(state: GameState): Army {
   return army;
 }
 
-/** Three different boons, drawn from the seed. */
-function drawBoons(seed: number): [BoonId[], number] {
+/** Different boons, drawn from the seed: three, or four for the King's favourite. */
+function drawBoons(seed: number, count = 3): [BoonId[], number] {
   const pool = [...BOON_IDS];
   const picked: BoonId[] = [];
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < Math.min(count, BOON_IDS.length); i++) {
     const [v, next] = roll(seed);
     seed = next;
     picked.push(pool.splice(Math.floor(v * pool.length), 1)[0]);
@@ -104,7 +104,7 @@ function drawBoons(seed: number): [BoonId[], number] {
 export function toCourt(state: GameState): Result | null {
   if (state.over !== 'won' || !hasNextCommission(state)) return null;
   if (state.campaign.court) return { state, events: [{ type: 'court' }] };
-  const [boons, seed] = drawBoons(state.seed);
+  const [boons, seed] = drawBoons(state.seed, 3 + heroStats(state).boons);
   const record = [...state.campaign.record, { chapter: state.campaign.chapter, days: state.day, level: state.hero.level }];
   const next: GameState = { ...state, seed, gold: state.gold + commissionOf(state).reward, campaign: { ...state.campaign, record, court: { boons } } };
   return { state: next, events: [{ type: 'court' }] };
