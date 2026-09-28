@@ -1,5 +1,6 @@
 import { BACKGROUNDS, type BackgroundId } from './content/backgrounds';
 import { SPELLS, type SpellId } from './content/spells';
+import { TROOPS, type TroopId } from './content/troops';
 import { Game } from './game/game';
 import { Display } from './game/display';
 import { Input } from './game/input';
@@ -44,9 +45,13 @@ function debugStart(): GameState {
   const first = taught.length ? { ...picked, hero: { ...picked.hero, spells: [...picked.hero.spells, ...taught] } } : picked;
   const court = Number(query.get('court') ?? 0);
   const chapter = court > 0 ? court - 1 : Number(query.get('commission') ?? 1) - 1;
-  const { hero, gold, leadership, army } = first;
+  const { hero, gold, leadership } = first;
+  // ?army=knights:20,archers:30 sets the army for a debug start.
+  const army = query.has('army')
+    ? (query.get('army') ?? '').split(',').map((part) => part.split(':')).filter(([troop, count]) => troop in TROOPS && Number(count) > 0).map(([troop, count]) => ({ troop: troop as TroopId, count: Number(count) }))
+    : first.army;
   const record = Array.from({ length: chapter }, (_, i) => ({ chapter: i, days: 10, level: 1 }));
-  const base = chapter > 0 ? beginCommission(commissionAt(first.campaign, chapter).province, first.seed, { hero, gold, leadership, army }, chapter, record, first.seed) : first;
+  const base = chapter > 0 ? beginCommission(commissionAt(first.campaign, chapter).province, first.seed, { hero, gold, leadership, army }, chapter, record, first.seed) : { ...first, army };
   if (court > 0) return { ...base, opening: undefined, over: 'won', bounty: 'paid' };
   // ?sceptre=1 (with ?commission=5): the last bounty is paid and the X is on the map.
   const x = commissionAt(first.campaign, chapter).province.sceptre;
@@ -64,7 +69,7 @@ const game = new Game(display, Math.max(1, Number(query.get('speed') ?? 1)));
 const input = new Input(display, game.input);
 // The title and the King's welcome come first, unless a debug start (or a frozen screenshot) wants straight in.
 // ?quick=1 skips them too; ?title=1 brings them back even when frozen.
-const quick = (frozen && query.get('title') !== '1') || ['quick', 'battle', 'court', 'commission', 'sceptre', 'reveal', 'x', 'hero', 'spells'].some((k) => query.has(k));
+const quick = (frozen && query.get('title') !== '1') || ['quick', 'battle', 'court', 'commission', 'sceptre', 'reveal', 'x', 'hero', 'spells', 'army'].some((k) => query.has(k));
 if (quick) {
   await unitArt;
   // ?reveal=1 lifts the fog, for looking the whole map over.

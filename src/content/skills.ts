@@ -48,7 +48,7 @@ export const PERKS: Record<PerkId, Perk> = {
   cavalryCharge: {
     id: 'cavalryCharge',
     name: 'Cavalry Charge',
-    note: 'Your knights charge: after riding 3 hexes they hit a quarter harder, and nobody strikes back.',
+    note: 'Your knights charge: after a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder, and nobody strikes back.',
     bonus: { charge: ['knights'] },
     trick: true,
   },

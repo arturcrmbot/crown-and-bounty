@@ -49,6 +49,8 @@ export type Enemy = {
   grown?: number;
   /** Nights left before a hunter that has fallen on the camp hunts again. */
   rest?: number;
+  /** A hunter on the hero's trail since dawn: if he's still in reach tonight, it falls on his camp. */
+  trailing?: boolean;
   lines: string[];
   army: Army;
   reward: number;

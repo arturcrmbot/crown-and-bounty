@@ -1,8 +1,8 @@
-import { troopPower, TROOPS } from '../../content/troops';
+import { abilitiesOf, troopPower, TROOPS } from '../../content/troops';
 import { SPELLS, STATUSES } from '../../content/spells';
 import {
-  activeFighter, battleAct, canCast, fighterById, hasStatus, isRanged, options, spellCost, spellDamage, speedOf, statsOf, strike, wound,
-  type BattleAction, type BattleState, type Fighter, type Side,
+  activeFighter, battleAct, canCast, fighterById, hasStatus, isRanged, options, spellCost, spellDamage, speedOf, statsOf, stepsTo, strike, wound,
+  type BattleAction, type BattleState, type Fighter, type Options, type Side,
 } from './battle';
 import { distance, HEXES, NEIGHBOURS, reachMask } from './hex';
 
@@ -121,19 +121,29 @@ export function autoResolve(b: BattleState, choose: Chooser = chooseAction): Bat
   return battle;
 }
 
-// --- The commander (v2) -------------------------------------------------------------------------
+// --- The commander (v2) and the enemy ------------------------------------------------------------
 //
-// It tries every action it could take with the real rules (average damage, no dice), and scores
-// what's left: the worth of its stacks against theirs, less what the enemy could take back next
-// turn, plus what it could take itself. So it finishes off wounded stacks, keeps its shooters out
-// of reach, blocks the way to them, charges shooters it can't out-shoot, and casts whatever spell
-// is worth most, without knowing any spell or troop by name.
+// Both try every action they could take with the real rules (average damage, no dice), and score
+// what's left: the worth of each side's stacks, less what the other side could take back next turn,
+// plus what they could take themselves. So they finish off wounded stacks, gang up on a stack that
+// has already struck back, go for shooters, keep their own shooters shooting, and know that a
+// stack which regenerates shrugs off scratches, all without knowing any spell or troop by name.
+// Your sergeants (the commander) may hold back and let the enemy come; the enemy never does (see
+// `onslaught`).
 
-/** How much the enemy's next strikes count against us, and ours for us; blows a turn further off count less. */
-const THEIR_THREAT = 0.7;
-const OUR_THREAT = 0.3;
-const THEIR_LATER = 0.3;
-const OUR_LATER = 0.12;
+/**
+ * How much each side's next strikes count. The careful commander weighs what it could lose; the
+ * enemy picks its blows the same way, but closes in bravely, and heads for your shooters (`hunt`).
+ */
+type Weights = { theirNow: number; theirLater: number; ourNow: number; ourLater: number; patient: boolean; hunt?: number };
+const CAREFUL: Weights = { theirNow: 0.7, theirLater: 0.3, ourNow: 0.3, ourLater: 0.12, patient: true };
+const STRIKE: Weights = { ...CAREFUL, patient: false };
+const BRAVE: Weights = { theirNow: 0.35, theirLater: 0.1, ourNow: 0.6, ourLater: 0.25, patient: false, hunt: 0.05 };
+
+/** A stack still standing is worth this many of its troops more: its turn, its strike back, the hexes it holds. */
+const PRESENCE = 0.5;
+/** How much of what a stack's top troop will heal before it acts again counts as healed already. */
+const HEALED = 0.5;
 
 /** What one troop of a stack is worth as it stands: health times damage, with skill, bless, speed and shots. */
 function troopWorth(b: BattleState, f: Fighter): number {
@@ -148,10 +158,19 @@ function troopWorth(b: BattleState, f: Fighter): number {
   return Math.sqrt(t.hp * armour * damage * skill) * (1 + (attack + defence) / 20) * (t.shots ? 1.35 : 1) * (0.8 + 0.05 * speedOf(f));
 }
 
+/** Share of a troop's health its top troop heals at the start of each of its turns. */
+const heals = new Map<Fighter['troop'], number>();
+const healShare = (troop: Fighter['troop']) => {
+  let share = heals.get(troop);
+  if (share === undefined) heals.set(troop, (share = Math.max(0, ...abilitiesOf(troop).map((a) => a.healsTopOnTurn ?? 0))));
+  return share;
+};
+
 function stackWorth(b: BattleState, f: Fighter): number {
   if (f.count <= 0) return 0;
   const hp = TROOPS[f.troop].hp;
-  return (troopWorth(b, f) * ((f.count - 1) * hp + f.hp)) / hp;
+  const healing = Math.min(hp - f.hp, hp * healShare(f.troop));
+  return troopWorth(b, f) * (f.count - 1 + (f.hp + healing * HEALED) / hp + PRESENCE);
 }
 
 /** Worth a stack loses to `damage`. */
@@ -219,8 +238,8 @@ function threat(b: BattleState, side: Side, mask: Uint8Array): { now: number; la
 /** Shooting worth with arrows left: whoever has less of it can't win by waiting. */
 const firepowerOf = (b: BattleState, side: Side) => b.fighters.filter((f) => f.count > 0 && f.side === side && f.shots > 0).reduce((sum, f) => sum + stackWorth(b, f), 0);
 
-/** How good the battle looks for `side`. */
-export function evaluate(b: BattleState, side: Side): number {
+/** How good the battle looks for `side`, weighing the blows to come as `w` says. */
+export function evaluate(b: BattleState, side: Side, w: Weights = CAREFUL): number {
   const mine = b.fighters.filter((f) => f.count > 0 && f.side === side).reduce((sum, f) => sum + stackWorth(b, f), 0);
   const theirs = b.fighters.filter((f) => f.count > 0 && f.side !== side).reduce((sum, f) => sum + stackWorth(b, f), 0);
   if (b.result === 'won' || b.result === 'lost') return (b.result === 'won') === (side === 'player') ? 1e5 + mine : -1e5 - theirs;
@@ -228,7 +247,19 @@ export function evaluate(b: BattleState, side: Side): number {
   const mask = blockedMask(b);
   const theirs2 = threat(b, other, mask);
   const ours = threat(b, side, mask);
-  let score = mine - theirs - THEIR_THREAT * theirs2.now - THEIR_LATER * theirs2.later + OUR_THREAT * ours.now + OUR_LATER * ours.later;
+  let score = mine - theirs - w.theirNow * theirs2.now - w.theirLater * theirs2.later + w.ourNow * ours.now + w.ourLater * ours.later;
+  if (w.hunt) {
+    // Their shooters hurt wherever we stand: every stack that can't shoot heads for them.
+    const shooters = b.fighters.filter((f) => f.count > 0 && f.side === other && f.shots > 0);
+    if (shooters.length > 0) {
+      for (const f of b.fighters) {
+        if (f.count <= 0 || f.side !== side || f.shots > 0) continue;
+        const nearest = Math.min(...shooters.map((o) => distance(f.at, o.at)));
+        score -= w.hunt * stackWorth(b, f) * Math.max(0, nearest - 1) / Math.max(1, speedOf(f));
+      }
+    }
+  }
+  if (!w.patient) return score;
   // Out-shot, waiting only loses: close in on their stacks. And the longer a battle drags on, the
   // more both sides want to get it over with, so nobody dances round a troll for forty rounds.
   const pressure = (firepowerOf(b, other) > firepowerOf(b, side) * 1.1 ? 1 : 0) + Math.max(0, (b.round - 6) / 6);
@@ -244,7 +275,7 @@ export function evaluate(b: BattleState, side: Side): number {
 }
 
 /** Every action the acting stack could take (the hero's spells come separately). */
-function stackActions(b: BattleState): BattleAction[] {
+export function stackActions(b: BattleState): BattleAction[] {
   const opts = options(b);
   return [
     ...opts.shoot.map((target): BattleAction => ({ type: 'shoot', target })),
@@ -255,7 +286,7 @@ function stackActions(b: BattleState): BattleAction[] {
 }
 
 /** Every spell the hero could cast now, on every stack it could be cast on. */
-function castActions(b: BattleState): BattleAction[] {
+export function castActions(b: BattleState): BattleAction[] {
   const actions: BattleAction[] = [];
   for (const spell of b.hero.spells) {
     if (!canCast(b, spell)) continue;
@@ -265,13 +296,13 @@ function castActions(b: BattleState): BattleAction[] {
   return actions;
 }
 
-/** The action that leaves the battle looking best for the side whose turn it is (by `judge`, if given). */
-function best(b: BattleState, actions: BattleAction[], side: Side, judge?: (after: BattleState) => number): { action: BattleAction; score: number } | null {
+/** The action that leaves the battle looking best for `side`. */
+function best(b: BattleState, actions: BattleAction[], side: Side, w: Weights = CAREFUL): { action: BattleAction; score: number } | null {
   let top: { action: BattleAction; score: number } | null = null;
   for (const action of actions) {
     const { battle, events } = battleAct(b, action, true);
     if (events.length === 0) continue;
-    const score = judge ? judge(battle) : evaluate(battle, side);
+    const score = evaluate(battle, side, w);
     if (!top || score > top.score) top = { action, score };
   }
   return top;
@@ -301,43 +332,68 @@ export function commander(b: BattleState): BattleAction {
 }
 
 /**
- * The enemy's way: never wait, never turtle, never back off. A stack shoots or strikes the best
- * target it can, and if nobody is in reach it closes in on the nearest of yours, round the rocks.
+ * The enemy's way: never wait, never turtle, never back off. Shooters shoot, at whatever hurts you
+ * most; one caught in melee steps clear if it can get out of everyone's reach, and fights if it
+ * can't. Everyone else strikes the best blow in reach, weighing what the target strikes back. With
+ * nobody in reach, a stack closes in at full pace, round the rocks, making for your shooters first.
  */
 export function onslaught(b: BattleState): BattleAction {
   const f = activeFighter(b)!;
-  const acts = stackActions(b);
-  const attack = best(b, acts.filter((a) => a.type === 'melee' || a.type === 'shoot'), f.side);
-  if (attack) return attack.action;
-  const steps = stepsToFoes(b, f);
-  const moves = acts.filter((a): a is Extract<BattleAction, { type: 'move' }> => a.type === 'move');
-  if (!moves.length) return { type: 'defend' };
-  // How far from striking distance each move leaves the stack; hexes cut off from everyone count by straight distance.
-  const gap = (to: number) => (steps[to] >= 0 ? steps[to] : HEXES + Math.min(...b.fighters.filter((o) => o.count > 0 && o.side !== f.side).map((o) => distance(to, o.at))));
-  const nearest = Math.min(...moves.map((m) => gap(m.to)));
-  return best(b, moves.filter((m) => gap(m.to) === nearest), f.side)!.action;
+  const side = f.side;
+  const opts = options(b);
+  if (opts.shoot.length > 0) return best(b, opts.shoot.map((target): BattleAction => ({ type: 'shoot', target })), side, STRIKE)!.action;
+  const blow = best(b, opts.melee.map((m): BattleAction => ({ type: 'melee', target: m.target, from: m.from })), side, STRIKE);
+  if (f.shots > 0) {
+    // Caught in melee: step clear if it can get out of reach, since a shot next turn beats a blow at half strength now.
+    const melee = opts.melee.map((m): BattleAction => ({ type: 'melee', target: m.target, from: m.from }));
+    const clear = best(b, outOfReach(b, f, opts.moves).map((to): BattleAction => ({ type: 'move', to })), side, BRAVE);
+    const fight = best(b, melee, side, BRAVE);
+    if (clear && (!fight || clear.score > fight.score)) return clear.action;
+  }
+  return blow?.action ?? closeIn(b, f, opts, side)?.action ?? { type: 'defend' };
 }
 
-/** Steps from every hex to the nearest hex beside one of `f`'s foes, going round rocks and stacks (-1: no way). */
-function stepsToFoes(b: BattleState, f: Fighter): Int16Array {
+/**
+ * The best of the moves that close in at full pace on one of the other side's stacks. With no way
+ * through to any of them, it edges as near as it can, as the crow flies.
+ */
+function closeIn(b: BattleState, f: Fighter, opts: Options, side: Side): { action: BattleAction; score: number } | null {
+  const foes = b.fighters.filter((o) => o.count > 0 && o.side !== side);
+  const hexes = new Set<number>();
+  for (const o of foes) {
+    const steps = stepsTo(b, [o], f);
+    const here = steps[f.at] < 0 ? Infinity : steps[f.at];
+    let low = here;
+    for (const [hex] of opts.moves) if (steps[hex] >= 0 && steps[hex] < low) low = steps[hex];
+    if (low < here) for (const [hex] of opts.moves) if (steps[hex] === low) hexes.add(hex);
+  }
+  if (hexes.size === 0) {
+    const crow = (hex: number) => Math.min(...foes.map((o) => distance(hex, o.at)));
+    const nearest = Math.min(...[...opts.moves.keys()].map(crow));
+    for (const [hex] of opts.moves) if (crow(hex) === nearest) hexes.add(hex);
+  }
+  return best(b, [...hexes].map((to): BattleAction => ({ type: 'move', to })), side, BRAVE);
+}
+
+/** Whether `o` gets its turn before `f` does, in a round where both are still to act. */
+const actsFirst = (o: Fighter, f: Fighter) => speedOf(o) > speedOf(f) || (speedOf(o) === speedOf(f) && (o.side === f.side ? o.id < f.id : o.side === 'player'));
+
+/**
+ * Hexes a shooter caught in melee could step to where none of the other side can come beside it
+ * before its next turn, so it shoots again then.
+ */
+function outOfReach(b: BattleState, f: Fighter, moves: ReadonlyMap<number, unknown>): number[] {
   const mask = blockedMask(b);
   mask[f.at] = 0;
-  const steps = new Int16Array(HEXES).fill(-1);
-  const queue: number[] = [];
+  const reach = new Uint8Array(HEXES);
   for (const o of b.fighters) {
     if (o.count <= 0 || o.side === f.side) continue;
-    for (const n of NEIGHBOURS[o.at]) {
-      if (mask[n] || steps[n] >= 0) continue;
-      steps[n] = 0;
-      queue.push(n);
-    }
+    reach[o.at] = 1;
+    // Its moves before our next turn: the rest of this round, if it hasn't gone yet, and the next one's, if it goes first.
+    const turns = (b.order.includes(o.id) ? 1 : 0) + (actsFirst(o, f) ? 1 : 0);
+    if (turns === 0) continue;
+    const r = reachMask(o.at, speedOf(o) * turns, mask);
+    for (let i = 0; i < HEXES; i++) if (r[i]) reach[i] = 1;
   }
-  for (let k = 0; k < queue.length; k++) {
-    for (const n of NEIGHBOURS[queue[k]]) {
-      if (mask[n] || steps[n] >= 0) continue;
-      steps[n] = steps[queue[k]] + 1;
-      queue.push(n);
-    }
-  }
-  return steps;
+  return [...moves.keys()].filter((hex) => !NEIGHBOURS[hex].some((n) => reach[n]));
 }

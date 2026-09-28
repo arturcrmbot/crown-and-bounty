@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { autoResolve, chooseAction } from './ai';
-import { activeFighter, battleAct, createBattle, fighterById, options, QUIET_ROUNDS, spellDamage, strike, wound, type BattleHero, type BattleState } from './battle';
+import { activeFighter, battleAct, createBattle, enemyReach, fighterById, isCharge, options, QUIET_ROUNDS, spellDamage, strike, wound, type BattleHero, type BattleState } from './battle';
 import { colOf, distance, hexIndex, neighbours, reachable } from './hex';
 
 const hero: BattleHero = { attack: 1, defence: 1, spellPower: 2, mana: 20, spells: ['bolt', 'bless', 'slow'], castRound: 0 };
@@ -88,15 +88,37 @@ describe('a battle', () => {
   });
 
   it('calls off a battle nobody can land a blow in: a far weaker enemy is beaten, any other slips away', () => {
-    const quietly = (b: BattleState) => ({ ...b, order: [0], quiet: QUIET_ROUNDS - 1, struck: false });
+    // A round with nobody hurt and the enemy no nearer than the round before.
+    const quietly = (b: BattleState) => ({ ...b, order: [0], quiet: QUIET_ROUNDS - 1, struck: false, gap: enemyReach(b).gap });
     const end = battleAct(quietly(battle(['knights'], [10], ['goblins'], [5])), { type: 'defend' });
     expect(end.battle.result).toBe('won');
     expect(end.events.at(-1)).toMatchObject({ type: 'end', result: 'won', rout: true });
-    // Waiting out a real enemy doesn't win anything: it keeps its army, and you leave the field.
+    // Keeping out of a real enemy's way doesn't win anything: it keeps its army, and you leave the field.
     const even = battleAct(quietly(battle(['knights'], [10], ['boars'], [20])), { type: 'defend' });
     expect(even.battle.result).toBe('fled');
+    expect(even.battle.standoff).toBeUndefined();
     const busy = battleAct({ ...quietly(battle(['knights'], [10], ['goblins'], [5])), struck: true }, { type: 'defend' });
     expect(busy.battle.result).toBeUndefined();
+  });
+
+  it('keeps fighting while the enemy is still coming, however slowly', () => {
+    // Slowed trolls take rounds to cross the field: waiting for them doesn't end the battle.
+    let b = battle(['knights'], [10], ['trolls'], [2]);
+    b = { ...b, fighters: b.fighters.map((f) => (f.side === 'enemy' ? { ...f, status: ['slowed' as const] } : f)) };
+    for (let i = 0; i < 60 && !b.result; i++) b = battleAct(b, activeFighter(b)!.side === 'enemy' ? chooseAction(b) : { type: 'defend' }).battle;
+    expect(b.result).toBeDefined();
+    expect(b.result).not.toBe('fled');
+  });
+
+  it('calls it a stand-off when the enemy has no way through to you at all', () => {
+    // Knights walled into a corner by rocks: the boars can't get at them, and they won't come out.
+    const corner = hexIndex(0, 0);
+    const walls = neighbours(corner);
+    let b: BattleState = { ...battle(['knights'], [10], ['boars'], [20]), obstacles: walls };
+    b = { ...b, fighters: b.fighters.map((f) => (f.side === 'player' ? { ...f, at: corner } : f)) };
+    for (let i = 0; i < 40 && !b.result; i++) b = battleAct(b, activeFighter(b)!.side === 'enemy' ? chooseAction(b) : { type: 'defend' }).battle;
+    expect(b.result).toBe('fled');
+    expect(b.standoff).toBe(true);
   });
 
   it('never lets the enemy wait or turtle: it strikes if it can, and otherwise closes in', () => {
@@ -122,6 +144,42 @@ describe('a battle', () => {
     const b = battle(['knights'], [10], ['crossbowmen'], [20]);
     const turn = { ...b, order: [1, 0] };
     expect(chooseAction(turn)).toMatchObject({ type: 'shoot', target: 0 });
+  });
+
+  const placed = (b: BattleState, at: Record<number, number>, order: number[]): BattleState => ({ ...b, order, fighters: b.fighters.map((f) => (at[f.id] !== undefined ? { ...f, at: at[f.id] } : f)) });
+
+  it('sends its fighters after your shooters, not just at whoever is nearest', () => {
+    const archers = hexIndex(0, 8);
+    const b = placed(battle(['knights', 'archers'], [10, 20], ['wolves'], [30]), { 0: hexIndex(1, 1), 1: archers, 2: hexIndex(10, 4) }, [2, 0, 1]);
+    const move = chooseAction(b);
+    expect(move.type).toBe('move');
+    const to = (move as { to: number }).to;
+    expect(distance(to, archers)).toBeLessThan(distance(to, hexIndex(1, 1)));
+  });
+
+  it('lets a shooter caught in melee step out of reach, and shoot again', () => {
+    let b = placed(battle(['swordsmen'], [5], ['crossbowmen'], [20]), { 0: hexIndex(5, 4), 1: hexIndex(6, 4) }, [1]);
+    b = { ...b, fighters: b.fighters.map((f) => (f.side === 'player' ? { ...f, status: ['slowed' as const] } : f)) };
+    const step = chooseAction(b);
+    expect(step.type).toBe('move');
+    expect(distance((step as { to: number }).to, hexIndex(5, 4))).toBeGreaterThan(3);
+  });
+
+  it('gangs up on a stack that has already struck back', () => {
+    const b = placed(battle(['knights', 'knights'], [10, 10], ['swordsmen'], [30]), { 0: hexIndex(5, 3), 1: hexIndex(5, 5), 2: hexIndex(6, 4) }, [2]);
+    const tired = { ...b, fighters: b.fighters.map((f) => (f.id === 1 ? { ...f, retaliated: true } : f)) };
+    expect(chooseAction(tired)).toMatchObject({ type: 'melee', target: 1 });
+  });
+
+  it('lets knights charge only with a run-up, not by circling a stack they are already fighting', () => {
+    const lances = (b: BattleState): BattleState => ({ ...b, hero: { ...b.hero, charge: ['knights'] }, order: [0, 1] });
+    // From across the field: a charge.
+    const clear = lances(placed(battle(['knights'], [10], ['swordsmen'], [30]), { 0: hexIndex(2, 4), 1: hexIndex(6, 4) }, [0, 1]));
+    expect(isCharge(clear, clear.fighters[0], hexIndex(5, 4))).toBe(true);
+    // Already at grips on one side, riding round to the other three hexes away: just a blow.
+    const engaged = lances(placed(battle(['knights'], [10], ['swordsmen'], [30]), { 0: hexIndex(5, 4), 1: hexIndex(6, 4) }, [0, 1]));
+    expect(options(engaged).moves.get(hexIndex(7, 4))?.length).toBeGreaterThanOrEqual(3);
+    expect(isCharge(engaged, engaged.fighters[0], hexIndex(7, 4))).toBe(false);
   });
 
   it('makes defenders harder to hurt, and lets a stack wait until last', () => {

@@ -3,6 +3,55 @@
 Newest first. Each entry says what was played, how it felt to an experienced player (HoMM2, King's Bounty,
 modern RPGs), and what was done about it.
 
+## #5: 28 Sep 2026, enemies that really fight, and fair odds
+
+**Played:** fights by hand with every background, through the real UI in headless Edge, one decision at a
+time: a Knight against the patrol on day 1, the wolves with nothing but Defend, and the patrol with an army the
+card rates 50/50. A Ranger's volley against the patrol, a Wizard's spells against it, and a Courtier who hires
+the highwaymen and takes them to the boars. The Fenmarch goblins hunting a weak Knight. Then the bots: close
+fights for every enemy of every commission, `npm run difficulty`, and the campaign sim.
+
+**How it felt:** the enemy now fights like it means it. The patrol's swordsmen march past my knights to get at my
+archers, pin them and cut them down, while the crossbowmen keep shooting. When my archers stepped out of reach,
+the swordsmen turned on my knights, and the crossbowmen joined in. Wait and Defend matter: waiting lets the
+knights act last in one round and first in the next. Spells matter even more: Slow halves the swordsmen's march,
+four Lightning Bolts and a Hasted, Blessed charge wiped out the crossbowmen. Losing to a gate on day 1 felt
+earned, not unfair.
+
+**Found and fixed:**
+
+1. Enemy fighters closed in on whoever was nearest. They now make for your shooters, gang up on a stack that
+   has already struck back, and finish off wounded stacks. Their shooters keep shooting, and one caught in melee
+   steps out of reach when it can. Trolls count on their healing. In close fights (every enemy, the army
+   scaled to 50/50 against the old enemy) the sergeants now win 43% instead of 50%.
+2. A battle ended as a retreat after three quiet rounds even while the enemy was still marching at you, so
+   waiting for slowed trolls cost a quarter of the army. Quiet rounds now count only while the enemy gets no
+   closer. If it has no way through to you at all, it's a stand-off: both sides draw off and nobody is lost.
+   Keeping out of its way on purpose is still a retreat.
+3. Hunters could fall on the camp on the first night, from out of the mist, even at the hero's castle. That
+   was the Courtier bot's loop in commission III: the Hunting Hounds ambushed it at home every few days, so it
+   rebuilt and lost again until day 100. Hunters now pick up the trail first. At dawn the card warns you and the
+   mist lifts round them, and they only fall on the camp if you're still in reach the next night. They never
+   come into a castle or village, and the ambush card gives the odds. The bot runs from ambushes it would lose
+   and shelters in town when hunted. The same seed now wins commission III on day 65.
+4. Playtest #4's open point: the sergeants beat the patrol for a day-3 Knight 15 times in 16, and careful hand
+   play lost. They won by circling: knights beside the swordsmen rode three hexes round them and charged again,
+   every turn, so nobody ever struck back. A charge now needs a run-up started clear of the enemy. The card for
+   that Knight now says what hand play found.
+5. The Ranger's free volley aimed at the biggest stack. It now aims where the arrows take the most, enemy
+   shooters first.
+
+**Checked:** with a 50/50 army (13 knights, 28 archers, 20 peasants) I lost my archers by hand, then handed over
+to the sergeants, who won with two knights left. They play about as well as a careful player, not better. In Aldmoor's
+close fights a player who always attacks won 32%, the sergeants 45%, and one who looks a round ahead 60%. Defend alone
+against the 84 wolves is a defeat. The hired highwaymen fight, and the Courtier beat the boars without a loss.
+All tests pass, every difficulty target holds, and the bot wins all five commissions with every background.
+
+**Still open (balance is parked, as agreed):** the Wizard's bolts make later commissions easy, even with a tenth
+of the army. The Courtier bot's commission III on that old seed takes 65 days. A version of the sergeants that
+plays out the enemy's reply wins 53% of close fights instead of 45%, at twice the cost: worth trying if auto
+should play sharper.
+
 ## #4: 28 Sep 2026, Artur's first commission as a Knight
 
 **Played:** Artur played the live build from the title, through Aldmoor, as a Knight. Then we checked the fixes
