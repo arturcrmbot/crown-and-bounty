@@ -11,12 +11,12 @@ import type { BattleState } from '../rules/battle/battle';
 import { ambushCard, apply, bountyCard, commissionOf, describe, finishFight, heroStats, levelUpCard, locationById, placeNote, roman, visit, whenThere, type Action, type Card, type GameEvent, type GameState, type Result } from '../rules/game';
 import { barNote } from '../rules/heroSheet';
 import type { Point } from '../rules/map/geometry';
-import { cellCentre, type MapModel } from '../rules/map/model';
+import { CELL, cellCentre, type MapModel, type Terrain } from '../rules/map/model';
 import { daysAway, planRoute, routeCosts, stepAlong } from '../rules/map/movement';
 import { statIcon } from '../render/artifactIcons';
 import { CardView } from '../ui/card';
 import { bitmapUrl } from '../ui/pixels';
-import { play } from '../ui/sound';
+import { play, playStep } from '../ui/sound';
 import { sting } from '../audio/stings';
 import type { Place, Soundscape } from '../audio/ambience';
 import { soundscapeOf } from './soundscape';
@@ -45,6 +45,8 @@ const TOWN_LINGER = 3;
 const RIDE_SPEED = 95;
 /** Map pixels per step of the trot cycle, so hooves don't slide. */
 const STRIDE = 5;
+/** Map pixels between footfalls (or hoofbeats), for the sound of the ride. */
+const STEP_PX = 16;
 const SCROLL_SPEED = 6;
 /** How much faster he rides while Shift is held. */
 const GALLOP = 3;
@@ -91,6 +93,7 @@ export class AdventureController implements Screen {
   private readonly drawn: { x: number; y: number };
   private travelled = 0;
   private sinceDust = 0;
+  private sinceStep = 0;
   private follow = false;
   private tiredShown = false;
   private cardAnchor: Point | null = null;
@@ -624,6 +627,12 @@ export class AdventureController implements Screen {
       budget -= move;
       this.travelled += move;
       this.sinceDust += move;
+      this.sinceStep += move;
+      if (this.sinceStep > STEP_PX) {
+        this.sinceStep = 0;
+        const terrain = this.map.terrain[Math.floor(ty / CELL) * this.map.width + Math.floor(tx / CELL)] as Terrain;
+        playStep(terrain, Boolean(ART[heroArtId(this.state.hero.background)].rides));
+      }
       if (this.sinceDust > 7 && this.map.grid.cost[Math.floor(ty / 8) * this.map.width + Math.floor(tx / 8)] === 1) {
         this.sinceDust = 0;
         this.view.effects.dust(this.drawn.x - this.state.hero.facing * 12, this.drawn.y - 1, this.state.hero.facing);
