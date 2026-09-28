@@ -232,8 +232,15 @@ state didn't change shape.
 20. The leadership bar was red when all was well; it's bronze, red only when he leads more than he can. Empty
     slots and places in the line say how to fill them, and a tap on a chip shows its note.
 
-**Still open:** the hero's own battle numbers go on his leader card once "Hero on the battlefield" lands them.
-Recruiting takes all you can pay for; there's no taking fewer. Swapping a leadership banner for another leaves
+21. Since Aldric took the field (#9), his leader tile opened a card that still said he watched from the field's
+    edge. It's now his own stack card, laid out like his men's: his figure, his numbers from `heroFighter`
+    (attack and defence with what his own stats add, damage and health with how they grow, speed, shots), his
+    tricks (the charge, the bodyguard, the rally), what he lends every stack, his spells while he stands, where he
+    stands in the line, and that if he falls he's carried off, not killed, and goes no further that day. Stack
+    cards say "Rallied" beside a courtier instead of counting a rally by where they happen to stand, and a trick
+    taught twice (a Knight with Brannoc's lance, a Ranger with the horn) is one line, naming both.
+
+**Still open:** recruiting takes all you can pay for; there's no taking fewer. Swapping a leadership banner for another leaves
 the army as big as it was: harmless, but a player could use it.
 
 ## #7: 28 Sep 2026, the Ranger tames beasts, and finds offer real choices

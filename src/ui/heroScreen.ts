@@ -6,7 +6,7 @@ import { INK } from '../render/palette';
 import { portraitOf } from '../render/portraits';
 import { ART, heroArtId, type ArtId } from '../render/units';
 import { unitBitmap } from '../render/wesnoth';
-import { coins, heroSheet, heroStats, leaderTraits, leadershipUsed, SLOT_NAMES, stackSheet, wages, type Action, type GameState, type HeroSheet } from '../rules/game';
+import { coins, heroSheet, heroStats, leaderSheet, leadershipUsed, SLOT_NAMES, stackSheet, wages, type Action, type GameState, type HeroSheet } from '../rules/game';
 import './heroScreen.css';
 import { bitmapUrl, PARCHMENT_SHADOW } from './pixels';
 import { play } from './sound';
@@ -257,7 +257,7 @@ export class HeroScreen {
       return `<button class="tile${open}${this.fresh.has(keyOf(place)) ? ' fresh' : ''}" data-place="${keyOf(place)}" data-tip="${escape(tip)}" aria-label="${escape(info.title)}"><img alt="" draggable="false" src="${unitUrl(stack.troop)}"><span class="count">${stack.count}</span></button>`;
     }).join('');
     const pay = Math.round(wages(army) * (1 + s.wages));
-    const leaderTip = `**${sheet.title}**\nHe leads from the field\u2019s edge: every stack adds his attack and defence to its own, and he casts from his spellbook.\n*Click for his numbers.*`;
+    const leaderTip = `**${sheet.title}**\nHe takes the field in the line with his men: every stack adds his attack and defence to its own, and he casts while he stands.\n*Click for his numbers.*`;
     const open = this.card?.kind === 'hero' ? ' open' : '';
     return `<section class="army">
       <h3>Army <small>drag to reorder: the first stands in the middle of the battle line, the rest above and below</small></h3>
@@ -287,19 +287,15 @@ export class HeroScreen {
   private cardHtml(): string {
     if (!this.card) return '';
     if (this.card.kind === 'hero') {
-      const sheet = heroSheet(this.state);
-      const s = heroStats(this.state);
-      return `<div class="kc-hero-card leader-card">
+      // His own card, laid out like his stacks': how he fights, what he brings them, and what happens if he falls.
+      const me = leaderSheet(this.state);
+      return `<div class="kc-hero-card leader-card" role="dialog" aria-label="${escape(me.title)}">
         <img class="pic" alt="" draggable="false" src="${unitUrl(heroArtId(this.state.hero.background), 2)}">
-        <div class="head"><h3>${escape(sheet.title)}</h3><p>${escape(sheet.level)}. He leads from the field\u2019s edge.</p></div>
-        <dl>
-          <dt>Attack</dt><dd><b>+${s.attack}</b> <small>to every stack</small></dd>
-          <dt>Defence</dt><dd><b>+${s.defence}</b> <small>to every stack</small></dd>
-          <dt>Spells</dt><dd><b>${s.casts}</b> <small>a round, from ${this.state.hero.spells.length} in his book</small></dd>
-          <dt>Mana</dt><dd><b>${sheet.mana.left}/${sheet.mana.max}</b> <small>none comes back in battle</small></dd>
-        </dl>
-        ${this.traitList(leaderTraits(this.state))}
-        <div class="acts"><button class="act" data-act="card-close">Close</button></div>
+        <div class="head"><h3>${escape(me.title)}</h3><p><i>${escape(me.note)}</i></p></div>
+        <dl>${this.statList(me.stats)}</dl>
+        ${this.traitList(me.traits)}
+        <p class="cost">${me.lines.map(escape).join('<br>')}</p>
+        <div class="acts"><span class="spacer"></span><button class="act" data-act="card-close">Close</button></div>
       </div>`;
     }
     if (this.card.kind !== 'stack') return '';
@@ -307,7 +303,7 @@ export class HeroScreen {
     if (!info) return '';
     const i = this.card.index;
     const last = this.state.army.length - 1;
-    const stats = info.stats.map((s) => `<dt>${escape(s.name)}</dt><dd><b>${escape(s.value)}</b> <small>${escape(s.note)}</small></dd>`).join('');
+    const stats = this.statList(info.stats);
 
     const acts = this.confirming
       ? `<span class="ask">Send the ${escape(info.title)} home for good?</span><button class="act" data-act="dismiss-yes">Dismiss them</button><button class="act" data-act="dismiss-no">Keep them</button>`
@@ -320,6 +316,10 @@ export class HeroScreen {
       <p class="cost">${escape(info.leadership)}<br>${escape(info.wages)}<br>${escape(info.row)}</p>
       <div class="acts">${acts}</div>
     </div>`;
+  }
+
+  private statList(stats: { name: string; value: string; note: string }[]): string {
+    return stats.map((s) => `<dt>${escape(s.name)}</dt><dd><b>${escape(s.value)}</b> <small>${escape(s.note)}</small></dd>`).join('');
   }
 
   private traitList(traits: { name: string; note: string; trick?: boolean }[]): string {
