@@ -1,6 +1,6 @@
 import { ARTIFACTS, type Slot } from '../content/artifacts';
 import { BACKGROUNDS, type BackgroundId, type Bonus } from '../content/backgrounds';
-import { PERKS, RANKS, SKILLS, type SkillId } from '../content/skills';
+import { PERKS, RANKS, SKILLS, skillNote, type SkillId } from '../content/skills';
 import { MAP_SPELLS, SPELLS, type MapSpellId } from '../content/spells';
 import { abilitiesOf, TROOPS, troops, type TroopId } from '../content/troops';
 import { createBattle, statsOf } from './battle/battle';
@@ -128,7 +128,7 @@ export function heroSheet(state: GameState): HeroSheet {
     movement: { left: Math.floor(state.movement), max: s.movement, line: `${Math.floor(state.movement)} of ${s.movement} movement left today \u00b7 E ends the day` },
     leadership: { used, max: s.leadership, line: `Leadership ${used}/${s.leadership}: every troop needs some, and no more will join past it` },
     signature: { name: b.signature.name, note: b.signature.note, trick: true },
-    skills: (Object.entries(h.skills) as [SkillId, number][]).filter(([, rank]) => rank > 0).map(([id, rank]) => ({ name: `${RANKS[rank - 1]} ${SKILLS[id].name}`, note: SKILLS[id].note })),
+    skills: (Object.entries(h.skills) as [SkillId, number][]).filter(([, rank]) => rank > 0).map(([id, rank]) => ({ name: `${RANKS[Math.min(rank, RANKS.length) - 1]} ${SKILLS[id].name}`, note: skillNote(id, rank) })),
     perks: h.perks.map((id) => ({ name: PERKS[id].name, note: PERKS[id].note, ...(PERKS[id].trick ? { trick: true } : {}) })),
     spells: h.spells.map((id) => ({ name: SPELLS[id].name, note: `${Math.max(1, SPELLS[id].mana - discount)} mana: ${SPELLS[id].note}` })),
     mapSpells: s.mapSpells.map((id) => ({ spell: id, label: `Cast ${MAP_SPELLS[id].name} (${MAP_SPELLS[id].mana} mana)`, note: MAP_SPELLS[id].note, disabled: h.mana < MAP_SPELLS[id].mana })),
@@ -141,7 +141,10 @@ export function heroSheet(state: GameState): HeroSheet {
 export function leaderTraits(state: GameState): Note[] {
   const s = heroStats(state);
   const pct = (x: number) => `${Math.round(x * 100)}%`;
-  const names = (ids: TroopId[]) => [...new Set(ids)].map((id) => TROOPS[id].name).join(' and ');
+  const names = (ids: TroopId[]) => {
+    const all = [...new Set(ids)].map((id) => TROOPS[id].name);
+    return all.length > 1 ? `${all.slice(0, -1).join(', ')} and ${all[all.length - 1]}` : (all[0] ?? '');
+  };
   const out: Note[] = [];
   if (s.casts > 1) out.push({ name: `${s.casts} spells a round`, note: 'He casts again before the round is out.', trick: true });
   if (s.manaDiscount) out.push({ name: 'Hedge magic', note: `Every spell costs ${s.manaDiscount} less mana.` });
@@ -150,7 +153,7 @@ export function leaderTraits(state: GameState): Note[] {
   if (s.melee) out.push({ name: 'Offence', note: `+${pct(s.melee)} damage in melee, for every stack.` });
   if (s.ranged) out.push({ name: 'Archery', note: `+${pct(s.ranged)} damage with every shot.` });
   if (s.armour) out.push({ name: 'Armour', note: `His troops take ${pct(s.armour)} less damage.` });
-  if (s.slows.length) out.push({ name: 'Dread', note: `${names(s.slows)} start every battle slowed.` });
+  if (s.slows.length) out.push({ name: 'Slowed from the start', note: `${names(s.slows)} start every battle slowed.` });
   return out;
 }
 
@@ -160,8 +163,7 @@ function namedBonuses(state: GameState): { name: string; bonus: Bonus }[] {
   const sig = BACKGROUNDS[h.background].signature;
   const out = [{ name: sig.name, bonus: sig.bonus }];
   for (const [id, rank] of Object.entries(h.skills) as [SkillId, number][]) {
-    const per = SKILLS[id].perRank;
-    if (rank > 0) out.push({ name: `${RANKS[rank - 1]} ${SKILLS[id].name}`, bonus: { melee: (per.melee ?? 0) * rank, ranged: (per.ranged ?? 0) * rank, armour: (per.armour ?? 0) * rank } });
+    if (rank > 0) out.push({ name: `${RANKS[Math.min(rank, RANKS.length) - 1]} ${SKILLS[id].name}`, bonus: SKILLS[id].ranks[Math.min(rank, RANKS.length) - 1].bonus });
   }
   for (const id of h.perks) out.push({ name: PERKS[id].name, bonus: PERKS[id].bonus });
   for (const id of Object.values(h.gear)) if (id) out.push({ name: ARTIFACTS[id].name, bonus: ARTIFACTS[id].bonus });

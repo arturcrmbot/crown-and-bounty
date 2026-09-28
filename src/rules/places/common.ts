@@ -42,7 +42,7 @@ export function forceLine(army: Army, exact = true): string {
 }
 
 /** Whether the hero's scouts count an enemy exactly: a Ranger's do, and anyone's with Scouting. */
-export const countsExactly = (state: GameState) => state.hero.background === 'ranger' || Boolean(state.hero.skills.scouting);
+export const countsExactly = (state: GameState) => heroStats(state).counts;
 
 /** A button for one of a place's choices. */
 export const option = (place: Location, label: string, choice: string, disabled = false): Choice => ({ label, action: { type: 'choose', id: place.id, choice }, ...(disabled ? { disabled: true } : {}) });

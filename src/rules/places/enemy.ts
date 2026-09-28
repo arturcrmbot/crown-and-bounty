@@ -1,7 +1,7 @@
 import { ARTIFACTS } from '../../content/artifacts';
 import { isBeast, TROOPS } from '../../content/troops';
 import { applyEffects, choiceButton } from '../effects';
-import { battleXp, fight, startFight, winChance } from '../fight';
+import { battleXp, beat, fight, startFight, winChance } from '../fight';
 import { foundNote, gainXp, giveArtifact, heroStats } from '../hero';
 import { addTroops, armyLine, close, coins, leadershipUsed, show, update, type Army, type Choice, type ContentChoice, type GameState, type Location, type Result } from '../state';
 import { countsExactly, forceLine, note, option, ride, say, words } from './common';
@@ -45,17 +45,23 @@ function joiners(state: GameState, band: Army): Army {
  */
 export function hireOffer(state: GameState, place: Location): { price: number; joining: Army; all: boolean } | null {
   const foe = place.enemy;
-  if (!foe || place.done || !heroStats(state).hires || (foe.tier !== 'pest' && foe.tier !== 'band')) return null;
-  if (foe.army.some((s) => !TROOPS[s.troop].wage)) return null;
+  const s = heroStats(state);
+  if (!foe || place.done || place.kind === 'hideout' || !s.hires) return null;
+  // Small fry sell out to anyone who hires; gatekeepers only to a diplomat, and dearly.
+  const small = foe.tier === 'pest' || foe.tier === 'band';
+  if (!small && !s.hiresGates) return null;
+  if (foe.army.some((t) => !TROOPS[t.troop].wage)) return null;
   // Content with its own offer for this sort of hero knows better.
   if (foe.parleys?.some((p) => p.needs?.background === state.hero.background)) return null;
   const joining = joiners(state, foe.army);
-  const price = joining.reduce((sum, s) => sum + s.count * TROOPS[s.troop].wage * HIRE_PRICE, 0);
-  const all = foe.army.every((s) => joining.find((j) => j.troop === s.troop)?.count === s.count);
+  const price = joining.reduce((sum, t) => sum + t.count * TROOPS[t.troop].wage * HIRE_PRICE, 0) * (small ? 1 : GATE_PRICE);
+  const all = foe.army.every((t) => joining.find((j) => j.troop === t.troop)?.count === t.count);
   return { price, joining, all };
 }
 /** Gold per point of a troop's weekly wage, to buy him off his old employer. */
 const HIRE_PRICE = 12;
+/** Gatekeepers cost this many times as much to buy. */
+const GATE_PRICE = 2;
 
 function hire(state: GameState, place: Location): Result | null {
   const offer = hireOffer(state, place);
@@ -157,11 +163,45 @@ function tameLine(state: GameState, place: Location): string[] {
   return [offer.respected ? '*The beasts watch you the way a pack watches its leader.*' : '*Beasts follow only someone who could beat them, and these don\u2019t think you could. Not yet.*'];
 }
 
+/** Odds the sergeants think are safe: the enemy looks nervous, and a band this weak surrenders to a diplomat. */
+export const SAFE = 0.9;
+
 /** What the sergeants think of the odds, in words. */
 export function oddsLine(chance: number): string {
-  if (chance >= 0.9) return 'They look nervous.';
+  if (chance >= SAFE) return 'They look nervous.';
   if (chance >= 0.55) return 'It will be close.';
   return 'Your army looks at you. Then at them. Then at you.';
+}
+
+const TENTHS = ['not one', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+
+/** The odds as a scout puts them: a number, in tenths. */
+export function scoutsLine(chance: number): string {
+  const tenths = Math.round(chance * 10);
+  if (tenths === 0) return '*Your scouts don\u2019t give you one chance in ten.*';
+  if (tenths === 10) return '*Your scouts would bet their boots on you: ten chances in ten.*';
+  return `*Your scouts give you ${TENTHS[tenths]} ${tenths === 1 ? 'chance' : 'chances'} in ten.*`;
+}
+
+/** What a scout has seen in their baggage. */
+function carriesLine(state: GameState, place: Location): string[] {
+  if (!place.artifact || !heroStats(state).odds || place.done) return [];
+  const a = ARTIFACTS[place.artifact];
+  return [`*Your scouts have seen what they carry: **${a.name}**. ${a.note}*`];
+}
+
+/** A band of people (no beasts, no villain) far weaker than him lays down its arms to a diplomat. */
+function cowed(state: GameState, place: Location, chance: number): boolean {
+  const foe = place.enemy;
+  return Boolean(foe) && !place.done && place.kind === 'patrol' && heroStats(state).cows && chance >= SAFE && foe!.army.every((t) => TROOPS[t.troop].wage > 0);
+}
+
+/** They surrender: their gold and everything they carried, and half what a fight would have taught. */
+function surrender(state: GameState, place: Location): Result | null {
+  if (!cowed(state, place, winChance(state, place.id))) return null;
+  const foe = place.enemy!;
+  const lines = ['You ride up and explain, politely, what will happen otherwise. They throw down their weapons.', foe.loot.replace('{gold}', `**${coins(foe.reward)} gold**`)];
+  return beat(state, place.id, { title: 'They surrender!', lines, reward: foe.reward, xp: Math.round(battleXp(foe.army) / 2) });
 }
 
 /** An enemy on the map: fight it, let the sergeants fight it, or take one of its parleys. */
@@ -173,23 +213,28 @@ export function enemy(kind: 'patrol' | 'hideout'): PlaceKind {
       const line = exact ? `Your scouts count ${force}.` : `${force.replace(/^\*\*(.)/, (_, c: string) => `**${c.toUpperCase()}`)}.`;
       const e = place.enemy!;
       // Hunters say so, and say when they have your scent, so an ambush is never a surprise.
-      const hunt = e.behaviour !== 'hunt' ? [] : [e.trailing ? '*They have your scent. Camp near them tonight and they\u2019ll fall on you at dawn.*' : '*They hunt anyone weaker who camps near their ground, though never in a town.*'];
-      return { title: place.name, lines: [...e.lines, line, ...hunt], choices: [ride(place, 'Approach'), { label: 'Close', action: { type: 'close' } }] };
+      const shadowed = heroStats(state).shadow;
+      const hunt = e.behaviour !== 'hunt' ? [] : [shadowed ? '*They hunt anyone weaker, but your scouts are watching them: they won\u2019t find your trail.*' : e.trailing ? '*They have your scent. Camp near them tonight and they\u2019ll fall on you at dawn.*' : '*They hunt anyone weaker who camps near their ground, though never in a town.*'];
+      return { title: place.name, lines: [...e.lines, line, ...carriesLine(state, place), ...hunt], choices: [ride(place, 'Approach'), { label: 'Close', action: { type: 'close' } }] };
     },
     arrive(state, place) {
       const foe = place.enemy!;
       if (place.done) return say(state, place, note(place, words(place, 'done')));
       if (state.army.length === 0) return say(state, place, { title: place.name, lines: [foe.threat, 'You have no troops to fight with. Recruit some first.'], choices: [...parleys(state, place), retreat] });
+      const chance = winChance(state, place.id);
+      const scouts = heroStats(state).odds ? [scoutsLine(chance)] : [];
+      const yields = cowed(state, place, chance) ? [option(place, 'Demand their surrender', 'surrender')] : [];
       return say(state, place, {
         title: place.name,
-        lines: [foe.threat, oddsLine(winChance(state, place.id)), ...tameLine(state, place)],
-        choices: [option(place, foe.charge ?? 'Fight', 'fight'), option(place, 'Let the sergeants handle it', 'auto'), ...hireButton(state, place), ...tameButton(state, place), ...parleys(state, place), retreat],
+        lines: [foe.threat, oddsLine(chance), ...scouts, ...carriesLine(state, place), ...tameLine(state, place)],
+        choices: [option(place, foe.charge ?? 'Fight', 'fight'), option(place, 'Let the sergeants handle it', 'auto'), ...yields, ...hireButton(state, place), ...tameButton(state, place), ...parleys(state, place), retreat],
       });
     },
     choose(state, place, choice) {
       const calm: GameState = state.ambush === place.id ? { ...state, ambush: undefined } : state;
       if (choice === 'fight') return startFight(calm, place.id);
       if (choice === 'hire') return hire(calm, place);
+      if (choice === 'surrender') return surrender(calm, place);
       if (choice === 'tame') return tame(calm, place);
       if (choice === 'auto') return fight(calm, place.id);
       if (choice === 'flee' && state.ambush === place.id) {

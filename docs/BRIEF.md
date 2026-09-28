@@ -97,4 +97,14 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   Hedge Wizard is an Arch Mage (hood, beard, orb and staff), the Ranger is Wesnoth's own Ranger in his green hood
   (nothing like the red poachers), and the Courtier is a Master at Arms in a plumed hat, who doffs it with a bow
   now and then. A tired hero on foot hears that his legs are spent, not his horse.
+- **Skills that change play (28 Sep, after Artur's first playtest):** every skill has three ranks. Basic is a
+  number; Advanced and Expert add a trick. Archery: stakes that slow wolves, boars and goblins from the start, then a
+  free volley. Offence: knights and swordsmen charge, then everyone who fights hand to hand. Armourer: mail for the
+  shooters, then +1 defence for every piece of gear worn. Logistics: riding off the road costs a quarter less, then no
+  more than a road. Scouting: exact counts, then the odds as a number and what an enemy carries, then scouts who shadow
+  every band (seen through the mist, and nothing can hunt you). Leadership: a third of every company stays on between
+  commissions, then volunteers every payday. Estates: fuller castles and villages, then rent from every one visited.
+  Sorcery: cheaper spells, then a second cast a round. Mysticism: mana comes back as you ride. A new skill, Diplomacy:
+  bands far weaker than you surrender when you ride up (their gold, half the experience), small bands take your coin,
+  and at Expert even gatekeepers, at twice the price. The Courtier now favours Diplomacy over Mysticism.
 - **Sound and music:** everything is synthesised with Web Audio, with no files. There are five original pieces for a small medieval band: "The Heather Road" (a jig for open country), "Mist on the Meres" (the fen), "Steel and Feathers" (battle), "The King's Pavane" (court) and a title theme. The band is plucked lute, harp and harpsichord, recorder, fife, hurdy-gurdy drone, frame drum, brass and bells. Music crossfades between screens. Under it runs ambience: birds and wind on the heath, frogs in the fen, a crackling fire at court. Plus effects for clicks, coins, the day bell, fanfares, hits, arrows and spells. A test checks that every strong-beat melody note sits on its chord. The title waits for a click, so the music starts with it. M or the Sound button in the top right corner mutes.

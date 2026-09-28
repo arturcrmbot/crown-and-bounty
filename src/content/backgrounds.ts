@@ -43,6 +43,30 @@ export type Bonus = {
   hires?: boolean;
   /** Beasts that couldn't beat him follow him instead of fighting. */
   tames?: boolean;
+  /** Defence for every artifact he wears. */
+  gearDefence?: number;
+  /** Share off the cost of riding off the road, and through woods he can ride. */
+  offRoad?: number;
+  /** His scouts count every enemy exactly. */
+  counts?: boolean;
+  /** His scouts put a number on his chances, and say what an enemy carries. */
+  odds?: boolean;
+  /** His scouts shadow every band: he sees them all through the mist, and nothing can hunt him. */
+  shadow?: boolean;
+  /** Share of every company that stays on between commissions, on top of the usual quarter. */
+  veterans?: number;
+  /** Leadership's worth of volunteers who join his biggest company every payday. */
+  volunteers?: number;
+  /** Share more volunteers every castle and village finds on payday. */
+  restock?: number;
+  /** Gold every castle and village he has visited pays him on payday. */
+  rents?: number;
+  /** Mana comes back as he rides: a point for every this much movement. */
+  manaRide?: number;
+  /** Bands far weaker than him surrender when he rides up. */
+  cows?: boolean;
+  /** Gatekeepers will take his coin and join him too, at twice the price. */
+  hiresGates?: boolean;
 };
 
 export type Background = {
@@ -119,7 +143,7 @@ export const BACKGROUNDS: Record<BackgroundId, Background> = {
     signature: {
       name: 'Pathfinder',
       note: 'Rides through the woods, where nothing on the map can follow. +30 movement a day, sees further and counts every foe. His archers get +1 attack and +4 shots, and loose a free volley before every battle. Beasts that couldn\u2019t beat him follow him instead, and draw no wages.',
-      bonus: { movement: 30, sight: 50, troops: { archers: { attack: 1, shots: 4 } }, volley: true, forestWalk: true, tames: true },
+      bonus: { movement: 30, sight: 50, counts: true, troops: { archers: { attack: 1, shots: 4 } }, volley: true, forestWalk: true, tames: true },
     },
     growth: { attack: 3, defence: 2, spellPower: 1, knowledge: 1 },
     favours: ['archery', 'logistics', 'scouting'],
@@ -142,6 +166,6 @@ export const BACKGROUNDS: Record<BackgroundId, Background> = {
       bonus: { recruitPrice: -0.2, payday: 250, bribes: 0.5, hires: true },
     },
     growth: { attack: 2, defence: 2, spellPower: 2, knowledge: 2 },
-    favours: ['estates', 'leadership', 'mysticism'],
+    favours: ['estates', 'diplomacy', 'leadership'],
   },
 };
