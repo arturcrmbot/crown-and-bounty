@@ -1,0 +1,58 @@
+/* The mix button beside the Sound button: same dark wood and gilt edge, an equaliser icon. */
+.kc-mix {
+  position: fixed;
+  z-index: 11;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 0;
+  background: #2a1c10;
+  border: 2px solid #c28a1c;
+  box-shadow: 0 0 0 1px #0b0a10, 2px 2px 0 rgba(12, 8, 3, 0.75);
+  cursor: pointer;
+}
+.kc-mix:hover,
+.kc-mix:focus-visible,
+.kc-mix.open {
+  background: #45301a;
+  border-color: #f2ce50;
+}
+.kc-mix img {
+  display: block;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+/* The panel that drops from it: one slider per bus, remembered like mute. */
+.kc-mix-panel {
+  position: fixed;
+  z-index: 11;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #f2e4c4;
+  font: 13px/1.2 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  background: #2a1c10;
+  border: 2px solid #c28a1c;
+  box-shadow: 0 0 0 1px #0b0a10, 2px 2px 0 rgba(12, 8, 3, 0.75);
+}
+.kc-mix-panel[hidden] {
+  display: none;
+}
+.kc-mix-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.kc-mix-row span {
+  flex: 0 0 auto;
+  width: 4.6em;
+}
+.kc-mix-row input[type='range'] {
+  flex: 1 1 auto;
+  accent-color: #c28a1c;
+}

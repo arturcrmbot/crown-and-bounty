@@ -11,6 +11,7 @@ import { paletteWords } from './render/palette';
 import { loadUnitArt } from './render/wesnoth';
 import { toggleMute, wakeAudio } from './audio/context';
 import { MuteButton } from './ui/mute';
+import { MixPanel } from './ui/mix';
 import { setUiScale } from './ui/scale';
 import { ARTIFACTS, type ArtifactId } from './content/artifacts';
 import { beginCommission, commissionAt, giveArtifact, hasNextCommission, newGame, startFight, type GameState } from './rules/game';
@@ -95,6 +96,7 @@ window.addEventListener('keydown', (e) => {
   if (e.key.toLowerCase() === 'm') toggleMute();
 });
 const mute = new MuteButton();
+const mix = new MixPanel();
 window.addEventListener('pagehide', () => {
   const state = game.saveable;
   if (state) saveGame(state);
@@ -111,6 +113,7 @@ requestAnimationFrame(function frame(now) {
   setUiScale(display.scale);
   game.placeCards();
   mute.place(display);
+  mix.place(display);
   window.__ready = true;
   requestAnimationFrame(frame);
 });
