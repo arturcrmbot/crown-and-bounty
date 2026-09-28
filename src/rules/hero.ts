@@ -1,4 +1,4 @@
-import { ARTIFACTS, piecesOf, SETS, type ArtifactId, type SetId, type Slot } from '../content/artifacts';
+import { ARTIFACTS, piecesOf, SETS, slotAcceptsArtifact, slotsForArtifact, type ArtifactId, type SetId, type Slot } from '../content/artifacts';
 import { BACKGROUNDS, type BackgroundId, type Bonus } from '../content/backgrounds';
 import { PERKS, RANKS, SKILLS, type PerkId, type SkillId } from '../content/skills';
 import type { MapSpellId, SpellId, StatusId } from '../content/spells';
@@ -406,8 +406,8 @@ export function learn(state: GameState, option: string): Result | null {
 
 /** Puts an artifact in the pack, and wears it straight away if its slot is free. */
 export function giveArtifact(state: GameState, id: ArtifactId): GameState {
-  const slot = ARTIFACTS[id].slot;
-  if (!state.hero.gear[slot]) return { ...state, hero: { ...state.hero, gear: { ...state.hero.gear, [slot]: id } } };
+  const slot = slotsForArtifact(ARTIFACTS[id].slot).find((candidate) => !state.hero.gear[candidate]);
+  if (slot) return { ...state, hero: { ...state.hero, gear: { ...state.hero.gear, [slot]: id } } };
   return { ...state, hero: { ...state.hero, pack: [...state.hero.pack, id] } };
 }
 
@@ -415,7 +415,9 @@ export function giveArtifact(state: GameState, id: ArtifactId): GameState {
 export function foundNote(state: GameState, id: ArtifactId): string {
   const a = ARTIFACTS[id];
   const set = setLine(state, id);
-  const note = state.hero.gear[a.slot] === id ? `You put it on. ${a.note}` : `${a.note} It goes in your pack, since you wear something there already: **H** to swap.`;
+  const worn = Object.values(state.hero.gear).includes(id);
+  const reason = a.slot === 'trinket' ? 'all three trinket slots are occupied' : `you wear something in its ${a.slot} slot already`;
+  const note = worn ? `You put it on. ${a.note}` : `${a.note} It goes in your pack, since ${reason}: **H** to swap.`;
   return set ? `${note} ${set}` : note;
 }
 
@@ -444,11 +446,13 @@ export function moveWithin<T>(list: readonly T[], from: number, to: number): T[]
 }
 
 /** Wears the artifact in pack square `from`; whatever that slot held takes its square. */
-export function wear(state: GameState, from: number): Result | null {
+export function wear(state: GameState, from: number, target?: Slot): Result | null {
   const { gear, pack } = state.hero;
   const id = pack[from];
   if (!id) return null;
-  const slot = ARTIFACTS[id].slot;
+  const artifactSlot = ARTIFACTS[id].slot;
+  const slot = target ?? slotsForArtifact(artifactSlot).find((candidate) => !gear[candidate]) ?? artifactSlot;
+  if (!slotAcceptsArtifact(slot, artifactSlot)) return null;
   const worn = gear[slot];
   const rest = worn ? pack.map((p, i) => (i === from ? worn : p)) : pack.filter((_, i) => i !== from);
   return { state: withinMana(state, { ...state, hero: { ...state.hero, gear: { ...gear, [slot]: id }, pack: rest } }), events: [] };
@@ -465,7 +469,7 @@ export function unequip(state: GameState, slot: Slot, to = state.hero.pack.lengt
   const { gear, pack } = state.hero;
   const worn = gear[slot];
   if (!worn || to < 0) return null;
-  if (pack[to] && ARTIFACTS[pack[to]].slot === slot) return wear(state, to);
+  if (pack[to] && slotAcceptsArtifact(slot, ARTIFACTS[pack[to]].slot)) return wear(state, to, slot);
   const at = Math.min(to, pack.length);
   const rest = { ...gear };
   delete rest[slot];

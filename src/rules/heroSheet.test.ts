@@ -62,11 +62,11 @@ describe('gear, moved by hand', () => {
 
   it('wears from a pack square, and what was worn takes that square', () => {
     const s = kitted();
-    expect(s.hero.gear).toEqual({ trinket: 'luckyHorseshoe', weapon: 'swordOfAldmoor' });
-    expect(s.hero.pack).toEqual(['wizardsButton', 'goldenFeather', 'astrolabe']);
-    const worn = apply(s, { type: 'wear', from: 1 })!.state;
-    expect(worn.hero.gear.trinket).toBe('goldenFeather');
-    expect(worn.hero.pack).toEqual(['wizardsButton', 'luckyHorseshoe', 'astrolabe']);
+    expect(s.hero.gear).toEqual({ trinket: 'luckyHorseshoe', trinket2: 'wizardsButton', weapon: 'swordOfAldmoor', trinket3: 'goldenFeather' });
+    expect(s.hero.pack).toEqual(['astrolabe']);
+    const worn = apply(s, { type: 'wear', from: 0, slot: 'trinket2' })!.state;
+    expect(worn.hero.gear.trinket2).toBe('astrolabe');
+    expect(worn.hero.pack).toEqual(['wizardsButton']);
     expect(apply(s, { type: 'wear', from: 9 })).toBeNull();
   });
 
@@ -82,9 +82,9 @@ describe('gear, moved by hand', () => {
   });
 
   it('swaps what is worn with an artifact for the same slot it is dropped on', () => {
-    const swapped = apply(kitted(), { type: 'unequip', slot: 'trinket', to: 2 })!.state;
+    const swapped = apply(kitted(), { type: 'unequip', slot: 'trinket', to: 0 })!.state;
     expect(swapped.hero.gear.trinket).toBe('astrolabe');
-    expect(swapped.hero.pack).toEqual(['wizardsButton', 'goldenFeather', 'luckyHorseshoe']);
+    expect(swapped.hero.pack).toEqual(['luckyHorseshoe']);
   });
 
   it('moves artifacts between pack squares: onto another they swap, past the last they go to the end', () => {

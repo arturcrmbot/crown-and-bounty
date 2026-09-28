@@ -44,7 +44,7 @@ function debugStart(): GameState {
   const who = query.get('hero');
   const chosen = who && who in BACKGROUNDS ? (who as BackgroundId) : null;
   const drafted = newGame(seed, undefined, chosen ?? 'knight');
-  // ?gear=swordOfAldmoor,oldBanner gives artifacts: worn if their slot is free, in the pack if not.
+  // ?gear=swordOfAldmoor,oldBanner wears gear into the first free slot of its kind, then the pack.
   const gear = (query.get('gear') ?? '').split(',').filter((id): id is ArtifactId => id in ARTIFACTS);
   const picked = gear.reduce(giveArtifact, chosen ? { ...drafted, opening: undefined } : drafted);
   // ?spells=fireball,stoneskin teaches spells for a debug start.

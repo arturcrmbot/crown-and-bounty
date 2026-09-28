@@ -243,7 +243,7 @@ export type Action =
   | { type: 'learn'; option: string }
   | { type: 'equip'; artifact: ArtifactId }
   /** Wears the artifact in pack square `from`; whatever its slot held takes that square. */
-  | { type: 'wear'; from: number }
+  | { type: 'wear'; from: number; slot?: Slot }
   /** Takes off what's worn in `slot`, into pack square `to` (or the end). */
   | { type: 'unequip'; slot: Slot; to?: number }
   /** Moves an artifact between pack squares: onto another, the two swap. */

@@ -32,7 +32,7 @@ export function apply(state: GameState, action: Action): Result | null {
     case 'equip':
       return equip(state, action.artifact);
     case 'wear':
-      return wear(state, action.from);
+      return wear(state, action.from, action.slot);
     case 'unequip':
       return unequip(state, action.slot, action.to);
     case 'movePack':

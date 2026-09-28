@@ -6,9 +6,10 @@ import type { GameState } from '../rules/game';
  * half-loaded, and the generator's whenever it lays provinces out differently: a save only
  * records a generated province's seed, and must get the same map back.
  */
-const VERSION = 5;
+const VERSION = 6;
 const GENERATOR = 2;
 const KEY = `kings-commission/save/v${VERSION}-g${GENERATOR}`;
+const PREVIOUS_KEY = `kings-commission/save/v5-g${GENERATOR}`;
 /** Off once a restart has begun (or for frozen test pages), so nothing writes the old game back. */
 let saving = true;
 
@@ -28,7 +29,7 @@ export function saveGame(state: GameState) {
 
 export function loadGame(): GameState | null {
   try {
-    const text = localStorage.getItem(KEY);
+    const text = localStorage.getItem(KEY) ?? localStorage.getItem(PREVIOUS_KEY);
     if (!text) return null;
     const state = JSON.parse(text) as GameState;
     const valid = state && Array.isArray(state.explored) && Array.isArray(state.army) && typeof state.hero?.level === 'number' && typeof state.campaign?.chapter === 'number' && typeof state.campaign.seed === 'number';

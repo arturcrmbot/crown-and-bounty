@@ -1,7 +1,11 @@
 import type { Bonus } from './backgrounds';
 
-export type Slot = 'weapon' | 'armour' | 'helm' | 'banner' | 'trinket';
-export const SLOTS: Slot[] = ['weapon', 'armour', 'helm', 'banner', 'trinket'];
+export type ArtifactSlot = 'weapon' | 'armour' | 'helm' | 'banner' | 'trinket';
+export type Slot = ArtifactSlot | 'trinket2' | 'trinket3';
+export const TRINKET_SLOTS: readonly Slot[] = ['trinket', 'trinket2', 'trinket3'];
+export const SLOTS: Slot[] = ['weapon', 'armour', 'helm', 'banner', ...TRINKET_SLOTS];
+export const slotsForArtifact = (slot: ArtifactSlot): readonly Slot[] => (slot === 'trinket' ? TRINKET_SLOTS : [slot]);
+export const slotAcceptsArtifact = (slot: Slot, artifactSlot: ArtifactSlot) => slotsForArtifact(artifactSlot).includes(slot);
 
 export type ArtifactId =
   | 'swordOfAldmoor'
@@ -45,7 +49,7 @@ export type ArtifactId =
 /** A set of artifacts that do something more when all of them are worn. */
 export type SetId = 'regalia' | 'finery';
 
-export type Artifact = { id: ArtifactId; name: string; slot: Slot; note: string; bonus: Bonus; price?: number; set?: SetId };
+export type Artifact = { id: ArtifactId; name: string; slot: ArtifactSlot; note: string; bonus: Bonus; price?: number; set?: SetId };
 
 export const ARTIFACTS: Record<ArtifactId, Artifact> = {
   swordOfAldmoor: { id: 'swordOfAldmoor', name: 'Sword of Aldmoor', slot: 'weapon', note: '+2 attack. Came with the castle, like the damp.', bonus: { attack: 2 }, price: 900 },

@@ -285,7 +285,13 @@
   grid-area: 2 / 3;
 }
 .kc-hero .doll .trinket {
+  grid-area: 3 / 1;
+}
+.kc-hero .doll .trinket2 {
   grid-area: 3 / 2;
+}
+.kc-hero .doll .trinket3 {
+  grid-area: 3 / 3;
 }
 .kc-hero .caption {
   margin: 0 0 1px;

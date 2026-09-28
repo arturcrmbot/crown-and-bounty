@@ -92,7 +92,7 @@ function buy(state: GameState, place: Location, artifact: ArtifactId): Result | 
   const price = ARTIFACTS[artifact]?.price ?? 0;
   if (!place.wares?.includes(artifact) || owns(state, artifact) || state.gold < price) return null;
   const next = giveArtifact(update({ ...state, gold: state.gold - price }, place.id, { wares: place.wares.filter((w) => w !== artifact) }), artifact);
-  const worn = next.hero.gear[ARTIFACTS[artifact].slot] === artifact;
+  const worn = Object.values(next.hero.gear).includes(artifact);
   const where = worn ? 'you put it on straight away' : 'it goes in your pack, since you wear something there already (H to swap)';
   return say(next, place, armouryCard(next, locationById(next, place.id), [`**${ARTIFACTS[artifact].name}** is yours: ${where}.`]));
 }

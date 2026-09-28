@@ -83,11 +83,14 @@ describe('skills and gear', () => {
     let state = giveArtifact(knight(), 'luckyHorseshoe');
     expect(state.hero.gear.trinket).toBe('luckyHorseshoe');
     state = giveArtifact(state, 'wizardsButton');
-    expect(state.hero.pack).toEqual(['wizardsButton']);
-    const worn = equip(state, 'wizardsButton')!.state;
-    expect(worn.hero.gear.trinket).toBe('wizardsButton');
+    state = giveArtifact(state, 'astrolabe');
+    expect(state.hero.gear).toMatchObject({ trinket: 'luckyHorseshoe', trinket2: 'wizardsButton', trinket3: 'astrolabe' });
+    state = giveArtifact(state, 'goldenFeather');
+    expect(state.hero.pack).toEqual(['goldenFeather']);
+    const worn = equip(state, 'goldenFeather')!.state;
+    expect(worn.hero.gear.trinket).toBe('goldenFeather');
     expect(worn.hero.pack).toEqual(['luckyHorseshoe']);
-    expect(heroStats(worn).spellPower).toBe(heroStats(knight()).spellPower + 1);
+    expect(heroStats(worn).spellPower).toBe(heroStats(knight()).spellPower + 2);
   });
 
   it('grant luck and morale from a perk and a trinket', () => {
