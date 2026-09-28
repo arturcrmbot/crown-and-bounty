@@ -4,7 +4,7 @@ import { heroStats } from './hero';
 import { mapOf } from './map/maps';
 import { moveEnemies } from './map/roaming';
 import { payday as reopen } from './places';
-import { oddsLine } from './places/enemy';
+import { FIGHT_NOTE, oddsLine, SERGEANTS_NOTE } from './places/enemy';
 import { winChance } from './fight';
 import { again, close, COMMISSION, coins, LAST_DAY, locationById, PAYDAY_EVERY, roman, show, wages, type Card, type Choice, type GameEvent, type GameState, type Location, type Result } from './state';
 
@@ -12,8 +12,8 @@ import { again, close, COMMISSION, coins, LAST_DAY, locationById, PAYDAY_EVERY, 
 export function ambushCard(state: GameState, before: string[] = []): Card {
   const foe = locationById(state, state.ambush!);
   const choices: Choice[] = [
-    { label: 'To arms!', action: { type: 'choose', id: foe.id, choice: 'fight' } },
-    { label: 'Let the sergeants handle it', action: { type: 'choose', id: foe.id, choice: 'auto' } },
+    { label: 'To arms!', detail: FIGHT_NOTE, action: { type: 'choose', id: foe.id, choice: 'fight' } },
+    { label: 'Let the sergeants handle it', detail: SERGEANTS_NOTE, action: { type: 'choose', id: foe.id, choice: 'auto' } },
     { label: 'Run for it (lose a fifth of the army)', action: { type: 'choose', id: foe.id, choice: 'flee' } },
   ];
   return { title: `Day ${roman(state.day)}: ambush!`, lines: [...before, `At first light, **${foe.name}** fall on your camp!`, foe.enemy!.threat, oddsLine(winChance(state, foe.id))], choices };

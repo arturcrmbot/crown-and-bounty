@@ -59,6 +59,30 @@ describe('the castle', () => {
   });
 });
 
+describe('the odds', () => {
+  it('say in plain words how a fight would go, and what each way to fight means', () => {
+    const card = cardOf(visit(knight(), 'patrol'));
+    expect(card.lines).toContain('Your army looks at you. Then at them. Then at you. *You\u2019d likely lose.*');
+    const [fight, sergeants] = card.choices;
+    expect(fight).toMatchObject({ label: 'Fight', detail: 'You command every stack yourself.' });
+    expect(sergeants).toMatchObject({ label: 'Let the sergeants handle it', detail: 'They fight it out for you, by the same rules, in a moment.' });
+    const strong = { ...knight(), leadership: 5000, army: [{ troop: 'knights' as const, count: 200 }] };
+    expect(cardOf(visit(strong, 'patrol')).lines).toContain('They look nervous. *You should win.*');
+  });
+});
+
+describe('recruiting', () => {
+  it('shows the place again afterwards, with who joined and the armoury still there', () => {
+    const card = cardOf(apply(knight(), { type: 'choose', id: 'castle', choice: 'recruit' }));
+    expect(card.lines[0]).toBe('**5 Knights** join your army.');
+    expect(card.lines[1]).toBe('"All out of volunteers, officer. Come back after payday."');
+    expect(card.choices.map((c) => c.label)).toEqual(['Visit the armoury', 'Close']);
+    const village = cardOf(apply({ ...knight(), gold: 55 }, { type: 'choose', id: 'village', choice: 'recruit' }));
+    expect(village.lines.slice(0, 2)).toEqual(['**5 Peasants** join your army.', '**15 Peasants** will join you for **10 gold** each.']);
+    expect(village.choices.map((c) => c.label)).toEqual(['Recruit', 'Close']);
+  });
+});
+
 describe('what cards say about troops', () => {
   it('counts them in words that agree', () => {
     expect(joinLine('knights', 1)).toBe('**1 Knight** joins your army.');
