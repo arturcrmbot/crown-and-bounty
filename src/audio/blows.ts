@@ -48,17 +48,17 @@ const BLOWS: Record<BlowKind, Play> = {
   fork: (ctx, dest, at) => {
     swish(ctx, dest, at, 0.06, 1500, 700, 0.25);
     const t = at + CONTACT;
-    ring(ctx, dest, t, rand(290, 350), WOOD, 0.25);
-    burst(ctx, dest, t, 0.07, 'lowpass', 700, 0.45, 1, 1, 0.004);
-    for (const d of [0, 0.013, 0.027]) burst(ctx, dest, t + d, 0.012, 'bandpass', 3000, 0.35, 1, 2);
+    ring(ctx, dest, t, rand(290, 350), WOOD, 0.14);
+    burst(ctx, dest, t, 0.12, 'lowpass', 700, 0.55, 1, 1, 0.004);
+    for (const d of [0, 0.013, 0.027]) burst(ctx, dest, t + d, 0.012, 'bandpass', 3000, 0.3, 1, 2);
   },
   // A sword: a swish, the edge biting, and the weight of the cut behind it.
   blade: (ctx, dest, at) => {
     swish(ctx, dest, at, 0.07, 2800, 1000, 0.35, 1.5);
     const t = at + CONTACT;
-    burst(ctx, dest, t, 0.035, 'bandpass', 2500, 0.6, 0.7, 1);
-    burst(ctx, dest, t, 0.09, 'lowpass', 900, 0.7);
-    tone(ctx, dest, t, 170, 0.1, 0.45, 'sine', 0.45, 0.003);
+    burst(ctx, dest, t, 0.05, 'bandpass', 2500, 0.6, 0.7, 1);
+    burst(ctx, dest, t + 0.004, 0.13, 'lowpass', 900, 0.6, 1, 1, 0.004);
+    tone(ctx, dest, t + 0.006, 170, 0.12, 0.4, 'sine', 0.45, 0.004);
   },
   // A lance at the gallop: the crash of horse and man, and the shaft splintering.
   lance: (ctx, dest, at) => {
@@ -73,17 +73,17 @@ const BLOWS: Record<BlowKind, Play> = {
   bite: (ctx, dest, at) => {
     voice(ctx, dest, at, { pitch: [[0, 95], [1, 80]], length: CONTACT + 0.04, vowel: [500, 1400, 2600], growl: [28, 0.8], breath: 0.6, volume: 0.8 });
     const t = at + CONTACT;
-    burst(ctx, dest, t, 0.015, 'bandpass', 3000, 0.7, 1, 1.5);
-    ring(ctx, dest, t, rand(1600, 1800), [[1, 1, 0.025], [2.3, 0.5, 0.015]], 0.3);
-    burst(ctx, dest, t, 0.06, 'lowpass', 600, 0.6);
+    burst(ctx, dest, t, 0.02, 'bandpass', 3000, 0.5, 1, 1.5);
+    ring(ctx, dest, t, rand(1600, 1800), [[1, 1, 0.025], [2.3, 0.5, 0.015]], 0.25);
+    burst(ctx, dest, t + 0.005, 0.1, 'lowpass', 600, 0.55, 1, 1, 0.004);
   },
   // A cudgel: a heavy swing, and a dull thud with the knock of the wood in it.
   club: (ctx, dest, at) => {
     swish(ctx, dest, at, 0.08, 1300, 500, 0.3);
     const t = at + CONTACT;
     tone(ctx, dest, t, 130, 0.14, 0.8, 'sine', 0.45, 0.003);
-    burst(ctx, dest, t, 0.1, 'lowpass', 450, 0.9);
-    ring(ctx, dest, t, rand(210, 260), WOOD, 0.35);
+    burst(ctx, dest, t, 0.13, 'lowpass', 450, 0.8, 1, 1, 0.004);
+    ring(ctx, dest, t, rand(210, 260), WOOD, 0.3);
   },
   // A troll's fist: a great arm swinging, a boom like a falling tree, a crunch, and the ground shaking.
   fist: (ctx, dest, at) => {
@@ -96,10 +96,10 @@ const BLOWS: Record<BlowKind, Play> = {
   },
   // A goblin's spear: a quick jab, a thin point going in.
   spear: (ctx, dest, at) => {
-    swish(ctx, dest, at, 0.05, 3000, 1600, 0.6);
+    swish(ctx, dest, at, 0.05, 3000, 1600, 0.5);
     const t = at + CONTACT;
-    burst(ctx, dest, t, 0.05, 'lowpass', 900, 1.4);
-    ring(ctx, dest, t, rand(1100, 1300), [[1, 1, 0.02], [2.6, 0.4, 0.012]], 0.5);
+    burst(ctx, dest, t, 0.1, 'lowpass', 900, 1.2, 1, 1, 0.004);
+    ring(ctx, dest, t, rand(1100, 1300), [[1, 1, 0.02], [2.6, 0.4, 0.012]], 0.22);
   },
   // A boar: a grunt, and its tusks going in low.
   tusk: (ctx, dest, at) => {
@@ -112,16 +112,16 @@ const BLOWS: Record<BlowKind, Play> = {
   dagger: (ctx, dest, at) => {
     swish(ctx, dest, at, 0.05, 4000, 2000, 0.7, 1.8);
     const t = at + CONTACT;
-    burst(ctx, dest, t, 0.035, 'bandpass', 3500, 1.2, 0.7, 1.2);
-    burst(ctx, dest, t, 0.06, 'lowpass', 900, 1.1);
+    burst(ctx, dest, t, 0.05, 'bandpass', 3500, 1, 0.7, 1.2);
+    burst(ctx, dest, t + 0.004, 0.09, 'lowpass', 900, 0.9, 1, 1, 0.004);
   },
   // A staff: a swing, and the crack of hard wood.
   staff: (ctx, dest, at) => {
     swish(ctx, dest, at, 0.07, 1800, 800, 0.3);
     const t = at + CONTACT;
-    ring(ctx, dest, t, rand(470, 540), WOOD, 0.3);
-    burst(ctx, dest, t, 0.02, 'bandpass', 1800, 0.5, 1, 1.2);
-    burst(ctx, dest, t, 0.06, 'lowpass', 800, 0.35, 1, 1, 0.004);
+    ring(ctx, dest, t + 0.004, rand(470, 540), WOOD, 0.15);
+    burst(ctx, dest, t, 0.06, 'bandpass', 1800, 0.45, 1, 1.2, 0.004);
+    burst(ctx, dest, t + 0.008, 0.14, 'lowpass', 800, 0.45, 1, 1, 0.006);
   },
 };
 
@@ -157,14 +157,14 @@ const LOOSE: Record<ShotKind, Play> = {
 /** Each shot landing: an arrow's thock, a bolt's thunk, a hex bubbling, a bolt bursting. */
 const LAND: Record<ShotKind, Play> = {
   arrow: (ctx, dest, at) => {
-    burst(ctx, dest, at, 0.03, 'bandpass', 1800, 1.4, 1, 1.5, 0.003);
-    ring(ctx, dest, at, rand(560, 640), [[1, 1, 0.05], [2.4, 0.4, 0.03]], 0.4);
-    burst(ctx, dest, at, 0.06, 'lowpass', 500, 0.7, 1, 1, 0.004);
+    burst(ctx, dest, at, 0.09, 'bandpass', 1800, 1.2, 1, 1.5, 0.004);
+    ring(ctx, dest, at, rand(560, 640), [[1, 1, 0.05], [2.4, 0.4, 0.03]], 0.25);
+    burst(ctx, dest, at + 0.004, 0.09, 'lowpass', 500, 0.4, 1, 1, 0.004);
   },
   quarrel: (ctx, dest, at) => {
-    burst(ctx, dest, at, 0.04, 'bandpass', 1400, 0.7, 1, 1.2);
-    tone(ctx, dest, at, 160, 0.09, 0.7, 'sine', 0.5, 0.003);
-    burst(ctx, dest, at, 0.08, 'lowpass', 600, 0.6);
+    burst(ctx, dest, at, 0.06, 'bandpass', 1400, 0.6, 1, 1.2);
+    tone(ctx, dest, at + 0.005, 160, 0.11, 0.6, 'sine', 0.5, 0.004);
+    burst(ctx, dest, at + 0.004, 0.1, 'lowpass', 600, 0.5, 1, 1, 0.004);
   },
   hex: (ctx, dest, at) => {
     for (let i = 0; i < 4; i++) tone(ctx, dest, at + i * 0.03, rand(300, 600), 0.06, 0.25, 'sine', 1.8, 0.004);
@@ -284,21 +284,21 @@ type BattleEffectId = `blow:${BlowKind}` | `loose:${ShotKind}` | `land:${ShotKin
  * little lighter, a shot's release under its landing, a cry of pain under the blow, feet faint.
  */
 const LEVELS: Record<BattleEffectId, number> = {
-  'blow:fork': 3.6,
+  'blow:fork': 4.9,
   'blow:blade': 2.5,
   'blow:lance': 1,
   'blow:bite': 3.4,
   'blow:club': 1.2,
   'blow:fist': 0.95,
-  'blow:spear': 2.3,
+  'blow:spear': 2.9,
   'blow:tusk': 1.6,
   'blow:dagger': 2.4,
-  'blow:staff': 3,
+  'blow:staff': 4,
   'loose:arrow': 3.7,
   'loose:quarrel': 3.1,
   'loose:hex': 1.2,
   'loose:magic': 1.8,
-  'land:arrow': 2.7,
+  'land:arrow': 3.35,
   'land:quarrel': 2.5,
   'land:hex': 1.7,
   'land:magic': 1.9,

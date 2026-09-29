@@ -49,8 +49,13 @@ export type TrackDef = {
   lead: { instrument: InstrumentId; volume: number };
   parts: Record<string, Accompaniment>;
   form: Pass[];
-  /** Scales the whole track, so every track is about as loud as the others (see `npm run listen -- tracks`). */
+  /** Scales the whole track, so every track plays at the music's mark in the mix (see `npm run listen -- tracks`). */
   level?: number;
+  /**
+   * Scales it again in the calm, on the map, for a villain's theme: by his lair it's a sparer
+   * arrangement than the whole band in his battle, and this brings it up to the mark too.
+   */
+  calm?: number;
   /** Lively tunes: every other time round, the recorder and the fife swap. */
   swap?: boolean;
 };
@@ -151,6 +156,11 @@ export function stepUp(scale: number[], midi: number): number {
 
 export const loopUnits = (track: TrackDef) => track.form.reduce((sum, pass) => sum + track.sections[pass.section].chords.length, 0) * track.unitsPerBar;
 
+/** How loud the whole track plays in a mood: its `calm` level on the map, giving way to 1 as a fight begins (as a lair's parts give way to the battle's). */
+export function moodLevel(track: TrackDef, mood: Mood): number {
+  return track.calm === undefined ? 1 : 1 + (track.calm - 1) * gateLevel({ below: 0.2 }, mood);
+}
+
 /** How loudly a gated note plays in a mood: 0 not at all, 1 fully, fading in over a little of the way. */
 export function gateLevel(gate: Gate | undefined, mood: Mood): number {
   if (!gate) return 1;
@@ -209,7 +219,7 @@ const heath: TrackDef = {
     { section: 'A', lead: { instrument: 'harp', volume: 0.2 }, parts: ['bass', 'drone'] },
     { section: 'B', parts: ['lute', 'bass', 'drone', 'drum'] },
   ],
-  level: 0.92,
+  level: 0.88,
   swap: true,
 };
 
@@ -246,7 +256,7 @@ const fen: TrackDef = {
     // Something moves out on the water: a heartbeat under the harp.
     { section: 'B', parts: ['harp', 'drone', 'heart'] },
   ],
-  level: 1.3,
+  level: 1.39,
 };
 
 /** "The Baron's Road": a reel in D Mixolydian for the country Grimsby ran to, fife and recorder by turns over lute and drum. */
@@ -286,7 +296,7 @@ const weald: TrackDef = {
     { section: 'A', parts: ['lute', 'bass', 'drone', 'drum'] },
     { section: 'B', lead: { instrument: 'fife', volume: 0.2 }, parts: ['lute', 'bass', 'drum'] },
   ],
-  level: 0.84,
+  level: 0.79,
   swap: true,
 };
 
@@ -321,7 +331,7 @@ const marsh: TrackDef = {
     { section: 'A', lead: { instrument: 'harp', volume: 0.32 }, parts: ['drone', 'drip', 'bell'] },
     { section: 'B', lead: { instrument: 'recorder', volume: 0.25, octave: 0 }, parts: ['harp', 'drone', 'heart'] },
   ],
-  level: 1.26,
+  level: 1.46,
 };
 
 /** "The Last Commission": broad and hopeful, in D; its second strain is the title's tune, the King's own, on brass. */
@@ -357,7 +367,7 @@ const reach: TrackDef = {
     { section: 'A', lead: { instrument: 'harp', volume: 0.2 }, parts: ['bass', 'bells'] },
     { section: 'B', parts: ['harp', 'bass', 'brass', 'drum'] },
   ],
-  level: 1.19,
+  level: 1.15,
   swap: true,
 };
 
@@ -431,7 +441,7 @@ const battle: TrackDef = {
     toll: { kind: 'pattern', instrument: 'knell', volume: 0.12, steps: [[0, 0, 4, 4]], bars: [0, 4], gate: { mood: 'lose' } },
   },
   form: [{ section: 'A' }, { section: 'B' }, { section: 'A', lead: { instrument: 'recorder', volume: 0.28 } }, { section: 'B' }],
-  level: 0.95,
+  level: 0.87,
   swap: true,
 };
 
@@ -456,7 +466,7 @@ const court: TrackDef = {
     drum: { kind: 'drums', steps: [[0, 'tabor', 0.16]] },
   },
   form: [{ section: 'A' }, { section: 'A', lead: { instrument: 'harpsichord', volume: 0.2 }, parts: ['bass', 'bell', 'drum'] }],
-  level: 1.19,
+  level: 1.29,
 };
 
 /** "The King's Commission": the title, in D, harp arpeggios and brass under a broad recorder tune. */
@@ -479,7 +489,7 @@ const title: TrackDef = {
     drum: { kind: 'drums', steps: [[0, 'tabor', 0.22], [6, 'tabor', 0.12], [7, 'tabor', 0.12]], bars: [3, 7] },
   },
   form: [{ section: 'A' }],
-  level: 1.22,
+  level: 1.34,
 };
 
 /**
@@ -521,7 +531,8 @@ const grimsby: TrackDef = {
     { section: 'A', lead: { instrument: 'brass', volume: 0.2 } },
     { section: 'B', lead: { instrument: 'fife', volume: 0.22 } },
   ],
-  level: 1.5,
+  level: 1.34,
+  calm: 1.64,
   swap: true,
 };
 
@@ -556,7 +567,8 @@ const mirrow: TrackDef = {
     cackle: { kind: 'pattern', instrument: 'fife', volume: 0.08, steps: [[3, 3, 4, 0.5], [3.5, 2, 4, 0.5], [4, 1, 4, 0.5], [4.5, 0, 4, 1]], bars: [5, 11], gate: { from: 0.2, mood: 'lose' } },
   },
   form: [{ section: 'A' }, { section: 'B' }, { section: 'A', lead: { instrument: 'fife', volume: 0.2 } }, { section: 'B', lead: { instrument: 'harp', volume: 0.3 }, parts: ['hum', 'bass', 'drum', 'stab', 'bell'] }],
-  level: 1.2,
+  level: 1.05,
+  calm: 1.4,
 };
 
 /**
@@ -597,7 +609,8 @@ const bramble: TrackDef = {
     { section: 'B' },
     { section: 'B', lead: { instrument: 'brass', volume: 0.22 } },
   ],
-  level: 1.25,
+  level: 1.17,
+  calm: 1.82,
   swap: true,
 };
 
