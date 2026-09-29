@@ -2,7 +2,8 @@
 
 The first commission, rebuilt with room to ride. Artur picked these ideas on 29 Sep.
 
-**Built (#77):** the space, the regions, the river with its bridge and ford, and today's places in the new land.
+**Built (#77):** the space, the regions, the river with its bridge and ford, today's places in the new land, Mrs Pike
+in Westmere, and Grimsby's dig on the heath (raiding it sets `flags.dig`).
 **Built (#76):** the hunt hall by the bridge, Old Nan's word, the lodge in the chase with its bears, and the huntsmen.
 **Still to build:** Grimsby riding out (#75), Rook and his wolves (#15), and the grain cart (#78).
 

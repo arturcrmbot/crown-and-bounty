@@ -1,13 +1,14 @@
 import { CourtScreen } from '../render/courtScreen';
 import { MAP_VIEW } from '../render/frame';
-import { apply, courtCard, levelUpCard, roman, type Action, type GameEvent, type GameState } from '../rules/game';
+import { apply, courtCard, levelUpCard, roman, speechCard, type Action, type GameEvent, type GameState } from '../rules/game';
 import { CardView } from '../ui/card';
 import type { Display } from './display';
 import { NO_INPUT, type Screen } from './screen';
 
 /**
  * The King's court between commissions: the throne room, with the cards on top. Any level-ups
- * still waiting come first, then the King's thanks and boons, then the next commission's briefing.
+ * still waiting come first, then the King's welcome (what he has heard you did), his gold and
+ * boons, then the next commission's briefing.
  */
 export class CourtController implements Screen {
   readonly name = 'court';
@@ -21,6 +22,8 @@ export class CourtController implements Screen {
   private readonly cards: CardView;
   private readonly hooks: { onChange: (state: GameState) => void; onDone: (state: GameState, rest: GameEvent[]) => void };
   private time = 0;
+  /** Whether the King has had his say yet, this visit: then his boons. */
+  private heard = false;
 
   constructor(display: Display, state: GameState, hooks: CourtController['hooks']) {
     this.display = display;
@@ -33,10 +36,17 @@ export class CourtController implements Screen {
   }
 
   private showNext() {
-    this.cards.show(levelUpCard(this.state) ?? courtCard(this.state));
+    const waiting = levelUpCard(this.state);
+    this.cards.show(waiting ?? (this.heard || this.state.campaign.court?.chosen ? courtCard(this.state) : speechCard(this.state)));
   }
 
   choose(action: Action) {
+    // The King's welcome is only words: when he has had his say, his boons.
+    if (action.type === 'close') {
+      this.heard = true;
+      this.showNext();
+      return;
+    }
     const result = apply(this.state, action);
     if (!result) return;
     this.state = result.state;

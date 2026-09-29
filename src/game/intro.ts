@@ -3,8 +3,9 @@ import { COMMISSIONS } from '../content/campaign';
 import { SPELLS } from '../content/spells';
 import { troops } from '../content/troops';
 import { ARTIFACTS, type ArtifactId } from '../content/artifacts';
+import { FRIENDS } from '../content/friends';
 import { PERKS, RANKS, SKILLS } from '../content/skills';
-import { campaignLines, commissionOf, hasNextCommission, roman, type Card, type GameState } from '../rules/game';
+import { bountyCard, bountyOf, campaignLines, commissionOf, hasNextCommission, roman, type Card, type GameState } from '../rules/game';
 
 /** The title screen's menu: carry on with a save, or begin again. */
 export function titleCard(resume: GameState | null): Card {
@@ -28,14 +29,14 @@ export const kingCard = (): Card => ({
   choices: [{ label: 'At your service, Majesty.', action: { type: 'close' } }],
 });
 
-/** The first villain, on a poster the King's clerk has had printed. */
+/** The first villain, on a poster the King's clerk has had printed: the bounty the Crown pays at his lair. */
 export const wantedCard = (): Card => {
   const first = COMMISSIONS[0];
   return {
     title: 'WANTED',
-    portrait: 'grimsby',
+    ...(first.face ? { portrait: first.face } : {}),
     poster: true,
-    lines: [`**${first.villain}** of Aldmoor`, 'for three years of unpaid taxes, one goose (royal), and general baronial behaviour.', `Reward: **${first.reward.toLocaleString('en-GB')} gold**, alive. The goose also alive, please.`],
+    lines: [`**${first.villain}** of ${first.province.name}`, first.wanted ?? first.brief.join(' '), `Reward: **${bountyOf(first.province).toLocaleString('en-GB')} gold**, alive. The goose also alive, please.`],
     choices: [{ label: 'I\u2019ll bring him in.', action: { type: 'close' } }],
   };
 };
@@ -88,7 +89,7 @@ export function chapterStartCard(state: GameState): Card {
     lines: [
       `The bot rode ${state.campaign.record.length} earlier commission${state.campaign.record.length === 1 ? '' : 's'} and took the King\u2019s court boons. Now the reins are yours.`,
       `Level ${hero.level}. Attack ${hero.attack}, defence ${hero.defence}, spell power ${hero.spellPower}, knowledge ${hero.knowledge}. Leadership ${state.leadership}.`,
-      `Skills: ${skills.join(', ') || 'none'}. Perks: ${perks.join(', ') || 'none'}.`,
+      `Skills: ${skills.join(', ') || 'none'}. Perks: ${perks.join(', ') || 'none'}. With him: ${(hero.friends ?? []).map((id) => FRIENDS[id].name).join(', ') || 'nobody'}.`,
       `Spellbook: ${spells.join(', ') || 'empty'}.`,
       `Wearing: ${worn.join(', ') || 'nothing'}. Pack: ${pack.join(', ') || 'empty'}.`,
       `Army: ${army.join(', ') || 'none'}.`,
@@ -113,10 +114,10 @@ export const failedCard = (state: GameState): Card => ({
   choices: [{ label: 'Try this commission again', action: { type: 'retry' } }, { label: 'Start a new campaign', action: { type: 'restart' } }],
 });
 
-/** After a commission ends, if its card was put away: what comes next. */
+/** After a commission ends, if its card was put away: what comes next. A won one waits on its poster, stamped PAID. */
 export function endCard(state: GameState): Card {
   if (state.over === 'lost') return failedCard(state);
-  if (hasNextCommission(state)) return { title: 'The bounty is paid!', lines: [`${commissionOf(state).villain} is on the way to the King.`], choices: [{ label: 'Ride to the King\u2019s court', action: { type: 'court' } }] };
+  if (hasNextCommission(state)) return bountyCard(state);
   return { title: 'The campaign is won!', lines: campaignLines(state).slice(1), choices: [{ label: 'Start a new campaign', action: { type: 'restart' } }] };
 }
 

@@ -1,6 +1,7 @@
 /** Pure game rules: no DOM, no timers. Every change returns a new state plus events, and dice come from `seed`. */
 import type { ArtifactId, Slot } from '../content/artifacts';
 import type { BackgroundId } from '../content/backgrounds';
+import type { FriendId } from '../content/friends';
 import type { PortraitId } from '../content/portraits';
 import type { PerkId, SkillId } from '../content/skills';
 import type { MapSpellId, SpellId, StatusId } from '../content/spells';
@@ -136,9 +137,11 @@ export type Effects = {
 /**
  * A choice written as content: a button, what it needs, what it does, and what the card then says.
  * One the hero can't take shows greyed out; one whose `when` doesn't hold isn't there at all (a
- * question to ask only once there's something to ask about).
+ * question to ask only once there's something to ask about). One that takes a villain for a price
+ * other than the poster's says `because` why, for the poster that comes back stamped PAID: "the
+ * other half went on the Baron's lunch".
  */
-export type ContentChoice = { id: string; label: string; when?: Needs; needs?: Needs; effects?: Effects; lines?: string[] };
+export type ContentChoice = { id: string; label: string; when?: Needs; needs?: Needs; effects?: Effects; lines?: string[]; because?: string };
 
 /**
  * A card written as content. A visit shows the first page whose `when` holds; an `answer` page is
@@ -175,7 +178,7 @@ export type Location = {
 
 /** Flavour for a place: before a visit, once it's used up, and on the visit itself. */
 export type PlaceText = { about?: string[]; done?: string[]; visit?: string[] };
-export type PlaceLook = 'abbey' | 'peathut' | 'windmill' | 'stilthut' | 'shrine' | 'camp' | 'cottage' | 'stones' | 'range' | 'hall' | 'lodge';
+export type PlaceLook = 'abbey' | 'peathut' | 'windmill' | 'stilthut' | 'shrine' | 'camp' | 'cottage' | 'house' | 'stones' | 'range' | 'hall' | 'lodge';
 
 /** The campaign so far: which commission this is, how the others went, and how this one began. */
 export type Campaign = {
@@ -190,7 +193,9 @@ export type Campaign = {
   court?: { boons: BoonId[]; chosen?: BoonId };
 };
 
-export type BoonId = 'fencing' | 'armourer' | 'library' | 'astronomer' | 'warrant' | 'purse';
+/** The King's own boons; the others are people from the commission who would ride on with Aldric (`FRIENDS`). */
+export type KingsBoonId = 'fencing' | 'armourer' | 'library' | 'astronomer' | 'warrant' | 'purse';
+export type BoonId = KingsBoonId | FriendId;
 
 export type GameState = {
   day: number;
@@ -201,6 +206,8 @@ export type GameState = {
   seed: number;
   locations: Location[];
   bounty: 'open' | 'paid';
+  /** What the Crown paid for the villain, and why, if not the poster's price. */
+  paid?: { gold: number; because?: string };
   over?: 'won' | 'lost';
   hero: Hero;
   /** The province's size in pixels, for fog and anything else that needs the map's shape. */
@@ -238,6 +245,8 @@ export type Hero = {
   pack: ArtifactId[];
   /** Level-ups still waiting for a choice. */
   offers: Offer[];
+  /** People who ride with him, taken as boons at court: for the rest of the campaign. */
+  friends?: FriendId[];
 };
 
 /** What the player can do from a card. `go` rides to a location and visits it on arrival. */
@@ -272,6 +281,8 @@ export type Action =
   | { type: 'dismiss'; index: number }
   | { type: 'background'; id: BackgroundId }
   | { type: 'mapSpell'; spell: MapSpellId }
+  /** Puts up the WANTED poster, stamped PAID once the bounty is. */
+  | { type: 'poster' }
   /** After a won commission: ride to the King. */
   | { type: 'court' }
   | { type: 'boon'; id: BoonId }
@@ -280,7 +291,7 @@ export type Action =
   | { type: 'retry' };
 
 /** A button on a card. A `disabled` one shows what the player could do with another hero, or more gold. */
-/** A button on a card. `detail` is a smaller line under the label; `portrait` puts a face beside it. */
+/** A button on a card. `detail` is a smaller line under the label (with **bold** and *italics*); `portrait` puts a face beside it. */
 export type Choice = { label: string; action: Action; disabled?: boolean; portrait?: PortraitId; detail?: string };
 
 /** A battle's losses and mana spent, for the result card. */
@@ -288,10 +299,22 @@ export type BattleResultCard = { player: Army; enemy: Army; manaSpent: number; m
 
 /**
  * A parchment card with a title, lines (with **bold** and *italics*), and choices. `wide` is for big
- * decisions. `portrait` puts a face at its top left; `poster` makes it a WANTED poster; `tiles` lays
- * the choices side by side, each with its face, for picking a hero.
+ * decisions. `portrait` puts a face at its top left; `poster` makes it a WANTED poster, which a
+ * `stamp` slams across ("PAID") and an `inset` finishes with a picture and its line (the goose, home);
+ * `tiles` lays the choices side by side, each with its face, for picking a hero.
  */
-export type Card = { title: string; lines: string[]; choices: Choice[]; wide?: boolean; portrait?: PortraitId; poster?: boolean; tiles?: boolean; battleResult?: BattleResultCard };
+export type Card = {
+  title: string;
+  lines: string[];
+  choices: Choice[];
+  wide?: boolean;
+  portrait?: PortraitId;
+  poster?: boolean;
+  stamp?: string;
+  inset?: { portrait: PortraitId; line: string };
+  tiles?: boolean;
+  battleResult?: BattleResultCard;
+};
 
 /** What happened, for the screens to show. The rules never draw anything themselves. */
 export type GameEvent =

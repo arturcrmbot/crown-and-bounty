@@ -512,6 +512,64 @@ export function hut(seed: number): Bitmap {
   return shaped;
 }
 
+/**
+ * Holes dug in the heather, each with its heap of spoil thrown up behind it, and a spade left standing
+ * in one: where Grimsby's men are digging for the old King's treasure. The foot is at the bottom.
+ */
+export function holes(seed: number): Bitmap {
+  const sprite = new Bitmap(50, 26);
+  const random = rng(seed);
+  const pits: [number, number, number][] = [];
+  for (let n = 0; n < 3; n++) pits.push([8 + n * 16 + Math.floor(random() * 4), 13 + Math.floor(random() * 8), 5 + Math.floor(random() * 2)]);
+  for (const [cx, cy, r] of pits) {
+    // The spoil heap, thrown up behind the hole and to its right, lit from the top left.
+    for (let y = cy - r - 5; y <= cy - 1; y++) {
+      for (let x = cx - 2; x <= cx + r + 5; x++) {
+        const light = sphere(x, y, cx + r * 0.5 + 1, cy - 2, r * 0.8 + 2);
+        if (light !== OUTSIDE) sprite.set(x, y, flat(four(EARTH, 2, 3, 4, 5), 0.3 + light * 0.7, x, y));
+      }
+    }
+    // The hole: its far wall in shadow, black at the bottom, and a lit lip of fresh earth at the near edge.
+    for (let y = cy - 3; y <= cy + 3; y++) {
+      for (let x = cx - r - 1; x <= cx + r + 1; x++) {
+        const u = (x + 0.5 - cx) / (r + 1);
+        const v = (y + 0.5 - cy) / 3.4;
+        const d = u * u + v * v;
+        if (d > 1) continue;
+        const rim = d > 0.62;
+        sprite.set(x, y, rim ? (v > 0 ? EARTH[5] : EARTH[2]) : v < -0.2 ? EARTH[1] : INK);
+      }
+    }
+  }
+  // A spade, stuck upright in the middle heap.
+  const [sx, sy, sr] = pits[1];
+  const hx = sx + Math.round(sr * 0.5) + 1;
+  for (let y = sy - 15; y < sy - 7; y++) sprite.set(hx, y, WOOD[3]);
+  for (let x = hx - 1; x <= hx + 1; x++) sprite.set(x, sy - 16, WOOD[4]);
+  for (let y = sy - 7; y < sy - 3; y++) for (let x = hx - 1; x <= hx + 1; x++) sprite.set(x, y, STONE[x === hx - 1 ? 6 : 4]);
+  const shaped = outline(sprite, INK);
+  castShadow(shaped, 2, 1, 6);
+  return shaped;
+}
+
+/** A plain cottage on the green, with a sergeant's red coat and a shirt pegged out on the washing line: Mrs Pike's. */
+export function washingCottage(seed: number): Bitmap {
+  const sprite = new Bitmap(58, 32);
+  const house = hut(seed);
+  for (let y = 0; y < house.height; y++) for (let x = 0; x < house.width; x++) if (house.data[y * house.width + x]) sprite.set(x, y, house.data[y * house.width + x]);
+  // Two posts and the line between them.
+  for (const px of [36, 55]) for (let y = 13; y < 28; y++) sprite.set(px, y, WOOD[y === 13 ? 4 : 2]);
+  for (let x = 37; x < 55; x++) sprite.set(x, 14 + (x > 42 && x < 50 ? 1 : 0), NEUTRAL[5]);
+  // The coat: shoulders, sleeves and skirts, in the King's red.
+  const coat = ['.rrrrr.', 'rrRrRrr', 'r.RRR.r', 'r.RrR.r', '..RrR..', '..RrR..', '.RRrRR.', '.RR.RR.'];
+  coat.forEach((row, dy) => [...row].forEach((ch, dx) => ch !== '.' && sprite.set(39 + dx, 15 + dy, ch === 'R' ? RED[3] : RED[2])));
+  // A shirt beside it.
+  for (let y = 16; y < 21; y++) for (let x = 48; x < 53; x++) sprite.set(x, y, NEUTRAL[y === 16 || x === 48 ? 7 : 6]);
+  const shaped = outline(sprite, INK);
+  castShadow(shaped, 5, 2, 20);
+  return shaped;
+}
+
 /** The watermill with its wheel turned to `turn` (0 to 1 round). */
 export function mill(turn: number): Bitmap {
   const sprite = new Bitmap(56, 50);

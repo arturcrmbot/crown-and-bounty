@@ -1,5 +1,6 @@
 import { needsTarget, SPELLS, STATUSES, type SpellId, type StatusDef } from '../content/spells';
 import { TROOPS, troops } from '../content/troops';
+import { CONTACT, TROOP_SOUNDS } from '../audio/blows';
 import { chooseAction, finishEstimate } from '../rules/battle/ai';
 import { manaInBattle, signedShare, spiritsOf, uneasyWords } from '../rules/heroSheet';
 import { grumbleLine } from '../rules/army';
@@ -8,11 +9,12 @@ import { activeFighter, bardOf, battleAct, battleEnd, bribePrice, canCast, canJo
 import { paintBanner } from '../render/banner';
 import { BattleScreen, BUTTONS, FIRE_FALL, FLOAT_RISE, hexAt, hexCentre, leaderAt, LOG_BOTTOM, spotOf, type BattleView, type Shot } from '../render/battleScreen';
 import { animLength, bodyHeight, hitTime, STAND, type AnimName } from '../render/battleSprites';
-import { ART } from '../render/units';
+import { ART, type Missile } from '../render/units';
 import { MAP_VIEW } from '../render/frame';
 import { BLUE, GOLD, NEUTRAL, RED } from '../render/palette';
+import { paintSpeech } from '../render/speech';
 import { CardView } from '../ui/card';
-import { play } from '../ui/sound';
+import { play, speak } from '../ui/sound';
 import type { Display } from './display';
 import type { Screen } from './screen';
 
@@ -29,6 +31,8 @@ const MS = 0.00085;
 const FLINCH_EARLY = 126;
 /** Wesnoth pulses a unit red twice when it is hit: on for each of these stretches of the first 300 ms. */
 const pulse = (k: number) => (k > 0.05 && k < 0.35) || (k > 0.55 && k < 0.85);
+/** How long a villain's last words stay up, in seconds whatever the battle's pace: the fight stops on them, till a click. */
+const LAST_WORDS = 3.2;
 /** What a bard shouts at a stack he jeers. */
 const JEERS = ['Call that a sword?', 'Boo! Hiss!', 'Go home to mother!', 'Nice hat!', 'Is that all?', 'My goose fights better!'];
 /** A share as a whole percentage: "25%". */
@@ -101,6 +105,7 @@ export class BattleController implements Screen {
       time: 0,
       shake: 0,
       banner: null,
+      speech: null,
       finishOffer: false,
     };
     // What the hero brought to the field is said as the battle opens: "Advanced Archery: the Wolves start slowed."
@@ -141,6 +146,30 @@ export class BattleController implements Screen {
       start,
       tick: (t) => length && this.view.poses.set(id, { anim, ms: Math.min(length, (t * Math.max(0.3, length * MS)) / MS) }),
       end: () => this.view.poses.delete(id),
+    });
+  }
+
+  /**
+   * A leader says something aloud: a bubble over his head, his babble, and the ribbon says it too.
+   * It stays up `LAST_WORDS` seconds at any pace, or until a click.
+   */
+  private say(id: number, words: string) {
+    const f = fighterById(this.battle, id);
+    const hold = LAST_WORDS * this.pace * (this.auto ? 2.5 : 1);
+    this.step(hold, {
+      start: () => {
+        this.view.speech = { fighter: id, bubble: paintSpeech(`\u201c${words}\u201d`), age: 0, life: LAST_WORDS };
+        this.view.log = `${this.fighterName(id)}: \u201c${words}\u201d`;
+        this.view.poses.set(id, { anim: 'defend', ms: 0 });
+        speak(TROOPS[f.troop].voice ?? 150, words);
+      },
+      tick: (t) => {
+        if (this.view.speech) this.view.speech.age = t * LAST_WORDS;
+      },
+      end: () => {
+        this.view.speech = null;
+        this.view.poses.delete(id);
+      },
     });
   }
 
@@ -279,6 +308,33 @@ export class BattleController implements Screen {
     this.view.floaters.push({ x, y: at, text, color, age: 0 });
   }
 
+  /** Where on the field a sound comes from: your side on the left, theirs on the right, as far across as it is. */
+  private panAt(x: number) {
+    const half = MAP_VIEW.width / 2;
+    return Math.max(-0.7, Math.min(0.7, ((x - MAP_VIEW.x - half) / half) * 0.7));
+  }
+
+  /**
+   * What a blow or a shot sounds like as it lands: the attacker's weapon (a knight's charge is his
+   * lance), or the shot hitting home; steel ringing on the target's armour; and its cry, if it's
+   * hurt and still standing (one that falls gives its death cry as it goes).
+   */
+  private landSound(e: Extract<BattleEvent, { type: 'hit' }>, missile: Missile | null, dies: boolean, x: number) {
+    const pan = this.panAt(x);
+    const attacker = fighterById(this.battle, e.attacker);
+    const target = TROOP_SOUNDS[fighterById(this.battle, e.target).troop];
+    if (missile) play(`land:${missile}`, pan);
+    else play(`blow:${e.charge && ART[attacker.troop].charge ? 'lance' : TROOP_SOUNDS[attacker.troop].blow}`, pan);
+    const lands = missile ? 0 : CONTACT;
+    if (target.armour) play('armour', pan, lands);
+    if (!dies && e.damage > 0) play(`hurt:${target.cry}`, pan, lands + 0.06);
+  }
+
+  /** A stack's death cry, as the last of it falls. */
+  private deathCry(id: number) {
+    play(`dies:${TROOP_SOUNDS[fighterById(this.battle, id).troop].cry}`, this.panAt(this.spot(id)[0]));
+  }
+
   /** A burst where a blow lands, blood for the wounded, and a jolt that grows with the damage. */
   private impact(target: number, damage: number, heavy: boolean) {
     const f = fighterById(this.battle, target);
@@ -301,7 +357,10 @@ export class BattleController implements Screen {
     if (!ART[f.troop].death) return this.poof(target);
     const length = animLength(f.troop, 'death');
     this.step(length * MS, {
-      start: () => this.view.facings.set(target, this.facingOf(f)),
+      start: () => {
+        this.view.facings.set(target, this.facingOf(f));
+        this.deathCry(target);
+      },
       tick: (t) => this.view.poses.set(target, { anim: 'death', ms: t * length }),
       end: () => {
         this.view.poses.delete(target);
@@ -399,6 +458,7 @@ export class BattleController implements Screen {
       start: () => {
         this.view.shots.push(dust);
         this.view.dying.delete(target);
+        this.deathCry(target);
       },
       tick: (t) => (dust.t = t),
       end: () => this.view.shots.splice(this.view.shots.indexOf(dust), 1),
@@ -485,7 +545,7 @@ export class BattleController implements Screen {
       this.step(0.16 + len / 1500, {
         start: () => {
           v.shots.push(shot);
-          play(missile === 'hex' || missile === 'magic' ? 'spell' : 'shoot');
+          play(`loose:${missile}`, this.panAt(ax));
         },
         tick: (t) => {
           shot.t = t;
@@ -502,7 +562,7 @@ export class BattleController implements Screen {
         v.poses.set(e.target, { anim: flinch(), ms: 0 });
         v.counts.set(e.target, left.count);
         v.health.set(e.target, left.hp);
-        if (!e.ranged) play('hit');
+        this.landSound(e, missile, dies, tx);
         this.impact(e.target, e.damage, !e.ranged);
         if (e.charge) {
           this.float(e.attacker, 'Charge!', GOLD[6], from);
@@ -580,6 +640,7 @@ export class BattleController implements Screen {
           if (leader && !back) out.set(e.fighter, path[path.length - 1]);
           // Riders gallop and beasts lope, in their own frames; folk on foot hop from hex to hex.
           const frames = !!ART[f.troop].move;
+          const feet = `feet:${TROOP_SOUNDS[f.troop].feet}` as const;
           for (const [n, to] of path.entries()) {
             const a = n === 0 ? start : path[n - 1];
             // A hex a step for a stack; a leader gallops, however far his first and last stretches are.
@@ -588,6 +649,7 @@ export class BattleController implements Screen {
               start: () => {
                 if (n === 0 && !back) v.log = `${this.fighterName(e.fighter)} ${this.verb(e.fighter, leader ? 'ride out' : 'advance')}...`;
                 if (to[0] !== a[0]) v.facings.set(e.fighter, to[0] > a[0] ? 1 : -1);
+                play(feet, this.panAt(to[0]));
               },
               tick: (t) => {
                 const hop = frames ? 0 : Math.sin(t * Math.PI) * 4;
@@ -647,6 +709,7 @@ export class BattleController implements Screen {
             start: () => {
               v.health.set(e.fighter, hurt.hp - e.hurt);
               this.float(e.fighter, `-${e.hurt}`, RED[6]);
+              play(`hurt:${TROOP_SOUNDS[fighterById(this.battle, e.fighter).troop].cry}`, this.panAt(this.spot(e.fighter)[0]));
               v.log = `${this.fighterName(e.fighter)} ${this.verb(e.fighter, 'wince')}: the poison bites deep.`;
             },
           });
@@ -686,6 +749,10 @@ export class BattleController implements Screen {
           const impact = () => {
             landed = true;
             play(look.kind === 'sparkle' ? 'spell' : 'bolt');
+            // The stacks it hurts cry out (two at most, not a whole choir); those it kills cry as they fall.
+            for (const { h } of victims.filter((x) => x.h.damage > 0 && !x.dies).slice(0, 2)) {
+              play(`hurt:${TROOP_SOUNDS[fighterById(this.battle, h.target).troop].cry}`, this.panAt(this.spot(h.target)[0]), 0.08);
+            }
             for (const id of changes) {
               v.looks.delete(id);
               this.puff(id);
@@ -909,6 +976,8 @@ export class BattleController implements Screen {
               }
             },
           });
+          // A villain taken has the last word, in his own voice: the fight stops on it.
+          if (e.result === 'won' && leaders.length && this.battle.lastWords) this.say(leaders[0].id, this.battle.lastWords);
           break;
         }
         case 'turn': {
@@ -1168,6 +1237,11 @@ export class BattleController implements Screen {
 
   readonly input = {
     click: (x: number, y: number) => {
+      // A click moves on from a villain's last words.
+      if (this.view.speech && this.queue.length) {
+        this.queue[0].elapsed = this.queue[0].duration;
+        return;
+      }
       const button = BUTTONS.find((b) => x >= b.rect.x && x < b.rect.x + b.rect.width && y >= b.rect.y && y < b.rect.y + b.rect.height);
       if (button) return this.button(button.id);
       const hex = hexAt(x, y);

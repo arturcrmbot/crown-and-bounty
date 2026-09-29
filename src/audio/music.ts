@@ -8,7 +8,7 @@
 import { audio, whenAwake } from './context';
 import { playNote } from './instruments';
 import type { InstrumentId } from './instruments';
-import { gateLevel, loopUnits, notesOf, scaleOf, stepUp, TRACKS, type Mood, type Note, type TrackId } from './score';
+import { gateLevel, loopUnits, moodLevel, notesOf, scaleOf, stepUp, TRACKS, type Mood, type Note, type TrackId } from './score';
 
 const AHEAD = 0.3;
 const FADE = 1.4;
@@ -97,13 +97,14 @@ function tick() {
   const p = playing;
   if (!p) return;
   const horizon = a.ctx.currentTime + AHEAD;
+  const whole = moodLevel(TRACKS[p.id], mood);
   for (let guard = 0; guard < 400; guard++) {
     const note = p.notes[p.next];
     const at = p.start + p.lap * p.loop + note.at * p.unit;
     if (at > horizon) break;
     if (at > a.ctx.currentTime - 0.05) {
       const level = gateLevel(note.gate, mood);
-      if (level > 0.02) perform(a.ctx, p, note, p.next, at, level);
+      if (level > 0.02) perform(a.ctx, p, note, p.next, at, level * whole);
     }
     p.next++;
     if (p.next >= p.notes.length) {
@@ -113,8 +114,8 @@ function tick() {
   }
 }
 
-/** The track playing now, the one asked for, and the mood: for scripts. */
-export const nowPlaying = () => ({ playing: playing?.id ?? null, wanted, mood: { ...mood } });
+/** The track playing now, the one asked for, the mood, and how far the score is ducked (1: not at all): for scripts. */
+export const nowPlaying = () => ({ playing: playing?.id ?? null, wanted, mood: { ...mood }, duck: score ? Math.round(score.gain.value * 100) / 100 : 1 });
 
 /** How the fight is going: the score's gated parts follow it (see `Gate`). On the map it's calm. */
 export function setMusicMood(next: Mood) {
@@ -137,15 +138,38 @@ export function cueMusic(delay: number) {
   if (a) cue = { delay, expires: a.ctx.currentTime + 1 };
 }
 
-/** Lowers the score to `depth` of its level for `seconds`, under a sting, then brings it back. */
+/** How quickly a duck goes down, and how long it takes to come back up (seconds). */
+export const DUCK_IN = 0.08;
+export const DUCK_OUT = 0.9;
+
+/** A duck under way: how deep (a share of the level), and until when it holds (on the audio clock). */
+export type Duck = { depth: number; until: number };
+
+/**
+ * A new duck on top of whatever duck is on: it goes as deep as the deeper of the two and holds as
+ * long as the longer, so a light duck arriving under a sting never lets the music back up early.
+ */
+export function deepen(on: Duck, now: number, seconds: number, depth: number): Duck {
+  const live = on.until > now;
+  return { depth: live ? Math.min(on.depth, depth) : depth, until: Math.max(live ? on.until : 0, now + seconds) };
+}
+
+/** Ducks a gain: down to `depth` in `DUCK_IN`, held until `until`, then back to full over `DUCK_OUT`. */
+export function duck(gain: AudioParam, now: number, { depth, until }: Duck) {
+  gain.cancelScheduledValues(now);
+  gain.setValueAtTime(gain.value, now);
+  gain.linearRampToValueAtTime(depth, now + DUCK_IN);
+  gain.setValueAtTime(depth, Math.max(now + DUCK_IN, until));
+  gain.linearRampToValueAtTime(1, Math.max(now + DUCK_IN, until) + DUCK_OUT);
+}
+
+let ducking: Duck = { depth: 1, until: 0 };
+
+/** Lowers the score to `depth` of its level for `seconds` (under a sting, or a fanfare), then brings it back. */
 export function duckMusic(seconds: number, depth = 0.3) {
   const a = audio();
   if (!a) return;
-  const g = scoreBus().gain;
   const now = a.ctx.currentTime;
-  g.cancelScheduledValues(now);
-  g.setValueAtTime(g.value, now);
-  g.linearRampToValueAtTime(depth, now + 0.08);
-  g.setValueAtTime(depth, now + seconds);
-  g.linearRampToValueAtTime(1, now + seconds + 0.9);
+  ducking = deepen(ducking, now, seconds, depth);
+  duck(scoreBus().gain, now, ducking);
 }

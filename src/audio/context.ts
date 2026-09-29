@@ -12,10 +12,45 @@ const VOLUME_KEY = 'kings-commission/volumes';
 /** How loud each bus is at its own volume of 1, and the master over them. */
 export const LEVELS = { music: 0.42, sfx: 0.7, ambience: 0.35 };
 export const MASTER = 0.9;
+/**
+ * Where everything sits in the mix, as a listener hears loudness (LUFS, through its bus and the
+ * master; `npm run listen -- --check` holds each to these). Every track plays at the music's mark,
+ * so no screen is louder than another. A sting stands over the music, which ducks under it, and
+ * each effect is `faint` (footfalls), `soft` under the music (clicks, cards, a cry of pain), `firm`
+ * level with it (coins, blows, death cries) or `loud` over it (fanfares). The land's ambience lies
+ * beneath it all.
+ */
+export const MARKS = { music: -19.5, sting: -17, faint: -38, soft: -28, firm: -20, loud: -15, ambience: -31 };
+
+/** The ceiling's curve covers inputs this far over full scale, so even a pile-up of sounds is rounded off, not cut. */
+const HEADROOM = 4;
+/** Where the ceiling starts to bend: up to here (about -2 dBFS) the signal passes untouched. */
+const KNEE = 0.8;
+
+/**
+ * A soft ceiling: the signal passes untouched up to `KNEE`, and anything louder is rounded off
+ * smoothly before full scale, so a pile-up of blows never clips hard. (The compressor before it
+ * can't promise that: browsers add make-up gain to it.)
+ */
+function ceiling(ctx: BaseAudioContext, into: AudioNode): AudioNode {
+  const scale = ctx.createGain();
+  scale.gain.value = 1 / HEADROOM;
+  const shaper = ctx.createWaveShaper();
+  const points = 4097;
+  const curve = new Float32Array(points);
+  for (let i = 0; i < points; i++) {
+    const x = ((i / (points - 1)) * 2 - 1) * HEADROOM;
+    const a = Math.abs(x);
+    curve[i] = Math.sign(x) * (a <= KNEE ? a : KNEE + (1 - KNEE) * Math.tanh((a - KNEE) / (1 - KNEE)));
+  }
+  shaper.curve = curve;
+  scale.connect(shaper).connect(into);
+  return scale;
+}
 
 /**
  * The master chain for any context, live or rendered offline to be measured: a master gain into a
- * gentle compressor, so nothing clips. Returns the master gain, for the buses to feed.
+ * gentle compressor, and a soft ceiling so nothing clips. Returns the master gain, for the buses to feed.
  */
 export function masterChain(ctx: BaseAudioContext, level = MASTER): GainNode {
   const squash = ctx.createDynamicsCompressor();
@@ -23,7 +58,7 @@ export function masterChain(ctx: BaseAudioContext, level = MASTER): GainNode {
   squash.ratio.value = 4;
   const gain = ctx.createGain();
   gain.gain.value = level;
-  gain.connect(squash).connect(ctx.destination);
+  gain.connect(squash).connect(ceiling(ctx, ctx.destination));
   return gain;
 }
 const clamp01 = (n: number) => Math.max(0, Math.min(1, n));

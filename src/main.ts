@@ -67,7 +67,11 @@ function debugStart(): GameState {
     ? (query.get('army') ?? '').split(',').map((part) => part.split(':')).filter(([troop, count]) => troop in TROOPS && Number(count) > 0).map(([troop, count]) => ({ troop: troop as TroopId, count: Number(count) }))
     : first.army;
   const record = Array.from({ length: chapter }, (_, i) => ({ chapter: i, days: 10, level: 1 }));
-  const base = chapter > 0 ? beginCommission(commissionAt(first.campaign, chapter).province, first.seed, { hero, gold, leadership, army }, chapter, record, first.seed) : { ...first, army };
+  const begun = chapter > 0 ? beginCommission(commissionAt(first.campaign, chapter).province, first.seed, { hero, gold, leadership, army }, chapter, record, first.seed) : { ...first, army };
+  // ?flags=pike:false,dwarf:friend sets story flags, as if those things had happened (what the court remembers).
+  const flags = (query.get('flags') ?? '').split(',').map((part) => part.split(':')).filter(([flag, value]) => flag && value !== undefined);
+  const said = (value: string) => (value === 'true' ? true : value === 'false' ? false : Number.isFinite(Number(value)) ? Number(value) : value);
+  const base = flags.length ? { ...begun, flags: { ...begun.flags, ...Object.fromEntries(flags.map(([flag, value]) => [flag, said(value)])) } } : begun;
   if (court > 0) return { ...base, opening: undefined, over: 'won', bounty: 'paid' };
   // ?sceptre=1 (with ?commission=5): the last bounty is paid and the X is on the map.
   const x = commissionAt(first.campaign, chapter).province.sceptre;
@@ -86,7 +90,7 @@ const game = new Game(display, Math.max(1, Number(query.get('speed') ?? 1)), !fr
 const input = new Input(display, game.input);
 // The title and the King's welcome come first, unless a debug start (or a frozen screenshot) wants straight in.
 // ?quick=1 skips them too; ?title=1 brings them back even when frozen.
-const quick = (frozen && query.get('title') !== '1') || ['quick', 'battle', 'chapter', 'court', 'commission', 'sceptre', 'reveal', 'x', 'hero', 'spells', 'army', 'gear'].some((k) => query.has(k));
+const quick = (frozen && query.get('title') !== '1') || ['quick', 'battle', 'chapter', 'court', 'commission', 'sceptre', 'reveal', 'x', 'hero', 'spells', 'army', 'gear', 'flags'].some((k) => query.has(k));
 if (quick) {
   if (requestedChapter !== null) {
     game.showTitle(null, () => newGame(seed));

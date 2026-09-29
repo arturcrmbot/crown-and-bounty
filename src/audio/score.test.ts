@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chordTones, gateLevel, loopUnits, midiOf, notesOf, parseMelody, scaleOf, stepUp, TRACKS } from './score';
+import { chordTones, gateLevel, loopUnits, midiOf, moodLevel, notesOf, parseMelody, scaleOf, stepUp, TRACKS } from './score';
 
 describe('the music', () => {
   for (const track of Object.values(TRACKS)) {
@@ -56,6 +56,20 @@ describe('the music', () => {
     expect(chordTones('Em')).toEqual([4, 7, 11]);
     expect(chordTones('B')).toEqual([11, 3, 6]);
     expect(chordTones('Bb')).toEqual([10, 2, 5]);
+  });
+
+  it("a villain's theme is as loud by his lair as in his battle: its sparer arrangement there plays up", () => {
+    const [calm, fight] = [{ intensity: 0, balance: 0 }, { intensity: 0.25, balance: 0 }];
+    for (const t of Object.values(TRACKS)) {
+      if (t.calm === undefined) {
+        expect(moodLevel(t, calm), t.id).toBe(1);
+        continue;
+      }
+      // Only a track with a lair's arrangement (parts that go once the fighting starts) needs it.
+      expect(Object.values(t.parts).some((p) => p.gate?.below !== undefined), t.id).toBe(true);
+      expect(moodLevel(t, calm), t.id).toBe(t.calm);
+      expect(moodLevel(t, fight), t.id).toBe(1);
+    }
   });
 
   it('parts come and go with the mood', () => {

@@ -42,7 +42,7 @@ export function takeChoice(state: GameState, place: Location, choice: ContentCho
   if (effects.win) {
     const { gold: reward = 0, xp = 0, win: _, done: __, ...rest } = effects;
     const done = applyEffects(paid, place, rest);
-    const won = beat(done.state, place.id, { title: place.name, lines: [...(choice.lines ?? []), ...done.lines], reward, xp, sayGold: true, choices: rest.artifact ? artifactChoices(done.state, rest.artifact) : [] });
+    const won = beat(done.state, place.id, { title: place.name, lines: [...(choice.lines ?? []), ...done.lines], reward, xp, sayGold: true, choices: rest.artifact ? artifactChoices(done.state, rest.artifact) : [], because: choice.because });
     return { state: won.state, events: [...done.events, ...won.events] };
   }
   const done = applyEffects(paid, place, effects);

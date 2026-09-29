@@ -44,6 +44,8 @@ const FOOTPRINTS: Record<string, [number, number]> = {
   signpost: [4, 4],
   hideout: [72, 28],
   hut: [24, 12],
+  house: [24, 12],
+  holes: [40, 6],
   hall: [74, 24],
   lodge: [46, 16],
 };

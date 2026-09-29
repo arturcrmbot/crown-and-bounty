@@ -55,6 +55,7 @@
   clear: both;
 }
 .kc-card .battle-result {
+  clear: both;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
@@ -100,11 +101,16 @@
   content: none;
 }
 .kc-card button.with-portrait img {
+  flex: none;
   width: 40px;
   height: 40px;
   image-rendering: pixelated;
   background: #c6ab7c;
   border: 1px solid #5a3e14;
+}
+/* Beside a face, the label and the line under it stack as one. */
+.kc-card button.with-portrait .words {
+  display: block;
 }
 .kc-card h3 {
   margin: 0 0 6px;
@@ -183,7 +189,7 @@
 
 /* A WANTED poster: everything centred, a big black title, and the face in the middle. */
 .kc-card.poster {
-  width: 270px;
+  width: 300px;
   text-align: center;
   background-image:
     radial-gradient(circle at 20% 30%, rgba(122, 92, 44, 0.2) 0 1px, transparent 1.5px),
@@ -191,7 +197,7 @@
     linear-gradient(#e2cc98, #c9ad74);
 }
 .kc-card.poster h3 {
-  margin: 2px 0 8px;
+  margin: 2px 0 6px;
   font-size: 40px;
   line-height: 1;
   letter-spacing: 6px;
@@ -203,7 +209,62 @@
   display: block;
   width: 128px;
   height: 128px;
-  margin: 0 auto 10px;
+  margin: 0;
+}
+.kc-card.poster .mugshot {
+  position: relative;
+  width: 132px;
+  margin: 0 auto 8px;
+}
+/* PAID, in red ink, slammed across the face once the bounty is. */
+.kc-card .stamp {
+  position: absolute;
+  left: 50%;
+  top: 54%;
+  padding: 3px 10px 1px 14px;
+  font-size: 36px;
+  font-weight: bold;
+  line-height: 1;
+  letter-spacing: 5px;
+  color: #b0231a;
+  border: 5px double #b0231a;
+  opacity: 0.9;
+  mix-blend-mode: multiply;
+  transform: translate(-50%, -50%) rotate(-15deg);
+  pointer-events: none;
+}
+.kc-card.unfold .stamp {
+  animation: kc-stamp 190ms cubic-bezier(0.3, 0, 0.8, 0.4) 280ms both;
+}
+@keyframes kc-stamp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(-26deg) scale(2.8);
+  }
+  to {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) rotate(-15deg) scale(1);
+  }
+}
+/* What came home, pictured at the foot of the poster with its line. */
+.kc-card .inset {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 0;
+  text-align: left;
+}
+.kc-card .inset img {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  image-rendering: pixelated;
+  background: #c6ab7c;
+  border: 2px solid #5a3e14;
+}
+.kc-card .inset p {
+  margin: 0;
+  font-style: italic;
 }
 .kc-card.poster .choices button {
   text-align: center;
@@ -257,7 +318,8 @@
   animation: kc-unfold 170ms ease-out;
 }
 @media (prefers-reduced-motion: reduce) {
-  .kc-card.unfold {
+  .kc-card.unfold,
+  .kc-card.unfold .stamp {
     animation: none;
   }
 }

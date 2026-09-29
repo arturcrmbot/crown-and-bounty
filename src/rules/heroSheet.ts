@@ -1,12 +1,12 @@
 import { ARTIFACTS, type Slot } from '../content/artifacts';
 import { BACKGROUNDS, type BackgroundId, type Bonus } from '../content/backgrounds';
+import { FRIENDS } from '../content/friends';
 import { PERKS, RANKS, SKILLS, skillNote, type SkillId } from '../content/skills';
 import { MAP_SPELLS, SPELLS, STATUSES, type MapSpellId } from '../content/spells';
 import { ABILITIES, abilitiesOf, TROOPS, troops, type TroopId } from '../content/troops';
 import { createBattle, grumbleOf, grumblesAt, luckOf, moraleOf, statsOf, type BattleState, type Fighter } from './battle/battle';
 import { rowOf } from './battle/hex';
-import { CAMPAIGN_LENGTH, commissionOf } from './campaign';
-import type { PortraitId } from '../content/portraits';
+import { bountyOf, CAMPAIGN_LENGTH, commissionOf, hasNextCommission } from './campaign';
 import { heroFighter, heroInBattle } from './fight';
 import { countsExactly, forceLine } from './places/common';
 import { heroStats, LEVELS, type StatId } from './hero';
@@ -82,26 +82,39 @@ export function barNote(state: GameState, item: BarItem): string {
 /** How far away a place is, for the label under the pointer: "today", "tomorrow", "in 3 days". */
 export const whenThere = (days: number) => (days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`);
 
-/** Faces for the villains' posters, by the name the commission gives. */
-const VILLAIN_FACES: [string, PortraitId][] = [['Grimsby', 'grimsby'], ['Mirrow', 'mirrow'], ['Bramble', 'bramble']];
+/** What the stamped poster says was paid: the poster's price in full, or what the Crown paid and why. */
+function paidLine(state: GameState): string {
+  const promised = bountyOf(state);
+  const paid = state.paid ?? { gold: promised };
+  if (paid.gold === promised) return `Reward: **${coins(promised)} gold**, paid in full.`;
+  return `The poster said **${coins(promised)} gold**. The Crown pays **${coins(paid.gold)}**, because ${paid.because ?? 'that was the deal'}.`;
+}
 
-/** The WANTED poster again, from the bar: who, why, the reward, and the days left. */
+/**
+ * The villain's WANTED poster, from the bar: who, what for, the reward, the days left and the pieces
+ * of the map so far. Once he's taken it comes back stamped PAID, with what was paid (and why, if not
+ * the poster's price), what came home (a picture of it, the goose, if there is one) and, once the
+ * commission is won, the way to court.
+ */
 export function bountyCard(state: GameState): Card {
   const c = commissionOf(state);
-  const face = VILLAIN_FACES.find(([name]) => c.villain.includes(name))?.[1];
-  const pieces = state.campaign.record.length + (state.bounty === 'paid' ? 1 : 0);
+  const paid = state.bounty === 'paid';
+  const pieces = state.campaign.record.length + (paid ? 1 : 0);
   const left = LAST_DAY - state.day;
+  const home = paid && c.returned ? { inset: { portrait: c.returned, line: c.homecoming } } : {};
   return {
-    title: state.bounty === 'paid' ? 'CAUGHT' : 'WANTED',
+    title: 'WANTED',
     poster: true,
-    ...(face ? { portrait: face } : {}),
+    ...(c.face ? { portrait: c.face } : {}),
+    ...(paid ? { stamp: 'PAID' } : {}),
+    ...home,
     lines: [
       `**${c.villain}** of ${c.province.name.replace(/^the /, 'the ')}`,
-      ...c.brief,
-      state.bounty === 'paid' ? 'The bounty is paid.' : `Reward: **${coins(c.reward)} gold**. By day ${LAST_DAY}: **${left} day${left === 1 ? '' : 's'}** left.`,
-      `*Pieces of the old map: ${pieces} of ${CAMPAIGN_LENGTH}.*`,
+      c.wanted ?? c.brief.join(' '),
+      paid ? paidLine(state) : `Reward: **${coins(bountyOf(state))} gold**. By day ${LAST_DAY}: **${left} day${left === 1 ? '' : 's'}** left.`,
+      ...(paid ? (c.returned ? [] : [c.homecoming]) : [`*Pieces of the old map: ${pieces} of ${CAMPAIGN_LENGTH}.*`]),
     ],
-    choices: [close],
+    choices: paid && state.over === 'won' && hasNextCommission(state) ? [{ label: 'Ride to the King\u2019s court', action: { type: 'court' } }] : [close],
   };
 }
 
@@ -138,6 +151,8 @@ export type HeroSheet = {
   signature: Note;
   skills: Note[];
   perks: Note[];
+  /** Who rides with him: people taken as boons at court. */
+  company: Note[];
   spells: Note[];
   mapSpells: { spell: MapSpellId; label: string; note: string; disabled: boolean }[];
   pieces: string;
@@ -186,6 +201,7 @@ export function heroSheet(state: GameState): HeroSheet {
     signature: { name: b.signature.name, note: b.signature.note, trick: true },
     skills: (Object.entries(h.skills) as [SkillId, number][]).filter(([, rank]) => rank > 0).map(([id, rank]) => ({ name: `${RANKS[Math.min(rank, RANKS.length) - 1]} ${SKILLS[id].name}`, note: skillNote(id, rank) })),
     perks: h.perks.map((id) => ({ name: PERKS[id].name, note: PERKS[id].note, ...(PERKS[id].trick ? { trick: true } : {}) })),
+    company: (h.friends ?? []).map((id) => ({ name: FRIENDS[id].name, note: FRIENDS[id].note })),
     spells: h.spells.map((id) => ({ name: SPELLS[id].name, note: `${Math.max(1, SPELLS[id].mana - discount)} mana: ${SPELLS[id].note}` })),
     mapSpells: s.mapSpells.map((id) => ({ spell: id, label: `Cast ${MAP_SPELLS[id].name} (${MAP_SPELLS[id].mana} mana)`, note: MAP_SPELLS[id].note, disabled: h.mana < MAP_SPELLS[id].mana })),
     pieces: `Pieces of the old map: ${state.campaign.record.length + (state.bounty === 'paid' ? 1 : 0)} of ${CAMPAIGN_LENGTH}`,
@@ -226,6 +242,7 @@ function namedBonuses(state: GameState): { name: string; bonus: Bonus }[] {
     if (rank > 0) out.push({ name: `${RANKS[Math.min(rank, RANKS.length) - 1]} ${SKILLS[id].name}`, bonus: SKILLS[id].ranks[Math.min(rank, RANKS.length) - 1].bonus });
   }
   for (const id of h.perks) out.push({ name: PERKS[id].name, bonus: PERKS[id].bonus });
+  for (const id of h.friends ?? []) out.push({ name: FRIENDS[id].name, bonus: FRIENDS[id].bonus });
   for (const id of Object.values(h.gear)) if (id) out.push({ name: ARTIFACTS[id].name, bonus: ARTIFACTS[id].bonus });
   return out;
 }

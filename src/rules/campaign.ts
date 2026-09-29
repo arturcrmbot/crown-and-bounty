@@ -1,10 +1,11 @@
 import { BACKGROUNDS } from '../content/backgrounds';
-import { BOON_IDS, BOONS, COMMISSIONS, type Commission } from '../content/campaign';
+import { BOON_IDS, BOONS, COMMISSIONS, type Commission, type Happened } from '../content/campaign';
+import { FRIENDS, type FriendId } from '../content/friends';
 import { VILLAINS } from '../content/villains';
 import { generateCommission } from './generate';
 import { heroStats, VETERANS } from './hero';
 import { beginCommission } from './scenario';
-import { addTroops, armyLine, close, coins, leadershipUsed, roll, roman, show, TROOPS, type Army, type BoonId, type Campaign, type Card, type GameState, type Location, type Result } from './state';
+import { addTroops, armyLine, close, coins, leadershipUsed, roll, roman, show, TROOPS, type Army, type BoonId, type Campaign, type Card, type Choice, type GameState, type Location, type Result } from './state';
 
 /** Commissions in a campaign: the hand-made ones, then provinces generated for this campaign. */
 export const CAMPAIGN_LENGTH = 5;
@@ -29,6 +30,9 @@ export function commissionAt(campaign: Pick<Campaign, 'seed'>, chapter: number):
 
 export const commissionOf = (state: GameState) => commissionAt(state.campaign, state.campaign.chapter);
 export const provinceOf = (state: GameState) => commissionOf(state).province;
+
+/** The bounty on the villain, as his WANTED poster gives it: what the Crown pays for taking him at his lair. */
+export const bountyOf = (state: Pick<GameState, 'locations'>) => state.locations.find((l) => l.kind === 'hideout')?.enemy?.reward ?? 0;
 export const hasNextCommission = (state: GameState) => state.campaign.chapter + 1 < CAMPAIGN_LENGTH;
 
 /** What a place says and offers, as opposed to what has happened to it: a save takes the newest. */
@@ -76,27 +80,74 @@ export function veterans(army: Army, share = VETERANS): Army {
   return army.map((s) => ({ troop: s.troop, count: Math.floor(s.count * share) })).filter((s) => s.count > 0);
 }
 
-/** The army for the next commission: the background's levy, then as many veterans as leadership allows. */
-export function nextArmy(state: GameState): Army {
+/**
+ * The army for the next commission, and where it comes from: the background's levy, then whoever
+ * the companion taken at court brings along (Pike's lads), then as many veterans as leadership allows.
+ */
+function musterFor(state: GameState): { army: Army; kept: Army } {
   let army: Army = BACKGROUNDS[state.hero.background].army.map((s) => ({ ...s }));
   const { leadership, veterans: share } = heroStats(state);
-  for (const v of veterans(state.army, share).sort((a, b) => TROOPS[b.troop].leadership - TROOPS[a.troop].leadership)) {
-    const count = Math.min(v.count, Math.floor((leadership - leadershipUsed(army)) / TROOPS[v.troop].leadership));
-    const joined = count > 0 ? addTroops(army, v.troop, count) : null;
-    if (joined) army = joined;
-  }
-  return army;
+  const join = (stacks: Army) => {
+    const joined: Army = [];
+    for (const s of stacks) {
+      const count = Math.min(s.count, Math.floor((leadership - leadershipUsed(army)) / TROOPS[s.troop].leadership));
+      const next = count > 0 ? addTroops(army, s.troop, count) : null;
+      if (!next) continue;
+      army = next;
+      joined.push({ troop: s.troop, count });
+    }
+    return joined;
+  };
+  const chosen = state.campaign.court?.chosen;
+  join(chosen && isFriend(chosen) ? (FRIENDS[chosen].brings ?? []) : []);
+  const kept = join(veterans(state.army, share).sort((a, b) => TROOPS[b.troop].leadership - TROOPS[a.troop].leadership));
+  return { army, kept };
 }
 
-/** Different boons, drawn from the seed: three, or four for the King's favourite. */
-function drawBoons(seed: number, count = 3): [BoonId[], number] {
-  const pool = [...BOON_IDS];
+/** The army for the next commission: the background's levy, a companion's men, then as many veterans as leadership allows. */
+export const nextArmy = (state: GameState): Army => musterFor(state).army;
+
+/** Whether a boon is a person who would ride with him, rather than one of the King's own. */
+export const isFriend = (id: BoonId): id is FriendId => id in FRIENDS;
+
+/** Whether the story flags stand as `when` says: `true` for any value at all, anything else exactly. */
+export function happened(state: GameState, when: Happened): boolean {
+  return Object.entries(when).every(([flag, value]) => (value === true ? Boolean(state.flags?.[flag]) : state.flags?.[flag] === value));
+}
+
+/** The King remembers at most this many things you did. */
+const MEMORIES = 3;
+/** At most this many companions are offered at one court, and always at least one of the King's own boons. */
+const FRIEND_BOONS = 2;
+
+/** What the King remembers of this commission, most telling first: up to three things, or his plain word if none. */
+export function memoriesOf(state: GameState): string[] {
+  const all = commissionOf(state).memories ?? [];
+  const told = all.filter((m) => m.when && Object.keys(m.when).length && happened(state, m.when)).slice(0, MEMORIES);
+  return (told.length ? told : all.filter((m) => !m.when)).map((m) => m.line);
+}
+
+/** People from this commission who would ride on with him: their flags stand, and they aren't with him already. */
+export function friendsOf(state: GameState): FriendId[] {
+  const riding = state.hero.friends ?? [];
+  return (commissionOf(state).friends ?? []).filter((f) => !riding.includes(f.id) && happened(state, f.when)).map((f) => f.id);
+}
+
+/**
+ * Different boons, drawn from the seed: three, or four for the King's favourite. Up to two of them
+ * are people from the commission who would ride on with him, and the rest are the King's own.
+ */
+function drawBoons(state: GameState, seed: number, count: number): [BoonId[], number] {
   const picked: BoonId[] = [];
-  for (let i = 0; i < Math.min(count, BOON_IDS.length); i++) {
-    const [v, next] = roll(seed);
-    seed = next;
-    picked.push(pool.splice(Math.floor(v * pool.length), 1)[0]);
-  }
+  const draw = <T extends BoonId>(pool: T[], upTo: number) => {
+    for (let i = 0; i < upTo && pool.length; i++) {
+      const [v, next] = roll(seed);
+      seed = next;
+      picked.push(pool.splice(Math.floor(v * pool.length), 1)[0]);
+    }
+  };
+  draw(friendsOf(state), Math.min(FRIEND_BOONS, count - 1));
+  draw([...BOON_IDS], count - picked.length);
   return [picked, seed];
 }
 
@@ -104,26 +155,39 @@ function drawBoons(seed: number, count = 3): [BoonId[], number] {
 export function toCourt(state: GameState): Result | null {
   if (state.over !== 'won' || !hasNextCommission(state)) return null;
   if (state.campaign.court) return { state, events: [{ type: 'court' }] };
-  const [boons, seed] = drawBoons(state.seed, 3 + heroStats(state).boons);
+  const [boons, seed] = drawBoons(state, state.seed, 3 + heroStats(state).boons);
   const record = [...state.campaign.record, { chapter: state.campaign.chapter, days: state.day, level: state.hero.level }];
   const next: GameState = { ...state, seed, gold: state.gold + commissionOf(state).reward, campaign: { ...state.campaign, record, court: { boons } } };
   return { state: next, events: [{ type: 'court' }] };
 }
 
-/** What the court shows now: the King's thanks and his boons, then the next commission once a boon is taken. */
+/** A boon as its button: a companion with his face and what he'd do, or one of the King's own. */
+function boonChoice(id: BoonId): Choice {
+  const action = { type: 'boon' as const, id };
+  if (isFriend(id)) return { label: FRIENDS[id].name, detail: FRIENDS[id].offer, portrait: FRIENDS[id].portrait, action };
+  return { label: BOONS[id].name, detail: BOONS[id].note, action };
+}
+
+/** The King's welcome at court: his thanks, and what he has heard you did. The boons come after it. */
+export function speechCard(state: GameState): Card {
+  return {
+    title: 'The King\u2019s Court',
+    lines: [commissionOf(state).praise, ...memoriesOf(state)],
+    choices: [{ label: 'Your Majesty is too kind.', action: { type: 'close' } }],
+  };
+}
+
+/** What the court offers now: the King's gold and boons, then the next commission once a boon is taken. */
 export function courtCard(state: GameState): Card {
   const court = state.campaign.court!;
   if (court.chosen) return briefingCard(state);
   const c = commissionOf(state);
   const done = state.campaign.record[state.campaign.record.length - 1];
   return {
-    title: 'The King\u2019s Court',
-    lines: [
-      c.praise,
-      `Commission ${roman(state.campaign.chapter + 1)} took **${done.days} ${done.days === 1 ? 'day' : 'days'}**. The King adds **${coins(c.reward)} gold**, and a boon of your choice:`,
-      ...court.boons.map((b) => `**${BOONS[b].name}.** ${BOONS[b].note}`),
-    ],
-    choices: court.boons.map((b) => ({ label: BOONS[b].name, action: { type: 'boon' as const, id: b } })),
+    title: 'The King\u2019s Thanks',
+    wide: true,
+    lines: [`Commission ${roman(state.campaign.chapter + 1)} took **${done.days} ${done.days === 1 ? 'day' : 'days'}**. The King adds **${coins(c.reward)} gold**, and a boon of your choice:`],
+    choices: court.boons.map(boonChoice),
   };
 }
 
@@ -137,6 +201,7 @@ export function chooseBoon(state: GameState, id: BoonId): Result | null {
 
 function grant(state: GameState, id: BoonId): GameState {
   const h = state.hero;
+  if (isFriend(id)) return { ...state, hero: { ...h, friends: [...(h.friends ?? []).filter((f) => f !== id), id] } };
   switch (id) {
     case 'fencing':
       return { ...state, hero: { ...h, attack: h.attack + 1 } };
@@ -153,28 +218,40 @@ function grant(state: GameState, id: BoonId): GameState {
   }
 }
 
-/** The next commission, read out at court, with the army that will ride out for it. */
+/** "**Sergeant Pike** rides with you.": who rides with him, by name, or nothing. */
+export function companyLine(state: GameState): string[] {
+  const names = (state.hero.friends ?? []).map((id) => `**${FRIENDS[id].name}**`);
+  if (!names.length) return [];
+  const all = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0];
+  return [`${all} ${names.length > 1 ? 'ride' : 'rides'} with you.`];
+}
+
+/** The next commission, read out at court, with who and what will ride out for it. */
 export function briefingCard(state: GameState): Card {
   const chapter = state.campaign.chapter + 1;
   const c = commissionAt(state.campaign, chapter);
-  const kept = nextArmy(state).filter((s) => !BACKGROUNDS[state.hero.background].army.some((l) => l.troop === s.troop && l.count === s.count));
+  const { army, kept } = musterFor(state);
   return {
     title: `Commission ${roman(chapter + 1)}: ${c.province.name.replace(/^the /, 'The ')}`,
     lines: [
       ...c.brief,
-      `Your troops go home to their farms${kept.length ? ', apart from a few veterans' : ''}. You ride out with **${armyLine(nextArmy(state))}**, and **${coins(state.gold)} gold**.`,
+      ...companyLine(state),
+      `Your troops go home to their farms${kept.length ? ', apart from a few veterans' : ''}. You ride out with **${armyLine(army)}**, and **${coins(state.gold)} gold**.`,
     ],
     choices: [{ label: 'Ride out', action: { type: 'nextCommission' } }],
   };
 }
 
-/** Leaves court for the next province, with the hero, his purse and his veterans. */
+/** Leaves court for the next province, with the hero, his purse, his companions and his veterans. */
 export function nextCommission(state: GameState): Result | null {
-  if (!state.campaign.court?.chosen || !hasNextCommission(state)) return null;
+  const court = state.campaign.court;
+  if (!court?.chosen || !hasNextCommission(state)) return null;
   const chapter = state.campaign.chapter + 1;
   const start = { hero: state.hero, gold: state.gold, leadership: state.leadership, army: nextArmy(state) };
   const next = beginCommission(commissionAt(state.campaign, chapter).province, roll(state.seed)[1], start, chapter, state.campaign.record, campaignSeed(state.campaign));
-  return { state: next, events: [{ type: 'commission' }, show(arrivalCard(next))] };
+  // Whoever was taken at court says hello as the new province opens.
+  const greeting = isFriend(court.chosen) ? [FRIENDS[court.chosen].arrival] : [];
+  return { state: next, events: [{ type: 'commission' }, show(arrivalCard(next, greeting))] };
 }
 
 /** After a lost commission: the same one again, from how it began. */
@@ -185,11 +262,11 @@ export function retry(state: GameState): Result | null {
   return { state: next, events: [{ type: 'commission' }, show(arrivalCard(next))] };
 }
 
-function arrivalCard(state: GameState): Card {
+function arrivalCard(state: GameState, greeting: string[] = []): Card {
   const c = commissionOf(state);
   return {
     title: `Commission ${roman(state.campaign.chapter + 1)}: ${c.province.name.replace(/^the /, 'The ')}`,
-    lines: [...c.arrival, `Day ${roman(state.day)}. ${c.villain} is somewhere out there.`],
+    lines: [...c.arrival, ...greeting, `Day ${roman(state.day)}. ${c.villain} is somewhere out there.`],
     choices: [close],
   };
 }

@@ -183,6 +183,7 @@ export class HeroScreen {
           <h2>${escape(sheet.title)}</h2>
           <div class="level" data-tip="${escape(sheet.xp.line)}"><b>${sheet.level}</b>${bar('xp', sheet.xp.share)}<small>${escape(sheet.xp.line)}</small></div>
           <div class="when" data-tip="${escape(sheet.piecesNote)}">${escape(sheet.day)} \u00b7 ${escape(sheet.pieces)}</div>
+          ${sheet.company.length ? `<div class="company"><small>Riding with him:</small>${chips(sheet.company, '')}</div>` : ''}
         </div>
       </div>
       <div class="stats">${sheet.stats.map(stat).join('')}</div>
