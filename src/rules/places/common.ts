@@ -1,6 +1,6 @@
 import { ARTIFACTS } from '../../content/artifacts';
 import { crowd } from '../../content/troops';
-import { foundNote, gainXp, giveArtifact, heroStats } from '../hero';
+import { artifactChoices, foundNote, gainXp, giveArtifact, heroStats } from '../hero';
 import { close, locationById, show, TROOPS, troops, update, type Army, type Card, type Choice, type GameEvent, type GameState, type Location, type PlaceText, type Result } from '../state';
 
 /** Experience for finding a place for the first time. */
@@ -59,21 +59,24 @@ export const say = (state: GameState, place: Location, card: Card, ...extra: Gam
  * The first visit to a place: experience for finding it, and whatever it keeps for a hero.
  * Returns the state, the level-up events, and a line for the card.
  */
-function discover(state: GameState, id: string): { state: GameState; events: GameEvent[]; lines: string[] } {
+function discover(state: GameState, id: string): { state: GameState; events: GameEvent[]; lines: string[]; choices: Choice[] } {
   const place = locationById(state, id);
-  if (place.seen) return { state, events: [], lines: [] };
+  if (place.seen) return { state, events: [], lines: [], choices: [] };
   let next = update(state, id, { seen: true });
   const lines: string[] = [];
+  let choices: Choice[] = [];
   if (place.artifact) {
     next = giveArtifact(next, place.artifact);
     lines.push(`You find **${ARTIFACTS[place.artifact].name}**. ${foundNote(next, place.artifact)}`);
+    choices = artifactChoices(next, place.artifact);
   }
   const xp = gainXp(next, DISCOVERY_XP);
-  return { state: xp.state, events: xp.events, lines };
+  return { state: xp.state, events: xp.events, lines, choices };
 }
 
 /** Shows a card with the first-visit rewards added to it. */
 export function found(state: GameState, place: Location, card: Card, ...extra: GameEvent[]): Result {
   const d = discover(state, place.id);
-  return say(d.state, place, { ...card, lines: [...card.lines, ...d.lines] }, ...extra, ...d.events);
+  const choices = d.choices.length ? [...d.choices, ...card.choices.filter((choice) => choice.action.type !== 'close')] : card.choices;
+  return say(d.state, place, { ...card, lines: [...card.lines, ...d.lines], choices }, ...extra, ...d.events);
 }
