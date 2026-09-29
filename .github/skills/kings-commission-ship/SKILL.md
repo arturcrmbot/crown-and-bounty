@@ -17,15 +17,18 @@ work; GitHub Actions does the long checks. Fix what a player would hate.
 ## The loop
 
 1. **Change** something small and visible.
-2. **Check** it locally: `npm run typecheck` and the tests for what you touched
-   (`npx vitest run <files>`). That's all. CI runs the rest on the pull request: the unit tests, the
-   build, the bot's whole commissions, and the play-through with a playtest per background.
+2. **Check** it locally, in your worktree: `npm run typecheck`, `npm run test:fast` and the tests for
+   what you touched (`npx vitest run <files>`); for a visible change, `npm run e2e` and the playtest
+   too (step 3), and `npm run visual` when it changes a frozen scene. Look at the screenshots. CI
+   checks the pull request again: the unit tests, the build, the bot's whole commissions, and the
+   play-through with a playtest per background.
 3. **Playtest** only what a test can't judge (how a new screen looks, how a fight feels), quickly.
    Artur playtests and reports; his findings become GitHub Issues.
 4. **Ship** through a pull request, never a push to main. Commit with the Co-authored-by trailer, and
-   put `Fixes #N` in the PR. Green factory PRs merge themselves unless labelled `hold`, and main
-   deploys a few minutes later. If main breaks, an issue labelled `ci` opens itself. `gh run watch`
-   follows a run. Don't run `npm run deploy`.
+   put `Fixes #N` (or `Part of #N`) in the PR. Once CI's three PR jobs are green
+   (`gh pr checks N --watch`), merge it yourself with `gh pr merge N --squash`, and main deploys a few
+   minutes later. If main breaks, an issue labelled `ci` opens itself. `gh run watch` follows a run.
+   Don't run `npm run deploy`.
 5. **Report** in a line: what changed, and the live link.
 
 Visual scenes are approved on a Mac (`npm run visual -- --approve`, after looking at the PNGs). CI

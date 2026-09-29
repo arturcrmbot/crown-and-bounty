@@ -1,10 +1,11 @@
-# Every pull request (the factory's too) gets typecheck, the build and the fast unit tests, the bot
-# playing whole commissions, and the play-through with a playtest per background. Main, on a push or a
-# dispatch (auto-merge dispatches, as its merges start no run), gets typecheck, the build and the fast
-# unit tests, which gate the deploy to GitHub Pages, then the play-through and the balance report,
-# which the factory's daily check reads. The visual scenes only run by hand (Run workflow > visual),
-# on a Mac, where they were approved. If main breaks, an issue labelled `ci` opens itself, and closes
-# when main is green. The repo is private: minutes count, so nothing here runs twice for one commit.
+# Every pull request gets typecheck, the build and the fast unit tests, the bot playing whole
+# commissions, and the play-through with a playtest per background: the three checks main's ruleset
+# requires, and the session that opened the PR squash-merges it once they're green. Main, on a push
+# (a merge) or a dispatch, gets typecheck, the build and the fast unit tests, which gate the deploy to
+# GitHub Pages, then the play-through and the balance report. The visual scenes only run by hand
+# (Run workflow > visual), on a Mac, where they were approved. If main breaks, an issue labelled `ci`
+# opens itself, and closes when main is green. The repo is private: minutes count, so nothing here
+# runs twice for one commit.
 name: CI
 
 on:
