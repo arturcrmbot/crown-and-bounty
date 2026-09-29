@@ -2,6 +2,7 @@ import type { FlagValue, KingsBoonId } from '../rules/state';
 import { ALDMOOR } from './aldmoor';
 import { FENMARCH } from './fenmarch';
 import type { FriendId } from './friends';
+import type { PortraitId } from './portraits';
 import type { Province } from './types';
 
 /**
@@ -17,11 +18,19 @@ export type Memory = { when?: Happened; line: string };
 export type Commission = {
   province: Province;
   villain: string;
+  /** His face, on the WANTED poster and the card that says he's taken. */
+  face?: PortraitId;
+  /** What the poster wants him for: "for three years of unpaid taxes...". */
+  wanted?: string;
   /** Read out when the commission is given. */
   brief: string[];
+  /** What he says as his army is beaten and he's taken: the fight stops on it. */
+  lastWords?: string;
   /** What the villain does once he's taken, on the bounty card after the words the field said it in. */
   surrender: string;
   homecoming: string;
+  /** A picture of what comes home, beside the homecoming line on the stamped poster (the goose). */
+  returned?: PortraitId;
   /** Day 100 comes and goes with the villain still at large. */
   timeout: string;
   /** What the King says at court afterwards. */
@@ -43,9 +52,13 @@ export const COMMISSIONS: Commission[] = [
   {
     province: ALDMOOR,
     villain: 'Baron Grimsby',
+    face: 'grimsby',
+    wanted: 'for three years of unpaid taxes, one goose (royal), and general baronial behaviour.',
     brief: ['Baron Grimsby owes the Crown three years of taxes and one goose. Bring him in.'],
+    lastWords: 'Unhand me, sir! This doublet is Flemish!',
     surrender: 'He comes quietly, still clutching the goose.',
     homecoming: 'The royal goose is going home.',
+    returned: 'goose',
     timeout: 'The King\u2019s patience has run out. So has the goose\u2019s.',
     praise: '"Grimsby in irons, and my goose home!" King Osric beams. "Splendid. Simply splendid."',
     arrival: ['The heather of Aldmoor, and somewhere in Darkwood, a goose.'],
@@ -76,6 +89,9 @@ export const COMMISSIONS: Commission[] = [
   {
     province: FENMARCH,
     villain: 'Mother Mirrow',
+    face: 'mirrow',
+    wanted: 'for turning the King\u2019s tax collector into a newt, and not turning him back.',
+    lastWords: 'Mind my cauldron, dearie! It\u2019s older than your King!',
     brief: [
       'Mother Mirrow, a bog witch of the Fenmarch, has turned the King\u2019s tax collector into a newt.',
       '"He was a very good tax collector," says the King. "Bring him back. Un-newted, ideally."',

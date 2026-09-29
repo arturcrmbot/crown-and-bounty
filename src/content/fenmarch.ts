@@ -422,6 +422,7 @@ export const FENMARCH: Province = {
             needs: { background: 'wizard', spellPower: 7 },
             effects: { win: true, gold: 1500, xp: 900 },
             lines: ['Hedge magic against bog magic, over her own cauldron. Your newt-into-tax-collector spell is better than her tax-collector-into-newt spell, and she knows it. She hands over the jar with very bad grace.'],
+            because: 'she wouldn\u2019t hand over the jar for less than half',
           },
         ],
         flees: 'The hut sits down with a thump.',

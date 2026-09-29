@@ -226,7 +226,7 @@ describe('parleys', () => {
     expect(result.state.gold).toBe(courtier.gold + 1000);
     expect(result.state.hero.xp).toBe(450);
     const bounty = result.events.find((e) => e.type === 'card');
-    expect(bounty?.type === 'card' && bounty.card.title).toBe('The bounty is paid!');
+    expect(bounty?.type === 'card' && bounty.card.title).toBe('Baron Grimsby is taken!');
     expect(apply({ ...newGame(1, ALDMOOR, 'knight') }, { type: 'choose', id: 'hideout', choice: 'parley/pardon' })).toBeNull();
   });
 
