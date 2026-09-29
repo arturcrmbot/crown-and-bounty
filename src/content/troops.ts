@@ -119,6 +119,9 @@ export const ABILITIES: Record<Ability, AbilityDef> = {
 /** The abilities of a kind of troop, with their rules. */
 export const abilitiesOf = (id: TroopId): AbilityDef[] => (TROOPS[id].abilities ?? []).map((a) => ABILITIES[a]);
 
+/** Whether a kind of troop is a leader (Aldric, a villain or a captain), who fights from behind his side's line. */
+export const leads = (id: TroopId) => abilitiesOf(id).some((a) => a.leads);
+
 export const TROOPS: Record<TroopId, TroopDef> = {
   peasants: { id: 'peasants', name: 'Peasants', one: 'Peasant', hp: 3, attack: 1, defence: 1, damage: [1, 1], speed: 3, leadership: 1, wage: 1, people: 'loyal', note: 'Pitchforks, enthusiasm, not much else.', abilities: ['firstStrike'] },
   archers: { id: 'archers', name: 'Archers', one: 'Archer', hp: 14, attack: 5, defence: 3, damage: [2, 3], speed: 4, shots: 12, leadership: 2, wage: 3, people: 'loyal', note: 'Shoot from anywhere, unless something is chewing on them.' },

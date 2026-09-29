@@ -132,6 +132,8 @@ export type BattleState = {
   volley?: boolean;
   /** The statuses the hero brought to the field, and where from: said as the battle opens. */
   opening?: { source: string; status: StatusId; fighters: number[] }[];
+  /** The enemy's leader flees home when his army is beaten, instead of being taken: a villain met in the open, with his walls to run to. */
+  flees?: boolean;
 };
 
 /**
@@ -318,7 +320,7 @@ function turnOrder(fighters: Fighter[]): number[] {
     .map((f) => f.id);
 }
 
-export function createBattle(args: { place: string; seed: number; player: Army; enemy: Army; hero: BattleHero; obstacles?: number; ground?: BattleState['ground'] }): BattleState {
+export function createBattle(args: { place: string; seed: number; player: Army; enemy: Army; hero: BattleHero; obstacles?: number; ground?: BattleState['ground']; flees?: boolean }): BattleState {
   const fighters: Fighter[] = [];
   const shotsOf = (troop: TroopId, side: Side) => (TROOPS[troop].shots ? TROOPS[troop].shots! + (side === 'player' ? (args.hero.troops?.[troop]?.shots ?? 0) : 0) : 0);
   // What the hero brings: enemy troops slowed, his own warded.
@@ -371,7 +373,7 @@ export function createBattle(args: { place: string; seed: number; player: Army; 
   }
   const volley = Boolean(args.hero.volley) && fighters.some((f) => f.side === 'player' && f.shots > 0);
   const book: BattleHero = args.hero.charges ? { ...args.hero, charges: args.hero.charges.map((c) => ({ ...c })) } : args.hero;
-  return { place: args.place, round: 1, fighters, order: turnOrder(fighters), obstacles, seed, hero: book, ...(args.ground === 'fen' ? { ground: 'fen' as const } : {}), ...(volley ? { volley } : {}), ...(opening.length ? { opening } : {}) };
+  return { place: args.place, round: 1, fighters, order: turnOrder(fighters), obstacles, seed, hero: book, ...(args.ground === 'fen' ? { ground: 'fen' as const } : {}), ...(volley ? { volley } : {}), ...(opening.length ? { opening } : {}), ...(args.flees ? { flees: true } : {}) };
 }
 
 /** A villain's spellbook as the battle opens, from his troop's data. */
@@ -1018,7 +1020,8 @@ const leaderName = (b: BattleState, f: Fighter) => (f.hero ? (b.hero.name ?? TRO
 /**
  * How a battle ended for its leaders, in the words the field and the card both use: what became of
  * the army, and of the leader. Aldric retreats when his army is beaten; a villain (or a captain) is
- * taken when his is. Null when no leader's fate is decided: a retreat, or a fight with nobody to take.
+ * taken when his is, unless he has his walls to flee to (`flees`). Null when no leader's fate is
+ * decided: a retreat, or a fight with nobody to take.
  */
 export function battleEnd(b: BattleState): { army: string; leader: string } | null {
   if (b.result === 'lost') {
@@ -1027,8 +1030,10 @@ export function battleEnd(b: BattleState): { army: string; leader: string } | nu
   }
   const taken = b.result === 'won' ? b.fighters.filter((f) => f.side === 'enemy' && isLeader(f)).map((f) => leaderName(b, f)) : [];
   if (!taken.length) return null;
-  const names = taken.length > 1 ? `${taken.slice(0, -1).join(', ')} and ${taken[taken.length - 1]}` : taken[0];
-  return { army: b.quiet !== undefined && b.quiet >= QUIET_ROUNDS ? 'The rest of them give up and run for it' : 'Their army is beaten', leader: `${names} ${taken.length > 1 ? 'are' : 'is'} taken` };
+  const many = taken.length > 1;
+  const names = many ? `${taken.slice(0, -1).join(', ')} and ${taken[taken.length - 1]}` : taken[0];
+  const fate = b.flees ? `${many ? 'flee' : 'flees'} home` : `${many ? 'are' : 'is'} taken`;
+  return { army: b.quiet !== undefined && b.quiet >= QUIET_ROUNDS ? 'The rest of them give up and run for it' : 'Their army is beaten', leader: `${names} ${fate}` };
 }
 
 export const livingHexes = (b: BattleState) => new Set(b.fighters.filter(onField).map((f) => f.at));

@@ -17,13 +17,13 @@ export function villainTune(troops: readonly TroopId[]): TrackId | null {
   return null;
 }
 
-/** How near a villain's lair his theme starts to play, in map pixels. */
+/** How near a villain's lair (or the villain himself, out riding) his theme starts to play, in map pixels. */
 export const LAIR_RANGE = 300;
 
-/** The theme of a villain whose lair the hero is near, while it still stands. */
+/** The theme of a villain whose lair the hero is near, while it still stands, or who is out riding near him. */
 export function lairTune(state: GameState, [x, y]: Point): TrackId | null {
   for (const l of state.locations) {
-    if (l.kind !== 'hideout' || l.done || !l.enemy) continue;
+    if (l.done || !l.enemy) continue;
     if (Math.hypot(l.at[0] - x, l.at[1] - y) > LAIR_RANGE) continue;
     const tune = villainTune(l.enemy.army.map((s) => s.troop));
     if (tune) return tune;

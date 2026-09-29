@@ -4,6 +4,7 @@ import { grumbleLine } from '../army';
 import { applyEffects, choiceButton } from '../effects';
 import { battleXp, beat, fight, likelyLossesLine, startFight, winChance } from '../fight';
 import { artifactChoices, foundNote, gainXp, giveArtifact, heroStats } from '../hero';
+import { riddenOut } from '../map/sortie';
 import { addTroops, close, coins, leadershipUsed, show, stillWithYou, update, type Army, type Choice, type ContentChoice, type GameState, type Location, type Result } from '../state';
 import { countsExactly, forceLine, note, option, ride, say, words } from './common';
 import type { PlaceKind } from './kind';
@@ -223,7 +224,7 @@ function surrender(state: GameState, place: Location): Result | null {
  */
 export function worthAFight(state: GameState, place: Location): boolean {
   const foe = place.enemy;
-  if (!foe || place.done) return false;
+  if (!foe || place.done || riddenOut(state, place)) return false;
   const odds = winChance(state, place.id, 8);
   if (place.kind === 'hideout' && ((state.day > 50 && odds >= 0.5) || (state.day > 75 && odds >= 0.25))) return true;
   const sure = foe.tier === 'gate' || place.kind === 'hideout';
@@ -234,7 +235,7 @@ export function worthAFight(state: GameState, place: Location): boolean {
 export const FIGHT_NOTE = 'You command every stack yourself.';
 export const SERGEANTS_NOTE = 'They fight it out for you, by the same rules, in a moment.';
 
-/** An enemy on the map: fight it, let the sergeants fight it, or take one of its parleys. */
+/** An enemy on the map: fight it, let the sergeants fight it, or take one of its parleys. A villain's lair is barred while he's out. */
 export function enemy(kind: 'patrol' | 'hideout'): PlaceKind {
   return {
     about: (state, place) => {
@@ -244,12 +245,15 @@ export function enemy(kind: 'patrol' | 'hideout'): PlaceKind {
       const e = place.enemy!;
       // Hunters say so, and say when they have your scent, so an ambush is never a surprise.
       const shadowed = heroStats(state).shadow;
-      const hunt = e.behaviour !== 'hunt' ? [] : [shadowed ? '*They hunt anyone weaker, but your scouts are watching them: they won\u2019t find your trail.*' : e.trailing ? '*They have your scent. Camp near them tonight and they\u2019ll fall on you at dawn.*' : '*They hunt anyone weaker who camps near their ground, though never in a town.*'];
-      return { title: place.name, lines: [...e.lines, line, ...carriesLine(state, place), ...hunt], choices: [ride(place, 'Approach'), { label: 'Close', action: { type: 'close' } }] };
+      const coming = e.bold ? '*They are looking for you, and will fall on you wherever you camp near them, though never in a town.*' : '*They hunt anyone weaker who camps near their ground, though never in a town.*';
+      const hunt = e.behaviour !== 'hunt' ? [] : [shadowed ? '*They hunt anyone weaker, but your scouts are watching them: they won\u2019t find your trail.*' : e.trailing ? '*They have your scent. Camp near them tonight and they\u2019ll fall on you at dawn.*' : coming];
+      const away = riddenOut(state, place) ? [e.sortie!.barred[0]] : [];
+      return { title: place.name, lines: [...e.lines, line, ...away, ...carriesLine(state, place), ...hunt], choices: [ride(place, 'Approach'), { label: 'Close', action: { type: 'close' } }] };
     },
     arrive(state, place) {
       const foe = place.enemy!;
       if (place.done) return say(state, place, note(place, words(place, 'done')));
+      if (riddenOut(state, place)) return say(state, place, note(place, foe.sortie!.barred));
       if (state.army.length === 0) return say(state, place, { title: place.name, lines: [foe.threat, 'You have no troops to fight with. Recruit some first.'], choices: [...parleys(state, place), retreat] });
       const chance = winChance(state, place.id);
       const scouts = heroStats(state).odds ? [scoutsLine(chance)] : [];
@@ -261,6 +265,8 @@ export function enemy(kind: 'patrol' | 'hideout'): PlaceKind {
       });
     },
     choose(state, place, choice) {
+      // Nobody opens a villain's gate while he's out.
+      if (riddenOut(state, place)) return null;
       const calm: GameState = state.ambush === place.id ? { ...state, ambush: undefined } : state;
       if (choice === 'fight') return startFight(calm, place.id);
       if (choice === 'hire') return hire(calm, place);

@@ -4,6 +4,7 @@
  * kind; each kind's own choices (recruit, fight, dig...) live in its module.
  */
 import { meets, takeChoice } from '../effects';
+import { riddenOut } from '../map/sortie';
 import { locationById, type GameState, type Location, type LocationKind, type Result } from '../state';
 import { dwelling } from './dwelling';
 import { x } from './ending';
@@ -51,7 +52,7 @@ export function choose(state: GameState, id: string, choice: string): Result | n
   const [head, key] = [choice.slice(0, slash), choice.slice(slash + 1)];
   if (head === 'parley') {
     const parley = place.enemy?.parleys?.find((p) => p.id === key);
-    return parley ? takeChoice(state, place, haggled(state, parley)) : null;
+    return parley && !riddenOut(state, place) ? takeChoice(state, place, haggled(state, parley)) : null;
   }
   const page = place.pages?.find((p) => p.id === head);
   const option = page?.choices.find((c) => c.id === key);

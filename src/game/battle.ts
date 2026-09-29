@@ -889,21 +889,23 @@ export class BattleController implements Screen {
                     : e.result === 'lost'
                       ? 'Your army breaks and scatters.'
                       : 'You sound the retreat.';
-              for (const f of leaders) this.float(f.id, e.result === 'won' ? 'Taken!' : 'Retreats!', e.result === 'won' ? GOLD[6] : RED[5]);
+              for (const f of leaders) this.float(f.id, e.result === 'won' ? (this.battle.flees ? 'Flees!' : 'Taken!') : 'Retreats!', e.result === 'won' ? GOLD[6] : RED[5]);
               if (e.result !== 'fled') play(e.result === 'won' ? 'victory' : 'defeat');
             },
             tick: (t) => {
               for (const f of leaders) {
-                // The villain throws up his hands; Aldric turns and rides off the field.
-                if (e.result === 'won') {
+                // The villain throws up his hands, or, with his walls to run to, turns and flees; Aldric turns and rides off the field.
+                if (e.result === 'won' && !this.battle.flees) {
                   v.poses.set(f.id, { anim: 'defend', ms: 0 });
                   continue;
                 }
                 const [x, y] = this.spot(f.id);
                 const k = Math.min(1, t / 0.4);
                 const hop = ART[f.troop].move ? 0 : Math.abs(Math.sin(k * Math.PI * 5)) * 3;
-                v.facings.set(f.id, -1);
-                v.positions.set(f.id, [x + (MAP_VIEW.x - 70 - x) * k, y - hop]);
+                const away = f.side === 'player' ? -1 : 1;
+                const edge = away < 0 ? MAP_VIEW.x - 70 : MAP_VIEW.x + MAP_VIEW.width + 70;
+                v.facings.set(f.id, away);
+                v.positions.set(f.id, [x + (edge - x) * k, y - hop]);
                 v.poses.set(f.id, ART[f.troop].move ? { anim: 'move', ms: t * 2200 } : STAND);
                 if (k >= 1) v.hidden.add(f.id);
               }

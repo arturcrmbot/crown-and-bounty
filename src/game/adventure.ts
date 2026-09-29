@@ -353,9 +353,13 @@ export class AdventureController implements Screen {
         case 'reveal':
           this.scene.fog.reveal(this.state.explored, e.at[0], e.at[1], e.radius);
           break;
-        case 'added':
-          addPlace(this.scene, locationById(this.state, e.id));
+        case 'added': {
+          // A band that rides out and on in the same night sets off from where it rode out.
+          const l = locationById(this.state, e.id);
+          const walk = events.slice(i + 1).find((x) => x.type === 'enemyMoved' && x.id === e.id);
+          addPlace(this.scene, walk?.type === 'enemyMoved' ? { ...l, at: walk.from } : l);
           break;
+        }
         case 'removed': {
           const gone = this.state.locations.find((l) => l.id === e.id);
           if (gone) this.view.effects.puff(gone.at[0], gone.at[1], gone.enemy ? 'dust' : 'sparkle');

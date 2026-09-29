@@ -44,6 +44,12 @@ export type Enemy = {
   behaviour?: 'guard' | 'roam' | 'hunt';
   range?: number;
   home?: Point;
+  /** How far off a hunter notices the hero, when it has keener eyes (or better spies) than most (`HUNT_SIGHT`). */
+  sight?: number;
+  /** A hunter that comes for the hero whatever the odds: a villain in a temper. */
+  bold?: boolean;
+  /** Movement points it has in a night, when it rides instead of walking at its slowest troop's pace. */
+  pace?: number;
   /** A share more troops every payday, up to five times: a villain recruiting while you dawdle. */
   grows?: number;
   grown?: number;
@@ -51,6 +57,18 @@ export type Enemy = {
   rest?: number;
   /** A hunter on the hero's trail since dawn: if he's still in reach tonight, it falls on his camp. */
   trailing?: boolean;
+  /** A villain who rides out of his lair to meet the hero when he's hurt: see `Sortie`. */
+  sortie?: Sortie;
+  /** The hurts (story flags) he has already ridden out over. */
+  answered?: string[];
+  /** Beaten in the open once, he stays behind his walls. */
+  humbled?: boolean;
+  /**
+   * A villain's band out of its lair (the lair's id): beaten, he flees home there; once it can't
+   * find the hero, or its `patience` (nights) runs out, it rides home and goes back in.
+   */
+  lair?: string;
+  patience?: number;
   lines: string[];
   army: Army;
   reward: number;
@@ -63,6 +81,25 @@ export type Enemy = {
 };
 
 export type FlagValue = boolean | number | string;
+
+/**
+ * A villain who rides out of his lair to meet the hero when he's hurt: the night any of the story
+ * flags in `when` is set (to `is`, if it says), once the hero is where his band would come for him.
+ * A share of each of his troops (`guard`) rides with him, and the rest hold the walls, which open to
+ * nobody while he's out (`barred`). His band (`band`) sets out from its place at the lair's gate and
+ * comes for the hero, whatever the odds. Beat it, and he flees home without it, and stays there;
+ * lose him, and he rides home with it, until he's hurt again.
+ */
+export type Sortie = {
+  when: { flag: string; is?: FlagValue }[];
+  guard: number;
+  band: Location;
+  /** What the lair's card says while he's out. */
+  barred: string[];
+  /** The dawn's news: he has ridden out, and he has given up and gone home. */
+  out: string;
+  home: string;
+};
 
 /**
  * How hard an enemy is meant to be: a `pest` is an easy first fight, a `band` a fair one, a `gate`

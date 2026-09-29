@@ -1,5 +1,5 @@
 import type { BackgroundId } from '../content/backgrounds';
-import { troopPower, TROOPS, type TroopId } from '../content/troops';
+import { leads, troopPower, type TroopId } from '../content/troops';
 import { VANISHES, type Army, type GameState, type Location } from '../rules/game';
 import type { Point } from '../rules/map/geometry';
 import { Terrain, type MapModel } from '../rules/map/model';
@@ -54,10 +54,12 @@ export type AdventureScene = {
 
 const place = (sprite: Bitmap, [x, y]: Point, footFromTop: number): Placed => ({ sprite, x: x - sprite.width / 2, y: y - footFromTop });
 
-/** The troop that stands for a stack on the map: the one worth most, leaving out a lone villain. */
+/** The troop that stands for a stack on the map: its leader, a villain or a captain, if it has one; else the one worth most. */
 function leadTroop(army: Army): TroopId {
-  const ranked = [...army].filter((s) => s.count > 0).sort((a, b) => b.count * troopPower(b.troop) - a.count * troopPower(a.troop));
-  return (ranked.find((s) => TROOPS[s.troop].leadership < 99) ?? ranked[0]).troop;
+  const living = army.filter((s) => s.count > 0);
+  const leader = living.find((s) => leads(s.troop));
+  if (leader) return leader.troop;
+  return [...living].sort((a, b) => b.count * troopPower(b.troop) - a.count * troopPower(a.troop))[0].troop;
 }
 
 /** The sprite (or frames) that stands for a place on the map, and how far below its top the foot is. */
@@ -143,13 +145,16 @@ function ringed(sprite: Bitmap, foot: number, ramp: readonly number[] = GOLD): B
   return out;
 }
 
-/** Puts a place on the map after the scene was built, like the X once the map is whole. */
+/** Puts a place on the map after the scene was built, like the X once the map is whole, or a villain riding out again. */
 export function addPlace(scene: AdventureScene, l: Location) {
   const look = landmark(l);
   if (!look) return;
   const o: Placed = { ...place(look.frames[0], l.at, look.foot), frames: look.frames.length > 1 ? look.frames : undefined };
   scene.view.animate(o);
   scene.pickups.set(l.id, o);
+  // A place back on the map (a band that rode out before) is clicked where it stands now.
+  const old = scene.hitboxes.findIndex((b) => b.id === l.id);
+  if (old >= 0) scene.hitboxes.splice(old, 1);
   scene.hitboxes.push({ id: l.id, x0: o.x, y0: o.y, x1: o.x + o.sprite.width, y1: o.y + o.sprite.height });
 }
 

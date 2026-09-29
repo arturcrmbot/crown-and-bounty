@@ -2,10 +2,11 @@
  * The map's own life: at night, enemy stacks move. Guards hold their ground. Roamers wander their
  * territory. Hunters wander too, but come for a weaker hero who strays into it. The first night
  * they only pick up his trail: at dawn he is told, and sees them, so he can ride clear, shelter in a
- * town or turn and fight. If he's still in reach the next night, they fall on his camp at dawn. It
- * all runs on the same walk grid, costs and dice as the hero.
+ * town or turn and fight. If he's still in reach the next night, they fall on his camp at dawn. A
+ * villain riding out of his lair (`sortie.ts`) hunts him the same way, whatever the odds, and rides
+ * home when he can't find him. It all runs on the same walk grid, costs and dice as the hero.
  */
-import { TROOPS } from '../../content/troops';
+import { TROOPS, leads } from '../../content/troops';
 import { armyPower, roll, type GameEvent, type GameState, type Location } from '../state';
 import { revealDisc } from './fog';
 import type { Point } from './geometry';
@@ -21,8 +22,17 @@ export const AMBUSH_REACH = 40;
 /** How close to a castle or village the hero shelters behind its walls, where nothing comes for him. */
 export const SHELTER = 48;
 
-/** Movement points a stack has in a night: its slowest troop sets the pace. It's always slower than a mounted hero. */
-export const nightPace = (l: Location) => 18 + 3 * Math.min(...l.enemy!.army.map((s) => TROOPS[s.troop].speed));
+/**
+ * Movement points a stack has in a night: its slowest troop sets the pace (a leader keeps up with his
+ * men), unless it rides (`pace`). It's always slower than a mounted hero.
+ */
+export function nightPace(l: Location): number {
+  const e = l.enemy!;
+  if (e.pace) return e.pace;
+  const army = e.army.filter((s) => s.count > 0);
+  const men = army.filter((s) => !leads(s.troop));
+  return 18 + 3 * Math.min(...(men.length ? men : army).map((s) => TROOPS[s.troop].speed));
+}
 
 const dist = (a: Point, b: Point) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 const cellOf = ([x, y]: Point) => ({ x: Math.floor(x / CELL), y: Math.floor(y / CELL) });
@@ -30,14 +40,18 @@ const cellOf = ([x, y]: Point) => ({ x: Math.floor(x / CELL), y: Math.floor(y / 
 /** Whether the hero is sheltering in a castle or a village tonight. */
 export const inTown = (state: GameState) => state.locations.some((l) => (l.kind === 'castle' || l.kind === 'village') && dist(l.at, state.hero.at) <= SHELTER);
 
-/** Whether a hunter comes for the hero tonight: he is near, inside its territory, weaker, and out in the open, and his scouts aren't shadowing it. */
+/**
+ * Whether a hunter comes for the hero tonight: he is near (as far as it can see), inside its
+ * territory, weaker (unless it's `bold`), and out in the open, and his scouts aren't shadowing it. A
+ * villain's band that has run out of patience comes for nobody: it's going home.
+ */
 export function hunting(state: GameState, l: Location): boolean {
   const e = l.enemy!;
-  if (e.behaviour !== 'hunt' || (e.rest ?? 0) > 0 || inTheWoods(state) || inTown(state) || heroStats(state).shadow) return false;
+  if (e.behaviour !== 'hunt' || (e.rest ?? 0) > 0 || e.patience === 0 || inTheWoods(state) || inTown(state) || heroStats(state).shadow) return false;
   const home = e.home ?? l.at;
   const hero = state.hero.at;
   const theirs = armyPower(state.army);
-  return theirs > 0 && dist(l.at, hero) <= HUNT_SIGHT && dist(home, hero) <= (e.range ?? 120) * 1.5 && armyPower(e.army) >= theirs * 1.2;
+  return theirs > 0 && dist(l.at, hero) <= (e.sight ?? HUNT_SIGHT) && dist(home, hero) <= (e.range ?? 120) * 1.5 && (Boolean(e.bold) || armyPower(e.army) >= theirs * 1.2);
 }
 
 /** A ranger among the trees leaves no track that anything on the map can follow. */
@@ -62,6 +76,8 @@ export function moveEnemies(state: GameState, map: MapModel): { state: GameState
     const keep = hunts && !e.trailing ? AMBUSH_REACH * 2 : AMBUSH_REACH * 0.6;
     let goal: Point;
     if (hunts) goal = next.hero.at;
+    // A villain's band that can't find the hero rides home.
+    else if (e.lair) goal = home;
     else {
       const [a, s1] = roll(seed);
       const [r, s2] = roll(s1);
