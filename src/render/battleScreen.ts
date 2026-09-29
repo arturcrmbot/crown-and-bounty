@@ -1,7 +1,7 @@
 import { abilitiesOf, TROOPS, type TroopId } from '../content/troops';
 import { SPELLS, STATUSES } from '../content/spells';
-import { canCast, lookOf, luckOf, moraleOf, rallyOf, speedOf, statsOf, unitOf, type BattleState, type Fighter } from '../rules/battle/battle';
-import { COLS, colOf, HEXES, ROWS, rowOf } from '../rules/battle/hex';
+import { canCast, hasTurn, isLeader, lookOf, luckOf, moraleOf, speedOf, statsOf, unitOf, type BattleState, type Fighter } from '../rules/battle/battle';
+import { COLS, colOf, HEXES, hexIndex, ROWS, rowOf } from '../rules/battle/hex';
 import { Bitmap, blit } from './bitmap';
 import { critters, critterSprite, type Critter } from './critters';
 import { animLength, corpseSprite, hurtSprite, standard, STAND, troopFigure, type Pose, type Standard } from './battleSprites';
@@ -19,6 +19,8 @@ const ROYAL: Standard = { cloth: [BLUE[1], BLUE[2], BLUE[3], BLUE[4]], emblem: '
 
 /** Aldric, or a villain: one of a kind, a name rather than a number. */
 const oneOfAKind = (f: Fighter) => TROOPS[f.troop].name === TROOPS[f.troop].one;
+/** A leader's figure is drawn inside this box round where he stands, for pointing at him. */
+const LEADER_BOX = { half: 34, above: 96, below: 14 };
 
 /** Whose standard flies over the enemy: Grimsby's goose, the fen's moon, a skull for outlaws; beasts carry none. */
 function standardOf(troops: TroopId[]): Standard | null {
@@ -65,6 +67,29 @@ export function hexAt(x: number, y: number): number | null {
   return null;
 }
 
+/** The rows a side's leaders stand level with, behind its line: the first in the middle, any more below and above. */
+const LEADER_ROWS = [4, 7, 1];
+
+/**
+ * Where a fighter stands on screen: its hex's centre, or, for a leader, his place behind his side's
+ * line, off the field beside his standard.
+ */
+export function spotOf(b: BattleState, f: Fighter): [number, number] {
+  if (!isLeader(f)) return hexCentre(f.at);
+  const k = b.fighters.filter((o) => o.side === f.side && isLeader(o)).findIndex((o) => o.id === f.id);
+  const [, y] = hexCentre(hexIndex(0, LEADER_ROWS[k % LEADER_ROWS.length]));
+  return [f.side === 'player' ? X0 - 52 : X0 + FIELD_W + 52, y];
+}
+
+/** The leader whose figure is under the point, if any. */
+export function leaderAt(b: BattleState, x: number, y: number): Fighter | null {
+  return b.fighters.find((f) => {
+    if (f.count <= 0 || !isLeader(f)) return false;
+    const [cx, cy] = spotOf(b, f);
+    return Math.abs(x - cx) <= LEADER_BOX.half && y >= cy - LEADER_BOX.above && y <= cy + LEADER_BOX.below;
+  }) ?? null;
+}
+
 export type Floater = { x: number; y: number; text: string; color: number; age: number };
 /** How far a floater rises over its one-second life. */
 export const FLOAT_RISE = 30;
@@ -103,7 +128,7 @@ export type BattleView = {
   facings: Map<number, 1 | -1>;
   /** What a stack's badge says while blows play out: its count from before the action, until each hit lands. */
   counts: Map<number, number>;
-  /** The same for health, for those shown by a health bar (one of a kind): it drops as each blow lands. */
+  /** The same for the top troop's health, for the bar: it drops as each blow lands. */
   health: Map<number, number>;
   poses: Map<number, Pose>;
   flashing: Set<number>;
@@ -118,14 +143,10 @@ export type BattleView = {
   floaters: Floater[];
   shots: Shot[];
   log: string;
-  /** An imminent threat to Aldric, held on the ribbon whenever nothing is being weighed up. */
-  warning: string | null;
   /** Whose turn it is, for the bar. */
   active: number | null;
-  /** A stack under the pointer: the bar shows it instead of the acting one. */
+  /** A stack (or a leader) under the pointer: the bar shows it instead of the acting one. */
   inspect: number | null;
-  /** Stacks the Courtier would rally if he moved to the hovered hex. */
-  rallyPreview: Set<number>;
   /** What the pointed-at action would do, shown instead of the log. */
   preview: string | null;
   targeting: string | null;
@@ -258,8 +279,8 @@ export class BattleScreen {
   private readonly field: Bitmap;
 
   /**
-   * The King's star at the top left, over Aldric's side (he's on the field himself now), and the
-   * enemy's standard at the top right (beasts have none).
+   * The King's star at the top left, over Aldric's side, where he leads from, and the enemy's
+   * standard at the top right (beasts have none).
    */
   private readonly ours = Array.from({ length: 8 }, (_, i) => standard(ROYAL, i / 8, 1));
   private readonly standard: Bitmap[] | null;
@@ -288,9 +309,9 @@ export class BattleScreen {
     }
     if (view.hover) outlineHex(screen, view.hover.hex, view.hover.kind === 'move' ? GOLD[6] : view.hover.kind === 'spell' ? BLUE[6] : RED[5]);
 
-    // The fallen stay where they fell, under everyone still standing. Aldric is carried off.
+    // The fallen stay where they fell, under everyone still standing.
     for (const f of b.fighters) {
-      if (f.count > 0 || view.dying.has(f.id) || f.hero) continue;
+      if (f.count > 0 || view.dying.has(f.id) || isLeader(f)) continue;
       const [cx, cy] = hexCentre(f.at);
       const { sprite, x, y } = corpseSprite(f.troop, f.side === 'player' ? 'blue' : 'red', f.side === 'player' ? 1 : -1);
       blit(screen, sprite, Math.round(cx + x), Math.round(cy + 12 + y), MAP_VIEW);
@@ -304,31 +325,18 @@ export class BattleScreen {
     }
 
     const shown = b.fighters.filter((f) => (f.count > 0 || view.dying.has(f.id)) && !view.hidden.has(f.id));
-    // Where a stack stands: its hex, or wherever it has got to on a walk. Lunges and reels move only
-    // the figure, so its count stays put on its hex.
-    const place = (id: number, at: number) => view.positions.get(id) ?? hexCentre(at);
-    // Aldric stands in the gold ring he has on the map, so you find him at a glance here too.
+    // Where a fighter stands: its hex (a leader's place behind the line), or wherever it has got to
+    // on a walk or a ride. Lunges and reels move only the figure, so its count stays put on its hex.
+    const place = (f: Fighter) => view.positions.get(f.id) ?? spotOf(b, f);
+    // Leaders stand in a ring, as on the map: Aldric's gold, the enemy's red. It stays behind the line when he rides out.
     for (const f of shown) {
-      if (!f.hero) continue;
-      const [px, py] = place(f.id, f.at);
-      const [ox, oy] = view.offsets.get(f.id) ?? [0, 0];
-      this.ring(Math.round(px + ox), Math.round(py + oy + 12));
+      if (!isLeader(f)) continue;
+      const [px, py] = spotOf(b, f);
+      this.ring(Math.round(px), Math.round(py + 12), f.side === 'player');
     }
+    shown.sort((x, y) => place(x)[1] - place(y)[1]);
     for (const f of shown) {
-      if (f.hero || f.side !== 'player' || !rallyOf(b, f)) continue;
-      const [px, py] = place(f.id, f.at);
-      const [ox, oy] = view.offsets.get(f.id) ?? [0, 0];
-      this.auraRing(Math.round(px + ox), Math.round(py + oy + 12));
-    }
-    for (const f of shown) {
-      if (!view.rallyPreview.has(f.id)) continue;
-      const [px, py] = place(f.id, f.at);
-      const [ox, oy] = view.offsets.get(f.id) ?? [0, 0];
-      this.auraRing(Math.round(px + ox), Math.round(py + oy + 12), true);
-    }
-    shown.sort((x, y) => place(x.id, x.at)[1] - place(y.id, y.at)[1]);
-    for (const f of shown) {
-      const [px, py] = place(f.id, f.at);
+      const [px, py] = place(f);
       const [ox, oy] = view.offsets.get(f.id) ?? [0, 0];
       const facing = view.facings.get(f.id) ?? (f.side === 'player' ? 1 : -1);
       // Turned into newts or frogs, a stack is those creatures till the spell wears off.
@@ -348,21 +356,19 @@ export class BattleScreen {
       const breath = pose.anim === 'stand' && !view.positions.has(f.id) && !view.offsets.has(f.id) && Math.sin(view.time * 2.4 + f.id * 1.9) > 0.35 ? 1 : 0;
       blit(screen, sprite, Math.round(px + ox + figure.x), Math.round(py + oy + 12 + figure.y) - breath, MAP_VIEW);
     }
-    // Counts go on last, so a troll never hides the goblins behind him. One of a kind (Aldric, a
-    // villain) shows how hurt he is instead: "1" would say nothing.
+    // Counts go on last, so a troll never hides the goblins behind him. A leader has none: he's one
+    // of a kind, and nothing can hurt him.
     for (const f of shown) {
       const count = view.counts.get(f.id) ?? f.count;
-      if (count <= 0) continue;
-      const [cx, cy] = place(f.id, f.at);
-      const x = Math.round(cx + (f.side === 'player' ? 14 : -14));
-      if (oneOfAKind(f)) this.health(x, Math.round(cy + 11), (view.health.get(f.id) ?? f.hp) / unitOf(f).hp, f.side === 'player');
-      else this.badge(x, Math.round(cy + 8), count, f.side === 'player', rallyOf(b, f) !== null);
+      if (count <= 0 || isLeader(f)) continue;
+      const [cx, cy] = place(f);
+      this.badge(Math.round(cx + (f.side === 'player' ? 14 : -14)), Math.round(cy + 8), count, f.side === 'player');
     }
     for (const s of view.shots) this.shot(s);
     for (const t of view.floaters) drawText(screen, t.text, Math.round(t.x - t.text.length * 4), Math.round(t.y - t.age * FLOAT_RISE), t.color, INK, 15);
     if (view.banner) drawBanner(screen, view.banner.sprite, MAP_VIEW.x + MAP_VIEW.width / 2, MAP_VIEW.y + 150, view.banner.age, view.banner.life);
     if (view.shake > 0.5) this.shake(view.shake, view.time);
-    this.logLine(view.preview ?? view.warning ?? view.log);
+    this.logLine(view.preview ?? view.log);
     this.turnStrip(b);
     this.bar(b, view);
     blit(screen, this.overlay, 0, 0);
@@ -384,10 +390,11 @@ export class BattleScreen {
     }
   }
 
-  /** The gold ring on the ground round Aldric's feet: bright, with a dark edge, as on the map. */
-  private ring(cx: number, cy: number) {
+  /** The ring on the ground round a leader's feet, bright with a dark edge, as on the map: Aldric's gold, the enemy's red. */
+  private ring(cx: number, cy: number, ours: boolean) {
     const [rx, ry] = [26, 8];
-    for (const [grow, colour] of [[1, INK], [-1, GOLD[3]], [0, GOLD[6]]] as const) {
+    const [dark, bright] = ours ? [GOLD[3], GOLD[6]] : [RED[2], RED[5]];
+    for (const [grow, colour] of [[1, INK], [-1, dark], [0, bright]] as const) {
       for (let a = 0; a < Math.PI * 2; a += 0.004) {
         const x = Math.round(cx + Math.cos(a) * (rx + grow));
         const y = Math.round(cy + Math.sin(a) * (ry + grow * 0.6));
@@ -396,35 +403,8 @@ export class BattleScreen {
     }
   }
 
-  /** Gold marks on friendly stacks lifted by the Courtier; dotted gold previews a hovered move. */
-  private auraRing(cx: number, cy: number, preview = false) {
-    const [rx, ry] = [30, 10];
-    const strokes: [number, number][] = preview ? [[0, GOLD[6]]] : [[1, INK], [-1, GOLD[3]], [0, GOLD[6]]];
-    for (const [grow, colour] of strokes) {
-      for (let a = 0; a < Math.PI * 2; a += 0.004) {
-        if (preview && Math.floor(a * 18) % 2) continue;
-        const x = Math.round(cx + Math.cos(a) * (rx + grow));
-        const y = Math.round(cy + Math.sin(a) * (ry + grow * 0.6));
-        if (y >= MAP_VIEW.y && y < MAP_VIEW.y + MAP_VIEW.height) this.screen.set(x, y, colour);
-      }
-    }
-  }
-
-  /** A one-of-a-kind fighter's health: a gold-framed bar in his side's colour, emptying as he's hurt. */
-  private health(cx: number, y: number, share: number, player: boolean) {
-    const w = 30;
-    const x = cx - w / 2;
-    const full = Math.round((w - 2) * Math.max(0, Math.min(1, share)));
-    for (let j = 0; j < 7; j++) {
-      for (let i = 0; i < w; i++) {
-        const edge = i === 0 || j === 0 || i === w - 1 || j === 6;
-        this.screen.set(x + i, y + j, edge ? GOLD[3] : i - 1 < full ? (player ? (j < 3 ? BLUE[5] : BLUE[4]) : j < 3 ? RED[5] : RED[4]) : INK);
-      }
-    }
-  }
-
-  /** A stack's count on its hex. A rallied stack's badge is edged in bright gold, with a little pennant above. */
-  private badge(cx: number, y: number, count: number, player: boolean, rallied = false) {
+  /** A stack's count on its hex. */
+  private badge(cx: number, y: number, count: number, player: boolean) {
     const text = String(count);
     const w = text.length * 7 + 7;
     const x = cx - Math.floor(w / 2);
@@ -432,15 +412,7 @@ export class BattleScreen {
     for (let j = 0; j < 13; j++) {
       for (let i = 0; i < w; i++) {
         const edge = i === 0 || j === 0 || i === w - 1 || j === 12;
-        this.screen.set(x + i, y + j, edge ? (rallied ? GOLD[6] : GOLD[3]) : fill);
-      }
-    }
-    if (rallied) {
-      // A little gold pennant on the badge's corner, flying from a dark staff.
-      for (let j = -10; j < 0; j++) for (const i of [0, 1]) this.screen.set(x + i, y + j, i ? WOOD[4] : INK);
-      for (let j = 0; j < 7; j++) {
-        const reach = 7 - Math.abs(j - 3) * 2;
-        for (let i = 0; i <= reach; i++) this.screen.set(x + 2 + i, y - 10 + j, i === reach || j === 0 || j === 6 ? INK : j < 3 ? GOLD[6] : GOLD[4]);
+        this.screen.set(x + i, y + j, edge ? GOLD[3] : fill);
       }
     }
     drawText(this.screen, text, x + 3, y - 2, NEUTRAL[7], INK, 11);
@@ -482,16 +454,17 @@ export class BattleScreen {
       const icon = turnIcon(fighter.troop, fighter.side);
       const iconX = x + 2;
       const iconY = y0 + Math.floor((height - icon.height) / 2);
-      if (fighter.hero) this.smallRing(iconX + Math.floor(icon.width / 2), y0 + height / 2);
+      const leader = isLeader(fighter);
+      if (leader) this.smallRing(iconX + Math.floor(icon.width / 2), y0 + height / 2, fighter.side === 'player');
       blit(screen, icon, iconX, iconY);
-      if (!fighter.hero) {
+      if (!leader) {
         drawText(screen, String(fighter.count), x + 20, y0 + 5, PARCHMENT[6], INK, 9);
       }
     });
   }
 
-  private smallRing(cx: number, cy: number) {
-    for (const [rx, ry, color] of [[9, 8, INK], [8, 7, GOLD[4]], [7, 6, GOLD[6]]] as const) {
+  private smallRing(cx: number, cy: number, ours: boolean) {
+    for (const [rx, ry, color] of [[9, 8, INK], [8, 7, ours ? GOLD[4] : RED[3]], [7, 6, ours ? GOLD[6] : RED[5]]] as const) {
       for (let a = 0; a < Math.PI * 2; a += 0.08) {
         this.screen.set(Math.round(cx + Math.cos(a) * rx), Math.round(cy + Math.sin(a) * ry), color);
       }
@@ -664,21 +637,20 @@ export class BattleScreen {
       const share = (x: number) => `${x > 0 ? '+' : '\u2212'}${Math.round(Math.abs(x) * 100)}%`;
       const [luck, morale] = [luckOf(b, f), moraleOf(b, f)];
       const spirits = `${Math.round(luck * 100) ? ` Luck ${share(luck)}` : ''}${Math.round(morale * 100) ? ` Morale ${share(morale)}` : ''}`;
-      const tags = [spirits, ...abilitiesOf(f.troop).map((a) => ` ${a.name}`), ...f.status.filter((s) => s !== 'hasted').map((s) => ` ${STATUSES[s].name}`), rallyOf(b, f) ? ' Rallied' : '', f.defending ? ' Defending' : ''].join('');
+      const tags = [spirits, ...abilitiesOf(f.troop).map((a) => ` ${a.name}`), ...f.status.filter((s) => s !== 'hasted').map((s) => ` ${STATUSES[s].name}`), f.defending ? ' Defending' : ''].join('');
       const { attack, defence } = statsOf(b, f);
       const count = countOf(f);
       // A named foe is one of a kind: "Baron Grimsby", not "1 Baron Grimsby".
       const who = t.name === t.one ? t.name : `${count} ${count === 1 ? t.one : t.name}`;
-      const info = `${who}  ·  Att ${attack} Def ${defence} Dmg ${t.damage[0]}-${t.damage[1]} HP ${view.health.get(f.id) ?? f.hp}/${t.hp} Spd ${speedOf(f)}${f.shots ? ` Shots ${f.shots}` : ''}${tags}`;
-      // A long line gets smaller type rather than running into Aldric's health and the mana.
-      const room = BUTTONS[0].rect.x - (b.fighters.some((x) => x.hero) ? 164 : 70) - 8 - (BAR.x + 12);
+      // Nothing reaches a leader, so he has no defence or health to speak of, only his own blows, if he strikes at all.
+      const blows = isLeader(f) && !f.shots && !abilitiesOf(f.troop).some((a) => a.rides) ? '' : ` Att ${attack}${isLeader(f) ? '' : ` Def ${defence}`} Dmg ${t.damage[0]}-${t.damage[1]}`;
+      const info = `${who}  ·${blows}${isLeader(f) ? '' : ` HP ${view.health.get(f.id) ?? f.hp}/${t.hp}`}${hasTurn(f) ? ` Spd ${speedOf(f)}` : ''}${f.shots ? ` Shots ${f.shots}` : ''}${tags}`;
+      // A long line gets smaller type rather than running into the mana.
+      const room = BUTTONS[0].rect.x - 70 - 8 - (BAR.x + 12);
       let size = 13;
       while (size > 10 && textMask(info, size).width > room) size--;
       drawText(screen, info, BAR.x + 12, text + Math.floor((13 - size) / 2), f.side === 'player' ? PARCHMENT[6] : RED[6], INK, size);
     }
-    // Aldric's health stays beside the mana even while another fighter is under the pointer.
-    const hero = b.fighters.find((x) => x.hero);
-    if (hero) drawText(screen, `Aldric ${view.health.get(hero.id) ?? hero.hp}/${unitOf(hero).hp}`, BUTTONS[0].rect.x - 164, text, BLUE[6], INK);
     // A villain's mana while you look at him; your own otherwise.
     const mana = f?.book ? `Mana ${f.book.mana}` : `Mana ${b.hero.mana}`;
     drawText(screen, mana, BUTTONS[0].rect.x - 70, text, f?.book ? RED[6] : BLUE[6], INK);

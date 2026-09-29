@@ -1,7 +1,7 @@
 import { abilitiesOf, type TroopId } from '../../content/troops';
 import { needsTarget, SPELLS, STATUSES } from '../../content/spells';
 import {
-  activeFighter, battleAct, canCast, casterSide, castersOf, CHARGE_BONUS, CHARGE_HEXES, fighterById, spellsOf, hasStatus, isRanged, luckOf, moraleOf, options, powerOf, spellCost, spellDamage, speedOf, statsOf, stepsTo, strike, unitOf, wound,
+  activeFighter, battleAct, canCast, casterSide, castersOf, CHARGE_BONUS, CHARGE_HEXES, fighterById, hasTurn, isLeader, luckOf, moraleOf, onField, rideFrom, ridesOut, spellsOf, hasStatus, isRanged, options, powerOf, spellCost, spellDamage, speedOf, statsOf, stepsTo, strike, unitOf, wound,
   type BattleAction, type BattleState, type Fighter, type Options, type Side,
 } from './battle';
 import { distance, HEXES, NEIGHBOURS, reachMask } from './hex';
@@ -26,8 +26,8 @@ function firepower(b: BattleState, side: Fighter['side']): number {
 
 /** Where a melee stack should stand to shield our best shooter: next to it, on the enemy's side. Null if it's there already. */
 function guardPost(b: BattleState, f: Fighter, moves: ReadonlyMap<number, unknown>): number | null {
-  const shooters = b.fighters.filter((o) => o.side === f.side && o.count > 0 && isRanged(o));
-  const foes = b.fighters.filter((o) => o.side !== f.side && o.count > 0);
+  const shooters = b.fighters.filter((o) => o.side === f.side && onField(o) && isRanged(o));
+  const foes = b.fighters.filter((o) => o.side !== f.side && onField(o));
   if (shooters.length === 0 || foes.length === 0) return null;
   const ward = shooters.reduce((x, y) => (threatV1(y) > threatV1(x) ? y : x));
   const nearestFoe = (hex: number) => Math.min(...foes.map((o) => distance(hex, o.at)));
@@ -45,7 +45,7 @@ function guardPost(b: BattleState, f: Fighter, moves: ReadonlyMap<number, unknow
 export function chooseActionV1(b: BattleState): BattleAction {
   if (b.volley) return { type: 'volley' };
   const f = activeFighter(b)!;
-  const foes = b.fighters.filter((o) => o.count > 0 && o.side !== f.side);
+  const foes = b.fighters.filter((o) => onField(o) && o.side !== f.side);
   if (foes.length === 0) return { type: 'defend' };
 
   if (f.side === 'player' && canCast(b, 'bolt')) {
@@ -61,7 +61,7 @@ export function chooseActionV1(b: BattleState): BattleAction {
     const strongest = b.fighters.filter((o) => o.count > 0 && o.side === 'player' && !hasStatus(o, 'blessed')).sort((x, y) => threatV1(y) - threatV1(x))[0];
     if (strongest) return { type: 'cast', spell: 'bless', target: strongest.id };
   }
-  if (f.side === 'player' && canCast(b, 'haste') && !hasStatus(f, 'hasted') && !isRanged(f)) return { type: 'cast', spell: 'haste', target: f.id };
+  if (f.side === 'player' && canCast(b, 'haste') && !hasStatus(f, 'hasted') && !isRanged(f) && onField(f)) return { type: 'cast', spell: 'haste', target: f.id };
 
   const opts = options(b);
   if (opts.shoot.length > 0) {
@@ -77,14 +77,15 @@ export function chooseActionV1(b: BattleState): BattleAction {
     const gain = worthOf(target, damage) * (isRanged(target) ? 1.25 : 1);
     const left = wound(target, damage);
     let loss = 0;
-    if (left.count > 0 && !target.retaliated) loss = worthOf(f, strike(b, { ...target, count: left.count, hp: left.hp }, moved, false).damage);
+    if (left.count > 0 && !target.retaliated && !isLeader(f)) loss = worthOf(f, strike(b, { ...target, count: left.count, hp: left.hp }, moved, false).damage);
     const score = gain - loss * 0.6 - (m.from === f.at ? 0 : 0.01);
     if (!best || score > best.score) best = { action: { type: 'melee', target: m.target, from: m.from }, score };
   }
   if (best && best.score > 0) return best.action;
 
-  // Archers out of arrows, or blocked, still fight.
+  // Archers out of arrows, or blocked, still fight. A leader who can't strike now waits for his next turn.
   if (best && isRanged(f)) return best.action;
+  if (isLeader(f)) return best ? best.action : { type: 'defend' };
 
   // Out-shooting them? Hold the line by our archers and let them walk into the arrows.
   if (!isRanged(f) && firepower(b, f.side) > firepower(b, f.side === 'player' ? 'enemy' : 'player') * 1.2) {
@@ -140,7 +141,7 @@ export function finishEstimate(b: BattleState, samples = 10): FinishEstimate | n
     if (end.result !== 'won') continue;
     wins++;
     for (const before of b.fighters) {
-      if (before.side !== 'player' || before.count === 0 || before.hero) continue;
+      if (before.side !== 'player' || !onField(before)) continue;
       const after = fighterById(end, before.id);
       const lost = Math.max(0, before.count - after.count);
       if (lost > 0) lostByTroop.set(before.troop, (lostByTroop.get(before.troop) ?? 0) + lost);
@@ -159,9 +160,9 @@ export function finishEstimate(b: BattleState, samples = 10): FinishEstimate | n
 // plus what they could take themselves. So they finish off wounded stacks, gang up on a stack that
 // has already struck back, go for shooters, keep their own shooters shooting, and know that a
 // stack which regenerates shrugs off scratches, all without knowing any spell or troop by name. A
-// hero on the field is worth the spells he could still cast as well as his blows, so the enemy
-// finishes him off when it can, and your sergeants keep him out of harm's way; a stack that charges
-// is feared for the charge.
+// leader behind the line (Aldric, a villain) can't be reached: nobody aims at him, and nobody counts
+// on striking back at him. He's worth the spells he could still cast; a stack that charges is
+// feared for the charge, and a leader who rides out for how far he can ride.
 // Your sergeants (the commander) may hold back and let the enemy come; the enemy never does (see
 // `onslaught`).
 
@@ -169,13 +170,9 @@ export function finishEstimate(b: BattleState, samples = 10): FinishEstimate | n
  * How much each side's next strikes count. The careful commander weighs what it could lose; the
  * enemy picks its blows the same way, but closes in bravely, and heads for your shooters (`hunt`).
  */
-type Weights = { theirNow: number; theirLater: number; ourNow: number; ourLater: number; patient: boolean; hunt?: number; keep?: number };
-/**
- * The careful commander also keeps its own hero out of harm's way: he counts `keep` times over
- * again, since carried off he casts no more, and he rides no further that day.
- */
-const CAREFUL: Weights = { theirNow: 0.7, theirLater: 0.3, ourNow: 0.3, ourLater: 0.12, patient: true, keep: 1 };
-const STRIKE: Weights = { ...CAREFUL, patient: false, keep: 0 };
+type Weights = { theirNow: number; theirLater: number; ourNow: number; ourLater: number; patient: boolean; hunt?: number };
+const CAREFUL: Weights = { theirNow: 0.7, theirLater: 0.3, ourNow: 0.3, ourLater: 0.12, patient: true };
+const STRIKE: Weights = { ...CAREFUL, patient: false };
 const BRAVE: Weights = { theirNow: 0.35, theirLater: 0.1, ourNow: 0.6, ourLater: 0.25, patient: false, hunt: 0.05 };
 
 /** A stack still standing is worth this many of its troops more: its turn, its strike back, the hexes it holds. */
@@ -210,8 +207,8 @@ const healShare = (troop: Fighter['troop']) => {
 };
 
 /**
- * What a caster on the field (Aldric, or a villain) is worth to his side besides his blows, while he
- * stands: the spells his mana can still cast, and his charges (orders) at `CHARGE` mana each. Each
+ * What a caster (Aldric, or a villain) is worth to his side besides his blows: the spells his mana
+ * can still cast, and his charges (orders) at `CHARGE` mana each. Each
  * point counts as this much fighting worth for every point of spell power: about half what a bolt
  * takes with it, so a good spell is still worth its mana.
  */
@@ -239,8 +236,15 @@ function loss(b: BattleState, f: Fighter, damage: number): number {
 function blockedMask(b: BattleState): Uint8Array {
   const mask = new Uint8Array(HEXES);
   for (const i of b.obstacles) mask[i] = 1;
-  for (const f of b.fighters) if (f.count > 0) mask[f.at] = 1;
+  for (const f of b.fighters) if (onField(f)) mask[f.at] = 1;
   return mask;
+}
+
+/** The hexes a leader who rides out could strike from this turn, round what `mask` marks. */
+function rideMask(f: Fighter, mask: Uint8Array): Uint8Array {
+  const reach = new Uint8Array(HEXES);
+  for (const hex of rideFrom(f, (i) => !mask[i]).keys()) reach[hex] = 1;
+  return reach;
 }
 
 /**
@@ -250,17 +254,18 @@ function blockedMask(b: BattleState): Uint8Array {
  * attack coming and screen their shooters. Blows on one target add up, but never past what that
  * target is worth.
  */
-function threat(b: BattleState, side: Side, mask: Uint8Array, keep = 0): { now: number; later: number } {
-  const foes = b.fighters.filter((o) => o.count > 0 && o.side !== side);
+function threat(b: BattleState, side: Side, mask: Uint8Array): { now: number; later: number } {
+  const foes = b.fighters.filter((o) => onField(o) && o.side !== side);
   const now = new Map<number, number>();
   const later = new Map<number, number>();
   const add = (map: Map<number, number>, id: number, worth: number) => map.set(id, (map.get(id) ?? 0) + worth);
   for (const f of b.fighters) {
-    // A stack that will lose its turn (turned into newts) threatens nobody this time.
-    if (f.count <= 0 || f.side !== side || f.status.some((st) => STATUSES[st].skipsTurn)) continue;
+    // A stack that will lose its turn (turned into newts), or a leader with nothing to do, threatens nobody this time.
+    if (f.side !== side || !hasTurn(f) || f.status.some((st) => STATUSES[st].skipsTurn)) continue;
     // Morale's expected extra turn (or the one low spirits may cost it) counts for its blows too.
     const turns = actions(b, f);
-    const pinned = foes.some((o) => NEIGHBOURS[f.at].includes(o.at));
+    const leader = isLeader(f);
+    const pinned = !leader && foes.some((o) => NEIGHBOURS[f.at].includes(o.at));
     if (f.shots > 0 && !pinned) {
       let best = 0;
       let target = -1;
@@ -271,31 +276,31 @@ function threat(b: BattleState, side: Side, mask: Uint8Array, keep = 0): { now: 
       if (target >= 0) add(now, target, best * turns);
       continue;
     }
+    if (leader && !ridesOut(f)) continue;
     const speed = speedOf(f);
-    const reach = reachMask(f.at, speed, mask);
-    const farther = reachMask(f.at, speed * 2, mask);
+    // A leader rides out from his side's edge every time, so his reach never grows: nothing for later.
+    const reach = leader ? rideMask(f, mask) : reachMask(f.at, speed, mask);
+    const farther = leader ? reach : reachMask(f.at, speed * 2, mask);
     let best = 0;
     let target = -1;
     let bestLater = 0;
     let targetLater = -1;
-    // A stack that charges, standing clear of the enemy, finds a run-up to whoever it can reach.
-    const charge = !pinned && speed >= CHARGE_HEXES && f.side === 'player' && (b.hero.charge ?? []).includes(f.troop);
+    // A stack that charges, standing clear of the enemy, finds a run-up to whoever it can reach; a leader always has one.
+    const charge = !pinned && (leader || speed >= CHARGE_HEXES) && f.side === 'player' && (b.hero.charge ?? []).includes(f.troop);
     for (const o of foes) {
       const soon = NEIGHBOURS[o.at].some((n) => reach[n]);
       if (!soon && !NEIGHBOURS[o.at].some((n) => farther[n])) continue;
       const damage = strike(b, f, o, false, undefined, charge ? CHARGE_BONUS : 1).damage;
       const w = wound(o, damage);
       let gain = stackWorth(b, o) - stackWorth(b, { ...o, count: w.count, hp: w.hp });
-      if (w.count > 0 && !o.retaliated && !charge) gain -= loss(b, f, strike(b, { ...o, count: w.count, hp: w.hp }, f, false).damage);
+      if (w.count > 0 && !o.retaliated && !charge && !leader) gain -= loss(b, f, strike(b, { ...o, count: w.count, hp: w.hp }, f, false).damage);
       if (soon && gain > best) [best, target] = [gain, o.id];
       else if (!soon && gain > bestLater) [bestLater, targetLater] = [gain, o.id];
     }
     if (target >= 0) add(now, target, best * turns);
     else if (targetLater >= 0) add(later, targetLater, bestLater * turns);
   }
-  // A hero the other side means to keep counts that much more (see `keep`).
-  const kept = (id: number, worth: number) => (fighterById(b, id).hero ? worth * (1 + keep) : worth);
-  const total = (map: Map<number, number>) => [...map].reduce((sum, [id, worth]) => sum + kept(id, Math.min(worth, stackWorth(b, fighterById(b, id)))), 0);
+  const total = (map: Map<number, number>) => [...map].reduce((sum, [id, worth]) => sum + Math.min(worth, stackWorth(b, fighterById(b, id))), 0);
   return { now: total(now), later: total(later) };
 }
 
@@ -304,21 +309,20 @@ const firepowerOf = (b: BattleState, side: Side) => b.fighters.filter((f) => f.c
 
 /** How good the battle looks for `side`, weighing the blows to come as `w` says. */
 export function evaluate(b: BattleState, side: Side, w: Weights = CAREFUL): number {
-  const keep = w.keep ?? 0;
-  const mine = b.fighters.filter((f) => f.count > 0 && f.side === side).reduce((sum, f) => sum + stackWorth(b, f) * (f.hero ? 1 + keep : 1), 0);
+  const mine = b.fighters.filter((f) => f.count > 0 && f.side === side).reduce((sum, f) => sum + stackWorth(b, f), 0);
   const theirs = b.fighters.filter((f) => f.count > 0 && f.side !== side).reduce((sum, f) => sum + stackWorth(b, f), 0);
   if (b.result === 'won' || b.result === 'lost') return (b.result === 'won') === (side === 'player') ? 1e5 + mine : -1e5 - theirs;
   const other: Side = side === 'player' ? 'enemy' : 'player';
   const mask = blockedMask(b);
-  const theirs2 = threat(b, other, mask, keep);
+  const theirs2 = threat(b, other, mask);
   const ours = threat(b, side, mask);
   let score = mine - theirs - w.theirNow * theirs2.now - w.theirLater * theirs2.later + w.ourNow * ours.now + w.ourLater * ours.later;
   if (w.hunt) {
-    // Their shooters hurt wherever we stand: every stack that can't shoot heads for them.
-    const shooters = b.fighters.filter((f) => f.count > 0 && f.side === other && f.shots > 0);
+    // Their shooters on the field hurt wherever we stand: every stack that can't shoot heads for them.
+    const shooters = b.fighters.filter((f) => onField(f) && f.side === other && f.shots > 0);
     if (shooters.length > 0) {
       for (const f of b.fighters) {
-        if (f.count <= 0 || f.side !== side || f.shots > 0) continue;
+        if (!onField(f) || f.side !== side || f.shots > 0) continue;
         const nearest = Math.min(...shooters.map((o) => distance(f.at, o.at)));
         score -= w.hunt * stackWorth(b, f) * Math.max(0, nearest - 1) / Math.max(1, speedOf(f));
       }
@@ -329,9 +333,9 @@ export function evaluate(b: BattleState, side: Side, w: Weights = CAREFUL): numb
   // more both sides want to get it over with, so nobody dances round a troll for forty rounds.
   const pressure = (firepowerOf(b, other) > firepowerOf(b, side) * 1.1 ? 1 : 0) + Math.max(0, (b.round - 6) / 6);
   if (pressure > 0) {
-    const targets = b.fighters.filter((f) => f.count > 0 && f.side === other);
+    const targets = b.fighters.filter((f) => onField(f) && f.side === other);
     for (const f of b.fighters) {
-      if (f.count <= 0 || f.side !== side || (f.shots > 0 && !targets.some((o) => NEIGHBOURS[f.at].includes(o.at)))) continue;
+      if (!onField(f) || f.side !== side || (f.shots > 0 && !targets.some((o) => NEIGHBOURS[f.at].includes(o.at)))) continue;
       const nearest = Math.min(...targets.map((o) => distance(f.at, o.at)));
       score -= 0.03 * pressure * stackWorth(b, f) * Math.max(0, nearest - 1) / Math.max(1, speedOf(f));
     }
@@ -367,7 +371,7 @@ export function castActions(b: BattleState): BattleAction[] {
         continue;
       }
       const on = SPELLS[spell].on;
-      for (const f of b.fighters) if (f.count > 0 && (f.side === side) === (on === 'friend')) actions.push({ type: 'cast', spell, target: f.id, ...who });
+      for (const f of b.fighters) if (onField(f) && (f.side === side) === (on === 'friend')) actions.push({ type: 'cast', spell, target: f.id, ...who });
     }
   }
   return actions;
@@ -399,7 +403,7 @@ export function chooseAction(b: BattleState): BattleAction {
 export function commander(b: BattleState): BattleAction {
   if (b.volley) return { type: 'volley' };
   const f = activeFighter(b)!;
-  if (!b.fighters.some((o) => o.count > 0 && o.side !== f.side)) return { type: 'defend' };
+  if (!b.fighters.some((o) => onField(o) && o.side !== f.side)) return { type: 'defend' };
   // A spell first, if one is worth more than not casting (the stack still acts after it).
   if (f.side === 'player') {
     const cast = best(b, castActions(b), 'player');
@@ -423,6 +427,8 @@ export function onslaught(b: BattleState): BattleAction {
   const opts = options(b);
   if (opts.shoot.length > 0) return best(b, opts.shoot.map((target): BattleAction => ({ type: 'shoot', target })), side, STRIKE)!.action;
   const blow = best(b, opts.melee.map((m): BattleAction => ({ type: 'melee', target: m.target, from: m.from })), side, STRIKE);
+  // A leader never walks the field: he strikes if he can reach anyone, and otherwise waits for his next turn.
+  if (isLeader(f)) return blow?.action ?? { type: 'defend' };
   if (f.shots > 0) {
     // Caught in melee: step clear if it can get out of reach, since a shot next turn beats a blow at half strength now.
     const melee = opts.melee.map((m): BattleAction => ({ type: 'melee', target: m.target, from: m.from }));
@@ -438,7 +444,7 @@ export function onslaught(b: BattleState): BattleAction {
  * through to any of them, it edges as near as it can, as the crow flies.
  */
 function closeIn(b: BattleState, f: Fighter, opts: Options, side: Side): { action: BattleAction; score: number } | null {
-  const foes = b.fighters.filter((o) => o.count > 0 && o.side !== side);
+  const foes = b.fighters.filter((o) => onField(o) && o.side !== side);
   const hexes = new Set<number>();
   for (const o of foes) {
     const steps = stepsTo(b, [o], f);
@@ -468,6 +474,11 @@ function outOfReach(b: BattleState, f: Fighter, moves: ReadonlyMap<number, unkno
   const reach = new Uint8Array(HEXES);
   for (const o of b.fighters) {
     if (o.count <= 0 || o.side === f.side) continue;
+    // A leader who rides out can strike from wherever his ride reaches, every turn; any other leader can't come at all.
+    if (isLeader(o)) {
+      if (ridesOut(o)) rideMask(o, mask).forEach((r, i) => r && (reach[i] = 1));
+      continue;
+    }
     reach[o.at] = 1;
     // Its moves before our next turn: the rest of this round, if it hasn't gone yet, and the next one's, if it goes first.
     const turns = (b.order.includes(o.id) ? 1 : 0) + (actsFirst(o, f) ? 1 : 0);

@@ -6,7 +6,7 @@ import { autoResolve } from './battle/ai';
 import { applyEffects } from './effects/core';
 import { CAMPAIGN_LENGTH, campaignLines, commissionOf, hasNextCommission, provinceOf } from './campaign';
 import { revealDisc } from './map/fog';
-import { createBattle, heroFell, SHOOTER_MELEE, survivors, type BattleHero, type BattleState, type Side } from './battle/battle';
+import { battleEnd, createBattle, isLeader, SHOOTER_MELEE, survivors, type BattleHero, type BattleState, type Side } from './battle/battle';
 import { artifactChoices, foundNote, gainXp, giveArtifact, heroStats, namedBonuses } from './hero';
 import { addTroops, again, armyPower, close, coins, locationById, roll, roman, show, stillWithYou, troops, update, VANISHES, type Army, type BattleResultCard, type Choice, type GameEvent, type GameState, type Location, type Result } from './state';
 
@@ -60,26 +60,29 @@ function broughtBy(state: GameState): NonNullable<BattleHero['brought']> {
   return out;
 }
 
-/** Aldric as he'd take the field in the next battle: the troop he fights as, and his numbers. */
+/** Aldric as he'd lead the next battle, from behind the line: the troop he fights as, and his numbers. */
 export type HeroFighter = {
   troop: HeroId;
   name: string;
-  /** With his own attack and defence, and his troop's bonus, as in battle (before spells and rallies). */
+  /** With his own attack and defence, and his troop's bonus, as in battle. */
   attack: number;
   defence: number;
   damage: readonly [number, number];
+  /** His troop's health: nothing can reach him behind the line, so it never changes. */
   hp: number;
   speed: number;
   shots: number;
-  /** Charges, as a Knight does: a run-up of 3 hexes, a quarter harder, and no strike-back. */
+  /** Charges, as a Knight does: a quarter harder, and no strike-back. */
   charges: boolean;
+  /** Whether he strikes at all: shoots, or rides out. */
+  strikes: boolean;
   abilities: { name: string; note: string }[];
 };
 
 /**
- * Aldric's own numbers on the field, from his troop and himself. A level-I hero is modest; every
- * level adds health and damage (see `hero` in content/troops.ts), a caster's damage grows with his
- * spell power, and his attack and defence (level-ups and gear) count for him as for every stack.
+ * Aldric's own numbers in battle, from his troop and himself. A level-I hero is modest; every level
+ * adds damage (see `hero` in content/troops.ts), a caster's damage grows with his spell power, and
+ * his attack (level-ups and gear) counts for his blows as for every stack's.
  */
 export function heroFighter(state: GameState): HeroFighter {
   const s = heroStats(state);
@@ -95,10 +98,11 @@ export function heroFighter(state: GameState): HeroFighter {
     attack: t.attack + s.attack + (bonus?.attack ?? 0),
     defence: t.defence + s.defence + (bonus?.defence ?? 0),
     damage: [t.damage[0] + more, t.damage[1] + more],
-    hp: t.hp + levels * grow.perLevel.hp,
+    hp: t.hp,
     speed: t.speed,
     shots: t.shots ? t.shots + (bonus?.shots ?? 0) : 0,
     charges: s.charge.includes(troop),
+    strikes: Boolean(t.shots) || (t.abilities ?? []).some((a) => ABILITIES[a].rides),
     abilities: (t.abilities ?? []).map((a) => ({ name: ABILITIES[a].name, note: ABILITIES[a].note })),
   };
 }
@@ -144,7 +148,7 @@ export function likelyLossesLine(state: GameState, id: string, samples = 16): st
 function fallen(battle: BattleState, side: Side): Army {
   const losses = new Map<Army[number]['troop'], number>();
   for (const fighter of battle.fighters) {
-    if (fighter.side !== side || fighter.hero) continue;
+    if (fighter.side !== side || isLeader(fighter)) continue;
     const count = fighter.startCount - fighter.count;
     if (count > 0) losses.set(fighter.troop, (losses.get(fighter.troop) ?? 0) + count);
   }
@@ -265,13 +269,12 @@ export function finishFight(state: GameState): Result {
   const place = locationById(state, battle.place);
   const enemy = place.enemy!;
   const army = survivors(battle, 'player');
-  // Carried from the field, he's on his feet again by evening: it costs him only the rest of the day.
-  const fell = heroFell(battle);
   const who = BACKGROUNDS[state.hero.background].short;
-  const alone = !fell && army.length === 0 && battle.fighters.some((f) => f.hero);
-  const carried = fell ? [`**${who} was carried from the field.** He's on his feet by evening, sore and cross, but goes no further today.`] : alone ? [`*Only ${who} is left standing.*`] : [];
+  // What became of the leaders, in the words the field said it in: "Their army is beaten, and Baron Grimsby is taken."
+  const end = battleEnd(battle);
+  const ended = end ? [`${end.army}, and **${end.leader}**.`] : [];
   // The battle rolled its own dice from the state's seed: carry on from where it stopped, not from the start again.
-  const base: GameState = { ...state, seed: battle.seed, battle: undefined, army, hero: { ...state.hero, mana: battle.hero.mana }, ...(fell ? { movement: 0 } : {}) };
+  const base: GameState = { ...state, seed: battle.seed, battle: undefined, army, hero: { ...state.hero, mana: battle.hero.mana } };
   const battleResult: BattleResultCard = {
     player: fallen(battle, 'player'),
     enemy: fallen(battle, 'enemy'),
@@ -280,13 +283,13 @@ export function finishFight(state: GameState): Result {
   };
   if (battle.result === 'won') {
     const after = afterVictory(base, state.army);
-    const opening = place.kind === 'hideout' ? [commissionOf(base).surrender, ...after.lines, ...carried] : [enemy.flees, ...after.lines, ...carried, enemy.loot.replace('{gold}', `**${coins(enemy.reward)} gold**`)];
+    const opening = place.kind === 'hideout' ? [...ended, commissionOf(base).surrender, ...after.lines] : [...ended, enemy.flees, ...after.lines, enemy.loot.replace('{gold}', `**${coins(enemy.reward)} gold**`)];
     return beat(after.state, place.id, { title: 'Victory!', lines: opening, reward: enemy.reward, xp: battleXp(enemy.army), battleResult });
   }
   const castle = state.locations.find((l) => l.kind === 'castle');
   const home = castle ? ([castle.at[0], castle.at[1] + 14] as const) : state.hero.at;
   const shaken = battle.result === 'fled' && !battle.standoff ? army.map((s) => ({ ...s, count: s.count - Math.ceil(s.count * 0.25) })).filter((s) => s.count > 0) : army;
-  if (battle.result === 'fled' && shaken.length === 0 && battle.fighters.some((f) => f.hero && f.count > 0)) {
+  if (battle.result === 'fled' && shaken.length === 0 && battle.fighters.some((f) => f.hero)) {
     // Nobody who rode with him is left: Aldric gets away alone, and rides home to raise another army.
     return {
       state: { ...base, army: [], movement: 0, hero: { ...base.hero, at: home } },
@@ -301,21 +304,21 @@ export function finishFight(state: GameState): Result {
     const next = { ...base, movement: 0 };
     return {
       state: next,
-      events: [show({ title: 'A stand-off', lines: ['Neither side can get at the other. As the light goes, both draw off.', ...carried, stillWithYou(army)], choices: [close], wide: true, battleResult }, place.at, place.id)],
+      events: [show({ title: 'A stand-off', lines: ['Neither side can get at the other. As the light goes, both draw off.', stillWithYou(army)], choices: [close], wide: true, battleResult }, place.at, place.id)],
     };
   }
   if (battle.result === 'fled') {
     const next = { ...base, army: shaken, movement: 0 };
     return {
       state: next,
-      events: [show({ title: 'Retreat!', lines: ['Your men fall back in good order, mostly.', ...carried, stillWithYou(shaken)], choices: [close], wide: true, battleResult }, place.at, place.id)],
+      events: [show({ title: 'Retreat!', lines: ['Your men fall back in good order, mostly.', stillWithYou(shaken)], choices: [close], wide: true, battleResult }, place.at, place.id)],
     };
   }
   return {
     state: { ...base, army: [], movement: 0, hero: { ...base.hero, at: home } },
     events: [
       { type: 'moved', at: home, facing: base.hero.facing },
-      show({ title: 'Defeat', lines: ['Your army is scattered to the four winds.', `You limp back to ${castle?.name ?? 'safety'} to raise another.`], choices: [close], wide: true, battleResult }, null),
+      show({ title: 'Defeat', lines: [...(ended.length ? ended : ['Your army is scattered to the four winds.']), `${ended.length ? 'He rides' : 'You limp'} back to ${castle?.name ?? 'safety'} to raise another.`], choices: [close], wide: true, battleResult }, null),
     ],
   };
 }
