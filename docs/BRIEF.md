@@ -294,4 +294,6 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   show a page written as content first, while one holds, and their recruit card after a choice there; an effect can put
   volunteers at a place (`recruits`, free, or with no payday restock); and beasts are wild things with no wages, so the
   huntsmen say on their card why they serve for nothing. The bot opens the hall and takes the huntsmen when it has the
-  key, and still wins Aldmoor with every background.
+  key. It wins Aldmoor with every background, and sooner: by day 8 to 12 at the median (9 to 16 before), and by day
+  30 at the latest (52 before), since the bears' experience and the huntsmen are more to win. Balancing Aldmoor to its
+  budget (#95) counts them in.
