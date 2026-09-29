@@ -84,9 +84,10 @@ export function moveEnemies(state: GameState, map: MapModel): { state: GameState
       seed = s2;
       goal = [home[0] + Math.cos(a * Math.PI * 2) * range * (0.25 + 0.75 * r), home[1] + Math.sin(a * Math.PI * 2) * range * (0.25 + 0.75 * r)];
     }
-    // Everyone else stands in the way, the hero included, so nobody walks through anybody.
+    // Everyone else stands in the way, the hero included, so nobody walks through anybody. A hunter
+    // makes for the hero himself, and stops short of him (`keep`): he's where it's going, not in its way.
     const others = standingEnemies(next.locations).filter((o) => o.id !== l.id);
-    const grid = gridWithEnemies(map, [...others, { at: [next.hero.at[0], next.hero.at[1] + 6] as Point }]);
+    const grid = gridWithEnemies(map, hunts ? others : [...others, { at: [next.hero.at[0], next.hero.at[1] + 6] as Point }]);
     const start = nearestPassable(grid, cellOf(l.at), 3);
     const target = nearestPassable(grid, cellOf(goal), 8);
     if (!start || !target) continue;

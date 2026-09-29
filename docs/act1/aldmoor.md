@@ -4,8 +4,9 @@ The first commission, rebuilt with room to ride. Artur picked these ideas on 29 
 
 **Built (#77):** the space, the regions, the river with its bridge and ford, today's places in the new land, Mrs Pike
 in Westmere, and Grimsby's dig on the heath (raiding it sets `flags.dig`).
-**Still to build:** Grimsby riding out (#75), Rook and his wolves (#15), the grain cart (#78), and the hunt hall and the
-lodge (#76).
+**Built (#75):** Grimsby rides out to meet you when you raid his dig or take his patrol off the bridge, and flees home
+when his guard is beaten.
+**Still to build:** Rook and his wolves (#15), the grain cart (#78), and the hunt hall and the lodge (#76).
 
 ![Aldmoor, bigger](aldmoor.svg)
 

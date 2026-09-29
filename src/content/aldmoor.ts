@@ -659,7 +659,7 @@ export const ALDMOOR: Province = {
           when: [{ flag: 'dig', is: 'raided' }, { flag: 'patrolGone' }, { flag: 'pikeHome' }],
           guard: 0.35,
           band: GRIMSBY_RIDES,
-          barred: ['The gate is barred, and the Baron\u2019s pennant is gone from the flagpole.', '*"He\u2019s out!"* shouts a sentry over the palisade. *"Looking for you, as it happens."*'],
+          barred: ['The gate is barred, and for once nobody inside is honking.', '*"The Baron\u2019s out!"* shouts a sentry over the palisade. *"Looking for you, as it happens. He took the goose."*'],
           out: 'Word on the road: **Baron Grimsby** has ridden out of his stockade with his guard, looking for you.',
           home: 'Word on the road: **Baron Grimsby** has given up looking for you, and gone home to his stockade.',
         },

@@ -32,11 +32,12 @@ async function close() {
   if ((await kc.title())?.endsWith('ambush!')) {
     const who = (await kc.lines()).match(/At first light, (.+?) fall on your camp/)?.[1];
     await kc.choose('Let the sergeants');
-    ambushes.push(`${who}: ${await kc.title()}`);
+    ambushes.push({ who, day: (await kc.state()).day, title: await kc.title(), lines: await kc.lines() });
   }
   await kc.choose('Close');
   await settle();
 }
+/** Who fell on the camp, when, and how it went. */
 const ambushes = [];
 
 /**
@@ -257,19 +258,22 @@ try {
   await close();
   // Taking his patrol off the bridge hurts Grimsby: he rides out with his guard to meet the hero, and
   // falls on his camp. Beaten in the open, he flees home to his stockade, without his guard.
-  let met = null;
-  for (let night = 0; night < 8 && !met; night++) {
+  const byGrimsby = () => ambushes.find((a) => a.who === 'Grimsby and his Guard');
+  for (let night = 0; night < 8 && !byGrimsby(); night++) {
     await settle();
+    const day = (await kc.state()).day;
     await page.keyboard.press('e');
-    await page.waitForTimeout(80);
-    if ((await kc.title())?.endsWith('ambush!')) met = await kc.lines();
-    else await close();
-  }
-  check(Boolean(met?.includes('Grimsby and his Guard')), `Grimsby rides out once his patrol is beaten, and falls on the camp${met ? '' : ': he never came'}`);
-  if (met) {
-    await kc.choose('Let the sergeants');
-    check((await kc.title()) === 'Victory!' && (await kc.lines()).includes('Baron Grimsby flees home'), 'beaten in the open, Grimsby flees home to his stockade');
+    await page.waitForFunction((d) => window.__kc.state().day > d, day, { timeout: 10_000 }).catch(() => {});
+    await page.waitForTimeout(400);
     await close();
+  }
+  const met = byGrimsby();
+  const now = await kc.state();
+  const band = now.locations.find((l) => l.id === 'grimsby');
+  const why = band ? `his band ${band.done ? 'went home' : `is at ${band.at.map(Math.round)}`}` : 'he never rode out';
+  check(Boolean(met), `Grimsby rides out once his patrol is beaten, and falls on the camp${met ? ` on day ${met.day}` : `: he never came (${why}; Aldric at ${now.hero.at.map(Math.round)})`}`);
+  if (met) {
+    check(met.title === 'Victory!' && met.lines.includes('Baron Grimsby flees home'), `beaten in the open, Grimsby flees home to his stockade (${met.title})`);
     const stockade = (await kc.state()).locations.find((l) => l.id === 'hideout');
     check(stockade.enemy.humbled && stockade.enemy.army.some((s) => s.troop === 'baron'), 'and stays behind his walls, without his guard');
   }
@@ -340,6 +344,7 @@ try {
   await kc.begin();
   await kc.choose('New campaign');
   check((await kc.title()) === 'King Osric' && (await kc.state()).campaign.chapter === 0, 'a new campaign starts over with the King');
+  if (ambushes.length) console.log(`     ambushed: ${ambushes.map((a) => `${a.who} on day ${a.day} (${a.title})`).join(', ')}`);
   check(errors.length === 0, `no page errors${errors.length ? `: ${errors.join(' | ')}` : ''}`);
 } catch (error) {
   check(false, String(error));

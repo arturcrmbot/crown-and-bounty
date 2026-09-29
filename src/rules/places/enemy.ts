@@ -247,8 +247,9 @@ export function enemy(kind: 'patrol' | 'hideout'): PlaceKind {
       const shadowed = heroStats(state).shadow;
       const coming = e.bold ? '*They are looking for you, and will fall on you wherever you camp near them, though never in a town.*' : '*They hunt anyone weaker who camps near their ground, though never in a town.*';
       const hunt = e.behaviour !== 'hunt' ? [] : [shadowed ? '*They hunt anyone weaker, but your scouts are watching them: they won\u2019t find your trail.*' : e.trailing ? '*They have your scent. Camp near them tonight and they\u2019ll fall on you at dawn.*' : coming];
-      const away = riddenOut(state, place) ? [e.sortie!.barred[0]] : [];
-      return { title: place.name, lines: [...e.lines, line, ...away, ...carriesLine(state, place), ...hunt], choices: [ride(place, 'Approach'), { label: 'Close', action: { type: 'close' } }] };
+      // While a villain is out, his lair's card says so instead of what it usually says.
+      const away = riddenOut(state, place) ? [e.sortie!.barred[0]] : e.lines;
+      return { title: place.name, lines: [...away, line, ...carriesLine(state, place), ...hunt], choices: [ride(place, 'Approach'), { label: 'Close', action: { type: 'close' } }] };
     },
     arrive(state, place) {
       const foe = place.enemy!;

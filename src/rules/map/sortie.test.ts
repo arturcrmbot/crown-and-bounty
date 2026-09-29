@@ -105,7 +105,8 @@ describe('Grimsby riding out', () => {
   });
 
   it('rides out when his patrol is taken off the bridge, and comes all the way there, round his wolves', () => {
-    const s = aldmoor(undefined, [1720, 1466], { patrolGone: true });
+    // Aldric waits at the east end of the bridge, on it: Grimsby comes to him over it, not the long way round by the ford.
+    const s = aldmoor(undefined, [1692, 1468], { patrolGone: true });
     const bridge = { ...s, locations: s.locations.map((l) => (l.id === 'patrol' ? { ...l, done: true } : l)) };
     expect(band(endDay(bridge).state)?.done).toBe(false);
     expect(nights(bridge, 8).ambush).toBe('grimsby');
