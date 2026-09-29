@@ -69,16 +69,26 @@ export class FogMask {
       const v = Math.max(0, (y - CELL / 2) / CELL);
       const j = Math.min(rows - 2, Math.floor(v));
       const fy = Math.min(1, v - j);
-      for (let x = x0; x < x1; x++) {
+      const row = y * this.width;
+      for (let x = x0; x < x1; ) {
         const u = Math.max(0, (x - CELL / 2) / CELL);
         const i = Math.min(cols - 2, Math.floor(u));
-        const fx = Math.min(1, u - i);
+        // The pixels between the same four cells: all clear or all dark when the four agree.
+        const end = i === cols - 2 ? x1 : Math.min(x1, CELL / 2 + (i + 1) * CELL);
         const a = this.soft[j * cols + i];
         const b = this.soft[j * cols + i + 1];
         const c = this.soft[(j + 1) * cols + i];
         const d = this.soft[(j + 1) * cols + i + 1];
-        const f = (a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + d * fx) * fy;
-        this.mask[y * this.width + x] = f > bayer(x, y) ? 1 : 0;
+        if (a === b && b === c && c === d && (a === 0 || a === 1)) {
+          this.mask.fill(a, row + x, row + end);
+          x = end;
+          continue;
+        }
+        for (; x < end; x++) {
+          const fx = Math.min(1, Math.max(0, (x - CELL / 2) / CELL) - i);
+          const f = (a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + d * fx) * fy;
+          this.mask[row + x] = f > bayer(x, y) ? 1 : 0;
+        }
       }
     }
   }
