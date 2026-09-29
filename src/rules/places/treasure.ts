@@ -1,7 +1,7 @@
 import { ARTIFACTS } from '../../content/artifacts';
 import { artifactChoices, foundNote, giveArtifact, heroStats } from '../hero';
 import { close, coins, leadershipUsed, update, type Choice, type GameState, type Location, type Result } from '../state';
-import { aboutWords, loot, note, option, ride, say } from './common';
+import { aboutWords, loot, note, option, ride, say, words } from './common';
 import type { PlaceKind } from './kind';
 
 function openChest(state: GameState, place: Location, take: 'keep' | 'give'): Result | null {
