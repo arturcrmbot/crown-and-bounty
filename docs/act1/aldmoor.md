@@ -9,7 +9,8 @@ Grimsby's walls: Old Nan's lullaby, for half the bounty.
 **Built (#75):** Grimsby rides out to meet you when you raid his dig or take his patrol off the bridge, and flees home
 when his guard is beaten.
 **Built (#15):** Rook the Huntsman, Grimsby's captain, leads the wolves from the kennels, and hunts you from week 2.
-**Still to build:** the grain cart (#78), and the hunt hall and the lodge (#76).
+**Built (#76):** the hunt hall by the bridge, Old Nan's word, the lodge in the chase with its bears, and the huntsmen.
+**Still to build:** the grain cart (#78).
 
 ![Aldmoor, bigger](aldmoor.svg)
 

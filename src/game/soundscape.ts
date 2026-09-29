@@ -58,8 +58,8 @@ export function soundscapeOf(map: MapModel, state: GameState): Soundscape {
     still,
     woods: cellsOf(map, [Terrain.Forest], 4),
     high: [...cellsOf(map, [Terrain.Cliff, Terrain.Rock], 4), ...province.crags.map(([x, y, , h]) => [x, y - h / 2] as Point)],
-    // Villages and castles talk and ring with the smith; the deserters' camp and the archery range have sounds of their own.
-    town: at((l) => (l.kind === 'village' || l.kind === 'castle') && l.look !== 'range' && l.look !== 'camp'),
+    // Villages and castles talk and ring with the smith; the deserters' camp, the archery range and the hunt hall have sounds of their own, or none.
+    town: at((l) => (l.kind === 'village' || l.kind === 'castle') && l.look !== 'range' && l.look !== 'camp' && l.look !== 'hall'),
     butts: at((l) => l.look === 'range'),
     crows: at((l) => l.kind === 'tower' && l.look !== 'abbey'),
     abbey: at((l) => l.kind === 'tower' && l.look === 'abbey'),

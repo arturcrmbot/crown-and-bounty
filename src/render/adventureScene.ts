@@ -14,8 +14,8 @@ import { animFrames, bodyHeight, everyFrame, STAND, troopFigure, type Figure } f
 import { heroArtId } from './units';
 import {
   abbey, boulder, camp,
-  butts, cottage, castle, standingStones, chest, crag, goldPile, hideout, holes, hut, mill, mine, mirror, oak, peatHut, pine, signpost, stiltHut, shrine, stoneBridge,
-  washingCottage, watchtower, well, willow, windmill, xMark,
+  butts, cottage, castle, standingStones, chest, crag, goldPile, hideout, holes, huntHall, hut, lodge, mill, mine, mirror, oak, peatHut, pine, signpost, stiltHut, shrine,
+  stoneBridge, washingCottage, watchtower, well, willow, windmill, xMark,
 } from './sprites';
 import { TerrainPainter } from './terrain';
 
@@ -54,6 +54,8 @@ export type AdventureScene = {
   hitboxes: Hitbox[];
   /** Objects that vanish once their location is done: pickups and enemies. */
   pickups: Map<string, Placed>;
+  /** Animated landmarks by place, so one that changes (the hunt hall, opened) can be drawn anew. */
+  sights: Map<string, Placed>;
 };
 
 const place = (sprite: Bitmap, [x, y]: Point, footFromTop: number): Placed => ({ sprite, x: x - sprite.width / 2, y: y - footFromTop });
@@ -113,6 +115,11 @@ function landmark(l: Location): { frames: Bitmap[]; foot: number; animated: bool
       return { frames: [standingStones()], foot: 36, animated: false };
     case 'range':
       return { frames: [butts()], foot: 34, animated: false };
+    case 'hall':
+      // Shut up until the huntsmen come back to it: then the door stands open and smoke rises.
+      return { frames: l.recruits ? animation((t) => huntHall(true, t)) : [huntHall(false)], foot: 62, animated: true };
+    case 'lodge':
+      return { frames: [lodge()], foot: 46, animated: false };
   }
   switch (l.kind) {
     case 'castle':
@@ -186,6 +193,14 @@ function ringed(sprite: Bitmap, foot: number, ramp: readonly number[] = GOLD, wi
   return out;
 }
 
+/** Draws a place anew where it stands, as the state has it now: the hunt hall, opened. */
+export function refreshPlace(scene: AdventureScene, l: Location) {
+  const o = scene.sights.get(l.id);
+  const look = landmark(l);
+  if (!o || !look) return;
+  Object.assign(o, place(look.frames[0], l.at, look.foot), { frames: look.frames.length > 1 ? look.frames : undefined });
+}
+
 /** Puts a place on the map after the scene was built, like the X once the map is whole, or a villain riding out again. */
 export function addPlace(scene: AdventureScene, l: Location) {
   const look = landmark(l);
@@ -206,6 +221,7 @@ export function buildAdventureScene(map: MapModel, state: GameState): AdventureS
   const landmarks: Placed[] = [];
   const hitboxes: Hitbox[] = [];
   const pickups = new Map<string, Placed>();
+  const sights = new Map<string, Placed>();
   const animated: Placed[] = [];
   const parts = new Map<string, Placed[]>();
   const partOf = (id: string, o: Placed) => parts.set(id, [...(parts.get(id) ?? []), o]);
@@ -240,8 +256,10 @@ export function buildAdventureScene(map: MapModel, state: GameState): AdventureS
         pickups.set(l.id, o);
         animated.push(o);
       }
-    } else if (look.animated) animated.push(o);
-    else landmarks.push(o);
+    } else if (look.animated) {
+      animated.push(o);
+      sights.set(l.id, o);
+    } else landmarks.push(o);
   }
 
   // A bridge over each group of cells where a road crosses water.
@@ -290,7 +308,7 @@ export function buildAdventureScene(map: MapModel, state: GameState): AdventureS
   const rig: HeroRig = { object: { ...place(figure.idle[0], state.hero.at, figure.foot), frames: figure.idle }, ...figure };
   if (state.hero.facing < 0) rig.object.frames = rig.idleLeft;
   view.animate(rig.object);
-  return { view, fog, minimap, hero: rig, hitboxes, pickups };
+  return { view, fog, minimap, hero: rig, hitboxes, pickups, sights };
 }
 
 /**

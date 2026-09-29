@@ -204,6 +204,22 @@ const TROOP_ART: Record<Exclude<TroopId, HeroId>, UnitArt> = {
     melee: attack(600, frames('monsters/boar/', 'woodland-charge[1~3,2,1~4,5].png', '70*7,110,230')),
     defend: 'monsters/boar/woodland-defend2.png',
   },
+  bears: {
+    unit: 'Cave Bear',
+    cfg: 'monsters/Bear.cfg',
+    stand: 'monsters/bear/bear.png',
+    melee: attack(650, frames('monsters/bear/', 'bear-bite[1~6].png', '150,200,150,150,170,230')),
+    defend: 'monsters/bear/bear-defend2.png',
+  },
+  huntsmen: {
+    unit: 'Huntsman',
+    cfg: 'humans/Woodsman_Huntsman.cfg',
+    stand: OUTLAW + 'huntsman.png',
+    melee: attack(200, one(OUTLAW, 'huntsman.png', 50), one(OUTLAW, 'huntsman-attack-melee.png', 250), one(OUTLAW, 'huntsman.png', 50)),
+    ranged: { ...attack(400, one(OUTLAW, 'huntsman-bow.png', 75), frames(OUTLAW, 'huntsman-attack[1~3].png', '75,150,100'), one(OUTLAW, 'huntsman-bow.png', 100)), missile: 'arrow' },
+    defend: OUTLAW + 'huntsman-defend.png',
+    defendRanged: OUTLAW + 'huntsman-bow-defend.png',
+  },
 };
 
 const HORSE = 'human-loyalists/horseman/';

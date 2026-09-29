@@ -1,5 +1,5 @@
 import { needsTarget, SPELLS, STATUSES, type SpellId, type StatusId } from '../../content/spells';
-import { ABILITIES, abilitiesOf, feuding, TROOPS, unitPower, type TroopDef, type TroopId } from '../../content/troops';
+import { ABILITIES, abilitiesOf, feuding, isBeast, TROOPS, unitPower, type TroopDef, type TroopId } from '../../content/troops';
 import { MAX_STACKS, roll, type Army } from '../state';
 import { COLS, HEXES, hexIndex, NEIGHBOURS, neighbours, reachable, ROWS } from './hex';
 
@@ -563,6 +563,8 @@ export function strike(b: BattleState, attacker: Fighter, target: Fighter, range
   const skill = attacker.side === 'player' ? 1 + ((ranged ? b.hero.ranged : b.hero.melee) ?? 0) : 1;
   const armour = target.side === 'player' ? 1 - (b.hero.armour ?? 0) : 1;
   const shield = ranged ? statusShot(target) : 1;
+  // A hunter knows his quarry: beasts take his shots and blows harder.
+  const quarry = isBeast(target.troop) ? 1 + Math.max(0, ...abilitiesOf(attacker.troop).map((a) => a.hunts ?? 0)) : 1;
   // A lucky blow lands twice as hard. Without a seed (the AI's look-ahead), the chance is spread over the average instead.
   const luckChance = luckOf(b, attacker);
   let lucky = false;
@@ -578,7 +580,7 @@ export function strike(b: BattleState, attacker: Fighter, target: Fighter, range
       }
     }
   }
-  const damage = Math.max(1, Math.round(attacker.count * perTroop * skillFactor(attack, defence) * inMelee * skill * armour * bonus * shield * luck));
+  const damage = Math.max(1, Math.round(attacker.count * perTroop * skillFactor(attack, defence) * inMelee * skill * armour * bonus * shield * quarry * luck));
   return { damage, seed, ...(lucky ? { lucky } : {}) };
 }
 

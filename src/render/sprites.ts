@@ -996,6 +996,126 @@ export function shrine(): Bitmap {
   return shaped;
 }
 
+/**
+ * The old King's hunt hall: a long timber hall under a steep shingle roof, with a gabled porch and a
+ * stag's antlers over the door. Shut up, its shutters are closed and an iron bar holds the door; once
+ * the huntsmen are back the door stands open, the windows glow, smoke rises from the chimney with
+ * `phase` and the King's pennant flies from the gable again.
+ */
+export function huntHall(open = false, phase = 0): Bitmap {
+  const sprite = new Bitmap(88, 70);
+  const foot = 62;
+  // A stone plinth, then timber walls lit from the left.
+  for (let y = foot - 5; y < foot; y++) for (let x = 8; x < 80; x++) sprite.set(x, y, masonry(x, y, 0.66 - (x - 8) * 0.005, 81));
+  for (let y = 38; y < foot - 5; y++) for (let x = 10; x < 78; x++) sprite.set(x, y, timber(x, y, 10, 78, 0.8 - (x - 10) * 0.006));
+  roof(sprite, 10, 78, 14, 39, WOOD4);
+  // The stone chimney at the east end of the ridge.
+  for (let y = 4; y < 20; y++) for (let x = 66; x < 72; x++) sprite.set(x, y, masonry(x, y, 0.62 - (x - 66) * 0.06, 82));
+  // The porch: a dark gable of its own over the door, edged with pale bargeboards.
+  for (let y = 24; y < foot - 5; y++) {
+    const half = y < 40 ? (y - 24) * 0.95 + 1 : 14;
+    for (let x = Math.round(44 - half) - (y < 40 ? 1 : 0); x < 44 + half + (y < 40 ? 1 : 0); x++) {
+      const edge = y < 40 && (x <= Math.round(44 - half) || x >= Math.round(44 + half) - 1);
+      sprite.set(x, y, y < 40 ? (edge ? (x < 44 ? WOOD[5] : WOOD[4]) : flat(WOOD4, 0.3 - (x - 30) * 0.008, x, y)) : timber(x, y, 30, 58, 0.86 - (x - 30) * 0.01));
+    }
+  }
+  for (let x = 29; x < 59; x++) sprite.set(x, 40, x < 44 ? WOOD[5] : WOOD[4]);
+  // The door: shut and barred, or open onto a warm hall.
+  for (let y = 44; y < foot - 5; y++) {
+    for (let x = 38; x < 50; x++) {
+      const post = x === 38 || x === 49 || y === 44;
+      if (post) sprite.set(x, y, WOOD[1]);
+      else if (open) sprite.set(x, y, y > foot - 10 ? GOLD[3] : x < 41 || x > 46 ? flat(WOOD4, 0.5, x, y) : INK);
+      else sprite.set(x, y, x === 44 ? WOOD[1] : flat(WOOD4, 0.45 + (x < 44 ? 0.1 : 0), x, y));
+    }
+  }
+  if (!open) {
+    for (let x = 36; x < 52; x++) sprite.set(x, 50, x === 36 || x === 51 ? INK : STONE[5]);
+    for (let y = 51; y < 55; y++) for (let x = 42; x < 46; x++) sprite.set(x, y, y === 51 ? STONE[6] : GOLD[3]);
+  }
+  // Windows either side: shutters closed, or lamplight.
+  for (const wx of [15, 24, 62, 71]) {
+    for (let y = 44; y < 50; y++) {
+      for (let x = wx; x < wx + 4; x++) {
+        if (open) sprite.set(x, y, y === 44 || x === wx ? WOOD[1] : GOLD[5]);
+        else sprite.set(x, y, y === 44 ? WOOD[1] : x - wx === y - 45 || x - wx === 48 - y ? WOOD[1] : WOOD[3]);
+      }
+    }
+  }
+  // A stag's skull and antlers on the gable, over the door.
+  const bone = [NEUTRAL[7], PARCHMENT[5], PARCHMENT[3]];
+  for (const side of [-1, 1]) {
+    const tines: [number, number][] = [[1, 0], [2, -1], [3, -2], [4, -3], [5, -4], [6, -5], [3, -4], [3, -5], [5, -6], [5, -7], [6, -3], [7, -3], [7, -6]];
+    for (const [dx, dy] of tines) sprite.set(44 + (side < 0 ? -dx : dx - 1), 37 + dy, bone[Math.min(2, Math.abs(dy) >> 2)]);
+  }
+  for (const [x, y, c] of [[43, 37, 1], [44, 37, 1], [43, 38, 0], [44, 38, 0], [43, 39, 2], [44, 39, 2]] as const) sprite.set(x, y, bone[c]);
+  // The pole on the porch's peak: the King's pennant flies from it again once the huntsmen are back.
+  if (open) pennant(sprite, 44, 24, phase * Math.PI * 2);
+  else for (let y = 16; y < 24; y++) sprite.set(44, y, WOOD[1]);
+  const shaped = outline(sprite, INK);
+  castShadow(shaped, 8, 3, 40);
+  // Smoke from the chimney, curling off to the east.
+  if (open) {
+    for (let k = 0; k < 3; k++) {
+      const t = (phase + k / 3) % 1;
+      const cx = 69 + t * 12 + Math.sin(t * 6 + k) * 1.5;
+      const cy = 3 - t * 3;
+      const r = 1.3 + t * 2.2;
+      for (let y = Math.floor(cy - r); y <= cy + r; y++) {
+        for (let x = Math.floor(cx - r); x <= cx + r; x++) {
+          if (y < 0 || ((x - cx) / r) ** 2 + ((y - cy) / r) ** 2 > 1 || shaped.get(x, y) !== 0) continue;
+          if (t > 0.6 && (x + y) % 2 === 0) continue;
+          shaped.set(x, y, t < 0.35 ? NEUTRAL[6] : NEUTRAL[5]);
+        }
+      }
+    }
+  }
+  return shaped;
+}
+
+/** The old King's hunting lodge, deep in the chase: log walls, a mossy roof, antlers over the door and a woodpile. */
+export function lodge(): Bitmap {
+  const sprite = new Bitmap(62, 52);
+  const foot = 46;
+  // Log walls: round logs laid one on another, lit from the left.
+  for (let y = 26; y < foot; y++) {
+    for (let x = 8; x < 44; x++) {
+      const log = (y - 26) % 4;
+      const light = 0.78 - (x - 8) * 0.012 - (log === 3 ? 0.4 : log === 0 ? -0.08 : 0);
+      sprite.set(x, y, flat(WOOD4, clamp01(light), x, y));
+    }
+    // The log ends stick out at the corners.
+    if ((y - 26) % 4 < 3) for (const x of [6, 7, 44, 45]) sprite.set(x, y, (y - 26) % 4 === 1 ? PARCHMENT[2] : WOOD[3]);
+  }
+  roof(sprite, 8, 44, 10, 27, DIRT4);
+  for (let n = 0; n < 60; n++) {
+    const x = 7 + Math.floor(hash(n, 1, 83) * 39);
+    const y = 11 + Math.floor(hash(n, 2, 83) * 16);
+    if (hash(n, 3, 83) < 0.8) sprite.set(x, y, hash(n, 4, 83) < 0.5 ? LEAF[3] : LEAF[5]);
+  }
+  // A cold stone chimney.
+  for (let y = 4; y < 16; y++) for (let x = 13; x < 18; x++) sprite.set(x, y, masonry(x, y, 0.64 - (x - 13) * 0.08, 84));
+  // The door, and a little window.
+  for (let y = 33; y < foot; y++) for (let x = 22; x < 30; x++) sprite.set(x, y, x === 22 || y === 33 ? WOOD[0] : flat(WOOD4, 0.3 + (x === 28 ? 0.25 : 0), x, y));
+  for (let y = 32; y < 36; y++) for (let x = 34; x < 38; x++) sprite.set(x, y, y === 32 || x === 34 ? WOOD[0] : NEUTRAL[1]);
+  // Antlers over the door.
+  const bone = [NEUTRAL[7], PARCHMENT[5]];
+  for (const side of [-1, 1]) {
+    for (const [dx, dy] of [[1, 0], [2, -1], [3, -2], [4, -3], [2, -3], [4, -5], [5, -2]] as const) sprite.set(26 + (side < 0 ? -dx : dx - 1), 30 + dy, bone[dy < -2 ? 1 : 0]);
+  }
+  // Split logs stacked by the wall.
+  for (let row = 0; row < 3; row++) {
+    for (let b = 0; b < 4 - row; b++) {
+      const cx = 49 + b * 4 + row * 2;
+      const cy = foot - 2 - row * 4;
+      for (let y = cy - 2; y <= cy + 1; y++) for (let x = cx - 2; x <= cx + 1; x++) sprite.set(x, y, Math.hypot(x + 0.5 - cx, y + 0.5 - cy) < 1 ? PARCHMENT[3] : WOOD[2]);
+    }
+  }
+  const shaped = outline(sprite, INK);
+  castShadow(shaped, 6, 2, 30);
+  return shaped;
+}
+
 /** A camp: two canvas tents, a cooking fire, and a pennant on a pole. */
 export function camp(phase = 0): Bitmap {
   const sprite = new Bitmap(62, 40);

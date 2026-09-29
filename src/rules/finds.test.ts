@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { ALDMOOR } from '../content/aldmoor';
 import type { BackgroundId } from '../content/backgrounds';
+import { isBeast } from '../content/troops';
 import { FENMARCH } from '../content/fenmarch';
 import type { Province } from '../content/types';
 import { withNewPlaces } from './campaign';
-import { apply, commissionAt, heroStats, locationById, visit, type Card, type GameState, type Location, type Result } from './game';
+import { apply, commissionAt, heroStats, leadershipUsed, locationById, payday, update, visit, wages, type Card, type GameState, type Location, type Result } from './game';
 import { beat } from './fight';
+import { CELL } from './map/model';
+import { gridSize, isExplored as seenBit } from './map/fog';
 import { mapOf } from './map/maps';
 import { daysAway, planRoute } from './map/movement';
 import { beginCommission, newGame } from './scenario';
@@ -26,6 +29,8 @@ const cardOf = (result: Result): Card => {
 const labels = (state: GameState, id: string) => cardOf(visit(state, id)).choices.map((c) => `${c.label}${c.disabled ? ' [off]' : ''}`);
 const has = (state: GameState, artifact: string) => Object.values(state.hero.gear).concat(state.hero.pack).includes(artifact as never);
 const count = (army: GameState['army'], troop: string) => army.find((s) => s.troop === troop)?.count ?? 0;
+/** Whether the mist has lifted over a map point. */
+const isExplored = (state: GameState, [x, y]: readonly [number, number]) => seenBit(state.explored, Math.floor(y / CELL) * gridSize(state.world).width + Math.floor(x / CELL));
 
 describe('Aldmoor\u2019s finds', () => {
   it('asks before wearing the highwaymen\u2019s Black Banner', () => {
@@ -130,6 +135,95 @@ describe('Aldmoor\u2019s finds', () => {
     const crowned = take(fresh(), 'shrine', 'start/crown');
     expect(heroStats(crowned).tames).toBe(true);
     expect(crowned.flags?.goose).toBeUndefined();
+  });
+});
+
+describe('the old King\u2019s hunt hall', () => {
+  const at = (state: GameState, id: string, dx = -30, dy = 20): GameState => {
+    const [x, y] = locationById(state, id).at;
+    return { ...state, movement: 150, hero: { ...state.hero, at: [x + dx, y + dy] } };
+  };
+
+  it('stays shut, and its card says nothing of why: not even a greyed-out button', () => {
+    const shut = visit(fresh(), 'hall');
+    expect(cardOf(shut).choices.map((c) => c.label)).toEqual(['Close']);
+    expect(cardOf(shut).lines.join(' ')).not.toMatch(/key|lodge|Nan|bear/i);
+    expect(locationById(shut.state, 'hall').seen).toBe(true);
+    expect(choose(shut.state, 'hall', 'door/open')).toBeNull();
+    expect(choose(shut.state, 'hall', 'recruit')).toBeNull();
+  });
+
+  it('Old Nan knows where the old King kept its key, once you have seen it, and shows you the way', () => {
+    const start = fresh();
+    // Before the hall, she has nothing to be asked about, and the question can't be forced.
+    const asks = (state: GameState) => labels(state, 'nan').some((l) => l.includes('hunt hall'));
+    expect(asks(start)).toBe(false);
+    expect(choose(start, 'nan', 'door/hall')).toBeNull();
+    const seen = visit(start, 'hall').state;
+    expect(labels(seen, 'nan')).toContain('Ask her about the old King\u2019s hunt hall');
+    const told = choose(seen, 'nan', 'door/hall')!;
+    expect(cardOf(told).lines.join(' ')).toMatch(/lodge in the chase/);
+    expect(told.events.some((e) => e.type === 'reveal')).toBe(true);
+    const lodge = locationById(told.state, 'lodge').at;
+    expect(isExplored(told.state, lodge)).toBe(true);
+    expect(isExplored(seen, lodge)).toBe(false);
+    // Asked once, the question goes.
+    expect(asks(told.state)).toBe(false);
+    // She knows the Baron's lullaby too: sung first, her other page asks the same question.
+    const sung = take(seen, 'nan', 'door/baron');
+    expect(labels(sung, 'nan')).toContain('Ask her about the old King\u2019s hunt hall');
+    expect(asks(take(sung, 'nan', 'hearth/hall'))).toBe(false);
+  });
+
+  it('bears hold the only way to the lodge: beat them, tame them, or go round through the woods as a ranger', () => {
+    const map = mapOf(fresh());
+    const lodge = locationById(fresh(), 'lodge').at;
+    const knight = at(fresh(), 'nan');
+    expect(planRoute(knight, map, lodge)).toBeNull();
+    expect(planRoute(update(knight, 'bears', { done: true }), map, lodge)).not.toBeNull();
+    expect(planRoute(at(fresh('ranger'), 'nan'), map, lodge)).not.toBeNull();
+    // They're Wesnoth's bears: beasts a ranger can win over, when he has room to lead them.
+    const bears = locationById(fresh(), 'bears').enemy!;
+    expect(bears.army.every((s) => isBeast(s.troop))).toBe(true);
+    expect(labels(fresh(), 'bears').some((l) => l.startsWith('Tame them'))).toBe(true);
+    const roomy = { ...fresh('ranger'), leadership: 400 };
+    const tamed = choose(roomy, 'bears', 'tame')!;
+    expect(count(tamed.state.army, 'bears')).toBe(count(bears.army, 'bears'));
+    expect(locationById(tamed.state, 'bears').done).toBe(true);
+  });
+
+  it('the lodge gives up the key, and the key opens the hall to the old King\u2019s huntsmen, who ask for nothing', () => {
+    const start = fresh();
+    const keyed = take(start, 'lodge', 'nail/key');
+    expect(keyed.flags?.huntKey).toBe(true);
+    expect(labels(keyed, 'lodge')).toEqual(['Close']);
+    // With the key, the hall opens; the huntsmen come back to it and wait there for him.
+    expect(labels(keyed, 'hall')).toEqual(['Open the hall']);
+    const opened = choose(keyed, 'hall', 'door/open')!;
+    expect(opened.events.some((e) => e.type === 'changed' && e.id === 'hall')).toBe(true);
+    expect(cardOf(opened).choices.map((c) => c.label)).toEqual([`Recruit 12 (free)`, 'Close']);
+    expect(cardOf(opened).lines.join(' ')).toMatch(/Rook/);
+    const hall = locationById(opened.state, 'hall');
+    expect(hall.recruits).toEqual({ troop: 'huntsmen', count: 12, price: 0, restock: 0 });
+    const joined = choose(opened.state, 'hall', 'recruit')!.state;
+    expect(count(joined.army, 'huntsmen')).toBe(12);
+    expect(joined.gold).toBe(opened.state.gold);
+    // They draw no wages, and they aren't beasts: no ranger could tame them, no payday brings more.
+    expect(wages(joined.army)).toBe(wages(start.army));
+    expect(isBeast('huntsmen')).toBe(false);
+    expect(payday(locationById(joined, 'hall')).recruits!.count).toBe(0);
+    expect(cardOf(visit(joined, 'hall')).lines.join(' ')).toMatch(/every one of the old King\u2019s huntsmen has gone with you/);
+  });
+
+  it('keeps the huntsmen waiting at the hall for a hero with no room to lead them yet', () => {
+    const keyed = take(fresh(), 'lodge', 'nail/key');
+    const full = { ...keyed, leadership: leadershipUsed(keyed.army) + 9 };
+    const opened = take(full, 'hall', 'door/open');
+    const some = choose(opened, 'hall', 'recruit')!.state;
+    expect(count(some.army, 'huntsmen')).toBe(3);
+    expect(locationById(some, 'hall').recruits!.count).toBe(9);
+    const grown = choose({ ...some, leadership: some.leadership + 30 }, 'hall', 'recruit')!.state;
+    expect(count(grown.army, 'huntsmen')).toBe(12);
   });
 });
 

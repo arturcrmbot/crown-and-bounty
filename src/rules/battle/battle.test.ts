@@ -119,6 +119,17 @@ describe('a battle', () => {
     expect(damage).toBe(Math.max(1, Math.round(attacker.count * avg * factor)));
   });
 
+  it('lets huntsmen hit beasts half as hard again, and nobody else', () => {
+    // Wolves and highwaymen stand with the same defence: only the beasts are the huntsmen's quarry.
+    expect(TROOPS.wolves.defence).toBe(TROOPS.bandits.defence);
+    const b = battle(['huntsmen'], [12], ['wolves', 'bandits'], [20, 20]);
+    const [huntsmen, wolves, bandits] = b.fighters;
+    for (const ranged of [true, false]) expect(Math.abs(strike(b, huntsmen, wolves, ranged).damage - strike(b, huntsmen, bandits, ranged).damage * 1.5)).toBeLessThanOrEqual(1);
+    // Anyone else's blows land the same on both.
+    const archers = battle(['archers'], [12], ['wolves', 'bandits'], [20, 20]);
+    expect(strike(archers, archers.fighters[0], archers.fighters[1], true).damage).toBe(strike(archers, archers.fighters[0], archers.fighters[2], true).damage);
+  });
+
   it('calls off a battle nobody can land a blow in: a far weaker enemy is beaten, any other slips away', () => {
     // A round with nobody hurt and the enemy no nearer than the round before.
     const quietly = (b: BattleState) => ({ ...b, order: [0], quiet: QUIET_ROUNDS - 1, struck: false, gap: enemyReach(b).gap });

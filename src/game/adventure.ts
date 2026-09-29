@@ -1,6 +1,6 @@
 import { BACKGROUNDS } from '../content/backgrounds';
 import { troops } from '../content/troops';
-import { addPlace, buildAdventureScene, setHeroFigure, type AdventureScene, type Hitbox } from '../render/adventureScene';
+import { addPlace, buildAdventureScene, refreshPlace, setHeroFigure, type AdventureScene, type Hitbox } from '../render/adventureScene';
 import { BANNER_TIME, drawBanner, paintBanner } from '../render/banner';
 import type { Bitmap } from '../render/bitmap';
 import { ADVENTURE_VIEW as VIEW, BAR } from '../render/frame';
@@ -369,6 +369,9 @@ export class AdventureController implements Screen {
           addPlace(this.scene, walk?.type === 'enemyMoved' ? { ...l, at: walk.from } : l);
           break;
         }
+        case 'changed':
+          refreshPlace(this.scene, locationById(this.state, e.id));
+          break;
         case 'removed': {
           const gone = this.state.locations.find((l) => l.id === e.id);
           if (gone) this.view.effects.puff(gone.at[0], gone.at[1], gone.enemy ? 'dust' : 'sparkle');

@@ -361,6 +361,36 @@ Frames and timings from `data/core/units/monsters/Boar.cfg`.
 | `monsters/boar/woodland-charge4.png` | CC BY-SA 4.0 | doofus-01 | 2021-04-19 | 2021-04-19 |
 | `monsters/boar/woodland-charge5.png` | CC BY-SA 4.0 | doofus-01 | 2021-04-19 | 2021-04-19 |
 
+### Cave Bear (our bears)
+
+Frames and timings from `data/core/units/monsters/Bear.cfg`.
+
+| File | Licence | Artists, from the history | Added | Last changed |
+| --- | --- | --- | --- | --- |
+| `monsters/bear/bear.png` | CC BY-SA 4.0 | doofus-01 | 2020-09-21 | 2020-09-21 |
+| `monsters/bear/bear-defend2.png` | CC BY-SA 4.0 | doofus-01 | 2020-09-21 | 2020-09-21 |
+| `monsters/bear/bear-bite1.png` | CC BY-SA 4.0 | doofus-01 | 2020-09-21 | 2020-09-21 |
+| `monsters/bear/bear-bite2.png` | CC BY-SA 4.0 | doofus-01 | 2020-09-21 | 2020-09-21 |
+| `monsters/bear/bear-bite3.png` | CC BY-SA 4.0 | doofus-01 | 2020-09-21 | 2020-09-21 |
+| `monsters/bear/bear-bite4.png` | CC BY-SA 4.0 | doofus-01 | 2020-09-21 | 2020-09-21 |
+| `monsters/bear/bear-bite5.png` | CC BY-SA 4.0 | doofus-01 | 2020-09-21 | 2020-09-21 |
+| `monsters/bear/bear-bite6.png` | CC BY-SA 4.0 | doofus-01 | 2020-09-21 | 2020-09-21 |
+
+### Huntsman (our huntsmen)
+
+Frames and timings from `data/core/units/humans/Woodsman_Huntsman.cfg`.
+
+| File | Licence | Artists, from the history | Added | Last changed |
+| --- | --- | --- | --- | --- |
+| `human-outlaws/huntsman.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Ignacio R. Morelle, Richard Kettering, Eric S. Raymond | 2007-07-22 | 2022-04-29 |
+| `human-outlaws/huntsman-defend.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Ignacio R. Morelle, Richard Kettering, Eric S. Raymond | 2007-07-22 | 2022-04-29 |
+| `human-outlaws/huntsman-bow-defend.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Ignacio R. Morelle, Richard Kettering | 2007-10-29 | 2022-04-29 |
+| `human-outlaws/huntsman-attack-melee.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Ignacio R. Morelle, Richard Kettering | 2007-10-29 | 2022-04-29 |
+| `human-outlaws/huntsman-bow.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Ignacio R. Morelle, Richard Kettering | 2007-10-29 | 2022-04-29 |
+| `human-outlaws/huntsman-attack1.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Ignacio R. Morelle, Richard Kettering, Eric S. Raymond | 2007-07-22 | 2022-04-29 |
+| `human-outlaws/huntsman-attack2.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Ignacio R. Morelle, Richard Kettering, Eric S. Raymond | 2007-07-22 | 2022-04-29 |
+| `human-outlaws/huntsman-attack3.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Ignacio R. Morelle, Richard Kettering | 2007-10-29 | 2022-04-29 |
+
 ### Horseman (our hero, as a Knight)
 
 Frames and timings from `data/core/units/humans/Horseman.cfg`.

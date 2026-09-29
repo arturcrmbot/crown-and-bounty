@@ -376,7 +376,7 @@ export function stackSheet(state: GameState, index: number): StackSheet | null {
     ],
     traits,
     leadership: `Leadership: ${t.leadership} each, ${coins(stack.count * t.leadership)} in all (${leadershipUsed(state.army)} of ${s.leadership} in use)`,
-    wages: t.wage ? `Wages: ${coins(wage)} gold every payday` : 'Wages: none. They work for the fun of it.',
+    wages: t.wage ? `Wages: ${coins(wage)} gold every payday` : `Wages: none. ${t.unpaid ?? 'They work for the fun of it.'}`,
     row: `In battle they stand ${row}.`,
     canDismiss: state.army.length > 1,
   };

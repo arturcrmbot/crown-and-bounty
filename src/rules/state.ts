@@ -129,6 +129,8 @@ export type Needs = {
   /** A story flag that must be set, or must not be. */
   flag?: string;
   notFlag?: string;
+  /** A place (by id) the hero must have been to. */
+  seen?: string;
   gold?: number;
   troop?: TroopId;
   count?: number;
@@ -168,14 +170,21 @@ export type Effects = {
   desert?: { troop?: TroopId; share: number };
   /** The hero goes there by a way of his own, a tunnel or a punt, and that is the day's riding done. */
   travel?: Point;
+  /**
+   * Volunteers at a place: this one, or the one `at` names. More of the troop it offers already,
+   * or a new offer of `troop` at `price` (free if none), with `restock` more every payday (the usual if none).
+   */
+  recruits?: { at?: string; troop?: TroopId; count: number; price?: number; restock?: number };
 };
 
 /**
  * A choice written as content: a button, what it needs, what it does, and what the card then says.
- * One that takes a villain for a price other than the poster's says `because` why, for the poster
- * that comes back stamped PAID: "the other half went on the Baron's lunch".
+ * One the hero can't take shows greyed out; one whose `when` doesn't hold isn't there at all (a
+ * question to ask only once there's something to ask about). One that takes a villain for a price
+ * other than the poster's says `because` why, for the poster that comes back stamped PAID: "the
+ * other half went on the Baron's lunch".
  */
-export type ContentChoice = { id: string; label: string; needs?: Needs; effects?: Effects; lines?: string[]; because?: string };
+export type ContentChoice = { id: string; label: string; when?: Needs; needs?: Needs; effects?: Effects; lines?: string[]; because?: string };
 
 /**
  * A card written as content. A visit shows the first page whose `when` holds; an `answer` page is
@@ -191,7 +200,8 @@ export type Location = {
   /** One-off places are used up; the mill and recruiters reopen on payday. */
   done: boolean;
   gold?: number;
-  recruits?: { troop: TroopId; count: number; price: number };
+  /** Troops to recruit, and how many more come every payday (`RESTOCK` in places/dwelling.ts unless said). */
+  recruits?: { troop: TroopId; count: number; price: number; restock?: number };
   enemy?: Enemy;
   /** A map point the visit reveals (the tower's journal points at the hideout). */
   reveals?: Point;
@@ -211,7 +221,7 @@ export type Location = {
 
 /** Flavour for a place: before a visit, once it's used up, and on the visit itself. */
 export type PlaceText = { about?: string[]; done?: string[]; visit?: string[] };
-export type PlaceLook = 'abbey' | 'peathut' | 'windmill' | 'stilthut' | 'shrine' | 'camp' | 'cottage' | 'house' | 'stones' | 'range';
+export type PlaceLook = 'abbey' | 'peathut' | 'windmill' | 'stilthut' | 'shrine' | 'camp' | 'cottage' | 'house' | 'stones' | 'range' | 'hall' | 'lodge';
 
 /** The campaign so far: which commission this is, how the others went, and how this one began. */
 export type Campaign = {
@@ -357,6 +367,8 @@ export type GameEvent =
   | { type: 'removed'; id: string }
   /** A new place appears on the map, like the X once the map is whole. */
   | { type: 'added'; id: string }
+  /** A place looks different now: the old King's hunt hall, opened. */
+  | { type: 'changed'; id: string }
   | { type: 'moved'; at: Point; facing: 1 | -1 }
   /** An enemy stack moved in the night, from where it stood along these points. */
   | { type: 'enemyMoved'; id: string; from: Point; path: Point[] }

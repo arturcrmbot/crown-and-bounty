@@ -178,6 +178,11 @@ describe('the hero screen', () => {
     expect(archers.traits.map((t) => t.name)).toEqual(['Shooter', 'Pathfinder', 'First volley (Pathfinder)']);
     const horned = stackSheet(giveArtifact(ranger, 'poachersHorn'), 1)!;
     expect(horned.traits.filter((t) => t.name.startsWith('First volley')).map((t) => t.name)).toEqual(['First volley (Pathfinder, The Poacher\u2019s Horn)']);
+    // The old King's huntsmen draw no wages, and say why; beasts work for the fun of it.
+    const hunters = stackSheet({ ...knight(), army: [{ troop: 'huntsmen', count: 12 }, { troop: 'bears', count: 2 }] }, 0)!;
+    expect(hunters.wages).toBe('Wages: none. They serve the old King still, and they have a score to settle with Rook.');
+    expect(hunters.traits.map((t) => t.name)).toContain('Hunter');
+    expect(stackSheet({ ...knight(), army: [{ troop: 'huntsmen', count: 12 }, { troop: 'bears', count: 2 }] }, 1)!.wages).toBe('Wages: none. They work for the fun of it.');
   });
 
   it('gives every stack its luck and morale, and says why', () => {
