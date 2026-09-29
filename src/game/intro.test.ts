@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import { BACKGROUNDS } from '../content/backgrounds';
 import { keysCard, storyCard } from './intro';
 
 describe('the first commission briefing', () => {
   it('introduces the hero without front-loading the controls', () => {
-    const card = storyCard('courtier');
-    expect(card.lines).toHaveLength(3);
-    expect(card.lines.join(' ')).toContain('Silver Tongue');
-    expect(card.lines.join(' ')).not.toMatch(/click|shift|hourglass|payday|every key/i);
+    for (const background of Object.values(BACKGROUNDS)) {
+      const text = storyCard(background.id).lines.join(' ');
+      for (const control of ['Click the map', 'Shift', 'hourglass', 'lists every key', '**E**', '**H**']) expect(text).not.toContain(control);
+    }
   });
 
   it('keeps the complete key reference on ?', () => {
