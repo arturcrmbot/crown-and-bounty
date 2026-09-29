@@ -361,18 +361,18 @@ describe('mixed company', () => {
     expect(moraleOf(gone, gone.fighters[0])).toBe(0);
   });
 
-  it('low spirits make a stack hang back and lose its turn, once a round', () => {
+  it('low spirits make a stack falter and lose its turn, once a round', () => {
     // Wolves first, then the knights, who grumble at them past all bearing.
     let b = battle(['knights', 'wolves'], [10, 10], ['swordsmen'], [10]);
     b = { ...b, hero: { ...b.hero, morale: -0.9 } };
     expect(b.order).toEqual([1, 0, 2]);
     const { events, battle: after } = battleAct(b, { type: 'defend' });
-    expect(events).toContainEqual({ type: 'morale', fighter: 0, bad: true });
+    expect(events).toContainEqual({ type: 'falter', fighter: 0 });
     expect(after.order[0]).toBe(2);
     expect(fighterById(after, 0).moraleUsed).toBe(true);
     // The AI's look-ahead doesn't roll for it.
     const guess = battleAct(b, { type: 'defend' }, true);
-    expect(guess.events.some((e) => e.type === 'morale')).toBe(false);
+    expect(guess.events.some((e) => e.type === 'falter')).toBe(false);
     expect(guess.battle.order[0]).toBe(0);
   });
 
@@ -384,7 +384,7 @@ describe('mixed company', () => {
     expect(next.order[0]).toBe(0);
     expect(fighterById(next, 0).moraleUsed).toBe(true);
     const cast = battleAct(next, { type: 'cast', spell: 'bless', target: 0 });
-    expect(cast.events.some((e) => e.type === 'morale')).toBe(false);
+    expect(cast.events.some((e) => e.type === 'falter')).toBe(false);
     expect(cast.battle.order[0]).toBe(0);
     // No dice were thrown for them again.
     expect(cast.battle.seed).toBe(next.seed);

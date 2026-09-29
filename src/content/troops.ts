@@ -65,7 +65,7 @@ export function feuding(a: TroopId, b: TroopId): boolean {
 /** A villain's magic: spell power, mana, spells he knows, and orders he can give a few times a battle for no mana. */
 export type Caster = { spellPower: number; mana: number; casts?: number; spells?: SpellId[]; charges?: { spell: SpellId; uses: number }[] };
 
-export type Ability = 'regenerates' | 'hexes' | 'leads' | 'rides' | 'firstStrike' | 'stings' | 'pierce';
+export type Ability = 'regenerates' | 'hexes' | 'leads' | 'rides' | 'bard' | 'firstStrike' | 'stings' | 'pierce';
 
 /**
  * Troop abilities, as data the battle engine reads at fixed moments. A new ability that uses
@@ -89,6 +89,12 @@ export type AbilityDef = {
   leads?: boolean;
   /** A leader who rides out from behind the line, as far as his speed takes him, strikes, and rides back, all in one move. */
   rides?: boolean;
+  /**
+   * A leader who fights with coin and words instead of blows, one move a turn: he pays a stack
+   * `weeks.leave` weeks of its wages to leave the field, or `weeks.join` to fight for him if it fits
+   * under his banner; he jeers a stack (`jeer`); or he sings one of his `songs` over his own.
+   */
+  bard?: { jeer: StatusId; songs: StatusId[]; weeks: { leave: number; join: number } };
   /** It strikes first when it defends against a melee blow, unless the attacker has this too. */
   firstStrike?: boolean;
   /** Its blows cut this much off the target's defence, armour and all. */
@@ -100,6 +106,11 @@ export const ABILITIES: Record<Ability, AbilityDef> = {
   hexes: { name: 'Hexes', note: 'Her shots slow whatever they hit.', shotStatus: 'slowed' },
   leads: { name: 'Behind the line', note: 'Leads from behind his men, where no blow, shot or spell can reach him, so nobody strikes back at him. When his army is beaten, so is he.', leads: true },
   rides: { name: 'Rides out', note: 'Rides out from behind the line, strikes, and rides back, all in one move.', rides: true },
+  bard: {
+    name: 'Bard',
+    note: 'Fights with coin and words instead of a blade. Each turn he pays a stack to leave the field (or, with room under his banner, to fight for him), jeers one until it loses heart, or sings his own men on.',
+    bard: { jeer: 'jeered', songs: ['heartened', 'charmed'], weeks: { leave: 4, join: 12 } },
+  },
   firstStrike: { name: 'First Strike', note: 'Pitchforks first: it strikes before whatever attacks it, unless that also strikes first.', firstStrike: true },
   stings: { name: 'Stinging Bite', note: 'Whatever it hits up close is poisoned: a little health lost each turn, though it never falls past a sliver.', stingStatus: 'poisoned' },
   pierce: { name: 'Piercing Bolts', note: 'Its bolts punch through armour: -1 defence against them.', pierce: 1 },
@@ -152,8 +163,8 @@ export const TROOPS: Record<TroopId, TroopDef> = {
     hero: { background: 'ranger', perLevel: { damage: 2 } },
   },
   heroCourtier: {
-    id: 'heroCourtier', name: 'Lord Aldric', one: 'Lord Aldric', hp: 55, attack: 4, defence: 4, damage: [6, 10], speed: 6, leadership: 99, wage: 0, abilities: ['leads'],
-    note: 'A lordly air, and no blade worth the name: he leaves the fighting to his men.',
+    id: 'heroCourtier', name: 'Lord Aldric', one: 'Lord Aldric', hp: 55, attack: 4, defence: 4, damage: [6, 10], speed: 6, leadership: 99, wage: 0, abilities: ['leads', 'bard'],
+    note: 'A lute, a purse and a sharp tongue: he pays, jeers and sings, and leaves the fighting to his men.',
     hero: { background: 'courtier', perLevel: { damage: 1 } },
   },
 };

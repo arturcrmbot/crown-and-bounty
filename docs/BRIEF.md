@@ -106,7 +106,7 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   as on the map, and the enemy's red. Each fights his own way from there. The Knight rides out, in from his side's
   edge through free hexes and as far as his speed takes him, charges a stack and rides back, all in one move. The
   Hedge Wizard throws bolts from his staff, as hard as his spell power, and the Ranger shoots, both at any stack on
-  the field. The Courtier strikes no blow (#42 makes him a bard). Grimsby casts and gives orders; Mother Mirrow and
+  the field. The Courtier strikes no blow: he's a bard (see below). Grimsby casts and gives orders; Mother Mirrow and
   Aunt Bramble throw hexes and cast. A leader takes a turn only when he has something to do with it, and casts on
   his side's turns all battle long. His damage grows with his level (and a caster's with his spell power), and his
   attack counts for his blows; his health no longer matters. A battle ends when a side's troops are gone, or when
@@ -120,6 +120,24 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   abilities in `content/troops.ts`), so a captain (#15) needs only his troop. The sergeants and the enemy know it
   all: nobody aims at a leader or counts on striking back at him. How the tiers moved is in #36's PR; the balance
   is tuned in #14.
+- **The Courtier becomes a bard (29 Sep, #42):** Artur: "Courtier has no attack but can bribe / demotivate /
+  sing etc." He keeps his name and his Master at Arms in a plumed hat (Wesnoth has no bard to give him; Artur can
+  rename him later), and his line at the start says he "pays, jeers and sings instead of fighting". From behind the
+  line he takes a turn like any leader with something to do, and makes one move with it:
+  - **Pay:** a stack of theirs goes home for 4 weeks of its wages, or, if it fits under his banner (leadership for
+    all of it, and a place in his line), comes over for 12, fights for him and rides on with him after. His Silver
+    Tongue halves both, and Diplomacy takes its share off too. Beasts take no gold, and villains and captains can't
+    be bought: nothing reaches them. The gold comes out of his purse, and the card says what his bribes cost.
+  - **Jeer:** a stack of theirs loses heart: −30% morale for two rounds, so three times in ten it loses its turn.
+  - **Sing:** a marching song (+25% morale: a chance each stack goes again) or a lucky song (+20% luck: a chance a
+    blow lands twice as hard), over every stack of his for two rounds.
+  - On his turn a click on one of their stacks opens a card with each move's price or effect (the hover line gives
+    them too), and the Defend button reads Sing. His sergeants jeer and sing on auto but never spend his gold:
+    bribes are for when you command. So his odds on the cards leave his purse out.
+  - Morale and luck are now per stack: its side's (the hero's, for yours) plus what songs and jeers add. Good
+    morale still wins another turn; bad morale, new, loses one. The moves are data: the `bard` ability in
+    `content/troops.ts`, and the `jeered`, `heartened` and `charmed` statuses in `content/spells.ts`. His rally and
+    its gold ring went with #36.
 - **The hero screen and the army (28 Sep, from Artur's second playtest):** H, a click on the hero, or the bar's
   troop counts open a HoMM2-style sheet over the map (the map stands still under it): his portrait, level and
   experience, the four stats, mana (left, most, and when it comes back), movement and leadership, his signature,
@@ -176,22 +194,26 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   read off one search from the hero, which answers the way to every place at once (for the bot, and for the hover
   label's days), and he rides up to an enemy from his own side of it: to a patrol on a bridge from his own bank, not
   the long way round to the far one.
-- **Luck and morale (#6, 29 Sep):** HoMM2's two dice, for both sides of the field. Luck is the chance any blow
-  lands lucky, twice as hard. Morale above nought is the chance a stack goes again before the round moves on; below
-  nought, the chance it hangs back as its turn comes round, cowers, and loses it. Each happens at most once a round,
-  with a word floating up, a sound and a line on the ribbon. Aldric brings both to his side: the perk Fortune's
-  Favour, the Pair of Bone Dice in Aldmoor's armoury, the Aldmoor poachers' Rabbit's Foot (luck: beat them for it)
-  and the Castellan's Bagpipes in Harrowgate Keep's armoury (morale). The enemy has none of its own yet.
+- **Luck and morale you can see (#6, 29 Sep):** HoMM2's two dice, built on the per-stack morale and luck the bard
+  brought (#42). Luck is the chance any blow lands lucky, twice as hard. Morale above nought is the chance a stack
+  goes again before the round moves on, and it jumps for joy; below nought, the chance it loses heart as its turn
+  comes, and falters. Each is tested at most once a round: not again after a wait, nor after a spell cast before the
+  stack acts. Aldric brings both to his side: the perk Fortune's Favour, the Pair of Bone Dice in Aldmoor's armoury,
+  the Aldmoor poachers' Rabbit's Foot (luck: beat them for it, and a line on their card hints at it) and the
+  Castellan's Bagpipes in Harrowgate Keep's armoury (morale). The enemy has none of its own, beyond a bard's jeers.
   - **Mixed armies.** Every troop belongs to one of Act I's peoples (`WORLD.md`): the King's folk, outlaws, elves,
     dwarves or wild things. Aldric and the villains belong to none. Two pairs won't march together: the King's folk
     and wild things (knights beside wolves), and elves and dwarves. Every stack of either people in one army loses 10%
     morale for each people it won't march beside, on either side of the field, and stops grumbling once they've
-    fallen. Outlaws don't mind their hounds, so today's enemy bands don't grumble. The rule is kept to one table of
-    pairs (`FEUDS`), so later peoples just join it.
-  - **Where it shows.** A stack's card on the hero screen gives its luck and morale, and why: each gift by name, and
-    "Uneasy company". In battle the bar gives the numbers, and pointing at a stack on your turn says why. Castle,
-    village, tame and hire cards warn before a new quarrel starts.
-  - **The AI** plays luck at its average damage and morale as the turns a stack can expect, since it looks ahead
-    without dice. The very first stack to act in a battle isn't tested for low spirits.
+    fallen. That counts turncoats a bard pays to come over, and stacks a spell calls in. Outlaws don't mind their
+    hounds, so today's enemy bands don't grumble. The rule is one table of pairs (`FEUDS`), so later peoples just
+    join it.
+  - **Where it shows.** A stack's card on the hero screen gives its luck and morale, and why among its traits: each
+    gift by name, and "Uneasy company". In battle the bar gives the numbers (a long line shrinks to fit), and
+    pointing at a stack on your turn says why, songs and jeers included; a stack that falters says whom it's uneasy
+    beside. Castle, village, tame and hire cards warn before a new quarrel starts.
+  - **The AI** counts luck at its average damage and morale as the turns a stack can expect, in what a stack is worth
+    as well as in the blows it threatens, since it looks ahead without dice. The very first stack to act in a battle
+    isn't tested for low spirits.
   - **Balance** isn't retuned here (#14): mixing now costs something, so the bot's Knight with tamed boars beats
     Grimsby less often once explored (94% to 56%), and every tier stays inside its targets.

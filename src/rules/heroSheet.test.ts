@@ -193,7 +193,7 @@ describe('the hero screen', () => {
     expect(footed.traits).toContainEqual({ name: 'A Rabbit\u2019s Foot', note: '+10% luck.' });
     // Wild things in the King's army: both sides grumble.
     const wild = { ...knight(), army: [...knight().army, { troop: 'wolves' as const, count: 10 }] };
-    expect(stackSheet(wild, 0)!.stats.at(-1)).toEqual({ name: 'Morale', value: '\u221210%', note: 'chance they hang back, and lose a turn' });
+    expect(stackSheet(wild, 0)!.stats.at(-1)).toEqual({ name: 'Morale', value: '\u221210%', note: 'chance they lose heart, and their turn' });
     expect(stackSheet(wild, 0)!.traits).toContainEqual({ name: 'Uneasy company', note: 'They won\u2019t march happily beside the Wolves: \u221210% morale.' });
     expect(stackSheet(wild, 2)!.traits).toContainEqual({ name: 'Uneasy company', note: 'They won\u2019t march happily beside the Knights and Archers: \u221210% morale.' });
     const evened = stackSheet({ ...wild, hero: favoured.hero }, 0)!;
@@ -221,7 +221,7 @@ describe('the hero\u2019s own card', () => {
     expect(me.lines[1]).toBe('If his army is beaten, he retreats, and rides home to raise another.');
   });
 
-  it('knows a caster\u2019s bolts grow with his spell power, and that a courtier strikes no blow', () => {
+  it('knows a caster\u2019s bolts grow with his spell power, and that a courtier is a bard who strikes no blow', () => {
     const w = leaderSheet(wizard());
     expect(w.stats.find((s) => s.name === 'Damage')).toEqual({ name: 'Damage', value: '12\u201314', note: 'each blow: +1 a level, +3 per spell power' });
     expect(w.traits[0]).toEqual({ name: 'Leads', note: 'Every stack fights with +1 defence.' });
@@ -231,7 +231,9 @@ describe('the hero\u2019s own card', () => {
     const courtier = { ...newGame(1066, ALDMOOR, 'courtier'), opening: undefined };
     const lord = leaderSheet(courtier);
     expect(lord.stats).toEqual([]);
-    expect(lord.traits.map((t) => t.name)).toEqual(['Leads', 'Spells', 'Behind the line']);
+    expect(lord.traits.map((t) => t.name)).toEqual(['Leads', 'Spells', 'Behind the line', 'Bard', 'Bribes']);
+    // What a bribe costs him, with his silver tongue's half off.
+    expect(lord.traits[4].note.startsWith('He pays 4 weeks of a stack\u2019s wages to send it home, or 12 to bring it over if it fits under his banner, less 50%.')).toBe(true);
     const knights = stackSheet(courtier, 0)!;
     expect(knights.stats[0]).toEqual({ name: 'Attack', value: '9', note: '8 their own, +1 from Lord Aldric' });
     expect(knights.traits.map((t) => t.name)).not.toContain('Rallied');
