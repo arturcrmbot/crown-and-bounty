@@ -8,7 +8,7 @@ import { BACKGROUNDS } from '../../content/backgrounds';
 import { SKILLS } from '../../content/skills';
 import { SPELLS } from '../../content/spells';
 import { foundNote, gainXp, giveArtifact, heroStats } from '../hero';
-import { revealDisc } from '../map/fog';
+import { look } from '../map/sight';
 import { addTroops, coins, countOf, joinLine, leadershipUsed, listed, locationById, MAX_STACKS, TROOPS, troops, update, VANISHES, type Choice, type ContentChoice, type Effects, type GameEvent, type GameState, type Location, type Needs } from '../state';
 
 const STAT_WORDS = { attack: 'attack', defence: 'defence', spellPower: 'spell power', knowledge: 'knowledge' } as const;
@@ -177,13 +177,13 @@ export function applyEffects(state: GameState, place: Location, effects: Effects
   }
   if (effects.reveal) {
     const { at, radius } = effects.reveal;
-    next = { ...next, explored: revealDisc(next.explored, next.world, at[0], at[1], radius).bits };
+    next = look(next, at, radius).state;
     events.push({ type: 'reveal', at, radius });
   }
   if (effects.travel) {
     const at = effects.travel;
     const sight = heroStats(next).sight;
-    next = { ...next, movement: 0, hero: { ...next.hero, at }, explored: revealDisc(next.explored, next.world, at[0], at[1], sight).bits };
+    next = look({ ...next, movement: 0, hero: { ...next.hero, at } }, at, sight).state;
     events.push({ type: 'moved', at, facing: next.hero.facing }, { type: 'reveal', at, radius: sight });
   }
   if (effects.xp) {

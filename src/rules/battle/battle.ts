@@ -756,6 +756,8 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
       const firstStrike = !untouched && abilitiesOf(target.troop).some((a) => a.firstStrike) && !abilitiesOf(me.troop).some((a) => a.firstStrike);
       if (firstStrike) hit(target, me, false, false);
       if (alive(me)) hit(me, target, false, false, charge);
+      // A charge winds the chargers: nobody strikes back at them now, and they strike back at nobody for the rest of this round and the next.
+      if (charge && alive(me) && !isLeader(me)) addStatus(me, 'winded', next.round);
       // Nobody gets to swing back at a lance coming in at the gallop, nor a stack turned into newts,
       // nor at a first strike already spent this blow.
       if (!firstStrike && alive(target) && !target.retaliated && !untouched && !target.status.some((st) => STATUSES[st].noStrikeBack)) {

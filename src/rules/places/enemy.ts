@@ -88,8 +88,11 @@ function hireButton(state: GameState, place: Location): Choice[] {
   return [option(place, `${label} (${coins(offer.price)} gold)`, 'hire', state.gold < offer.price)];
 }
 
-/** A pack follows whoever could beat it: taming needs the odds the card calls close, or better. */
-export const TAME_RESPECT = 0.55;
+/**
+ * A pack follows only whoever would clearly beat it: taming needs the odds the card calls "You should
+ * win" (`SAFE`), not merely close, so beasts are a reward for being strong, not a way round it.
+ */
+export const TAME_RESPECT = 0.9;
 
 export type TameOffer = {
   /** The beasts among them, and those of them who'd fit under the hero's banner. */
@@ -169,7 +172,7 @@ function tameButton(state: GameState, place: Location): Choice[] {
 function tameLine(state: GameState, place: Location): string[] {
   const offer = tameOffer(state, place);
   if (!offer) return [];
-  return [offer.respected ? '*The beasts watch you the way a pack watches its leader.*' : '*Beasts follow only someone who could beat them, and these don\u2019t think you could. Not yet.*'];
+  return [offer.respected ? '*The beasts watch you the way a pack watches its leader.*' : '*Beasts follow only someone who would clearly beat them, and these don\u2019t think you would. Not yet.*'];
 }
 
 /** Before a band is hired or tamed: who in the army won't march happily beside them. */

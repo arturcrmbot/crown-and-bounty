@@ -5,7 +5,7 @@ import { BACKGROUNDS } from '../content/backgrounds';
 import { autoResolve } from './battle/ai';
 import { createBattle, strike } from './battle/battle';
 import { apply, heroInBattle, heroStats, levelUpCard, visit, winChance, type GameState } from './game';
-import { artifactChoices, equip, foundNote, gainXp, giveArtifact, learn, LEVELS } from './hero';
+import { artifactChoices, equip, foundNote, gainXp, giveArtifact, learn, LEVELS, RENOWN } from './hero';
 import { newGame } from './scenario';
 
 const knight = () => newGame(1, ALDMOOR, 'knight');
@@ -58,6 +58,25 @@ describe('levels', () => {
     else expect(after.hero.perks).toContain(id);
     expect(levelUpCard(after)!.choices).toHaveLength(3);
     expect(learn(after, 'skill:not-offered')).toBeNull();
+  });
+
+  it('keeps a skill\u2019s next rank for a later fight: several level-ups at once never offer it again', () => {
+    for (const seed of [1, 2, 3, 4, 5, 6]) {
+      let s = gainXp({ ...knight(), seed }, LEVELS[6]).state;
+      expect(s.hero.offers).toHaveLength(5);
+      while (s.hero.offers.length > 1) {
+        const skill = s.hero.offers[0].options.find((o) => o.startsWith('skill:')) ?? s.hero.offers[0].options[0];
+        s = learn(s, skill)!.state;
+        expect(s.hero.offers[0].options).not.toContain(skill);
+      }
+    }
+  });
+
+  it('brings five more leadership every level', () => {
+    const levelled = gainXp(knight(), LEVELS[5]).state;
+    expect(heroStats(levelled).leadership - heroStats(knight()).leadership).toBe(4 * RENOWN);
+    expect(RENOWN).toBe(5);
+    expect(levelUpCard(levelled)!.lines[0]).toContain(`leadership +${RENOWN}`);
   });
 
   it('pays experience for beating an enemy and for finding places', () => {

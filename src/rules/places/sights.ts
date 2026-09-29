@@ -1,5 +1,5 @@
 import { bestChoice, firstPage, pageCard, takeChoice } from '../effects';
-import { revealDisc } from '../map/fog';
+import { look } from '../map/sight';
 import { close, coins, update, type Card, type GameState, type Location, type Result } from '../state';
 import { aboutWords, found, loot, note, ride, say, words } from './common';
 import type { PlaceKind } from './kind';
@@ -35,7 +35,7 @@ export const tower: PlaceKind = {
     const card = note(place, words(place, 'visit'));
     if (!place.reveals) return found(next, place, card);
     const [rx, ry] = place.reveals;
-    const seen: GameState = { ...next, explored: revealDisc(next.explored, next.world, rx, ry, 90).bits };
+    const seen = look(next, [rx, ry], 90).state;
     return found(seen, place, card, { type: 'reveal', at: place.reveals, radius: 90 });
   },
   worth: (state, place) => (place.done ? null : place.pages ? choiceWorth(state, place) : 400),
