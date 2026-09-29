@@ -405,4 +405,5 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   hall is open (no greyed-out button gives it away), and he has a word for Rook, his old apprentice, on the way. It's
   content, a new look drawn in code (`mews`), and Meg's picture. The deep chase keeps its wild woods: the lodge and its
   bears (#76) give the chase its ride, and past them it's pathless forest only a Ranger (or anyone in the Greenwood
-  Cloak) can cross.
+  Cloak) can cross. The bot wins Aldmoor with every background at much the same pace (by day 12, 9, 9 and 8 at the
+  median for the Knight, the Wizard, the Ranger and the Courtier).
