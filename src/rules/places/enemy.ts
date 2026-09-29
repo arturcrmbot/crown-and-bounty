@@ -1,12 +1,13 @@
 import { ARTIFACTS } from '../../content/artifacts';
-import { isBeast, TROOPS } from '../../content/troops';
+import { isBeast, leads, TROOPS } from '../../content/troops';
 import { grumbleLine } from '../army';
 import { applyEffects, choiceButton, meets } from '../effects';
 import { battleXp, beat, fight, likelyLossesLine, startFight, winChance } from '../fight';
 import { artifactChoices, foundNote, gainXp, giveArtifact, heroStats } from '../hero';
+import { asleep } from '../map/roaming';
 import { riddenOut } from '../map/sortie';
 import { addTroops, close, coins, leadershipUsed, show, stillWithYou, update, type Army, type Choice, type ContentChoice, type GameState, type Location, type Result } from '../state';
-import { countsExactly, forceLine, note, option, ride, say, words } from './common';
+import { countsExactly, faceOf, forceLine, note, option, ride, say, words } from './common';
 import type { PlaceKind } from './kind';
 
 const retreat: Choice = { label: 'Retreat', action: { type: 'close' } };
@@ -104,16 +105,19 @@ export type TameOffer = {
 
 const beastsOf = (place: Location) => (place.enemy?.army ?? []).filter((s) => s.count > 0 && isBeast(s.troop));
 const headcount = (army: Army) => army.reduce((n, s) => n + s.count, 0);
+/** Whether a band is nothing but beasts, leaving out whoever leads it: a captain whose pack follows another is beaten. */
+const allBeasts = (place: Location) => beastsOf(place).length === place.enemy!.army.filter((s) => s.count > 0 && !leads(s.troop)).length;
 
 /**
  * What a hero with a way with beasts could win over here: a band's beasts (never at a villain's
  * walls), as many as his leadership and stacks allow, if they respect him. A band of nothing but
- * beasts is gone from the road; a mixed one loses its beasts and fights on without them.
+ * beasts is gone from the road, its captain too, with nobody left to lead; a mixed one loses its
+ * beasts and fights on without them.
  */
 export function tameOffer(state: GameState, place: Location, samples = 16): TameOffer | null {
   const beasts = beastsOf(place);
   if (!beasts.length || place.done || place.kind === 'hideout' || !heroStats(state).tames) return null;
-  const whole = beasts.length === place.enemy!.army.filter((s) => s.count > 0).length;
+  const whole = allBeasts(place);
   const joining = joiners(state, beasts);
   const all = beasts.every((s) => joining.find((j) => j.troop === s.troop)?.count === s.count);
   const respected = winChance(state, place.id, samples, whole ? undefined : beasts) >= TAME_RESPECT;
@@ -125,7 +129,9 @@ function tame(state: GameState, place: Location): Result | null {
   const offer = tameOffer(state, place);
   if (!offer?.respected || !offer.joining.length) return null;
   const foe = place.enemy!;
-  const joined = applyEffects(state, place, { troops: offer.joining, ...(offer.whole ? { done: true } : {}) });
+  // The whole pack gone over, its captain has nobody left to lead, and is taken.
+  const taken = offer.whole && foe.taken ? { flags: foe.taken } : {};
+  const joined = applyEffects(state, place, { troops: offer.joining, ...taken, ...(offer.whole ? { done: true } : {}) });
   let next = joined.state;
   const events = [...joined.events];
   const words = foe.tamed ?? offer.beasts.map((s) => TROOPS[s.troop].tamed).find(Boolean) ?? 'They decide you will do, and follow you.';
@@ -151,7 +157,7 @@ function tameButton(state: GameState, place: Location): Choice[] {
   const beasts = beastsOf(place);
   if (!beasts.length || place.done || place.kind === 'hideout') return [];
   const offer = tameOffer(state, place);
-  const whole = beasts.length === place.enemy!.army.filter((s) => s.count > 0).length;
+  const whole = allBeasts(place);
   const them = whole ? 'them' : `their ${TROOPS[beasts[0].troop].name}`;
   if (!offer) return [option(place, `Tame ${them} (a way with beasts)`, 'tame', true)];
   if (!offer.respected) return [option(place, `Tame ${them} (they don\u2019t respect you yet)`, 'tame', true)];
@@ -246,10 +252,10 @@ export function enemy(kind: 'patrol' | 'hideout'): PlaceKind {
       // Hunters say so, and say when they have your scent, so an ambush is never a surprise.
       const shadowed = heroStats(state).shadow;
       const coming = e.bold ? '*They are looking for you, and will fall on you wherever you camp near them, though never in a town.*' : '*They hunt anyone weaker who camps near their ground, though never in a town.*';
-      const hunt = e.behaviour !== 'hunt' ? [] : [shadowed ? '*They hunt anyone weaker, but your scouts are watching them: they won\u2019t find your trail.*' : e.trailing ? '*They have your scent. Camp near them tonight and they\u2019ll fall on you at dawn.*' : coming];
+      const hunt = e.behaviour !== 'hunt' ? [] : asleep(state, place) ? ['*For now, they hold their ground.*'] : [shadowed ? '*They hunt anyone weaker, but your scouts are watching them: they won\u2019t find your trail.*' : e.trailing ? '*They have your scent. Camp near them tonight and they\u2019ll fall on you at dawn.*' : coming];
       // While a villain is out, his lair's card says so instead of what it usually says.
       const away = riddenOut(state, place) ? [e.sortie!.barred[0]] : e.lines;
-      return { title: place.name, lines: [...away, line, ...carriesLine(state, place), ...hunt], choices: [ride(place, 'Approach'), { label: 'Close', action: { type: 'close' } }] };
+      return { title: place.name, ...faceOf(e.army), lines: [...away, line, ...carriesLine(state, place), ...hunt], choices: [ride(place, 'Approach'), { label: 'Close', action: { type: 'close' } }] };
     },
     arrive(state, place) {
       const foe = place.enemy!;
@@ -261,6 +267,7 @@ export function enemy(kind: 'patrol' | 'hideout'): PlaceKind {
       const yields = cowed(state, place, chance) ? [option(place, 'Demand their surrender', 'surrender')] : [];
       return say(state, place, {
         title: place.name,
+        ...faceOf(foe.army),
         lines: [foe.threat, oddsLine(chance), likelyLossesLine(state, place.id), ...scouts, ...carriesLine(state, place), ...tameLine(state, place), ...grumbleLines(state, place)],
         choices: [{ ...option(place, foe.charge ?? 'Fight', 'fight'), detail: FIGHT_NOTE }, { ...option(place, 'Let the sergeants handle it', 'auto'), detail: SERGEANTS_NOTE }, ...yields, ...hireButton(state, place), ...tameButton(state, place), ...parleys(state, place), retreat],
       });

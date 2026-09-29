@@ -36,6 +36,8 @@ export type Enemy = {
   parleys?: ContentChoice[];
   /** What else beating them brings, however it's done: new recruits, a spell, a place appears. */
   spoils?: Effects;
+  /** Story flags its leader's capture sets, however he's taken: his band beaten, or won over from under him. */
+  taken?: Record<string, FlagValue>;
   /** How hard they are meant to be, for the balance checks: see `rules/difficulty.ts`. */
   tier?: Tier;
   /**
@@ -45,6 +47,8 @@ export type Enemy = {
   behaviour?: 'guard' | 'roam' | 'hunt';
   range?: number;
   home?: Point;
+  /** A band that holds its ground until `day`, then roams or hunts as `behaviour` says: that dawn, the news says so. */
+  wakes?: { day: number; news: string };
   /** How far off a hunter notices the hero, when it has keener eyes (or better spies) than most (`HUNT_SIGHT`). */
   sight?: number;
   /** A hunter that comes for the hero whatever the odds: a villain in a temper. */

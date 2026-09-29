@@ -30,6 +30,8 @@ type Recipe = {
   bare?: boolean;
   /** Round brass spectacles, and rosy cheeks. */
   specs?: boolean;
+  /** A cloth over the nose and mouth, as a poacher wears one. */
+  mask?: readonly number[];
   clothes: readonly number[];
   collar?: 'ermine' | 'mail' | 'ruff' | 'none';
   eyes: number;
@@ -60,6 +62,8 @@ const RECIPES: Record<Exclude<PortraitId, 'goose'>, Recipe> = {
   sergeant: { skin: SKIN, hair: DARK, beard: 'moustache', beardColour: DARK, hat: 'kettle', hatColour: [STONE[2], STONE[3], STONE[5], STONE[6]], clothes: [RED[1], RED[2], RED[3], RED[4]], collar: 'mail', eyes: EARTH[2], mood: 'stern' },
   nan: { skin: SKIN, hair: WHITE, hat: 'scarf', hatColour: [RED[1], RED[2], RED[3], RED[4]], clothes: [PLUM[0], PLUM[1], PLUM[2], PLUM[3]], eyes: LEAF[5], mood: 'smile', specs: true },
   dwarf: { skin: SKIN, hair: GINGER, beard: 'full', beardColour: GINGER, hat: 'helm', bare: true, hatColour: [STONE[2], STONE[4], STONE[5], STONE[6]], clothes: BROWN, collar: 'mail', eyes: BLUE[4], mood: 'stern' },
+  // Grimsby's huntsman, as Wesnoth's Trapper: a woodsman's cap with a rook's black feather, and a red cloth over his face.
+  rook: { skin: SKIN, hair: DARK, hat: 'feathercap', hatColour: [LEAF[0], LEAF[1], EARTH[2], EARTH[4]], plume: [BLUE[1], INK], mask: [RED[1], RED[2], RED[3], RED[4]], clothes: [EARTH[1], EARTH[2], EARTH[3], EARTH[4]], eyes: GOLD[5], mood: 'sly' },
 };
 
 const inEllipse = (x: number, y: number, cx: number, cy: number, rx: number, ry: number) => ((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2 <= 1;
@@ -177,6 +181,13 @@ export function portrait(id: PortraitId): Bitmap {
       b.set(x, mouthY - 1 + droop, beard[p.beard === 'full' ? 2 : 0]);
     }
     if (id === 'grimsby') for (const x of [cx - 7, cx - 6, cx + 6, cx + 7]) b.set(x, mouthY - 3, beard[1]); // curled ends
+  }
+  if (p.mask) {
+    const mask = p.mask;
+    fill((x, y) => inEllipse(x, y, cx, cy + 2, 12.5, 15.5) && y > cy + 3, (x, y) => shade(mask, lit(x, y, cx, cy + 8, 12) + ((x * 3 + y) % 7 === 0 ? -0.12 : 0), x, y));
+    for (let x = cx - 12; x <= cx + 12; x++) b.set(x, cy + 3, shade(mask, 0.8, x, cy + 3));
+    // Its knot, and the ends hanging down behind his ear.
+    for (let y = cy + 4; y < cy + 12; y++) b.set(cx + 13 + (y > cy + 8 ? 1 : 0), y, shade(mask, 0.25, cx + 13, y));
   }
 
   // Hats.

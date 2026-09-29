@@ -47,12 +47,15 @@ export const inTown = (state: GameState) => state.locations.some((l) => (l.kind 
  */
 export function hunting(state: GameState, l: Location): boolean {
   const e = l.enemy!;
-  if (e.behaviour !== 'hunt' || (e.rest ?? 0) > 0 || e.patience === 0 || inTheWoods(state) || inTown(state) || heroStats(state).shadow) return false;
+  if (e.behaviour !== 'hunt' || asleep(state, l) || (e.rest ?? 0) > 0 || e.patience === 0 || inTheWoods(state) || inTown(state) || heroStats(state).shadow) return false;
   const home = e.home ?? l.at;
   const hero = state.hero.at;
   const theirs = armyPower(state.army);
   return theirs > 0 && dist(l.at, hero) <= (e.sight ?? HUNT_SIGHT) && dist(home, hero) <= (e.range ?? 120) * 1.5 && (Boolean(e.bold) || armyPower(e.army) >= theirs * 1.2);
 }
+
+/** A band that holds its ground till the day it wakes (`wakes`). */
+export const asleep = (state: GameState, l: Location) => Boolean(l.enemy?.wakes && state.day < l.enemy.wakes.day);
 
 /** A ranger among the trees leaves no track that anything on the map can follow. */
 function inTheWoods(state: GameState): boolean {
@@ -68,7 +71,7 @@ export function moveEnemies(state: GameState, map: MapModel): { state: GameState
   const events: GameEvent[] = [];
   for (const l of state.locations) {
     const e = l.enemy;
-    if (!e || l.done || l.kind === 'hideout' || !e.behaviour || e.behaviour === 'guard') continue;
+    if (!e || l.done || l.kind === 'hideout' || !e.behaviour || e.behaviour === 'guard' || asleep(next, l)) continue;
     const home = e.home ?? l.at;
     const range = e.range ?? 120;
     const hunts = hunting(next, l);

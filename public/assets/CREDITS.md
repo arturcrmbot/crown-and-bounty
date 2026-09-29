@@ -329,6 +329,23 @@ Frames and timings from `data/core/units/humans/Outlaw_Bandit.cfg`.
 | `human-outlaws/bandit-melee-7.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2009-10-01 | 2022-04-29 |
 | `human-outlaws/bandit-melee-8.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2009-10-01 | 2022-04-29 |
 
+### Trapper (our rook)
+
+Frames and timings from `data/core/units/humans/Woodsman_Trapper.cfg`.
+
+| File | Licence | Artists, from the history | Added | Last changed |
+| --- | --- | --- | --- | --- |
+| `human-outlaws/trapper.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, ghype | 2007-05-16 | 2022-04-29 |
+| `human-outlaws/trapper-bow-defend.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, ghype | 2007-05-16 | 2022-04-29 |
+| `human-outlaws/trapper-bow-attack1.png` | CC BY-SA 4.0 | doofus-01, ghype | 2020-05-24 | 2022-04-29 |
+| `human-outlaws/trapper-bow-attack2.png` | CC BY-SA 4.0 | doofus-01, ghype | 2020-05-24 | 2022-04-29 |
+| `human-outlaws/trapper-bow-attack3.png` | CC BY-SA 4.0 | doofus-01, ghype | 2020-05-24 | 2022-04-29 |
+| `human-outlaws/trapper-bow-attack4.png` | CC BY-SA 4.0 | doofus-01, ghype | 2020-05-24 | 2022-04-29 |
+| `human-outlaws/trapper-bow-attack5.png` | CC BY-SA 4.0 | doofus-01, ghype | 2020-05-24 | 2022-04-29 |
+| `human-outlaws/trapper-bow-attack6.png` | CC BY-SA 4.0 | doofus-01, ghype | 2020-05-24 | 2022-04-29 |
+| `human-outlaws/trapper-bow-attack7.png` | CC BY-SA 4.0 | doofus-01, ghype | 2020-05-24 | 2022-04-29 |
+| `human-outlaws/trapper-bow.png` | CC BY-SA 4.0 | doofus-01, ghype | 2020-05-24 | 2022-04-29 |
+
 ### Woodland Boar (our boars)
 
 Frames and timings from `data/core/units/monsters/Boar.cfg`.

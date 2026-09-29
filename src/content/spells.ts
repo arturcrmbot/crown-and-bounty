@@ -15,7 +15,7 @@ export const MAP_SPELLS: Record<MapSpellId, { id: MapSpellId; name: string; mana
 };
 
 /** Lasting effects on a stack. Each one changes numbers the engine already uses. */
-export type StatusId = 'blessed' | 'slowed' | 'hasted' | 'stoneskin' | 'shieldwall' | 'newts' | 'frogs' | 'poisoned' | 'jeered' | 'heartened' | 'charmed';
+export type StatusId = 'blessed' | 'slowed' | 'hasted' | 'stoneskin' | 'shieldwall' | 'newts' | 'frogs' | 'poisoned' | 'jeered' | 'heartened' | 'charmed' | 'marked';
 
 export type StatusDef = {
   name: string;
@@ -70,6 +70,8 @@ export const STATUSES: Record<StatusId, StatusDef> = {
   jeered: { name: 'Jeered', morale: -0.3, rounds: 2 },
   heartened: { name: 'Heartened', morale: 0.25, rounds: 2, song: 'a marching song' },
   charmed: { name: 'Charmed', luck: 0.2, rounds: 2, song: 'a lucky song' },
+  // A huntsman's arrow picks out the quarry, and the pack knows where to bite.
+  marked: { name: 'Marked', defenceAdd: -3, rounds: 2, onHit: 'The arrow marks them for the pack.' },
 };
 
 /** What casting a spell does. `on` says whose stacks: the caster's own side (`friend`) or the other. */

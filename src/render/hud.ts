@@ -53,6 +53,7 @@ const TROOP_ICONS: Record<TroopId, Bitmap> = {
   boars: FORK,
   bears: FORK,
   huntsmen: BOW,
+  rook: BOW,
   // Aldric is never in the army, but should he ever show there.
   heroKnight: SWORD,
   heroWizard: BOW,

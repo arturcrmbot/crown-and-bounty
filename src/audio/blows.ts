@@ -34,6 +34,7 @@ export const TROOP_SOUNDS: Record<TroopId, TroopSounds> = {
   // A bear bites like a wolf, roars like a troll, and pads about on big soft paws.
   bears: { blow: 'bite', cry: 'troll', feet: 'paws' },
   huntsmen: { blow: 'dagger', cry: 'man', feet: 'boots' },
+  rook: { blow: 'dagger', cry: 'man', feet: 'boots' },
   heroKnight: { blow: 'lance', cry: 'man', feet: 'hooves', armour: true },
   heroWizard: { blow: 'staff', cry: 'man', feet: 'boots' },
   heroRanger: { blow: 'blade', cry: 'man', feet: 'boots' },

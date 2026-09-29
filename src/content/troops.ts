@@ -1,8 +1,9 @@
 import type { BackgroundId } from './backgrounds';
+import type { PortraitId } from './portraits';
 import type { SpellId, StatusId } from './spells';
 
 /** Every kind of troop, with HoMM2-style numbers. Troops are just numbers: 400 peasants are 400 peasants. */
-export type TroopId = 'peasants' | 'archers' | 'knights' | 'swordsmen' | 'crossbowmen' | 'wolves' | 'baron' | 'goblins' | 'trolls' | 'witch' | 'bramble' | 'poachers' | 'bandits' | 'boars' | 'bears' | 'huntsmen' | HeroId;
+export type TroopId = 'peasants' | 'archers' | 'knights' | 'swordsmen' | 'crossbowmen' | 'wolves' | 'baron' | 'goblins' | 'trolls' | 'witch' | 'bramble' | 'poachers' | 'bandits' | 'boars' | 'bears' | 'huntsmen' | 'rook' | HeroId;
 /** Aldric himself, as each background fights: one of a kind, like the villains, and never in the army. */
 export type HeroId = 'heroKnight' | 'heroWizard' | 'heroRanger' | 'heroCourtier';
 
@@ -42,6 +43,8 @@ export type TroopDef = {
   caster?: Caster;
   /** How a leader sounds when he speaks aloud: the pitch his babble runs around, in Hz (see `speak` in ui/sound.ts). */
   voice?: number;
+  /** A leader's face, on the cards of the band or the lair he leads. */
+  face?: PortraitId;
 };
 
 /**
@@ -69,7 +72,7 @@ export function feuding(a: TroopId, b: TroopId): boolean {
 /** A villain's magic: spell power, mana, spells he knows, and orders he can give a few times a battle for no mana. */
 export type Caster = { spellPower: number; mana: number; casts?: number; spells?: SpellId[]; charges?: { spell: SpellId; uses: number }[] };
 
-export type Ability = 'regenerates' | 'hexes' | 'leads' | 'rides' | 'bard' | 'firstStrike' | 'stings' | 'pierce' | 'hunter';
+export type Ability = 'regenerates' | 'hexes' | 'leads' | 'rides' | 'bard' | 'firstStrike' | 'stings' | 'pierce' | 'marks' | 'hunter';
 
 /**
  * Troop abilities, as data the battle engine reads at fixed moments. A new ability that uses
@@ -120,6 +123,7 @@ export const ABILITIES: Record<Ability, AbilityDef> = {
   firstStrike: { name: 'First Strike', note: 'Pitchforks first: it strikes before whatever attacks it, unless that also strikes first.', firstStrike: true },
   stings: { name: 'Stinging Bite', note: 'Whatever it hits up close is poisoned: a little health lost each turn, though it never falls past a sliver.', stingStatus: 'poisoned' },
   pierce: { name: 'Piercing Bolts', note: 'Its bolts punch through armour: -1 defence against them.', pierce: 1 },
+  marks: { name: 'Marks the Quarry', note: 'Whatever his arrows hit is marked for the pack: \u22123 defence for two rounds.', shotStatus: 'marked' },
   hunter: { name: 'Hunter', note: 'Knows its quarry: its shots and blows land half as hard again on wolves, boars, bears and every other beast.', hunts: 0.5 },
 };
 
@@ -141,6 +145,7 @@ export const TROOPS: Record<TroopId, TroopDef> = {
     note: 'Carries the royal goose under one arm, and gives the orders with the other.', abilities: ['leads'],
     caster: { spellPower: 2, mana: 15, spells: ['haste', 'slow'], charges: [{ spell: 'shieldwall', uses: 1 }, { spell: 'crossbows', uses: 2 }, { spell: 'guard', uses: 1 }] },
     voice: 104,
+    face: 'grimsby',
   },
   goblins: { id: 'goblins', name: 'Bog Goblins', one: 'Bog Goblin', hp: 5, attack: 4, defence: 2, damage: [1, 3], speed: 6, leadership: 1, wage: 1, people: 'wild', note: 'Small, green, in a tremendous hurry, and their bite poisons.', abilities: ['stings'] },
   trolls: { id: 'trolls', name: 'Trolls', one: 'Troll', hp: 70, attack: 9, defence: 7, damage: [8, 12], speed: 3, leadership: 12, wage: 20, people: 'wild', note: 'Big, slow, and very attached to their bridge.', abilities: ['regenerates'] },
@@ -149,12 +154,14 @@ export const TROOPS: Record<TroopId, TroopDef> = {
     note: 'Throws hexes, and the occasional ladle.', abilities: ['leads', 'hexes'],
     caster: { spellPower: 2, mana: 14, spells: ['newts', 'slow', 'brew'] },
     voice: 330,
+    face: 'mirrow',
   },
   bramble: {
     id: 'bramble', name: 'Aunt Bramble', one: 'Aunt Bramble', hp: 170, attack: 9, defence: 9, damage: [7, 11], speed: 4, shots: 10, leadership: 99, wage: 0,
     note: 'Mother Mirrow\u2019s big sister. Bigger hat, worse temper.', abilities: ['leads', 'hexes'],
     caster: { spellPower: 3, mana: 14, spells: ['frogs', 'bolt', 'brew'] },
     voice: 262,
+    face: 'bramble',
   },
   poachers: { id: 'poachers', name: 'Poachers', one: 'Poacher', hp: 7, attack: 3, defence: 2, damage: [1, 3], speed: 4, shots: 6, leadership: 1, wage: 1, people: 'outlaw', note: 'Other people\u2019s deer, other people\u2019s rabbits, and now, other people\u2019s officers.' },
   bandits: { id: 'bandits', name: 'Highwaymen', one: 'Highwayman', hp: 11, attack: 4, defence: 3, damage: [2, 3], speed: 5, leadership: 2, wage: 2, people: 'outlaw', note: 'Stand and deliver. Mostly they stand.' },
@@ -169,6 +176,13 @@ export const TROOPS: Record<TroopId, TroopDef> = {
     id: 'huntsmen', name: 'Huntsmen', one: 'Huntsman', hp: 18, attack: 7, defence: 4, damage: [3, 5], speed: 5, shots: 16, leadership: 3, wage: 0, people: 'loyal', abilities: ['hunter'],
     note: 'The old King\u2019s huntsmen: grey, lean, and never known to miss.',
     unpaid: 'They serve the old King still, and they have a score to settle with Rook.',
+  },
+  // Grimsby's captain (#15): he leads the Baron's wolves from behind them, shoots, and marks their quarry.
+  rook: {
+    id: 'rook', name: 'Rook the Huntsman', one: 'Rook the Huntsman', hp: 60, attack: 6, defence: 4, damage: [6, 10], speed: 5, shots: 12, leadership: 99, wage: 0,
+    note: 'The Baron\u2019s huntsman. He shoots from behind his wolves, and whatever his arrows find, the pack goes for.', abilities: ['leads', 'marks'],
+    voice: 175,
+    face: 'rook',
   },
   // Aldric in battle, as each background fights from behind the line. His numbers grow with him: see `hero`.
   heroKnight: {

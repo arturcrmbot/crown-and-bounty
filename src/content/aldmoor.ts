@@ -768,9 +768,9 @@ export const ALDMOOR: Province = {
         army: [{ troop: 'swordsmen', count: 46 }, { troop: 'crossbowmen', count: 24 }, { troop: 'baron', count: 1 }],
         reward: 2000,
         threat: 'The Baron shouts from the palisade: *"I have the goose AND the walls!"*',
-        // Raid his dig, or take his patrol off the bridge, and he rides out with a third of his men to meet you.
+        // Raid his dig, take his patrol off the bridge or his huntsman from his wolves, and he rides out with a third of his men to meet you.
         sortie: {
-          when: [{ flag: 'dig', is: 'raided' }, { flag: 'patrolGone' }, { flag: 'pikeHome' }],
+          when: [{ flag: 'dig', is: 'raided' }, { flag: 'patrolGone' }, { flag: 'pikeHome' }, { flag: 'rook' }],
           guard: 0.35,
           band: GRIMSBY_RIDES,
           barred: ['The gate is barred, and for once nobody inside is honking.', '*"The Baron\u2019s out!"* shouts a sentry over the palisade. *"Looking for you, as it happens. He took the goose."*'],
@@ -933,30 +933,38 @@ export const ALDMOOR: Province = {
     {
       id: 'wolves',
       kind: 'patrol',
-      name: 'Wolf Pack',
+      name: 'Rook\u2019s Wolves',
       at: at.wolves,
       done: false,
       artifact: 'greenwoodCloak',
       enemy: {
         look: 'wolves',
         tier: 'gate',
-        lines: ['Wolves, sitting on the path like they own it.', 'Your archers are pretending not to have seen them.'],
-        army: [{ troop: 'wolves', count: 84 }],
+        // Rook the Huntsman, the Baron's captain (#15): his wolves hold the kennels in week 1, and from week 2 he
+        // hunts whoever camps near their ground, if the pack could beat him.
+        behaviour: 'hunt',
+        range: 340,
+        sight: 380,
+        wakes: { day: 8, news: 'Word on the road: the Baron has told **Rook the Huntsman** to bring you in, and let his wolves off the leash.' },
+        lines: ['Rook the Huntsman, the Baron\u2019s man, and the Baron\u2019s wolves, sitting on the path like they own it.', '*The best poacher Aldmoor ever had, until the Baron gave him the old King\u2019s huntsmen\u2019s job.*'],
+        army: [{ troop: 'wolves', count: 84 }, { troop: 'rook', count: 1 }],
         reward: 300,
-        threat: 'They bare their teeth. One of them yawns, which is somehow worse.',
-        tamed: 'You sit down in the heather among them, and wait. At dusk the old grey leader lies down at your feet with a sigh. *The pack is yours now, or you are theirs: it\u2019s hard to say which.*',
+        threat: 'Rook puts two fingers in his mouth and whistles, once. Every wolf in the pack looks at you.',
+        lastWords: 'Don\u2019t tell the Baron! He\u2019ll give my job back to the old King\u2019s lot!',
+        tamed: 'You sit down in the heather among them, and wait. At dusk the old grey leader lies down at your feet with a sigh, and the pack after him. Rook whistles and whistles, and not one of them looks round. *He gives himself up in disgust.*',
         parleys: [
           {
             id: 'venison',
             label: 'Throw them the King\u2019s venison',
             needs: { flag: 'venison' },
             effects: { done: true, xp: 100, flags: { venison: false } },
-            lines: ['You toss the poachers\u2019 haunch of venison into the heather. The whole pack goes after it, snarling, and the road to Darkwood is clear.'],
+            lines: ['You toss the poachers\u2019 haunch of venison into the heather. The whole pack goes after it, snarling, and Rook goes after the pack, shouting. The road to Darkwood is clear.'],
           },
         ],
         spoils: { flags: { wolfpelt: true } },
-        flees: 'The pack scatters into Darkwood.',
-        loot: 'Under their favourite rock: {gold}, a fine grey pelt, and an old ranger\u2019s cloak they had been sleeping on. *Old Nan would like that pelt.*',
+        taken: { rook: 'taken' },
+        flees: 'The pack scatters into Darkwood without him.',
+        loot: 'In Rook\u2019s hut by the kennels: {gold}, a fine grey pelt, and an old ranger\u2019s cloak his wolves had been sleeping on. *Old Nan would like that pelt.*',
       },
     },
   ],

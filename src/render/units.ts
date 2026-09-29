@@ -186,6 +186,16 @@ const TROOP_ART: Record<Exclude<TroopId, HeroId>, UnitArt> = {
     melee: attack(500, frames(OUTLAW, 'bandit-melee-[1~8].png', 100)),
     defend: OUTLAW + 'bandit-defend-2.png',
   },
+  // Rook the Huntsman: Wesnoth's Trapper, the poacher he was, grown into the Baron's huntsman.
+  rook: {
+    unit: 'Trapper',
+    cfg: 'humans/Woodsman_Trapper.cfg',
+    stand: OUTLAW + 'trapper.png',
+    melee: attack(250, one(OUTLAW, 'trapper.png', 300)),
+    ranged: { ...attack(550, frames(OUTLAW, 'trapper-bow-attack[1~7].png', '50*4,200,50,100'), one(OUTLAW, 'trapper-bow-attack1.png', 50), one(OUTLAW, 'trapper-bow.png', 50)), missile: 'arrow' },
+    defend: OUTLAW + 'trapper.png',
+    defendRanged: OUTLAW + 'trapper-bow-defend.png',
+  },
   boars: {
     unit: 'Woodland Boar',
     cfg: 'monsters/Boar.cfg',

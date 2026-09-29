@@ -1,6 +1,7 @@
 import { BACKGROUNDS } from '../content/backgrounds';
 import { BOON_IDS, BOONS, COMMISSIONS, type Commission, type Happened } from '../content/campaign';
 import { FRIENDS, type FriendId } from '../content/friends';
+import { leads } from '../content/troops';
 import { VILLAINS } from '../content/villains';
 import { generateCommission } from './generate';
 import { heroStats, VETERANS } from './hero';
@@ -37,7 +38,9 @@ export const hasNextCommission = (state: GameState) => state.campaign.chapter + 
 
 /** What a place says and offers, as opposed to what has happened to it: a save takes the newest. */
 const WORDS = ['text', 'pages', 'artifact', 'reveals', 'gold'] as const;
-const ENEMY_WORDS = ['lines', 'threat', 'flees', 'loot', 'tamed', 'parleys', 'spoils', 'sortie', 'lastWords'] as const;
+const ENEMY_WORDS = ['lines', 'threat', 'flees', 'loot', 'tamed', 'parleys', 'spoils', 'taken', 'sortie', 'lastWords'] as const;
+/** How a band moves, which comes with the captain who leads it. */
+const CAPTAINS_WAYS = ['behaviour', 'range', 'sight', 'wakes', 'bold', 'pace'] as const;
 const pick = <T extends object>(from: T | undefined, keys: readonly (keyof T)[]) => JSON.stringify(keys.map((k) => from?.[k] ?? null));
 
 /**
@@ -61,7 +64,16 @@ export function withNewPlaces(state: GameState): GameState {
       changed = true;
       l = { ...l, wares: [...(l.wares ?? []), ...stock] };
     }
-    if (!now || l.done || l.seen) return l;
+    if (!now || l.done) return l;
+    // A captain who has taken a band over since leads it now (Rook, the Baron's wolves), under his name, in his ways
+    // and with his words, even if the hero has met the band before: who leads it isn't something that happened to it.
+    const captains = l.kind === 'patrol' && l.enemy ? (now.enemy?.army ?? []).filter((s) => leads(s.troop) && !l.enemy!.army.some((x) => x.troop === s.troop)) : [];
+    if (captains.length) {
+      changed = true;
+      const words = Object.fromEntries([...ENEMY_WORDS, ...CAPTAINS_WAYS].map((k) => [k, structuredClone(now.enemy![k])]));
+      return { ...l, name: now.name, text: structuredClone(now.text), enemy: { ...l.enemy!, ...words, army: [...l.enemy!.army, ...structuredClone(captains)] } };
+    }
+    if (l.seen) return l;
     let next: Location = l;
     if (!l.enemy && pick(l, WORDS) !== pick(now, WORDS)) next = { ...next, ...Object.fromEntries(WORDS.map((k) => [k, structuredClone(now[k])])) };
     if (l.enemy && now.enemy && pick(l.enemy, ENEMY_WORDS) !== pick(now.enemy, ENEMY_WORDS)) {

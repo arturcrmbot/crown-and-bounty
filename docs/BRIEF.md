@@ -337,6 +337,25 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   - Cards keep over the map's view, clear of the panel, unless they could only fit there by covering what they're
     about; while the opening card asks who he was, Aldric stands low in the view so it fits above him. Changes of
     scene fade or sweep the panel with the picture.
+- **Captains: Rook the Huntsman (29 Sep, #15):** captains are the enemy's named lieutenants, who lead a villain's bands,
+  and they're data, so any villain can have them. A captain is a troop with the leader's rule from #36 (he stands behind
+  his band, nothing can reach him, and he's taken when his band is beaten), a face on his band's cards (`face`), last
+  words as he's taken (the band's `lastWords`, in the speech bubble from #104), and a trick of his own, which is an
+  ability. Rook the Huntsman is the first: Grimsby's huntsman, the best poacher Aldmoor ever had until the Baron gave him
+  the old King's huntsmen's job. He's Wesnoth's Trapper, the poacher he was, grown up, and his portrait has a rook's
+  black feather in his cap and a red cloth over his face. He leads the Baron's 84 wolves from the kennels, under
+  Grimsby's goose. His trick: he shoots from behind the pack, and whatever his arrows hit is marked for it ("The arrow
+  marks them for the pack": 3 less defence for two rounds). His wolves hold the kennels through week 1; on day VIII the
+  news says the Baron has told him to bring you in (`wakes`), and from then on he hunts anyone his pack could beat who
+  camps near their ground. He sees further than other hunters (380 paces against 260), gives a day's warning, and never
+  comes into a town. On the map he stands in his red ring with a wolf at his heel: every leader now has one of his men
+  beside him, so Grimsby rides out with a swordsman of his guard. Taken, he begs you not to tell the Baron ("He'll give
+  my job back to the old King's lot!"), and taking him hurts Grimsby, who rides out. A ranger the pack respects still
+  wins the wolves over, and Rook, with nobody left to lead, gives himself up. The villains' faces now show on their
+  lairs' cards too, and on the card when their band falls on your camp. Every tier stays inside its targets (the wolves
+  are still 0% at the start and 100% once explored), and the bot wins Aldmoor with every background (64 of 64 over
+  sixteen seeds; median day 12 for the knight, 8 for the wizard, 11 for the ranger and 9 for the courtier, since taking
+  Rook sends Grimsby out sooner).
 - **The old King's hunt hall (29 Sep, #76, as sketched in `act1/aldmoor.md`):** down a lane off the bridge road, on
   Westmere's side of the river, stands the old King's hunt hall, shut up since he died: shutters closed, a bar across
   the door, a stag's antlers on the gable. Its card says only that, with no button at all, greyed out or not. Once
