@@ -87,7 +87,7 @@ describe('the campaign', () => {
     expect(court.campaign.record).toEqual([{ chapter: 0, days: 12, level: won.hero.level }]);
     expect(new Set(court.campaign.court!.boons).size).toBe(3);
     const card = courtCard(court);
-    expect(card.title).toBe('The King\u2019s Court');
+    expect(card.title).toBe('The King\u2019s Thanks');
     expect(card.choices).toHaveLength(3);
     // Going to court twice changes nothing.
     expect(act(court, { type: 'court' })).toEqual(court);

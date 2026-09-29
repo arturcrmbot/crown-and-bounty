@@ -3,6 +3,7 @@ import { COMMISSIONS } from '../content/campaign';
 import { SPELLS } from '../content/spells';
 import { troops } from '../content/troops';
 import { ARTIFACTS, type ArtifactId } from '../content/artifacts';
+import { FRIENDS } from '../content/friends';
 import { PERKS, RANKS, SKILLS } from '../content/skills';
 import { campaignLines, commissionOf, hasNextCommission, roman, type Card, type GameState } from '../rules/game';
 
@@ -88,7 +89,7 @@ export function chapterStartCard(state: GameState): Card {
     lines: [
       `The bot rode ${state.campaign.record.length} earlier commission${state.campaign.record.length === 1 ? '' : 's'} and took the King\u2019s court boons. Now the reins are yours.`,
       `Level ${hero.level}. Attack ${hero.attack}, defence ${hero.defence}, spell power ${hero.spellPower}, knowledge ${hero.knowledge}. Leadership ${state.leadership}.`,
-      `Skills: ${skills.join(', ') || 'none'}. Perks: ${perks.join(', ') || 'none'}.`,
+      `Skills: ${skills.join(', ') || 'none'}. Perks: ${perks.join(', ') || 'none'}. With him: ${(hero.friends ?? []).map((id) => FRIENDS[id].name).join(', ') || 'nobody'}.`,
       `Spellbook: ${spells.join(', ') || 'empty'}.`,
       `Wearing: ${worn.join(', ') || 'nothing'}. Pack: ${pack.join(', ') || 'empty'}.`,
       `Army: ${army.join(', ') || 'none'}.`,

@@ -78,7 +78,7 @@ describe('Grimsby riding out', () => {
     expect(count(r.state, 'hideout', 'swordsmen')).toBe(46 - Math.round(46 * 0.35));
     expect(home.humbled).toBe(true);
     expect(cardLines(r).join(' ')).toContain('Baron Grimsby flees home');
-    const after = endDay({ ...r.state, flags: { ...r.state.flags, patrol: 'beaten' } }).state;
+    const after = endDay({ ...r.state, flags: { ...r.state.flags, patrolGone: true } }).state;
     expect(band(after)!.done).toBe(true);
     // His gate is open again.
     expect(cardLines(visit(after, 'hideout')).join(' ')).not.toContain('The gate is barred');
@@ -100,12 +100,12 @@ describe('Grimsby riding out', () => {
     expect(count(s, 'hideout', 'swordsmen')).toBe(46);
     expect(locationById(s, 'hideout').enemy!.humbled).toBeUndefined();
     // Hurt him again, and he comes out again.
-    const again = endDay({ ...s, hero: { ...s.hero, at: HEATH }, flags: { ...s.flags, patrol: 'beaten' } }).state;
+    const again = endDay({ ...s, hero: { ...s.hero, at: HEATH }, flags: { ...s.flags, patrolGone: true } }).state;
     expect(band(again)?.done).toBe(false);
   });
 
   it('rides out when his patrol is taken off the bridge, and comes all the way there, round his wolves', () => {
-    const s = aldmoor(undefined, [1720, 1466], { patrol: 'beaten' });
+    const s = aldmoor(undefined, [1720, 1466], { patrolGone: true });
     const bridge = { ...s, locations: s.locations.map((l) => (l.id === 'patrol' ? { ...l, done: true } : l)) };
     expect(band(endDay(bridge).state)?.done).toBe(false);
     expect(nights(bridge, 8).ambush).toBe('grimsby');

@@ -1,5 +1,6 @@
 import { ARTIFACTS, piecesOf, SETS, slotAcceptsArtifact, slotsForArtifact, type ArtifactId, type SetId, type Slot } from '../content/artifacts';
 import { BACKGROUNDS, type BackgroundId, type Bonus } from '../content/backgrounds';
+import { FRIENDS } from '../content/friends';
 import { PERKS, RANKS, SKILLS, type PerkId, type SkillId } from '../content/skills';
 import type { MapSpellId, SpellId, StatusId } from '../content/spells';
 import type { TroopId } from '../content/troops';
@@ -21,7 +22,7 @@ export const levelFor = (xp: number) => {
   return level;
 };
 
-/** Everything that adds to the hero: the background's signature, skills at their rank, perks and worn gear. */
+/** Everything that adds to the hero: the background's signature, skills at their rank, perks, companions and worn gear. */
 export function bonusesOf(state: GameState): Bonus[] {
   return namedBonuses(state).map((x) => x.bonus);
 }
@@ -37,6 +38,7 @@ export function namedBonuses(state: GameState): { name: string; bonus: Bonus }[]
     out.push({ name: `${RANKS[r - 1]} ${SKILLS[id].name}`, bonus: SKILLS[id].ranks[r - 1].bonus });
   }
   for (const id of hero.perks) out.push({ name: PERKS[id].name, bonus: PERKS[id].bonus });
+  for (const id of hero.friends ?? []) out.push({ name: FRIENDS[id].name, bonus: FRIENDS[id].bonus });
   for (const id of Object.values(hero.gear)) if (id) out.push({ name: ARTIFACTS[id].name, bonus: ARTIFACTS[id].bonus });
   for (const set of wornSets(state)) out.push({ name: SETS[set].name, bonus: SETS[set].bonus });
   return out;

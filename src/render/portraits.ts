@@ -14,7 +14,7 @@ export type { PortraitId };
 
 export const PORTRAIT_SIZE = 64;
 
-type Hat = 'crown' | 'helm' | 'hood' | 'feathercap' | 'witch' | 'coif' | 'none' | 'kettle';
+type Hat = 'crown' | 'helm' | 'hood' | 'feathercap' | 'witch' | 'coif' | 'none' | 'kettle' | 'scarf';
 type Recipe = {
   skin: readonly number[];
   hair?: readonly number[];
@@ -26,6 +26,10 @@ type Recipe = {
   hoodTrim?: boolean;
   /** The feather in a cap: its light and dark (white, unless it's the team's plume). */
   plume?: readonly [number, number];
+  /** A plain helm, with no plume on top. */
+  bare?: boolean;
+  /** Round brass spectacles, and rosy cheeks. */
+  specs?: boolean;
   clothes: readonly number[];
   collar?: 'ermine' | 'mail' | 'ruff' | 'none';
   eyes: number;
@@ -54,6 +58,8 @@ const RECIPES: Record<PortraitId, Recipe> = {
   bramble: { skin: GREENSKIN, hair: WHITE, hat: 'witch', hatColour: [INK, SLATE[0], SLATE[1], SLATE[2]], clothes: [LEAF[1], LEAF[2], LEAF[3], LEAF[4]], eyes: RED[5], mood: 'stern', wart: true },
   anselm: { skin: SKIN, hair: WHITE, beard: 'stubble', beardColour: WHITE, hat: 'coif', hatColour: BROWN, clothes: BROWN, eyes: BLUE[4], mood: 'smile' },
   sergeant: { skin: SKIN, hair: DARK, beard: 'moustache', beardColour: DARK, hat: 'kettle', hatColour: [STONE[2], STONE[3], STONE[5], STONE[6]], clothes: [RED[1], RED[2], RED[3], RED[4]], collar: 'mail', eyes: EARTH[2], mood: 'stern' },
+  nan: { skin: SKIN, hair: WHITE, hat: 'scarf', hatColour: [RED[1], RED[2], RED[3], RED[4]], clothes: [PLUM[0], PLUM[1], PLUM[2], PLUM[3]], eyes: LEAF[5], mood: 'smile', specs: true },
+  dwarf: { skin: SKIN, hair: GINGER, beard: 'full', beardColour: GINGER, hat: 'helm', bare: true, hatColour: [STONE[2], STONE[4], STONE[5], STONE[6]], clothes: BROWN, collar: 'mail', eyes: BLUE[4], mood: 'stern' },
 };
 
 const inEllipse = (x: number, y: number, cx: number, cy: number, rx: number, ry: number) => ((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2 <= 1;
@@ -100,6 +106,14 @@ export function portrait(id: PortraitId): Bitmap {
     b.set(ex + side, cy, INK);
     const brow = p.hair ?? p.beardColour ?? BROWN;
     for (let k = -2; k <= 2; k++) b.set(ex + k, cy - 3 + (side * k * moodBrow > 0 ? 1 : 0) + (p.mood === 'sly' && side > 0 ? -1 : 0), brow[1]);
+  }
+  if (p.specs) {
+    // Rosy cheeks, and round brass spectacles on the end of her nose.
+    for (const side of [-1, 1]) for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [-1, 1]]) b.set(cx + side * 7 + dx, cy + 5 + dy, (dx + dy) % 2 ? RED[4] : RED[5]);
+    for (const side of [-1, 1]) {
+      for (let a = 0; a < Math.PI * 2; a += 0.2) b.set(Math.round(cx + side * 5 + Math.cos(a) * 3.2), Math.round(cy + 0.5 + Math.sin(a) * 2.8), a > Math.PI ? GOLD[5] : GOLD[3]);
+    }
+    for (let x = cx - 1; x <= cx + 1; x++) b.set(x, cy - 1, GOLD[4]);
   }
   for (let y = cy + 1; y < cy + 7; y++) b.set(cx + 1, y, shade(p.skin, 0.25, cx, y));
   b.set(cx, cy + 7, shade(p.skin, 0.2, cx, cy));
@@ -151,7 +165,7 @@ export function portrait(id: PortraitId): Bitmap {
       for (let x = cx - 10; x <= cx + 10; x++) b.set(x, cy - 3, INK);
       for (let y = cy - 18; y < cy - 8; y++) for (let x = cx - 1; x <= cx + 1; x++) b.set(x, y, shade(hat, 0.85, x, y));
       // A plume.
-      fill((x, y) => inEllipse(x, y, cx + 6, cy - 22, 7, 4), (x, y) => shade([BLUE[2], BLUE[3], BLUE[5], BLUE[6]], lit(x, y, cx + 6, cy - 22, 7), x, y));
+      if (!p.bare) fill((x, y) => inEllipse(x, y, cx + 6, cy - 22, 7, 4), (x, y) => shade([BLUE[2], BLUE[3], BLUE[5], BLUE[6]], lit(x, y, cx + 6, cy - 22, 7), x, y));
       break;
     }
     case 'hood': {
@@ -190,6 +204,15 @@ export function portrait(id: PortraitId): Bitmap {
     case 'coif': {
       fill((x, y) => inEllipse(x, y, cx, cy + 1, 15, 18) && !inEllipse(x, y, cx, cy + 4, 11, 15) && y < 50, (x, y) => shade(hat, lit(x, y, cx, cy, 15), x, y));
       fill((x, y) => inEllipse(x, y, cx, cy - 12, 8, 5), (x, y) => shade(SKIN, 0.7, x, y)); // tonsure
+      break;
+    }
+    case 'scarf': {
+      // A fringe of hair at the brow, a spotted headscarf round the face, and its knot under the chin.
+      if (p.hair) fill((x, y) => inEllipse(x, y, cx, cy + 2, 12, 15) && y < cy - 7, (x, y) => shade(p.hair!, 0.5 + hash(x, y, 5) * 0.3, x, y));
+      const scarf = (x: number, y: number) => ((x * 3 + y * 5) % 13 === 0 ? NEUTRAL[7] : shade(hat, lit(x, y, cx, cy - 4, 17), x, y));
+      fill((x, y) => (inEllipse(x, y, cx, cy - 1, 16.5, 19) || inEllipse(x, y, cx, cy + 12, 13, 8)) && !inEllipse(x, y, cx, cy + 3, 11.5, 14.5) && y < cy + 17, scarf);
+      fill((x, y) => inEllipse(x, y, cx, cy + 18, 4, 3), (x, y) => shade(hat, 0.45 - (x - cx) * 0.05, x, y));
+      for (const side of [-1, 1]) fill((x, y) => Math.abs(x - cx - side * 4) < 2 && y >= cy + 19 && y < cy + 24 - (side > 0 ? 1 : 0), (x, y) => shade(hat, 0.35, x, y));
       break;
     }
     case 'none':

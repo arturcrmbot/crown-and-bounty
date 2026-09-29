@@ -60,6 +60,24 @@ function battleResultMarkup(card: NonNullable<Card['battleResult']>): string {
   return `<div class="battle-result">${side('Your fallen', card.player, 'blue')}${side('Their fallen', card.enemy, 'red')}</div><p class="battle-result-mana">${escape(mana)}</p>`;
 }
 
+/**
+ * The parchment's sounds: it crackles open as a card unfolds, and folds away as it goes. A card put
+ * away only to be replaced by the next at once just unfolds: the fold waits a moment to see.
+ */
+let folding: ReturnType<typeof setTimeout> | null = null;
+function unfolds() {
+  if (folding) clearTimeout(folding);
+  folding = null;
+  play('unfold');
+}
+function folds() {
+  if (folding) return;
+  folding = setTimeout(() => {
+    folding = null;
+    play('fold');
+  }, 0);
+}
+
 /** The one parchment card on screen. It sits above whatever it describes and follows it around. */
 export class CardView {
   private readonly wrap = document.createElement('div');
@@ -94,6 +112,7 @@ export class CardView {
       this.card.classList.remove('unfold');
       void this.card.offsetWidth;
       this.card.classList.add('unfold');
+      unfolds();
     }
     this.title = card.title;
     this.card.classList.toggle('wide', Boolean(card.wide));
@@ -110,12 +129,16 @@ export class CardView {
       choices.className = card.tiles ? 'choices tiles' : 'choices';
       for (const choice of card.choices) {
         const button = document.createElement('button');
-        button.textContent = choice.label;
+        // The label and the line under it go together, beside a face if there is one.
+        const words = document.createElement('span');
+        words.className = 'words';
+        words.textContent = choice.label;
         if (choice.detail) {
           const detail = document.createElement('small');
-          detail.textContent = choice.detail;
-          button.append(detail);
+          detail.innerHTML = format(choice.detail);
+          words.append(detail);
         }
+        button.append(words);
         if (choice.portrait) {
           button.classList.add('with-portrait');
           const face = document.createElement('img');
@@ -137,6 +160,7 @@ export class CardView {
   }
 
   hide() {
+    if (!this.wrap.hidden) folds();
     this.wrap.hidden = true;
   }
 
