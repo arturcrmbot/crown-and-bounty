@@ -319,11 +319,11 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   - **The fog** lies where the map's does: the land shows through the fog's own colours, with no roads, as it does on the
     map, so the lie of the land (the river, the woods) is known but not the way through it. The minimap is a chart, not
     a window: it doesn't darken at night or under the lost commission's gloom.
-  - **Marks** for what the map shows clear of the fog: castles and villages blue (troops for hire), enemy bands red, the
-    villain red with a gold heart (at his lair, or where he rides when he's out, his lair then red like any band of his
-    men), treasure (and the X over the sceptre) gold, other places cream, and a place used up grey; what's gone from
-    the map is gone from the minimap. Aldric is a gold diamond with a white heart, the
-    one shape no place has, drawn over everything. A white frame shows the part of the map on screen.
+  - **Marks** for what the map shows clear of the fog: castles and villages blue (troops for hire), enemy bands he knows
+    of red (not one out of sight, #125), the villain red with a gold heart (at his lair, or where he rides when he's out,
+    his lair then red like any band of his men), treasure (and the X over the sceptre) gold, other places cream, and a
+    place used up grey; what's gone from the map is gone from the minimap. Aldric is a gold diamond with a white heart,
+    the one shape no place has, drawn over everything. A white frame shows the part of the map on screen.
   - **Using it.** A press on it looks there at once, as in HoMM2, and a drag steers the view, even off its edge; the
     hover label names the place under the pointer, or says the land is unexplored. The keys card says so too.
   - **Cost.** It only reads the rules state. The land is worked out once when the province opens (10 to 40 ms), the fog
@@ -407,6 +407,30 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   bears (#76) give the chase its ride, and past them it's pathless forest only a Ranger (or anyone in the Greenwood
   Cloak) can cross. The bot wins Aldmoor with every background at much the same pace (by day 12, 9, 9 and 8 at the
   median for the Knight, the Wizard, the Ranger and the Courtier).
+- **The fog of war, as in HoMM2 (29 Sep, #125):** Artur, on the live build: "You'd expect the fog never to be there
+  where your party has been… In Heroes, once you'd explored something, it stayed." In the rules it had stayed: explored
+  land never shrinks, and the fog was drawn from it exactly (not a regression from #81). It only looked as if the fog came
+  back. The light of the day (28 Sep) fell on the fog and on the land alike, so by evening the land he'd ridden through
+  was as amber as the fog, and at nightfall as blue; and the fog's soft edge was centred on the edge of what he'd seen, so
+  the rim of it stayed misty. Now:
+  - **Land he has seen is clear, all of it, for the rest of the commission:** the terrain, the roads and the places. The
+    fog covers only land he has never seen, and its soft edge (three cells) lies over that land, not over what he's seen.
+    The minimap shows the same cells.
+  - **The light falls on the land he knows,** and on everything that stands on it, never on the fog: in the morning and
+    the evening the fog keeps its own grey, and as night falls it goes dark while the known land is moonlit. What he has
+    seen is always the lit part of the map.
+  - **What moves is the exception.** A band on the move that walks off in the night where Aldric can't see it from his
+    camp is out of sight, and gone from the map and the minimap, until he sees it again: within his sight as he rides
+    (150 paces, more with Scouting), or wherever the mist lifts (the tower, Far Sight, his scouts at dawn). The issue left
+    it open whether to show such a band where it was last seen or to hide it: it's hidden. Bands only move at night, so
+    whatever he has seen since dawn is where he saw it; a band he hasn't is nowhere he knows of, rather than a ghost to
+    ride to. A hunter on his trail he sees at dawn, as the news says, and one he watches walk off shows until it leaves
+    his sight. Guards, lairs and places never move, so they stay once seen. The grain cart is a band on the move too: the
+    payday card says it has left Westmere, and it's found on its road. Expert Scouting (scouts shadowing every band) now
+    shows every band each dawn, wherever it is. The rules keep it (`unseen` on a band, `rules/map/sight.ts`), so a save
+    keeps what he knows.
+  - Saves carry on as they were, with no new version: nothing had lost explored land, and the new field is optional. Two
+    new frozen scenes, `evening` and `nightfall` (`?movement=N` leaves that much of the day's riding), keep the look honest.
 - **The map gets its width back, and a journal (29 Sep, #130):** Artur, playing the live build: the right-hand panel
   (#106) made no sense for this game, which has no castles or towns to manage. It showed a portrait he already knew and
   a poster he'd already read, and took a quarter of the map. So the panel is gone, and the map's view is the whole

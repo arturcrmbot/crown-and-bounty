@@ -32,6 +32,9 @@ const SCENES = {
   downs: { query: '&reveal=1&x=2900&y=420' },
   chase: { query: '&reveal=1&x=2400&y=1900' },
   dig: { query: '&reveal=1&x=700&y=560' },
+  // Land he has seen stays clear in any light (#125): the King's road in the evening, and at nightfall.
+  evening: { query: '&hero=knight&movement=40&x=2760&y=960', steps: [] },
+  nightfall: { query: '&hero=knight&movement=0&x=2760&y=960', steps: [] },
   battle: { query: '&battle=patrol', keepCard: true },
   court: { query: '&court=1', keepCard: true },
   courtwizard: { query: '&court=1&hero=wizard', keepCard: true },

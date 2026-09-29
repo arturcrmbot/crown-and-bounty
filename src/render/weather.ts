@@ -1,7 +1,7 @@
 import type { Bitmap } from './bitmap';
 import { SCREEN, type Rect } from './frame';
 import { hash } from './noise';
-import { EVENING_LUT, GOLD, LEAF, MIST_LUT, MORNING_LUT, NEUTRAL, NIGHT_LUT, PLUM, RAIN_LUT, STONE, WATER } from './palette';
+import { EVENING_LUT, GOLD, LEAF, MIST_LUT, MORNING_LUT, NEUTRAL, NIGHT_LUT, PLUM, RAIN_LUT, SHADOW_LUT, STONE, WATER } from './palette';
 import type { Point } from '../rules/map/geometry';
 
 /** What the sky is doing over the map right now. Everything here comes from the clock and the state, never dice, so a frozen screenshot is always the same. */
@@ -28,6 +28,9 @@ const smooth = (a: number, b: number, v: number) => {
   return t * t * (3 - 2 * t);
 };
 
+/** How much of the map the night's blue covers when the day's riding is done. */
+const NIGHT = 0.55;
+
 /**
  * How much of the map each of the day's lights covers, by how far through the day the hero is: a
  * fresh morning that clears as he rides, then nothing but the day itself, a golden evening as his
@@ -36,7 +39,7 @@ const smooth = (a: number, b: number, v: number) => {
 export function daylight(day: number): { morning: number; evening: number; night: number } {
   const morning = day < 0.12 ? (1 - day / 0.12) * 0.3 : 0;
   const evening = day < 0.5 ? 0 : day < 0.82 ? smooth(0.5, 0.82, day) * 0.34 : 0.34 * (1 - smooth(0.82, 1, day));
-  const night = day < 0.82 ? 0 : smooth(0.82, 1, day) * 0.55;
+  const night = day < 0.82 ? 0 : smooth(0.82, 1, day) * NIGHT;
   return { morning, evening, night };
 }
 
@@ -100,8 +103,13 @@ export class Weather {
     });
   }
 
-  /** The day's light, a shower's grey and the fen's mist, laid over the map's `view`. `camera` is where the view looks on the map. */
-  light(screen: Bitmap, sky: Sky, camera: { x: number; y: number }, view: Rect) {
+  /**
+   * The day's light, a shower's grey and the fen's mist, laid over the map's `view`. `camera` is where
+   * the view looks on the map. The light falls on the land the hero knows and on whatever stands on
+   * it, never on the fog: `veil` holds, for each screen pixel, the fog's colour there plus one (0
+   * where there's no fog), and a pixel still that colour is fog, whatever the hour.
+   */
+  light(screen: Bitmap, sky: Sky, camera: { x: number; y: number }, view: Rect, veil?: Uint16Array) {
     const { morning, evening, night } = daylight(sky.day);
     const rain = sky.rain * 0.4;
     const mist = sky.mist;
@@ -115,8 +123,13 @@ export class Weather {
       const rowRain = ((y + 1) & 3) << 2;
       let o = y * SCREEN.width + view.x;
       for (let x = view.x; x < view.x + view.width; x++, o++) {
-        const d = BAYER[(x & 3) + row];
         let c = data[o];
+        const d = BAYER[(x & 3) + row];
+        if (veil && veil[o] === c + 1) {
+          // The fog takes no colour from the day, and darkens as night falls, so the land he knows is always the lit part.
+          if (d < night / NIGHT) data[o] = SHADOW_LUT[c];
+          continue;
+        }
         if (d < night) c = NIGHT_LUT[c];
         else if (d < night + evening) c = EVENING_LUT[c];
         else if (d < morning) c = MORNING_LUT[c];

@@ -250,7 +250,7 @@ export function leaderTraits(state: GameState): Note[] {
   if (s.casts > 1) out.push({ name: `${s.casts} spells a round`, note: 'He casts again before the round is out.', trick: true });
   if (s.manaDiscount) out.push({ name: 'Hedge magic', note: `Every spell costs ${s.manaDiscount} less mana.` });
   const chargers = s.charge.filter((t) => !TROOPS[t].hero);
-  if (chargers.length) out.push({ name: 'Charge', note: `His ${names(chargers)} charge: after a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder, and nobody strikes back.`, trick: true });
+  if (chargers.length) out.push({ name: 'Charge', note: `His ${names(chargers)} charge: after a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder, and nobody strikes back, but it winds them: they can\u2019t strike back themselves for the rest of that round and the next.`, trick: true });
   if (s.volley) out.push({ name: 'First volley', note: 'His shooters loose a free volley before every battle, except at a villain\u2019s walls.', trick: true });
   if (s.melee) out.push({ name: 'Offence', note: `+${pct(s.melee)} damage in melee, for every stack.` });
   if (s.ranged) out.push({ name: 'Archery', note: `+${pct(s.ranged)} damage with every shot.` });
@@ -370,7 +370,7 @@ export function stackSheet(state: GameState, index: number): StackSheet | null {
     if (bonus.armour) traits.push({ name, note: `They take ${pct(bonus.armour)} less damage.` });
   }
   // One charge, however many things teach it.
-  if (chargedBy.length) traits.push({ name: `Charge (${chargedBy.join(', ')})`, note: 'After a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder, and nobody strikes back.', trick: true });
+  if (chargedBy.length) traits.push({ name: `Charge (${chargedBy.join(', ')})`, note: 'After a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder, and nobody strikes back, but it winds them: they can\u2019t strike back themselves for the rest of that round and the next.', trick: true });
   if (volleyBy.length) traits.push({ name: `First volley (${volleyBy.join(', ')})`, note: 'A free volley before every battle, except at a villain\u2019s walls.', trick: true });
   const spirits = f ? spiritsOf(b, f) : null;
   traits.push(...spiritTraits(spirits));
@@ -401,7 +401,7 @@ export function stackSheet(state: GameState, index: number): StackSheet | null {
 function chargeLine(state: GameState): string {
   const list = listed([...new Set(heroStats(state).charge.filter((t) => !TROOPS[t].hero))].map((t) => TROOPS[t].name));
   return list
-    ? `He and his ${list} charge: a quarter harder, and nobody strikes back. He rides in from behind the line; they need a run-up of 3 hexes, started clear of the enemy.`
+    ? `He and his ${list} charge: a quarter harder, and nobody strikes back. He rides in from behind the line; they need a run-up of 3 hexes, started clear of the enemy, and it winds them: they can\u2019t strike back themselves for the rest of that round and the next.`
     : 'He charges as he rides in from behind the line: a quarter harder, and nobody strikes back.';
 }
 
@@ -411,7 +411,7 @@ function bribes(state: GameState): Note[] {
   if (!art) return [];
   const off = heroStats(state).bribes;
   const less = off ? `, less ${Math.round(off * 100)}%` : '';
-  return [{ name: 'Bribes', note: `He pays ${art.weeks.leave} weeks of a stack\u2019s wages to send it home, or ${art.weeks.join} to bring it over if it fits under his banner${less}. Beasts take no gold, and villains and captains can\u2019t be bought. His sergeants never spend his gold.` }];
+  return [{ name: 'Bribes', note: `He pays ${art.weeks.leave} weeks of a stack\u2019s wages to send it home, or ${art.weeks.join} to bring it over if it fits under his banner${less}. Bought, not beaten, they teach him half what beating them would. Beasts take no gold, and villains and captains can\u2019t be bought. His sergeants never spend his gold.` }];
 }
 
 /** The hero's own card, laid out like a stack's: how he fights from behind the line, and what he brings the army. */

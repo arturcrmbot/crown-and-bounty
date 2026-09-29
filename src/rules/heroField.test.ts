@@ -172,7 +172,7 @@ describe('Aldric behind the line', () => {
   it('counts in the sergeants\u2019 odds: a hero grown strong wins close fights more often', () => {
     const close = (level: number) => {
       const s = hero('knight', level);
-      return winChance({ ...s, army: s.army.map((a) => ({ ...a, count: Math.round(a.count * 1.3) })) }, 'patrol', 8);
+      return winChance({ ...s, army: s.army.map((a) => ({ ...a, count: Math.round(a.count * 1.5) })) }, 'patrol', 8);
     };
     expect(close(15)).toBeGreaterThan(close(1));
   });

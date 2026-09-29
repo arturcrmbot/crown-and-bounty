@@ -62,6 +62,48 @@ is a wall one day and a walkover the next, and a hero who waits a day never has 
   it: the Knight bot beats the wolves on day 1 and keeps 5 of 42. So its curve sits below a player's.
 - It takes the trick perk at every level, never Offence or Armourer, and its sergeants never bribe.
 
+## The new map, measured (29 Sep, evening)
+
+Measured on main after #85 to #123, on the new Aldmoor, with a careful player (the bot's routes, but it fights only
+with a margin and learns the skills that multiply) and the greedy bot, 5 seeds a background.
+
+| Aldmoor, in Grimsbys (careful player) | day 1 | day 3 | day 7 | day 10 | day 14 | day 21 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Knight | 0.79 | 0.81 | 1.13 | 1.32 | 1.81 | 2.61 |
+| Wizard | 0.83 | 0.99 | 1.13 | 1.16 | 2.68 | 2.75 |
+| Ranger | 0.69 | 1.05 | 1.96 | 2.48 | 2.42 | 2.42 |
+| Courtier | 0.90 | 1.10 | 1.43 | 2.23 | 2.48 | 2.68 |
+| **Grimsby as he stands** | 1.0 | 1.0 | 0.83 | 0.69 | 0.67 | 0.71 |
+
+- **Artur took Grimsby at level 3** with a few knights and archers. Hurt him (pay off the patrol, raid the dig), and
+  he rode out with a third of his men; the starting army beats that guard ten times in ten (+440 experience, level
+  III), and he fled home without it, for good. His stockade at 65% fell to one day's shopping (15 knights, 32
+  archers) ten times in ten, for every background. Not a bug: the sergeants use his orders and his guard, and the
+  card's odds are right.
+- **He's sized for day 1.** His stockade is smaller than the patrol on the bridge. One day's shopping puts any hero
+  at 0.8 to 1.1 Grimsbys, and the Courtier wins nine in ten on day III at level I, without a fight.
+- **The bridge falls on day 2 to 4** for the bot (4 to 10 for the careful player) and pays four levels (1,152
+  experience). Everyone is level 8 with full leadership by day 10 to 14, and the bot leaves 3,000 to 4,000 gold
+  unspent. It takes Grimsby on day 9 to 12 (the median).
+- **Where the power comes from** on day 21 (the careful player, one seed): the army ×1.7 to 2.8, spells ×1.2 (Knight)
+  to ×1.8 (Wizard, Courtier ×1.7), stats ×1.2, gear ×1.1 to 1.25, skills ×1.1 to 1.2, his own turn ×1.0 to 1.2, luck
+  and morale ×1.0 to 1.2.
+- **Why the model missed it:** its `explored` point is day 15 on the new map, where Grimsby is 100% for everyone,
+  but the boss has only a day-1 target.
+- **The playtests** (#119, #129) add: bought-off stacks pay full experience; one charge of knights kills a stack
+  and nothing strikes back; a skill's next rank comes at the very next level-up; and Grimsby never answers a second
+  hurt.
+
+The levers, in order, each a PR with the curve before and after:
+
+1. Grimsby's guard straggles home after him, so the stockade stays whole, and a new hurt sends him out again.
+2. Stacks paid off or bought over teach half what beating them would (Artur's call), as a surrender does.
+3. Slower growth: +5 leadership a level, not +10 (#97), and a skill's ranks spread over the level-ups.
+4. The Knight's charge has an answer: a stack that charges is winded, and can't strike back until its next turn.
+5. Beasts follow at nine in ten (#98); the Wizard's mana comes back a quarter a dawn (#99).
+6. Grimsby and the gates sized to the new curve (#95), with a day-21 check in `npm run difficulty`, and
+   `npm run sim:curve` (#94).
+
 ## The approach
 
 1. **A power budget for each commission.** Each commission has a target day for its villain and a reference hero:

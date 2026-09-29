@@ -205,6 +205,7 @@ export class BattleController implements Screen {
             `Pay them **${coins(leave)} gold** (${art.weeks.leave} weeks\u2019 wages${off}), and they go home.`,
             room ? `Pay them **${coins(join)} gold** (${art.weeks.join} weeks\u2019 wages${off}), and they fight for you, and ride on with you after.` : '*You have no room under your banner for them to come over.*',
             ...(quarrel ? [quarrel] : []),
+            '*Bought, not beaten, they teach you half what beating them would.*',
             `You carry **${coins(gold)} gold**.`,
           ];
     lines.push(`Jeer them, and they lose heart: ${spirits(jeer)} for ${jeer.rounds} rounds, a chance they lose their turn.`);
@@ -1175,7 +1176,7 @@ export class BattleController implements Screen {
     const left = wound(target, damage);
     const back = !ranged && !charge && !leader && left.count > 0 && !target.retaliated ? ' They will strike back.' : '';
     // A leader's blow gets no answer: nothing can reach him, and he's back behind the line before they turn.
-    const after = leader && !ranged ? ` ${this.fighterName(f.id)} rides back behind the line, and nobody can strike back.` : charge ? ' No one can strike back at a charge.' : '';
+    const after = leader && !ranged ? ` ${this.fighterName(f.id)} rides back behind the line, and nobody can strike back.` : charge ? ' No one can strike back at a charge, but it winds them: they won\u2019t strike back themselves for the rest of this round and the next.' : '';
     return `${charge ? 'Charge! ' : ''}${ranged ? 'Shoot' : 'Attack'} ${whom}: about ${damage} damage, ${left.killed} perish.${back}${after}`;
   }
 

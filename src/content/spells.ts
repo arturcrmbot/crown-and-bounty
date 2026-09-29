@@ -15,7 +15,7 @@ export const MAP_SPELLS: Record<MapSpellId, { id: MapSpellId; name: string; mana
 };
 
 /** Lasting effects on a stack. Each one changes numbers the engine already uses. */
-export type StatusId = 'blessed' | 'slowed' | 'hasted' | 'stoneskin' | 'shieldwall' | 'newts' | 'frogs' | 'poisoned' | 'jeered' | 'heartened' | 'charmed' | 'marked';
+export type StatusId = 'blessed' | 'slowed' | 'hasted' | 'stoneskin' | 'shieldwall' | 'newts' | 'frogs' | 'poisoned' | 'jeered' | 'heartened' | 'charmed' | 'marked' | 'winded';
 
 export type StatusDef = {
   name: string;
@@ -63,6 +63,8 @@ export const STATUSES: Record<StatusId, StatusDef> = {
   hasted: { name: 'Hasted', speedAdd: 2 },
   stoneskin: { name: 'Stone Skin', defenceAdd: 3 },
   shieldwall: { name: 'Shield Wall', defenceAdd: 3, rounds: 2 },
+  // A charge's price: whoever just rode one home can't strike back for the rest of that round and the next.
+  winded: { name: 'Winded', noStrikeBack: true, rounds: 2 },
   newts: { name: 'Newts', skipsTurn: true, noStrikeBack: true, silences: true, look: 'newt' },
   frogs: { name: 'Frogs', skipsTurn: true, noStrikeBack: true, silences: true, look: 'frog' },
   poisoned: { name: 'Poisoned', hurtsTopOnTurn: 0.1, onHit: 'The bite leaves them poisoned.' },

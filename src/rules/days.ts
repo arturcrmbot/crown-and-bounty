@@ -5,6 +5,7 @@ import { heroStats } from './hero';
 import { mapOf } from './map/maps';
 import { haul, setOut } from './map/convoys';
 import { moveEnemies } from './map/roaming';
+import { loseSight } from './map/sight';
 import { rideHome, rideOut } from './map/sortie';
 import { payday as reopen } from './places';
 import { faceOf } from './places/common';
@@ -76,13 +77,13 @@ export function endDay(state: GameState): Result {
   }
   // The night: a villain who has been hurt rides out, convoys go on along their roads, stacks on the
   // move take their walk, a hunter may reach the camp, and a villain's band that can't find the hero
-  // goes home. On payday's dawn, convoys set out.
+  // goes home. On payday's dawn, convoys set out. Whatever moved where he can't see it is out of sight.
   const out = rideOut(next);
   const hauled = haul(out.state);
   const night = moveEnemies(hauled.state, mapOf(next));
   const home = rideHome(night.state);
   const convoys = payday ? setOut(home.state) : { state: home.state, events: [], lines: [] };
-  const morning = heroMorning(convoys.state, state);
+  const morning = heroMorning(loseSight(next, convoys.state), state);
   next = morning.state;
   events.push(...out.events, ...hauled.events, ...night.events, ...home.events, ...convoys.events, ...morning.events);
   lines.push(...out.lines, ...home.lines, ...convoys.lines);

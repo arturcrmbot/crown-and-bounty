@@ -69,9 +69,37 @@ async function beatWhenReady(id, tries = 6) {
   return kc.title();
 }
 
+/**
+ * A band that moved in the night where he couldn't see it is off the map until he sees it again
+ * (#125): ride towards where it roams, as a player who'd seen it there would, and rein in once it's in sight.
+ */
+async function sight(id) {
+  const lost = () => kc.call((i) => Boolean(window.__kc.state().locations.find((l) => l.id === i)?.enemy?.unseen), id);
+  if (!(await lost())) return;
+  for (let day = 0; day < 8 && (await lost()); day++) {
+    await settle();
+    if (await kc.title()) await close();
+    const [x, y] = (await kc.state()).locations.find((l) => l.id === id).at;
+    await kc.view(x, y);
+    await kc.click(x, y);
+    await page.waitForFunction((i) => {
+      const s = window.__kc.status();
+      return !window.__kc.state().locations.find((l) => l.id === i)?.enemy?.unseen || (!s.riding && !s.visiting) || s.tired;
+    }, id, { timeout: 60_000 });
+    if (!(await lost())) break;
+    if ((await kc.status()).tired) {
+      await kc.choose('End the day');
+      await close();
+    }
+  }
+  if ((await kc.status()).riding) await page.keyboard.press('Escape');
+  check(!(await lost()), `${id}, out of sight since it moved, is back on the map once he rides near`);
+}
+
 /** Clicks a place, takes its action, and keeps riding (ending days when tired) until the hero gets there. */
 async function go(id, action) {
   await settle();
+  await sight(id);
   const [x, y] = await kc.centre(id);
   // If the hero stands in front of the place he takes the click, as he should: close his screen
   // and click another corner of the place, as a player would.
@@ -362,7 +390,7 @@ try {
   check((await beatWhenReady('patrol')) === 'Victory!', 'once explored, the sergeants beat the patrol');
   await close();
   // Taking his patrol off the bridge hurts Grimsby: he rides out with his guard to meet the hero, and
-  // falls on his camp. Beaten in the open, he flees home to his stockade, without his guard.
+  // falls on his camp. Beaten in the open, he flees home to his stockade, and his guard straggles in after him.
   const byGrimsby = () => ambushes.find((a) => a.who === 'Grimsby and his Guard');
   for (let night = 0; night < 8 && !byGrimsby(); night++) {
     await settle();
@@ -380,7 +408,8 @@ try {
   if (met) {
     check(met.title === 'Victory!' && met.lines.includes('Baron Grimsby flees home'), `beaten in the open, Grimsby flees home to his stockade (${met.title})`);
     const stockade = (await kc.state()).locations.find((l) => l.id === 'hideout');
-    check(stockade.enemy.humbled && stockade.enemy.army.some((s) => s.troop === 'baron'), 'and stays behind his walls, without his guard');
+    const swordsmen = stockade.enemy.army.find((s) => s.troop === 'swordsmen')?.count ?? 0;
+    check(!stockade.enemy.humbled && stockade.enemy.army.some((s) => s.troop === 'baron') && swordsmen >= 46, `and his guard straggles home after him (${swordsmen} swordsmen behind his walls)`);
   }
   check((await kc.state()).locations.some((l) => l.id === 'deserters'), 'deserters make camp by the crossroads');
   await go('deserters', 'Visit');

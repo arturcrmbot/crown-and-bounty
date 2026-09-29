@@ -100,7 +100,7 @@ const GRIMSBY_RIDES: Location = {
     reward: 400,
     threat: '*"There he is!"* shouts the Baron, pointing with the goose. *"Get him!"*',
     lastWords: 'A strategic retreat! Hold on tight, goose!',
-    flees: 'The Baron gallops home to his stockade, the goose under his arm and his guard nowhere at all.',
+    flees: 'The Baron gallops home to his stockade, the goose under his arm, and his guard limps after him.',
     loot: 'In the mud where he turned his pony: {gold}, the guard\u2019s pay.',
   },
 };
