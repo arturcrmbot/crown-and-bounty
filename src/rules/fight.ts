@@ -127,6 +127,16 @@ const heroAgainst = (state: GameState, place: Location): BattleHero => {
 /** Experience for a won battle: the fighting worth of what was beaten. */
 export const battleXp = (enemy: Army) => Math.round(armyPower(enemy));
 
+/** Whoever of a side walked off the field, paid to go home or to change sides. */
+function boughtOff(battle: BattleState, side: Side): Army {
+  const gone = new Map<Army[number]['troop'], number>();
+  for (const fighter of battle.fighters) if (fighter.side === side && fighter.left) gone.set(fighter.troop, (gone.get(fighter.troop) ?? 0) + fighter.left);
+  return [...gone].map(([troop, count]) => ({ troop, count }));
+}
+
+/** What a won battle teaches: the worth of the army beaten, less half the worth of whoever was paid off, as a surrender teaches half. */
+export const wonXp = (battle: BattleState, enemy: Army) => Math.max(0, battleXp(enemy) - Math.round(battleXp(boughtOff(battle, 'enemy')) / 2));
+
 /** "You lost 3 Knights, 7 Archers and 1 Swordsman." */
 export function lossesLine(before: Army, after: Army): string {
   const lost = before
@@ -324,7 +334,7 @@ export function finishFight(state: GameState): Result {
   const paid = Math.max(0, state.gold - (battle.hero.gold ?? state.gold));
   // And the villain's last words, on the card as on the field.
   const ended = end ? [`${end.army}, and **${end.leader}**.`, ...(battle.result === 'won' && battle.lastWords ? [`*\u201c${battle.lastWords}\u201d*`] : [])] : [];
-  const bribed = paid ? [`Bribes cost you **${coins(paid)} gold**.`] : [];
+  const bribed = paid ? [`Bribes cost you **${coins(paid)} gold**${battle.result === 'won' ? ', and those you paid off teach you half what beating them would' : ''}.`] : [];
   // The battle rolled its own dice from the state's seed: carry on from where it stopped, not from the start again.
   const base: GameState = { ...state, seed: battle.seed, battle: undefined, army, gold: state.gold - paid, hero: { ...state.hero, mana: battle.hero.mana } };
   const manaSpent = Math.max(0, state.hero.mana - battle.hero.mana);
@@ -341,7 +351,7 @@ export function finishFight(state: GameState): Result {
     const lair = place.kind === 'hideout';
     const opening = lair ? [...ended, commissionOf(base).surrender, ...bribed, ...after.lines] : [...ended, enemy.flees, ...bribed, ...after.lines, enemy.loot.replace('{gold}', `**${coins(enemy.reward)} gold**`)];
     // Beside his face, the fallen come once he's taken, before what it cost and what it paid.
-    return beat(after.state, place.id, { title: 'Victory!', lines: opening, reward: enemy.reward, xp: battleXp(enemy.army), battleResult: lair ? { ...battleResult, after: ended.length + 1 } : battleResult });
+    return beat(after.state, place.id, { title: 'Victory!', lines: opening, reward: enemy.reward, xp: wonXp(battle, enemy.army), battleResult: lair ? { ...battleResult, after: ended.length + 1 } : battleResult });
   }
   const castle = state.locations.find((l) => l.kind === 'castle');
   const home = castle ? ([castle.at[0], castle.at[1] + 14] as const) : state.hero.at;

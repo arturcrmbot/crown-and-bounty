@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ALDMOOR } from '../../content/aldmoor';
 import { battleEnd, createBattle } from '../battle/battle';
 import { apply, choose, endDay, heroInBattle, locationById, visit, type GameEvent, type GameState } from '../game';
+import { withNewPlaces } from '../campaign';
 import { newGame } from '../scenario';
 import { riddenOut } from './sortie';
 
@@ -72,16 +73,30 @@ describe('Grimsby riding out', () => {
     const r = apply(s, { type: 'choose', id: 'grimsby', choice: 'auto' })!;
     expect(band(r.state)!.done).toBe(true);
     expect(r.state.bounty).toBe('open');
-    // Home again, without his guard, and there he stays.
-    const home = locationById(r.state, 'hideout').enemy!;
+    // Home again, and his guard straggles in after him: his stockade is as strong as it was.
     expect(count(r.state, 'hideout', 'baron')).toBe(1);
-    expect(count(r.state, 'hideout', 'swordsmen')).toBe(46 - Math.round(46 * 0.35));
-    expect(home.humbled).toBe(true);
+    expect(count(r.state, 'hideout', 'swordsmen')).toBe(46);
+    expect(count(r.state, 'hideout', 'crossbowmen')).toBe(24);
+    expect(locationById(r.state, 'hideout').enemy!.humbled).toBeUndefined();
     expect(cardLines(r).join(' ')).toContain('Baron Grimsby flees home');
-    const after = endDay({ ...r.state, flags: { ...r.state.flags, patrolGone: true } }).state;
-    expect(band(after)!.done).toBe(true);
     // His gate is open again.
-    expect(cardLines(visit(after, 'hideout')).join(' ')).not.toContain('The gate is barred');
+    expect(cardLines(visit(r.state, 'hideout')).join(' ')).not.toContain('The gate is barred');
+    // The same hurt doesn't send him out again; a new one does.
+    expect(band(endDay(r.state).state)!.done).toBe(true);
+    const again = endDay({ ...r.state, flags: { ...r.state.flags, patrolGone: true } }).state;
+    expect(band(again)?.done).toBe(false);
+    expect(count(again, 'grimsby', 'swordsmen')).toBe(Math.round(46 * 0.35));
+  });
+
+  it('gets his guard back in a save from before, when he came home without it', () => {
+    const s = aldmoor();
+    const lair = locationById(s, 'hideout');
+    const short = { ...lair, enemy: { ...lair.enemy!, humbled: true, army: [{ troop: 'swordsmen' as const, count: 30 }, { troop: 'crossbowmen' as const, count: 16 }, { troop: 'baron' as const, count: 1 }] } };
+    const loaded = withNewPlaces({ ...s, locations: s.locations.map((l) => (l.id === 'hideout' ? short : l)) });
+    expect(count(loaded, 'hideout', 'swordsmen')).toBe(46);
+    expect(count(loaded, 'hideout', 'crossbowmen')).toBe(25);
+    expect(count(loaded, 'hideout', 'baron')).toBe(1);
+    expect(locationById(loaded, 'hideout').enemy!.humbled).toBeUndefined();
   });
 
   it('gives up and goes home, guard and all, when the hero rides off where he can\u2019t follow', () => {

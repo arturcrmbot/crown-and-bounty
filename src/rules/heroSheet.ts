@@ -390,7 +390,7 @@ function bribes(state: GameState): Note[] {
   if (!art) return [];
   const off = heroStats(state).bribes;
   const less = off ? `, less ${Math.round(off * 100)}%` : '';
-  return [{ name: 'Bribes', note: `He pays ${art.weeks.leave} weeks of a stack\u2019s wages to send it home, or ${art.weeks.join} to bring it over if it fits under his banner${less}. Beasts take no gold, and villains and captains can\u2019t be bought. His sergeants never spend his gold.` }];
+  return [{ name: 'Bribes', note: `He pays ${art.weeks.leave} weeks of a stack\u2019s wages to send it home, or ${art.weeks.join} to bring it over if it fits under his banner${less}. Bought, not beaten, they teach him half what beating them would. Beasts take no gold, and villains and captains can\u2019t be bought. His sergeants never spend his gold.` }];
 }
 
 /** The hero's own card, laid out like a stack's: how he fights from behind the line, and what he brings the army. */

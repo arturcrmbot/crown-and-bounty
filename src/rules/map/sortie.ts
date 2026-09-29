@@ -46,7 +46,7 @@ export function merge(army: Army, more: Army): Army {
 /**
  * The night a villain is hurt, once the hero is where his band would come for him, he rides out: the
  * band appears at his gate, with him and his guard, and the rest stay behind the walls. One already
- * out has answered already, and one beaten in the open stays home.
+ * out has answered already; one beaten in the open rides out again at the next new hurt.
  */
 export function rideOut(state: GameState): Night {
   let next = state;
@@ -54,7 +54,7 @@ export function rideOut(state: GameState): Night {
   const lines: string[] = [];
   for (const lair of state.locations) {
     const e = lair.enemy;
-    if (!e?.sortie || lair.done || e.humbled || riddenOut(next, lair)) continue;
+    if (!e?.sortie || lair.done || riddenOut(next, lair)) continue;
     const hurt = hurts(next, lair);
     if (!hurt.length) continue;
     const s = e.sortie;
@@ -94,10 +94,24 @@ export function rideHome(state: GameState): Night {
   return { state: next, events, lines };
 }
 
-/** His band beaten in the open, the villain flees home without it, and stays there. */
+/**
+ * His band beaten in the open, the villain flees home, and his guard straggles in after him: his walls
+ * are as strong as ever. Beating him in the field wins its own spoils, not his stockade.
+ */
 export function fleeHome(state: GameState, band: Location): GameState {
   const lair = state.locations.find((l) => l.id === band.enemy?.lair && !l.done);
   if (!lair?.enemy) return state;
-  const leaders = band.enemy!.army.filter((s) => leads(s.troop));
-  return update(state, lair.id, { enemy: { ...lair.enemy, army: merge(lair.enemy.army, leaders), humbled: true } });
+  return update(state, lair.id, { enemy: { ...lair.enemy, army: merge(lair.enemy.army, band.enemy!.army) } });
+}
+
+/**
+ * A lair left a guard short by an older save, when a villain beaten in the open came home without it
+ * (`humbled`): the guard is back, as many as he'd have sent out of the garrison he has now.
+ */
+export function unhumbled(lair: Location): Location {
+  const e = lair.enemy;
+  if (!e?.humbled || !e.sortie) return lair;
+  const { humbled: _, ...rest } = e;
+  const army = e.army.map((x) => (leads(x.troop) ? x : { ...x, count: Math.round(x.count / (1 - e.sortie!.guard)) }));
+  return { ...lair, enemy: { ...rest, army } };
 }

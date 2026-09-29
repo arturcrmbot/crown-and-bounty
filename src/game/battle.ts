@@ -205,6 +205,7 @@ export class BattleController implements Screen {
             `Pay them **${coins(leave)} gold** (${art.weeks.leave} weeks\u2019 wages${off}), and they go home.`,
             room ? `Pay them **${coins(join)} gold** (${art.weeks.join} weeks\u2019 wages${off}), and they fight for you, and ride on with you after.` : '*You have no room under your banner for them to come over.*',
             ...(quarrel ? [quarrel] : []),
+            '*Bought, not beaten, they teach you half what beating them would.*',
             `You carry **${coins(gold)} gold**.`,
           ];
     lines.push(`Jeer them, and they lose heart: ${spirits(jeer)} for ${jeer.rounds} rounds, a chance they lose their turn.`);
