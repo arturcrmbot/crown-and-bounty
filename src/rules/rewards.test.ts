@@ -46,6 +46,8 @@ describe('choices that come back later', () => {
     const opened = choose(spared.state, 'cache', 'keep')!.state;
     expect(Object.values(opened.hero.gear)).toContain('poachersHorn');
     expect(heroStats(opened).volley).toBe(true);
+    // Their leader keeps his lucky rabbit's foot.
+    expect(Object.values(opened.hero.gear)).not.toContain('rabbitsFoot');
   });
 
   it('beaten poachers leave their venison, and the wolves will go after it', () => {
@@ -53,6 +55,9 @@ describe('choices that come back later', () => {
     const beaten = choose(fresh(), 'poachers', 'auto')!.state;
     expect(locationById(beaten, 'poachers').done).toBe(true);
     expect(beaten.flags?.venison).toBe(true);
+    // And their leader's rabbit's foot, which wasn't so lucky for him.
+    expect(Object.values(beaten.hero.gear)).toContain('rabbitsFoot');
+    expect(heroStats(beaten).luck).toBeCloseTo(0.1);
     const past = choose(beaten, 'wolves', 'parley/venison')!.state;
     expect(locationById(past, 'wolves').done).toBe(true);
     expect(past.flags?.wolfpelt).toBeUndefined();
