@@ -172,6 +172,9 @@ const roads = {
 
 const paths: Point[][] = Object.values(roads);
 
+/** The grain cart's way from Westmere to Grimsby's stockade: over the old bridge, past the kennels, and through Darkwood. */
+const CART_ROAD: Point[] = [...roads.bridge.slice(1), ...roads.darkwood.slice(1)];
+
 /** The river, north to south: the only ways over are the old bridge and the ford. */
 const river: Point[] = [[1760, -80], [1808, 240], [1696, 560], [1776, 880], [1632, 1200], [1672, 1456], [1536, 1760], [1456, 2080], [1392, 2480]];
 
@@ -751,6 +754,55 @@ export const ALDMOOR: Province = {
         flees: 'Grimsby\u2019s patrol breaks and runs for Darkwood.',
         loot: 'You find {gold} on the road. And a dozen of them would rather fight for the Crown: they make camp by the crossroads, where **swordsmen** can now be hired.',
       },
+    },
+    {
+      // Every payday, while the patrol holds the bridge, a squad of it takes Westmere's grain to Grimsby.
+      id: 'cart',
+      kind: 'patrol',
+      look: 'cart',
+      name: 'The Grain Cart',
+      at: CART_ROAD[0],
+      done: true,
+      enemy: {
+        look: 'soldiers',
+        tier: 'band',
+        convoy: {
+          from: 'patrol',
+          share: 0.2,
+          route: CART_ROAD,
+          pace: 360,
+          leaves: 'In Westmere, a squad of Pike\u2019s lads is loading the village\u2019s grain onto a cart, for the Baron\u2019s stockade.',
+        },
+        lines: ['Westmere\u2019s grain, on its way to Grimsby\u2019s stockade, and a squad of Pike\u2019s lads from the bridge to see it gets there.', '*The carter doesn\u2019t look happy about it. Nor does the ox.*'],
+        army: [{ troop: 'swordsmen', count: 10 }, { troop: 'crossbowmen', count: 6 }],
+        reward: 100,
+        threat: 'The carter whips up the ox. Pike\u2019s lads put themselves between you and the grain, rather apologetically.',
+        spoils: { flags: { grain: true }, rations: 1, page: 'grain' },
+        flees: 'Pike\u2019s lads leave the cart in the road and run for the bridge.',
+        loot: 'In the carter\u2019s box: {gold}, and a note from the Baron about the price of oats.',
+      },
+      pages: [
+        {
+          id: 'grain',
+          answer: true,
+          when: { flag: 'grain' },
+          lines: ['*The carter would like to know whose grain it is now.*'],
+          choices: [
+            {
+              id: 'westmere',
+              label: 'Take it home to Westmere',
+              effects: { flags: { grain: false }, rations: -1, recruits: { at: 'village', count: 30 }, leadership: 10 },
+              lines: ['You drive the cart back to Westmere yourself. The whole village turns out to unload it, and by evening its lads are queuing to take the King\u2019s shilling. *Westmere won\u2019t forget it.*'],
+            },
+            {
+              id: 'keep',
+              label: 'Keep it for your men',
+              effects: { flags: { grain: false } },
+              lines: ['Your quartermaster rubs his hands. *Come payday, the men eat the Baron\u2019s bread, and draw no wages.*'],
+            },
+          ],
+        },
+      ],
     },
     {
       id: 'hideout',
