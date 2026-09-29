@@ -171,6 +171,13 @@ try {
   await page.waitForTimeout(250);
   const unread = await reading();
   check(unread.hidden > 0 && unread.top === 0 && unread.below && !unread.above && unread.cue === 'visible', `a card too long for its room shows there\u2019s more (${unread.hidden}px out of sight)`);
+  const veiled = await kc.call(() => {
+    document.body.classList.add('kc-veiled');
+    const seen = getComputedStyle(document.querySelector('.kc-test .kc-card-more span')).visibility;
+    document.body.classList.remove('kc-veiled');
+    return seen;
+  });
+  check(veiled === 'hidden', 'and its "more" waits out of sight with it while a screen changes');
   const readOn = await page.locator('.kc-test button', { hasText: 'Read on' }).boundingBox();
   await page.mouse.move(readOn.x + readOn.width / 2, readOn.y + readOn.height / 2);
   await page.mouse.wheel(0, 200);

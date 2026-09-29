@@ -76,11 +76,13 @@
   color: #7a2a10;
   visibility: hidden;
   opacity: 0;
-  transition: opacity 150ms, visibility 150ms;
+  transition: opacity 150ms;
   pointer-events: none;
 }
+/* It fades in, and goes at once. Its visibility is the card's, so a card veiled while its screen
+   changes keeps "more" out of sight too. */
 .kc-card.more-below .kc-card-more {
-  visibility: visible;
+  visibility: inherit;
   opacity: 1;
 }
 .kc-card-more span {
