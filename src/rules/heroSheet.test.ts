@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ALDMOOR } from '../content/aldmoor';
 import { createBattle } from './battle/battle';
 import { rowOf } from './battle/hex';
-import { apply, giveArtifact, heroInBattle, heroStats, type GameState } from './game';
+import { apply, giveArtifact, heroInBattle, heroStats, visit, type GameState } from './game';
 import { barNote, heroSheet, leaderSheet, manaInBattle, manaNote, nextPayday, spiritsOf, stackSheet } from './heroSheet';
 import { newGame } from './scenario';
 
@@ -12,23 +12,43 @@ const knight = (): GameState => ({ ...newGame(1066, ALDMOOR, 'knight'), opening:
 describe('mana you can see', () => {
   it('says what is left, the most he holds, and when it comes back', () => {
     const w = wizard();
-    expect(manaNote(w)).toBe('Mana 30/30 · it fills up again every dawn');
+    expect(manaNote(w)).toBe('Mana 30/30 · full; a quarter back every dawn, and a holy well or your castle fills it');
     const spent = apply(w, { type: 'mapSpell', spell: 'farsight' })!.state;
-    expect(manaNote(spent)).toBe('Mana 20/30 · full again at dawn');
+    expect(manaNote(spent)).toBe('Mana 20/30 · a quarter back every dawn, and a holy well or your castle fills it');
+    // A quarter of the most he holds comes back at dawn (rounded up), never past it.
     const dawn = apply(spent, { type: 'endDay' })!.state;
-    expect(dawn.hero.mana).toBe(heroStats(dawn).maxMana);
+    expect(dawn.hero.mana).toBe(28);
+    expect(apply(dawn, { type: 'endDay' })!.state.hero.mana).toBe(30);
+    const dry = apply({ ...w, hero: { ...w.hero, mana: 0 } }, { type: 'endDay' })!.state;
+    expect(dry.hero.mana).toBe(8);
     const empty = { ...w, hero: { ...w.hero, knowledge: 0 } };
     expect(manaNote(empty)).toContain('No mana');
     // Advanced Mysticism brings mana back on the road, too.
     const mystic = { ...spent, hero: { ...spent.hero, skills: { mysticism: 2 } } };
-    expect(manaNote(mystic)).toBe('Mana 20/50 · a point back every 15 movement ridden, and full at dawn');
+    expect(manaNote(mystic)).toBe('Mana 20/50 · a point back every 15 movement ridden, and a quarter at dawn, and a holy well or your castle fills it');
     expect(heroSheet(mystic).mana.back).toBe('back as you ride');
+  });
+
+  it('fills up at his castle, as at a holy well', () => {
+    const w = wizard();
+    const low = { ...w, hero: { ...w.hero, mana: 4, at: w.locations.find((l) => l.id === 'castle')!.at } };
+    const r = visit(low, 'castle');
+    expect(r.state.hero.mana).toBe(30);
+    const card = r.events.find((e) => e.type === 'card');
+    expect(card?.type === 'card' && card.card.lines[0]).toBe('An hour in the castle chapel, and your head is clear again: **+26 mana**, 30 of 30.');
+    // Full already: nothing to say.
+    const again = visit(r.state, 'castle');
+    const plain = again.events.find((e) => e.type === 'card');
+    expect(plain?.type === 'card' && plain.card.lines.join(' ')).not.toContain('chapel');
+    // A village has no chapel for it.
+    const village = visit({ ...low, hero: { ...low.hero, at: w.locations.find((l) => l.id === 'village')!.at } }, 'village');
+    expect(village.state.hero.mana).toBe(4);
   });
 
   it('goes into battle with its maximum, for the spellbook', () => {
     const w = wizard();
     expect(heroInBattle(w).maxMana).toBe(30);
-    expect(manaInBattle(12, 30)).toBe('Mana **12/30**: none comes back in battle, but it\u2019s full again at dawn.');
+    expect(manaInBattle(12, 30)).toBe('Mana **12/30**: none comes back in battle, and only a quarter at dawn.');
     expect(manaInBattle(12)).toContain('none comes back');
   });
 });
@@ -147,7 +167,7 @@ describe('the hero screen', () => {
     expect(sheet.xp).toEqual({ share: 0, line: '0 / 150 experience: 150 more for level II. Fights and new places bring it.' });
     expect(sheet.stats.map((s) => s.value)).toEqual([0, 1, 3, 3]);
     expect(sheet.stats[2].note).toContain('a Lightning Bolt does 60 damage');
-    expect(sheet.mana).toEqual({ left: 30, max: 30, line: 'Mana 30/30 · it fills up again every dawn', back: 'refills every dawn' });
+    expect(sheet.mana).toEqual({ left: 30, max: 30, line: 'Mana 30/30 · full; a quarter back every dawn, and a holy well or your castle fills it', back: 'full' });
     expect(sheet.leadership.used).toBe(84);
     expect(sheet.signature.name).toBe('Hedge Magic');
     expect(sheet.spells.map((s) => s.name)).toEqual(['Lightning Bolt', 'Bless', 'Slow', 'Haste']);

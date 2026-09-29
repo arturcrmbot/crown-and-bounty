@@ -147,6 +147,15 @@ export const VETERANS = 0.25;
 /** Nobody casts more spells than this in a round, however many ways he has learned to cast again. */
 export const MAX_CASTS = 2;
 
+/**
+ * The share of the most mana he holds that comes back each dawn. A holy well or his castle fills the
+ * rest, so a caster chooses where to spend his spells, and rides to the wells (HoMM2's spell points).
+ */
+export const DAWN_MANA = 0.25;
+
+/** His mana after a night's rest: a quarter of the most he holds (rounded up) comes back, never past it. */
+export const rested = (mana: number, max: number) => Math.max(Math.min(mana, max), Math.min(max, mana + Math.ceil(max * DAWN_MANA)));
+
 export function heroStats(state: GameState): HeroStats {
   const h = state.hero;
   const s: HeroStats = {

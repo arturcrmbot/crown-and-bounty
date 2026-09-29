@@ -13,24 +13,25 @@ import { heroStats, LEVELS, type StatId } from './hero';
 import { riddenOut } from './map/sortie';
 import { close, COMMISSION, coins, LAST_DAY, leadershipUsed, listed, locationById, PAYDAY_EVERY, roman, wages, type Card, type GameState } from './state';
 
-/** How mana comes back, in a few words: at dawn, and for some heroes as they ride. */
+/** How mana comes back, in a few words: a quarter at dawn, for some heroes as they ride, and in full at a well or his castle. */
 export function manaBack(state: GameState): string {
   const rate = heroStats(state).manaRate;
-  return rate > 0 ? `a point back every ${Math.round(1 / rate)} movement ridden, and full at dawn` : 'full again at dawn';
+  const dawn = rate > 0 ? `a point back every ${Math.round(1 / rate)} movement ridden, and a quarter at dawn` : 'a quarter back every dawn';
+  return `${dawn}, and a holy well or your castle fills it`;
 }
 
-/** Mana left, the most he can hold, and how it comes back: "Mana 12/30 · full again at dawn". */
+/** Mana left, the most he can hold, and how it comes back: "Mana 12/30 · a quarter back every dawn, and …". */
 export function manaNote(state: GameState): string {
   const s = heroStats(state);
   const mana = state.hero.mana;
   if (s.maxMana <= 0) return 'No mana: every point of knowledge holds 10';
-  if (mana >= s.maxMana) return `Mana ${mana}/${s.maxMana} · ${s.manaRate > 0 ? `full: ${manaBack(state)}` : 'it fills up again every dawn'}`;
+  if (mana >= s.maxMana) return `Mana ${mana}/${s.maxMana} · full; ${manaBack(state)}`;
   return `Mana ${mana}/${s.maxMana} · ${manaBack(state)}`;
 }
 
 /** The spellbook's mana line: none comes back in battle. `max` is missing from a battle saved before it was kept. */
 export function manaInBattle(mana: number, max?: number): string {
-  return max === undefined ? `**${mana}** mana: none comes back in battle.` : `Mana **${mana}/${max}**: none comes back in battle, but it\u2019s full again at dawn.`;
+  return max === undefined ? `**${mana}** mana: none comes back in battle.` : `Mana **${mana}/${max}**: none comes back in battle, and only a quarter at dawn.`;
 }
 
 /** The next payday: once a week, from day VIII (VIII, XV, XXII...). */
@@ -196,9 +197,9 @@ export function heroSheet(state: GameState): HeroSheet {
       stat('attack', 'Attack', 'added to his own attack in battle, and to every stack\u2019s.'),
       stat('defence', 'Defence', 'added to his own defence in battle, and to every stack\u2019s.'),
       stat('spellPower', 'Spell power', `the harder his spells hit: a Lightning Bolt does ${bolt} damage.`),
-      stat('knowledge', 'Knowledge', `10 mana a point, ${s.maxMana} in all, full again every dawn.`),
+      stat('knowledge', 'Knowledge', `10 mana a point, ${s.maxMana} in all. A quarter comes back every dawn, and a holy well or your castle fills it.`),
     ],
-    mana: { left: h.mana, max: s.maxMana, line: manaNote(state), back: s.manaRate > 0 ? 'back as you ride' : h.mana < s.maxMana ? 'full again at dawn' : 'refills every dawn' },
+    mana: { left: h.mana, max: s.maxMana, line: manaNote(state), back: s.manaRate > 0 ? 'back as you ride' : h.mana < s.maxMana ? 'a quarter at dawn' : 'full' },
     movement: { left: Math.floor(state.movement), max: s.movement, line: `${Math.floor(state.movement)} of ${s.movement} movement left today \u00b7 E ends the day` },
     leadership: {
       used,

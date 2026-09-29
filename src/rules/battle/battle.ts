@@ -50,7 +50,7 @@ export type Spellbook = {
   name?: string;
   spellPower: number;
   mana: number;
-  /** The most mana he holds, for the spellbook: none comes back in battle, it's full again at dawn. */
+  /** The most mana he holds, for the spellbook: none comes back in battle, a quarter comes back at dawn. */
   maxMana?: number;
   spells: SpellId[];
   /** Spells he may cast in a round, and how many he has cast in `castRound`. */

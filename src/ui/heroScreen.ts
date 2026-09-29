@@ -279,7 +279,7 @@ export class HeroScreen {
     const spells = sheet.mapSpells.map((m) => `<button class="act" data-act="spell:${m.spell}" data-tip="${escape(m.note)}"${m.disabled ? ' disabled' : ''}>${escape(m.label)}</button>`).join('');
     return `<footer>
       ${spells}
-      <button class="act" data-act="endDay" data-tip="Rest: fresh legs and full mana at dawn">End the day (E)</button>
+      <button class="act" data-act="endDay" data-tip="Rest: fresh legs, and a quarter of your mana, at dawn">End the day (E)</button>
       <span class="spacer"></span>
       <button class="act" data-act="close">Close (H)</button>
     </footer>`;
