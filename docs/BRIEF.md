@@ -211,9 +211,19 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   red ink with a thump, the reward "paid in full", and what came home: in Aldmoor, the royal goose in her crown. The
   poster's price is now what the Crown pays at his lair (2,000 for Grimsby; the King's gold at court comes on top, as
   before), and a deal that pays otherwise says why ("The poster said 2,000 gold. The Crown pays 1,000, because the
-  other half went on the lunch"). Put away, a won commission waits on its poster, which rides to court. It's data:
-  each commission's (and generated villain's) `face`, `wanted`, `lastWords` and `returned`, a leader's `voice`, and a
-  winning choice's `because`.
+  other half went to the Baron's old nanny"). Put away, a won commission waits on its poster, which rides to court.
+  It's data: each commission's (and generated villain's) `face`, `wanted`, `lastWords` and `returned`, a leader's
+  `voice`, and a winning choice's `because`.
+- **Grimsby's parley has a price (29 Sep, #79):** in playtest 01, "Talk the Baron round" ended Aldmoor in one free
+  click. Now the Courtier sings him round, the bard's way, and it takes a song and half the bounty. Ask Old Nan about
+  the Baron and she turns out to have been his nanny (*"Screamed the house down every night, he did, till I sang him
+  this"*), and sings you the lullaby: a condition built towards, as the goose's hymn is. At his walls, a Courtier who
+  knows it can sing him Old Nan's lullaby: by the third verse the Baron is sobbing into the goose, and he comes
+  quietly on one condition, that half his bounty goes to his old nanny. The stamped poster says so, and so does the
+  King at court (*"Well. She did bring him up."*). Other heroes see the button greyed, "(Courtier)", as a hint; for
+  them the song is a story, and the King hopes they never sang it to him. The King also remembers Grimsby's dig on
+  the heath (*"He won't find it there"*) and Mrs Pike's pie. Generated commissions keep their parleys, each with its
+  reason, until the four crooks (`docs/act1/crooks.md`) replace them.
 - **Big maps (29 Sep, the groundwork for a bigger Aldmoor, #77):** the land is painted in tiles of 128 pixels as they
   come into view, with its trees and buildings, and the rest a tile a frame while nothing much is happening, so a
   province six times the size opens at once. Tufts, petals, reeds and lily pads are sprinkled tile by tile, as thickly
