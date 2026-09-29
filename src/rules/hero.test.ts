@@ -117,6 +117,9 @@ describe('skills and gear', () => {
     const favoured = { ...knight(), hero: { ...knight().hero, perks: ['fortunesFavour' as const] } };
     expect(heroStats(favoured).luck).toBeCloseTo(0.1);
     expect(heroStats(favoured).morale).toBeCloseTo(0.1);
+    // One of each on its own: the poachers' rabbit's foot, and the castellan's bagpipes.
+    expect(heroStats(giveArtifact(knight(), 'rabbitsFoot'))).toMatchObject({ luck: 0.1, morale: 0 });
+    expect(heroStats(giveArtifact(knight(), 'castellansPipes'))).toMatchObject({ luck: 0, morale: 0.1 });
   });
 
   it('sell the castle\u2019s wares for gold', () => {

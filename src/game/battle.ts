@@ -2,7 +2,8 @@ import { needsTarget, SPELLS, STATUSES, type SpellId, type StatusDef } from '../
 import { TROOPS, troops } from '../content/troops';
 import { CONTACT, TROOP_SOUNDS } from '../audio/blows';
 import { chooseAction, finishEstimate } from '../rules/battle/ai';
-import { manaInBattle } from '../rules/heroSheet';
+import { manaInBattle, signedShare, spiritsOf, uneasyWords } from '../rules/heroSheet';
+import { grumbleLine } from '../rules/army';
 import { coins } from '../rules/state';
 import { activeFighter, bardOf, battleAct, battleEnd, bribePrice, canCast, canJoin, casterOf, castsLeft, chargeOf, CHARGE_BONUS, fighterById, isCharge, isLeader, onField, options, ridesOut, spellCost, spellDamage, spellsOf, spellVictims, strike, unitOf, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
 import { paintBanner } from '../render/banner';
@@ -166,12 +167,16 @@ export class BattleController implements Screen {
     const room = canJoin(this.battle, target);
     const off = this.battle.hero.bribes ? `, less ${pct(this.battle.hero.bribes)}` : '';
     const jeer = STATUSES[art.jeer];
+    // Turncoats of a people his army won't march beside would be grumbled at: the card says so first.
+    const ours = this.battle.fighters.filter((x) => x.side === 'player' && onField(x)).map((x) => ({ troop: x.troop, count: x.count }));
+    const quarrel = room ? grumbleLine(ours, [target.troop]) : null;
     const lines =
       leave === null || join === null
         ? [`*${TROOPS[target.troop].name} take no gold.*`]
         : [
             `Pay them **${coins(leave)} gold** (${art.weeks.leave} weeks\u2019 wages${off}), and they go home.`,
             room ? `Pay them **${coins(join)} gold** (${art.weeks.join} weeks\u2019 wages${off}), and they fight for you, and ride on with you after.` : '*You have no room under your banner for them to come over.*',
+            ...(quarrel ? [quarrel] : []),
             `You carry **${coins(gold)} gold**.`,
           ];
     lines.push(`Jeer them, and they lose heart: ${spirits(jeer)} for ${jeer.rounds} rounds, a chance they lose their turn.`);
@@ -657,11 +662,15 @@ export class BattleController implements Screen {
           break;
         }
         case 'morale': {
-          this.step(0.3, {
+          // Good spirits win a stack another turn, and it jumps for joy.
+          this.step(0.35, {
             start: () => {
+              play('cheer');
               this.float(e.fighter, 'Morale!', GOLD[6]);
-              v.log = `${this.fighterName(e.fighter)} ${this.verb(e.fighter, 'cheer')}: good spirits win them another turn.`;
+              v.log = `${this.fighterName(e.fighter)} ${this.verb(e.fighter, 'cheer')}, and ${this.named(e.fighter) ? 'goes' : 'go'} again before the round moves on.`;
             },
+            tick: (t) => v.offsets.set(e.fighter, [0, -Math.round(Math.sin(t * Math.PI) * 8)]),
+            end: () => v.offsets.delete(e.fighter),
           });
           break;
         }
@@ -773,17 +782,20 @@ export class BattleController implements Screen {
         case 'round':
           this.step(0.05, { start: () => (v.log = `Round ${e.round}.`) });
           break;
-        case 'falter':
+        case 'falter': {
+          // Low spirits: a jeer, or the company it keeps ("uneasy beside the Wolves").
+          const why = uneasyWords(spiritsOf(this.battle, fighterById(this.battle, e.fighter)));
           this.step(0.6, {
             start: () => {
               play('falter');
               this.float(e.fighter, 'Falters', RED[6]);
-              v.log = `${this.fighterName(e.fighter)} ${this.verb(e.fighter, 'lose')} heart, and ${this.named(e.fighter) ? 'his' : 'their'} turn.`;
+              v.log = `${this.fighterName(e.fighter)} ${this.verb(e.fighter, 'lose')} heart${why ? `, ${why},` : ''} and ${this.named(e.fighter) ? 'his' : 'their'} turn.`;
               v.poses.set(e.fighter, { anim: 'defend', ms: 0 });
             },
             end: () => v.poses.delete(e.fighter),
           });
           break;
+        }
         case 'bribe': {
           // They stay as they were till the coins change hands: then they go home, or come over in your colours.
           const target = fighterById(this.battle, e.target);
@@ -1075,8 +1087,19 @@ export class BattleController implements Screen {
     const leader = leaderAt(this.battle, x, y);
     this.view.inspect = leader ? leader.id : hex === null ? null : (this.battle.fighters.find((f) => onField(f) && f.at === hex)?.id ?? null);
     const under = this.view.inspect === null ? null : fighterById(this.battle, this.view.inspect);
-    this.view.preview = intent ? this.forecast(intent.action) : under?.book ? this.bookLine(under.id) : null;
+    this.view.preview = intent ? this.forecast(intent.action) : under?.book ? this.bookLine(under.id) : under ? this.spiritsLine(under.id) : null;
     this.display.canvas.style.cursor = intent ? 'pointer' : 'default';
+  }
+
+  /** A stack's luck and morale, and why, for when you look it over: nothing if it has neither. */
+  private spiritsLine(id: number): string | null {
+    const s = spiritsOf(this.battle, fighterById(this.battle, id));
+    const shares = [s.luck ? `luck ${signedShare(s.luck)}` : '', s.morale || s.uneasy.length ? `morale ${signedShare(s.morale)}` : ''].filter(Boolean);
+    if (!shares.length) return null;
+    // One gift is named; several are Aldric's, and his hero screen says which. Songs and jeers are named too.
+    const gifts = s.gifts.length === 1 ? s.gifts[0].source : s.gifts.length ? `from ${this.battle.hero.name ?? 'Aldric'}` : '';
+    const why = [gifts, ...s.moods.map((m) => m.source), uneasyWords(s)].filter(Boolean).join('; ');
+    return `${this.fighterName(id)}: ${shares.join(', ')}${why ? ` (${why})` : ''}.`;
   }
 
   /** A villain's spells and orders, for when you look him over. */

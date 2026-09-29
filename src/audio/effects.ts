@@ -120,6 +120,8 @@ const EVERYDAY = {
   }, 0.26),
   // Spirits sinking: a low drone that sags.
   falter: effect('firm', (ctx, dest, t) => tone(ctx, dest, t, 196, 0.5, 0.35, 'triangle', 0.7), 2.1),
+  // A short call rising on the brass: good spirits, and a stack goes again.
+  cheer: effect('firm', (ctx, dest, t) => brass(ctx, dest, t, [[62, 0, 0.09], [67, 0.1, 0.3]], 0.28), 1.1),
   spell: effect('firm', (ctx, dest, t) => [660, 880, 1100, 1320].forEach((f, i) => tone(ctx, dest, t + i * 0.06, f, 0.25, 0.3)), 1.2),
   bolt: effect('firm', (ctx, dest, t) => {
     burst(ctx, dest, t, 0.35, 'highpass', 1800, 0.8, 0.5);
