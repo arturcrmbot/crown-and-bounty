@@ -407,3 +407,20 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   bears (#76) give the chase its ride, and past them it's pathless forest only a Ranger (or anyone in the Greenwood
   Cloak) can cross. The bot wins Aldmoor with every background at much the same pace (by day 12, 9, 9 and 8 at the
   median for the Knight, the Wizard, the Ranger and the Courtier).
+- **Never more than a day's ride without something worth it (29 Sep, #124):** Artur found the distances on the bigger
+  Aldmoor "just insane", and the playtest rode days VI to X in straight lines between landmarks. Now a check measures it:
+  a player rides from one thing to another the cheapest way, and from every spot on those ways the nearest thing is some
+  ride off, so twice the furthest any ridden spot is from the nearest thing is the longest ride between things
+  (`rules/map/rides.ts`, `npm run rides`). Before, it was 1.3 days on the roads (the ford road, from the signpost to the
+  old mine) and up to 2 days across the downs and the fields; now it's 0.6 day on the roads and under 0.9 day in every
+  land, and a test keeps it there. Eighteen small finds fill the gaps, as content (`content/aldmoorFinds.ts`): signposts
+  with a joke (the crossroads, the Baron's toll-board), two cold campfires with a scrap of Grimsby's orders, the Baron's
+  hamper and two lost packs (a little gold each), an eagle's nest, Old Tam's fold and the rustlers who took his ewes (fight
+  them, buy the ewes back, or, as a Courtier, shame them into driving the sheep home), the Baron's tax collectors (fight,
+  pay, or, as a Courtier, audit them), an eel-catcher, Widow Hesketh's bees, St Hubert's shrine (a longer day's ride, once
+  each), the Grey Wethers (climb them to see half the heath), a hayrick, the goose pond and the charcoal burners
+  (gossip). None of them answers a quest. They're small for the balance's sake: in all, at most 510 gold, 760 experience
+  (520 of it for finding them) and no troops, about a tenth of what Aldmoor already had lying about (a hero who hires
+  bands can buy the rustlers or the collectors, at the usual price; a Courtier talks them round instead). Each has a look drawn
+  in code, and the land round them is as it was, but for the odd tree or rock that stood where a find does. The bot wins
+  Aldmoor with every background at much the same pace.
