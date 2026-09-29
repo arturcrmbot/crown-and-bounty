@@ -3,7 +3,7 @@ import type { ArtifactId, Slot } from '../content/artifacts';
 import type { BackgroundId } from '../content/backgrounds';
 import type { PortraitId } from '../content/portraits';
 import type { PerkId, SkillId } from '../content/skills';
-import type { MapSpellId, SpellId } from '../content/spells';
+import type { MapSpellId, SpellId, StatusId } from '../content/spells';
 import { TROOPS, troopPower, troops, type TroopId } from '../content/troops';
 import type { BattleState } from './battle/battle';
 import type { Offer } from './hero';
@@ -242,6 +242,10 @@ export type Action =
   | { type: 'spell'; spell: SpellId }
   /** Confirmed from the battle card: the army falls back. */
   | { type: 'retreat' }
+  /** A bard's move on a stack, picked from its battle card: pay it to go (`bribe`), to change sides (`buy`), or jeer it. */
+  | { type: 'bard'; move: 'bribe' | 'buy' | 'jeer'; target: number }
+  /** The song a bard picked to sing over his army. */
+  | { type: 'sing'; song: StatusId }
   | { type: 'learn'; option: string }
   | { type: 'equip'; artifact: ArtifactId }
   /** Wears the artifact in pack square `from`; whatever its slot held takes that square. */

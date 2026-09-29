@@ -8,7 +8,7 @@ import { CAMPAIGN_LENGTH, campaignLines, commissionOf, hasNextCommission, provin
 import { revealDisc } from './map/fog';
 import { battleEnd, createBattle, isLeader, SHOOTER_MELEE, survivors, type BattleHero, type BattleState, type Side } from './battle/battle';
 import { artifactChoices, foundNote, gainXp, giveArtifact, heroStats, namedBonuses } from './hero';
-import { addTroops, again, armyPower, close, coins, locationById, roll, roman, show, stillWithYou, troops, update, VANISHES, type Army, type BattleResultCard, type Choice, type GameEvent, type GameState, type Location, type Result } from './state';
+import { addTroops, again, armyPower, close, coins, leadershipUsed, locationById, roll, roman, show, stillWithYou, troops, update, VANISHES, type Army, type BattleResultCard, type Choice, type GameEvent, type GameState, type Location, type Result } from './state';
 
 export function heroInBattle(state: GameState): BattleHero {
   const s = heroStats(state);
@@ -38,7 +38,17 @@ export function heroInBattle(state: GameState): BattleHero {
     ...(s.casts > 1 ? { casts: s.casts } : {}),
     ...(s.shooterMelee !== SHOOTER_MELEE ? { shooterMelee: s.shooterMelee } : {}),
     unit: { troop: own.troop, hp: own.hp, damage: own.damage },
+    // His purse, for a bard's bribes, and the room under his banner for troops who come over.
+    gold: state.gold,
+    ...(s.bribes ? { bribes: s.bribes } : {}),
+    room: Math.max(0, s.leadership - leadershipUsed(state.army)),
   };
+}
+
+/** The hero as the odds see him: the sergeants never spend his gold, so his purse doesn't change them. */
+function oddsHero(state: GameState) {
+  const { gold: _gold, room: _room, ...hero } = heroInBattle(state);
+  return hero;
 }
 
 /** Where each status the hero brings to a battle comes from, for its opening words. */
@@ -140,7 +150,8 @@ function fallen(battle: BattleState, side: Side): Army {
   const losses = new Map<Army[number]['troop'], number>();
   for (const fighter of battle.fighters) {
     if (fighter.side !== side || isLeader(fighter)) continue;
-    const count = fighter.startCount - fighter.count;
+    // Troops who walked off, paid to go or to change sides, didn't fall.
+    const count = fighter.startCount - fighter.count - (fighter.left ?? 0);
     if (count > 0) losses.set(fighter.troop, (losses.get(fighter.troop) ?? 0) + count);
   }
   return [...losses].map(([troop, count]) => ({ troop, count }));
@@ -263,9 +274,12 @@ export function finishFight(state: GameState): Result {
   const who = BACKGROUNDS[state.hero.background].short;
   // What became of the leaders, in the words the field said it in: "Their army is beaten, and Baron Grimsby is taken."
   const end = battleEnd(battle);
+  // What his bribes cost comes out of his purse.
+  const paid = Math.max(0, state.gold - (battle.hero.gold ?? state.gold));
   const ended = end ? [`${end.army}, and **${end.leader}**.`] : [];
+  const bribed = paid ? [`Bribes cost you **${coins(paid)} gold**.`] : [];
   // The battle rolled its own dice from the state's seed: carry on from where it stopped, not from the start again.
-  const base: GameState = { ...state, seed: battle.seed, battle: undefined, army, hero: { ...state.hero, mana: battle.hero.mana } };
+  const base: GameState = { ...state, seed: battle.seed, battle: undefined, army, gold: state.gold - paid, hero: { ...state.hero, mana: battle.hero.mana } };
   const battleResult: BattleResultCard = {
     player: fallen(battle, 'player'),
     enemy: fallen(battle, 'enemy'),
@@ -274,7 +288,7 @@ export function finishFight(state: GameState): Result {
   };
   if (battle.result === 'won') {
     const after = afterVictory(base, state.army);
-    const opening = place.kind === 'hideout' ? [...ended, commissionOf(base).surrender, ...after.lines] : [...ended, enemy.flees, ...after.lines, enemy.loot.replace('{gold}', `**${coins(enemy.reward)} gold**`)];
+    const opening = place.kind === 'hideout' ? [...ended, commissionOf(base).surrender, ...bribed, ...after.lines] : [...ended, enemy.flees, ...bribed, ...after.lines, enemy.loot.replace('{gold}', `**${coins(enemy.reward)} gold**`)];
     return beat(after.state, place.id, { title: 'Victory!', lines: opening, reward: enemy.reward, xp: battleXp(enemy.army), battleResult });
   }
   const castle = state.locations.find((l) => l.kind === 'castle');
@@ -286,7 +300,7 @@ export function finishFight(state: GameState): Result {
       state: { ...base, army: [], movement: 0, hero: { ...base.hero, at: home } },
       events: [
         { type: 'moved', at: home, facing: base.hero.facing },
-        show({ title: 'Retreat!', lines: [`${who} gets away alone: nobody who rode with him is left standing.`, `He rides back to ${castle?.name ?? 'safety'} to raise another army.`], choices: [close], wide: true, battleResult }, null),
+        show({ title: 'Retreat!', lines: [`${who} gets away alone: nobody who rode with him is left standing.`, `He rides back to ${castle?.name ?? 'safety'} to raise another army.`, ...bribed], choices: [close], wide: true, battleResult }, null),
       ],
     };
   }
@@ -295,21 +309,21 @@ export function finishFight(state: GameState): Result {
     const next = { ...base, movement: 0 };
     return {
       state: next,
-      events: [show({ title: 'A stand-off', lines: ['Neither side can get at the other. As the light goes, both draw off.', stillWithYou(army)], choices: [close], wide: true, battleResult }, place.at, place.id)],
+      events: [show({ title: 'A stand-off', lines: ['Neither side can get at the other. As the light goes, both draw off.', ...bribed, stillWithYou(army)], choices: [close], wide: true, battleResult }, place.at, place.id)],
     };
   }
   if (battle.result === 'fled') {
     const next = { ...base, army: shaken, movement: 0 };
     return {
       state: next,
-      events: [show({ title: 'Retreat!', lines: ['Your men fall back in good order, mostly.', stillWithYou(shaken)], choices: [close], wide: true, battleResult }, place.at, place.id)],
+      events: [show({ title: 'Retreat!', lines: ['Your men fall back in good order, mostly.', ...bribed, stillWithYou(shaken)], choices: [close], wide: true, battleResult }, place.at, place.id)],
     };
   }
   return {
     state: { ...base, army: [], movement: 0, hero: { ...base.hero, at: home } },
     events: [
       { type: 'moved', at: home, facing: base.hero.facing },
-      show({ title: 'Defeat', lines: [...(ended.length ? ended : ['Your army is scattered to the four winds.']), `${ended.length ? 'He rides' : 'You limp'} back to ${castle?.name ?? 'safety'} to raise another.`], choices: [close], wide: true, battleResult }, null),
+      show({ title: 'Defeat', lines: [...(ended.length ? ended : ['Your army is scattered to the four winds.']), `${ended.length ? 'He rides' : 'You limp'} back to ${castle?.name ?? 'safety'} to raise another.`, ...bribed], choices: [close], wide: true, battleResult }, null),
     ],
   };
 }
@@ -330,7 +344,7 @@ export function winChance(state: GameState, id: string, samples = 16, army?: Arm
   const place = locationById(state, id);
   if (!place.enemy || state.army.length === 0) return 0;
   const enemy = army ?? place.enemy.army;
-  const key = JSON.stringify([state.army, heroInBattle(state), enemy, place.kind, provinceOf(state).fen ?? false, samples]);
+  const key = JSON.stringify([state.army, oddsHero(state), enemy, place.kind, provinceOf(state).fen ?? false, samples]);
   const known = chances.get(key);
   if (known !== undefined) return known;
   const estimate = simulateFight(state, place, enemy, samples);
@@ -344,7 +358,7 @@ export function winChance(state: GameState, id: string, samples = 16, army?: Arm
 }
 
 function simulateFight(state: GameState, place: Location, enemy: Army, samples: number): { chance: number; losses: Army } {
-  const key = JSON.stringify([state.army, heroInBattle(state), enemy, place.kind, provinceOf(state).fen ?? false, samples]);
+  const key = JSON.stringify([state.army, oddsHero(state), enemy, place.kind, provinceOf(state).fen ?? false, samples]);
   const known = estimates.get(key);
   if (known) return known;
   let wins = 0;
