@@ -30,6 +30,7 @@ import type { Screen } from './screen';
 import { backgroundCard, endCard, keysCard, storyCard } from './intro';
 import { clearSave, saveGame } from './save';
 import { Walks } from './walks';
+import { tiredResult } from './adventureCards';
 
 type HintId = Extract<Action, { type: 'hint' }>['id'];
 
@@ -52,25 +53,6 @@ const STEP_PX = 16;
 const SCROLL_SPEED = 6;
 /** How much faster he rides while Shift is held. */
 const GALLOP = 3;
-
-/** The choice to rest is always offered when a route has used the day's movement. */
-export function tiredResult(state: GameState, rides: boolean, at: Point): Result {
-  return {
-    state,
-    events: [{
-      type: 'card',
-      card: {
-        title: rides ? 'Your horse is spent' : 'Your legs are spent',
-        lines: ['End the day to rest, and he rides on at dawn. Red marks on the route are for tomorrow.'],
-        choices: [
-          { label: 'End the day (E)', action: { type: 'endDay' } },
-          { label: 'Not yet', detail: 'Look around first: the route waits.', action: { type: 'close' } },
-        ],
-      },
-      at,
-    }],
-  };
-}
 
 /** The crossed swords, twice their size, for the pointer over an enemy. */
 let swords: string | null = null;
@@ -669,7 +651,7 @@ export class AdventureController implements Screen {
           saveGame(this.state);
           this.run(tiredResult(
             this.state,
-            ART[heroArtId(this.state.hero.background)].rides,
+            Boolean(ART[heroArtId(this.state.hero.background)].rides),
             [this.drawn.x, this.drawn.y - this.scene.hero.foot],
           ));
         }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { newGame } from '../rules/scenario';
-import { tiredResult } from './adventure';
+import { tiredResult } from './adventureCards';
 
 describe('the tired card', () => {
   it.each([2, 8])('still appears on day %i', (day) => {
