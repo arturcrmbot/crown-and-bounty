@@ -51,6 +51,10 @@ describe('the bottom bar', () => {
     expect(barNote(w, { kind: 'day' })).toBe('Day I of 100 · payday once a week, next on day VIII');
     expect(barNote({ ...w, day: 7 }, { kind: 'day' })).toContain('next on day VIII');
     expect(barNote(w, { kind: 'hourglass' })).toBe('End the day (E)');
+    // The panel's plates beside the minimap: Aldric's, and the pieces of the old map on the bounty's.
+    expect(barNote(w, { kind: 'hero' })).toBe('Aldric the Hedge Wizard \u00b7 level I \u00b7 click (or H) for his gear and army');
+    expect(barNote(w, { kind: 'pieces' })).toContain('Pieces of the old map: 0 of 5');
+    expect(barNote({ ...w, bounty: 'paid' }, { kind: 'pieces' })).toContain('1 of 5');
   });
 });
 

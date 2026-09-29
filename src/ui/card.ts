@@ -201,9 +201,11 @@ export class CardView {
    * Puts the card's bottom edge just above `point` (page pixels), kept between `top` and `bottom`.
    * With no room above, it goes below or beside `keepout` (what the card is about), so it never
    * covers it. With no point, the card sits in the middle, or beside `keepout` (the hero) if the
-   * middle would cover him. Cards grow with the canvas, as the pixel art does.
+   * middle would cover him. It keeps between `sides` (the map's view, clear of the panel beside it)
+   * unless it would only fit there by covering `keepout`. Cards grow with the canvas, as the pixel
+   * art does.
    */
-  place(point: ScreenPoint | null, top: number, bottom: number, keepout?: Keepout) {
+  place(point: ScreenPoint | null, top: number, bottom: number, keepout?: Keepout, sides?: { left: number; right: number }) {
     if (this.wrap.hidden) return;
     const s = uiScale();
     if (s !== this.scale) {
@@ -223,33 +225,44 @@ export class CardView {
     const [w, h] = [this.wrap.offsetWidth * s, this.wrap.offsetHeight * s];
     const [minY, maxY] = [top + 8, Math.max(top + 8, bottom - h - 8)];
     const clampY = (y: number) => Math.min(maxY, Math.max(minY, y));
-    let x = Math.min(window.innerWidth - w - 8, Math.max(8, (point ? point.x : window.innerWidth / 2) - w / 2));
-    let y = top;
     const k = keepout;
-    /** Beside `k`, on the side with more room, level with it; false if neither side has room. */
-    const beside = () => {
-      if (!k) return false;
-      const [left, right] = [k.x0 - 14 - w, k.x1 + 14];
-      const leftFits = left >= 8;
-      const rightFits = right + w <= window.innerWidth - 8;
-      if (!leftFits && !rightFits) return false;
-      x = leftFits && (!rightFits || k.x0 > window.innerWidth - k.x1) ? left : right;
-      y = clampY((k.y0 + k.y1 - h) / 2);
-      return true;
-    };
-    if (!point) {
-      y = clampY((top + bottom - h) / 2);
-      if (k && x < k.x1 && x + w > k.x0 && y < k.y1 && y + h > k.y0 && !beside()) {
-        if (k.y0 - h - 10 >= minY) y = k.y0 - h - 10;
-        else if (k.y1 + 10 <= maxY) y = k.y1 + 10;
+    const covers = (x: number, y: number) => Boolean(k && x < k.x1 && x + w > k.x0 && y < k.y1 && y + h > k.y0);
+    /** Where the card goes if it keeps between `minX` and `maxX`. */
+    const spot = (minX: number, maxX: number) => {
+      let x = Math.min(maxX - w, Math.max(minX, (point ? point.x : (minX + maxX) / 2) - w / 2));
+      let y = top;
+      /** Beside `k`, on the side with more room, level with it; false if neither side has room. */
+      const beside = () => {
+        if (!k) return false;
+        const [left, right] = [k.x0 - 14 - w, k.x1 + 14];
+        const leftFits = left >= minX;
+        const rightFits = right + w <= maxX;
+        if (!leftFits && !rightFits) return false;
+        x = leftFits && (!rightFits || k.x0 - minX > maxX - k.x1) ? left : right;
+        y = clampY((k.y0 + k.y1 - h) / 2);
+        return true;
+      };
+      if (!point) {
+        y = clampY((top + bottom - h) / 2);
+        if (covers(x, y) && !beside()) {
+          if (k!.y0 - h - 10 >= minY) y = k!.y0 - h - 10;
+          else if (k!.y1 + 10 <= maxY) y = k!.y1 + 10;
+        }
+      } else {
+        const above = point.y - h - 10;
+        if (above >= minY) y = above;
+        else if (k && k.y1 + 10 <= maxY) y = k.y1 + 10;
+        else if (!beside()) y = clampY(point.y + 30);
       }
-    } else {
-      const above = point.y - h - 10;
-      if (above >= minY) y = above;
-      else if (k && k.y1 + 10 <= maxY) y = k.y1 + 10;
-      else if (!beside()) y = clampY(point.y + 30);
+      return { x, y };
+    };
+    const wide = () => spot(8, window.innerWidth - 8);
+    let at = sides && w + 16 <= sides.right - sides.left ? spot(sides.left + 8, sides.right - 8) : wide();
+    if (sides && covers(at.x, at.y)) {
+      const across = wide();
+      if (!covers(across.x, across.y)) at = across;
     }
-    this.wrap.style.left = `${Math.round(x)}px`;
-    this.wrap.style.top = `${Math.round(y)}px`;
+    this.wrap.style.left = `${Math.round(at.x)}px`;
+    this.wrap.style.top = `${Math.round(at.y)}px`;
   }
 }

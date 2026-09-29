@@ -5,8 +5,19 @@ import { GOLD, INK, PARCHMENT, SLATE, WOOD } from './palette';
 export type Rect = { x: number; y: number; width: number; height: number };
 
 export const SCREEN = { width: 960, height: 540 };
+/** The picture on the screens that fill the frame: the battlefield, the court, the title. */
 export const MAP_VIEW: Rect = { x: 16, y: 16, width: 928, height: 464 };
 export const BAR: Rect = { x: 16, y: 498, width: 928, height: 28 };
+
+/**
+ * The adventure map's own layout, as in HoMM2: its view, narrower than `MAP_VIEW`, and the right-hand
+ * panel beside it. The panel's column ends where the map's frame did: the minimap at its top, under
+ * the sound buttons, then Aldric's plate and the bounty's.
+ */
+export const ADVENTURE_VIEW: Rect = { x: 16, y: 16, width: 712, height: 464 };
+export const MINIMAP: Rect = { x: 751, y: 36, width: 200, height: 150 };
+export const HERO_PLATE: Rect = { x: 751, y: 202, width: 200, height: 134 };
+export const BOUNTY_PLATE: Rect = { x: 751, y: 352, width: 200, height: 135 };
 
 /** A carved gold moulding just outside a rectangle, lit from the top left. */
 export function trim(screen: Bitmap, { x, y, width, height }: Rect, inset = 0) {
@@ -28,12 +39,12 @@ export function trim(screen: Bitmap, { x, y, width, height }: Rect, inset = 0) {
 }
 
 /**
- * The static interface: dark slate around everything, a parchment band round the map with a
- * torn inner edge, gold trims and the bottom bar. Returns the frame and an overlay with the torn
- * parchment that is drawn over the map every frame. `dividers` split the bar into sections; a bar
- * with one line across it, like the title's, has none.
+ * The static interface: dark slate around everything, a parchment band round the picture (`view`)
+ * with a torn inner edge, gold trims and the bottom bar. Returns the frame and an overlay with the
+ * torn parchment that is drawn over the picture every frame. `dividers` split the bar into sections;
+ * a bar with one line across it, like the title's, has none.
  */
-export function paintFrame(dividers: readonly number[] = BAR_DIVIDERS): { frame: Bitmap; overlay: Bitmap } {
+export function paintFrame(dividers: readonly number[] = BAR_DIVIDERS, view: Rect = MAP_VIEW): { frame: Bitmap; overlay: Bitmap } {
   const { width, height } = SCREEN;
   const frame = new Bitmap(width, height);
   const overlay = new Bitmap(width, height);
@@ -43,9 +54,9 @@ export function paintFrame(dividers: readonly number[] = BAR_DIVIDERS): { frame:
       frame.set(x, y, shade(SLATE, 0.18 + grain * 0.4, x, y));
     }
   }
-  // Parchment: a band outside the map view, plus a torn fringe reaching into it.
+  // Parchment: a band outside the picture, plus a torn fringe reaching into it.
   const band = 7;
-  const v = MAP_VIEW;
+  const v = view;
   for (let y = v.y - band; y < v.y + v.height + band; y++) {
     for (let x = v.x - band; x < v.x + v.width + band; x++) {
       const inside = Math.min(x - v.x, y - v.y, v.x + v.width - 1 - x, v.y + v.height - 1 - y);

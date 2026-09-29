@@ -132,9 +132,10 @@ export class TerrainPainter {
 
   /**
    * The colour of open land at a point, from its light: a field or the hedge round it, heather, the
-   * downs, or meadow. Says what sort of ground it is: tufts and petals only grow on grass.
+   * downs, or meadow. Says what sort of ground it is: tufts and petals only grow on grass. Seen from
+   * `far` off, the odd sprig in flower is lost among the rest.
    */
-  private land(x: number, y: number, level: number, fen: boolean): { colour: number; ground: number } {
+  private land(x: number, y: number, level: number, fen: boolean, far = false): { colour: number; ground: number } {
     const light = (level - 0.52) * 0.45;
     const fields = this.fields;
     if (fields) {
@@ -184,8 +185,8 @@ export class TerrainPainter {
         const bloom = hash(x, y, 90) < 0.3 + (heather - 0.64) * 3;
         return { colour: bloom ? (hash(x, y, 92) < 0.3 ? PLUM[3] : PLUM[2]) : shade(EARTH, 0.45 + light + (noise(x / 2, y / 2, 96) - 0.5) * 0.3, x, y), ground: Ground.Rough };
       }
-      if (hash(x, y, 91) < 0.01) return { colour: PLUM[3], ground: Ground.Rough };
-      if (hash(x, y, 93) < 0.002) return { colour: GOLD[5], ground: Ground.Rough };
+      if (!far && hash(x, y, 91) < 0.01) return { colour: PLUM[3], ground: Ground.Rough };
+      if (!far && hash(x, y, 93) < 0.002) return { colour: GOLD[5], ground: Ground.Rough };
       // Between the heather, dry grass, with wiry green in the hollows.
       const green = fbm(x / 24, y / 24, 2, 94) < 0.44;
       return { colour: green ? shade(GRASS, level - 0.1, x, y) : shade(REED, 0.5 + light + (noise(x / 4, y / 4, 97) - 0.5) * 0.16, x, y), ground: Ground.Grass };
@@ -193,6 +194,17 @@ export class TerrainPainter {
     // Fen country: tussocks of straw-coloured sedge through the grass.
     const sedge = fen && fbm(x / 34, y / 34, 2, 98) + (noise(x / 5, y / 5, 99) - 0.5) * 0.3 > 0.56;
     return { colour: sedge ? shade(REED, level + 0.08, x, y) : shade(GRASS, level, x, y), ground: Ground.Grass };
+  }
+
+  /**
+   * The colour of open land at a point seen from far off, for the minimap: its field, heather, downs
+   * or meadow, in the land's broad light but none of its close detail. It looks where the ordered
+   * dither sits at one half, so each shade is rounded rather than patterned.
+   */
+  overview(x: number, y: number): number {
+    const fen = Boolean(this.map.province.fen);
+    const [px, py] = [Math.floor(x / 4) * 4 + 1, Math.floor(y / 4) * 4];
+    return this.land(px, py, 0.52 + (fbm(px / 90, py / 90, 3, 1) - 0.5) * 0.5 - (fen ? 0.06 : 0), fen, true).colour;
   }
 
   /** Paints the tile at (tx, ty), counted in tiles. Tiles at the right and bottom edges may be smaller. */

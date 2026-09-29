@@ -648,8 +648,6 @@ export function stoneBridge(length: number): Bitmap {
   return shaped;
 }
 
-export const MINIMAP_COLOURS = { forest: PINE[4], mountain: ROCK[5], castle: BLUE[4], hero: BLUE[6], road: DIRT[5] };
-
 /** A mine mouth in the rock: timber frame, dark shaft, a little cart of ore on rails. */
 export function mine(): Bitmap {
   const sprite = crag(64, 44, 77);

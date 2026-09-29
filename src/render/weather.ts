@@ -1,6 +1,5 @@
 import type { Bitmap } from './bitmap';
-import type { Rect } from './frame';
-import { MAP_VIEW, SCREEN } from './frame';
+import { SCREEN, type Rect } from './frame';
 import { hash } from './noise';
 import { EVENING_LUT, GOLD, LEAF, MIST_LUT, MORNING_LUT, NEUTRAL, NIGHT_LUT, PLUM, RAIN_LUT, STONE, WATER } from './palette';
 import type { Point } from '../rules/map/geometry';
@@ -101,8 +100,8 @@ export class Weather {
     });
   }
 
-  /** The day's light, a shower's grey and the fen's mist, laid over the map view. `camera` is where the view looks on the map. */
-  light(screen: Bitmap, sky: Sky, camera: { x: number; y: number }) {
+  /** The day's light, a shower's grey and the fen's mist, laid over the map's `view`. `camera` is where the view looks on the map. */
+  light(screen: Bitmap, sky: Sky, camera: { x: number; y: number }, view: Rect) {
     const { morning, evening, night } = daylight(sky.day);
     const rain = sky.rain * 0.4;
     const mist = sky.mist;
@@ -111,11 +110,11 @@ export class Weather {
     // The mist drifts slowly, and a little apart from the land under it.
     const mx = Math.round(camera.x * 0.85 + sky.time * 4);
     const my = Math.round(camera.y * 0.85);
-    for (let y = MAP_VIEW.y; y < MAP_VIEW.y + MAP_VIEW.height; y++) {
+    for (let y = view.y; y < view.y + view.height; y++) {
       const row = (y & 3) << 2;
       const rowRain = ((y + 1) & 3) << 2;
-      let o = y * SCREEN.width + MAP_VIEW.x;
-      for (let x = MAP_VIEW.x; x < MAP_VIEW.x + MAP_VIEW.width; x++, o++) {
+      let o = y * SCREEN.width + view.x;
+      for (let x = view.x; x < view.x + view.width; x++, o++) {
         const d = BAYER[(x & 3) + row];
         let c = data[o];
         if (d < night) c = NIGHT_LUT[c];

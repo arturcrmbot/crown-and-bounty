@@ -1,6 +1,8 @@
 import type { Display } from './display';
 
 export type InputHandlers = {
+  /** The main button going down, in screen pixels, before it's known to be a click or a drag. */
+  press?(x: number, y: number): void;
   /** A press and release of the main button without dragging, in screen pixels. */
   click(x: number, y: number): void;
   /** A right-click: look at what's there, never act on it. Screens without it ignore right-clicks. */
@@ -8,8 +10,8 @@ export type InputHandlers = {
   /** A mouse wheel or a trackpad's two-finger swipe, in screen pixels. */
   wheel?(dx: number, dy: number): void;
   hover(x: number, y: number, clientX: number, clientY: number): void;
-  /** Dragged by this many screen pixels. */
-  drag(dx: number, dy: number): void;
+  /** Dragged by this many screen pixels, to (x, y). */
+  drag(dx: number, dy: number, x: number, y: number): void;
   leave(): void;
   key(key: string): void;
 };
@@ -27,6 +29,7 @@ export class Input {
       if (e.button !== 0 && e.button !== 2) return;
       press = { x: e.clientX, y: e.clientY, dragged: false, right: e.button === 2 };
       canvas.setPointerCapture(e.pointerId);
+      if (!press.right) handlers.press?.(...display.toScreen(e.clientX, e.clientY));
     });
     canvas.addEventListener('pointermove', (e) => {
       if (!press) {
@@ -39,7 +42,7 @@ export class Input {
       if (press.right || (!press.dragged && Math.hypot(dx, dy) < 5)) return;
       press.dragged = true;
       handlers.leave();
-      handlers.drag(dx / display.scale, dy / display.scale);
+      handlers.drag(dx / display.scale, dy / display.scale, ...display.toScreen(e.clientX, e.clientY));
       press.x = e.clientX;
       press.y = e.clientY;
     });
