@@ -231,6 +231,8 @@ export type Hero = {
 /** What the player can do from a card. `go` rides to a location and visits it on arrival. */
 export type Action =
   | { type: 'go'; id: string }
+  /** Records that a first-time map hint has been shown. */
+  | { type: 'hint'; id: 'ride' | 'place' | 'payday' }
   /** A choice on a place's card: one of its kind's own (`recruit`, `fight`...) or written as content (`page/choice`). */
   | { type: 'choose'; id: string; choice: string }
   | { type: 'endDay' }
