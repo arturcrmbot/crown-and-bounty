@@ -8,7 +8,8 @@ in Westmere, and Grimsby's dig on the heath (raiding it sets `flags.dig`).
 Grimsby's walls: Old Nan's lullaby, for half the bounty.
 **Built (#75):** Grimsby rides out to meet you when you raid his dig or take his patrol off the bridge, and flees home
 when his guard is beaten.
-**Still to build:** Rook and his wolves (#15), the grain cart (#78), and the hunt hall and the lodge (#76).
+**Built (#15):** Rook the Huntsman, Grimsby's captain, leads the wolves from the kennels, and hunts you from week 2.
+**Still to build:** the grain cart (#78), and the hunt hall and the lodge (#76).
 
 ![Aldmoor, bigger](aldmoor.svg)
 
