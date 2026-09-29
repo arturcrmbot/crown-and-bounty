@@ -1,6 +1,6 @@
 import { heroStats } from '../hero';
 import { close, update, type GameState, type Location } from '../state';
-import { found, note, ride, words } from './common';
+import { aboutWords, found, note, ride, words } from './common';
 import type { PlaceKind } from './kind';
 
 /** The flag that says on which day the hero last drank from this well. */
@@ -14,7 +14,7 @@ const drankToday = (state: GameState, place: Location) => state.flags?.[drankKey
 export const well: PlaceKind = {
   about: (state, place) => ({
     title: place.name,
-    lines: [...words(place, 'about'), drankToday(state, place) ? '*You drank here today. Tomorrow.*' : '*Drink, and your mana is full again: once a day.*'],
+    lines: [...aboutWords(state, place), drankToday(state, place) ? '*You drank here today. Tomorrow.*' : '*Drink, and your mana is full again: once a day.*'],
     choices: [ride(place, 'Drink'), close],
   }),
   arrive(state, place) {

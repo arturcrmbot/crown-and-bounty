@@ -5,6 +5,24 @@
 import type { ArtifactId } from '../content/artifacts';
 
 export const MORE_PICTURES: Partial<Record<ArtifactId, string[]>> = {
+  hawthornCrown: [
+    '................',
+    '.......N........',
+    '..N...NRm....N..',
+    '.NRm..lWm...NRm.',
+    '..ml...w....km..',
+    '...lW.LwWk.wk...',
+    '...WwlkvwWvkw...',
+    '..LWk.....kwvk..',
+    '.lWv........Wvk.',
+    '.Wk..........wj.',
+    '.lWN........Rrj.',
+    '..kWmw....LlRqk.',
+    '...kWwlLwRWwvk..',
+    '.....vwkvqvv....',
+    '................',
+    '................',
+  ],
   grimsbysHat: [
     '................',
     '..........NN....',

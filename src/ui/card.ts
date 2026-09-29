@@ -5,7 +5,7 @@ import { INK } from '../render/palette';
 import { portraitOf } from '../render/portraits';
 import { ART } from '../render/units';
 import { unitBitmap } from '../render/wesnoth';
-import type { Action, Army, Card, Heard } from '../rules/game';
+import { manaLine, type Action, type Army, type Card, type Heard } from '../rules/game';
 import './card.css';
 import { bitmapUrl, PARCHMENT_SHADOW } from './pixels';
 import { uiScale } from './scale';
@@ -54,12 +54,7 @@ function battleResultMarkup(card: NonNullable<Card['battleResult']>): string {
       <h4>${name}</h4>
       ${army.length ? army.map((stack) => `<div class="battle-result-unit"><img alt="" src="${fallenImage(stack.troop, team)}"><span>${escape(troops(stack.troop, stack.count))}</span></div>`).join('') : '<p class="battle-result-none">None fallen.</p>'}
     </section>`;
-  const mana = card.manaSpent === 0
-    ? 'No mana spent.'
-    : card.manaSpent === card.manaAvailable
-      ? `They used all ${card.manaSpent} of your mana.`
-      : `They used ${card.manaSpent} of your mana.`;
-  return `<div class="battle-result">${side('Your fallen', card.player, 'blue')}${side('Their fallen', card.enemy, 'red')}</div><p class="battle-result-mana">${escape(mana)}</p>`;
+  return `<div class="battle-result">${side('Your fallen', card.player, 'blue')}${side('Their fallen', card.enemy, 'red')}</div><p class="battle-result-mana">${escape(manaLine(card))}</p>`;
 }
 
 /** The journal's right-hand page: each thing heard in its own words, who said it, and a tick once it has paid off. */

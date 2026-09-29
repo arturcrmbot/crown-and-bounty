@@ -4,7 +4,7 @@ import { dismiss, grumbleLine } from '../army';
 import { artifactChoices, giveArtifact, heroStats, salePrice, sell, slotTaken, wantedAt } from '../hero';
 import { bestChoice, firstPage, pageCard, takeChoice } from '../effects';
 import { addTroops, close, coins, joinLine, leadershipUsed, locationById, TROOPS, troops, update, type Card, type Choice, type GameState, type Location, type Result } from '../state';
-import { found, option, priceOf, ride, say, words } from './common';
+import { aboutWords, found, option, priceOf, ride, say } from './common';
 import type { PlaceKind } from './kind';
 
 /** Volunteers every castle and village finds on payday. */
@@ -162,7 +162,7 @@ function makeRoom(state: GameState, place: Location): { index: number; count: nu
  * written as content comes first while one holds (the old King's hunt hall, locked).
  */
 export const dwelling: PlaceKind = {
-  about: (_, place) => ({ title: place.name, lines: words(place, 'about'), choices: [ride(place, 'Visit'), close] }),
+  about: (state, place) => ({ title: place.name, lines: aboutWords(state, place), choices: [ride(place, 'Visit'), close] }),
   arrive: (state, place) => {
     const page = firstPage(state, place);
     return found(state, place, page ? pageCard(state, place, page) : recruitCard(state, place));

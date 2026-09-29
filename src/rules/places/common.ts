@@ -2,6 +2,7 @@ import { ARTIFACTS } from '../../content/artifacts';
 import type { PortraitId } from '../../content/portraits';
 import { crowd } from '../../content/troops';
 import { artifactChoices, foundNote, gainXp, giveArtifact, heroStats } from '../hero';
+import { meets } from '../effects/core';
 import { close, listed, locationById, show, TROOPS, troops, update, type Army, type Card, type Choice, type GameEvent, type GameState, type Location, type PlaceText, type Result } from '../state';
 
 /** Experience for finding a place for the first time. */
@@ -13,7 +14,7 @@ export const loot = (state: GameState, gold: number) => Math.round(gold * (1 + h
 export const priceOf = (state: GameState, base: number) => (base > 0 ? Math.max(1, Math.round(base * (1 + heroStats(state).recruitPrice))) : 0);
 
 /** The usual words for each kind of place, for provinces that don't give their own. */
-const USUAL: Record<Location['kind'], PlaceText> = {
+const USUAL: Record<Location['kind'], Omit<PlaceText, 'later'>> = {
   castle: { about: ['A royal castle.', 'Troops to recruit, and an armoury.'] },
   tower: { about: ['An old tower, long empty.'], done: ['Empty now.'], visit: ['Someone left a note here, long ago.'] },
   mine: { about: ['Something down there is humming.'], done: ['Nothing left but echoes.'], visit: ['A forgotten stash: **{gold} gold**.'] },
@@ -30,7 +31,10 @@ const USUAL: Record<Location['kind'], PlaceText> = {
 };
 
 /** A place's words: the province's own if it has them, else the usual ones for its kind. */
-export const words = (place: Location, part: keyof PlaceText): string[] => place.text?.[part] ?? USUAL[place.kind][part] ?? [];
+export const words = (place: Location, part: Exclude<keyof PlaceText, 'later'>): string[] => place.text?.[part] ?? USUAL[place.kind][part] ?? [];
+
+/** What a place says from afar: what it says once something has happened there, if something has (`later`), else its words `about` it. */
+export const aboutWords = (state: GameState, place: Location): string[] => place.text?.later?.find((l) => meets(state, l.when))?.about ?? words(place, 'about');
 
 /**
  * What an enemy has, for its card: "**lots of Swordsmen** and **a pack of Crossbowmen**", or with

@@ -177,6 +177,20 @@ function fallen(battle: BattleState, side: Side): Army {
   return [...losses].map(([troop, count]) => ({ troop, count }));
 }
 
+/**
+ * Who spent the hero's mana in a battle, for its result card: "You used 5 of your mana.", "The
+ * sergeants used all 10 of your mana.", or both, when he cast some and they cast the rest.
+ */
+export function manaLine(card: Pick<BattleResultCard, 'manaSpent' | 'manaAvailable' | 'sergeantsSpent'>): string {
+  const spent = card.manaSpent;
+  if (spent <= 0) return 'No mana spent.';
+  const theirs = Math.min(spent, card.sergeantsSpent ?? 0);
+  const all = spent >= card.manaAvailable;
+  if (theirs === spent) return `The sergeants used ${all ? 'all ' : ''}${spent} of your mana.`;
+  if (!theirs) return `You used ${all ? 'all ' : ''}${spent} of your mana.`;
+  return `You used ${spent - theirs} of your mana, and the sergeants ${all ? 'the other' : 'another'} ${theirs}.`;
+}
+
 /** Lines the armies up. The battle lives in the state until it's over. At his lair, the villain has his last words ready. */
 export function startFight(state: GameState, id: string): Result | null {
   const place = locationById(state, id);
@@ -322,11 +336,14 @@ export function finishFight(state: GameState): Result {
   const bribed = paid ? [`Bribes cost you **${coins(paid)} gold**${battle.result === 'won' ? ', and those you paid off teach you half what beating them would' : ''}.`] : [];
   // The battle rolled its own dice from the state's seed: carry on from where it stopped, not from the start again.
   const base: GameState = { ...state, seed: battle.seed, battle: undefined, army, gold: state.gold - paid, hero: { ...state.hero, mana: battle.hero.mana } };
+  const manaSpent = Math.max(0, state.hero.mana - battle.hero.mana);
+  const sergeantsSpent = Math.min(manaSpent, battle.hero.sergeantsSpent ?? 0);
   const battleResult: BattleResultCard = {
     player: fallen(battle, 'player'),
     enemy: fallen(battle, 'enemy'),
-    manaSpent: Math.max(0, state.hero.mana - battle.hero.mana),
+    manaSpent,
     manaAvailable: state.hero.mana,
+    ...(sergeantsSpent ? { sergeantsSpent } : {}),
   };
   if (battle.result === 'won') {
     const after = afterVictory(base, state.army);
