@@ -63,6 +63,11 @@ describe('the castle', () => {
     expect(cardOf(bought).choices.map((c) => c.label)).toContain('Keep it in your pack');
   });
 
+  it('still offers a way out when arriving somewhere with nothing to wear', () => {
+    expect(cardOf(visit(knight(), 'castle')).choices.map((c) => c.label)).toContain('Not today');
+    expect(cardOf(visit(knight(), 'village')).choices.map((c) => c.label)).toContain('Not today');
+  });
+
   it('says why fewer can be recruited than are on offer', () => {
     const poor = { ...knight(), gold: 35 };
     const village = cardOf(visit(poor, 'village'));

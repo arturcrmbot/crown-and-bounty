@@ -77,6 +77,6 @@ function discover(state: GameState, id: string): { state: GameState; events: Gam
 /** Shows a card with the first-visit rewards added to it. */
 export function found(state: GameState, place: Location, card: Card, ...extra: GameEvent[]): Result {
   const d = discover(state, place.id);
-  const choices = [...d.choices, ...card.choices.filter((choice) => choice.action.type !== 'close')];
-  return say(d.state, place, { ...card, lines: [...card.lines, ...d.lines], choices: choices.length ? choices : card.choices }, ...extra, ...d.events);
+  const choices = d.choices.length ? [...d.choices, ...card.choices.filter((choice) => choice.action.type !== 'close')] : card.choices;
+  return say(d.state, place, { ...card, lines: [...card.lines, ...d.lines], choices }, ...extra, ...d.events);
 }

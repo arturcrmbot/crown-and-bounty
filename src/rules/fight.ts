@@ -218,7 +218,7 @@ export function beat(state: GameState, id: string, how: { title: string; lines: 
     return { state: paid.state, events: [...events, ...paid.events] };
   }
   const gold = how.sayGold && how.reward ? [`**+${coins(how.reward)} gold.**`] : [];
-    events.push(show({ title: how.title, lines: [...how.lines, ...spoils, ...gold], choices: decisions.length ? decisions : [close], ...(how.battleResult ? { wide: true, battleResult: how.battleResult } : {}) }, place.at, place.id));
+  events.push(show({ title: how.title, lines: [...how.lines, ...spoils, ...gold], choices: decisions.length ? decisions : [close], ...(how.battleResult ? { wide: true, battleResult: how.battleResult } : {}) }, place.at, place.id));
   return { state: next, events };
 }
 
