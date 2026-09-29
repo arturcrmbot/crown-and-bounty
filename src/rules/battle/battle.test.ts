@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { STATUSES, type StatusDef, type StatusId } from '../../content/spells';
 import { TROOPS } from '../../content/troops';
-import { autoResolve, chooseAction } from './ai';
+import { autoResolve, chooseAction, finishEstimate } from './ai';
 import { activeFighter, battleAct, createBattle, enemyReach, fighterById, isCharge, options, QUIET_ROUNDS, skillFactor, spellDamage, statsOf, strike, wound, type BattleHero, type BattleEvent, type BattleState } from './battle';
 import { colOf, distance, hexIndex, neighbours, reachable } from './hex';
 
@@ -239,6 +239,18 @@ describe('a battle', () => {
     const one = autoResolve(b);
     expect(one.result).toBeDefined();
     expect(autoResolve(b)).toEqual(one);
+  });
+
+  it('offers a deterministic finish estimate only without enemy shooters and when the sergeants nearly always win', () => {
+    const decided = battle(['knights', 'archers'], [40, 20], ['swordsmen'], [2]);
+    const estimate = finishEstimate(decided);
+    expect(estimate).not.toBeNull();
+    expect(estimate!.wins).toBeGreaterThanOrEqual(9);
+    expect(estimate!.samples).toBe(10);
+    expect(finishEstimate(decided)).toEqual(estimate);
+
+    expect(finishEstimate(battle(['knights'], [40], ['crossbowmen'], [2]))).toBeNull();
+    expect(finishEstimate(battle(['knights'], [1], ['swordsmen'], [50]))).toBeNull();
   });
 
   it('lets the starting army beat Grimsby\u2019s patrol most of the time', () => {

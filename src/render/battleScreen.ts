@@ -112,6 +112,8 @@ export type BattleView = {
   shake: number;
   /** VICTORY or DEFEAT across the field at the end. */
   banner: { sprite: Bitmap; age: number; life: number } | null;
+  /** The safe-finish offer replaces Auto in the bar while the player can accept it. */
+  finishOffer: boolean;
 };
 
 export const BUTTONS: { id: 'spells' | 'wait' | 'defend' | 'auto' | 'retreat'; label: string; rect: Rect }[] = ['spells', 'wait', 'defend', 'auto', 'retreat'].map((id, i) => ({
@@ -571,13 +573,14 @@ export class BattleScreen {
     for (const button of BUTTONS) {
       const { x, y, width, height } = button.rect;
       const disabled = button.id === 'spells' && !Object.values(SPELLS).some((s) => canCast(b, s.id));
+      const label = button.id === 'auto' && view.finishOffer ? 'Finish' : button.label;
       for (let j = 0; j < height; j++) {
         for (let i = 0; i < width; i++) {
           const edge = i === 0 || j === 0 ? GOLD[4] : i === width - 1 || j === height - 1 ? INK : -1;
           screen.set(x + i, y + j, edge >= 0 ? edge : shade(STONE, 0.42 - j * 0.01 + (noise((x + i) / 4, (y + j) / 4, 41) - 0.5) * 0.2, x + i, y + j));
         }
       }
-      drawText(screen, button.label, x + Math.round(width / 2 - button.label.length * 3.4), y + 1, disabled ? STONE[4] : PARCHMENT[6], INK, 12);
+      drawText(screen, label, x + Math.round(width / 2 - label.length * 3.4), y + 1, disabled ? STONE[4] : PARCHMENT[6], INK, 12);
     }
   }
 
