@@ -86,25 +86,61 @@ export class CardView {
   private readonly card = document.createElement('div');
   /** The card's words (face, title, lines): they scroll when the card is too tall, and the buttons stay put. */
   private readonly body = document.createElement('div');
+  /** "more ▾" at the foot of the words while some are out of sight below them; a click turns the page. */
+  private readonly more = document.createElement('div');
   private onChoice: (action: Action) => void;
   private title: string | null = null;
   private scale = 1;
   private tallest = '';
+  private bar = '';
 
   constructor(onChoice: (action: Action) => void) {
     this.onChoice = onChoice;
     this.wrap.className = 'kc-card-wrap';
     this.card.className = 'kc-card';
     this.body.className = 'kc-card-body';
-    this.card.append(this.body);
+    this.more.className = 'kc-card-more';
+    this.more.innerHTML = '<span>more \u25be</span>';
+    this.more.setAttribute('aria-hidden', 'true');
+    this.card.append(this.body, this.more);
     this.wrap.append(this.card);
     this.wrap.hidden = true;
     document.body.append(this.wrap);
     this.card.addEventListener('pointerdown', (e) => e.stopPropagation());
+    this.body.addEventListener('scroll', () => this.scrolled(), { passive: true });
+    this.more.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.body.scrollBy({ top: Math.max(40, this.body.clientHeight - 60), behavior: 'smooth' });
+    });
+    // The wheel turns the words from anywhere on the card: over "more", or over the buttons.
+    this.card.addEventListener(
+      'wheel',
+      (e) => {
+        const b = this.body;
+        if (b.contains(e.target as Node) || b.scrollHeight <= b.clientHeight || this.card.scrollHeight > this.card.clientHeight) return;
+        e.preventDefault();
+        b.scrollTop += e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? b.clientHeight : 1);
+      },
+      { passive: false },
+    );
   }
 
   get isOpen() {
     return !this.wrap.hidden;
+  }
+
+  /** Whether some of the words are out of sight: that edge fades, and "more" points on down. */
+  private scrolled() {
+    const b = this.body;
+    const hidden = b.scrollHeight - b.clientHeight;
+    this.card.classList.toggle('more-above', hidden > 2 && b.scrollTop > 2);
+    this.card.classList.toggle('more-below', hidden > 2 && b.scrollTop < hidden - 2);
+    // The fade leaves the scrollbar alone, if it takes any room.
+    const bar = `${b.offsetWidth - b.clientWidth}px`;
+    if (bar !== this.bar) {
+      this.bar = bar;
+      b.style.setProperty('--bar', bar);
+    }
   }
 
   show(card: Card) {
@@ -123,16 +159,17 @@ export class CardView {
     const face = card.portrait ? `<img class="portrait" alt="" src="${portraitImage(card.portrait)}">` : '';
     const title = card.title ? `<h3>${escape(card.title)}</h3>` : '';
     const battle = card.battleResult ? battleResultMarkup(card.battleResult) : '';
-    const lines = card.lines.map((l) => `<p>${format(l)}</p>`).join('');
+    const lines = card.lines.map((l) => `<p>${format(l)}</p>`);
     // A poster's stamp lands across the face; its inset (what came home) closes it, with its line.
     const stamp = card.stamp ? `<span class="stamp">${escape(card.stamp)}</span>` : '';
     const inset = card.inset ? `<div class="inset"><img alt="" src="${portraitImage(card.inset.portrait)}"><p>${format(card.inset.line)}</p></div>` : '';
-    // Beside a face, the words come first and the fallen after them.
-    const words = face ? `${lines}${battle}` : `${battle}${lines}`;
+    // The fallen come first, or after as many lines as the rules say. Beside a face they'd leave a
+    // gap under the title, so there they come after all the words, unless the rules say otherwise.
+    const at = Math.min(lines.length, card.battleResult?.after ?? (face ? lines.length : 0));
+    const words = [...lines.slice(0, at), battle, ...lines.slice(at)].join('');
     this.body.innerHTML = card.poster ? `${title}<div class="mugshot">${face}${stamp}</div>${words}${inset}` : `${face}${title}${words}${inset}`;
     if (fresh && card.stamp) setTimeout(() => play('stamp'), STAMP_LANDS);
     this.card.querySelector('.choices')?.remove();
-    if (fresh) this.body.scrollTop = 0;
     if (card.choices.length) {
       const choices = document.createElement('div');
       choices.className = card.tiles ? 'choices tiles' : 'choices';
@@ -166,6 +203,10 @@ export class CardView {
       this.card.append(choices);
     }
     this.wrap.hidden = false;
+    // A new card opens at its top. Only a card on the page can be scrolled: a hidden one would come
+    // back scrolled as far as the last one was.
+    if (fresh) this.body.scrollTop = this.card.scrollTop = 0;
+    this.scrolled();
   }
 
   hide() {
@@ -273,5 +314,6 @@ export class CardView {
     }
     this.wrap.style.left = `${Math.round(at.x)}px`;
     this.wrap.style.top = `${Math.round(at.y)}px`;
+    this.scrolled();
   }
 }

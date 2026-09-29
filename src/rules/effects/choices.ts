@@ -8,16 +8,17 @@ import { troopPower } from '../../content/troops';
 import { beat } from '../fight';
 import { artifactChoices, heroStats, knowsTrick } from '../hero';
 import { close, leadershipUsed, locationById, show, TROOPS, type Card, type Choice, type ContentChoice, type GameState, type Location, type Page, type Result } from '../state';
-import { applyEffects, meets, needsLabel, owns, pay } from './core';
+import { applyEffects, lacksLabel, meets, needsLabel, owns, pay } from './core';
 
-export { applyEffects, meets, needsLabel, owns } from './core';
+export { applyEffects, lacksLabel, meets, needsLabel, owns } from './core';
 
-/** A content choice as a button: greyed out, with what it needs, when the hero can't take it. */
+/** A content choice as a button: greyed out, with what he lacks, when the hero can't take it. */
 export function choiceButton(state: GameState, place: Location, choice: ContentChoice, key: string): Choice {
+  const can = meets(state, choice.needs);
   return {
-    label: `${choice.label}${needsLabel(choice.needs)}`,
+    label: `${choice.label}${can ? needsLabel(choice.needs) : lacksLabel(state, choice.needs, choice.hint)}`,
     action: { type: 'choose', id: place.id, choice: key },
-    ...(meets(state, choice.needs) ? {} : { disabled: true }),
+    ...(can ? {} : { disabled: true }),
   };
 }
 

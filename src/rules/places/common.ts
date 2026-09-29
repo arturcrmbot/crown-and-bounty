@@ -2,7 +2,7 @@ import { ARTIFACTS } from '../../content/artifacts';
 import type { PortraitId } from '../../content/portraits';
 import { crowd } from '../../content/troops';
 import { artifactChoices, foundNote, gainXp, giveArtifact, heroStats } from '../hero';
-import { close, locationById, show, TROOPS, troops, update, type Army, type Card, type Choice, type GameEvent, type GameState, type Location, type PlaceText, type Result } from '../state';
+import { close, listed, locationById, show, TROOPS, troops, update, type Army, type Card, type Choice, type GameEvent, type GameState, type Location, type PlaceText, type Result } from '../state';
 
 /** Experience for finding a place for the first time. */
 export const DISCOVERY_XP = 40;
@@ -40,7 +40,7 @@ export function forceLine(army: Army, exact = true): string {
   const parts = army
     .filter((s) => s.count > 0)
     .map((s) => (TROOPS[s.troop].leadership >= 99 ? `**${TROOPS[s.troop].one}**` : `**${exact ? troops(s.troop, s.count) : crowd(s.troop, s.count)}**`));
-  return parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}` : (parts[0] ?? 'nobody');
+  return parts.length ? listed(parts) : 'nobody';
 }
 
 /** The face of whoever leads an army, a villain or a captain, for its cards: none for a band with no leader, or none drawn. */
