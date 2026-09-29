@@ -100,11 +100,16 @@
   content: none;
 }
 .kc-card button.with-portrait img {
+  flex: none;
   width: 40px;
   height: 40px;
   image-rendering: pixelated;
   background: #c6ab7c;
   border: 1px solid #5a3e14;
+}
+/* Beside a face, the label and the line under it stack as one. */
+.kc-card button.with-portrait .words {
+  display: block;
 }
 .kc-card h3 {
   margin: 0 0 6px;

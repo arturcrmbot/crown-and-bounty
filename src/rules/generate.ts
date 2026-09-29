@@ -1,5 +1,5 @@
 import { RELICS } from '../content/artifacts';
-import type { Commission } from '../content/campaign';
+import type { Commission, Memory } from '../content/campaign';
 import { SPELLS, type SpellId } from '../content/spells';
 import type { Band, VillainTemplate } from '../content/villains';
 import { troopPower, troops, TROOPS, type TroopId } from '../content/troops';
@@ -458,12 +458,21 @@ export function playable(province: Province): boolean {
   return !reach(onlyGuardian, hideout) && reach(new Set(), hideout);
 }
 
+/** What the King remembers of any generated province, after what he remembers of its villain. */
+const MEMORIES: Memory[] = [
+  { when: { mine: 'deep' }, line: '"The miners say you went down further than anyone dares, and came back up again. Nobody ever comes back up."' },
+  { when: { miller: 'sons' }, line: '"The miller says his sons came home with a great many stories, and without their pies."' },
+  { when: { tower: 'note' }, line: '"So the watchman\u2019s note was right! I shall give him a rise. Or a hat."' },
+  { when: { mine: 'gold' }, line: '"And a stash of gold from the old mine, I hear. The Treasury would like a word. So would the miners."' },
+  { line: '"Straight at them, and no nonsense. I like that in an officer."' },
+];
+
 /** A commission in a generated province: the villain's words, with a map that has been checked. */
 export function generateCommission(seed: number, v: VillainTemplate, chapter: number): Commission {
   for (let tries = 0; tries < 60; tries++) {
     const province = attempt(seed + tries * 7919, v, chapter);
     if (playable(province)) {
-      return { province, villain: v.villain, brief: v.brief, surrender: v.surrender, homecoming: v.homecoming, timeout: v.timeout, praise: v.praise, arrival: v.arrival, reward: Math.round(2500 * strengthFor(chapter)) };
+      return { province, villain: v.villain, brief: v.brief, surrender: v.surrender, homecoming: v.homecoming, timeout: v.timeout, praise: v.praise, arrival: v.arrival, reward: Math.round(2500 * strengthFor(chapter)), memories: [...(v.memories ?? []), ...MEMORIES] };
     }
   }
   throw new Error(`No playable province for seed ${seed}`);

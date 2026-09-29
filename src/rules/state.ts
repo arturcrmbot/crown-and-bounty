@@ -1,6 +1,7 @@
 /** Pure game rules: no DOM, no timers. Every change returns a new state plus events, and dice come from `seed`. */
 import type { ArtifactId, Slot } from '../content/artifacts';
 import type { BackgroundId } from '../content/backgrounds';
+import type { FriendId } from '../content/friends';
 import type { PortraitId } from '../content/portraits';
 import type { PerkId, SkillId } from '../content/skills';
 import type { MapSpellId, SpellId, StatusId } from '../content/spells';
@@ -178,7 +179,9 @@ export type Campaign = {
   court?: { boons: BoonId[]; chosen?: BoonId };
 };
 
-export type BoonId = 'fencing' | 'armourer' | 'library' | 'astronomer' | 'warrant' | 'purse';
+/** The King's own boons; the others are people from the commission who would ride on with Aldric (`FRIENDS`). */
+export type KingsBoonId = 'fencing' | 'armourer' | 'library' | 'astronomer' | 'warrant' | 'purse';
+export type BoonId = KingsBoonId | FriendId;
 
 export type GameState = {
   day: number;
@@ -226,6 +229,8 @@ export type Hero = {
   pack: ArtifactId[];
   /** Level-ups still waiting for a choice. */
   offers: Offer[];
+  /** People who ride with him, taken as boons at court: for the rest of the campaign. */
+  friends?: FriendId[];
 };
 
 /** What the player can do from a card. `go` rides to a location and visits it on arrival. */
@@ -268,7 +273,7 @@ export type Action =
   | { type: 'retry' };
 
 /** A button on a card. A `disabled` one shows what the player could do with another hero, or more gold. */
-/** A button on a card. `detail` is a smaller line under the label; `portrait` puts a face beside it. */
+/** A button on a card. `detail` is a smaller line under the label (with **bold** and *italics*); `portrait` puts a face beside it. */
 export type Choice = { label: string; action: Action; disabled?: boolean; portrait?: PortraitId; detail?: string };
 
 /** A battle's losses and mana spent, for the result card. */
