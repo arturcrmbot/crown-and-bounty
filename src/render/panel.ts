@@ -165,7 +165,7 @@ function paintBounty(b: Bitmap, state: GameState) {
   for (let k = 0; k < CAMPAIGN_LENGTH; k++) scrap(b, x0 + k * (SCRAP.width + SCRAP.gap), SCRAP.y, k, k < found);
 }
 
-/** A word stamped in red ink across a face, in a red box, as on the poster once the bounty is paid. */
+/** A word stamped in red across a face, on a pasted slip so it reads at this size, as on the poster once the bounty is paid. */
 function stamp(b: Bitmap, word: string, cx: number, y: number) {
   const mask = textMask(word, 13, 2);
   const [w, h] = [mask.width + 6, mask.height + 2];
@@ -173,9 +173,9 @@ function stamp(b: Bitmap, word: string, cx: number, y: number) {
   for (let j = 0; j < h; j++) {
     for (let i = 0; i < w; i++) {
       const edge = i < 2 || j < 2 || i >= w - 2 || j >= h - 2;
-      // Stamped ink takes unevenly: a pixel of the edge missing here and there.
-      if (edge && hash(i, j, 65) > 0.15) b.set(x0 + i, y + j, RED[3]);
-      else if (!edge && mask.solid(i - 3, j - 1) && hash(i, j, 66) > 0.1) b.set(x0 + i, y + j, RED[4]);
+      // Stamped ink takes unevenly: a pixel of the edge a shade lighter here and there.
+      const colour = edge ? (hash(i, j, 65) > 0.2 ? RED[3] : RED[4]) : mask.solid(i - 3, j - 1) ? RED[3] : PARCHMENT[6];
+      b.set(x0 + i, y + j, colour);
     }
   }
 }

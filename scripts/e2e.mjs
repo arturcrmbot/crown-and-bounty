@@ -113,8 +113,8 @@ try {
   const camera = () => kc.call(() => window.__kc.camera());
   await page.waitForTimeout(200);
   await page.mouse.click(760, 175);
-  const looked = await camera();
-  check(looked.x === 0 && looked.y > 1800 && String((await kc.state()).hero.at) === String(edge.hero.at), `a click on the minimap\u2019s corner looks at Darkwood, across the province (${Math.round(looked.x)}, ${Math.round(looked.y)}), and he stays put`);
+  const far = await camera();
+  check(far.x === 0 && far.y > 1800 && String((await kc.state()).hero.at) === String(edge.hero.at), `a click on the minimap\u2019s corner looks at Darkwood, across the province (${Math.round(far.x)}, ${Math.round(far.y)}), and he stays put`);
   await page.mouse.move(760, 175);
   await page.mouse.down();
   await page.mouse.move(850, 110, { steps: 8 });
