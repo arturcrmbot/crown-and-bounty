@@ -209,25 +209,25 @@ describe('parleys', () => {
       const e = visit(s, id).events.find((x) => x.type === 'card');
       return e?.type === 'card' ? e.card : null;
     };
-    const pardon = card(knight, 'hideout')!.choices.find((c) => c.label.startsWith('Talk the Baron round'))!;
-    expect(pardon.label).toBe('Talk the Baron round (Courtier)');
-    expect(pardon.disabled).toBe(true);
-    const courtier = { ...newGame(1, ALDMOOR, 'courtier'), opening: undefined };
-    expect(card(courtier, 'hideout')!.choices.find((c) => c.label.startsWith('Talk the Baron round'))!.disabled).toBeUndefined();
+    const lullaby = card(knight, 'hideout')!.choices.find((c) => c.label.startsWith('Sing him Old Nan'))!;
+    expect(lullaby.label).toBe('Sing him Old Nan\u2019s lullaby (Courtier)');
+    expect(lullaby.disabled).toBe(true);
+    const courtier = { ...newGame(1, ALDMOOR, 'courtier'), opening: undefined, flags: { lullaby: true } };
+    expect(card(courtier, 'hideout')!.choices.find((c) => c.label.startsWith('Sing him Old Nan'))!.disabled).toBeUndefined();
     const broke = { ...knight, gold: 100 };
     expect(card(broke, 'patrol')!.choices.find((c) => c.label.startsWith('Pay them to go home'))!.disabled).toBe(true);
   });
 
-  it('let a courtier take Grimsby without a fight, for a smaller bounty', () => {
-    const courtier = { ...newGame(1, ALDMOOR, 'courtier'), opening: undefined };
-    const result = apply(courtier, { type: 'choose', id: 'hideout', choice: 'parley/pardon' })!;
+  it('let a courtier who knows Old Nan\u2019s lullaby take Grimsby without a fight, for a smaller bounty', () => {
+    const courtier = { ...newGame(1, ALDMOOR, 'courtier'), opening: undefined, flags: { lullaby: true } };
+    const result = apply(courtier, { type: 'choose', id: 'hideout', choice: 'parley/lullaby' })!;
     expect(result.state.over).toBe('won');
     expect(result.state.bounty).toBe('paid');
     expect(result.state.gold).toBe(courtier.gold + 1000);
     expect(result.state.hero.xp).toBe(450);
     const bounty = result.events.find((e) => e.type === 'card');
     expect(bounty?.type === 'card' && bounty.card.title).toBe('Baron Grimsby is taken!');
-    expect(apply({ ...newGame(1, ALDMOOR, 'knight') }, { type: 'choose', id: 'hideout', choice: 'parley/pardon' })).toBeNull();
+    expect(apply({ ...newGame(1, ALDMOOR, 'knight'), flags: { lullaby: true } }, { type: 'choose', id: 'hideout', choice: 'parley/lullaby' })).toBeNull();
   });
 
   it('let anyone pay the patrol to go home, which costs gold and gains nothing', () => {
@@ -277,8 +277,8 @@ describe('the end of the campaign', () => {
 
 describe('parleys, carefully', () => {
   it('turn up the place\u2019s artifact when they count as a win', () => {
-    const courtier = { ...newGame(1, ALDMOOR, 'courtier'), opening: undefined };
-    const won = apply(courtier, { type: 'choose', id: 'hideout', choice: 'parley/pardon' })!;
+    const courtier = { ...newGame(1, ALDMOOR, 'courtier'), opening: undefined, flags: { lullaby: true } };
+    const won = apply(courtier, { type: 'choose', id: 'hideout', choice: 'parley/lullaby' })!;
     expect(Object.values(won.state.hero.gear).concat(won.state.hero.pack)).toContain('goldenFeather');
   });
 
