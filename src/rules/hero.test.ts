@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { ALDMOOR } from '../content/aldmoor';
+import { ARTIFACTS } from '../content/artifacts';
 import { BACKGROUNDS } from '../content/backgrounds';
 import { autoResolve } from './battle/ai';
 import { createBattle, strike } from './battle/battle';
 import { apply, heroInBattle, heroStats, levelUpCard, visit, winChance, type GameState } from './game';
-import { equip, gainXp, giveArtifact, learn, LEVELS } from './hero';
+import { artifactChoices, equip, gainXp, giveArtifact, learn, LEVELS } from './hero';
 import { newGame } from './scenario';
 
 const knight = () => newGame(1, ALDMOOR, 'knight');
@@ -88,6 +89,19 @@ describe('skills and gear', () => {
     expect(worn.hero.gear.trinket).toBe('wizardsButton');
     expect(worn.hero.pack).toEqual(['luckyHorseshoe']);
     expect(heroStats(worn).spellPower).toBe(heroStats(knight()).spellPower + 1);
+  });
+
+  it('keeps drawback gear in the pack until the player chooses to wear it', () => {
+    for (const id of ['bramblesLadle', 'headsmansAxe', 'kingsPlate', 'friarsHabit', 'blackBanner'] as const) {
+      const state = giveArtifact(knight(), id);
+      expect(state.hero.gear[ARTIFACTS[id].slot]).toBeUndefined();
+      expect(state.hero.pack).toContain(id);
+      const choices = artifactChoices(state, id);
+      expect(choices.map((choice) => choice.label)).toEqual(['Wear it', 'Keep it in your pack']);
+      const worn = apply(state, choices[0].action)!.state;
+      expect(worn.hero.gear[ARTIFACTS[id].slot]).toBe(id);
+      expect(worn.hero.pack).not.toContain(id);
+    }
   });
 
   it('grant luck and morale from a perk and a trinket', () => {

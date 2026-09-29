@@ -2,7 +2,7 @@ import { ARTIFACTS } from '../../content/artifacts';
 import { isBeast, TROOPS } from '../../content/troops';
 import { applyEffects, choiceButton } from '../effects';
 import { battleXp, beat, fight, startFight, winChance } from '../fight';
-import { foundNote, gainXp, giveArtifact, heroStats } from '../hero';
+import { artifactChoices, foundNote, gainXp, giveArtifact, heroStats } from '../hero';
 import { addTroops, close, coins, leadershipUsed, show, stillWithYou, update, type Army, type Choice, type ContentChoice, type GameState, type Location, type Result } from '../state';
 import { countsExactly, forceLine, note, option, ride, say, words } from './common';
 import type { PlaceKind } from './kind';
@@ -140,7 +140,8 @@ function tame(state: GameState, place: Location): Result | null {
   const xp = Math.round(battleXp(offer.beasts) / 2);
   const grown = gainXp(next, xp);
   lines.push(`**+${xp} experience.**`);
-  return { state: grown.state, events: [...events, ...grown.events, show({ title: place.name, lines, choices: [close] }, place.at, place.id)] };
+  const choices = place.artifact && offer.whole ? artifactChoices(grown.state, place.artifact) : [];
+  return { state: grown.state, events: [...events, ...grown.events, show({ title: place.name, lines, choices: choices.length ? choices : [close] }, place.at, place.id)] };
 }
 
 /** Taming, as a button: greyed out, with the reason, when it can't be done. Other heroes see it as a hint. */

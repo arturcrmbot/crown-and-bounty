@@ -145,6 +145,7 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   St Aldhelm's third way (mana back as you ride), and in the armouries a Scout's Spyglass (numbers on the odds), the
   Steward's Ledger (rents) and the Recruiting Drum (volunteers every payday). Generated armouries stock two such
   specials. Gear that slows the hero slows today's ride too, so its price can't be dodged overnight.
+- **Gear with drawbacks:** Bramble's Ladle, the Headsman's Axe, the King's Plate, a Friar's Habit and the Black Banner go into the pack first, with a choice to wear them or keep them there. Gear without a drawback still goes straight on when its slot is free.
 - **Mana wells (the first slice of the spellbook, #9):** a new kind of place, one to a province (St Aldhelm's Well
   in Aldmoor, St Wendel's Spring in the Fenmarch): a drink fills the hero's mana to the brim, once a day, so a
   caster can plan a second battle's worth of spells round it. It does nothing for a hero with no mana to fill, or
