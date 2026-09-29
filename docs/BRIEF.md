@@ -2,6 +2,8 @@
 
 Working title. A small browser game, not commercial. The goal is quirky and fun, with the charm of Heroes of Might and Magic 2 and the structure of the original King's Bounty (1990).
 
+The story and the world are in [WORLD.md](WORLD.md) (29 Sep 2026). Where the villains and the story below differ from it, WORLD.md wins.
+
 ## Decided (with Artur, 25 Sep 2026)
 
 - **Premise:** you are the King's officer, taking bounty contracts on villains. Each run is a new commission: a new province, a new set of villains, and a deadline of 100 days.

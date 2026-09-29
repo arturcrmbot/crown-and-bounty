@@ -1,6 +1,6 @@
 # AGENTS.md
 
-King's Commission (working title) is a browser game: King's Bounty (1990) rebuilt with modern tech and the charm of Heroes of Might and Magic 2. Read `docs/BRIEF.md` for the design and every decision made so far, and `docs/PLAN.md` for the structure, testing and milestones.
+King's Commission (working title) is a browser game: King's Bounty (1990) rebuilt with modern tech and the charm of Heroes of Might and Magic 2. Read `docs/BRIEF.md` for the design and every decision made so far, `docs/PLAN.md` for the structure, testing and milestones, and `docs/WORLD.md` for the story and the world.
 
 ## Working with Artur
 
