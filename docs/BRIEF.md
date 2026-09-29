@@ -396,3 +396,13 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   and in effects, and a victory's spoils can name a page whose choices the victory card offers (`spoils.page`). The bot
   wins Aldmoor with every background at the same pace as before (by day 12, 11, 9 and 8 at the median for the Knight,
   the Wizard, the Ranger and the Courtier, over thirty seeds).
+- **The old King's falconer (29 Sep, #105):** the south-west heath, west of the river, was a long ride to nothing. Now a
+  track off Grimsby's road leads out across the heather to a stone bothy with a turf roof, and a hawk on a block outside.
+  Old Wat was the old King's falconer, and Meg is the last of his hawks. He has a clue for anyone who comes (the old King
+  never buried gold: whatever he put in the ground, it was warm), and one of two things: Meg herself (a trinket: see 80
+  paces further, and she counts every band you see), or, once the huntsmen are back at the hunt hall, himself and his
+  three apprentices, who go home to the hall as four more huntsmen, free. That second choice isn't on his card until the
+  hall is open (no greyed-out button gives it away), and he has a word for Rook, his old apprentice, on the way. It's
+  content, a new look drawn in code (`mews`), and Meg's picture. The deep chase keeps its wild woods: the lodge and its
+  bears (#76) give the chase its ride, and past them it's pathless forest only a Ranger (or anyone in the Greenwood
+  Cloak) can cross.
