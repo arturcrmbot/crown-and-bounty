@@ -1,7 +1,7 @@
 import { needsTarget, SPELLS, STATUSES, type SpellId, type StatusDef } from '../content/spells';
 import { TROOPS, troops } from '../content/troops';
 import { CONTACT, TROOP_SOUNDS } from '../audio/blows';
-import { chooseAction, finishEstimate } from '../rules/battle/ai';
+import { chooseAction, finishEstimate, sergeantsAct } from '../rules/battle/ai';
 import { manaInBattle, signedShare, spiritsOf, uneasyWords } from '../rules/heroSheet';
 import { grumbleLine } from '../rules/army';
 import { coins, listed } from '../rules/state';
@@ -593,10 +593,10 @@ export class BattleController implements Screen {
     });
   }
 
-  /** Does an action through the rules, then queues the animations for what happened. */
-  perform(action: BattleAction): boolean {
+  /** Does an action through the rules (one your sergeants chose, if `sergeants`: the mana it costs, they spent), then queues the animations for what happened. */
+  perform(action: BattleAction, sergeants = false): boolean {
     const before = this.battle;
-    const { battle, events } = battleAct(before, action);
+    const { battle, events } = (sergeants ? sergeantsAct : battleAct)(before, action);
     if (events.length === 0) return false;
     // A villain's spell or order is his to show, whoever's turn it is.
     this.acting = action.type === 'volley' ? null : action.type === 'cast' && action.by !== undefined ? action.by : (activeFighter(before)?.id ?? null);
@@ -1047,7 +1047,7 @@ export class BattleController implements Screen {
         this.think += dt * pace;
         if (this.think >= ENEMY_THINK) {
           this.think = 0;
-          this.perform(chooseAction(this.battle));
+          this.perform(chooseAction(this.battle), f.side === 'player');
         }
       }
     }
@@ -1176,7 +1176,7 @@ export class BattleController implements Screen {
     const left = wound(target, damage);
     const back = !ranged && !charge && !leader && left.count > 0 && !target.retaliated ? ' They will strike back.' : '';
     // A leader's blow gets no answer: nothing can reach him, and he's back behind the line before they turn.
-    const after = leader && !ranged ? ` ${this.fighterName(f.id)} rides back behind the line, and nobody can strike back.` : charge ? ' No one can strike back at a charge.' : '';
+    const after = leader && !ranged ? ` ${this.fighterName(f.id)} rides back behind the line, and nobody can strike back.` : charge ? ' No one can strike back at a charge, but it winds them: they won\u2019t strike back themselves for the rest of this round and the next.' : '';
     return `${charge ? 'Charge! ' : ''}${ranged ? 'Shoot' : 'Attack'} ${whom}: about ${damage} damage, ${left.killed} perish.${back}${after}`;
   }
 

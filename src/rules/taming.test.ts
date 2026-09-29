@@ -6,7 +6,7 @@ import { isBeast, TROOPS, type TroopId } from '../content/troops';
 import { autoResolve, chooseAction } from './battle/ai';
 import { createBattle } from './battle/battle';
 import { apply, battleXp, commissionAt, endDay, heroStats, leadershipUsed, locationById, visit, wages, type Card, type GameState, type Result } from './game';
-import { tameOffer } from './places/enemy';
+import { SAFE, TAME_RESPECT, tameOffer } from './places/enemy';
 import { simulate } from './sim';
 import { beginCommission, newGame } from './scenario';
 
@@ -51,6 +51,8 @@ describe('taming', () => {
   });
 
   it('only if they respect him: the wolves won\u2019t follow a fresh army, and do follow one that could beat them', () => {
+    // Respect is the odds the card calls "You should win", not merely close.
+    expect(TAME_RESPECT).toBe(SAFE);
     const start = fresh();
     expect(labels(start, 'wolves')).toContain('Tame them (they don\u2019t respect you yet) [off]');
     expect(choose(start, 'wolves', 'tame')).toBeNull();

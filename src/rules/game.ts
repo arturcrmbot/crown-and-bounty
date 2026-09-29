@@ -15,7 +15,7 @@ export { meets, needsLabel } from './effects';
 export { ambushCard, endDay } from './days';
 export { bountyOf, briefingCard, CAMPAIGN_LENGTH, campaignLines, chooseBoon, commissionAt, commissionOf, companyLine, courtCard, friendsOf, happened, hasNextCommission, memoriesOf, nextArmy, nextCommission, provinceOf, retry, speechCard, toCourt, veterans, VETERANS } from './campaign';
 export { beginCommission, chooseBackground, newGame } from './scenario';
-export { battleXp, fight, finishFight, heroFighter, heroInBattle, lossesLine, startFight, winChance, type HeroFighter } from './fight';
+export { battleXp, fight, finishFight, heroFighter, heroInBattle, lossesLine, manaLine, startFight, winChance, type HeroFighter } from './fight';
 export { equip, gainXp, giveArtifact, heroStats, learn, levelFor, levelUpCard, LEVELS, movePack, unequip, wear } from './hero';
 export { dismiss, moveStack } from './army';
 

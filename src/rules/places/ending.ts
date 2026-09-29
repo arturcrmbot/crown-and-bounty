@@ -1,7 +1,7 @@
 import { BACKGROUNDS } from '../../content/backgrounds';
 import { campaignLines } from '../campaign';
 import { again, close, show, update, type GameState, type Location, type Result } from '../state';
-import { option, ride, say, words } from './common';
+import { aboutWords, option, ride, say } from './common';
 import type { PlaceKind } from './kind';
 
 /** Digs up the lost sceptre: the end of the campaign. */
@@ -33,7 +33,7 @@ function dig(state: GameState, place: Location): Result | null {
 
 /** The X on the map, once all its pieces are found. */
 export const x: PlaceKind = {
-  about: (_, place) => ({ title: place.name, lines: words(place, 'about'), choices: [ride(place, 'Ride there'), close] }),
+  about: (state, place) => ({ title: place.name, lines: aboutWords(state, place), choices: [ride(place, 'Ride there'), close] }),
   arrive: (state, place) => say(state, place, { title: place.name, lines: ['Five torn pieces of map, and one very large X.', 'Your men look at the shovel, then at you.'], choices: [option(place, 'Dig here', 'dig'), close] }),
   choose: (state, place, choice) => (choice === 'dig' ? dig(state, place) : null),
   worth: () => 100000,

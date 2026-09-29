@@ -135,8 +135,11 @@ export type HeroStats = {
 export const MAX_INTEREST = 500;
 
 /** The hero's numbers with everything added up. The rules use these, never the raw fields. */
-/** Leadership each level brings: troops follow a famous officer. */
-export const RENOWN = 10;
+/**
+ * Leadership each level brings: troops follow a famous officer. Leadership caps the army, so it grows
+ * slowly enough that he's still growing into the third week of a commission (docs/BALANCE.md).
+ */
+export const RENOWN = 5;
 
 /** The share of every company that stays on between commissions, before skills. */
 export const VETERANS = 0.25;
@@ -310,10 +313,12 @@ const isTrick = (option: string) => option.startsWith('perk:') && Boolean(PERKS[
 /**
  * Draws three different options (four for a scholar), favouring the background's skills and the
  * skills already learned. One is always a trick while any are left: something that changes how he plays.
+ * `skip` is what he has just learned: its next rank waits for a later level-up, so a skill's ranks come
+ * one at a time, not all three from one fight.
  */
-function drawOptions(state: GameState, seed: number): { options: string[]; seed: number } {
+function drawOptions(state: GameState, seed: number, skip?: string): { options: string[]; seed: number } {
   const favours = BACKGROUNDS[state.hero.background].favours;
-  const pool = candidates(state).map((option) => {
+  const pool = candidates(state).filter((option) => option !== skip).map((option) => {
     const [kind, id] = option.split(':');
     const weight = kind === 'perk' ? 0.8 : 1 + (favours.includes(id) ? 1.5 : 0) + (state.hero.skills[id as SkillId] ? 1 : 0);
     return { option, weight };
@@ -394,10 +399,11 @@ export function learn(state: GameState, option: string): Result | null {
   if (kind === 'perk') hero.perks = [...hero.perks, id as PerkId];
   else hero.skills = { ...hero.skills, [id]: (hero.skills[id as SkillId] ?? 0) + 1 };
   let next: GameState = { ...state, hero };
-  // Offers still waiting were drawn before this choice: draw them again, so none offers what he now has.
+  // Offers still waiting were drawn before this choice: draw them again, so none offers what he now has,
+  // nor the next rank of what he has just learned.
   let seed = next.seed;
   const offers = hero.offers.map((o) => {
-    const drawn = drawOptions(next, seed);
+    const drawn = drawOptions(next, seed, option);
     seed = drawn.seed;
     return { ...o, options: drawn.options };
   });

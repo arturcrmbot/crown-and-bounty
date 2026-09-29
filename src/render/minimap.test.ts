@@ -140,6 +140,12 @@ describe('the minimap', () => {
     const band: Location = { id: 'grimsbyRides', kind: 'patrol', name: 'Baron Grimsby', at: [2000, 1300], done: false, enemy: { ...lair.enemy!, lair: 'hideout' } };
     const riding = Object.fromEntries(marksOf([...state.locations, band], CLEAR).map((m) => [m.id, m.kind]));
     expect(riding).toMatchObject({ grimsbyRides: 'villain', hideout: 'foe' });
+    // A band that moved out of the hero's sight isn't marked, however clear the land it's on: nobody knows where it is.
+    const lost = state.locations.map((l) => (l.id === 'wolves' || l.id === 'poachers' ? { ...l, enemy: { ...l.enemy!, unseen: true } } : l));
+    const known = marksOf(lost, CLEAR).map((m) => m.id);
+    expect(known).not.toContain('wolves');
+    expect(known).not.toContain('poachers');
+    expect(known).toContain('patrol');
   });
 
   it('shows the marks, the hero on top of them and the view\u2019s frame, and paints again only when one of them moves', () => {

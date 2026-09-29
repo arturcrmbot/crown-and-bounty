@@ -62,6 +62,11 @@ export type Enemy = {
   rest?: number;
   /** A hunter on the hero's trail since dawn: if he's still in reach tonight, it falls on his camp. */
   trailing?: boolean;
+  /**
+   * Moved in the night where the hero couldn't see it: where it is now isn't known, and the map doesn't
+   * show it until he sees it again (see `map/sight.ts`). Only bands on the move ever are.
+   */
+  unseen?: boolean;
   /** A villain who rides out of his lair to meet the hero when he's hurt: see `Sortie`. */
   sortie?: Sortie;
   /** The hurts (story flags) he has already ridden out over. */
@@ -233,8 +238,12 @@ export type Location = {
   pages?: Page[];
 };
 
-/** Flavour for a place: before a visit, once it's used up, and on the visit itself. */
-export type PlaceText = { about?: string[]; done?: string[]; visit?: string[] };
+/**
+ * Flavour for a place: before a visit, once it's used up, and on the visit itself. `later` is what
+ * it says from afar once something has happened there, instead of `about`: the first whose `when`
+ * holds (the old delving, once the dwarf has opened it).
+ */
+export type PlaceText = { about?: string[]; done?: string[]; visit?: string[]; later?: { when: Needs; about: string[] }[] };
 export type PlaceLook =
   | 'abbey' | 'peathut' | 'windmill' | 'stilthut' | 'shrine' | 'camp' | 'cottage' | 'house' | 'stones' | 'range' | 'hall' | 'lodge' | 'cart' | 'mews'
   | 'pack' | 'hamper' | 'campfire' | 'fold' | 'boat' | 'skeps' | 'hayrick' | 'pond' | 'kiln' | 'nest';
@@ -357,9 +366,10 @@ export type Choice = { label: string; action: Action; disabled?: boolean; portra
 
 /**
  * A battle's losses and mana spent, for the result card: at its top, or after its first `after`
- * lines (on a villain's card, once he's taken, before the bribes and the spoils).
+ * lines (on a villain's card, once he's taken, before the bribes and the spoils). `sergeantsSpent`
+ * is how much of the mana the sergeants spent, casting for him while they had command.
  */
-export type BattleResultCard = { player: Army; enemy: Army; manaSpent: number; manaAvailable: number; after?: number };
+export type BattleResultCard = { player: Army; enemy: Army; manaSpent: number; manaAvailable: number; sergeantsSpent?: number; after?: number };
 
 /**
  * A parchment card with a title, lines (with **bold** and *italics*), and choices. `wide` is for big

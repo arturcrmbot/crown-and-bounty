@@ -439,7 +439,10 @@ export const ALDMOOR: Province = {
       name: 'The Old Delving',
       at: at.delving,
       done: false,
-      text: { about: ['An old mine mouth, in the middle of Darkwood.', '*Somebody has bricked it up from the inside.*'] },
+      text: {
+        about: ['An old mine mouth, in the middle of Darkwood.', '*Somebody has bricked it up from the inside.*'],
+        later: [{ when: { flag: 'delving' }, about: ['An old mine mouth, in the middle of Darkwood.', '*The bricks are down, in a neat dwarfish pile. The rails run north into the dark.*'] }],
+      },
       pages: [
         {
           id: 'shut',

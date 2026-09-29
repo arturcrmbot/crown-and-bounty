@@ -225,6 +225,27 @@ describe('a battle', () => {
     expect(isCharge(engaged, engaged.fighters[0], hexIndex(7, 4))).toBe(false);
   });
 
+  it('winds a stack that charges: it can\u2019t strike back itself for the rest of that round and the next', () => {
+    const lances = (b: BattleState): BattleState => ({ ...b, hero: { ...b.hero, charge: ['knights'] }, order: [0, 1] });
+    const b = lances(placed(battle(['knights'], [20], ['swordsmen'], [60]), { 0: hexIndex(2, 4), 1: hexIndex(6, 4) }, [0, 1]));
+    const charged = battleAct(b, { type: 'melee', target: 1, from: hexIndex(5, 4) });
+    const knights = fighterById(charged.battle, 0);
+    expect(knights.status).toContain('winded');
+    // Nobody struck back at the charge.
+    expect(charged.events.filter((e) => e.type === 'hit' && e.retaliation)).toHaveLength(0);
+    // Their answer lands, and the winded knights don't swing back.
+    const answer = battleAct({ ...charged.battle, order: [1, ...charged.battle.order.filter((id) => id !== 1)] }, { type: 'melee', target: 0, from: fighterById(charged.battle, 1).at });
+    expect(answer.events.some((e) => e.type === 'hit' && e.attacker === 1 && e.target === 0)).toBe(true);
+    expect(answer.events.some((e) => e.type === 'hit' && e.retaliation)).toBe(false);
+    // Unwinded, the same knights would have swung back.
+    const fresh = { ...charged.battle, fighters: charged.battle.fighters.map((f) => (f.id === 0 ? { ...f, status: [] } : f)), order: [1, ...charged.battle.order.filter((id) => id !== 1)] };
+    expect(battleAct(fresh, { type: 'melee', target: 0, from: fighterById(charged.battle, 1).at }).events.some((e) => e.type === 'hit' && e.retaliation)).toBe(true);
+    // A blow without a run-up winds nobody.
+    const plain = { ...b, hero: { ...b.hero, charge: [] } };
+    expect(fighterById(battleAct(plain, { type: 'melee', target: 1, from: hexIndex(5, 4) }).battle, 0).status).not.toContain('winded');
+    expect(STATUSES.winded).toMatchObject({ noStrikeBack: true, rounds: 2 });
+  });
+
   it('makes defenders harder to hurt, and lets a stack wait until last', () => {
     const b = battle(['knights'], [10], ['swordsmen'], [10]);
     const target = b.fighters[1];

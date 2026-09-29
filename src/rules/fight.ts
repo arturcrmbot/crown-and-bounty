@@ -5,7 +5,7 @@ import type { StatusId } from '../content/spells';
 import { autoResolve } from './battle/ai';
 import { applyEffects, choiceButton, meets } from './effects/core';
 import { bountyOf, CAMPAIGN_LENGTH, campaignLines, commissionOf, hasNextCommission, provinceOf } from './campaign';
-import { revealDisc } from './map/fog';
+import { look, seeBands } from './map/sight';
 import { fleeHome, fleesHome } from './map/sortie';
 import { battleEnd, createBattle, isLeader, SHOOTER_MELEE, survivors, type BattleHero, type BattleState, type Side } from './battle/battle';
 import { artifactChoices, foundNote, gainXp, giveArtifact, heroStats, namedBonuses } from './hero';
@@ -177,6 +177,20 @@ function fallen(battle: BattleState, side: Side): Army {
   return [...losses].map(([troop, count]) => ({ troop, count }));
 }
 
+/**
+ * Who spent the hero's mana in a battle, for its result card: "You used 5 of your mana.", "The
+ * sergeants used all 10 of your mana.", or both, when he cast some and they cast the rest.
+ */
+export function manaLine(card: Pick<BattleResultCard, 'manaSpent' | 'manaAvailable' | 'sergeantsSpent'>): string {
+  const spent = card.manaSpent;
+  if (spent <= 0) return 'No mana spent.';
+  const theirs = Math.min(spent, card.sergeantsSpent ?? 0);
+  const all = spent >= card.manaAvailable;
+  if (theirs === spent) return `The sergeants used ${all ? 'all ' : ''}${spent} of your mana.`;
+  if (!theirs) return `You used ${all ? 'all ' : ''}${spent} of your mana.`;
+  return `You used ${spent - theirs} of your mana, and the sergeants ${all ? 'the other' : 'another'} ${theirs}.`;
+}
+
 /** Lines the armies up. The battle lives in the state until it's over. At his lair, the villain has his last words ready. */
 export function startFight(state: GameState, id: string): Result | null {
   const place = locationById(state, id);
@@ -211,8 +225,7 @@ export function bountyPaid(state: GameState, id: string, opening: string[], rewa
   if (!hasNextCommission(state) && sceptre) {
     // The last piece of the map: the commission goes on until the hero digs where the X is.
     const x: Location = { id: 'sceptre', kind: 'dig', name: 'X Marks the Spot', at: sceptre, done: false };
-    const seen = revealDisc(state.explored, state.world, sceptre[0], sceptre[1], 110).bits;
-    const next: GameState = { ...state, bounty: 'paid', paid, explored: seen, locations: [...state.locations, x] };
+    const next = look({ ...state, bounty: 'paid', paid, locations: [...state.locations, x] }, sceptre, 110).state;
     const card = {
       title: 'The last piece of the map!',
       lines: [...lines, `Among ${c.villain}\u2019s things: the last torn piece of an old map. Laid together, the ${piece} pieces show an **X**, right here in ${provinceOf(state).name}.`],
@@ -323,11 +336,14 @@ export function finishFight(state: GameState): Result {
   const bribed = paid ? [`Bribes cost you **${coins(paid)} gold**${battle.result === 'won' ? ', and those you paid off teach you half what beating them would' : ''}.`] : [];
   // The battle rolled its own dice from the state's seed: carry on from where it stopped, not from the start again.
   const base: GameState = { ...state, seed: battle.seed, battle: undefined, army, gold: state.gold - paid, hero: { ...state.hero, mana: battle.hero.mana } };
+  const manaSpent = Math.max(0, state.hero.mana - battle.hero.mana);
+  const sergeantsSpent = Math.min(manaSpent, battle.hero.sergeantsSpent ?? 0);
   const battleResult: BattleResultCard = {
     player: fallen(battle, 'player'),
     enemy: fallen(battle, 'enemy'),
-    manaSpent: Math.max(0, state.hero.mana - battle.hero.mana),
+    manaSpent,
     manaAvailable: state.hero.mana,
+    ...(sergeantsSpent ? { sergeantsSpent } : {}),
   };
   if (battle.result === 'won') {
     const after = afterVictory(base, state.army);
@@ -338,11 +354,13 @@ export function finishFight(state: GameState): Result {
   }
   const castle = state.locations.find((l) => l.kind === 'castle');
   const home = castle ? ([castle.at[0], castle.at[1] + 14] as const) : state.hero.at;
+  /** Back at the castle, with nobody: he sees what's about, as he would riding in. */
+  const alone = () => seeBands({ ...base, army: [], movement: 0, hero: { ...base.hero, at: home } }, home, heroStats(base).sight);
   const shaken = battle.result === 'fled' && !battle.standoff ? army.map((s) => ({ ...s, count: s.count - Math.ceil(s.count * 0.25) })).filter((s) => s.count > 0) : army;
   if (battle.result === 'fled' && shaken.length === 0 && battle.fighters.some((f) => f.hero)) {
     // Nobody who rode with him is left: Aldric gets away alone, and rides home to raise another army.
     return {
-      state: { ...base, army: [], movement: 0, hero: { ...base.hero, at: home } },
+      state: alone(),
       events: [
         { type: 'moved', at: home, facing: base.hero.facing },
         show({ title: 'Retreat!', lines: [`${who} gets away alone: nobody who rode with him is left standing.`, `He rides back to ${castle?.name ?? 'safety'} to raise another army.`, ...bribed], choices: [close], wide: true, battleResult }, null),
@@ -365,7 +383,7 @@ export function finishFight(state: GameState): Result {
     };
   }
   return {
-    state: { ...base, army: [], movement: 0, hero: { ...base.hero, at: home } },
+    state: alone(),
     events: [
       { type: 'moved', at: home, facing: base.hero.facing },
       show({ title: 'Defeat', lines: [...(ended.length ? ended : ['Your army is scattered to the four winds.']), `${ended.length ? 'He rides' : 'You limp'} back to ${castle?.name ?? 'safety'} to raise another.`, ...bribed], choices: [close], wide: true, battleResult }, null),

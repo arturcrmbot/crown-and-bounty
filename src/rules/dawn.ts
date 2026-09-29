@@ -4,7 +4,7 @@
  */
 import { TROOPS } from '../content/troops';
 import { heroStats } from './hero';
-import { revealDisc } from './map/fog';
+import { look } from './map/sight';
 import { RESTOCK } from './places/dwelling';
 import { addTroops, coins, leadershipUsed, troops, type GameEvent, type GameState } from './state';
 
@@ -55,11 +55,11 @@ export const SMELLED = 36;
  */
 export function heroMorning(state: GameState, yesterday: GameState): { state: GameState; events: GameEvent[] } {
   const s = heroStats(state);
-  let explored = state.explored;
+  let next = state;
   const events: GameEvent[] = [];
   const lift = (at: GameState['hero']['at'], radius: number) => {
-    const seen = revealDisc(explored, state.world, at[0], at[1], radius);
-    explored = seen.bits;
+    const seen = look(next, at, radius);
+    next = seen.state;
     if (seen.changed) events.push({ type: 'reveal', at, radius });
   };
   for (const l of state.locations) {
@@ -69,5 +69,5 @@ export function heroMorning(state: GameState, yesterday: GameState): { state: Ga
     if (s.smells && treasure && Math.hypot(l.at[0] - state.hero.at[0], l.at[1] - state.hero.at[1]) <= s.smells) lift(l.at, SMELLED);
   }
   const carried = Math.min(Math.max(0, yesterday.movement), Math.round(heroStats(yesterday).movement * s.carry));
-  return { state: { ...state, explored, movement: state.movement + carried }, events };
+  return { state: { ...next, movement: state.movement + carried }, events };
 }

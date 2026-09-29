@@ -257,7 +257,7 @@ export function refreshPlace(scene: AdventureScene, l: Location) {
 export function addPlace(scene: AdventureScene, l: Location) {
   const look = landmark(l);
   if (!look) return;
-  const o: Placed = { ...place(look.frames[0], l.at, look.foot), frames: look.frames.length > 1 ? look.frames : undefined };
+  const o: Placed = { ...place(look.frames[0], l.at, look.foot), frames: look.frames.length > 1 ? look.frames : undefined, hidden: Boolean(l.enemy?.unseen) };
   scene.view.animate(o);
   scene.pickups.set(l.id, o);
   // A place back on the map (a band that rode out before) is clicked where it stands now.
@@ -305,6 +305,8 @@ export function buildAdventureScene(map: MapModel, state: GameState): AdventureS
     const vanishes = VANISHES.has(l.kind);
     if (vanishes) {
       if (!l.done) {
+        // A band out of the hero's sight stays off the map until he sees it (see `rules/map/sight.ts`).
+        o.hidden = Boolean(l.enemy?.unseen);
         pickups.set(l.id, o);
         animated.push(o);
       }

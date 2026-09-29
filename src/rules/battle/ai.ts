@@ -2,7 +2,7 @@ import { abilitiesOf, type TroopId } from '../../content/troops';
 import { needsTarget, SPELLS, STATUSES } from '../../content/spells';
 import {
   activeFighter, bardOf, battleAct, canCast, casterSide, castersOf, CHARGE_BONUS, CHARGE_HEXES, fighterById, hasTurn, isLeader, luckOf, moraleOf, onField, rideFrom, ridesOut, spellsOf, hasStatus, isRanged, options, powerOf, spellCost, spellDamage, speedOf, statsOf, stepsTo, strike, unitOf, wound,
-  type BattleAction, type BattleState, type Fighter, type Options, type Side,
+  type BattleAction, type BattleResult, type BattleState, type Fighter, type Options, type Side,
 } from './battle';
 import { distance, HEXES, NEIGHBOURS, reachMask } from './hex';
 
@@ -110,12 +110,24 @@ export function chooseActionV1(b: BattleState): BattleAction {
 
 export type Chooser = (b: BattleState) => BattleAction;
 
-/** Lets both commanders play it out. Stalemates end after 40 rounds with the attacker falling back. */
+/**
+ * A move your sergeants chose while they have command, played by the rules: whatever it costs of
+ * Aldric's mana, they spent, not he (`sergeantsSpent`), so the result card can say who spent it.
+ * The enemy's moves never cost him any, so its moves can come this way too.
+ */
+export function sergeantsAct(b: BattleState, action: BattleAction): BattleResult {
+  const done = battleAct(b, action);
+  const spent = b.hero.mana - done.battle.hero.mana;
+  if (spent <= 0) return done;
+  return { ...done, battle: { ...done.battle, hero: { ...done.battle.hero, sergeantsSpent: (b.hero.sergeantsSpent ?? 0) + spent } } };
+}
+
+/** Lets both commanders play it out: the enemy, and your sergeants. Stalemates end after 40 rounds with the attacker falling back. */
 export function autoResolve(b: BattleState, choose: Chooser = chooseAction): BattleState {
   let battle = b;
   for (let guard = 0; guard < 4000 && !battle.result; guard++) {
     if (battle.round > 40) return { ...battle, result: 'fled' };
-    const { battle: next, events } = battleAct(battle, choose(battle));
+    const { battle: next, events } = sergeantsAct(battle, choose(battle));
     if (events.length === 0) return { ...battle, result: 'fled' };
     battle = next;
   }

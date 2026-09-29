@@ -1,7 +1,7 @@
 import { ARTIFACTS } from '../../content/artifacts';
 import { artifactChoices, foundNote, giveArtifact, heroStats } from '../hero';
 import { close, coins, leadershipUsed, update, type Choice, type GameState, type Location, type Result } from '../state';
-import { loot, note, option, ride, say, words } from './common';
+import { aboutWords, loot, note, option, ride, say } from './common';
 import type { PlaceKind } from './kind';
 
 function openChest(state: GameState, place: Location, take: 'keep' | 'give'): Result | null {
@@ -30,7 +30,7 @@ function openChest(state: GameState, place: Location, take: 'keep' | 'give'): Re
 
 /** A treasure chest: keep the gold, or hand it out for leadership. */
 export const chest: PlaceKind = {
-  about: (_, place) => ({ title: place.name, lines: words(place, 'about'), choices: [ride(place, 'Open'), close] }),
+  about: (state, place) => ({ title: place.name, lines: aboutWords(state, place), choices: [ride(place, 'Open'), close] }),
   arrive(state, place) {
     if (place.done) return say(state, place, note(place, ['Empty. You check twice anyway.']));
     const gold = loot(state, place.gold ?? 0);
@@ -54,7 +54,7 @@ export const chest: PlaceKind = {
  * unless there's something to say about what the gold was in (a pedlar's pack, the Baron's hamper).
  */
 export const pile: PlaceKind = {
-  about: (_, place) => ({ title: place.name, lines: words(place, 'about'), choices: [ride(place, 'Take'), close] }),
+  about: (state, place) => ({ title: place.name, lines: aboutWords(state, place), choices: [ride(place, 'Take'), close] }),
   arrive(state, place) {
     if (place.done) return say(state, place, note(place, ['Nothing left but footprints.']));
     const gold = loot(state, place.gold ?? 0);
