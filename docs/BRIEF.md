@@ -393,4 +393,6 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   peasants to recruit and +10 leadership (Westmere won't forget it). Once the patrol is gone (beaten, paid off, sent back
   with the Baron's orders, or home with Pike), no more carts leave; one already on the road goes on to the stockade. It's
   data: an enemy's `convoy` (who sends it, their share, its road, its pace, and the payday's words), `rations` in the state
-  and in effects, and a victory's spoils can name a page whose choices the victory card offers (`spoils.page`).
+  and in effects, and a victory's spoils can name a page whose choices the victory card offers (`spoils.page`). The bot
+  wins Aldmoor with every background at the same pace as before (by day 12, 11, 9 and 8 at the median for the Knight,
+  the Wizard, the Ranger and the Courtier, over thirty seeds).
