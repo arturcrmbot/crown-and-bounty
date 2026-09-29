@@ -3,7 +3,7 @@
 How every commission becomes a proper challenge. Agreed with Artur on 29 Sep 2026, after he played Aldmoor end to
 end as the Knight. Read with `BRIEF.md` and `PLAN.md`. The numbers were measured on main on 29 Sep, after #82 and #83,
 on the old, small Aldmoor. Luck and morale (#84) and the bigger Aldmoor (#85) came in after, so the first job of
-`sim:curve` (below) is to measure them again.
+`sim:curve` (#94) is to measure them again.
 
 ## The problem
 
@@ -65,14 +65,14 @@ is a wall one day and a walkover the next, and a hero who waits a day never has 
 ## The approach
 
 1. **A power budget for each commission.** Each commission has a target day for its villain and a reference hero:
-   what a careful player has by then. For Aldmoor that's about day 21 (#77), three weeks later than now. Every enemy
+   what a careful player has by then. For Aldmoor that's about day 21 (#77, #95), three weeks later than now. Every enemy
    is sized against the reference hero on the day he's meant to meet it, not against the hero of day 1.
 2. **Caps on the big three.** The army, stats and gear, and spells still grow, but more slowly and up to a ceiling.
    That keeps the reference hero predictable, and a player who grinds can't run away from the budget. The rise has to
    slow as well as stop: today he's at his ceiling by day 9, so a stronger Grimsby alone would only move the coin flip
    to day 9. The bigger Aldmoor (#85) spreads the rewards over three weeks, and the caps slow what each one adds.
-3. **A fix for each background that has a runaway of its own:** the Wizard's mana, the Ranger's taming and the
-   Courtier's prices. The Knight has none, so the budget is his fix.
+3. **A fix for each background that has a runaway of its own:** the Wizard's mana (#99), the Ranger's taming (#98)
+   and the Courtier's prices (#96). The Knight has none, so the budget is his fix.
 
 After that, in this order: smarter enemies (captains, #15; troop abilities, #7; boss fights, #16), then difficulty
 levels (#20) as a dial on top of the budget. Not chosen: enemies that grow with Aldric, since growth has to feel like
@@ -97,7 +97,7 @@ budget, "explored" moves to where a player really is when he reaches the gate.
 
 **Pests and bands** stay as they are: pests are won from the start, and bands are fair fights.
 
-**Every commission** follows the same rule, at its own target day, for the hero the campaign carried there. Generated
+**Every commission** follows the same rule (#101), at its own target day, for the hero the campaign carried there. Generated
 provinces stop growing by a flat fifth, and each is sized to the reference hero it expects. The crooks of commissions
 II to V (proposed in #86) escalate in kind: rabble, then skill, then armour, then the best of everything. The budget
 sets how many.
@@ -129,18 +129,18 @@ moved with these levers:
 
 **The caps:**
 
-- **Leadership limits the army.** It grows more slowly (fewer points a level, from chests and from banners), so the
+- **Leadership limits the army** (#97). It grows more slowly (fewer points a level, from chests and from banners), so the
   army a player can lead on the target day is known.
-- **Stats and gear grow more slowly:** smaller gains, or less from each point.
-- **Mana comes back a quarter at a time.**
+- **Stats and gear grow more slowly** (#100): smaller gains, or less from each point.
+- **Mana comes back a quarter at a time** (#99).
 
 ## How it's measured
 
-- **`npm run sim:curve`** (to build) prints the table above for every background and commission, by day, for the bot
+- **`npm run sim:curve`** (#94, to build) prints the table above for every background and commission, by day, for the bot
   and a careful player, against every enemy, with the budget beside it.
 - **`npm run difficulty`** gets a checkpoint at the target day. At the villain, the reference hero wins 35% to 65%
   without the extras and 75% or better with them.
-- **The bot plays like a person** (#14). It fights with a margin instead of at the cliff's edge, takes the skills that
+- **The bot plays like a person** (#94, which takes over #14). It fights with a margin instead of at the cliff's edge, takes the skills that
   multiply, uses parleys, and bribes as a Courtier would. The careful player above is its first draft.
 - **`npm run sim`** and **`npm run sim -- 8 --campaign`** give the days each commission takes, against its target day.
 - **`npm run sim:boss`** and **`npm run sim:battles`** stay as they are.
