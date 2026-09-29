@@ -6,7 +6,7 @@ import { MAP_SPELLS, SPELLS, STATUSES, type MapSpellId } from '../content/spells
 import { ABILITIES, abilitiesOf, TROOPS, troops, type TroopId } from '../content/troops';
 import { createBattle, grumbleOf, grumblesAt, luckOf, moraleOf, statsOf, type BattleState, type Fighter } from './battle/battle';
 import { rowOf } from './battle/hex';
-import { bountyOf, CAMPAIGN_LENGTH, commissionOf, hasNextCommission } from './campaign';
+import { bountyOf, CAMPAIGN_LENGTH, commissionOf, hasNextCommission, heardOf } from './campaign';
 import { heroFighter, heroInBattle } from './fight';
 import { countsExactly, forceLine } from './places/common';
 import { heroStats, LEVELS, type StatId } from './hero';
@@ -42,7 +42,7 @@ export function paydayOf(state: GameState): { day: number; pay: number; wages: n
   return { day: nextPayday(state), pay: COMMISSION + s.payday, wages: Math.round(wages(state.army) * (1 + s.wages)) };
 }
 
-/** Something on the map's bottom bar or its right-hand panel, for what it says under the pointer. */
+/** Something on the map's bottom bar, for what it says under the pointer. */
 export type BarItem =
   | { kind: 'gold' }
   | { kind: 'stack'; index: number }
@@ -50,20 +50,15 @@ export type BarItem =
   | { kind: 'movement' }
   | { kind: 'mana' }
   | { kind: 'day' }
-  | { kind: 'hourglass' }
-  | { kind: 'hero' }
-  | { kind: 'pieces' };
+  | { kind: 'journal' }
+  | { kind: 'hourglass' };
 
 /** Torn pieces of the old map so far: one with every bounty paid. */
 export const mapPieces = (state: GameState) => state.campaign.record.length + (state.bounty === 'paid' ? 1 : 0);
 
-/** The hover labels of the bar and the panel, like HoMM2's status line: what each number means, and what a click does. */
+/** The hover labels of the bar, like HoMM2's status line: what each number means, and what a click does. */
 export function barNote(state: GameState, item: BarItem): string {
   switch (item.kind) {
-    case 'hero':
-      return `${BACKGROUNDS[state.hero.background].title} \u00b7 level ${roman(state.hero.level)} \u00b7 click (or H) for his gear and army`;
-    case 'pieces':
-      return `Pieces of the old map: ${mapPieces(state)} of ${CAMPAIGN_LENGTH} \u00b7 every bounty brings one, and the last shows where the Sceptre of Order lies`;
     case 'gold': {
       const p = paydayOf(state);
       return `${coins(state.gold)} gold · payday on day ${roman(p.day)}: the King sends ${coins(p.pay)}, wages take ${coins(p.wages)}`;
@@ -75,8 +70,8 @@ export function barNote(state: GameState, item: BarItem): string {
     }
     case 'bounty': {
       const villain = commissionOf(state).villain;
-      if (state.bounty === 'paid') return `The bounty on ${villain} is paid`;
-      return `Wanted: ${villain}, by day ${LAST_DAY} · ${LAST_DAY - state.day} days left · click for the poster`;
+      if (state.bounty === 'paid') return `The bounty on ${villain} is paid \u00b7 click for the journal (J)`;
+      return `Wanted: ${villain}, by day ${LAST_DAY} · ${LAST_DAY - state.day} days left · click for the journal (J)`;
     }
     case 'movement':
       return `${Math.floor(state.movement)} movement left today, of ${heroStats(state).movement} · E ends the day`;
@@ -84,6 +79,8 @@ export function barNote(state: GameState, item: BarItem): string {
       return `${manaNote(state)} · click for the hero (H)`;
     case 'day':
       return `Day ${roman(state.day)} of ${LAST_DAY} · payday once a week, next on day ${roman(nextPayday(state))}`;
+    case 'journal':
+      return 'The journal (J): the bounty, and what you\u2019ve heard on the road';
     case 'hourglass':
       return 'End the day (E)';
   }
@@ -125,6 +122,30 @@ export function bountyCard(state: GameState): Card {
       ...(paid ? (c.returned ? [] : [c.homecoming]) : [`*Pieces of the old map: ${pieces} of ${CAMPAIGN_LENGTH}.*`]),
     ],
     choices: paid && state.over === 'won' && hasNextCommission(state) ? [{ label: 'Ride to the King\u2019s court', action: { type: 'court' } }] : [close],
+  };
+}
+
+/**
+ * The journal (J, or the book on the bar): the commission, with the villain's poster pinned in
+ * (stamped PAID once he's taken), the reward, the day and the pieces of the old map; then what's been
+ * heard on the road, quoted and not explained, the open things first and those that paid off ticked.
+ */
+export function journalCard(state: GameState): Card {
+  const c = commissionOf(state);
+  const paid = state.bounty === 'paid';
+  const left = LAST_DAY - state.day;
+  return {
+    title: 'Journal',
+    ...(c.face ? { portrait: c.face } : {}),
+    ...(paid ? { stamp: 'PAID' } : {}),
+    lines: [
+      `**Commission ${roman(state.campaign.chapter + 1)}**, ${c.province.name}: day ${roman(state.day)} of ${LAST_DAY}${paid ? '.' : `, and **${left} day${left === 1 ? '' : 's'}** left.`}`,
+      c.wanted ? `**${c.villain}**, wanted ${c.wanted}` : `**${c.villain}**. ${c.brief.join(' ')}`,
+      paid ? paidLine(state) : `Reward: **${coins(bountyOf(state))} gold**.`,
+      `*Pieces of the old map: ${mapPieces(state)} of ${CAMPAIGN_LENGTH}.*`,
+    ],
+    journal: { heard: heardOf(state) },
+    choices: [close],
   };
 }
 

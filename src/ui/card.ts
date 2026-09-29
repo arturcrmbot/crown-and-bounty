@@ -5,7 +5,7 @@ import { INK } from '../render/palette';
 import { portraitOf } from '../render/portraits';
 import { ART } from '../render/units';
 import { unitBitmap } from '../render/wesnoth';
-import type { Action, Army, Card } from '../rules/game';
+import type { Action, Army, Card, Heard } from '../rules/game';
 import './card.css';
 import { bitmapUrl, PARCHMENT_SHADOW } from './pixels';
 import { uiScale } from './scale';
@@ -60,6 +60,13 @@ function battleResultMarkup(card: NonNullable<Card['battleResult']>): string {
       ? `They used all ${card.manaSpent} of your mana.`
       : `They used ${card.manaSpent} of your mana.`;
   return `<div class="battle-result">${side('Your fallen', card.player, 'blue')}${side('Their fallen', card.enemy, 'red')}</div><p class="battle-result-mana">${escape(mana)}</p>`;
+}
+
+/** The journal's right-hand page: each thing heard in its own words, who said it, and a tick once it has paid off. */
+function heardMarkup(heard: Heard[]): string {
+  const items = heard.map((h) => `<li${h.done ? ' class="done"' : ''}><span class="words">\u201c${format(h.words)}\u201d</span><small>${escape(h.who)}</small></li>`).join('');
+  const list = heard.length ? `<ul>${items}</ul>` : '<p class="none">Nothing yet. What you hear on the road goes down here.</p>';
+  return `<section class="heard"><h4>Things heard</h4>${list}</section>`;
 }
 
 /**
@@ -156,6 +163,7 @@ export class CardView {
     this.card.classList.toggle('wide', Boolean(card.wide));
     this.card.classList.toggle('poster', Boolean(card.poster));
     this.card.classList.toggle('tiled', Boolean(card.tiles));
+    this.card.classList.toggle('journal', Boolean(card.journal));
     const face = card.portrait ? `<img class="portrait" alt="" src="${portraitImage(card.portrait)}">` : '';
     const title = card.title ? `<h3>${escape(card.title)}</h3>` : '';
     const battle = card.battleResult ? battleResultMarkup(card.battleResult) : '';
@@ -167,8 +175,12 @@ export class CardView {
     // gap under the title, so there they come after all the words, unless the rules say otherwise.
     const at = Math.min(lines.length, card.battleResult?.after ?? (face ? lines.length : 0));
     const words = [...lines.slice(0, at), battle, ...lines.slice(at)].join('');
-    this.body.innerHTML = card.poster ? `${title}<div class="mugshot">${face}${stamp}</div>${words}${inset}` : `${face}${title}${words}${inset}`;
-    if (fresh && card.stamp) setTimeout(() => play('stamp'), STAMP_LANDS);
+    if (card.journal) {
+      // Two pages: the commission, with its poster pinned in (stamped long since, so it doesn't land again), and what's been heard.
+      const pinned = `<div class="pinned"><b>WANTED</b><div class="mugshot">${face}${stamp}</div></div>`;
+      this.body.innerHTML = `<div class="page">${title}${pinned}${words}</div>${heardMarkup(card.journal.heard)}`;
+    } else this.body.innerHTML = card.poster ? `${title}<div class="mugshot">${face}${stamp}</div>${words}${inset}` : `${face}${title}${words}${inset}`;
+    if (fresh && card.stamp && !card.journal) setTimeout(() => play('stamp'), STAMP_LANDS);
     this.card.querySelector('.choices')?.remove();
     if (card.choices.length) {
       const choices = document.createElement('div');

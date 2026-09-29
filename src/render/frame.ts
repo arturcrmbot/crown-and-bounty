@@ -5,19 +5,15 @@ import { GOLD, INK, PARCHMENT, SLATE, WOOD } from './palette';
 export type Rect = { x: number; y: number; width: number; height: number };
 
 export const SCREEN = { width: 960, height: 540 };
-/** The picture on the screens that fill the frame: the battlefield, the court, the title. */
+/** The picture, in its frame: the adventure map's view, the battlefield, the court, the title. */
 export const MAP_VIEW: Rect = { x: 16, y: 16, width: 928, height: 464 };
 export const BAR: Rect = { x: 16, y: 498, width: 928, height: 28 };
 
 /**
- * The adventure map's own layout, as in HoMM2: its view, narrower than `MAP_VIEW`, and the right-hand
- * panel beside it. The panel's column ends where the map's frame did: the minimap at its top, under
- * the sound buttons, then Aldric's plate and the bounty's.
+ * The minimap, over the top right corner of the map's view, under the sound buttons: small, so the
+ * land keeps the screen. Tab, or the button in its corner, folds it away (see `minimap.ts`).
  */
-export const ADVENTURE_VIEW: Rect = { x: 16, y: 16, width: 712, height: 464 };
-export const MINIMAP: Rect = { x: 751, y: 36, width: 200, height: 150 };
-export const HERO_PLATE: Rect = { x: 751, y: 202, width: 200, height: 134 };
-export const BOUNTY_PLATE: Rect = { x: 751, y: 352, width: 200, height: 135 };
+export const MINIMAP: Rect = { x: 770, y: 38, width: 160, height: 120 };
 
 /** A carved gold moulding just outside a rectangle, lit from the top left. */
 export function trim(screen: Bitmap, { x, y, width, height }: Rect, inset = 0) {

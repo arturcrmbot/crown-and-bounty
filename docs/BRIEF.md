@@ -23,7 +23,7 @@ The balance is in [BALANCE.md](BALANCE.md) (29 Sep 2026): a power budget for eac
 ## Look
 
 - **Target:** the look and feel of Heroes of Might and Magic 2's adventure map. **2D only.** On 25 Sep 2026 Artur rejected a 3D look test (pixel-art and toy-diorama renders of KayKit models): "it doesn't need to be 3D at all".
-- **Plan:** pixel art at HoMM2's own 640×480, scaled up in whole pixels, with square 32 px tiles and HoMM2's screen layout (map view in a carved frame, right-hand panel with minimap, hero, buttons and status). A 256-colour indexed palette, with water animated by palette cycling as HoMM2 did. The panel, with the minimap and the hero, came in with #106 (see below); the buttons and status are still on the bottom bar.
+- **Plan:** pixel art at HoMM2's own 640×480, scaled up in whole pixels, with square 32 px tiles and HoMM2's screen layout (map view in a carved frame, right-hand panel with minimap, hero, buttons and status). A 256-colour indexed palette, with water animated by palette cycling as HoMM2 did. The panel, with the minimap and the hero, came in with #106 and went again with #130 (see below): this game has no castles or towns to manage, so the map fills the width, a small minimap sits over its top right corner, and the buttons and status are on the bottom bar, with the journal.
 - **Art sources:** Battle for Wesnoth's hand-painted units for the troops and the hero, and code for everything else (terrain, buildings, portraits, the title painting, the interface). Code-drawn figures couldn't reach HoMM2, and HoMM2's own art belongs to Ubisoft, so on 28 Sep 2026 Artur chose Wesnoth's sprites (https://units.wesnoth.org/1.18/mainline/en_US/era_default.html) and accepted that the game becomes open source under the GPL. The PNGs come unchanged from Wesnoth's repository at tag 1.18.8, are recoloured and scaled in code, and every file is credited in `public/assets/CREDITS.md`.
 - **Real HoMM2 art is possible only locally:** loading your own copy of the game's data files, as the fheroes2 project does. The game couldn't then be shared publicly.
 - **No image-model art.** Artur rejected generated images.
@@ -303,7 +303,7 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   every run (64 of 64 over sixteen seeds) and is beaten in the open in most, which weakens the stockade, so the bot wins a
   day sooner at the median (knight 12, wizard 9, ranger 11, courtier 11, against 13, 10, 12 and 11) and its worst runs are
   shorter. The difficulty tiers don't move.
-- **The minimap, in HoMM2's right-hand panel (29 Sep, #106):** on a province three days' ride across, the whole of it
+- **The minimap, in HoMM2's right-hand panel (29 Sep, #106; the panel went with #130, below, and the minimap stayed):** on a province three days' ride across, the whole of it
   at a glance, so a player plans routes instead of just clicking: where the ford is, what's left to explore, which way
   the stockade lies.
   - **The layout.** Only the adventure map has the panel: its view is now 712 by 464 (22 tiles by 14, HoMM2's
@@ -407,3 +407,27 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   bears (#76) give the chase its ride, and past them it's pathless forest only a Ranger (or anyone in the Greenwood
   Cloak) can cross. The bot wins Aldmoor with every background at much the same pace (by day 12, 9, 9 and 8 at the
   median for the Knight, the Wizard, the Ranger and the Courtier).
+- **The map gets its width back, and a journal (29 Sep, #130):** Artur, playing the live build: the right-hand panel
+  (#106) made no sense for this game, which has no castles or towns to manage. It showed a portrait he already knew and
+  a poster he'd already read, and took a quarter of the map. So the panel is gone, and the map's view is the whole
+  928 by 464 again, as on every other screen.
+  - **The minimap stays, small,** over the view's top right corner, under the sound buttons: 160 by 120 in its gold
+    moulding (a pixel for every 20 paces in Aldmoor, four a tile in the smaller provinces), with all it had: the land, the
+    fog, the marks, Aldric's diamond and the view's frame, and a press looks there and a drag steers. It's laid over the
+    map after the light, the weather and the night, so it stays a chart. A button in its corner folds it away with a
+    rustle of parchment (so does Tab), and folded, the button alone stays in the corner, a little map that brings it
+    back. Whether it's out is kept like the sound's settings, not in the save.
+  - **The journal:** J, the book beside the hourglass on the bar, or the bounty's name on the bar opens a parchment
+    spread. On the left page, the commission: its number, the province, the day and the days left, the WANTED poster
+    pinned in (stamped PAID once he's taken), what he's wanted for, the reward (or what the Crown paid) and the pieces of
+    the old map. On the right, **things heard**: what people said or wrote on the road, quoted and not explained, with
+    who said it, and a box ticked in red ink once it has paid off (the open ones come first). The playtests (#119,
+    #129) asked for it: on a map this size the threads spread out and get lost. It's data: each commission's `heard`
+    in `content/campaign.ts` gives the words, who said them, when they count as heard (story flags, where a flag spent
+    since still counts, or a place visited) and when they've paid off (flags, or a place used up). Aldmoor has ten
+    (Old Pike's journal, the Baron's letter and the orders on the spade, Old Wat, Old Nan three times, the huntsmen,
+    the saint and the youngest poacher), and the Fenmarch has Brother Anselm's letter; the generated provinces have
+    none yet. The first thing heard in the first commission comes with a hint saying where it's gone.
+  - **Nothing important went:** movement and mana stay on the bar, where they always were, with their hover labels;
+    Aldric's face, level, experience and stats are on the hero screen (H). The army's stacks on the bar sit a little
+    closer, to make room for the book. The save doesn't change.

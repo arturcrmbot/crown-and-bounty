@@ -1,10 +1,10 @@
 import { VANISHES, type Location } from '../rules/game';
 import { nearest, type Point } from '../rules/map/geometry';
 import { CELL, forestAt, poolEdge, riverHalfWidth, Terrain, type MapModel } from '../rules/map/model';
-import type { Bitmap } from './bitmap';
-import type { Rect } from './frame';
+import { Bitmap } from './bitmap';
+import { trim, type Rect } from './frame';
 import { hash } from './noise';
-import { BLUE, DIRT, FOG_LUT, GOLD, INK, LEAF, NEUTRAL, PARCHMENT, PINE, RED, ROCK, STONE, WATER } from './palette';
+import { BLUE, DIRT, FOG_LUT, GOLD, INK, LEAF, NEUTRAL, PARCHMENT, PINE, RED, ROCK, SLATE, STONE, WATER } from './palette';
 import type { TerrainPainter } from './terrain';
 
 /** The minimap's colours: the land's own, in pairs or threes to speckle them, and the marks on it. */
@@ -75,20 +75,47 @@ type Look = { land: number; wild: number };
 /** How many cells of each terrain a minimap pixel covers, counted afresh for each. */
 const COUNT = new Uint8Array(Object.keys(Terrain).length);
 
+/** How far the gold moulding round the minimap reaches out from it, as round every box of the interface. */
+const TRIM = 5;
+/** The button in the minimap's top right corner, which folds it away; folded, it's all that's left. */
+const BUTTON = 15;
+/** Pixels round the button that still count as on it: it's small. */
+const BUTTON_SLACK = 3;
+
+/** The button's pictures, from the top left of its face: a bar to fold the minimap away, and a little folded map to bring it back. */
+const FOLD = ['', '', '', '', '..ggggggg', '..GGGGGGG', '...ooooooo'];
+const UNFOLD = [
+  '',
+  'ooooooooooo',
+  'oLLLLdLLLLo',
+  'owLLLdLrLro',
+  'oLwwLdLLrLo',
+  'oLLLwdLrLro',
+  'oLLLLwwLLLo',
+  'oLLLLdLwwLo',
+  'oLLLLdLLLwo',
+  'ooooooooooo',
+];
+
 /**
- * The whole province in the right-hand panel, as in HoMM2. The land is worked out once, from the
- * rules' walk grid and the painter's regions; the fog is laid over it only where the hero has just
- * seen; marks, the hero and the view's frame go on top. It paints into the interface's frame, and
- * only when something it shows has changed, so a frame where nothing moves costs nothing.
+ * The whole province at a glance, in the top right corner of the map's view, as HoMM2 had it. The land
+ * is worked out once, from the rules' walk grid and the painter's regions; the fog is laid over it only
+ * where the hero has just seen; marks, the hero and the view's frame go on top. It's painted, in its
+ * moulding, only when something it shows has changed, and laid over the map every frame, after the
+ * light and the night, as it's a chart, not a window. A button in its corner folds it away (Tab does too).
  */
 export class Minimap {
-  /** Where it sits on the screen. */
+  /** Where it sits on the screen, inside its moulding. */
   readonly rect: Rect;
   /** Minimap pixels per map pixel. */
   readonly scale: number;
-  /** Its size in pixels. A province of another shape than the panel's sits in its middle. */
+  /** Its size in pixels. A province of another shape than `rect`'s sits in its middle. */
   readonly width: number;
   readonly height: number;
+  /** Whether it's out, or folded away into its button. */
+  shown = true;
+  /** Whether the pointer is on its button, which lights up. */
+  lit = false;
   private readonly left: number;
   private readonly top: number;
   private readonly world: { width: number; height: number };
@@ -98,9 +125,12 @@ export class Minimap {
   private readonly wild: Uint8Array;
   /** The land with the fog laid over it, as it stands. */
   private readonly base: Uint8Array;
+  /** The minimap as last painted, in its moulding; and folded away, the moulding round its button alone. */
+  private readonly box: Bitmap;
+  private readonly stub: Bitmap;
   private marks: Mark[] = [];
   /** What was painted last: the fog's turn, the places, where the hero and the view were. */
-  private shown = { fog: -1, locations: null as readonly Location[] | null, key: '' };
+  private painted = { fog: -1, locations: null as readonly Location[] | null, key: '' };
   private fogTurn = 0;
 
   constructor(map: MapModel, painter: TerrainPainter, fog: Fog, rect: Rect) {
@@ -124,6 +154,10 @@ export class Minimap {
         this.wild[my * this.width + mx] = FOG_LUT[look.wild];
       }
     }
+    this.box = new Bitmap(rect.width + TRIM * 2, rect.height + TRIM * 2);
+    trim(this.box, { x: TRIM, y: TRIM, width: rect.width, height: rect.height });
+    this.stub = new Bitmap(BUTTON + TRIM * 2, BUTTON + TRIM * 2);
+    trim(this.stub, { x: TRIM, y: TRIM, width: BUTTON, height: BUTTON });
     this.refog();
   }
 
@@ -191,29 +225,48 @@ export class Minimap {
   }
 
   /**
-   * Paints the minimap into `target` (the interface's frame) if anything it shows has changed since
-   * last time: the fog, the places, the hero's pixel or the view's frame. `view` is the part of the map
-   * on screen, in map pixels. Returns whether it painted.
+   * Paints the minimap, in its moulding, if anything it shows has changed since last time: the fog,
+   * the places, the hero's pixel or the view's frame. `view` is the part of the map on screen, in map
+   * pixels. Returns whether it painted. `draw` lays it over the map.
    */
-  paint(target: Bitmap, locations: readonly Location[], hero: Point, view: Rect): boolean {
+  paint(locations: readonly Location[], hero: Point, view: Rect): boolean {
     const [hx, hy] = this.pixel(hero[0], hero[1]);
     const frame = this.frameOf(view);
     const key = `${hx},${hy}|${frame.join(',')}`;
-    const stale = this.shown.fog !== this.fogTurn || this.shown.locations !== locations;
-    if (!stale && key === this.shown.key) return false;
+    const stale = this.painted.fog !== this.fogTurn || this.painted.locations !== locations;
+    if (!stale && key === this.painted.key) return false;
     if (stale) this.marks = marksOf(locations, this.fogged);
-    this.shown = { fog: this.fogTurn, locations, key };
-    const { rect } = this;
-    target.fill(rect.x, rect.y, rect.width, rect.height, INK);
-    for (let my = 0; my < this.height; my++) target.data.set(this.base.subarray(my * this.width, (my + 1) * this.width), (this.top + my) * target.width + this.left);
+    this.painted = { fog: this.fogTurn, locations, key };
+    const { box, rect } = this;
+    const [ox, oy] = this.origin();
+    box.fill(TRIM, TRIM, rect.width, rect.height, INK);
+    for (let my = 0; my < this.height; my++) box.data.set(this.base.subarray(my * this.width, (my + 1) * this.width), (oy + my) * box.width + ox);
     for (const mark of this.marks) {
       const [mx, my] = this.pixel(mark.at[0], mark.at[1] - 4);
       // The villain's mark has his gold at its heart.
-      this.dot(target, mx, my, SIZE[mark.kind], MINIMAP_COLOURS[mark.kind], mark.kind === 'villain' ? MINIMAP_COLOURS.gold : undefined);
+      this.dot(mx, my, SIZE[mark.kind], MINIMAP_COLOURS[mark.kind], mark.kind === 'villain' ? MINIMAP_COLOURS.gold : undefined);
     }
-    this.box(target, frame, MINIMAP_COLOURS.view);
-    this.diamond(target, hx, hy);
+    this.outline(frame, MINIMAP_COLOURS.view);
+    this.diamond(hx, hy);
     return true;
+  }
+
+  /**
+   * Lays the minimap over the map's view, or folded away, its button alone in the corner. It goes on
+   * after the light, the weather and the night, as it's a chart, not a window.
+   */
+  draw(screen: Bitmap) {
+    const { rect } = this;
+    const image = this.shown ? this.box : this.stub;
+    const x = this.shown ? rect.x - TRIM : rect.x + rect.width - BUTTON - TRIM;
+    const y = rect.y - TRIM;
+    for (let j = 0; j < image.height; j++) screen.data.set(image.data.subarray(j * image.width, (j + 1) * image.width), (y + j) * screen.width + x);
+    button(screen, rect.x + rect.width - BUTTON, rect.y, this.shown ? FOLD : UNFOLD, this.lit);
+  }
+
+  /** Where the minimap's own pixels start in its box: inside the moulding, and centred if the province is another shape. */
+  private origin(): [number, number] {
+    return [this.left - this.rect.x + TRIM, this.top - this.rect.y + TRIM];
   }
 
   /** The view's frame, in minimap pixels: left, top, right, bottom, inside the minimap. */
@@ -228,44 +281,56 @@ export class Minimap {
     ];
   }
 
+  /** Sets a minimap pixel in the box, if it's on the minimap. */
+  private put(mx: number, my: number, colour: number) {
+    if (mx < 0 || my < 0 || mx >= this.width || my >= this.height) return;
+    const [ox, oy] = this.origin();
+    this.box.set(ox + mx, oy + my, colour);
+  }
+
   /** A square mark `size` pixels across in an ink edge, centred on a minimap pixel, maybe with a heart of another colour. */
-  private dot(target: Bitmap, mx: number, my: number, size: number, colour: number, heart = colour) {
+  private dot(mx: number, my: number, size: number, colour: number, heart = colour) {
     const x0 = mx - Math.floor(size / 2);
     const y0 = my - Math.floor(size / 2);
     for (let y = y0 - 1; y <= y0 + size; y++) {
       for (let x = x0 - 1; x <= x0 + size; x++) {
-        if (x < 0 || y < 0 || x >= this.width || y >= this.height) continue;
         const edge = x < x0 || y < y0 || x >= x0 + size || y >= y0 + size;
-        target.set(this.left + x, this.top + y, edge ? INK : x === mx && y === my ? heart : colour);
+        this.put(x, y, edge ? INK : x === mx && y === my ? heart : colour);
       }
     }
   }
 
   /** The hero: a gold diamond round a bright heart, a shape no place has, so he's the first thing the eye finds. */
-  private diamond(target: Bitmap, mx: number, my: number) {
+  private diamond(mx: number, my: number) {
     for (let y = my - HERO_REACH; y <= my + HERO_REACH; y++) {
       for (let x = mx - HERO_REACH; x <= mx + HERO_REACH; x++) {
         const d = Math.abs(x - mx) + Math.abs(y - my);
-        if (d > HERO_REACH || x < 0 || y < 0 || x >= this.width || y >= this.height) continue;
-        target.set(this.left + x, this.top + y, d === HERO_REACH ? INK : d === 0 ? MINIMAP_COLOURS.heart : MINIMAP_COLOURS.hero);
+        if (d <= HERO_REACH) this.put(x, y, d === HERO_REACH ? INK : d === 0 ? MINIMAP_COLOURS.heart : MINIMAP_COLOURS.hero);
       }
     }
   }
 
-  private box(target: Bitmap, [x0, y0, x1, y1]: [number, number, number, number], colour: number) {
+  private outline([x0, y0, x1, y1]: [number, number, number, number], colour: number) {
     for (let x = x0; x <= x1; x++) {
-      target.set(this.left + x, this.top + y0, colour);
-      target.set(this.left + x, this.top + y1, colour);
+      this.put(x, y0, colour);
+      this.put(x, y1, colour);
     }
     for (let y = y0; y <= y1; y++) {
-      target.set(this.left + x0, this.top + y, colour);
-      target.set(this.left + x1, this.top + y, colour);
+      this.put(x0, y, colour);
+      this.put(x1, y, colour);
     }
   }
 
-  /** Whether a screen point is on the minimap. */
+  /** Whether a screen point is on the minimap, out and clear of its button. */
   contains(x: number, y: number): boolean {
-    return x >= this.left && y >= this.top && x < this.left + this.width && y < this.top + this.height;
+    return this.shown && !this.onButton(x, y) && x >= this.left && y >= this.top && x < this.left + this.width && y < this.top + this.height;
+  }
+
+  /** Whether a screen point is on the button in its corner, out or folded away, or near enough. */
+  onButton(x: number, y: number): boolean {
+    const x0 = this.rect.x + this.rect.width - BUTTON;
+    const y0 = this.rect.y;
+    return x >= x0 - BUTTON_SLACK && x < x0 + BUTTON + BUTTON_SLACK && y >= y0 - BUTTON_SLACK && y < y0 + BUTTON + BUTTON_SLACK;
   }
 
   /** The map point under a screen point, kept on the map: a drag that runs off the minimap still steers. */
@@ -301,4 +366,27 @@ export class Minimap {
     const [mx, my] = this.toMap(x, y);
     return this.fogged.isFogged(mx, my);
   }
+}
+
+/** The button's colours: its glyphs' letters, lit and not. */
+const GLYPH: Record<string, [number, number]> = {
+  g: [GOLD[5], GOLD[6]],
+  G: [GOLD[3], GOLD[5]],
+  o: [INK, INK],
+  L: [PARCHMENT[5], PARCHMENT[6]],
+  d: [PARCHMENT[3], PARCHMENT[4]],
+  w: [WATER[5], WATER[6]],
+  r: [RED[4], RED[5]],
+};
+
+/** The minimap's button at (x, y): a slate square in an ink edge, lit from the top left, with its glyph; brighter under the pointer. */
+function button(screen: Bitmap, x: number, y: number, glyph: readonly string[], lit: boolean) {
+  const last = BUTTON - 1;
+  for (let j = 0; j <= last; j++) {
+    for (let i = 0; i <= last; i++) {
+      const colour = i === 0 || j === 0 || i === last || j === last ? INK : i === 1 || j === 1 ? SLATE[lit ? 6 : 5] : i === last - 1 || j === last - 1 ? SLATE[1] : SLATE[lit ? 4 : 3];
+      screen.set(x + i, y + j, colour);
+    }
+  }
+  glyph.forEach((row, j) => [...row].forEach((ch, i) => GLYPH[ch] && screen.set(x + 2 + i, y + 2 + j, GLYPH[ch][lit ? 1 : 0])));
 }

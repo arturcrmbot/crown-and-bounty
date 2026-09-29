@@ -1,12 +1,12 @@
 import { BACKGROUNDS } from '../content/backgrounds';
-import { BOON_IDS, BOONS, COMMISSIONS, type Commission, type Happened } from '../content/campaign';
+import { BOON_IDS, BOONS, COMMISSIONS, type Clue, type Commission, type Happened } from '../content/campaign';
 import { FRIENDS, type FriendId } from '../content/friends';
 import { leads } from '../content/troops';
 import { VILLAINS } from '../content/villains';
 import { generateCommission } from './generate';
 import { heroStats, VETERANS } from './hero';
 import { beginCommission } from './scenario';
-import { addTroops, armyLine, close, coins, leadershipUsed, listed, roll, roman, show, TROOPS, type Army, type BoonId, type Campaign, type Card, type Choice, type GameState, type Location, type Result } from './state';
+import { addTroops, armyLine, close, coins, leadershipUsed, listed, roll, roman, show, TROOPS, type Army, type BoonId, type Campaign, type Card, type Choice, type GameState, type Heard, type Location, type Result } from './state';
 
 /** Commissions in a campaign: the hand-made ones, then provinces generated for this campaign. */
 export const CAMPAIGN_LENGTH = 5;
@@ -125,6 +125,19 @@ export const isFriend = (id: BoonId): id is FriendId => id in FRIENDS;
 /** Whether the story flags stand as `when` says: `true` for any value at all, anything else exactly. */
 export function happened(state: GameState, when: Happened): boolean {
   return Object.entries(when).every(([flag, value]) => (value === true ? Boolean(state.flags?.[flag]) : state.flags?.[flag] === value));
+}
+
+/** Whether a clue holds: its flags stand (or, for a thing `heard`, have been spent since), and its places are seen, or used up. */
+function holds(state: GameState, clue: Clue, heard = false): boolean {
+  const flags = Object.entries(clue.flags ?? {}).every(([flag, value]) => (heard && state.flags?.[flag] === false) || happened(state, { [flag]: value }));
+  const place = (id: string | undefined) => (id ? state.locations.find((l) => l.id === id) : undefined);
+  return flags && (!clue.seen || Boolean(place(clue.seen)?.seen)) && (!clue.used || Boolean(place(clue.used)?.done));
+}
+
+/** What's been heard on this commission's road, for the journal: the open things first, then those that have paid off. */
+export function heardOf(state: GameState): Heard[] {
+  const heard = (commissionOf(state).heard ?? []).filter((r) => holds(state, r.heard, true)).map((r) => ({ who: r.who, words: r.words, done: Boolean(r.done && holds(state, r.done)) }));
+  return [...heard.filter((h) => !h.done), ...heard.filter((h) => h.done)];
 }
 
 /** The King remembers at most this many things you did. */

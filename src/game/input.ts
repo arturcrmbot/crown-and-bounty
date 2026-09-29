@@ -13,7 +13,8 @@ export type InputHandlers = {
   /** Dragged by this many screen pixels, to (x, y). */
   drag(dx: number, dy: number, x: number, y: number): void;
   leave(): void;
-  key(key: string): void;
+  /** A key pressed. True if the screen took it for itself, so the browser shouldn't (Tab, on the map). */
+  key(key: string): boolean | void;
 };
 
 /** Pointer and keyboard, turned into clicks, drags, hovers and keys. `held` has the keys down now. */
@@ -68,7 +69,7 @@ export class Input {
     window.addEventListener('keydown', (e) => {
       const key = e.key.toLowerCase();
       this.held.add(key);
-      handlers.key(key);
+      if (handlers.key(key) === true) e.preventDefault();
     });
     window.addEventListener('keyup', (e) => this.held.delete(e.key.toLowerCase()));
     window.addEventListener('blur', () => this.held.clear());

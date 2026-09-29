@@ -116,26 +116,52 @@ try {
   const edge = await kc.state();
   check(edge.hero.at[0] > edge.world.width - 200 && edge.hero.facing === -1, 'he starts at the east edge of Aldmoor, on the King\u2019s road, looking into the land');
 
-  // The minimap in the right-hand panel: a click looks there, a drag steers the view, Space brings it back to him.
+  // The minimap over the view's top right corner: a click looks there, a drag steers the view, Space brings it back to him.
   const camera = () => kc.call(() => window.__kc.camera());
   await page.waitForTimeout(200);
-  await page.mouse.click(760, 175);
+  await page.mouse.click(779, 148);
   const far = await camera();
   check(far.x === 0 && far.y > 1800 && String((await kc.state()).hero.at) === String(edge.hero.at), `a click on the minimap\u2019s corner looks at Darkwood, across the province (${Math.round(far.x)}, ${Math.round(far.y)}), and he stays put`);
-  await page.mouse.move(760, 175);
+  await page.mouse.move(779, 148);
   await page.mouse.down();
-  await page.mouse.move(850, 110, { steps: 8 });
+  await page.mouse.move(850, 98, { steps: 8 });
   await page.mouse.up();
   const steered = await camera();
-  check(Math.abs(steered.x - 1236) < 20 && Math.abs(steered.y - 960) < 20, `a drag on the minimap steers the view to the middle of Aldmoor (${Math.round(steered.x)}, ${Math.round(steered.y)})`);
+  check(Math.abs(steered.x - 1146) < 20 && Math.abs(steered.y - 978) < 20, `a drag on the minimap steers the view to the middle of Aldmoor (${Math.round(steered.x)}, ${Math.round(steered.y)})`);
   await page.keyboard.press(' ');
-  // The view follows him up to the map's edge (the view is 712 by 464).
+  // The view follows him up to the map's edge (the view is 928 by 464).
   const home = await page.waitForFunction(({ at, world }) => {
     const c = window.__kc.camera();
     const near = (v, target, most) => Math.abs(v - Math.max(0, Math.min(most, target))) < 30;
-    return near(c.x, at[0] - 356, world.width - 712) && near(c.y, at[1] - 252, world.height - 464);
+    return near(c.x, at[0] - 464, world.width - 928) && near(c.y, at[1] - 252, world.height - 464);
   }, { at: edge.hero.at, world: edge.world }, { timeout: 10_000 }).then(() => true, () => false);
   check(home, 'and Space brings the view back to him');
+  // Tab folds it away, and the map shows where it was; a click on the button left in the corner brings it back.
+  const kept = () => kc.call(() => localStorage.getItem('kings-commission/minimap'));
+  await page.keyboard.press('Tab');
+  await page.mouse.move(850, 98);
+  await page.waitForTimeout(80);
+  const underneath = await kc.call(() => window.__kc.hover());
+  check((await kc.call(() => window.__kc.minimap())) === false && (await kept()) === 'folded' && !underneath?.includes('look there'), `Tab folds the minimap away, and the map shows where it was (${underneath ?? 'no label'})`);
+  await page.mouse.move(922, 45);
+  await page.waitForTimeout(80);
+  check((await kc.call(() => window.__kc.hover()))?.includes('Unfold the map'), 'the button left in its corner says it brings the map back');
+  await page.mouse.click(922, 45);
+  check((await kc.call(() => window.__kc.minimap())) === true && (await kept()) === 'out', 'and a click on it does');
+  await page.mouse.move(2, 2);
+  // The journal: J, the book on the bar, or the bounty's name on it.
+  await page.keyboard.press('j');
+  const journal = () => kc.call(() => document.querySelector('.kc-card-wrap:not([hidden]) .kc-card.journal .heard')?.textContent ?? null);
+  check((await kc.title()) === 'Journal' && (await kc.lines()).includes('Baron Grimsby, wanted for three years') && (await journal())?.includes('Nothing yet'), 'J opens the journal: the poster pinned in, and a page for things heard');
+  await page.keyboard.press('j');
+  check((await kc.title()) === null, 'and J puts it away');
+  await page.mouse.click(901, 512);
+  check((await kc.title()) === 'Journal', 'the book on the bar opens it too');
+  await page.keyboard.press('Escape');
+  await page.mouse.click(540, 512);
+  check((await kc.title()) === 'Journal', 'and so does the bounty\u2019s name on the bar');
+  await page.keyboard.press('Escape');
+  await page.mouse.move(2, 2);
   const heard = () => kc.call(() => window.__kc.sound().effects);
 
   check((await go('chest', 'Open')) === 'Treasure Chest', 'the chest opens on arrival');
@@ -257,6 +283,11 @@ try {
   check((await kc.title()) === 'Victory!', 'the highwaymen are beaten on the battlefield');
   const din = await heard();
   check(din.includes('feet:hooves') && din.some((e) => e === 'blow:lance' || e === 'blow:blade') && din.includes('dies:man'), 'the battle sounds like who fought it: the knights\u2019 hooves and steel, and the highwaymen crying out as they fall');
+  await close();
+  // What they carried goes in the journal, in its own words, still to be used.
+  await page.keyboard.press('j');
+  const written = await kc.call(() => [...document.querySelectorAll('.kc-card-wrap:not([hidden]) .heard li')].map((li) => `${li.className === 'done' ? '[x]' : '[ ]'} ${li.textContent}`));
+  check(written.some((l) => l.startsWith('[ ]') && l.includes('All patrols back to the stockade')), `the Baron\u2019s letter goes in the journal, as it was written (${written.join(' / ')})`);
   await close();
 
   const tower = await go('tower', 'Enter');
