@@ -607,6 +607,8 @@ export class AdventureController implements Screen {
       if (!walking && Math.hypot(tx - this.view.camera.x, ty - this.view.camera.y) < 2) this.follow = false;
     }
     if (Math.floor(this.state.movement) !== this.hudMovement) this.repaintHud();
+    // A tile of the land further off is painted each frame, nearest the view first, until all of it is.
+    this.view.warm();
   }
 
   /** Once the pointer has rested on open ground a moment, how many days' ride away it is. */

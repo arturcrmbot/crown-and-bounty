@@ -38,7 +38,7 @@ flowchart LR
 - **Levels:** XP comes from battles, discoveries and contracts. Each level you pick one of three offered skills or perks.
   - Skills have ranks: Tactics, Archery, Logistics, Diplomacy, Scouting, Estates, and the magic schools.
   - Perks bend the rules, in the game's voice: *Quartermaster: wages cost a fifth less. The troops have noticed.*
-- **Gear:** artifacts in seven slots (weapon, armour, helm, banner and three interchangeable trinkets), found in chests, lairs and rewards.
+- **Gear:** artifacts in seven slots (weapon, armour, helm, banner and three interchangeable trinkets), found in chests, lairs and rewards, or bought at the castle armoury, which buys spares from the pack for half their price.
 - **Spells:** most are for battle. A few work on the map, such as Scry to lift fog, or recall to the castle.
 
 **Army**

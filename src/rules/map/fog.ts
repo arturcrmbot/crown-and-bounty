@@ -1,5 +1,5 @@
 import type { Province } from '../../content/types';
-import { nearest, smooth, type Point } from './geometry';
+import { nearest, smooth } from './geometry';
 import { CELL } from './model';
 
 /**
@@ -38,18 +38,29 @@ export function revealDisc(bits: Explored, world: { width: number; height: numbe
   return { bits: next, changed };
 }
 
-/** What the hero has seen when the commission starts: along the trails and inside the discs. */
+/**
+ * What the hero has seen when the commission starts: along the trails and inside the discs. Each
+ * stretch of trail and each disc marks only the cells round it, as `nearest` would measure them.
+ */
 export function startingExplored(province: Province): Explored {
   const { width, height } = gridSize(province);
   const bits: Explored = new Array(Math.ceil((width * height) / 32)).fill(0);
-  const trails = province.explored.trails.map((t) => smooth(t));
-  for (let cy = 0; cy < height; cy++) {
-    for (let cx = 0; cx < width; cx++) {
-      const p: Point = [cx * CELL + CELL / 2, cy * CELL + CELL / 2];
-      const onTrail = trails.some((t) => nearest(t, p[0], p[1]).d < province.explored.trailRadius);
-      const inDisc = province.explored.discs.some(([x, y, r]) => Math.hypot(p[0] - x, p[1] - y) < r);
-      if (onTrail || inDisc) setBit(bits, cy * width + cx);
+  const radius = province.explored.trailRadius;
+  /** Every cell whose centre passes `seen`, within the box round (x0, y0) to (x1, y1). */
+  const mark = (x0: number, y0: number, x1: number, y1: number, seen: (x: number, y: number) => boolean) => {
+    for (let cy = Math.max(0, Math.floor(y0 / CELL)); cy <= Math.min(height - 1, Math.floor(y1 / CELL)); cy++) {
+      for (let cx = Math.max(0, Math.floor(x0 / CELL)); cx <= Math.min(width - 1, Math.floor(x1 / CELL)); cx++) {
+        if (seen(cx * CELL + CELL / 2, cy * CELL + CELL / 2)) setBit(bits, cy * width + cx);
+      }
+    }
+  };
+  for (const trail of province.explored.trails.map((t) => smooth(t))) {
+    for (let i = 0; i < trail.length - 1; i++) {
+      const [ax, ay] = trail[i];
+      const [bx, by] = trail[i + 1];
+      mark(Math.min(ax, bx) - radius, Math.min(ay, by) - radius, Math.max(ax, bx) + radius, Math.max(ay, by) + radius, (x, y) => nearest([trail[i], trail[i + 1]], x, y).d < radius);
     }
   }
+  for (const [x, y, r] of province.explored.discs) mark(x - r, y - r, x + r, y + r, (px, py) => Math.hypot(px - x, py - y) < r);
   return bits;
 }

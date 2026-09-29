@@ -1,7 +1,7 @@
 import { ARTIFACTS, type ArtifactId } from '../../content/artifacts';
 import { troopPower } from '../../content/troops';
 import { dismiss, grumbleLine } from '../army';
-import { artifactChoices, giveArtifact, heroStats, slotTaken } from '../hero';
+import { artifactChoices, giveArtifact, heroStats, salePrice, sell, slotTaken, wantedAt } from '../hero';
 import { addTroops, close, coins, joinLine, leadershipUsed, locationById, TROOPS, troops, update, type Card, type Choice, type GameState, type Location, type Result } from '../state';
 import { found, option, priceOf, ride, say, words } from './common';
 import type { PlaceKind } from './kind';
@@ -44,7 +44,8 @@ function recruit(state: GameState, place: Location): Result | null {
  */
 function recruitCard(state: GameState, place: Location, before: string[] = []): Card {
   const offer = place.recruits;
-  const armoury = place.wares?.length ? [option(place, 'Visit the armoury', 'armoury')] : [];
+  // An armoury stays open while it has wares to sell or he has spares it could buy.
+  const armoury = place.wares && (place.wares.length || state.hero.pack.length) ? [option(place, 'Visit the armoury', 'armoury')] : [];
   const leave = before.length ? close : { label: 'Not today', action: { type: 'close' as const } };
   if (!offer || place.done || offer.count === 0) {
     return { title: place.name, lines: [...before, '"All out of volunteers, officer. Come back after payday."'], choices: [...armoury, close] };
@@ -73,7 +74,13 @@ function recruitCard(state: GameState, place: Location, before: string[] = []): 
 /** Whether the hero wears or carries an artifact already. */
 const owns = (state: GameState, id: ArtifactId) => Object.values(state.hero.gear).includes(id) || state.hero.pack.includes(id);
 
-/** The armoury's wares: one button each, with its price and what it does, greyed when it's too dear. */
+/** What the armourer says to a hero with something in his pack. */
+const HAGGLE = 'He eyes your pack. "Half what it cost new, officer. Four hundred if I can\u2019t put a price on it."';
+
+/**
+ * The armoury's wares: one button each, with its price and what it does, greyed when it's too dear.
+ * A hero with anything in his pack can offer the armourer his spares.
+ */
 function armouryCard(state: GameState, place: Location, before: string[] = [], decisions: Choice[] = []): Card {
   const wares = (place.wares ?? []).filter((w) => !owns(state, w));
   return {
@@ -87,9 +94,41 @@ function armouryCard(state: GameState, place: Location, before: string[] = [], d
         const short = price - state.gold;
         return { ...option(place, `Buy ${ARTIFACTS[w].name} (${coins(price)} gold)`, `buy:${w}`, short > 0), detail: `${ARTIFACTS[w].note}${short > 0 ? ` You\u2019re ${coins(short)} gold short.` : ''}` };
       }),
+      ...(state.hero.pack.length ? [option(place, 'Sell him your spares', 'spares')] : []),
       ...(decisions.length ? [] : [close]),
     ],
   };
+}
+
+/**
+ * The armourer's offer for everything in the pack, what he'd pay on each button: greyed, saying
+ * where, for gear a choice still needs. One line each, so a full pack still fits on the card.
+ */
+function sparesCard(state: GameState, place: Location, before: string[] = []): Card {
+  const spares = state.hero.pack;
+  return {
+    title: `${place.name}: the armoury`,
+    wide: true,
+    lines: [...before, spares.length ? HAGGLE : 'Your pack is empty. He looks almost disappointed.'],
+    choices: [...spares.map((id) => sellButton(state, place, id)), option(place, 'Back to his wares', 'armoury'), close],
+  };
+}
+
+function sellButton(state: GameState, place: Location, id: ArtifactId): Choice {
+  const wanted = wantedAt(state, id);
+  const button = option(place, `Sell ${ARTIFACTS[id].name} (${coins(salePrice(id))} gold)`, `sell:${id}`, Boolean(wanted));
+  return wanted ? { ...button, detail: `Not for sale: you\u2019ll need it at ${wanted.name}.` } : button;
+}
+
+/** The armourer buys a spare. Gear with a price goes back on his wall at full price; the rest he keeps. */
+function sellTo(state: GameState, place: Location, id: ArtifactId): Result | null {
+  const sold = place.wares ? sell(state, id) : null;
+  if (!sold) return null;
+  const priced = Boolean(ARTIFACTS[id].price);
+  const wares = place.wares ?? [];
+  const next = priced && !wares.includes(id) ? update(sold.state, place.id, { wares: [...wares, id] }) : sold.state;
+  const line = `**${ARTIFACTS[id].name}** is his, for **${coins(salePrice(id))} gold**. ${priced ? 'He hangs it back on the wall, at full price.' : 'He wraps it in sacking and asks no questions.'}`;
+  return say(next, place, sparesCard(next, locationById(next, place.id), [line]));
 }
 
 function buy(state: GameState, place: Location, artifact: ArtifactId): Result | null {
@@ -121,7 +160,9 @@ export const dwelling: PlaceKind = {
   choose(state, place, choice) {
     if (choice === 'recruit') return recruit(state, place);
     if (choice === 'armoury') return say(state, place, armouryCard(state, place));
+    if (choice === 'spares') return place.wares ? say(state, place, sparesCard(state, place)) : null;
     if (choice.startsWith('buy:')) return buy(state, place, choice.slice(4) as ArtifactId);
+    if (choice.startsWith('sell:')) return sellTo(state, place, choice.slice(5) as ArtifactId);
     return null;
   },
   payday: (place) => (place.recruits ? { ...place, recruits: { ...place.recruits, count: place.recruits.count + RESTOCK } } : place),

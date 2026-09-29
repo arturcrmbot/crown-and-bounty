@@ -3,9 +3,11 @@ import { Effects } from './effects';
 import { MAP_VIEW, paintFrame, SCREEN } from './frame';
 import type { Point } from '../rules/map/geometry';
 import type { FogMask } from './fog';
+import type { MapTiles } from './mapTiles';
 import { bayer, hash, noise } from './noise';
 import { FOG_LUT, GRAIN_LUT, SHADOW_LUT } from './palette';
 import { drawRoute, type RouteMark } from './route';
+import { TILE } from './terrain';
 import { CLEAR, type Sky, type Weather } from './weather';
 
 /**
@@ -17,8 +19,9 @@ export type Placed = { sprite: Bitmap; frames?: Bitmap[]; frame?: number; x: num
 const footY = (o: Placed) => o.y + o.sprite.height;
 
 /**
- * The adventure screen. Static objects are baked into the map once, and only animated ones are
- * drawn each frame. Fogged pixels show the roadless `wild` map through the fog colour table.
+ * The adventure screen. Static objects are baked into the map's tiles as they're painted, and only
+ * animated ones are drawn each frame. Fogged pixels show the roadless `wild` map through the fog
+ * colour table.
  */
 export class AdventureScreen {
   readonly screen = new Bitmap(SCREEN.width, SCREEN.height);
@@ -37,16 +40,14 @@ export class AdventureScreen {
   route: RouteMark[] = [];
   /** Where the hero will make camp when the gold part of a route runs out. */
   camp: Point | null = null;
-  private readonly map: Bitmap;
-  private readonly wild: Bitmap;
+  readonly tiles: MapTiles;
   private readonly fog: FogMask;
 
-  constructor(map: Bitmap, wild: Bitmap, fog: FogMask) {
+  constructor(tiles: MapTiles, fog: FogMask) {
     const { frame, overlay } = paintFrame();
     this.frame = frame;
     this.overlay = overlay;
-    this.map = map;
-    this.wild = wild;
+    this.tiles = tiles;
     this.fog = fog;
     const specks: number[] = [];
     for (let y = MAP_VIEW.y; y < MAP_VIEW.y + MAP_VIEW.height; y++) {
@@ -71,8 +72,13 @@ export class AdventureScreen {
   }
 
   scrollTo(x: number, y: number) {
-    this.camera.x = Math.max(0, Math.min(this.map.width - MAP_VIEW.width, x));
-    this.camera.y = Math.max(0, Math.min(this.map.height - MAP_VIEW.height, y));
+    this.camera.x = Math.max(0, Math.min(this.tiles.width - MAP_VIEW.width, x));
+    this.camera.y = Math.max(0, Math.min(this.tiles.height - MAP_VIEW.height, y));
+  }
+
+  /** Paints a tile of the land not yet seen, nearest the view first, while nothing much is happening. */
+  warm() {
+    return this.tiles.warm(this.camera.x + MAP_VIEW.width / 2, this.camera.y + MAP_VIEW.height / 2);
   }
 
   centreOn(x: number, y: number) {
@@ -90,18 +96,27 @@ export class AdventureScreen {
   compose(tick: number): Bitmap {
     const { screen } = this;
     const fog = this.fog.mask;
-    const MAP_WIDTH = this.map.width;
-    const map = this.map.data;
-    const wild = this.wild.data;
+    const MAP_WIDTH = this.tiles.width;
     screen.data.set(this.frame.data);
     const cx = Math.round(this.camera.x);
     const cy = Math.round(this.camera.y);
-    for (let y = 0; y < MAP_VIEW.height; y++) {
-      const row = (cy + y) * MAP_WIDTH + cx;
-      let o = (MAP_VIEW.y + y) * SCREEN.width + MAP_VIEW.x;
-      for (let x = 0; x < MAP_VIEW.width; x++, o++) {
-        const i = row + x;
-        screen.data[o] = fog[i] ? FOG_LUT[wild[i]] : map[i];
+    // The view, tile by tile: each tile's part of it, through the fog.
+    for (let ty = Math.floor(cy / TILE); ty * TILE < cy + MAP_VIEW.height && ty < this.tiles.rows; ty++) {
+      for (let tx = Math.floor(cx / TILE); tx * TILE < cx + MAP_VIEW.width && tx < this.tiles.cols; tx++) {
+        const tile = this.tiles.tile(tx, ty);
+        const map = tile.bitmap.data;
+        const wild = tile.wild.data;
+        const w = tile.bitmap.width;
+        const x0 = Math.max(cx, tile.x);
+        const x1 = Math.min(cx + MAP_VIEW.width, tile.x + w);
+        const y0 = Math.max(cy, tile.y);
+        const y1 = Math.min(cy + MAP_VIEW.height, tile.y + tile.bitmap.height);
+        for (let y = y0; y < y1; y++) {
+          let o = (MAP_VIEW.y + y - cy) * SCREEN.width + MAP_VIEW.x + x0 - cx;
+          let i = (y - tile.y) * w + x0 - tile.x;
+          let f = y * MAP_WIDTH + x0;
+          for (let x = x0; x < x1; x++, o++, i++, f++) screen.data[o] = fog[f] ? FOG_LUT[wild[i]] : map[i];
+        }
       }
     }
     drawRoute(screen, MAP_VIEW, MAP_VIEW.x - cx, MAP_VIEW.y - cy, this.route, this.camp);

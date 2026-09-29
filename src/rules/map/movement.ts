@@ -4,7 +4,7 @@ import { revealDisc } from './fog';
 import type { Point } from './geometry';
 import type { Location } from '../state';
 import { CELL, cellCentre, cellIndex, gridWithEnemies, standingEnemies, Terrain, type MapModel } from './model';
-import { findPath, nearestPassable, reachableNear } from './pathfinding';
+import { approachIn, nearestPassable, pathIn, reachFrom, type Grid, type Reach } from './pathfinding';
 
 /** How far the hero sees as he rides, in pixels. */
 export const SIGHT = 150;
@@ -39,8 +39,32 @@ export function costsFor(state: GameState, map: MapModel): Float32Array {
   return cost;
 }
 
+/** Walk grids with the enemies standing on them, by where they stand (the state's places) and how the hero rides. */
+const standing = new WeakMap<readonly Location[], Map<Float32Array, Grid>>();
+
 /** Enemies block the way where they stand, until they are beaten. */
-const standingGrid = (state: GameState, map: MapModel) => gridWithEnemies({ ...map, grid: { ...map.grid, cost: costsFor(state, map) } }, standingEnemies(state.locations));
+function standingGrid(state: GameState, map: MapModel): Grid {
+  const cost = costsFor(state, map);
+  let known = standing.get(state.locations);
+  if (!known) standing.set(state.locations, (known = new Map()));
+  let grid = known.get(cost);
+  if (!grid) {
+    grid = gridWithEnemies({ ...map, grid: { ...map.grid, cost } }, standingEnemies(state.locations));
+    known.set(cost, grid);
+  }
+  return grid;
+}
+
+/** The last search from the hero's cell on each grid: every place's way is read off the same one. */
+const searched = new WeakMap<Grid, Reach>();
+
+function reachOn(grid: Grid, start: { x: number; y: number }): Reach {
+  const known = searched.get(grid);
+  if (known && known.start === start.y * grid.width + start.x) return known;
+  const reach = reachFrom(grid, start);
+  searched.set(grid, reach);
+  return reach;
+}
 
 /** How close (in cells) the hero rides up to an enemy he is going to face. */
 export const APPROACH = 6;
@@ -66,16 +90,17 @@ export function facingEnemy(state: GameState): Location | null {
 }
 
 /**
- * The cells from the hero to `target` (excluding his own), or null if there is no way. With
- * `approach`, he rides up to it from his own side, for enemies that block their own road.
+ * The cells from the hero to `target` (excluding his own), the cheapest way, or null if there is no
+ * way. With `approach`, he rides up to it from his own side, for enemies that block their own road.
  */
 export function planRoute(state: GameState, map: MapModel, target: Point, approach = false): number[] | null {
   const grid = standingGrid(state, map);
   const start = nearestPassable(grid, cellXY(map, cellIndex(map, state.hero.at[0], state.hero.at[1])));
+  if (!start) return null;
+  const reach = reachOn(grid, start);
   const aim = cellXY(map, cellIndex(map, target[0], target[1]));
-  const goal = approach ? start && reachableNear(grid, start, aim, APPROACH) : nearestPassable(grid, aim, 16);
-  if (!start || !goal) return null;
-  const cells = findPath(grid, start, goal);
+  const goal = approach ? approachIn(reach, grid, aim, APPROACH) : nearestPassable(grid, aim, 16);
+  const cells = goal && pathIn(reach, grid.width, goal);
   if (!cells) return null;
   return cells.slice(1).map((c) => c.y * map.width + c.x);
 }
