@@ -6,7 +6,9 @@ import { Terrain, type MapModel } from '../rules/map/model';
 import { AdventureScreen, type Placed } from './adventureScreen';
 import { Bitmap, SHADOW } from './bitmap';
 import { FogMask } from './fog';
+import { MINIMAP } from './frame';
 import { MapTiles } from './mapTiles';
+import { Minimap } from './minimap';
 import { GOLD, INK, RED, SILHOUETTE } from './palette';
 import { animFrames, bodyHeight, everyFrame, STAND, troopFigure } from './battleSprites';
 import { heroArtId } from './units';
@@ -46,6 +48,8 @@ export type Hitbox = { id: string; x0: number; y0: number; x1: number; y1: numbe
 export type AdventureScene = {
   view: AdventureScreen;
   fog: FogMask;
+  /** The whole province in the right-hand panel, painted into the view's frame. */
+  minimap: Minimap;
   hero: HeroRig;
   hitboxes: Hitbox[];
   /** Objects that vanish once their location is done: pickups and enemies. */
@@ -249,7 +253,9 @@ export function buildAdventureScene(map: MapModel, state: GameState): AdventureS
     .sort((a, b) => footY(a) - footY(b))
     .map((o) => ({ sprite: o.sprite, wild: isLandmark.has(o) ? silhouette(o.sprite) : o.sprite, x: Math.round(o.x), y: Math.round(o.y) }));
   const fog = new FogMask(province.width, province.height, state.explored);
-  const view = new AdventureScreen(new MapTiles(new TerrainPainter(map), fixtures), fog);
+  const painter = new TerrainPainter(map);
+  const view = new AdventureScreen(new MapTiles(painter, fixtures), fog);
+  const minimap = new Minimap(map, painter, fog, MINIMAP);
   for (const o of animated) view.animate(o);
 
   for (const [id, objects] of parts) {
@@ -267,7 +273,7 @@ export function buildAdventureScene(map: MapModel, state: GameState): AdventureS
   const rig: HeroRig = { object: { ...place(figure.idle[0], state.hero.at, figure.foot), frames: figure.idle }, ...figure };
   if (state.hero.facing < 0) rig.object.frames = rig.idleLeft;
   view.animate(rig.object);
-  return { view, fog, hero: rig, hitboxes, pickups, sights };
+  return { view, fog, minimap, hero: rig, hitboxes, pickups, sights };
 }
 
 /**
