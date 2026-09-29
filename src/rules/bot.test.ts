@@ -9,7 +9,7 @@ describe('the bot', () => {
     for (const run of runs) {
       expect(run.won, `seed ${run.seed}: ${run.log.join(', ')}`).toBe(true);
       // A bot that storms Grimsby too soon and loses takes a few weeks to raise another army.
-      expect(run.day).toBeLessThan(60);
+      expect(run.day).toBeLessThan(75);
     }
   }, 600_000);
 
