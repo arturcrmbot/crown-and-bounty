@@ -16,7 +16,7 @@ import { beginCommission, newGame } from './scenario';
 const fresh = (background: BackgroundId = 'knight'): GameState => ({ ...newGame(1066, ALDMOOR, background), opening: undefined });
 const wearing = (ids: ArtifactId[], base = fresh()) => ids.reduce((s, id) => {
   const given = giveArtifact(s, id);
-  return given.hero.gear[ARTIFACTS[id].slot] === id ? given : equip(given, id)!.state;
+  return Object.values(given.hero.gear).includes(id) ? given : equip(given, id)!.state;
 }, base);
 const cardOf = (result: Result): Card => {
   const e = result.events.find((x) => x.type === 'card');
@@ -96,8 +96,8 @@ describe('gear with a price', () => {
     const armed = giveArtifact(giveArtifact(fed, 'swordOfAldmoor'), 'headsmansAxe');
     expect(equip(armed, 'headsmansAxe')!.state.movement).toBe(fed.movement);
     // Taking off his boots does slow him.
-    const shod = giveArtifact(giveArtifact(fed, 'luckyHorseshoe'), 'wizardsButton');
-    expect(equip(shod, 'wizardsButton')!.state.movement).toBe(shod.movement - 20);
+    const shod = giveArtifact(fed, 'luckyHorseshoe');
+    expect(unequip(shod, 'trinket')!.state.movement).toBe(shod.movement - 20);
   });
 });
 

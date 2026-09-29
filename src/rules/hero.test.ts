@@ -5,7 +5,7 @@ import { BACKGROUNDS } from '../content/backgrounds';
 import { autoResolve } from './battle/ai';
 import { createBattle, strike } from './battle/battle';
 import { apply, heroInBattle, heroStats, levelUpCard, visit, winChance, type GameState } from './game';
-import { artifactChoices, equip, gainXp, giveArtifact, learn, LEVELS } from './hero';
+import { artifactChoices, equip, foundNote, gainXp, giveArtifact, learn, LEVELS } from './hero';
 import { newGame } from './scenario';
 
 const knight = () => newGame(1, ALDMOOR, 'knight');
@@ -84,11 +84,15 @@ describe('skills and gear', () => {
     let state = giveArtifact(knight(), 'luckyHorseshoe');
     expect(state.hero.gear.trinket).toBe('luckyHorseshoe');
     state = giveArtifact(state, 'wizardsButton');
-    expect(state.hero.pack).toEqual(['wizardsButton']);
-    const worn = equip(state, 'wizardsButton')!.state;
-    expect(worn.hero.gear.trinket).toBe('wizardsButton');
+    state = giveArtifact(state, 'astrolabe');
+    expect(state.hero.gear).toMatchObject({ trinket: 'luckyHorseshoe', trinket2: 'wizardsButton', trinket3: 'astrolabe' });
+    state = giveArtifact(state, 'goldenFeather');
+    expect(state.hero.pack).toEqual(['goldenFeather']);
+    expect(foundNote(state, 'goldenFeather')).toContain('all three trinket slots are taken');
+    const worn = equip(state, 'goldenFeather')!.state;
+    expect(worn.hero.gear.trinket).toBe('goldenFeather');
     expect(worn.hero.pack).toEqual(['luckyHorseshoe']);
-    expect(heroStats(worn).spellPower).toBe(heroStats(knight()).spellPower + 1);
+    expect(heroStats(worn).spellPower).toBe(heroStats(knight()).spellPower + 2);
   });
 
   it('keeps drawback gear in the pack until the player chooses to wear it', () => {

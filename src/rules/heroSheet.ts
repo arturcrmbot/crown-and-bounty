@@ -145,7 +145,7 @@ export type HeroSheet = {
   day: string;
 };
 
-export const SLOT_NAMES: Record<Slot, string> = { weapon: 'Weapon', armour: 'Armour', helm: 'Helm', banner: 'Banner', trinket: 'Trinket' };
+export const SLOT_NAMES: Record<Slot, string> = { weapon: 'Weapon', armour: 'Armour', helm: 'Helm', banner: 'Banner', trinket: 'Trinket', trinket2: 'Trinket II', trinket3: 'Trinket III' };
 
 export function heroSheet(state: GameState): HeroSheet {
   const h = state.hero;

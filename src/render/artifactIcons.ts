@@ -536,7 +536,7 @@ export function statIcon(id: keyof typeof STAT_PICTURES): Bitmap {
 }
 
 /** Each slot's picture, for artifacts without their own and for the empty slot's faint outline. */
-const SLOT_PICTURE: Record<Slot, ArtifactId> = { weapon: 'swordOfAldmoor', armour: 'breastplate', helm: 'dwarvenHelm', banner: 'oldBanner', trinket: 'luckyHorseshoe' };
+const SLOT_PICTURE: Record<Slot, ArtifactId> = { weapon: 'swordOfAldmoor', armour: 'breastplate', helm: 'dwarvenHelm', banner: 'oldBanner', trinket: 'luckyHorseshoe', trinket2: 'luckyHorseshoe', trinket3: 'luckyHorseshoe' };
 
 function paint(rows: string[]): Bitmap {
   const b = new Bitmap(ICON_SIZE, ICON_SIZE);

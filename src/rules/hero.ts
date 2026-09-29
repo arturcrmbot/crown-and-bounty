@@ -1,4 +1,4 @@
-import { ARTIFACTS, piecesOf, SETS, type ArtifactId, type SetId, type Slot } from '../content/artifacts';
+import { ARTIFACTS, piecesOf, SETS, slotAcceptsArtifact, slotsForArtifact, type ArtifactId, type SetId, type Slot } from '../content/artifacts';
 import { BACKGROUNDS, type BackgroundId, type Bonus } from '../content/backgrounds';
 import { PERKS, RANKS, SKILLS, type PerkId, type SkillId } from '../content/skills';
 import type { MapSpellId, SpellId, StatusId } from '../content/spells';
@@ -404,11 +404,14 @@ export function learn(state: GameState, option: string): Result | null {
   return { state: next, events: card ? [show(card)] : [] };
 }
 
-/** Puts an artifact in the pack, and wears it straight away if its slot is free and it has no drawback. */
+/**
+ * Puts an artifact in the pack, and wears it straight away if it has no drawback and a slot of its
+ * kind is free: a trinket takes the first free one of the three.
+ */
 export function giveArtifact(state: GameState, id: ArtifactId): GameState {
   const artifact = ARTIFACTS[id];
-  const slot = artifact.slot;
-  if (!artifact.drawback && !state.hero.gear[slot]) return { ...state, hero: { ...state.hero, gear: { ...state.hero.gear, [slot]: id } } };
+  const slot = artifact.drawback ? undefined : slotsForArtifact(artifact.slot).find((candidate) => !state.hero.gear[candidate]);
+  if (slot) return { ...state, hero: { ...state.hero, gear: { ...state.hero.gear, [slot]: id } } };
   return { ...state, hero: { ...state.hero, pack: [...state.hero.pack, id] } };
 }
 
@@ -421,13 +424,16 @@ export function artifactChoices(state: GameState, id: ArtifactId): Choice[] {
   ];
 }
 
+/** Why a find without a drawback went into the pack: its slot is taken, or all three trinket slots are. */
+export const slotTaken = (id: ArtifactId) => (ARTIFACTS[id].slot === 'trinket' ? 'all three trinket slots are taken' : 'you wear something there already');
+
 /** Says where a just-found artifact went: on him, or into the pack until he chooses to wear it. */
 export function foundNote(state: GameState, id: ArtifactId): string {
   const a = ARTIFACTS[id];
   const set = setLine(state, id);
-  const note = state.hero.gear[a.slot] === id ? `You put it on. ${a.note}` : a.drawback
+  const note = Object.values(state.hero.gear).includes(id) ? `You put it on. ${a.note}` : a.drawback
     ? `${a.note} It goes in your pack until you choose whether to wear it.`
-    : `${a.note} It goes in your pack, since you wear something there already: **H** to swap.`;
+    : `${a.note} It goes in your pack, since ${slotTaken(id)}: **H** to swap.`;
   return set ? `${note} ${set}` : note;
 }
 
@@ -456,11 +462,13 @@ export function moveWithin<T>(list: readonly T[], from: number, to: number): T[]
 }
 
 /** Wears the artifact in pack square `from`; whatever that slot held takes its square. */
-export function wear(state: GameState, from: number): Result | null {
+export function wear(state: GameState, from: number, target?: Slot): Result | null {
   const { gear, pack } = state.hero;
   const id = pack[from];
   if (!id) return null;
-  const slot = ARTIFACTS[id].slot;
+  const artifactSlot = ARTIFACTS[id].slot;
+  const slot = target ?? slotsForArtifact(artifactSlot).find((candidate) => !gear[candidate]) ?? artifactSlot;
+  if (!slotAcceptsArtifact(slot, artifactSlot)) return null;
   const worn = gear[slot];
   const rest = worn ? pack.map((p, i) => (i === from ? worn : p)) : pack.filter((_, i) => i !== from);
   return { state: withinMana(state, { ...state, hero: { ...state.hero, gear: { ...gear, [slot]: id }, pack: rest } }), events: [] };
@@ -477,7 +485,7 @@ export function unequip(state: GameState, slot: Slot, to = state.hero.pack.lengt
   const { gear, pack } = state.hero;
   const worn = gear[slot];
   if (!worn || to < 0) return null;
-  if (pack[to] && ARTIFACTS[pack[to]].slot === slot) return wear(state, to);
+  if (pack[to] && slotAcceptsArtifact(slot, ARTIFACTS[pack[to]].slot)) return wear(state, to, slot);
   const at = Math.min(to, pack.length);
   const rest = { ...gear };
   delete rest[slot];
