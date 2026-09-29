@@ -97,6 +97,8 @@ export type BattleHero = Spellbook & {
   shooterMelee?: number;
   /** He leads from behind the line as this troop, with these numbers (see `heroFighter` in rules/fight.ts). */
   unit?: UnitNumbers & { troop: TroopId };
+  /** The mana his sergeants have spent of his, casting for him while they had command (`sergeantsAct`): he cast the rest himself. */
+  sergeantsSpent?: number;
 };
 
 /** Where a leader stands, as far as the field goes: behind his side's line, on no hex at all. */

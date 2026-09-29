@@ -5,7 +5,7 @@ import { isBeast } from '../content/troops';
 import { FENMARCH } from '../content/fenmarch';
 import type { Province } from '../content/types';
 import { withNewPlaces } from './campaign';
-import { apply, commissionAt, heroStats, leadershipUsed, locationById, payday, update, visit, wages, type Card, type GameState, type Location, type Result } from './game';
+import { apply, commissionAt, describe as fromAfar, heroStats, leadershipUsed, locationById, payday, update, visit, wages, type Card, type GameState, type Location, type Result } from './game';
 import { beat } from './fight';
 import { CELL } from './map/model';
 import { gridSize, isExplored as seenBit } from './map/fog';
@@ -81,9 +81,12 @@ describe('Aldmoor\u2019s finds', () => {
     expect(friend.hero.gear.helm).toBe('dwarvenHelm');
     expect(friend.gold).toBe(start.gold);
     expect(labels(friend, 'mine')).toContain('Ride the old delving south');
-    // The delving's far end stays bricked up until the dwarf opens it.
+    // The delving's far end stays bricked up until the dwarf opens it, and says so from afar too.
     expect(labels(start, 'delving')).toEqual(['Close']);
     expect(labels(friend, 'delving')).toContain('Ride the old delving north');
+    expect(fromAfar(start, 'delving').lines.join(' ')).toContain('bricked it up');
+    expect(fromAfar(friend, 'delving').lines.join(' ')).not.toContain('bricked');
+    expect(fromAfar(friend, 'delving').lines.join(' ')).toContain('The bricks are down');
     // From the mine, the stockade is days away the long way round; the delving comes up a morning's ride from it.
     const map = mapOf(start);
     const hideout = locationById(start, 'hideout').at;
@@ -413,6 +416,20 @@ describe('old saves', () => {
     expect(loaded.locations.some((l) => l.id === 'delving')).toBe(true);
     expect(labels(loaded, 'tower')).toContain('Take the journal');
     expect(JSON.parse(JSON.stringify(loaded))).toEqual(loaded);
+  });
+
+  it('say what places he has seen say now, and keep what they offered him', () => {
+    // The delving seen while it was still bricked up, in a save from before it could say it was open.
+    const s = fresh();
+    const seen = { ...s, locations: s.locations.map((l) => (l.id === 'delving' ? { ...l, seen: true, text: { about: ['An old mine mouth.', '*Bricked up.*'] }, pages: [] } : l)) };
+    const loaded = withNewPlaces(JSON.parse(JSON.stringify(seen)) as GameState);
+    const delving = locationById(loaded, 'delving');
+    expect(delving.text).toEqual(locationById(s, 'delving').text);
+    expect(delving.pages).toEqual([]);
+    expect(delving.seen).toBe(true);
+    const opened = { ...loaded, flags: { ...loaded.flags, delving: true } };
+    expect(fromAfar(opened, 'delving').lines.join(' ')).toContain('The bricks are down');
+    expect(withNewPlaces(loaded)).toBe(loaded);
   });
 
   it('and a save that is up to date comes back as it was', () => {

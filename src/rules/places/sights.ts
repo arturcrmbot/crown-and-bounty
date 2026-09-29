@@ -1,11 +1,11 @@
 import { bestChoice, firstPage, pageCard, takeChoice } from '../effects';
 import { revealDisc } from '../map/fog';
 import { close, coins, update, type Card, type GameState, type Location, type Result } from '../state';
-import { found, loot, note, ride, say, words } from './common';
+import { aboutWords, found, loot, note, ride, say, words } from './common';
 import type { PlaceKind } from './kind';
 
 /** The card for a one-off place: its words before, or once it's used up. */
-const onceCard = (place: Location, verb: string): Card => (place.done ? note(place, words(place, 'done')) : { title: place.name, lines: words(place, 'about'), choices: [ride(place, verb), close] });
+const onceCard = (state: GameState, place: Location, verb: string): Card => (place.done ? note(place, words(place, 'done')) : { title: place.name, lines: aboutWords(state, place), choices: [ride(place, verb), close] });
 
 /**
  * A sight written as content: the page that holds now offers its choices (the tower's banner or its
@@ -26,9 +26,9 @@ function takeBest(state: GameState, place: Location): GameState {
 
 /** A lookout: a clue, and a view of somewhere far off (the tower's journal points at the hideout). */
 export const tower: PlaceKind = {
-  about: (_, place) => onceCard(place, 'Enter'),
+  about: (state, place) => onceCard(state, place, 'Enter'),
   arrive(state, place) {
-    if (place.done) return say(state, place, onceCard(place, 'Enter'));
+    if (place.done) return say(state, place, onceCard(state, place, 'Enter'));
     const content = offer(state, place);
     if (content) return content;
     const next = update(state, place.id, { done: true });
@@ -44,9 +44,9 @@ export const tower: PlaceKind = {
 
 /** A stash to find once: the mine's forgotten ore cart, the peat cutters' wages. */
 export const mine: PlaceKind = {
-  about: (_, place) => onceCard(place, 'Enter'),
+  about: (state, place) => onceCard(state, place, 'Enter'),
   arrive(state, place) {
-    if (place.done) return say(state, place, onceCard(place, 'Enter'));
+    if (place.done) return say(state, place, onceCard(state, place, 'Enter'));
     const content = offer(state, place);
     if (content) return content;
     const gold = loot(state, place.gold ?? 0);
@@ -61,7 +61,7 @@ const FLOUR = 40;
 
 /** A mill: a good meal and a longer day's march, once a week, and on the first visit, the miller's offer. */
 export const mill: PlaceKind = {
-  about: (_, place) => onceCard(place, 'Visit'),
+  about: (state, place) => onceCard(state, place, 'Visit'),
   arrive(state, place) {
     if (place.done) return offer(state, place, words(place, 'done')) ?? say(state, place, note(place, words(place, 'done')));
     const fed = update({ ...state, movement: state.movement + FLOUR }, place.id, { done: true });
@@ -79,7 +79,7 @@ export const mill: PlaceKind = {
 
 /** A signpost: directions, and a little experience for finding it. */
 export const signpost: PlaceKind = {
-  about: (_, place) => note(place, words(place, 'about')),
-  arrive: (state, place) => found(state, place, note(place, words(place, 'about'))),
+  about: (state, place) => note(place, aboutWords(state, place)),
+  arrive: (state, place) => found(state, place, note(place, aboutWords(state, place))),
   worth: () => null,
 };

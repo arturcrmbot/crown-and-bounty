@@ -48,7 +48,8 @@ const pick = <T extends object>(from: T | undefined, keys: readonly (keyof T)[])
  * archery butts); places never leave `locations`, so a missing one is newer than the save. Places
  * the hero hasn't used up yet take the province's newest words and choices (the tower's banner or
  * journal), keeping everything that has happened to them: where they stand, how many they are.
- * An enemy keeps the artifact it was carrying.
+ * One he has seen keeps what it offered him, and only takes the newest words (`text`: what the old
+ * delving says from afar once it's open). An enemy keeps the artifact it was carrying.
  */
 export function withNewPlaces(state: GameState): GameState {
   const province = provinceOf(state).locations;
@@ -73,7 +74,11 @@ export function withNewPlaces(state: GameState): GameState {
       const words = Object.fromEntries([...ENEMY_WORDS, ...CAPTAINS_WAYS].map((k) => [k, structuredClone(now.enemy![k])]));
       return { ...l, name: now.name, text: structuredClone(now.text), enemy: { ...l.enemy!, ...words, army: [...l.enemy!.army, ...structuredClone(captains)] } };
     }
-    if (l.seen) return l;
+    if (l.seen) {
+      if (pick(l, ['text']) === pick(now, ['text'])) return l;
+      changed = true;
+      return { ...l, text: structuredClone(now.text) };
+    }
     let next: Location = l;
     if (!l.enemy && pick(l, WORDS) !== pick(now, WORDS)) next = { ...next, ...Object.fromEntries(WORDS.map((k) => [k, structuredClone(now[k])])) };
     if (l.enemy && now.enemy && pick(l.enemy, ENEMY_WORDS) !== pick(now.enemy, ENEMY_WORDS)) {
