@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { STATUSES, type StatusDef, type StatusId } from '../../content/spells';
-import { TROOPS } from '../../content/troops';
-import { autoResolve, chooseAction, finishEstimate } from './ai';
-import { activeFighter, battleAct, createBattle, enemyReach, fighterById, isCharge, options, QUIET_ROUNDS, skillFactor, spellDamage, statsOf, strike, wound, type BattleHero, type BattleEvent, type BattleState } from './battle';
+import { TROOPS, feuding } from '../../content/troops';
+import { autoResolve, chooseAction, evaluate, finishEstimate } from './ai';
+import { activeFighter, battleAct, createBattle, enemyReach, fighterById, GRUMBLE, grumblesAt, isCharge, moraleOf, options, QUIET_ROUNDS, skillFactor, spellDamage, statsOf, strike, wound, type BattleHero, type BattleEvent, type BattleState } from './battle';
 import { colOf, distance, hexIndex, neighbours, reachable } from './hex';
 
 const hero: BattleHero = { attack: 1, defence: 1, spellPower: 2, mana: 20, spells: ['bolt', 'bless', 'slow'], castRound: 0 };
@@ -336,6 +336,71 @@ describe('luck and morale', () => {
     const { events, battle: after } = battleAct(b, { type: 'defend' }, true);
     expect(events.some((e) => e.type === 'morale')).toBe(false);
     expect(after.order[0]).not.toBe(0);
+  });
+});
+
+describe('mixed company', () => {
+  it('the King\u2019s folk and wild things grumble at each other; outlaws don\u2019t mind', () => {
+    const b = battle(['knights', 'wolves', 'archers'], [10, 10, 10], ['swordsmen', 'wolves'], [10, 10]);
+    const [knights, wolves, archers, swordsmen, hounds] = b.fighters;
+    expect(grumblesAt(b, knights).map((f) => f.troop)).toEqual(['wolves']);
+    expect(grumblesAt(b, wolves).map((f) => f.troop)).toEqual(['knights', 'archers']);
+    // However many of them there are, one people grumbled at costs GRUMBLE once.
+    expect(moraleOf(b, wolves)).toBeCloseTo(-GRUMBLE);
+    expect(moraleOf(b, archers)).toBeCloseTo(-GRUMBLE);
+    expect(moraleOf(b, swordsmen)).toBe(0);
+    expect(moraleOf(b, hounds)).toBe(0);
+    // Aldric brings his morale to his side, and it can make up for the grumbling.
+    expect(moraleOf({ ...b, hero: { ...b.hero, morale: 0.1 } }, knights)).toBeCloseTo(0);
+    expect(feuding('knights', 'boars') && feuding('boars', 'peasants') && !feuding('swordsmen', 'wolves') && !feuding('knights', 'swordsmen')).toBe(true);
+  });
+
+  it('stops once the company they grumble at has fallen', () => {
+    const b = battle(['knights', 'wolves'], [10, 10], ['swordsmen'], [10]);
+    const gone = { ...b, fighters: b.fighters.map((f) => (f.troop === 'wolves' ? { ...f, count: 0 } : f)) };
+    expect(moraleOf(gone, gone.fighters[0])).toBe(0);
+  });
+
+  it('low spirits make a stack falter and lose its turn, once a round', () => {
+    // Wolves first, then the knights, who grumble at them past all bearing.
+    let b = battle(['knights', 'wolves'], [10, 10], ['swordsmen'], [10]);
+    b = { ...b, hero: { ...b.hero, morale: -0.9 } };
+    expect(b.order).toEqual([1, 0, 2]);
+    const { events, battle: after } = battleAct(b, { type: 'defend' });
+    expect(events).toContainEqual({ type: 'falter', fighter: 0 });
+    expect(after.order[0]).toBe(2);
+    expect(fighterById(after, 0).moraleUsed).toBe(true);
+    // The AI's look-ahead doesn't roll for it.
+    const guess = battleAct(b, { type: 'defend' }, true);
+    expect(guess.events.some((e) => e.type === 'falter')).toBe(false);
+    expect(guess.battle.order[0]).toBe(0);
+  });
+
+  it('low spirits are tested once, even when a spell is cast before the stack acts', () => {
+    let b = battle(['knights', 'wolves'], [10, 10], ['swordsmen'], [10]);
+    // Just under nought: the dice will nearly always let them act, and once they have, that's it for the round.
+    b = { ...b, hero: { ...b.hero, morale: 0.099 } };
+    const next = battleAct(b, { type: 'defend' }).battle;
+    expect(next.order[0]).toBe(0);
+    expect(fighterById(next, 0).moraleUsed).toBe(true);
+    const cast = battleAct(next, { type: 'cast', spell: 'bless', target: 0 });
+    expect(cast.events.some((e) => e.type === 'falter')).toBe(false);
+    expect(cast.battle.order[0]).toBe(0);
+    // No dice were thrown for them again.
+    expect(cast.battle.seed).toBe(next.seed);
+  });
+
+  it('the AI counts luck at its average and morale as the turns it can expect', () => {
+    const b = battle(['knights', 'archers'], [10, 20], ['swordsmen'], [30]);
+    const cheered = { ...b, hero: { ...b.hero, morale: 0.3 } };
+    const lucky = { ...b, hero: { ...b.hero, luck: 0.3 } };
+    expect(evaluate(cheered, 'player')).toBeGreaterThan(evaluate(b, 'player'));
+    expect(evaluate(lucky, 'player')).toBeGreaterThan(evaluate(b, 'player'));
+    // And the other side sees it coming.
+    expect(evaluate(cheered, 'enemy')).toBeLessThan(evaluate(b, 'enemy'));
+    const grumbling = battle(['knights', 'archers', 'wolves'], [10, 20, 1], ['swordsmen'], [30]);
+    const calm = { ...grumbling, hero: { ...grumbling.hero, morale: GRUMBLE } };
+    expect(evaluate(calm, 'player')).toBeGreaterThan(evaluate(grumbling, 'player'));
   });
 });
 

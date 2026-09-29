@@ -1,5 +1,5 @@
 import { needsTarget, SPELLS, STATUSES, type SpellId, type StatusId } from '../../content/spells';
-import { ABILITIES, abilitiesOf, TROOPS, unitPower, type TroopDef, type TroopId } from '../../content/troops';
+import { ABILITIES, abilitiesOf, feuding, TROOPS, unitPower, type TroopDef, type TroopId } from '../../content/troops';
 import { MAX_STACKS, roll, type Army } from '../state';
 import { COLS, HEXES, hexIndex, NEIGHBOURS, neighbours, reachable, ROWS } from './hex';
 
@@ -26,10 +26,12 @@ export type Fighter = {
   waited: boolean;
   /** Spells and abilities on the stack, for the rest of the battle unless `until` says otherwise. */
   status: StatusId[];
-  /** Whether good morale has already won this stack a second turn this round (once a round). */
+  /** Whether morale has had its say for this stack this round: won it a second turn, or tested its low spirits (once a round). */
   moraleUsed?: boolean;
   /** The round a status wears off at the start of (those with `rounds`). */
   until?: Partial<Record<StatusId, number>>;
+  /** The others of its side it won't march happily beside (see `FEUDS` in content/troops.ts), living or not. */
+  uneasy?: number[];
   unit?: UnitNumbers;
   /** Aldric himself, who leads your side from behind the line: the side's spells are his to cast. */
   hero?: boolean;
@@ -72,6 +74,8 @@ export type BattleHero = Spellbook & {
   luck?: number;
   /** Chance a stack's good spirits win it another turn before the round moves on. */
   morale?: number;
+  /** Where his luck and morale come from, by name, for saying why: "Fortune's Favour", "A Rabbit's Foot". */
+  spirits?: { source: string; luck?: number; morale?: number }[];
   manaDiscount?: number;
   /** The gold he carries, for a bard's bribes, the share off every bribe, and the leadership he has free for troops who come over. */
   gold?: number;
@@ -270,12 +274,40 @@ export const isRanged = (f: Fighter) => f.shots > 0;
 
 /** What a stack's statuses add to one of its numbers (a song's morale, a jeer's). */
 const fromStatuses = (f: Fighter, of: 'morale' | 'luck') => f.status.reduce((sum, s) => sum + (STATUSES[s][of] ?? 0), 0);
+
+/** Morale a stack loses for every people in its army it won't march beside (see `FEUDS` in content/troops.ts). */
+export const GRUMBLE = 0.1;
+
+/** Marks who won't march happily beside whom, as the armies take the field or a stack marches in. */
+function markFeuds(fighters: Fighter[]) {
+  for (const f of fighters) {
+    const ids = fighters.filter((o) => o.side === f.side && o.id !== f.id && feuding(f.troop, o.troop)).map((o) => o.id);
+    if (ids.length) f.uneasy = ids;
+    else delete f.uneasy;
+  }
+}
+
+/** The living stacks of its own side a stack grumbles at: of a people its own won't march with. */
+export const grumblesAt = (b: BattleState, f: Pick<Fighter, 'uneasy'>): Fighter[] => (f.uneasy ?? []).map((id) => fighterById(b, id)).filter(alive);
+
+/** The morale a stack loses to the company it keeps: `GRUMBLE` for every people it won't march beside, while any of them stand. */
+export function grumbleOf(b: BattleState, f: Pick<Fighter, 'uneasy'>): number {
+  if (!f.uneasy) return 0;
+  const peoples: string[] = [];
+  for (const id of f.uneasy) {
+    const o = fighterById(b, id);
+    const people = TROOPS[o.troop].people!;
+    if (alive(o) && !peoples.includes(people)) peoples.push(people);
+  }
+  return GRUMBLE * peoples.length;
+}
+
 /**
- * A stack's morale: its side's (the hero's, for yours), with what songs and jeers add. Above
- * nought, the chance it goes again before the round moves on; below, the chance it loses heart and
- * its turn as the turn comes.
+ * A stack's morale: its side's (the hero's, for yours), with what songs and jeers add, less what it
+ * grumbles at the company it keeps. Above nought, the chance it goes again before the round moves
+ * on; below, the chance it loses heart and its turn as the turn comes.
  */
-export const moraleOf = (b: BattleState, f: Fighter) => (f.side === 'player' ? (b.hero.morale ?? 0) : 0) + fromStatuses(f, 'morale');
+export const moraleOf = (b: BattleState, f: Fighter) => (f.side === 'player' ? (b.hero.morale ?? 0) : 0) + fromStatuses(f, 'morale') - grumbleOf(b, f);
 /** The chance a stack's blow lands lucky, twice as hard: its side's (the hero's, for yours), with what songs add. */
 export const luckOf = (b: BattleState, f: Fighter) => (f.side === 'player' ? (b.hero.luck ?? 0) : 0) + fromStatuses(f, 'luck');
 
@@ -321,6 +353,7 @@ export function createBattle(args: { place: string; seed: number; player: Army; 
     const { troop, ...unit } = hero;
     fighters.push({ id: fighters.length, side: 'player', troop, count: 1, startCount: 1, hp: unit.hp, at: REAR, shots: shotsOf(troop, 'player'), retaliated: false, defending: false, waited: false, status: brought(troop, 'player'), unit, hero: true });
   }
+  markFeuds(fighters);
   for (const f of fighters) for (const status of f.status) wearsOff(f, status, 1);
   // The opening words: what each thing he brought does to whom.
   const opening = (args.hero.brought ?? [])
@@ -799,6 +832,7 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
           if (at === null || count <= 0) return { battle: b, events: [] };
           const t = TROOPS[effect.troop];
           fighters.push({ id: fighters.length, side, troop: effect.troop, count, startCount: count, hp: t.hp, at, shots: t.shots ?? 0, retaliated: false, defending: false, waited: false, status: [] });
+          markFeuds(fighters);
           events.push({ type: 'summon', ...cast, fighter: fighters.length - 1 });
           break;
         }
@@ -840,6 +874,8 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
         joined = fighters.length;
         fighters.push({ id: joined, side: f.side, troop: target.troop, count, startCount: count, hp: target.hp, at: target.at, shots: target.shots, retaliated: false, defending: false, waited: false, status: [] });
         next.hero.room = (b.hero.room ?? 0) - count * TROOPS[target.troop].leadership;
+        // Turncoats of a people his army won't march beside are still grumbled at.
+        markFeuds(fighters);
       }
       events.push({ type: 'bribe', fighter: f.id, target: target.id, gold: price, count, ...(joined !== undefined ? { joined } : {}) });
       break;
@@ -923,11 +959,12 @@ function settle(b: BattleState, events: BattleEvent[], endTurn: boolean, expecte
       next = { ...next, order: next.order.slice(1) };
       continue;
     }
-    // Low spirits: a chance the stack loses heart, and its turn, once a turn (not again after a wait).
+    // Low spirits: a chance the stack loses heart, and its turn, once a round: not again after a wait,
+    // nor after a spell cast before it acts. The AI's look-ahead doesn't roll (see `troopWorth` in ai.ts).
     const spirit = moraleOf(next, first);
-    if (!expected && spirit < 0 && !first.waited) {
+    if (!expected && spirit < 0 && !first.waited && !first.moraleUsed) {
       const [v, rolled] = roll(next.seed);
-      next = { ...next, seed: rolled };
+      next = { ...next, seed: rolled, fighters: next.fighters.map((f) => (f.id === first.id ? { ...f, moraleUsed: true } : f)) };
       if (v < -spirit) {
         next = { ...next, order: next.order.slice(1) };
         events.push({ type: 'falter', fighter: first.id });
