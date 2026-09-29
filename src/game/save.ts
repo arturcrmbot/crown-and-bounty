@@ -22,6 +22,7 @@ export function saveGame(state: GameState) {
   if (!saving) return;
   try {
     localStorage.setItem(KEY, JSON.stringify(state));
+    localStorage.removeItem(PREVIOUS_KEY);
   } catch {
     // Private windows and full storage just don't save.
   }
@@ -43,6 +44,7 @@ export function clearSave() {
   saving = false;
   try {
     localStorage.removeItem(KEY);
+    localStorage.removeItem(PREVIOUS_KEY);
   } catch {
     // Nothing to clear.
   }
