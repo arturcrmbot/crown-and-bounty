@@ -258,12 +258,13 @@ export class Game {
   }
 
   readonly input: InputHandlers = {
-    // A click while the screen changes only skips the change; a key skips it and still counts.
+    // A press waits for the screen to change; a click while it changes only skips the change; a key skips it and still counts.
+    press: (x, y) => this.transition || this.top.input.press?.(x, y),
     click: (x, y) => this.skip() || this.top.input.click(x, y),
     look: (x, y) => this.skip() || this.top.input.look?.(x, y),
     wheel: (dx, dy) => this.top.input.wheel?.(dx, dy),
     hover: (x, y, cx, cy) => this.top.input.hover(x, y, cx, cy),
-    drag: (dx, dy) => this.top.input.drag(dx, dy),
+    drag: (dx, dy, x, y) => this.top.input.drag(dx, dy, x, y),
     leave: () => this.top.input.leave(),
     key: (key) => {
       this.skip();
@@ -288,6 +289,8 @@ export class Game {
       centre: (id: string) => adventure()?.centre(id) ?? null,
       /** Scrolls the map to centre on a map point, as a player would before clicking something far off. */
       view: (x: number, y: number) => adventure()?.view(x, y),
+      /** Where the map's view looks: its top left, in map pixels. */
+      camera: () => adventure()?.camera() ?? null,
       hover: () => adventure()?.hover() ?? null,
       screen: () => this.top.name,
       battle: () => (this.top instanceof BattleController ? this.top.debug() : null),

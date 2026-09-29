@@ -23,7 +23,7 @@ The balance is in [BALANCE.md](BALANCE.md) (29 Sep 2026): a power budget for eac
 ## Look
 
 - **Target:** the look and feel of Heroes of Might and Magic 2's adventure map. **2D only.** On 25 Sep 2026 Artur rejected a 3D look test (pixel-art and toy-diorama renders of KayKit models): "it doesn't need to be 3D at all".
-- **Plan:** pixel art at HoMM2's own 640×480, scaled up in whole pixels, with square 32 px tiles and HoMM2's screen layout (map view in a carved frame, right-hand panel with minimap, hero, buttons and status). A 256-colour indexed palette, with water animated by palette cycling as HoMM2 did.
+- **Plan:** pixel art at HoMM2's own 640×480, scaled up in whole pixels, with square 32 px tiles and HoMM2's screen layout (map view in a carved frame, right-hand panel with minimap, hero, buttons and status). A 256-colour indexed palette, with water animated by palette cycling as HoMM2 did. The panel, with the minimap and the hero, came in with #106 (see below); the buttons and status are still on the bottom bar.
 - **Art sources:** Battle for Wesnoth's hand-painted units for the troops and the hero, and code for everything else (terrain, buildings, portraits, the title painting, the interface). Code-drawn figures couldn't reach HoMM2, and HoMM2's own art belongs to Ubisoft, so on 28 Sep 2026 Artur chose Wesnoth's sprites (https://units.wesnoth.org/1.18/mainline/en_US/era_default.html) and accepted that the game becomes open source under the GPL. The PNGs come unchanged from Wesnoth's repository at tag 1.18.8, are recoloured and scaled in code, and every file is credited in `public/assets/CREDITS.md`.
 - **Real HoMM2 art is possible only locally:** loading your own copy of the game's data files, as the fheroes2 project does. The game couldn't then be shared publicly.
 - **No image-model art.** Artur rejected generated images.
@@ -303,3 +303,37 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   every run (64 of 64 over sixteen seeds) and is beaten in the open in most, which weakens the stockade, so the bot wins a
   day sooner at the median (knight 12, wizard 9, ranger 11, courtier 11, against 13, 10, 12 and 11) and its worst runs are
   shorter. The difficulty tiers don't move.
+- **The minimap, in HoMM2's right-hand panel (29 Sep, #106):** on a province three days' ride across, the whole of it
+  at a glance, so a player plans routes instead of just clicking: where the ford is, what's left to explore, which way
+  the stockade lies.
+  - **The layout.** Only the adventure map has the panel: its view is now 712 by 464 (22 tiles by 14, HoMM2's
+    proportions), and the panel's column stands beside it, where the map's frame ended, in the same slate and gold
+    trims. The battle, the court and the title keep the whole width. The bottom bar is as it was.
+  - **The minimap** sits at the top of the panel, under the sound buttons: 200 by 150, two pixels a tile in Aldmoor and
+    five in the smaller provinces (any other size would be fitted and centred). It's drawn in the game's palette from
+    the rules' walk grid and the painter's own regions: the fields in their crops, the heath in heather, the downs pale,
+    meadow green in its broad light and shade, each wood in its own mix of trees (Darkwood dark with pines, the chase
+    lighter with oaks, the Fenmarch's willows), crags and cliffs grey, the river blue with its falls, the meres and fen
+    pools a darker blue (blue, not the map's peaty green, so water never reads as woods), roads pale, bridges stone and
+    the ford white water. Roads and crossings win over whatever else a pixel covers, so they never break.
+  - **The fog** lies where the map's does: the land shows through the fog's own colours, with no roads, as it does on the
+    map, so the lie of the land (the river, the woods) is known but not the way through it. The minimap is a chart, not
+    a window: it doesn't darken at night or under the lost commission's gloom.
+  - **Marks** for what the map shows clear of the fog: castles and villages blue (troops for hire), enemy bands red, the
+    villain red with a gold heart (at his lair, or where he rides when he's out, his lair then red like any band of his
+    men), treasure (and the X over the sceptre) gold, other places cream, and a place used up grey; what's gone from
+    the map is gone from the minimap. Aldric is a gold diamond with a white heart, the
+    one shape no place has, drawn over everything. A white frame shows the part of the map on screen.
+  - **Using it.** A press on it looks there at once, as in HoMM2, and a drag steers the view, even off its edge; the
+    hover label names the place under the pointer, or says the land is unexplored. The keys card says so too.
+  - **Cost.** It only reads the rules state. The land is worked out once when the province opens (10 to 40 ms), the fog
+    is laid again only round what the hero has just seen, and it paints into the interface's frame only when the fog,
+    the places, the hero's pixel or the view's frame change: a frame where nothing moves costs nothing.
+  - **The plates under it**, so the panel is whole: Aldric's (his face, name, background and level, experience, and
+    HoMM2's movement and mana gauges; a click opens the hero screen), and the bounty's, as King's Bounty's sidebar had
+    its contract and its puzzle map: WANTED over the villain's face (stamped PAID once he's taken, as the poster is), the
+    reward or what the Crown paid, the days left (red in the last ten) and the torn pieces of the old map found so far
+    (a click shows the poster). Each has its hover label.
+  - Cards keep over the map's view, clear of the panel, unless they could only fit there by covering what they're
+    about; while the opening card asks who he was, Aldric stands low in the view so it fits above him. Changes of
+    scene fade or sweep the panel with the picture.

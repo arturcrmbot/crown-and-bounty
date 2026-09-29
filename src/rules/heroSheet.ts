@@ -42,7 +42,7 @@ export function paydayOf(state: GameState): { day: number; pay: number; wages: n
   return { day: nextPayday(state), pay: COMMISSION + s.payday, wages: Math.round(wages(state.army) * (1 + s.wages)) };
 }
 
-/** Something on the map's bottom bar, for what it says under the pointer. */
+/** Something on the map's bottom bar or its right-hand panel, for what it says under the pointer. */
 export type BarItem =
   | { kind: 'gold' }
   | { kind: 'stack'; index: number }
@@ -50,11 +50,20 @@ export type BarItem =
   | { kind: 'movement' }
   | { kind: 'mana' }
   | { kind: 'day' }
-  | { kind: 'hourglass' };
+  | { kind: 'hourglass' }
+  | { kind: 'hero' }
+  | { kind: 'pieces' };
 
-/** The bottom bar's hover labels, like HoMM2's status line: what each number means, and what a click does. */
+/** Torn pieces of the old map so far: one with every bounty paid. */
+export const mapPieces = (state: GameState) => state.campaign.record.length + (state.bounty === 'paid' ? 1 : 0);
+
+/** The hover labels of the bar and the panel, like HoMM2's status line: what each number means, and what a click does. */
 export function barNote(state: GameState, item: BarItem): string {
   switch (item.kind) {
+    case 'hero':
+      return `${BACKGROUNDS[state.hero.background].title} \u00b7 level ${roman(state.hero.level)} \u00b7 click (or H) for his gear and army`;
+    case 'pieces':
+      return `Pieces of the old map: ${mapPieces(state)} of ${CAMPAIGN_LENGTH} \u00b7 every bounty brings one, and the last shows where the Sceptre of Order lies`;
     case 'gold': {
       const p = paydayOf(state);
       return `${coins(state.gold)} gold · payday on day ${roman(p.day)}: the King sends ${coins(p.pay)}, wages take ${coins(p.wages)}`;
@@ -100,7 +109,7 @@ function paidLine(state: GameState): string {
 export function bountyCard(state: GameState): Card {
   const c = commissionOf(state);
   const paid = state.bounty === 'paid';
-  const pieces = state.campaign.record.length + (paid ? 1 : 0);
+  const pieces = mapPieces(state);
   const left = LAST_DAY - state.day;
   const home = paid && c.returned ? { inset: { portrait: c.returned, line: c.homecoming } } : {};
   return {
@@ -205,7 +214,7 @@ export function heroSheet(state: GameState): HeroSheet {
     company: (h.friends ?? []).map((id) => ({ name: FRIENDS[id].name, note: FRIENDS[id].note })),
     spells: h.spells.map((id) => ({ name: SPELLS[id].name, note: `${Math.max(1, SPELLS[id].mana - discount)} mana: ${SPELLS[id].note}` })),
     mapSpells: s.mapSpells.map((id) => ({ spell: id, label: `Cast ${MAP_SPELLS[id].name} (${MAP_SPELLS[id].mana} mana)`, note: MAP_SPELLS[id].note, disabled: h.mana < MAP_SPELLS[id].mana })),
-    pieces: `Pieces of the old map: ${state.campaign.record.length + (state.bounty === 'paid' ? 1 : 0)} of ${CAMPAIGN_LENGTH}`,
+    pieces: `Pieces of the old map: ${mapPieces(state)} of ${CAMPAIGN_LENGTH}`,
     piecesNote: 'Every bounty brings a torn piece of an old map. With the last one, an X shows where the Sceptre of Order lies.',
     day: `Day ${roman(state.day)} of ${LAST_DAY}`,
   };

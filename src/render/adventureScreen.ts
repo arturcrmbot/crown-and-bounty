@@ -1,6 +1,6 @@
 import { Bitmap, blit } from './bitmap';
 import { Effects } from './effects';
-import { MAP_VIEW, paintFrame, SCREEN } from './frame';
+import { ADVENTURE_VIEW as VIEW, BAR_DIVIDERS, BOUNTY_PLATE, HERO_PLATE, MINIMAP, paintFrame, SCREEN, trim } from './frame';
 import type { Point } from '../rules/map/geometry';
 import type { FogMask } from './fog';
 import type { MapTiles } from './mapTiles';
@@ -19,9 +19,9 @@ export type Placed = { sprite: Bitmap; frames?: Bitmap[]; frame?: number; x: num
 const footY = (o: Placed) => o.y + o.sprite.height;
 
 /**
- * The adventure screen. Static objects are baked into the map's tiles as they're painted, and only
- * animated ones are drawn each frame. Fogged pixels show the roadless `wild` map through the fog
- * colour table.
+ * The adventure screen: the map's view, with the right-hand panel beside it (see `minimap.ts`).
+ * Static objects are baked into the map's tiles as they're painted, and only animated ones are drawn
+ * each frame. Fogged pixels show the roadless `wild` map through the fog colour table.
  */
 export class AdventureScreen {
   readonly screen = new Bitmap(SCREEN.width, SCREEN.height);
@@ -44,14 +44,16 @@ export class AdventureScreen {
   private readonly fog: FogMask;
 
   constructor(tiles: MapTiles, fog: FogMask) {
-    const { frame, overlay } = paintFrame();
+    const { frame, overlay } = paintFrame(BAR_DIVIDERS, VIEW);
+    // The right-hand panel's boxes: the minimap, and the plates under it (see `minimap.ts` and `panel.ts`).
+    for (const box of [MINIMAP, HERO_PLATE, BOUNTY_PLATE]) trim(frame, box);
     this.frame = frame;
     this.overlay = overlay;
     this.tiles = tiles;
     this.fog = fog;
     const specks: number[] = [];
-    for (let y = MAP_VIEW.y; y < MAP_VIEW.y + MAP_VIEW.height; y++) {
-      for (let x = MAP_VIEW.x; x < MAP_VIEW.x + MAP_VIEW.width; x++) {
+    for (let y = VIEW.y; y < VIEW.y + VIEW.height; y++) {
+      for (let x = VIEW.x; x < VIEW.x + VIEW.width; x++) {
         if (hash(x, y, 201) < 0.035 + noise(x / 26, y / 26, 202) * 0.07) specks.push(y * SCREEN.width + x);
       }
     }
@@ -72,24 +74,24 @@ export class AdventureScreen {
   }
 
   scrollTo(x: number, y: number) {
-    this.camera.x = Math.max(0, Math.min(this.tiles.width - MAP_VIEW.width, x));
-    this.camera.y = Math.max(0, Math.min(this.tiles.height - MAP_VIEW.height, y));
+    this.camera.x = Math.max(0, Math.min(this.tiles.width - VIEW.width, x));
+    this.camera.y = Math.max(0, Math.min(this.tiles.height - VIEW.height, y));
   }
 
   /** Paints a tile of the land not yet seen, nearest the view first, while nothing much is happening. */
   warm() {
-    return this.tiles.warm(this.camera.x + MAP_VIEW.width / 2, this.camera.y + MAP_VIEW.height / 2);
+    return this.tiles.warm(this.camera.x + VIEW.width / 2, this.camera.y + VIEW.height / 2);
   }
 
   centreOn(x: number, y: number) {
-    this.scrollTo(x - MAP_VIEW.width / 2, y - MAP_VIEW.height / 2);
+    this.scrollTo(x - VIEW.width / 2, y - VIEW.height / 2);
   }
 
   /** Map coordinates under a point of the screen, or null outside the map view. */
   toMap(screenX: number, screenY: number): Point | null {
-    const x = screenX - MAP_VIEW.x;
-    const y = screenY - MAP_VIEW.y;
-    if (x < 0 || y < 0 || x >= MAP_VIEW.width || y >= MAP_VIEW.height) return null;
+    const x = screenX - VIEW.x;
+    const y = screenY - VIEW.y;
+    if (x < 0 || y < 0 || x >= VIEW.width || y >= VIEW.height) return null;
     return [x + Math.round(this.camera.x), y + Math.round(this.camera.y)];
   }
 
@@ -101,42 +103,42 @@ export class AdventureScreen {
     const cx = Math.round(this.camera.x);
     const cy = Math.round(this.camera.y);
     // The view, tile by tile: each tile's part of it, through the fog.
-    for (let ty = Math.floor(cy / TILE); ty * TILE < cy + MAP_VIEW.height && ty < this.tiles.rows; ty++) {
-      for (let tx = Math.floor(cx / TILE); tx * TILE < cx + MAP_VIEW.width && tx < this.tiles.cols; tx++) {
+    for (let ty = Math.floor(cy / TILE); ty * TILE < cy + VIEW.height && ty < this.tiles.rows; ty++) {
+      for (let tx = Math.floor(cx / TILE); tx * TILE < cx + VIEW.width && tx < this.tiles.cols; tx++) {
         const tile = this.tiles.tile(tx, ty);
         const map = tile.bitmap.data;
         const wild = tile.wild.data;
         const w = tile.bitmap.width;
         const x0 = Math.max(cx, tile.x);
-        const x1 = Math.min(cx + MAP_VIEW.width, tile.x + w);
+        const x1 = Math.min(cx + VIEW.width, tile.x + w);
         const y0 = Math.max(cy, tile.y);
-        const y1 = Math.min(cy + MAP_VIEW.height, tile.y + tile.bitmap.height);
+        const y1 = Math.min(cy + VIEW.height, tile.y + tile.bitmap.height);
         for (let y = y0; y < y1; y++) {
-          let o = (MAP_VIEW.y + y - cy) * SCREEN.width + MAP_VIEW.x + x0 - cx;
+          let o = (VIEW.y + y - cy) * SCREEN.width + VIEW.x + x0 - cx;
           let i = (y - tile.y) * w + x0 - tile.x;
           let f = y * MAP_WIDTH + x0;
           for (let x = x0; x < x1; x++, o++, i++, f++) screen.data[o] = fog[f] ? FOG_LUT[wild[i]] : map[i];
         }
       }
     }
-    drawRoute(screen, MAP_VIEW, MAP_VIEW.x - cx, MAP_VIEW.y - cy, this.route, this.camp);
+    drawRoute(screen, VIEW, VIEW.x - cx, VIEW.y - cy, this.route, this.camp);
     this.animated.sort((a, b) => footY(a) - footY(b));
     for (const o of this.animated) {
       if (this.isFogged(o.x + o.sprite.width / 2, footY(o) - 2)) continue;
       const image = o.frames ? o.frames[(o.frame ?? tick) % o.frames.length] : o.sprite;
-      blit(screen, image, MAP_VIEW.x + Math.round(o.x) - cx, MAP_VIEW.y + Math.round(o.y) - cy, MAP_VIEW);
+      blit(screen, image, VIEW.x + Math.round(o.x) - cx, VIEW.y + Math.round(o.y) - cy, VIEW);
     }
     const seen = (x: number, y: number) => !this.isFogged(x, y);
-    this.weather?.drawSmoke(screen, MAP_VIEW.x - cx, MAP_VIEW.y - cy, MAP_VIEW, this.sky, seen);
-    this.effects.draw(screen, MAP_VIEW.x - cx, MAP_VIEW.y - cy, MAP_VIEW, seen);
-    this.weather?.light(screen, this.sky, this.camera);
-    this.weather?.drawAir(screen, MAP_VIEW.x - cx, MAP_VIEW.y - cy, MAP_VIEW, this.sky, seen);
-    this.effects.drawWords(screen, MAP_VIEW.x - cx, MAP_VIEW.y - cy, MAP_VIEW);
+    this.weather?.drawSmoke(screen, VIEW.x - cx, VIEW.y - cy, VIEW, this.sky, seen);
+    this.effects.draw(screen, VIEW.x - cx, VIEW.y - cy, VIEW, seen);
+    this.weather?.light(screen, this.sky, this.camera, VIEW);
+    this.weather?.drawAir(screen, VIEW.x - cx, VIEW.y - cy, VIEW, this.sky, seen);
+    this.effects.drawWords(screen, VIEW.x - cx, VIEW.y - cy, VIEW);
     for (const i of this.grain) screen.data[i] = GRAIN_LUT[screen.data[i]];
     if (this.dusk > 0) {
       // Night falls over the map, and lifts again, in a dither of shadow.
-      for (let y = MAP_VIEW.y; y < MAP_VIEW.y + MAP_VIEW.height; y++) {
-        for (let x = MAP_VIEW.x; x < MAP_VIEW.x + MAP_VIEW.width; x++) {
+      for (let y = VIEW.y; y < VIEW.y + VIEW.height; y++) {
+        for (let x = VIEW.x; x < VIEW.x + VIEW.width; x++) {
           const d = bayer(x, y);
           if (d >= this.dusk) continue;
           const o = y * SCREEN.width + x;

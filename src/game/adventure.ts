@@ -3,9 +3,10 @@ import { troops } from '../content/troops';
 import { addPlace, buildAdventureScene, setHeroFigure, type AdventureScene, type Hitbox } from '../render/adventureScene';
 import { BANNER_TIME, drawBanner, paintBanner } from '../render/banner';
 import type { Bitmap } from '../render/bitmap';
-import { BAR, MAP_VIEW } from '../render/frame';
+import { ADVENTURE_VIEW as VIEW, BAR } from '../render/frame';
 import { BLUE, GOLD, NEUTRAL, PARCHMENT, RED } from '../render/palette';
 import { clickable, paintHud, type HudHit } from '../render/hud';
+import { Panel, type PanelHit } from '../render/panel';
 import { ART, heroArtId } from '../render/units';
 import type { BattleState } from '../rules/battle/battle';
 import { ambushCard, apply, bountyCard, commissionOf, describe, finishFight, heroStats, levelUpCard, locationById, placeNote, roman, visit, whenThere, type Action, type Card, type GameEvent, type GameState, type Result } from '../rules/game';
@@ -104,6 +105,12 @@ export class AdventureController implements Screen {
   /** Where each thing on the bottom bar sits, as last painted, and which one the pointer is on. */
   private hud: HudHit[] = [];
   private hudHover: HudHit | null = null;
+  /** The plates under the minimap, where their parts sit, and which one the pointer is on. */
+  private readonly panel = new Panel();
+  private panelHits: PanelHit[] = [];
+  private panelHover: PanelHit | null = null;
+  /** Whether the pointer went down on the minimap: then a drag steers the view, as in HoMM2. */
+  private steering = false;
   /**
    * What the pointer rests on, open ground or a place: after a moment, its label adds how long the
    * ride there is. `name` is the place's label without it.
@@ -163,7 +170,8 @@ export class AdventureController implements Screen {
     const tower = state.locations.find((l) => l.kind === 'tower');
     if (tower) this.scene.view.effects.addFlock([tower.at[0], tower.at[1] - 84], 6, 1);
     for (const [i, home] of (map.province.flocks ?? []).entries()) this.scene.view.effects.addFlock(home, 5, 4 + i);
-    this.scene.view.centreOn(state.hero.at[0] + 40, state.hero.at[1] - 70);
+    // While the opening card asks who he was, he stands low in the view, so the card fits above him.
+    this.scene.view.centreOn(state.hero.at[0] + 40, state.hero.at[1] - (state.opening ? 180 : 70));
     this.repaintHud();
   }
 
@@ -173,7 +181,7 @@ export class AdventureController implements Screen {
 
   render(tick: number): Uint8Array {
     const frame = this.view.compose(tick);
-    if (this.banner) drawBanner(frame, this.banner.sprite, MAP_VIEW.x + MAP_VIEW.width / 2, this.banner.y, this.banner.age);
+    if (this.banner) drawBanner(frame, this.banner.sprite, VIEW.x + VIEW.width / 2, this.banner.y, this.banner.age);
     return frame.data;
   }
 
@@ -182,8 +190,8 @@ export class AdventureController implements Screen {
     const commission = commissionOf(this.state);
     const sprite = paintBanner(this.map.province.name.toUpperCase(), `Commission ${roman(this.state.campaign.chapter + 1)} \u00b7 ${commission.villain}`);
     // Across the top of the sky, or the bottom if that's where the hero stands.
-    const heroY = MAP_VIEW.y + this.state.hero.at[1] - this.view.camera.y;
-    const y = heroY < MAP_VIEW.y + 190 ? MAP_VIEW.y + MAP_VIEW.height - sprite.height - 40 : MAP_VIEW.y + 70;
+    const heroY = VIEW.y + this.state.hero.at[1] - this.view.camera.y;
+    const y = heroY < VIEW.y + 190 ? VIEW.y + VIEW.height - sprite.height - 40 : VIEW.y + 70;
     this.banner = { sprite, age: 0, y };
     play('fanfare');
   }
@@ -231,8 +239,8 @@ export class AdventureController implements Screen {
     const night = this.night;
     const { camera } = this.view;
     const { x, y } = this.drawn;
-    const seen = x > camera.x && x < camera.x + MAP_VIEW.width && y > camera.y && y < camera.y + MAP_VIEW.height;
-    const at = seen ? { x, y } : { x: camera.x + MAP_VIEW.width / 2, y: camera.y + MAP_VIEW.height / 2 };
+    const seen = x > camera.x && x < camera.x + VIEW.width && y > camera.y && y < camera.y + VIEW.height;
+    const at = seen ? { x, y } : { x: camera.x + VIEW.width / 2, y: camera.y + VIEW.height / 2 };
     return { scape: this.soundscape, listener: { ...at, night, morning: Math.max(0, 1 - gone / 0.2), rain: this.view.sky.rain } };
   }
 
@@ -352,6 +360,7 @@ export class AdventureController implements Screen {
           break;
         case 'reveal':
           this.scene.fog.reveal(this.state.explored, e.at[0], e.at[1], e.radius);
+          this.scene.minimap.refog(e);
           break;
         case 'added': {
           // A band that rides out and on in the same night sets off from where it rode out.
@@ -414,6 +423,31 @@ export class AdventureController implements Screen {
   private repaintHud() {
     this.hudMovement = Math.floor(this.state.movement);
     this.hud = paintHud(this.view.frame, this.state, this.hudHover && this.barClickable(this.hudHover) ? this.hudHover.item : null);
+    this.panelHits = this.panel.paint(this.view.frame, this.state, this.panelHover && this.panelClickable() ? this.panelHover.item : null);
+  }
+
+  /** The part of a plate under a screen point, if any: the gauges before the plate they're on. */
+  private onPanel(x: number, y: number): PanelHit | null {
+    return this.panelHits.find((h) => x >= h.x0 && x < h.x1 && y >= h.y0 && y < h.y1) ?? null;
+  }
+
+  /** Lights the plate the pointer is on, as it moves. */
+  private hoverPanel(hit: PanelHit | null) {
+    if (hit?.item.kind === this.panelHover?.item.kind) return;
+    this.panelHover = hit;
+    this.repaintHud();
+  }
+
+  /** Whether a click on the plates does anything right now. */
+  private panelClickable() {
+    return !this.state.opening && !this.state.over && !this.state.ambush;
+  }
+
+  /** Aldric's plate opens the hero screen; the bounty's shows the poster. */
+  private clickPanel({ item }: PanelHit) {
+    if (!this.panelClickable()) return;
+    if (item.kind === 'bounty' || item.kind === 'pieces') this.showCard(bountyCard(this.state), null);
+    else this.openHero();
   }
 
   /** Underlines what a click on the bar would work, as the pointer moves over it. */
@@ -608,15 +642,39 @@ export class AdventureController implements Screen {
       this.view.camp = null;
     }
     if (this.follow) {
-      const tx = this.drawn.x - MAP_VIEW.width / 2;
-      const ty = this.drawn.y - MAP_VIEW.height / 2 - 20;
+      const tx = this.drawn.x - VIEW.width / 2;
+      const ty = this.drawn.y - VIEW.height / 2 - 20;
       const k = Math.min(1, dt * 2.5);
       this.view.scrollTo(this.view.camera.x + (tx - this.view.camera.x) * k, this.view.camera.y + (ty - this.view.camera.y) * k);
       if (!walking && Math.hypot(tx - this.view.camera.x, ty - this.view.camera.y) < 2) this.follow = false;
     }
     if (Math.floor(this.state.movement) !== this.hudMovement) this.repaintHud();
+    this.paintMinimap();
     // A tile of the land further off is painted each frame, nearest the view first, until all of it is.
     this.view.warm();
+  }
+
+  /** The minimap, in the panel: it paints itself only when something it shows has moved on. */
+  private paintMinimap() {
+    const { camera } = this.view;
+    this.scene.minimap.paint(this.view.frame, this.state.locations, [this.drawn.x, this.drawn.y], { x: camera.x, y: camera.y, width: VIEW.width, height: VIEW.height });
+  }
+
+  /** Looks at the part of the map under a point of the minimap, as a press or a drag on it does. */
+  private steer(x: number, y: number) {
+    this.follow = false;
+    this.resting = null;
+    this.view.centreOn(...this.scene.minimap.toMap(x, y));
+    this.paintMinimap();
+  }
+
+  /** What the pointer is over on the minimap: a place, Aldric, or the land, and what a click does there. */
+  private minimapNote(x: number, y: number): string {
+    const { minimap } = this.scene;
+    const mark = minimap.markAt(x, y);
+    if (mark) return placeNote(this.state, mark.id);
+    if (minimap.near(x, y, [this.drawn.x, this.drawn.y])) return `${BACKGROUNDS[this.state.hero.background].short} \u00b7 Space brings the view back to him`;
+    return `${minimap.foggedAt(x, y) ? 'Unexplored' : this.map.province.name} \u00b7 click or drag to look there`;
   }
 
   /** Once the pointer has rested on open ground a moment, how many days' ride away it is. */
@@ -719,16 +777,17 @@ export class AdventureController implements Screen {
   placeCard() {
     const a = this.cardAnchor;
     const { camera } = this.view;
-    const point = a && this.display.toPage(MAP_VIEW.x + a[0] - camera.x, MAP_VIEW.y + a[1] - camera.y);
+    const point = a && this.display.toPage(VIEW.x + a[0] - camera.x, VIEW.y + a[1] - camera.y);
     const hero = this.scene.hero;
     const heroBox = { x0: hero.object.x, y0: hero.object.y, x1: hero.object.x + hero.idle[0].width, y1: hero.object.y + hero.foot + 6 };
     const inside = (b: { x0: number; y0: number; x1: number; y1: number }) => a && a[0] >= b.x0 && a[0] < b.x1 && a[1] >= b.y0 && a[1] < b.y1;
     // What the card is about: the place (or the hero) its anchor is on, or a little space round the point.
     const place = a && this.scene.hitboxes.filter((b) => inside(b)).reduce<Hitbox | null>((front, b) => (!front || b.y1 > front.y1 ? b : front), null);
     const box = !a ? heroBox : inside(heroBox) ? heroBox : (place ?? { x0: a[0] - 12, y0: a[1] - 12, x1: a[0] + 12, y1: a[1] + 12 });
-    const from = this.display.toPage(MAP_VIEW.x + box.x0 - camera.x, MAP_VIEW.y + box.y0 - camera.y);
-    const to = this.display.toPage(MAP_VIEW.x + box.x1 - camera.x, MAP_VIEW.y + box.y1 - camera.y);
-    this.cards.place(point, this.display.toPage(0, MAP_VIEW.y).y, this.display.toPage(0, MAP_VIEW.y + MAP_VIEW.height).y, { x0: from.x, y0: from.y, x1: to.x, y1: to.y });
+    const from = this.display.toPage(VIEW.x + box.x0 - camera.x, VIEW.y + box.y0 - camera.y);
+    const to = this.display.toPage(VIEW.x + box.x1 - camera.x, VIEW.y + box.y1 - camera.y);
+    const sides = { left: this.display.toPage(VIEW.x, 0).x, right: this.display.toPage(VIEW.x + VIEW.width, 0).x };
+    this.cards.place(point, this.display.toPage(0, VIEW.y).y, this.display.toPage(0, VIEW.y + VIEW.height).y, { x0: from.x, y0: from.y, x1: to.x, y1: to.y }, sides);
   }
 
   // --- Input ------------------------------------------------------------------------------
@@ -857,9 +916,17 @@ export class AdventureController implements Screen {
 
   /** Handlers for `Input`: screen pixels in. */
   readonly input = {
+    press: (x: number, y: number) => {
+      this.steering = this.scene.minimap.contains(x, y);
+      if (this.steering) this.steer(x, y);
+    },
     click: (x: number, y: number) => {
+      // The press on the minimap has moved the view already.
+      if (this.scene.minimap.contains(x, y)) return;
       const bar = this.onBar(x, y);
       if (bar) return this.clickBar(bar);
+      const plate = this.onPanel(x, y);
+      if (plate) return this.clickPanel(plate);
       const point = this.view.toMap(x, y);
       if (point) this.clickMap(point);
     },
@@ -870,10 +937,19 @@ export class AdventureController implements Screen {
     hover: (x: number, y: number, clientX: number, clientY: number) => {
       const bar = this.onBar(x, y);
       this.hoverBar(bar);
-      if (bar) {
+      const plate = bar ? null : this.onPanel(x, y);
+      this.hoverPanel(plate);
+      if (bar || plate) {
+        const hit = (bar ?? plate)!;
         this.resting = null;
-        this.display.canvas.style.cursor = this.barClickable(bar) ? 'pointer' : 'default';
-        this.label.show(barNote(this.state, bar.item), clientX, clientY);
+        this.display.canvas.style.cursor = (bar ? this.barClickable(bar) : this.panelClickable()) ? 'pointer' : 'default';
+        this.label.show(barNote(this.state, hit.item), clientX, clientY);
+        return;
+      }
+      if (this.scene.minimap.contains(x, y)) {
+        this.resting = null;
+        this.display.canvas.style.cursor = 'pointer';
+        this.label.show(this.minimapNote(x, y), clientX, clientY);
         return;
       }
       const point = this.view.toMap(x, y);
@@ -893,7 +969,8 @@ export class AdventureController implements Screen {
       else if (thing) this.label.show(`${thing.name}${again}`, clientX, clientY);
       else this.label.hide();
     },
-    drag: (dx: number, dy: number) => {
+    drag: (dx: number, dy: number, x: number, y: number) => {
+      if (this.steering) return this.steer(x, y);
       this.follow = false;
       this.view.scrollTo(this.view.camera.x - dx, this.view.camera.y - dy);
     },
@@ -907,6 +984,7 @@ export class AdventureController implements Screen {
     leave: () => {
       this.label.hide();
       this.hoverBar(null);
+      this.hoverPanel(null);
       this.resting = null;
     },
     key: (key: string) => {
@@ -947,6 +1025,8 @@ export class AdventureController implements Screen {
         this.follow = false;
         this.view.centreOn(x, y);
       },
+      /** Where the view looks on the map: its top left, in map pixels. */
+      camera: () => ({ ...this.view.camera }),
       frameHash: () => {
         let h = 0x811c9dc5;
         for (const v of this.view.screen.data) h = Math.imul(h ^ v, 0x01000193);
