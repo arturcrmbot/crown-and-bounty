@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { heroTroop, TROOPS } from '../content/troops';
-import { autoResolve, commander, onslaught } from './battle/ai';
-import { battleAct, canCast, createBattle, heroHex, heroOnField, isCharge, options, statsOf, strike, survivors, type BattleState } from './battle/battle';
+import { heroTroop, TROOPS, type TroopId } from '../content/troops';
+import { autoResolve, castActions, commander, onslaught } from './battle/ai';
+import { battleAct, battleEnd, blocked, canCast, createBattle, hasTurn, heroOnField, isLeader, livingHexes, onField, options, REAR, spellVictims, statsOf, survivors, type BattleState, type Fighter } from './battle/battle';
 import { hexIndex, neighbours } from './battle/hex';
 import { finishFight, heroFighter, heroInBattle, startFight, winChance, type GameState } from './game';
 import { newGame } from './scenario';
@@ -12,22 +12,26 @@ const hero = (background: Parameters<typeof newGame>[2] = 'knight', level = 1): 
 };
 const battleOf = (state: GameState, place: string) => startFight(state, place)!.state.battle!;
 const aldric = (b: BattleState) => heroOnField(b)!;
-/** The battle with Aldric moved to `at`, and whatever else changed about him. */
-const withHero = (b: BattleState, change: Partial<BattleState['fighters'][number]>): BattleState => ({ ...b, fighters: b.fighters.map((f) => (f.hero ? { ...f, ...change } : f)) });
+const army = (...stacks: [TroopId, number][]) => stacks.map(([troop, count]) => ({ troop, count }));
+const of = (b: BattleState, troop: TroopId) => b.fighters.find((f) => f.troop === troop)!;
+/** The battle with one fighter changed, and whoever `order` says acting next. */
+const change = (b: BattleState, id: number, to: Partial<Fighter>, order = b.order): BattleState => ({ ...b, order, fighters: b.fighters.map((f) => (f.id === id ? { ...f, ...to } : f)) });
+/** Every blow, shot and spell the side acting now could aim, and at whom. */
+const aims = (b: BattleState) => {
+  const opts = options(b);
+  return [...opts.melee.map((m) => m.target), ...opts.shoot, ...castActions(b).flatMap((a) => (a.type === 'cast' && a.target !== undefined ? [a.target] : []))];
+};
 
-describe('Aldric on the field', () => {
-  it('takes the field with his army, a stack of one in the line, but is no part of it', () => {
+describe('Aldric behind the line', () => {
+  it('leads from behind his army, on no hex of the field, and is no part of it', () => {
     const b = battleOf(hero('knight'), 'patrol');
     const me = aldric(b);
-    expect(me).toMatchObject({ side: 'player', troop: 'heroKnight', count: 1, hp: 80 });
-    // The knights and archers take the first two rows of the line; he takes the next.
-    expect(me.at).toBe(heroHex(2));
-    expect(b.fighters.filter((f) => f.side === 'player' && f.at === me.at)).toHaveLength(1);
+    expect(me).toMatchObject({ side: 'player', troop: 'heroKnight', count: 1, at: REAR });
+    expect(isLeader(me) && !onField(me)).toBe(true);
+    // The knights and archers take the middle of the line, as they would without him.
+    expect(b.fighters.filter((f) => f.side === 'player' && !f.hero).map((f) => f.at)).toEqual([hexIndex(0, 4), hexIndex(0, 2)]);
     expect(survivors(b, 'player')).toEqual(hero('knight').army);
-    // With all five stacks out, he stands between the first two.
-    const full = createBattle({ place: 'x', seed: 1, player: (['knights', 'archers', 'peasants', 'swordsmen', 'wolves'] as const).map((troop) => ({ troop, count: 5 })), enemy: [{ troop: 'bandits', count: 5 }], hero: heroInBattle(hero()) });
-    expect(aldric(full).at).toBe(hexIndex(0, 3));
-    expect(new Set(full.fighters.filter((f) => f.side === 'player').map((f) => f.at)).size).toBe(6);
+    expect(livingHexes(b).has(REAR)).toBe(false);
   });
 
   it('is a figure of each background: the Knight, the Hedge Wizard, the Ranger and the Courtier', () => {
@@ -38,12 +42,11 @@ describe('Aldric on the field', () => {
     }
   });
 
-  it('is modest at level I, and grows with his levels, his spell power and his gear', () => {
+  it('is modest at level I, and his blows grow with his levels, his spell power and his gear', () => {
     const one = heroFighter(hero('knight'));
     const five = heroFighter(hero('knight', 5));
-    expect(five.hp).toBe(one.hp + 4 * TROOPS.heroKnight.hero!.perLevel.hp);
     expect(five.damage[0]).toBe(one.damage[0] + 4 * TROOPS.heroKnight.hero!.perLevel.damage);
-    // His attack and defence count for him as for every stack, gear included.
+    // His attack counts for his blows as for every stack's, gear included.
     const armed = hero('knight');
     const sword = heroFighter({ ...armed, hero: { ...armed.hero, gear: { weapon: 'swordOfAldmoor' } } });
     expect(sword.attack).toBeGreaterThan(one.attack);
@@ -53,79 +56,114 @@ describe('Aldric on the field', () => {
     expect(wiser.damage[0]).toBe(heroFighter(wizard).damage[0] + 2 * TROOPS.heroWizard.hero!.perPower!);
     // What his card says is what he fights with.
     const b = battleOf(hero('knight', 5), 'patrol');
-    expect(statsOf(b, aldric(b))).toEqual({ attack: five.attack, defence: five.defence });
+    expect(statsOf(b, aldric(b)).attack).toBe(five.attack);
   });
 
-  it('fights his own way: the Knight charges, the Wizard and Ranger shoot, the Courtier rallies', () => {
-    expect(heroFighter(hero('knight')).charges).toBe(true);
-    // Sir Aldric rides at a stack four hexes off: a charge, and nobody strikes back.
-    const field = createBattle({ place: 'x', seed: 3, player: [{ troop: 'archers', count: 5 }], enemy: [{ troop: 'swordsmen', count: 10 }], hero: heroInBattle(hero('knight')), obstacles: 0 });
-    const me = aldric(field);
-    const foe = { ...field.fighters.find((f) => f.side === 'enemy')!, at: hexIndex(5, 2) };
-    const lancer: BattleState = { ...field, fighters: field.fighters.map((f) => (f.id === foe.id ? foe : f)), order: [me.id] };
-    const run = options(lancer).melee.find((m) => m.target === foe.id && (options(lancer).moves.get(m.from)?.length ?? 0) >= 3)!;
-    expect(isCharge(lancer, me, run.from)).toBe(true);
-    const blows = battleAct(lancer, { type: 'melee', target: foe.id, from: run.from }, true).events.filter((e) => e.type === 'hit');
-    expect(blows).toHaveLength(1);
-    expect(blows[0]).toMatchObject({ attacker: me.id, charge: true });
-    for (const background of ['wizard', 'ranger'] as const) expect(aldric(battleOf(hero(background), 'patrol')).shots).toBeGreaterThan(0);
-    expect(heroFighter(hero('courtier')).abilities.map((a) => a.name)).toContain('Rallies');
-    // Stacks beside the Courtier fight with +2 attack and +2 defence; others don't.
-    const court = battleOf(hero('courtier'), 'patrol');
-    const knights = court.fighters.find((f) => f.troop === 'knights')!;
-    const apart = statsOf(court, knights);
-    const beside = withHero(court, { at: neighbours(knights.at).find((n) => !court.fighters.some((f) => f.at === n))! });
-    expect(statsOf(beside, knights)).toEqual({ attack: apart.attack + 2, defence: apart.defence + 2 });
-  });
-
-  it('casts only while he stands: carried off, his spells go with him, and the battle goes on', () => {
-    const b = battleOf(hero('wizard'), 'patrol');
-    expect(canCast(b, 'bolt')).toBe(true);
-    const down = withHero(b, { count: 0, hp: 0 });
-    expect(canCast(down, 'bolt')).toBe(false);
-    const target = down.fighters.find((f) => f.side === 'enemy')!;
-    expect(battleAct(down, { type: 'cast', spell: 'bolt', target: target.id }).events).toEqual([]);
-    const after = autoResolve(down);
-    expect(after.result).toBeDefined();
-    expect(after.fighters.every((f) => !f.hero || f.count === 0)).toBe(true);
-  });
-
-  it('is back on his feet after a battle he fell in, at the cost of the rest of the day', () => {
-    const state = hero('knight');
-    const b = battleOf(state, 'highwaymen');
-    const won = { ...b, result: 'won' as const, fighters: b.fighters.map((f) => (f.side === 'enemy' ? { ...f, count: 0 } : f)) };
-    const fell = finishFight({ ...state, battle: withHero(won, { count: 0, hp: 0 }) });
-    expect(fell.state.movement).toBe(0);
-    const card = fell.events.find((e) => e.type === 'card');
-    expect(card?.type === 'card' && card.card.lines.some((l) => l.includes('carried from the field'))).toBe(true);
-    const stood = finishFight({ ...state, battle: won });
-    expect(stood.state.movement).toBe(state.movement);
-  });
-
-  it('is shielded from shots by his guard, but not from blows at close quarters', () => {
-    const b = battleOf(hero('wizard'), 'patrol');
+  it('can\u2019t be struck, shot or cast at, friend or foe, and a Fireball passes over him', () => {
+    const b = battleOf({ ...hero('wizard'), hero: { ...hero('wizard').hero, spells: ['bolt', 'bless', 'fireball'], mana: 50 } }, 'patrol');
     const me = aldric(b);
-    const crossbowmen = b.fighters.find((f) => f.troop === 'crossbowmen')!;
-    const swordsmen = b.fighters.find((f) => f.troop === 'swordsmen')!;
-    expect(strike(b, crossbowmen, me, true).damage).toBe(Math.ceil(me.hp / 3));
-    expect(strike(b, swordsmen, me, false).damage).toBeGreaterThan(me.hp);
+    // Not by any of the enemy's stacks, whatever they could reach, nor by his own spells.
+    for (const f of b.fighters.filter((x) => x.side === 'enemy')) {
+      const theirs = change(b, f.id, { at: hexIndex(1, 4) }, [f.id]);
+      expect(aims(theirs)).not.toContain(me.id);
+    }
+    const mine = { ...b, order: [of(b, 'knights').id] };
+    expect(aims(mine)).not.toContain(me.id);
+    expect(battleAct(mine, { type: 'cast', spell: 'bless', target: me.id }).events).toEqual([]);
+    // Not by a witch's spell either.
+    const fen = createBattle({ place: 'hideout', seed: 3, player: army(['knights', 10], ['archers', 20]), enemy: army(['trolls', 6], ['goblins', 60], ['witch', 1]), hero: heroInBattle(hero('wizard')) });
+    const witch = of(fen, 'witch');
+    const theirTurn = { ...fen, order: [of(fen, 'goblins').id] };
+    expect(battleAct(theirTurn, { type: 'cast', spell: 'newts', target: aldric(fen).id, by: witch.id }).events).toEqual([]);
+    expect(castActions(theirTurn).some((a) => a.type === 'cast' && (a.target === aldric(fen).id || a.target === witch.id))).toBe(false);
+    // A fireball on the stack beside where he used to stand catches its neighbours, never him.
+    const knights = of(b, 'knights');
+    expect(spellVictims(b, 'fireball', knights).some((f) => isLeader(f))).toBe(false);
   });
 
-  it('is worth going for: the enemy finishes him off rather than scratch a stack, and the sergeants keep him back', () => {
-    // The wizard, down to his last few wounds, in range of their crossbows.
-    const b = battleOf(hero('wizard'), 'patrol');
-    const crossbowmen = b.fighters.find((f) => f.troop === 'crossbowmen')!;
-    const theirTurn = withHero({ ...b, order: [crossbowmen.id] }, { hp: 12 });
-    expect(onslaught(theirTurn)).toEqual({ type: 'shoot', target: aldric(theirTurn).id });
-    // His own turn, beside their slowed swordsmen: the sergeants don't leave him there to be cut down.
-    const swordsmen = { ...b.fighters.find((f) => f.troop === 'swordsmen')!, status: ['slowed' as const] };
-    const near = neighbours(swordsmen.at).find((n) => !b.fighters.some((f) => f.at === n))!;
-    const slowed = { ...b, fighters: b.fighters.map((f) => (f.id === swordsmen.id ? swordsmen : f)) };
-    let turn = withHero({ ...slowed, order: [aldric(b).id] }, { at: near });
-    // He may cast first; then he moves.
-    for (let action = commander(turn); action.type === 'cast'; action = commander(turn)) turn = battleAct(turn, action, true).battle;
-    const after = battleAct(turn, commander(turn), true).battle;
-    expect(neighbours(aldric(after).at)).not.toContain(swordsmen.at);
+  it('strikes with no answer: the Knight rides out, charges and rides back behind his men, all in one move', () => {
+    const field = createBattle({ place: 'x', seed: 3, player: army(['archers', 5]), enemy: army(['swordsmen', 10]), hero: heroInBattle(hero('knight')), obstacles: 0 });
+    const me = aldric(field);
+    const foe = of(field, 'swordsmen');
+    const lancer = change(field, foe.id, { at: hexIndex(3, 4) }, [me.id]);
+    const opts = options(lancer);
+    expect(opts.moves.size).toBe(0);
+    const blow = opts.melee.find((m) => m.target === foe.id)!;
+    const ride = opts.rides!.get(blow.from)!;
+    expect(ride[0] % 11).toBe(0);
+    const { battle, events } = battleAct(lancer, { type: 'melee', ...blow });
+    expect(events.map((e) => e.type).slice(0, 3)).toEqual(['move', 'hit', 'back']);
+    expect(events[1]).toMatchObject({ attacker: me.id, target: foe.id, charge: true, retaliation: false });
+    expect(events.filter((e) => e.type === 'hit')).toHaveLength(1);
+    expect(events[2]).toEqual({ type: 'back', fighter: me.id, path: [...ride].reverse() });
+    expect(aldric(battle).at).toBe(REAR);
+    // He rides as far as his speed takes him, in from his edge: a stack at the far edge is out of reach.
+    const far = change(field, foe.id, { at: hexIndex(10, 4) }, [me.id]);
+    expect(options(far).melee).toEqual([]);
+    // On auto, the sergeants send him in when there's a stack to ride at.
+    expect(commander(lancer)).toMatchObject({ type: 'melee', target: foe.id });
+  });
+
+  it('shoots from behind the line as the Wizard and the Ranger, and as the Courtier takes no turn at all', () => {
+    for (const background of ['wizard', 'ranger'] as const) {
+      const b = battleOf(hero(background), 'patrol');
+      const me = aldric(b);
+      // Any stack on the field, even with an enemy right in front of his men.
+      const swordsmen = of(b, 'swordsmen');
+      const turn = change(b, swordsmen.id, { at: hexIndex(1, 4) }, [me.id]);
+      expect(options(turn).shoot.sort()).toEqual(b.fighters.filter((f) => f.side === 'enemy' && onField(f)).map((f) => f.id).sort());
+      const shot = battleAct(turn, { type: 'shoot', target: swordsmen.id }).events.filter((e) => e.type === 'hit');
+      expect(shot).toHaveLength(1);
+    }
+    const court = battleOf(hero('courtier'), 'patrol');
+    expect(hasTurn(aldric(court))).toBe(false);
+    expect(court.order).not.toContain(aldric(court).id);
+    expect(canCast(court, 'bless')).toBe(true);
+  });
+
+  it('ends when a side\u2019s troops are gone: Aldric retreats, and a villain is taken, on the field and the card alike', () => {
+    // His last stack falls while he still stands behind the line: the battle is lost, and he retreats.
+    const state = hero('knight');
+    const b = battleOf(state, 'patrol');
+    const swordsmen = of(b, 'swordsmen');
+    const last = b.fighters.filter((f) => f.side === 'player' && !f.hero);
+    let doomed = change(b, last[1].id, { count: 0, hp: 0 });
+    doomed = change(doomed, last[0].id, { count: 1, hp: 1, at: neighbours(hexIndex(5, 4))[0] });
+    doomed = change(doomed, swordsmen.id, { at: hexIndex(5, 4) }, [swordsmen.id]);
+    const lost = battleAct(doomed, { type: 'melee', target: last[0].id, from: hexIndex(5, 4) });
+    expect(lost.battle.result).toBe('lost');
+    expect(aldric(lost.battle).count).toBe(1);
+    expect(battleEnd(lost.battle)).toEqual({ army: 'Your army is beaten', leader: 'Sir Aldric retreats' });
+    const card = finishFight({ ...state, battle: lost.battle }).events.find((e) => e.type === 'card');
+    expect(card?.type === 'card' && card.card.lines[0]).toBe('Your army is beaten, and **Sir Aldric retreats**.');
+    // Grimsby's last man falls while Grimsby looks on: the battle is won, and he's taken.
+    const hideout = createBattle({ place: 'hideout', seed: 7, player: army(['knights', 10]), enemy: army(['swordsmen', 1], ['baron', 1]), hero: heroInBattle(state), obstacles: 0 });
+    const knights = of(hideout, 'knights');
+    const guard = of(hideout, 'swordsmen');
+    const won = battleAct(change(change(hideout, guard.id, { at: hexIndex(1, 4) }), knights.id, {}, [knights.id]), { type: 'melee', target: guard.id, from: knights.at });
+    expect(won.battle.result).toBe('won');
+    expect(of(won.battle, 'baron').count).toBe(1);
+    expect(battleEnd(won.battle)).toEqual({ army: 'Their army is beaten', leader: 'Baron Grimsby is taken' });
+  });
+
+  it('fights by the same rules when both sides play it out: nobody aims at a leader, and every battle ends by the troops', () => {
+    const fights = [
+      createBattle({ place: 'hideout', seed: 11, player: army(['knights', 14], ['archers', 30]), enemy: army(['swordsmen', 30], ['crossbowmen', 14], ['baron', 1]), hero: heroInBattle(hero('knight')), obstacles: 3 }),
+      createBattle({ place: 'hideout', seed: 12, player: army(['knights', 12], ['archers', 40]), enemy: army(['trolls', 5], ['goblins', 50], ['witch', 1]), hero: heroInBattle(hero('ranger')), obstacles: 3 }),
+    ];
+    for (const start of fights) {
+      let b = start;
+      for (let n = 0; n < 3000 && !b.result; n++) {
+        const acting = b.fighters.find((f) => f.id === b.order[0])!;
+        const action = acting.side === 'enemy' ? onslaught(b) : commander(b);
+        if ('target' in action && action.target !== undefined) expect(isLeader(b.fighters.find((f) => f.id === action.target)!)).toBe(false);
+        const next = battleAct(b, action);
+        expect(next.events.length).toBeGreaterThan(0);
+        b = next.battle;
+      }
+      expect(['won', 'lost']).toContain(b.result);
+      expect(b.fighters.filter((f) => isLeader(f)).every((f) => f.count === 1)).toBe(true);
+    }
   });
 
   it('counts in the sergeants\u2019 odds: a hero grown strong wins close fights more often', () => {
@@ -136,7 +174,15 @@ describe('Aldric on the field', () => {
     expect(close(15)).toBeGreaterThan(close(1));
   });
 
-  it('is missing from a battle saved before he took the field, which plays on without him', () => {
+  it('stands behind the line even in a battle saved while he stood in it', () => {
+    const b = battleOf(hero('knight'), 'patrol');
+    const old = change(b, aldric(b).id, { at: hexIndex(0, 6) });
+    expect(blocked(old, hexIndex(0, 6))).toBe(false);
+    const swordsmen = of(old, 'swordsmen');
+    expect(aims(change(old, swordsmen.id, { at: hexIndex(1, 6) }, [swordsmen.id]))).not.toContain(aldric(old).id);
+  });
+
+  it('is missing from a battle saved before he came to them, which plays on without him', () => {
     const state = hero('wizard');
     const old = createBattle({ place: 'highwaymen', seed: 5, player: state.army, enemy: state.locations.find((l) => l.id === 'highwaymen')!.enemy!.army, hero: { ...heroInBattle(state), unit: undefined } });
     expect(heroOnField(old)).toBeNull();

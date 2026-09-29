@@ -257,7 +257,7 @@ export class HeroScreen {
       return `<button class="tile${open}${this.fresh.has(keyOf(place)) ? ' fresh' : ''}" data-place="${keyOf(place)}" data-tip="${escape(tip)}" aria-label="${escape(info.title)}"><img alt="" draggable="false" src="${unitUrl(stack.troop)}"><span class="count">${stack.count}</span></button>`;
     }).join('');
     const pay = Math.round(wages(army) * (1 + s.wages));
-    const leaderTip = `**${sheet.title}**\nHe takes the field in the line with his men: every stack adds his attack and defence to its own, and he casts while he stands.\n*Click for his numbers.*`;
+    const leaderTip = `**${sheet.title}**\nHe leads from behind the line, where nothing can reach him: every stack adds his attack and defence to its own, and he casts from there.\n*Click for his numbers.*`;
     const open = this.card?.kind === 'hero' ? ' open' : '';
     return `<section class="army">
       <h3>Army <small>drag to reorder: the first stands in the middle of the battle line, the rest above and below</small></h3>
