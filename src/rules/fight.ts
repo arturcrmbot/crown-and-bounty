@@ -6,9 +6,9 @@ import { autoResolve } from './battle/ai';
 import { applyEffects } from './effects/core';
 import { CAMPAIGN_LENGTH, campaignLines, commissionOf, hasNextCommission, provinceOf } from './campaign';
 import { revealDisc } from './map/fog';
-import { createBattle, heroFell, SHOOTER_MELEE, survivors, type BattleHero } from './battle/battle';
+import { createBattle, heroFell, SHOOTER_MELEE, survivors, type BattleHero, type BattleState, type Side } from './battle/battle';
 import { foundNote, gainXp, giveArtifact, heroStats, namedBonuses } from './hero';
-import { addTroops, again, armyPower, close, coins, locationById, roll, roman, show, stillWithYou, troops, update, VANISHES, type Army, type GameEvent, type GameState, type Location, type Result } from './state';
+import { addTroops, again, armyPower, close, coins, locationById, roll, roman, show, stillWithYou, troops, update, VANISHES, type Army, type BattleResultCard, type GameEvent, type GameState, type Location, type Result } from './state';
 
 export function heroInBattle(state: GameState): BattleHero {
   const s = heroStats(state);
@@ -112,6 +112,16 @@ export function lossesLine(before: Army, after: Army): string {
   return lost.length ? `You lost ${lost.join(' and ')}.` : 'Nobody on your side so much as stubbed a toe.';
 }
 
+function fallen(battle: BattleState, side: Side): Army {
+  const losses = new Map<Army[number]['troop'], number>();
+  for (const fighter of battle.fighters) {
+    if (fighter.side !== side || fighter.hero) continue;
+    const count = fighter.startCount - fighter.count;
+    if (count > 0) losses.set(fighter.troop, (losses.get(fighter.troop) ?? 0) + count);
+  }
+  return [...losses].map(([troop, count]) => ({ troop, count }));
+}
+
 /** Lines the armies up. The battle lives in the state until it's over. */
 export function startFight(state: GameState, id: string): Result | null {
   const place = locationById(state, id);
@@ -125,7 +135,7 @@ export function startFight(state: GameState, id: string): Result | null {
  * The villain is taken: the commission is won. `state` already has the bounty's gold; the card
  * says how it went and sends the hero to court, or ends the campaign after the last commission.
  */
-export function bountyPaid(state: GameState, id: string, opening: string[], reward: number, spoils: string[]): Result {
+export function bountyPaid(state: GameState, id: string, opening: string[], reward: number, spoils: string[], battleResult?: BattleResultCard): Result {
   const place = locationById(state, id);
   const c = commissionOf(state);
   const piece = state.campaign.chapter + 1;
@@ -140,6 +150,7 @@ export function bountyPaid(state: GameState, id: string, opening: string[], rewa
       title: 'The last piece of the map!',
       lines: [...lines, `Among ${c.villain}\u2019s things: the last torn piece of an old map. Laid together, the ${piece} pieces show an **X**, right here in ${provinceOf(state).name}.`],
       choices: [close],
+      ...(battleResult ? { wide: true, battleResult } : {}),
     };
     return { state: next, events: [{ type: 'added', id: 'sceptre' }, { type: 'reveal', at: sceptre, radius: 110 }, show(card, place.at, place.id)] };
   }
@@ -149,6 +160,7 @@ export function bountyPaid(state: GameState, id: string, opening: string[], rewa
     title: 'The bounty is paid!',
     lines: [...lines, `Among ${c.villain}\u2019s things: a torn piece of an old map (**${piece} of ${CAMPAIGN_LENGTH}**).`, `*Commission complete on day ${roman(next.day)}.*`, ...(more ? [] : campaignLines(next))],
     choices: more ? [{ label: 'Ride to the King\u2019s court', action: { type: 'court' as const } }] : [again, close],
+    ...(battleResult ? { wide: true, battleResult } : {}),
   };
   return { state: next, events: [{ type: 'over', result: 'won' }, show(card, place.at, place.id)] };
 }
@@ -157,7 +169,7 @@ export function bountyPaid(state: GameState, id: string, opening: string[], rewa
  * An enemy beaten, in battle or by other means: its gold, its artifact and the experience, the
  * enemy gone from the map, and at a hideout, the bounty.
  */
-export function beat(state: GameState, id: string, how: { title: string; lines: string[]; reward: number; xp: number; sayGold?: boolean }): Result {
+export function beat(state: GameState, id: string, how: { title: string; lines: string[]; reward: number; xp: number; sayGold?: boolean; battleResult?: BattleResultCard }): Result {
   const place = locationById(state, id);
   let next = update({ ...state, gold: state.gold + how.reward }, id, { done: true });
   const events: GameEvent[] = VANISHES.has(place.kind) ? [{ type: 'removed', id }] : [];
@@ -179,11 +191,11 @@ export function beat(state: GameState, id: string, how: { title: string; lines: 
     spoils.push(`**+${how.xp} experience.**`);
   }
   if (place.kind === 'hideout') {
-    const paid = bountyPaid(next, id, how.lines, how.reward, spoils);
+    const paid = bountyPaid(next, id, how.lines, how.reward, spoils, how.battleResult);
     return { state: paid.state, events: [...events, ...paid.events] };
   }
   const gold = how.sayGold && how.reward ? [`**+${coins(how.reward)} gold.**`] : [];
-  events.push(show({ title: how.title, lines: [...how.lines, ...spoils, ...gold], choices: [close] }, place.at, place.id));
+  events.push(show({ title: how.title, lines: [...how.lines, ...spoils, ...gold], choices: [close], ...(how.battleResult ? { wide: true, battleResult: how.battleResult } : {}) }, place.at, place.id));
   return { state: next, events };
 }
 
@@ -228,11 +240,16 @@ export function finishFight(state: GameState): Result {
   const carried = fell ? [`**${who} was carried from the field.** He's on his feet by evening, sore and cross, but goes no further today.`] : alone ? [`*Only ${who} is left standing.*`] : [];
   // The battle rolled its own dice from the state's seed: carry on from where it stopped, not from the start again.
   const base: GameState = { ...state, seed: battle.seed, battle: undefined, army, hero: { ...state.hero, mana: battle.hero.mana }, ...(fell ? { movement: 0 } : {}) };
-  const lost = lossesLine(state.army, army);
+  const battleResult: BattleResultCard = {
+    player: fallen(battle, 'player'),
+    enemy: fallen(battle, 'enemy'),
+    manaSpent: Math.max(0, state.hero.mana - battle.hero.mana),
+    manaAvailable: state.hero.mana,
+  };
   if (battle.result === 'won') {
     const after = afterVictory(base, state.army);
-    const opening = place.kind === 'hideout' ? [commissionOf(base).surrender, lost, ...after.lines, ...carried] : [enemy.flees, lost, ...after.lines, ...carried, enemy.loot.replace('{gold}', `**${coins(enemy.reward)} gold**`)];
-    return beat(after.state, place.id, { title: 'Victory!', lines: opening, reward: enemy.reward, xp: battleXp(enemy.army) });
+    const opening = place.kind === 'hideout' ? [commissionOf(base).surrender, ...after.lines, ...carried] : [enemy.flees, ...after.lines, ...carried, enemy.loot.replace('{gold}', `**${coins(enemy.reward)} gold**`)];
+    return beat(after.state, place.id, { title: 'Victory!', lines: opening, reward: enemy.reward, xp: battleXp(enemy.army), battleResult });
   }
   const castle = state.locations.find((l) => l.kind === 'castle');
   const home = castle ? ([castle.at[0], castle.at[1] + 14] as const) : state.hero.at;
@@ -243,7 +260,7 @@ export function finishFight(state: GameState): Result {
       state: { ...base, army: [], movement: 0, hero: { ...base.hero, at: home } },
       events: [
         { type: 'moved', at: home, facing: base.hero.facing },
-        show({ title: 'Retreat!', lines: [`${who} gets away alone: nobody who rode with him is left standing.`, lossesLine(state.army, []), `He rides back to ${castle?.name ?? 'safety'} to raise another army.`], choices: [close] }, null),
+        show({ title: 'Retreat!', lines: [`${who} gets away alone: nobody who rode with him is left standing.`, `He rides back to ${castle?.name ?? 'safety'} to raise another army.`], choices: [close], wide: true, battleResult }, null),
       ],
     };
   }
@@ -252,21 +269,21 @@ export function finishFight(state: GameState): Result {
     const next = { ...base, movement: 0 };
     return {
       state: next,
-      events: [show({ title: 'A stand-off', lines: ['Neither side can get at the other. As the light goes, both draw off.', lost, ...carried, stillWithYou(army)], choices: [close] }, place.at, place.id)],
+      events: [show({ title: 'A stand-off', lines: ['Neither side can get at the other. As the light goes, both draw off.', ...carried, stillWithYou(army)], choices: [close], wide: true, battleResult }, place.at, place.id)],
     };
   }
   if (battle.result === 'fled') {
     const next = { ...base, army: shaken, movement: 0 };
     return {
       state: next,
-      events: [show({ title: 'Retreat!', lines: ['Your men fall back in good order, mostly.', lossesLine(state.army, shaken), ...carried, stillWithYou(shaken)], choices: [close] }, place.at, place.id)],
+      events: [show({ title: 'Retreat!', lines: ['Your men fall back in good order, mostly.', ...carried, stillWithYou(shaken)], choices: [close], wide: true, battleResult }, place.at, place.id)],
     };
   }
   return {
     state: { ...base, army: [], movement: 0, hero: { ...base.hero, at: home } },
     events: [
       { type: 'moved', at: home, facing: base.hero.facing },
-      show({ title: 'Defeat', lines: ['Your army is scattered to the four winds.', `You limp back to ${castle?.name ?? 'safety'} to raise another.`], choices: [close] }, null),
+      show({ title: 'Defeat', lines: ['Your army is scattered to the four winds.', `You limp back to ${castle?.name ?? 'safety'} to raise another.`], choices: [close], wide: true, battleResult }, null),
     ],
   };
 }
