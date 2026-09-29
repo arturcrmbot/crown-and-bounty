@@ -1,14 +1,17 @@
 import { needsTarget, SPELLS, STATUSES, type SpellId, type StatusId } from '../../content/spells';
 import { ABILITIES, abilitiesOf, TROOPS, unitPower, type TroopDef, type TroopId } from '../../content/troops';
-import { roll, type Army } from '../state';
-import { COLS, HEXES, hexIndex, NEIGHBOURS, neighbours, reachable } from './hex';
+import { MAX_STACKS, roll, type Army } from '../state';
+import { COLS, HEXES, hexIndex, NEIGHBOURS, neighbours, reachable, ROWS } from './hex';
 
 export type Side = 'player' | 'enemy';
 
-/** A stack's own health and damage per troop, when they aren't its troop's usual ones: the hero's grow with him. */
+/** A fighter's own health and damage per troop, when they aren't its troop's usual ones: the hero's damage grows with him. */
 export type UnitNumbers = { hp: number; damage: readonly [number, number] };
 
-/** One stack on the battlefield. `hp` is the health of its top troop; the rest are whole. */
+/**
+ * One stack on the battlefield, or a leader behind his side's line (see `isLeader`, who has no hex:
+ * his `at` is `REAR`). `hp` is the health of its top troop; the rest are whole.
+ */
 export type Fighter = {
   id: number;
   side: Side;
@@ -28,12 +31,11 @@ export type Fighter = {
   /** The round a status wears off at the start of (those with `rounds`). */
   until?: Partial<Record<StatusId, number>>;
   unit?: UnitNumbers;
-  /**
-   * Aldric himself, a stack of one: the side's spells are his to cast, and only while he stands.
-   * When he falls he's carried from the field, not killed, and the battle goes on without him.
-   */
+  /** Aldric himself, who leads your side from behind the line: the side's spells are his to cast. */
   hero?: boolean;
-  /** A villain who leads his side as Aldric does his: his own spellbook, cast from where he stands, while he stands. */
+  /** How many walked off the field without a blow: paid to go home, or gone over to the other side. */
+  left?: number;
+  /** A villain who leads his side as Aldric does his: his own spellbook, cast from behind his men. */
   book?: Spellbook;
 };
 
@@ -71,6 +73,10 @@ export type BattleHero = Spellbook & {
   /** Chance a stack's good spirits win it another turn before the round moves on. */
   morale?: number;
   manaDiscount?: number;
+  /** The gold he carries, for a bard's bribes, the share off every bribe, and the leadership he has free for troops who come over. */
+  gold?: number;
+  bribes?: number;
+  room?: number;
   /** Extra attack, defence and shots for kinds of troop. */
   troops?: Partial<Record<TroopId, { attack: number; defence: number; shots: number }>>;
   /** Enemy troops that start slowed. */
@@ -85,12 +91,12 @@ export type BattleHero = Spellbook & {
   volley?: boolean;
   /** How hard his shooters hit in melee, as a share of a shot: half, unless he has taught them better. */
   shooterMelee?: number;
-  /** He takes the field himself, as this troop with these numbers (see `heroFighter` in rules/fight.ts). */
+  /** He leads from behind the line as this troop, with these numbers (see `heroFighter` in rules/fight.ts). */
   unit?: UnitNumbers & { troop: TroopId };
 };
 
-/** Where Aldric takes the field beside an army of so many stacks: in the line, in the first row it leaves free, or between the first two when all five are taken. */
-export const heroHex = (stacks: number) => hexIndex(0, LINE_UP[stacks] ?? 3);
+/** Where a leader stands, as far as the field goes: behind his side's line, on no hex at all. */
+export const REAR = -1;
 
 /** How hard a shooter hits in melee, as a share of its shot, unless the hero has taught his better. */
 export const SHOOTER_MELEE = 0.5;
@@ -144,10 +150,17 @@ export type BattleAction =
   /** A spell or an order. `target` for those aimed at a stack; `by` for a villain's (none for Aldric's). */
   | { type: 'cast'; spell: SpellId; target?: number; by?: number }
   | { type: 'volley' }
-  | { type: 'retreat' };
+  | { type: 'retreat' }
+  /** A bard's moves: pay a stack to leave the field (or `join`, to fight for him), jeer one, or sing over his own. */
+  | { type: 'bribe'; target: number; join?: boolean }
+  | { type: 'jeer'; target: number }
+  | { type: 'sing'; song: StatusId };
 
 export type BattleEvent =
+  /** A stack walks its path; a leader who rides out rides in from his side's edge along it, to strike. */
   | { type: 'move'; fighter: number; path: number[] }
+  /** A leader who rode out to strike rides back behind his side's line, along his path. */
+  | { type: 'back'; fighter: number; path: number[] }
   | { type: 'hit'; attacker: number; target: number; damage: number; killed: number; ranged: boolean; retaliation: boolean; status?: StatusId; charge?: boolean; lucky?: boolean }
   /** Every shooter on a side looses at once: the ranger's archers before the battle, or at a villain's order (`spell`, `by`). */
   | { type: 'volley'; side?: Side; spell?: SpellId; by?: number }
@@ -168,6 +181,14 @@ export type BattleEvent =
   | { type: 'turn'; fighter: number }
   /** Good spirits win a stack another turn before the round moves on (once a round). */
   | { type: 'morale'; fighter: number }
+  /** Low spirits: a stack loses heart, and its turn. */
+  | { type: 'falter'; fighter: number }
+  /** A bard pays `count` of a stack `gold` to leave the field, or to fight for him as a new stack (`joined`). */
+  | { type: 'bribe'; fighter: number; target: number; gold: number; count: number; joined?: number }
+  /** A bard jeers a stack, which takes the status. */
+  | { type: 'jeer'; fighter: number; target: number; status: StatusId }
+  /** A bard sings, and every stack of his side on the field takes the song's status. */
+  | { type: 'song'; fighter: number; status: StatusId; targets: number[] }
   | { type: 'round'; round: number }
   | { type: 'end'; result: 'won' | 'lost' | 'fled'; rout?: boolean };
 
@@ -177,6 +198,21 @@ export type BattleResult = { battle: BattleState; events: BattleEvent[] };
 const LINE_UP = [4, 2, 6, 0, 8];
 
 const alive = (f: Fighter) => f.count > 0;
+
+const troopsWith = (has: (a: (typeof ABILITIES)[keyof typeof ABILITIES]) => unknown) => new Set(Object.values(TROOPS).filter((t) => (t.abilities ?? []).some((a) => has(ABILITIES[a]))).map((t) => t.id));
+const LEADS = troopsWith((a) => a.leads);
+const RIDES = troopsWith((a) => a.rides);
+const BARDS = troopsWith((a) => a.bard);
+/** Aldric, a villain or a captain: he leads from behind his side's line, and nothing can reach him there (`leads` in content/troops.ts). */
+export const isLeader = (f: Pick<Fighter, 'troop'>) => LEADS.has(f.troop);
+/** A leader who rides out from behind the line to strike, and back. */
+export const ridesOut = (f: Pick<Fighter, 'troop'>) => RIDES.has(f.troop);
+/** A stack standing on the field: the only kind of fighter a blow, a shot or a spell can reach. */
+export const onField = (f: Fighter) => f.count > 0 && !LEADS.has(f.troop);
+/** Whether a fighter has a turn of his own: every stack does, but a leader only with something to do in it. */
+export const hasTurn = (f: Fighter) => f.count > 0 && (!LEADS.has(f.troop) || f.shots > 0 || RIDES.has(f.troop) || BARDS.has(f.troop));
+/** A bard's repertoire (`bard` in content/troops.ts), if the fighter is one. */
+export const bardOf = (f: Pick<Fighter, 'troop'>) => (BARDS.has(f.troop) ? abilitiesOf(f.troop).find((a) => a.bard)!.bard! : null);
 export const fighterById = (b: BattleState, id: number) => b.fighters.find((f) => f.id === id)!;
 export const activeFighter = (b: BattleState): Fighter | null => (b.result || b.order.length === 0 ? null : fighterById(b, b.order[0]));
 export const hasStatus = (f: Fighter, status: StatusId) => f.status.includes(status);
@@ -192,19 +228,16 @@ export function unitOf(f: Pick<Fighter, 'troop' | 'unit'>): TroopDef {
 /** A stack's rough fighting worth per troop (see `troopPower`), with its own numbers. */
 export const powerOf = (f: Pick<Fighter, 'troop' | 'unit'>) => unitPower(unitOf(f));
 
-/** Aldric's own fighter, if he took the field. */
+/** Aldric's own fighter, behind his side's line, if he came to the battle. */
 export const heroOnField = (b: BattleState) => b.fighters.find((f) => f.hero) ?? null;
 
 /** The book a cast draws on: a villain's own (`by`), or the player's hero's. */
 export const bookOf = (b: BattleState, by?: number): Spellbook | null => (by === undefined ? b.hero : (b.fighters.find((f) => f.id === by)?.book ?? null));
-/** Who casts from a book on the field: the villain, or Aldric's own fighter (none if he watches from the edge). */
+/** Who casts from a book: the villain, or Aldric's own fighter (none in a battle saved before he came to them). */
 export const casterOf = (b: BattleState, by?: number): Fighter | null => (by === undefined ? heroOnField(b) : (b.fighters.find((f) => f.id === by) ?? null));
 /** The side a book casts for. */
 export const casterSide = (b: BattleState, by?: number): Side => casterOf(b, by)?.side ?? 'player';
-/**
- * Whether a caster can cast at all: standing, and not turned into something that can't. A hero who
- * watches from the edge of the field always can.
- */
+/** Whether a caster can cast at all: not turned into something that can't. A hero with no fighter of his own always can. */
 export function canCastAt(b: BattleState, by?: number): boolean {
   const f = casterOf(b, by);
   if (!f) return by === undefined;
@@ -212,8 +245,17 @@ export function canCastAt(b: BattleState, by?: number): boolean {
 }
 /** The villains on the field who can cast for `side` right now. */
 export const castersOf = (b: BattleState, side: Side) => b.fighters.filter((f) => f.side === side && f.book && canCastAt(b, f.id));
-/** How much of a stack is left, as a share of all it began with. */
-const healthShare = (f: Fighter) => ((f.count - 1) * unitOf(f).hp + f.hp) / (f.startCount * unitOf(f).hp);
+/** How much of a side's troops is left, as a share of the health they began with. Its leaders don't count: they can't be hurt. */
+export function sideShare(b: BattleState, side: Side): number {
+  let [left, start] = [0, 0];
+  for (const f of b.fighters) {
+    if (f.side !== side || isLeader(f)) continue;
+    const hp = unitOf(f).hp;
+    left += f.count > 0 ? (f.count - 1) * hp + f.hp : 0;
+    start += f.startCount * hp;
+  }
+  return start ? left / start : 0;
+}
 /** What a status's look is while it lasts (newts, frogs), if any. */
 export const lookOf = (f: Fighter) => f.status.map((s) => STATUSES[s].look).find(Boolean) ?? null;
 
@@ -226,9 +268,20 @@ export const speedOf = (f: Fighter) => {
 };
 export const isRanged = (f: Fighter) => f.shots > 0;
 
+/** What a stack's statuses add to one of its numbers (a song's morale, a jeer's). */
+const fromStatuses = (f: Fighter, of: 'morale' | 'luck') => f.status.reduce((sum, s) => sum + (STATUSES[s][of] ?? 0), 0);
+/**
+ * A stack's morale: its side's (the hero's, for yours), with what songs and jeers add. Above
+ * nought, the chance it goes again before the round moves on; below, the chance it loses heart and
+ * its turn as the turn comes.
+ */
+export const moraleOf = (b: BattleState, f: Fighter) => (f.side === 'player' ? (b.hero.morale ?? 0) : 0) + fromStatuses(f, 'morale');
+/** The chance a stack's blow lands lucky, twice as hard: its side's (the hero's, for yours), with what songs add. */
+export const luckOf = (b: BattleState, f: Fighter) => (f.side === 'player' ? (b.hero.luck ?? 0) : 0) + fromStatuses(f, 'luck');
+
 function turnOrder(fighters: Fighter[]): number[] {
   return fighters
-    .filter(alive)
+    .filter(hasTurn)
     .sort((a, b) => speedOf(b) - speedOf(a) || (a.side === b.side ? a.id - b.id : a.side === 'player' ? -1 : 1))
     .map((f) => f.id);
 }
@@ -238,8 +291,10 @@ export function createBattle(args: { place: string; seed: number; player: Army; 
   const shotsOf = (troop: TroopId, side: Side) => (TROOPS[troop].shots ? TROOPS[troop].shots! + (side === 'player' ? (args.hero.troops?.[troop]?.shots ?? 0) : 0) : 0);
   // What the hero brings: enemy troops slowed, his own warded.
   const brought = (troop: TroopId, side: Side): StatusId[] => (side === 'enemy' ? ((args.hero.slows ?? []).includes(troop) ? ['slowed'] : []) : [...(args.hero.wards?.[troop] ?? [])]);
-  const add = (army: Army, side: Side, col: number) =>
-    army.forEach((s, i) =>
+  // The stacks line up on their side's edge of the field; a villain or a captain stands behind them.
+  const add = (army: Army, side: Side, col: number) => {
+    let row = 0;
+    for (const s of army) {
       fighters.push({
         id: fighters.length,
         side,
@@ -247,7 +302,7 @@ export function createBattle(args: { place: string; seed: number; player: Army; 
         count: s.count,
         startCount: s.count,
         hp: TROOPS[s.troop].hp,
-        at: hexIndex(col, LINE_UP[i % LINE_UP.length]),
+        at: isLeader(s) ? REAR : hexIndex(col, LINE_UP[row++ % LINE_UP.length]),
         shots: shotsOf(s.troop, side),
         retaliated: false,
         defending: false,
@@ -255,16 +310,16 @@ export function createBattle(args: { place: string; seed: number; player: Army; 
         status: brought(s.troop, side),
         // A villain leads his side with his own spellbook.
         ...(side === 'enemy' && TROOPS[s.troop].caster ? { book: newBook(TROOPS[s.troop]) } : {}),
-      }),
-    );
+      });
+    }
+  };
   add(args.player.filter((s) => s.count > 0), 'player', 0);
   add(args.enemy.filter((s) => s.count > 0), 'enemy', COLS - 1);
-  // Aldric takes the field himself, a stack of one, in the line with his army (but not one of its five).
+  // Aldric leads his army from behind its line: no part of it, and on no hex of the field.
   const hero = args.hero.unit;
   if (hero) {
     const { troop, ...unit } = hero;
-    const at = heroHex(fighters.filter((f) => f.side === 'player').length);
-    fighters.push({ id: fighters.length, side: 'player', troop, count: 1, startCount: 1, hp: unit.hp, at, shots: shotsOf(troop, 'player'), retaliated: false, defending: false, waited: false, status: brought(troop, 'player'), unit, hero: true });
+    fighters.push({ id: fighters.length, side: 'player', troop, count: 1, startCount: 1, hp: unit.hp, at: REAR, shots: shotsOf(troop, 'player'), retaliated: false, defending: false, waited: false, status: brought(troop, 'player'), unit, hero: true });
   }
   for (const f of fighters) for (const status of f.status) wearsOff(f, status, 1);
   // The opening words: what each thing he brought does to whom.
@@ -300,11 +355,13 @@ function wearsOff(f: Fighter, status: StatusId, round: number) {
 
 /** Whether a hex is taken by a rock or by a living stack (other than `except`). */
 export function blocked(b: BattleState, i: number, except?: number): boolean {
-  return b.obstacles.includes(i) || b.fighters.some((f) => alive(f) && f.at === i && f.id !== except);
+  return b.obstacles.includes(i) || b.fighters.some((f) => onField(f) && f.at === i && f.id !== except);
 }
 
-const enemiesOf = (b: BattleState, f: Fighter) => b.fighters.filter((o) => alive(o) && o.side !== f.side);
-export const adjacentEnemy = (b: BattleState, f: Fighter) => enemiesOf(b, f).some((e) => neighbours(f.at).includes(e.at));
+/** The other side's stacks on the field: whoever `f` could strike, shoot or cast at. Never a leader. */
+const enemiesOf = (b: BattleState, f: Fighter) => b.fighters.filter((o) => onField(o) && o.side !== f.side);
+/** Whether an enemy stands beside `f`. Nobody ever stands beside a leader. */
+export const adjacentEnemy = (b: BattleState, f: Fighter) => !isLeader(f) && enemiesOf(b, f).some((e) => NEIGHBOURS[f.at].includes(e.at));
 
 /**
  * Steps from every hex to the nearest free hex beside one of `targets`, round rocks and living
@@ -313,7 +370,7 @@ export const adjacentEnemy = (b: BattleState, f: Fighter) => enemiesOf(b, f).som
 export function stepsTo(b: BattleState, targets: readonly Fighter[], mover?: Fighter): Int16Array {
   const mask = new Uint8Array(HEXES);
   for (const i of b.obstacles) mask[i] = 1;
-  for (const f of b.fighters) if (alive(f) && f.id !== mover?.id) mask[f.at] = 1;
+  for (const f of b.fighters) if (onField(f) && f.id !== mover?.id) mask[f.at] = 1;
   const steps = new Int16Array(HEXES).fill(-1);
   const queue: number[] = [];
   const visit = (hex: number, n: number) => {
@@ -332,11 +389,11 @@ export function stepsTo(b: BattleState, targets: readonly Fighter[], mover?: Fig
  * whether none of them has one.
  */
 export function enemyReach(b: BattleState): { gap: number; stuck: boolean } {
-  const players = b.fighters.filter((f) => alive(f) && f.side === 'player');
+  const players = b.fighters.filter((f) => onField(f) && f.side === 'player');
   let gap = 0;
   let stuck = true;
   for (const e of b.fighters) {
-    if (!alive(e) || e.side !== 'enemy') continue;
+    if (!onField(e) || e.side !== 'enemy') continue;
     const steps = stepsTo(b, players, e)[e.at];
     if (steps >= 0) stuck = false;
     gap += steps < 0 ? HEXES : steps;
@@ -344,7 +401,11 @@ export function enemyReach(b: BattleState): { gap: number; stuck: boolean } {
   return { gap, stuck };
 }
 
-export type Options = { moves: Map<number, number[]>; melee: { target: number; from: number }[]; shoot: number[] };
+/**
+ * What the acting fighter can do: walk to `moves`, strike from a hex beside a target, or shoot. A
+ * leader never walks; one who rides out strikes from the hexes in `rides`, with the path in to each.
+ */
+export type Options = { moves: Map<number, number[]>; melee: { target: number; from: number }[]; shoot: number[]; rides?: Map<number, number[]> };
 
 /** Options worked out already: a battle state never changes once made, and the AI asks about the same one many times. */
 const known = new WeakMap<BattleState, Options>();
@@ -355,16 +416,59 @@ export function options(b: BattleState): Options {
   if (cached) return cached;
   const f = activeFighter(b);
   if (!f) return { moves: new Map(), melee: [], shoot: [] };
-  const moves = reachable(f.at, speedOf(f), (i) => blocked(b, i, f.id));
-  const melee: Options['melee'] = [];
-  for (const e of enemiesOf(b, f)) {
-    for (const n of neighbours(e.at)) if (n === f.at || moves.has(n)) melee.push({ target: e.id, from: n });
+  const foes = enemiesOf(b, f);
+  let opts: Options;
+  if (isLeader(f)) {
+    // A leader shoots from behind the line, or rides out to strike and back; he never walks the field.
+    const rides = ridesOut(f) ? rideReach(b, f) : new Map<number, number[]>();
+    const melee: Options['melee'] = [];
+    for (const e of foes) for (const n of NEIGHBOURS[e.at]) if (rides.has(n)) melee.push({ target: e.id, from: n });
+    opts = { moves: new Map(), melee, shoot: isRanged(f) ? foes.map((e) => e.id) : [], ...(ridesOut(f) ? { rides } : {}) };
+  } else {
+    const moves = reachable(f.at, speedOf(f), (i) => blocked(b, i, f.id));
+    const melee: Options['melee'] = [];
+    for (const e of foes) {
+      for (const n of neighbours(e.at)) if (n === f.at || moves.has(n)) melee.push({ target: e.id, from: n });
+    }
+    opts = { moves, melee, shoot: isRanged(f) && !adjacentEnemy(b, f) ? foes.map((e) => e.id) : [] };
   }
-  const shoot = isRanged(f) && !adjacentEnemy(b, f) ? enemiesOf(b, f).map((e) => e.id) : [];
-  const opts = { moves, melee, shoot };
   known.set(b, opts);
   return opts;
 }
+
+/** The rows a leader rides in by, nearest the middle of the line first. */
+const RIDE_IN = Array.from({ length: ROWS }, (_, row) => row).sort((x, y) => Math.abs(x - 4) - Math.abs(y - 4) || x - y);
+
+/**
+ * The hexes a leader who rides out can strike from this turn, with the path to each: in from his
+ * side's edge of the field (that hex is his first step), through hexes `free` lets him pass, as far
+ * as his speed takes him.
+ */
+export function rideFrom(f: Fighter, free: (i: number) => boolean): Map<number, number[]> {
+  const col = f.side === 'player' ? 0 : COLS - 1;
+  const paths = new Map<number, number[]>();
+  let frontier: number[] = [];
+  for (const row of RIDE_IN) {
+    const i = hexIndex(col, row);
+    if (!free(i)) continue;
+    paths.set(i, [i]);
+    frontier.push(i);
+  }
+  for (let step = 1; step < speedOf(f) && frontier.length > 0; step++) {
+    const next: number[] = [];
+    for (const i of frontier) {
+      for (const n of NEIGHBOURS[i]) {
+        if (paths.has(n) || !free(n)) continue;
+        paths.set(n, [...paths.get(i)!, n]);
+        next.push(n);
+      }
+    }
+    frontier = next;
+  }
+  return paths;
+}
+/** Where a leader who rides out can strike from, round the rocks and the stacks on the field. */
+export const rideReach = (b: BattleState, f: Fighter) => rideFrom(f, (i) => !blocked(b, i));
 
 /** Defence a stack's statuses add (Stone Skin). */
 const statusDefence = (f: Fighter) => f.status.reduce((sum, s) => sum + (STATUSES[s].defenceAdd ?? 0), 0);
@@ -373,7 +477,7 @@ const statusAttack = (f: Fighter) => f.status.reduce((sum, s) => sum + (STATUSES
 /** What a stack's statuses do to the damage it takes from a shot (a shield against arrows). */
 const statusShot = (f: Fighter) => f.status.reduce((times, s) => times * (STATUSES[s].rangedTaken ?? 1), 1);
 
-/** A stack's attack and defence as they stand, with the hero's help and any rally. */
+/** A stack's attack and defence as they stand, with the hero's help. */
 export function statsOf(b: BattleState, f: Fighter): { attack: number; defence: number } {
   const t = unitOf(f);
   const extra = helpOf(b, f);
@@ -381,42 +485,10 @@ export function statsOf(b: BattleState, f: Fighter): { attack: number; defence: 
 }
 
 /** Attack and defence the hero adds to a stack: his own, plus any bonus for that kind of troop. */
-function heroSkill(b: BattleState, f: Fighter): { attack: number; defence: number } {
+function helpOf(b: BattleState, f: Fighter): { attack: number; defence: number } {
   if (f.side !== 'player') return { attack: 0, defence: 0 };
   const troop = b.hero.troops?.[f.troop];
   return { attack: b.hero.attack + (troop?.attack ?? 0), defence: b.hero.defence + (troop?.defence ?? 0) };
-}
-
-/** Troops that hearten the stacks of their side standing beside them, and by how much (see `aura` in content/troops.ts). */
-const AURAS = new Map(Object.values(TROOPS).flatMap((t) => (t.abilities ?? []).flatMap((a) => (ABILITIES[a].aura ? [[t.id, ABILITIES[a].aura!] as const] : []))));
-/** Each battle state's stacks that rally their neighbours, found once. */
-const rallying = new WeakMap<readonly Fighter[], Fighter[]>();
-
-/** What friends standing beside a stack add to its attack and defence (Lord Aldric's rally), or null if nobody does. */
-export function rallyOf(b: BattleState, f: Fighter): { attack: number; defence: number } | null {
-  let sources = rallying.get(b.fighters);
-  if (!sources) rallying.set(b.fighters, (sources = b.fighters.filter((o) => alive(o) && AURAS.has(o.troop))));
-  let [attack, defence, rallied] = [0, 0, false];
-  for (const o of sources) {
-    if (o.side !== f.side || o.id === f.id || !NEIGHBOURS[f.at].includes(o.at)) continue;
-    const aura = AURAS.get(o.troop)!;
-    [attack, defence, rallied] = [attack + aura.attack, defence + aura.defence, true];
-  }
-  return rallied ? { attack, defence } : null;
-}
-
-/** Friendly stacks a rallying fighter would reach from `at`, without moving it in the battle state. */
-export function rallyTargets(b: BattleState, source: Fighter, at: number): Fighter[] {
-  if (!alive(source) || !AURAS.has(source.troop)) return [];
-  const adjacent = new Set(NEIGHBOURS[at]);
-  return b.fighters.filter((f) => alive(f) && f.side === source.side && f.id !== source.id && adjacent.has(f.at));
-}
-
-/** Everything a stack gets besides its own attack and defence: the hero's skills, and any rally. */
-function helpOf(b: BattleState, f: Fighter): { attack: number; defence: number } {
-  const skill = heroSkill(b, f);
-  const rally = rallyOf(b, f);
-  return rally ? { attack: skill.attack + rally.attack, defence: skill.defence + rally.defence } : skill;
 }
 
 /** The attack-against-defence multiplier, HoMM2 style. */
@@ -455,7 +527,7 @@ export function strike(b: BattleState, attacker: Fighter, target: Fighter, range
   const armour = target.side === 'player' ? 1 - (b.hero.armour ?? 0) : 1;
   const shield = ranged ? statusShot(target) : 1;
   // A lucky blow lands twice as hard. Without a seed (the AI's look-ahead), the chance is spread over the average instead.
-  const luckChance = attacker.side === 'player' ? (b.hero.luck ?? 0) : 0;
+  const luckChance = luckOf(b, attacker);
   let lucky = false;
   let luck = 1;
   if (luckChance > 0) {
@@ -470,15 +542,7 @@ export function strike(b: BattleState, attacker: Fighter, target: Fighter, range
     }
   }
   const damage = Math.max(1, Math.round(attacker.count * perTroop * skillFactor(attack, defence) * inMelee * skill * armour * bonus * shield * luck));
-  return { damage: ranged ? shotOn(target, damage) : damage, seed, ...(lucky ? { lucky } : {}) };
-}
-
-/** Troops no single shot can take more than a share of (a hero's bodyguard, shields up). */
-const SHOT_CAPS = new Map(Object.values(TROOPS).flatMap((t) => (t.abilities ?? []).flatMap((a) => (ABILITIES[a].shotCap ? [[t.id, ABILITIES[a].shotCap!] as const] : []))));
-/** What a shot (or a spell) of `damage` really does to a stack, after any cap on it. */
-export function shotOn(target: Pick<Fighter, 'troop' | 'unit'>, damage: number): number {
-  const cap = SHOT_CAPS.get(target.troop);
-  return cap ? Math.min(damage, Math.ceil(unitOf(target).hp * cap)) : damage;
+  return { damage, seed, ...(lucky ? { lucky } : {}) };
 }
 
 /** What `damage` leaves of a stack. */
@@ -504,71 +568,32 @@ export const spellsOf = (b: BattleState, by?: number): SpellId[] => {
   const book = bookOf(b, by);
   return book ? [...new Set([...book.spells, ...(book.charges ?? []).filter((c) => c.uses > 0).map((c) => c.spell)])] : [];
 };
-/** Whether a caster may cast a spell now: a cast left this round, standing, a charge or the mana, and hurt enough if the spell asks it. */
+/** Whether a caster may cast a spell now: a cast left this round, himself, a charge or the mana, and his men hurt enough if the spell asks it. */
 export function canCast(b: BattleState, spell: SpellId, by?: number): boolean {
   const book = bookOf(b, by);
   if (!book || castsLeft(b, by) <= 0 || !canCastAt(b, by)) return false;
   const hurt = SPELLS[spell].hurt;
-  if (hurt !== undefined) {
-    const me = casterOf(b, by);
-    if (!me || healthShare(me) > hurt) return false;
-  }
+  if (hurt !== undefined && sideShare(b, casterSide(b, by)) > hurt) return false;
   return Boolean(chargeOf(b, spell, by)) || (book.spells.includes(spell) && book.mana >= spellCost(b, spell, by));
 }
 /**
  * Whether a melee attack from `from` would be a charge: a charging troop with a run-up, riding far
  * enough first from a start clear of the enemy (circling a stack it is already fighting isn't one).
+ * A leader who charges always has his run-up: he rides in from behind the line.
  */
 export const isCharge = (b: BattleState, f: Fighter, from: number, moves = options(b).moves) =>
-  f.side === 'player' && (b.hero.charge ?? []).includes(f.troop) && from !== f.at && (moves.get(from)?.length ?? 0) >= CHARGE_HEXES && !adjacentEnemy(b, f);
+  f.side === 'player' && (b.hero.charge ?? []).includes(f.troop) && (isLeader(f) || (from !== f.at && (moves.get(from)?.length ?? 0) >= CHARGE_HEXES && !adjacentEnemy(b, f)));
 /** Damage a spell does, or 0 if it doesn't do damage. */
 export const spellDamage = (b: BattleState, spell: SpellId, by?: number) => {
   const effect = SPELLS[spell].effect;
   return effect.kind === 'damage' || effect.kind === 'burst' ? effect.perPower * (bookOf(b, by)?.spellPower ?? 0) : 0;
 };
 
-/** Who a spell cast at `target` would hit: the target, and for a burst everyone next to it too. */
+/** Who a spell cast at `target` would hit: the target, and for a burst every stack next to it too. It passes over the leaders. */
 export function spellVictims(b: BattleState, spell: SpellId, target: Fighter): Fighter[] {
   if (SPELLS[spell].effect.kind !== 'burst') return [target];
   const around = new Set([target.at, ...neighbours(target.at)]);
-  return [target, ...b.fighters.filter((f) => alive(f) && f.id !== target.id && around.has(f.at))];
-}
-
-/** Enemy stacks that can take Aldric off the field before he acts again. */
-export function threatsToHero(b: BattleState): Fighter[] {
-  const hero = heroOnField(b);
-  if (!hero || !alive(hero) || b.result) return [];
-
-  const heroIndex = b.order.indexOf(hero.id);
-  const upcoming = new Map<number, boolean>();
-  const add = (id: number, nextRound: boolean) => {
-    if (!upcoming.has(id)) upcoming.set(id, nextRound);
-  };
-  if (heroIndex > 0) {
-    for (const id of b.order.slice(1, heroIndex)) add(id, false);
-  } else {
-    for (const id of b.order.slice(heroIndex === 0 ? 1 : 0)) add(id, false);
-    for (const f of b.fighters) {
-      if (f.side === 'enemy' && alive(f) && speedOf(f) > speedOf(hero)) add(f.id, true);
-    }
-  }
-
-  return [...upcoming].flatMap(([id, nextRound]) => {
-    const enemy = b.fighters.find((f) => f.id === id);
-    if (!enemy || !alive(enemy) || enemy.side !== 'enemy' || enemy.status.some((s) => STATUSES[s].skipsTurn)) return [];
-    const state = nextRound ? { ...b, round: b.round + 1 } : b;
-
-    const meleeReach = reachable(enemy.at, speedOf(enemy), (i) => blocked(b, i, enemy.id));
-    const melee = NEIGHBOURS[hero.at].includes(enemy.at) || NEIGHBOURS[hero.at].some((hex) => meleeReach.has(hex));
-    const ranged = enemy.shots > 0 && !adjacentEnemy(b, enemy) && strike(b, enemy, hero, true).damage >= hero.hp;
-    const spell = spellsOf(state, enemy.id).some((id) => {
-      if (!needsTarget(id) || SPELLS[id].on !== 'enemy' || !canCast(state, id, enemy.id)) return false;
-      const damage = spellDamage(state, id, enemy.id);
-      if (!damage || shotOn(hero, damage) < hero.hp) return false;
-      return b.fighters.some((target) => alive(target) && target.side === 'player' && spellVictims(state, id, target).some((victim) => victim.id === hero.id));
-    });
-    return melee || ranged || spell ? [enemy] : [];
-  });
+  return [target, ...b.fighters.filter((f) => onField(f) && f.id !== target.id && around.has(f.at))];
 }
 
 /** Puts a status on a stack, once. */
@@ -587,14 +612,14 @@ function edgeHex(b: BattleState, side: Side): number | null {
 }
 
 /**
- * Every stack on `side` that can shoot (and isn't caught in melee) looses once, where its shots take
- * the most: the other side's shooters count double, and a hero on the field three times over.
+ * Everyone on `side` who can shoot (and isn't caught in melee) looses once, where his shots take the
+ * most: the other side's shooters count double.
  */
 function loose(next: BattleState, side: Side, fighters: Fighter[], hit: (a: Fighter, t: Fighter, ranged: boolean, retaliation: boolean) => void) {
   for (const shooter of fighters.filter((x) => x.side === side && alive(x) && x.shots > 0 && !adjacentEnemy(next, x))) {
-    const targets = fighters.filter((x) => x.side !== side && alive(x));
+    const targets = fighters.filter((x) => x.side !== side && onField(x));
     if (!targets.length) break;
-    const worth = (x: Fighter) => Math.min(x.count, strike(next, shooter, x, true).damage / unitOf(x).hp) * powerOf(x) * (x.shots > 0 ? 2 : 1) * (x.hero ? 3 : 1);
+    const worth = (x: Fighter) => Math.min(x.count, strike(next, shooter, x, true).damage / unitOf(x).hp) * powerOf(x) * (x.shots > 0 ? 2 : 1);
     const target = targets.reduce((best, x) => (worth(x) > worth(best) ? x : best));
     shooter.shots -= 1;
     hit(shooter, target, true, false);
@@ -605,8 +630,28 @@ function loose(next: BattleState, side: Side, fighters: Fighter[], hit: (a: Figh
 function summoned(b: BattleState, side: Side, troop: TroopId, share: number): number {
   const own = b.fighters.filter((f) => f.side === side && f.troop === troop).reduce((sum, f) => sum + f.startCount, 0);
   if (own > 0) return Math.max(1, Math.round(own * share));
-  const worth = b.fighters.filter((f) => f.side === side && !f.book && !f.hero).reduce((sum, f) => sum + f.startCount * powerOf(f), 0);
+  const worth = b.fighters.filter((f) => f.side === side && !isLeader(f)).reduce((sum, f) => sum + f.startCount * powerOf(f), 0);
   return Math.max(1, Math.round((worth * share) / unitPower(TROOPS[troop])));
+}
+
+/**
+ * What a bard pays a stack of the other side to leave the field, or with `join` to fight for him: so
+ * many weeks of its wages, less the hero's share off every bribe, to the nearest ten. Null for
+ * troops who take no gold (beasts), for a leader (nothing can reach him), and for a bard who isn't
+ * yours: the gold is your purse.
+ */
+export function bribePrice(b: BattleState, bard: Fighter, target: Fighter, join = false): number | null {
+  const art = bardOf(bard);
+  const wage = TROOPS[target.troop].wage;
+  if (!art || bard.side !== 'player' || target.side === bard.side || !onField(target) || !wage) return null;
+  const weeks = join ? art.weeks.join : art.weeks.leave;
+  return Math.max(10, Math.round((target.count * wage * weeks * (1 - (b.hero.bribes ?? 0))) / 10) * 10);
+}
+
+/** Whether a stack paid to change sides would fit under the hero's banner: leadership for all of it, and a place in his line. */
+export function canJoin(b: BattleState, target: Fighter): boolean {
+  const line = new Set(b.fighters.filter((f) => f.side === 'player' && onField(f)).map((f) => f.troop));
+  return target.count * TROOPS[target.troop].leadership <= (b.hero.room ?? 0) && (line.has(target.troop) || line.size < MAX_STACKS);
 }
 
 /**
@@ -656,21 +701,27 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
       const ok = opts.melee.some((m) => m.target === action.target && m.from === action.from);
       if (!ok) return { battle: b, events: [] };
       const charge = isCharge(b, f, action.from, opts.moves);
-      if (action.from !== me.at) {
+      // A leader rides out from behind the line to strike, and back again: he never stands on the field.
+      const ride = isLeader(f) ? opts.rides?.get(action.from) : undefined;
+      if (ride) events.push({ type: 'move', fighter: me.id, path: ride });
+      else if (action.from !== me.at) {
         events.push({ type: 'move', fighter: me.id, path: opts.moves.get(action.from)! });
         me.at = action.from;
       }
       const target = fighterById(next, action.target);
       // Spears and pikes strike first when they defend, unless the attacker has the same knack.
-      const firstStrike = !charge && abilitiesOf(target.troop).some((a) => a.firstStrike) && !abilitiesOf(me.troop).some((a) => a.firstStrike);
+      // Nothing can reach a leader, so nothing strikes first at him, nor back.
+      const untouched = charge || isLeader(f);
+      const firstStrike = !untouched && abilitiesOf(target.troop).some((a) => a.firstStrike) && !abilitiesOf(me.troop).some((a) => a.firstStrike);
       if (firstStrike) hit(target, me, false, false);
       if (alive(me)) hit(me, target, false, false, charge);
       // Nobody gets to swing back at a lance coming in at the gallop, nor a stack turned into newts,
       // nor at a first strike already spent this blow.
-      if (!firstStrike && alive(target) && !target.retaliated && !charge && !target.status.some((st) => STATUSES[st].noStrikeBack)) {
+      if (!firstStrike && alive(target) && !target.retaliated && !untouched && !target.status.some((st) => STATUSES[st].noStrikeBack)) {
         target.retaliated = true;
         hit(target, me, false, true);
       }
+      if (ride) events.push({ type: 'back', fighter: me.id, path: [...ride].reverse() });
       break;
     }
     case 'shoot': {
@@ -697,7 +748,8 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
       const side = casterSide(b, by);
       const spell = SPELLS[action.spell];
       const aimed = needsTarget(action.spell);
-      const target = aimed ? fighters.find((x) => x.id === action.target && alive(x)) : undefined;
+      // No spell lands on a leader, friend or foe: only on the stacks on the field.
+      const target = aimed ? fighters.find((x) => x.id === action.target && onField(x)) : undefined;
       if (side !== f.side || !canCast(b, action.spell, by) || (aimed && (!target || (spell.on === 'enemy') !== (target.side !== side)))) return { battle: b, events: [] };
       // It costs a charge if there is one, and mana if not; either way, one of the round's casts.
       const book: Spellbook = { ...bookOf(b, by)! };
@@ -717,7 +769,7 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
           events.push({ type: 'spell', ...cast, target: target!.id, damage: 0, killed: 0 });
           break;
         case 'mass': {
-          const on = fighters.filter((x) => alive(x) && (x.side === side) === (spell.on === 'friend'));
+          const on = fighters.filter((x) => onField(x) && (x.side === side) === (spell.on === 'friend'));
           on.forEach((x, i) => {
             addStatus(x, effect.status, b.round);
             events.push({ type: 'spell', ...cast, target: x.id, damage: 0, killed: 0, ...(i > 0 ? { splash: true } : {}) });
@@ -753,7 +805,7 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
         default: {
           next.struck = true;
           for (const victim of spellVictims(next, action.spell, target!)) {
-            const damage = shotOn(victim, effect.perPower * power);
+            const damage = effect.perPower * power;
             const w = wound(victim, damage);
             victim.count = w.count;
             victim.hp = w.hp;
@@ -774,6 +826,40 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
       next = { ...next, result: 'fled' };
       events.push({ type: 'end', result: 'fled' });
       return { battle: next, events };
+    case 'bribe': {
+      // The gold goes, and so do they: home, or over to his side as a stack of his own, next round.
+      const target = fighters.find((x) => x.id === action.target);
+      const price = target ? bribePrice(b, f, target, action.join) : null;
+      if (!target || price === null || price > (b.hero.gold ?? 0) || (action.join && !canJoin(b, target))) return { battle: b, events: [] };
+      const count = target.count;
+      next.hero.gold = (b.hero.gold ?? 0) - price;
+      target.left = (target.left ?? 0) + count;
+      target.count = 0;
+      let joined: number | undefined;
+      if (action.join) {
+        joined = fighters.length;
+        fighters.push({ id: joined, side: f.side, troop: target.troop, count, startCount: count, hp: target.hp, at: target.at, shots: target.shots, retaliated: false, defending: false, waited: false, status: [] });
+        next.hero.room = (b.hero.room ?? 0) - count * TROOPS[target.troop].leadership;
+      }
+      events.push({ type: 'bribe', fighter: f.id, target: target.id, gold: price, count, ...(joined !== undefined ? { joined } : {}) });
+      break;
+    }
+    case 'jeer': {
+      const art = bardOf(f);
+      const target = fighters.find((x) => x.id === action.target && onField(x) && x.side !== f.side);
+      if (!art || !target) return { battle: b, events: [] };
+      addStatus(target, art.jeer, b.round);
+      events.push({ type: 'jeer', fighter: f.id, target: target.id, status: art.jeer });
+      break;
+    }
+    case 'sing': {
+      const art = bardOf(f);
+      if (!art?.songs.includes(action.song)) return { battle: b, events: [] };
+      const on = fighters.filter((x) => onField(x) && x.side === f.side);
+      for (const x of on) addStatus(x, action.song, b.round);
+      events.push({ type: 'song', fighter: f.id, status: action.song, targets: on.map((x) => x.id) });
+      break;
+    }
   }
   return settle(next, events, true, expected);
 }
@@ -788,9 +874,9 @@ function settle(b: BattleState, events: BattleEvent[], endTurn: boolean, expecte
     order = order.slice(1);
     // Good spirits: a chance the stack goes again before the round moves on, once a round. The
     // AI's look-ahead (`expected`) skips the roll, so it never sees a bonus turn that may not come.
-    const morale = b.hero.morale ?? 0;
     const acted = fighterById(b, actedId);
-    if (!expected && morale > 0 && acted.side === 'player' && !acted.moraleUsed) {
+    const morale = moraleOf(b, acted);
+    if (!expected && morale > 0 && !acted.moraleUsed) {
       const [v, rolled] = roll(seed);
       seed = rolled;
       if (v < morale) {
@@ -801,8 +887,9 @@ function settle(b: BattleState, events: BattleEvent[], endTurn: boolean, expecte
     }
   }
   let next: BattleState = { ...b, order, fighters, seed };
-  const players = next.fighters.some((f) => alive(f) && f.side === 'player');
-  const enemies = next.fighters.some((f) => alive(f) && f.side === 'enemy');
+  // A side is beaten when its troops are: its leader can't be, but he's nothing without them.
+  const players = next.fighters.some((f) => onField(f) && f.side === 'player');
+  const enemies = next.fighters.some((f) => onField(f) && f.side === 'enemy');
   if (!players || !enemies) {
     const result = enemies ? 'lost' : 'won';
     events.push({ type: 'end', result });
@@ -816,7 +903,7 @@ function settle(b: BattleState, events: BattleEvent[], endTurn: boolean, expecte
       // Nobody has landed a blow for a while, and nobody will: the battle is called off. Only a side
       // far weaker than the other counts as beaten; otherwise the enemy keeps its army and holds the field.
       if (quiet >= QUIET_ROUNDS) {
-        const worth = (side: Side) => next.fighters.filter((f) => alive(f) && f.side === side).reduce((sum, f) => sum + (((f.count - 1) * unitOf(f).hp + f.hp) / unitOf(f).hp) * powerOf(f), 0);
+        const worth = (side: Side) => next.fighters.filter((f) => onField(f) && f.side === side).reduce((sum, f) => sum + (((f.count - 1) * unitOf(f).hp + f.hp) / unitOf(f).hp) * powerOf(f), 0);
         const result = worth('enemy') < worth('player') * ROUTED_BELOW ? 'won' : 'fled';
         events.push({ type: 'end', result, rout: true });
         return { battle: { ...next, result, quiet, gap: reach.gap, ...(result === 'fled' && reach.stuck ? { standoff: true } : {}) }, events };
@@ -830,8 +917,24 @@ function settle(b: BattleState, events: BattleEvent[], endTurn: boolean, expecte
       next = { ...next, round, fighters, order: turnOrder(fighters), struck: false, quiet, gap: reach.gap };
       events.push({ type: 'round', round });
     }
-    // A stack turned into newts loses its turn, and then it wears off.
     const first = fighterById(next, next.order[0]);
+    // A leader with nothing left to do in his turn (his shots spent) lets it pass.
+    if (!hasTurn(first)) {
+      next = { ...next, order: next.order.slice(1) };
+      continue;
+    }
+    // Low spirits: a chance the stack loses heart, and its turn, once a turn (not again after a wait).
+    const spirit = moraleOf(next, first);
+    if (!expected && spirit < 0 && !first.waited) {
+      const [v, rolled] = roll(next.seed);
+      next = { ...next, seed: rolled };
+      if (v < -spirit) {
+        next = { ...next, order: next.order.slice(1) };
+        events.push({ type: 'falter', fighter: first.id });
+        continue;
+      }
+    }
+    // A stack turned into newts loses its turn, and then it wears off.
     const skip = first.status.find((st) => STATUSES[st].skipsTurn);
     if (!skip) break;
     next = { ...next, order: next.order.slice(1), fighters: next.fighters.map((f) => (f.id === first.id ? { ...f, status: f.status.filter((st) => st !== skip) } : f)) };
@@ -857,13 +960,39 @@ function settle(b: BattleState, events: BattleEvent[], endTurn: boolean, expecte
   return { battle: next, events };
 }
 
-/** The survivors of one side, as an army again. Aldric isn't part of his army: he rides on with it. */
+/**
+ * The survivors of one side, as an army again: troops who came over join their own kind. Its leader
+ * isn't part of it: Aldric rides on with his.
+ */
 export function survivors(b: BattleState, side: Side): Army {
-  return b.fighters.filter((f) => f.side === side && alive(f) && !f.hero).map((f) => ({ troop: f.troop, count: f.count }));
+  const army: Army = [];
+  for (const f of b.fighters) {
+    if (f.side !== side || !onField(f)) continue;
+    const same = army.find((s) => s.troop === f.troop);
+    if (same) same.count += f.count;
+    else army.push({ troop: f.troop, count: f.count });
+  }
+  return army;
 }
 
-/** Whether Aldric took the field and was carried from it. */
-export const heroFell = (b: BattleState) => heroOnField(b)?.count === 0;
+/** A leader's name, as the words at the end of a battle give it: Aldric's as his background has it, or the villain's. */
+const leaderName = (b: BattleState, f: Fighter) => (f.hero ? (b.hero.name ?? TROOPS[f.troop].name) : TROOPS[f.troop].name);
 
-export const livingHexes = (b: BattleState) => new Set(b.fighters.filter(alive).map((f) => f.at));
+/**
+ * How a battle ended for its leaders, in the words the field and the card both use: what became of
+ * the army, and of the leader. Aldric retreats when his army is beaten; a villain (or a captain) is
+ * taken when his is. Null when no leader's fate is decided: a retreat, or a fight with nobody to take.
+ */
+export function battleEnd(b: BattleState): { army: string; leader: string } | null {
+  if (b.result === 'lost') {
+    const hero = b.fighters.find((f) => f.side === 'player' && isLeader(f));
+    return hero ? { army: 'Your army is beaten', leader: `${leaderName(b, hero)} retreats` } : null;
+  }
+  const taken = b.result === 'won' ? b.fighters.filter((f) => f.side === 'enemy' && isLeader(f)).map((f) => leaderName(b, f)) : [];
+  if (!taken.length) return null;
+  const names = taken.length > 1 ? `${taken.slice(0, -1).join(', ')} and ${taken[taken.length - 1]}` : taken[0];
+  return { army: b.quiet !== undefined && b.quiet >= QUIET_ROUNDS ? 'The rest of them give up and run for it' : 'Their army is beaten', leader: `${names} ${taken.length > 1 ? 'are' : 'is'} taken` };
+}
+
+export const livingHexes = (b: BattleState) => new Set(b.fighters.filter(onField).map((f) => f.at));
 export { HEXES };

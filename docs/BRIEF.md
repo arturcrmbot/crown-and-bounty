@@ -99,19 +99,45 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   Hedge Wizard is an Arch Mage (hood, beard, orb and staff), the Ranger is Wesnoth's own Ranger in his green hood
   (nothing like the red poachers), and the Courtier is a Master at Arms in a plumed hat, who doffs it with a bow
   now and then. A tired hero on foot hears that his legs are spent, not his horse.
-- **The hero on the field (28 Sep, from Artur's second playtest):** Aldric fights in his battles, as the villains
-  do: a stack of one in his army's line, never one of its five stacks. Each background fights his own way. The
-  Knight's lance charges with his knights. The Hedge Wizard throws bolts from his staff, as hard as his spell
-  power, and is frail up close. The Ranger's longbow joins the opening volley. The Courtier's light blade matters
-  less than his presence: stacks beside him fight with +2 attack and +2 defence. His health and damage grow with
-  his level, and his attack and defence (level-ups and gear) count for him as for every stack; at level I he's
-  worth about a tenth of the army he starts with. He casts from where he stands, hands raised, and only while he
-  stands. His guard raise their shields over him, so no shot or spell takes more than a third of his health, but
-  a blow at close quarters takes what it takes. If he falls he's carried from the field, and the battle goes on
-  without his spells; he's on his feet by evening, but goes no further that day. The enemy finishes him off when
-  it can, and the sergeants keep him out of harm's way; both now see a charge coming. The odds on every card count
-  him. He stands in the gold ring he has on the map, and he and the villains show a health bar instead of a count.
-  His current health stays on the battle bar beside his mana, whoever is taking a turn or under the pointer.
+- **Heroes and captains behind the line (29 Sep, #36; before, from 28 Sep, Aldric fought in the line and could
+  be carried off):** Aldric, the villains and the enemy's captains lead from behind their troops, and nothing can
+  reach them there: no blow, shot or spell, friend or foe (a Fireball passes over them), so their blows get no
+  strike back. Each stands off the hex field at the back of his side, below its standard, in a ring: Aldric's gold,
+  as on the map, and the enemy's red. Each fights his own way from there. The Knight rides out, in from his side's
+  edge through free hexes and as far as his speed takes him, charges a stack and rides back, all in one move. The
+  Hedge Wizard throws bolts from his staff, as hard as his spell power, and the Ranger shoots, both at any stack on
+  the field. The Courtier strikes no blow: he's a bard (see below). Grimsby casts and gives orders; Mother Mirrow and
+  Aunt Bramble throw hexes and cast. A leader takes a turn only when he has something to do with it, and casts on
+  his side's turns all battle long. His damage grows with his level (and a caster's with his spell power), and his
+  attack counts for his blows; his health no longer matters. A battle ends when a side's troops are gone, or when
+  it retreats: if Aldric's army is beaten he retreats, and rides home to raise another; if a villain's army is
+  beaten he's taken, and the bounty is paid. The field and the card say it in the same words ("Their army is
+  beaten, and Baron Grimsby is taken"), and on the field the villain throws up his hands, or Aldric rides off.
+  Grimsby calls his guard once his men are down to three fifths of their health. So these went: Aldric's health
+  bar and the villains', the warning that an enemy could reach him, his bodyguard, being carried from the field,
+  villains who fall, and the Courtier's rally with its gold ring. On his turn the ribbon says what he can do, the
+  Knight's reach is lit, and the forecast says his blow gets no answer. The rule is data (the `leads` and `rides`
+  abilities in `content/troops.ts`), so a captain (#15) needs only his troop. The sergeants and the enemy know it
+  all: nobody aims at a leader or counts on striking back at him. How the tiers moved is in #36's PR; the balance
+  is tuned in #14.
+- **The Courtier becomes a bard (29 Sep, #42):** Artur: "Courtier has no attack but can bribe / demotivate /
+  sing etc." He keeps his name and his Master at Arms in a plumed hat (Wesnoth has no bard to give him; Artur can
+  rename him later), and his line at the start says he "pays, jeers and sings instead of fighting". From behind the
+  line he takes a turn like any leader with something to do, and makes one move with it:
+  - **Pay:** a stack of theirs goes home for 4 weeks of its wages, or, if it fits under his banner (leadership for
+    all of it, and a place in his line), comes over for 12, fights for him and rides on with him after. His Silver
+    Tongue halves both, and Diplomacy takes its share off too. Beasts take no gold, and villains and captains can't
+    be bought: nothing reaches them. The gold comes out of his purse, and the card says what his bribes cost.
+  - **Jeer:** a stack of theirs loses heart: −30% morale for two rounds, so three times in ten it loses its turn.
+  - **Sing:** a marching song (+25% morale: a chance each stack goes again) or a lucky song (+20% luck: a chance a
+    blow lands twice as hard), over every stack of his for two rounds.
+  - On his turn a click on one of their stacks opens a card with each move's price or effect (the hover line gives
+    them too), and the Defend button reads Sing. His sergeants jeer and sing on auto but never spend his gold:
+    bribes are for when you command. So his odds on the cards leave his purse out.
+  - Morale and luck are now per stack: its side's (the hero's, for yours) plus what songs and jeers add. Good
+    morale still wins another turn; bad morale, new, loses one. The moves are data: the `bard` ability in
+    `content/troops.ts`, and the `jeered`, `heartened` and `charmed` statuses in `content/spells.ts`. His rally and
+    its gold ring went with #36.
 - **The hero screen and the army (28 Sep, from Artur's second playtest):** H, a click on the hero, or the bar's
   troop counts open a HoMM2-style sheet over the map (the map stands still under it): his portrait, level and
   experience, the four stats, mana (left, most, and when it comes back), movement and leadership, his signature,

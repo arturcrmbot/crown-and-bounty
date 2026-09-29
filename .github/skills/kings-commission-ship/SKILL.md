@@ -78,9 +78,10 @@ and towers 2 to 3, castles 4.
 
 In battle, units are drawn at `BATTLE_UNIT` 1.5: a person about 65 px tall, most of two hex rows as
 in HoMM2. Goblins come out about 45 px, trolls 80, a mounted knight 105 with his lance. The three
-villains stand a quarter taller (`VILLAIN`), so the boss reads at a glance. Aldric fights on the field in
-his background's figure at battle size, in the gold ring he has on the map, with a health bar where a stack
-has its count (the villains too); the King's star flies at the field's edge.
+villains stand a quarter taller (`VILLAIN`), so the boss reads at a glance. Aldric leads from behind his line,
+off the hex field below the King's star, in his background's figure at battle size and the gold ring he has on
+the map; a villain stands behind his, below his standard, in a red ring. Neither has a count or a health bar:
+nothing can reach them.
 
 ## Gotchas
 

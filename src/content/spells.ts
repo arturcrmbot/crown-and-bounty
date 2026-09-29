@@ -15,7 +15,7 @@ export const MAP_SPELLS: Record<MapSpellId, { id: MapSpellId; name: string; mana
 };
 
 /** Lasting effects on a stack. Each one changes numbers the engine already uses. */
-export type StatusId = 'blessed' | 'slowed' | 'hasted' | 'stoneskin' | 'shieldwall' | 'newts' | 'frogs' | 'poisoned';
+export type StatusId = 'blessed' | 'slowed' | 'hasted' | 'stoneskin' | 'shieldwall' | 'newts' | 'frogs' | 'poisoned' | 'jeered' | 'heartened' | 'charmed';
 
 export type StatusDef = {
   name: string;
@@ -44,6 +44,15 @@ export type StatusDef = {
   look?: 'newt' | 'frog';
   /** At the start of the stack's turn, its top troop loses this share of its health (never past a sliver). */
   hurtsTopOnTurn?: number;
+  /**
+   * Added to the stack's morale while it lasts: above nought, the chance it goes again before the
+   * round moves on; below, the chance it loses heart, and its turn, as the turn comes.
+   */
+  morale?: number;
+  /** Added to the chance its blows land lucky, twice as hard, while it lasts. */
+  luck?: number;
+  /** A bard's song that puts it on every stack of his side: what he sings ("a marching song"). */
+  song?: string;
   /** What the log says when a blow puts this status on a stack. */
   onHit?: string;
 };
@@ -57,6 +66,10 @@ export const STATUSES: Record<StatusId, StatusDef> = {
   newts: { name: 'Newts', skipsTurn: true, noStrikeBack: true, silences: true, look: 'newt' },
   frogs: { name: 'Frogs', skipsTurn: true, noStrikeBack: true, silences: true, look: 'frog' },
   poisoned: { name: 'Poisoned', hurtsTopOnTurn: 0.1, onHit: 'The bite leaves them poisoned.' },
+  // A bard's work: a jeer that saps a stack's spirit, and songs that lift his own.
+  jeered: { name: 'Jeered', morale: -0.3, rounds: 2 },
+  heartened: { name: 'Heartened', morale: 0.25, rounds: 2, song: 'a marching song' },
+  charmed: { name: 'Charmed', luck: 0.2, rounds: 2, song: 'a lucky song' },
 };
 
 /** What casting a spell does. `on` says whose stacks: the caster's own side (`friend`) or the other. */
@@ -90,7 +103,7 @@ export type SpellDef = {
   look: { kind: 'bolt' | 'fire' | 'sparkle'; colour: 'gold' | 'blue' | 'red' };
   /** An order: what the caster bellows, and how ("bellows", "roars"). The log says it that way. */
   shout?: { verb: string; words: string };
-  /** Only once the caster is down to this share of his health. */
+  /** Only once the caster's troops are down to this share of the health they began with. */
   hurt?: number;
 };
 
@@ -135,6 +148,6 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   },
   guard: {
     id: 'guard', name: 'Call the Guard', mana: 0, on: 'friend', effect: { kind: 'summon', troop: 'swordsmen', share: 0.3 }, look: { kind: 'sparkle', colour: 'red' },
-    shout: { verb: 'roars', words: 'Call the guard!' }, hurt: 0.6, note: 'Once he\u2019s hurt: fresh swordsmen march in from his edge of the field, near a third as many as he began with.',
+    shout: { verb: 'roars', words: 'Call the guard!' }, hurt: 0.6, note: 'Once his men are hurt: fresh swordsmen march in from his edge of the field, near a third as many as he began with.',
   },
 };

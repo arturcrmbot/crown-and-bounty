@@ -1,11 +1,12 @@
-import { needsTarget, SPELLS, STATUSES, type SpellId } from '../content/spells';
+import { needsTarget, SPELLS, STATUSES, type SpellId, type StatusDef } from '../content/spells';
 import { TROOPS, troops } from '../content/troops';
 import { chooseAction, finishEstimate } from '../rules/battle/ai';
 import { manaInBattle } from '../rules/heroSheet';
-import { activeFighter, battleAct, canCast, casterOf, castsLeft, chargeOf, CHARGE_BONUS, fighterById, heroOnField, isCharge, options, rallyTargets, spellCost, spellDamage, spellsOf, spellVictims, strike, threatsToHero, unitOf, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
+import { coins } from '../rules/state';
+import { activeFighter, bardOf, battleAct, battleEnd, bribePrice, canCast, canJoin, casterOf, castsLeft, chargeOf, CHARGE_BONUS, fighterById, isCharge, isLeader, onField, options, ridesOut, spellCost, spellDamage, spellsOf, spellVictims, strike, unitOf, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
 import { paintBanner } from '../render/banner';
-import { BattleScreen, BUTTONS, FIRE_FALL, FLOAT_RISE, hexAt, hexCentre, LOG_BOTTOM, type BattleView, type Shot } from '../render/battleScreen';
-import { animLength, bodyHeight, hitTime, type AnimName } from '../render/battleSprites';
+import { BattleScreen, BUTTONS, FIRE_FALL, FLOAT_RISE, hexAt, hexCentre, leaderAt, LOG_BOTTOM, spotOf, type BattleView, type Shot } from '../render/battleScreen';
+import { animLength, bodyHeight, hitTime, STAND, type AnimName } from '../render/battleSprites';
 import { ART } from '../render/units';
 import { MAP_VIEW } from '../render/frame';
 import { BLUE, GOLD, NEUTRAL, RED } from '../render/palette';
@@ -27,6 +28,12 @@ const MS = 0.00085;
 const FLINCH_EARLY = 126;
 /** Wesnoth pulses a unit red twice when it is hit: on for each of these stretches of the first 300 ms. */
 const pulse = (k: number) => (k > 0.05 && k < 0.35) || (k > 0.55 && k < 0.85);
+/** What a bard shouts at a stack he jeers. */
+const JEERS = ['Call that a sword?', 'Boo! Hiss!', 'Go home to mother!', 'Nice hat!', 'Is that all?', 'My goose fights better!'];
+/** A share as a whole percentage: "25%". */
+const pct = (x: number) => `${Math.round(Math.abs(x) * 100)}%`;
+/** What a song or a jeer does to spirits, in words: "+25% morale", "−30% morale", "+20% luck". */
+const spirits = (s: StatusDef) => [s.morale ? `${s.morale > 0 ? '+' : '\u2212'}${pct(s.morale)} morale` : '', s.luck ? `+${pct(s.luck)} luck` : ''].filter(Boolean).join(', ');
 
 /**
  * A battle on screen. The rules decide everything; this plays each event as a little animation,
@@ -66,6 +73,8 @@ export class BattleController implements Screen {
       if (action.type === 'spell' && needsTarget(action.spell)) this.view.targeting = action.spell;
       else if (action.type === 'spell') this.perform({ type: 'cast', spell: action.spell });
       else if (action.type === 'retreat') this.perform({ type: 'retreat' });
+      else if (action.type === 'bard') this.perform(action.move === 'jeer' ? { type: 'jeer', target: action.target } : { type: 'bribe', target: action.target, join: action.move === 'buy' });
+      else if (action.type === 'sing') this.perform({ type: 'sing', song: action.song });
     });
     this.view = {
       positions: new Map(),
@@ -82,13 +91,12 @@ export class BattleController implements Screen {
       hover: null,
       floaters: [],
       shots: [],
-      log: 'To battle! Click a hex to move, or an enemy to attack.',
-      warning: null,
+      log: this.startLine(),
       active: activeFighter(battle)?.id ?? null,
       inspect: null,
-      rallyPreview: new Set(),
       preview: null,
       targeting: null,
+      bard: false,
       time: 0,
       shake: 0,
       banner: null,
@@ -104,7 +112,92 @@ export class BattleController implements Screen {
         },
       });
     }
-    if (opening.length) this.step(0.01, { start: () => (this.view.log = 'To battle! Click a hex to move, or an enemy to attack.') });
+    if (opening.length) this.step(0.01, { start: () => (this.view.log = this.startLine()) });
+  }
+
+  /** The first words on the ribbon: what the first of your fighters to act can do. */
+  private startLine() {
+    const first = activeFighter(this.battle);
+    return (first && this.turnLine(first.id)) ?? 'To battle! Click a hex to move, or an enemy to attack.';
+  }
+
+  /** What one of your leaders can do as his turn comes: he never walks the field. */
+  private turnLine(id: number): string | null {
+    const f = fighterById(this.battle, id);
+    if (f.side !== 'player' || !isLeader(f)) return null;
+    if (bardOf(f)) return `${this.fighterName(id)}: click one of their stacks to pay or jeer it, or press Sing. Or Wait.`;
+    return `${this.fighterName(id)} ${ridesOut(f) ? 'can ride out at any stack in reach, strike, and ride back' : 'can shoot any stack from behind the line'}. Or Wait.`;
+  }
+
+  /**
+   * A bard's flourish as he makes his move, and `start` as it begins (the words, the sound): his
+   * fidget (a bow, hat off) or his casting frames, the first moments of them.
+   */
+  private flourish(id: number, anim: 'idle' | 'cast', start: () => void) {
+    const f = fighterById(this.battle, id);
+    const length = ART[f.troop][anim] ? Math.min(700, animLength(f.troop, anim)) : 0;
+    this.step(Math.max(0.3, length * MS), {
+      start,
+      tick: (t) => length && this.view.poses.set(id, { anim, ms: Math.min(length, (t * Math.max(0.3, length * MS)) / MS) }),
+      end: () => this.view.poses.delete(id),
+    });
+  }
+
+  /** The forecast for a bard's moves on one of their stacks: what paying them off would cost, and what a jeer does. */
+  private bardLine(id: number) {
+    const f = activeFighter(this.battle)!;
+    const target = fighterById(this.battle, id);
+    const leave = bribePrice(this.battle, f, target);
+    const join = bribePrice(this.battle, f, target, true);
+    const jeer = `or jeer them (${spirits(STATUSES[bardOf(f)!.jeer])})`;
+    if (leave === null) return `${this.fighterName(id)} take no gold: ${jeer.slice(3)}.`;
+    return `${this.fighterName(id)}: ${coins(leave)} gold to go home${join !== null && canJoin(this.battle, target) ? `, ${coins(join)} to join you` : ''}; ${jeer}.`;
+  }
+
+  /** A bard's moves on one of their stacks, each with its price or what it does, before he makes it. */
+  private bardCard(id: number) {
+    const f = activeFighter(this.battle)!;
+    const art = bardOf(f)!;
+    const target = fighterById(this.battle, id);
+    const gold = this.battle.hero.gold ?? 0;
+    const leave = bribePrice(this.battle, f, target);
+    const join = bribePrice(this.battle, f, target, true);
+    const room = canJoin(this.battle, target);
+    const off = this.battle.hero.bribes ? `, less ${pct(this.battle.hero.bribes)}` : '';
+    const jeer = STATUSES[art.jeer];
+    const lines =
+      leave === null || join === null
+        ? [`*${TROOPS[target.troop].name} take no gold.*`]
+        : [
+            `Pay them **${coins(leave)} gold** (${art.weeks.leave} weeks\u2019 wages${off}), and they go home.`,
+            room ? `Pay them **${coins(join)} gold** (${art.weeks.join} weeks\u2019 wages${off}), and they fight for you, and ride on with you after.` : '*You have no room under your banner for them to come over.*',
+            `You carry **${coins(gold)} gold**.`,
+          ];
+    lines.push(`Jeer them, and they lose heart: ${spirits(jeer)} for ${jeer.rounds} rounds, a chance they lose their turn.`);
+    this.cards.show({
+      title: this.fighterName(id, target.count),
+      lines,
+      choices: [
+        ...(leave === null ? [] : [{ label: `Pay them to go (${coins(leave)} gold)`, action: { type: 'bard' as const, move: 'bribe' as const, target: id }, disabled: leave > gold }]),
+        ...(join === null || !room ? [] : [{ label: `Pay them to join you (${coins(join)} gold)`, action: { type: 'bard' as const, move: 'buy' as const, target: id }, disabled: join > gold }]),
+        { label: 'Jeer them', action: { type: 'bard', move: 'jeer', target: id } },
+        { label: 'Close', action: { type: 'close' } },
+      ],
+    });
+  }
+
+  /** A bard's songs, and what each does for every stack of yours, before he sings. */
+  private songCard() {
+    const art = bardOf(activeFighter(this.battle)!)!;
+    this.cards.show({
+      title: 'Sing',
+      lines: art.songs.map((id) => {
+        const s = STATUSES[id];
+        const what = s.luck ? 'a chance each blow lands twice as hard' : 'a chance each stack goes again before the round moves on';
+        return `**${s.song![0].toUpperCase()}${s.song!.slice(1)}**: ${spirits(s)} for every stack of yours, for ${s.rounds} rounds: ${what}.`;
+      }),
+      choices: [...art.songs.map((id) => ({ label: `Sing ${STATUSES[id].song}`, action: { type: 'sing' as const, song: id } })), { label: 'Close', action: { type: 'close' } }],
+    });
   }
 
   /** One thing the hero brought, and whom it touches, in words. */
@@ -156,15 +249,23 @@ export class BattleController implements Screen {
     this.queue.push({ duration, elapsed: 0, started: false, ...parts });
   }
 
+  /** Where a fighter stands on screen: his hex, or a leader's place behind the line. */
+  private spot(id: number): [number, number] {
+    return spotOf(this.battle, fighterById(this.battle, id));
+  }
+
   /**
    * Words that rise from a stack and fade. Ones that come close together stack up instead of
    * overlapping, however long the words; near the top of the field, where there's no room above,
-   * they stack down over the stack.
+   * they stack down over the stack. `from` is where a leader who rode out is now.
    */
-  private float(id: number, text: string, color: number) {
+  private float(id: number, text: string, color: number, from?: [number, number]) {
     const f = fighterById(this.battle, id);
     // Over the stack's own hex, not wherever a blow has knocked it, so it never lands on the attacker.
-    const [x, y] = hexCentre(f.at);
+    // Words over a leader at the edge of the field are nudged in, so none are cut off.
+    const [spotX, y] = from ?? this.spot(id);
+    const half = text.length * 4 + 4;
+    const x = Math.min(Math.max(spotX, MAP_VIEW.x + half), MAP_VIEW.x + MAP_VIEW.width - half);
     const top = Math.max(FLOAT_TOP, y + 12 - bodyHeight(f.troop, 'battle') - 16);
     // Words are 8 px a letter and 16 px a line, and all rise together, so where they are now is where they stay apart.
     const clash = (at: number) => this.view.floaters.some((o) => Math.abs(o.x - x) < ((o.text.length + text.length) * 8) / 2 + 4 && Math.abs(o.y - o.age * FLOAT_RISE - at) < 16);
@@ -176,7 +277,7 @@ export class BattleController implements Screen {
   /** A burst where a blow lands, blood for the wounded, and a jolt that grows with the damage. */
   private impact(target: number, damage: number, heavy: boolean) {
     const f = fighterById(this.battle, target);
-    const [x, y] = hexCentre(f.at);
+    const [x, y] = this.spot(target);
     const chest = y + 12 - Math.round(bodyHeight(f.troop, 'battle') * 0.5);
     for (const kind of ['spark', 'blood'] as const) {
       const shot = { from: [x, chest] as [number, number], to: [x, chest] as [number, number], t: 0, kind };
@@ -188,11 +289,10 @@ export class BattleController implements Screen {
 
   /**
    * A stack that goes down: it plays its death where Wesnoth drew one, and a puff of dust where it
-   * didn't. Then its fallen stay on the field. Aldric is carried off instead.
+   * didn't. Then its fallen stay on the field.
    */
   private fall(target: number) {
     const f = fighterById(this.battle, target);
-    if (f.hero) return this.carried(target);
     if (!ART[f.troop].death) return this.poof(target);
     const length = animLength(f.troop, 'death');
     this.step(length * MS, {
@@ -207,46 +307,15 @@ export class BattleController implements Screen {
   }
 
   /**
-   * Aldric falls, and his men carry him from the field: he sinks down, and a puff of dust takes
-   * him. No body stays: he'll be on his feet by evening. His spells go with him.
-   */
-  private carried(target: number) {
-    const v = this.view;
-    const f = fighterById(this.battle, target);
-    const [x, y] = hexCentre(f.at);
-    const dust = { from: [x, y] as [number, number], to: [x, y] as [number, number], t: 0, kind: 'poof' as const };
-    const sink = ART[f.troop].death ? animLength(f.troop, 'death') * 0.6 : 0;
-    this.step(0.25 + sink * MS, {
-      start: () => {
-        v.facings.set(target, this.facingOf(f));
-        play('defeat');
-        this.float(target, 'carried off!', GOLD[6]);
-        v.log = `${this.fighterName(target)} is carried from the field! No more spells this battle.`;
-      },
-      tick: (t) => v.poses.set(target, sink ? { anim: 'death', ms: t * sink } : { anim: 'defend', ms: 0 }),
-    });
-    this.step(0.45, {
-      start: () => {
-        v.shots.push(dust);
-        v.dying.delete(target);
-        v.poses.delete(target);
-        v.facings.delete(target);
-      },
-      tick: (t) => (dust.t = t),
-      end: () => v.shots.splice(v.shots.indexOf(dust), 1),
-    });
-  }
-
-  /**
-   * A caster casts from where he stands: he raises his hands (in his casting frames, if Wesnoth drew
+   * A caster casts from behind his men: he raises his hands (in his casting frames, if Wesnoth drew
    * him any) and the magic gathers round him before it flies. An order is bellowed instead, for
-   * all to hear. Nothing plays for a hero who isn't on the field.
+   * all to hear. Nothing plays for a hero with no fighter of his own (a battle saved before he had one).
    */
   private cast(spell: SpellId, before: BattleState, by?: number) {
     const v = this.view;
     const caster = casterOf(before, by);
     if (!caster || caster.count <= 0) return;
-    const [x, y] = hexCentre(caster.at);
+    const [x, y] = this.spot(caster.id);
     const art = ART[caster.troop];
     const { look, shout } = SPELLS[spell];
     const hands: [number, number] = [x + 4 * this.facingOf(caster), y + 12 - bodyHeight(caster.troop, 'battle') * 0.5];
@@ -311,7 +380,7 @@ export class BattleController implements Screen {
 
   /** A puff of smoke where a stack changes shape, over the next moment (it doesn't hold up the queue). */
   private puff(id: number) {
-    const [x, y] = hexCentre(fighterById(this.battle, id).at);
+    const [x, y] = this.spot(id);
     const dust: Shot = { from: [x, y], to: [x, y], t: 0, kind: 'poof' };
     this.view.shots.push(dust);
     this.sparks.push(dust);
@@ -319,7 +388,7 @@ export class BattleController implements Screen {
 
   /** A stack that goes down leaves a puff of dust, then its fallen. */
   private poof(target: number) {
-    const [x, y] = hexCentre(fighterById(this.battle, target).at);
+    const [x, y] = this.spot(target);
     const dust = { from: [x, y] as [number, number], to: [x, y] as [number, number], t: 0, kind: 'poof' as const };
     this.step(0.4, {
       start: () => {
@@ -346,9 +415,7 @@ export class BattleController implements Screen {
     const who = this.casterName(e.by);
     if (spell.effect.kind === 'mass') return `${who} casts ${spell.name} on ${stacks === 1 ? this.objectName(e.target) : `all ${stacks} of ${fighterById(this.battle, e.target).side === 'player' ? 'your' : 'their'} stacks`}.`;
     if (e.healed) return `${who} casts ${spell.name} on ${this.objectName(e.target)}: ${e.healed} health back${e.raised ? `, and ${e.raised} get up again` : ''}.`;
-    const fell = e.killed ? (this.named(e.target) ? `, and ${this.fighterName(e.target)} falls` : `, ${e.killed} perish`) : '';
-    const on = e.by === undefined && fighterById(this.battle, e.target).hero ? 'himself' : this.objectName(e.target);
-    return `${who} casts ${spell.name} on ${on}${e.damage ? `: ${e.damage} damage${fell}` : ''}.`;
+    return `${who} casts ${spell.name} on ${this.objectName(e.target)}${e.damage ? `: ${e.damage} damage${e.killed ? `, ${e.killed} perish` : ''}` : ''}.`;
   }
 
   /** Takes a blow from what is left of a stack (its count, and its top troop's health); true when that was the last of them. */
@@ -362,14 +429,15 @@ export class BattleController implements Screen {
   /**
    * One blow or shot, played as Wesnoth plays it. The attacker runs its attack frames (lunging in at
    * close quarters); at the frame where the blow lands, and not before, come the flash, the sound,
-   * the numbers and the jolt; the target flinches, reels and pulses red twice.
+   * the numbers and the jolt; the target flinches, reels and pulses red twice. `from` is where a
+   * leader who rode out strikes from.
    */
-  private strike(e: Extract<BattleEvent, { type: 'hit' }>, left: { count: number; hp: number }, dies: boolean) {
+  private strike(e: Extract<BattleEvent, { type: 'hit' }>, left: { count: number; hp: number }, dies: boolean, from?: [number, number]) {
     const v = this.view;
     const attacker = fighterById(this.battle, e.attacker);
     const target = fighterById(this.battle, e.target);
-    const [ax, ay] = hexCentre(attacker.at);
-    const [tx, ty] = hexCentre(target.at);
+    const [ax, ay] = from ?? this.spot(attacker.id);
+    const [tx, ty] = this.spot(target.id);
     const len = Math.hypot(tx - ax, ty - ay) || 1;
     const [ux, uy] = [(tx - ax) / len, (ty - ay) / len];
     const art = ART[attacker.troop];
@@ -432,14 +500,13 @@ export class BattleController implements Screen {
         if (!e.ranged) play('hit');
         this.impact(e.target, e.damage, !e.ranged);
         if (e.charge) {
-          this.float(e.attacker, 'Charge!', GOLD[6]);
+          this.float(e.attacker, 'Charge!', GOLD[6], from);
           play('charge');
           v.shake = Math.max(v.shake, 6);
         }
-        if (e.lucky) this.float(e.attacker, 'Lucky!', GOLD[5]);
-        // A stack counts its dead; one of a kind (Aldric, a villain) shows the blow, as his health bar does.
-        this.float(e.target, e.killed && !this.named(e.target) ? `-${e.killed}` : `-${e.damage} hp`, e.killed ? RED[5] : RED[6]);
-        const fell = !e.killed ? '.' : this.named(e.target) ? `. ${this.fighterName(e.target)} ${target.hero ? 'goes down' : 'falls'}.` : `. ${e.killed} perish.`;
+        if (e.lucky) this.float(e.attacker, 'Lucky!', GOLD[5], from);
+        this.float(e.target, e.killed ? `-${e.killed}` : `-${e.damage} hp`, e.killed ? RED[5] : RED[6]);
+        const fell = !e.killed ? '.' : `. ${e.killed} perish.`;
         v.log = `${blow} for ${e.damage}${fell}${e.lucky ? ' A lucky blow!' : ''}${e.status ? ` ${STATUSES[e.status].onHit ?? ''}` : ''}`;
       },
       tick: (t) => {
@@ -473,7 +540,6 @@ export class BattleController implements Screen {
     this.view.finishOffer = false;
     this.view.targeting = null;
     this.view.hover = null;
-    this.view.rallyPreview.clear();
     this.hooks.onChange(battle);
     this.animate(events, before);
     return true;
@@ -481,6 +547,8 @@ export class BattleController implements Screen {
 
   private animate(events: BattleEvent[], before: BattleState) {
     const v = this.view;
+    // Where a leader who rode out is, between his ride in and his ride back.
+    const out = new Map<number, [number, number]>();
     // Who is left in each stack as the events play: a stack falls at the blow that kills it, and its
     // badge (or health bar) keeps what it showed before the action until each blow lands.
     const left: Left = new Map(this.battle.fighters.map((now) => {
@@ -494,19 +562,26 @@ export class BattleController implements Screen {
     }
     for (const e of events) {
       switch (e.type) {
-        case 'move': {
+        case 'move':
+        case 'back': {
           const f = fighterById(this.battle, e.fighter);
-          const path = e.path.map(hexCentre);
-          // The rules already have the stack at the end of its path; start drawing it where it stood.
-          const start = hexCentre(fighterById(before, e.fighter).at);
-          v.positions.set(e.fighter, start);
+          const leader = isLeader(f);
+          const back = e.type === 'back';
+          // A stack walks from the hex it stood on (the rules already have it at the end of its path).
+          // A leader rides in from his place behind the line, and after his blow rides back to it.
+          const start = back ? hexCentre(e.path[0]) : leader ? this.spot(f.id) : hexCentre(fighterById(before, e.fighter).at);
+          const path = back ? [...e.path.slice(1).map(hexCentre), this.spot(f.id)] : e.path.map(hexCentre);
+          if (!back) v.positions.set(e.fighter, start);
+          if (leader && !back) out.set(e.fighter, path[path.length - 1]);
           // Riders gallop and beasts lope, in their own frames; folk on foot hop from hex to hex.
           const frames = !!ART[f.troop].move;
           for (const [n, to] of path.entries()) {
             const a = n === 0 ? start : path[n - 1];
-            this.step(0.12, {
+            // A hex a step for a stack; a leader gallops, however far his first and last stretches are.
+            const length = leader ? Math.max(0.06, Math.hypot(to[0] - a[0], to[1] - a[1]) / 640) : 0.12;
+            this.step(length, {
               start: () => {
-                if (n === 0) v.log = `${this.fighterName(e.fighter)} ${this.verb(e.fighter, 'advance')}...`;
+                if (n === 0 && !back) v.log = `${this.fighterName(e.fighter)} ${this.verb(e.fighter, leader ? 'ride out' : 'advance')}...`;
                 if (to[0] !== a[0]) v.facings.set(e.fighter, to[0] > a[0] ? 1 : -1);
               },
               tick: (t) => {
@@ -516,6 +591,9 @@ export class BattleController implements Screen {
               },
             });
           }
+          // A leader who rode out stays where he got to until his blow lands, and rides back after it.
+          if (leader && !back) break;
+          if (back) out.delete(e.fighter);
           this.step(0.01, {
             end: () => {
               v.positions.delete(e.fighter);
@@ -528,7 +606,7 @@ export class BattleController implements Screen {
         case 'hit': {
           const dies = this.wound(left, e.target, e.damage);
           if (dies) v.dying.add(e.target);
-          this.strike(e, { ...left.get(e.target)! }, dies);
+          this.strike(e, { ...left.get(e.target)! }, dies, out.get(e.attacker));
           if (dies) this.fall(e.target);
           break;
         }
@@ -640,19 +718,119 @@ export class BattleController implements Screen {
           break;
         }
         case 'wait':
-        case 'defend':
-          this.step(e.type === 'defend' ? 0.45 : 0.25, {
+        case 'defend': {
+          // A leader has nothing to defend against: he lets his turn pass.
+          const passes = e.type === 'defend' && isLeader(fighterById(this.battle, e.fighter));
+          this.step(e.type === 'defend' && !passes ? 0.45 : 0.25, {
             start: () => {
-              this.float(e.fighter, e.type === 'wait' ? 'waits' : 'defends', NEUTRAL[7]);
-              v.log = `${this.fighterName(e.fighter)} ${this.verb(e.fighter, e.type === 'wait' ? 'wait for a better moment' : this.named(e.fighter) ? 'stand guard' : 'raise their shields')}.`;
-              if (e.type === 'defend') v.poses.set(e.fighter, { anim: 'defend', ms: 0 });
+              this.float(e.fighter, e.type === 'wait' || passes ? 'waits' : 'defends', NEUTRAL[7]);
+              v.log = `${this.fighterName(e.fighter)} ${this.verb(e.fighter, e.type === 'wait' ? 'wait for a better moment' : passes ? 'bide his time' : this.named(e.fighter) ? 'stand guard' : 'raise their shields')}.`;
+              if (e.type === 'defend' && !passes) v.poses.set(e.fighter, { anim: 'defend', ms: 0 });
             },
             end: () => v.poses.delete(e.fighter),
           });
           break;
+        }
         case 'round':
           this.step(0.05, { start: () => (v.log = `Round ${e.round}.`) });
           break;
+        case 'falter':
+          this.step(0.6, {
+            start: () => {
+              play('falter');
+              this.float(e.fighter, 'Falters', RED[6]);
+              v.log = `${this.fighterName(e.fighter)} ${this.verb(e.fighter, 'lose')} heart, and ${this.named(e.fighter) ? 'his' : 'their'} turn.`;
+              v.poses.set(e.fighter, { anim: 'defend', ms: 0 });
+            },
+            end: () => v.poses.delete(e.fighter),
+          });
+          break;
+        case 'bribe': {
+          // They stay as they were till the coins change hands: then they go home, or come over in your colours.
+          const target = fighterById(this.battle, e.target);
+          const [tx, ty] = hexCentre(target.at);
+          const joined = e.joined;
+          v.dying.add(e.target);
+          v.counts.set(e.target, e.count);
+          if (joined !== undefined) v.hidden.add(joined);
+          this.flourish(e.fighter, 'idle', () => {
+            play('coins');
+            this.float(e.fighter, `\u2212${coins(e.gold)} gold`, GOLD[6]);
+            v.log = `${this.fighterName(e.fighter)} pays ${this.objectName(e.target)} ${coins(e.gold)} gold: ${joined === undefined ? 'they shoulder their weapons and go home.' : 'they turn their coats, and fight for you!'}`;
+          });
+          if (joined === undefined) {
+            const edge = target.side === 'player' ? MAP_VIEW.x - 40 : MAP_VIEW.x + MAP_VIEW.width + 40;
+            const frames = !!ART[target.troop].move;
+            const length = 0.3 + Math.abs(edge - tx) / 240;
+            this.step(length, {
+              start: () => {
+                v.facings.set(e.target, target.side === 'player' ? -1 : 1);
+                play('march');
+              },
+              tick: (t) => {
+                const hop = frames ? 0 : Math.abs(Math.sin(t * Math.PI * 6)) * 3;
+                v.positions.set(e.target, [tx + (edge - tx) * t, ty - hop]);
+                v.poses.set(e.target, frames ? { anim: 'move', ms: t * length * 1000 } : STAND);
+              },
+              end: () => {
+                v.dying.delete(e.target);
+                for (const map of [v.positions, v.poses, v.facings, v.counts]) map.delete(e.target);
+              },
+            });
+          } else {
+            this.step(0.35, {
+              start: () => {
+                this.puff(e.target);
+                v.dying.delete(e.target);
+                v.counts.delete(e.target);
+                v.hidden.delete(joined);
+                this.float(joined, `+${e.count}`, GOLD[6]);
+              },
+            });
+          }
+          break;
+        }
+        case 'jeer': {
+          const jeer = JEERS[(e.target + this.battle.round) % JEERS.length];
+          this.flourish(e.fighter, 'cast', () => {
+            play('jeer');
+            this.float(e.fighter, jeer, NEUTRAL[7]);
+            v.log = `${this.fighterName(e.fighter)} jeers at ${this.objectName(e.target)}: \u201c${jeer}\u201d They lose heart.`;
+          });
+          this.step(0.5, {
+            start: () => {
+              this.float(e.target, STATUSES[e.status].name, RED[5]);
+              v.poses.set(e.target, { anim: 'defend', ms: 0 });
+            },
+            end: () => v.poses.delete(e.target),
+          });
+          break;
+        }
+        case 'song': {
+          const status = STATUSES[e.status];
+          // Gold motes swirl over every stack the song reaches.
+          const motes = e.targets.map((id): Shot => {
+            const [x, y] = this.spot(id);
+            return { from: [x, y], to: [x, y - 14], t: 0, kind: 'sparkle', color: GOLD[6] };
+          });
+          this.flourish(e.fighter, 'idle', () => {
+            play(status.luck ? 'luckySong' : 'song');
+            v.log = `${this.fighterName(e.fighter)} strikes up ${status.song}: ${status.luck ? 'your stacks feel lucky' : 'your stacks take heart'}.`;
+          });
+          this.step(0.9, {
+            start: () => {
+              v.shots.push(...motes);
+              for (const id of e.targets) this.float(id, status.name, GOLD[6]);
+            },
+            tick: (t) => {
+              for (const mote of motes) mote.t = t;
+            },
+            end: () => {
+              for (const mote of motes) v.shots.splice(v.shots.indexOf(mote), 1);
+            },
+          });
+          break;
+        }
         case 'volley':
           // An order: he bellows it, and the shots that follow are his men's.
           if (e.spell) this.cast(e.spell, before, e.by);
@@ -678,27 +856,54 @@ export class BattleController implements Screen {
           });
           break;
         }
-        case 'end':
+        case 'end': {
+          // A beaten side's leader: the villain taken, or Aldric turning for home. The card will say it in the same words.
+          const end = battleEnd(this.battle);
+          const beaten = e.result === 'won' ? 'enemy' : e.result === 'lost' ? 'player' : null;
+          const leaders = end ? this.battle.fighters.filter((f) => f.side === beaten && isLeader(f) && f.count > 0) : [];
           this.step(2.2, {
             start: () => {
               const [title, line] =
-                e.result === 'won' ? ['VICTORY', e.rout ? 'The rest of them run for it' : 'The field is yours'] : e.result === 'lost' ? ['DEFEAT', 'Your army breaks and scatters'] : ['RETREAT', 'You live to fight another day'];
+                e.result === 'won' ? ['VICTORY', end?.leader ?? (e.rout ? 'The rest of them run for it' : 'The field is yours')] : e.result === 'lost' ? ['DEFEAT', end?.leader ?? 'Your army breaks and scatters'] : ['RETREAT', 'You live to fight another day'];
               v.banner = { sprite: paintBanner(title, line), age: 0, life: 2.2 };
-              v.log = e.rout
-                ? e.result === 'won'
-                  ? 'The rest of them give up and run for it. The field is yours.'
-                  : 'Nobody can land a blow. Your men fall back.'
-                : e.result === 'won'
-                  ? 'Victory! The field is yours.'
-                  : e.result === 'lost'
-                    ? 'Your army breaks and scatters.'
-                    : 'You sound the retreat.';
+              v.log = end
+                ? `${end.army}, and ${end.leader}.`
+                : e.rout
+                  ? e.result === 'won'
+                    ? 'The rest of them give up and run for it. The field is yours.'
+                    : 'Nobody can land a blow. Your men fall back.'
+                  : e.result === 'won'
+                    ? 'Victory! The field is yours.'
+                    : e.result === 'lost'
+                      ? 'Your army breaks and scatters.'
+                      : 'You sound the retreat.';
+              for (const f of leaders) this.float(f.id, e.result === 'won' ? 'Taken!' : 'Retreats!', e.result === 'won' ? GOLD[6] : RED[5]);
               if (e.result !== 'fled') play(e.result === 'won' ? 'victory' : 'defeat');
+            },
+            tick: (t) => {
+              for (const f of leaders) {
+                // The villain throws up his hands; Aldric turns and rides off the field.
+                if (e.result === 'won') {
+                  v.poses.set(f.id, { anim: 'defend', ms: 0 });
+                  continue;
+                }
+                const [x, y] = this.spot(f.id);
+                const k = Math.min(1, t / 0.4);
+                const hop = ART[f.troop].move ? 0 : Math.abs(Math.sin(k * Math.PI * 5)) * 3;
+                v.facings.set(f.id, -1);
+                v.positions.set(f.id, [x + (MAP_VIEW.x - 70 - x) * k, y - hop]);
+                v.poses.set(f.id, ART[f.troop].move ? { anim: 'move', ms: t * 2200 } : STAND);
+                if (k >= 1) v.hidden.add(f.id);
+              }
             },
           });
           break;
-        case 'turn':
+        }
+        case 'turn': {
+          const line = this.auto ? null : this.turnLine(e.fighter);
+          if (line) this.step(0.01, { start: () => (v.log = line) });
           break;
+        }
       }
     }
   }
@@ -761,11 +966,11 @@ export class BattleController implements Screen {
     }
     if (this.queue.length === 0) this.updateFinishOffer();
     const mine = !!f && f.side === 'player' && !this.auto && this.queue.length === 0 && !this.battle.volley;
-    const threats = mine ? threatsToHero(this.battle) : [];
-    v.warning = threats.length
-      ? `${this.fighterName(threats[0].id)} can reach ${this.fighterName(heroOnField(this.battle)!.id)}.`
-      : null;
-    v.reach = mine && !v.targeting ? new Set(options(this.battle).moves.keys()) : new Set();
+    // Where the acting stack can walk to, or how far a leader who rides out can ride.
+    const opts = mine && !v.targeting ? options(this.battle) : null;
+    v.reach = opts ? new Set([...opts.moves.keys(), ...(opts.rides?.keys() ?? [])]) : new Set();
+    // A bard's Defend button sings instead.
+    v.bard = mine && !!f && !!bardOf(f);
     if (this.pointer && mine) this.hoverAt(...this.pointer);
     else if (!mine) {
       v.hover = null;
@@ -794,15 +999,17 @@ export class BattleController implements Screen {
   }
 
   /** What clicking a hex would do, for the stack whose turn it is. */
-  private intent(hex: number, x: number, y: number): { action: BattleAction; kind: 'move' | 'melee' | 'shoot' | 'spell' } | null {
+  private intent(hex: number, x: number, y: number): { action: BattleAction; kind: 'move' | 'melee' | 'shoot' | 'spell' | 'bard' } | null {
     const f = activeFighter(this.battle);
     if (!f || f.side !== 'player' || this.auto || this.queue.length > 0) return null;
-    const occupant = this.battle.fighters.find((o) => o.count > 0 && o.at === hex);
+    const occupant = this.battle.fighters.find((o) => onField(o) && o.at === hex);
     if (this.view.targeting) {
       const spell = SPELLS[this.view.targeting as SpellId];
       if (occupant && (occupant.side === 'enemy') === (spell.on === 'enemy')) return { action: { type: 'cast', spell: spell.id, target: occupant.id }, kind: 'spell' };
       return null;
     }
+    // A bard's turn: a click on one of theirs asks what to do with them (pay them, or jeer them).
+    if (bardOf(f)) return occupant && occupant.side === 'enemy' ? { action: { type: 'jeer', target: occupant.id }, kind: 'bard' } : null;
     const opts = options(this.battle);
     if (occupant && occupant.side === 'enemy') {
       if (opts.shoot.includes(occupant.id)) return { action: { type: 'shoot', target: occupant.id }, kind: 'shoot' };
@@ -825,11 +1032,9 @@ export class BattleController implements Screen {
     const hex = hexAt(x, y);
     const intent = hex === null ? null : this.intent(hex, x, y);
     this.view.hover = intent && hex !== null ? { hex, kind: intent.kind } : null;
-    const active = activeFighter(this.battle);
-    this.view.rallyPreview = intent?.kind === 'move' && active?.troop === 'heroCourtier' && hex !== null
-      ? new Set(rallyTargets(this.battle, active, hex).map((f) => f.id))
-      : new Set();
-    this.view.inspect = hex === null ? null : (this.battle.fighters.find((f) => f.count > 0 && f.at === hex)?.id ?? null);
+    // A stack on its hex, or a leader behind the line: the bar shows who he is.
+    const leader = leaderAt(this.battle, x, y);
+    this.view.inspect = leader ? leader.id : hex === null ? null : (this.battle.fighters.find((f) => onField(f) && f.at === hex)?.id ?? null);
     const under = this.view.inspect === null ? null : fighterById(this.battle, this.view.inspect);
     this.view.preview = intent ? this.forecast(intent.action) : under?.book ? this.bookLine(under.id) : null;
     this.display.canvas.style.cursor = intent ? 'pointer' : 'default';
@@ -843,16 +1048,18 @@ export class BattleController implements Screen {
     return `${this.fighterName(id)}: ${[spells.length ? `spells ${spells.join(', ')} (${book.mana} mana)` : '', orders.length ? `orders ${orders.join(' ')}` : ''].filter(Boolean).join('; ')}`;
   }
 
-  /** What an attack would probably do: average damage, how many fall, and whether they strike back. */
+  /**
+   * What an attack would probably do: average damage, how many fall, and whether they strike back.
+   * Only stacks can be aimed at: nothing reaches a leader behind the line.
+   */
   private forecast(action: BattleAction): string | null {
     const f = activeFighter(this.battle);
     if (!f) return null;
+    if (action.type === 'jeer' || action.type === 'bribe') return this.bardLine(action.target);
     const target = 'target' in action && action.target !== undefined ? fighterById(this.battle, action.target) : null;
     if (!target) return null;
     const t = TROOPS[target.troop];
-    const one = this.named(target.id);
-    const whom = one ? t.name : `${target.side === 'player' ? 'your' : 'their'} ${t.name.toLowerCase()}`;
-    const losses = (killed: number) => (one ? (killed ? `, and ${t.name} falls` : '') : `, ${killed} perish`);
+    const whom = `${target.side === 'player' ? 'your' : 'their'} ${t.name.toLowerCase()}`;
     if (action.type === 'cast') {
       const damage = spellDamage(this.battle, action.spell);
       if (!damage) return `${SPELLS[action.spell].name} on ${whom}.`;
@@ -860,17 +1067,19 @@ export class BattleController implements Screen {
       const ours = caught.filter((c) => c.side === 'player').map((c) => TROOPS[c.troop].name.toLowerCase());
       const theirs = caught.length - ours.length;
       const more = [theirs ? `${theirs} more of theirs` : '', ours.length ? `your own ${ours.join(' and ')}!` : ''].filter(Boolean).join(', and ');
-      const killed = wound(target, damage).killed;
-      return `${SPELLS[action.spell].name}: ${damage} damage${one ? losses(killed) : `, ${killed} of ${whom} perish`}.${more ? ` It also hits ${more}` : ''}`;
+      return `${SPELLS[action.spell].name}: ${damage} damage, ${wound(target, damage).killed} of ${whom} perish.${more ? ` It also hits ${more}` : ''}`;
     }
     if (action.type !== 'melee' && action.type !== 'shoot') return null;
     const ranged = action.type === 'shoot';
+    const leader = isLeader(f);
     const charge = action.type === 'melee' && isCharge(this.battle, f, action.from);
     const from = action.type === 'melee' ? { ...f, at: action.from } : f;
     const damage = strike(this.battle, from, target, ranged, undefined, charge ? CHARGE_BONUS : 1).damage;
     const left = wound(target, damage);
-    const back = !ranged && !charge && left.count > 0 && !target.retaliated ? ` ${one ? `${t.name} will` : 'They will'} strike back.` : '';
-    return `${charge ? 'Charge! ' : ''}${ranged ? 'Shoot' : 'Attack'} ${whom}: about ${damage} damage${losses(left.killed)}.${back}${charge ? ' No one can strike back at a charge.' : ''}`;
+    const back = !ranged && !charge && !leader && left.count > 0 && !target.retaliated ? ' They will strike back.' : '';
+    // A leader's blow gets no answer: nothing can reach him, and he's back behind the line before they turn.
+    const after = leader && !ranged ? ` ${this.fighterName(f.id)} rides back behind the line, and nobody can strike back.` : charge ? ' No one can strike back at a charge.' : '';
+    return `${charge ? 'Charge! ' : ''}${ranged ? 'Shoot' : 'Attack'} ${whom}: about ${damage} damage, ${left.killed} perish.${back}${after}`;
   }
 
   private button(id: (typeof BUTTONS)[number]['id']) {
@@ -884,6 +1093,8 @@ export class BattleController implements Screen {
     }
     if (!mine || this.auto) return;
     if (id === 'wait') this.perform({ type: 'wait' });
+    // A bard has nothing to defend against: the button sings instead.
+    else if (id === 'defend' && bardOf(f)) this.songCard();
     else if (id === 'defend') this.perform({ type: 'defend' });
     else if (id === 'retreat') this.confirmRetreat();
     else this.openSpellbook();
@@ -922,17 +1133,9 @@ export class BattleController implements Screen {
       const charge = chargeOf(this.battle, id);
       return charge ? `${charge.uses} left` : `${spellCost(this.battle, id)}`;
     };
-    const own = heroOnField(this.battle);
-    const silenced = own?.status.map((st) => STATUSES[st]).find((st) => st.silences);
-    const gone =
-      own && own.count <= 0
-        ? [`*${hero.name ?? 'Aldric'} has been carried from the field: no more spells this battle.*`]
-        : silenced
-          ? [`*${hero.name ?? 'Aldric'} is one of the ${silenced.name.toLowerCase()} for now: no spells till he's himself again.*`]
-          : [];
     this.cards.show({
       title: 'Spellbook',
-      lines: [...gone, manaInBattle(hero.mana, hero.maxMana), `${(hero.casts ?? 1) > 1 ? `Two spells a round: ${castsLeft(this.battle)} left this round.` : 'One spell a round.'}`, ...spells.map((s) => `**${s.name}** (${cost(s.id)}): ${s.note}`)],
+      lines: [manaInBattle(hero.mana, hero.maxMana), `${(hero.casts ?? 1) > 1 ? `Two spells a round: ${castsLeft(this.battle)} left this round.` : 'One spell a round.'}`, ...spells.map((s) => `**${s.name}** (${cost(s.id)}): ${s.note}`)],
       choices: [
         ...spells.filter((s) => canCast(this.battle, s.id)).map((s) => ({ label: `Cast ${s.name}`, action: { type: 'spell' as const, spell: s.id } })),
         { label: 'Close', action: { type: 'close' } },
@@ -946,7 +1149,8 @@ export class BattleController implements Screen {
       if (button) return this.button(button.id);
       const hex = hexAt(x, y);
       const intent = hex === null ? null : this.intent(hex, x, y);
-      if (intent) this.perform(intent.action);
+      if (intent?.kind === 'bard' && intent.action.type === 'jeer') this.bardCard(intent.action.target);
+      else if (intent) this.perform(intent.action);
     },
     hover: (x: number, y: number) => {
       this.pointer = [x, y];
@@ -958,7 +1162,6 @@ export class BattleController implements Screen {
       this.view.hover = null;
       this.view.inspect = null;
       this.view.preview = null;
-      this.view.rallyPreview.clear();
     },
     key: (key: string) => {
       if (key === 'escape') {
