@@ -1,4 +1,4 @@
-import { ADVENTURE_VIEW, BAR, MAP_VIEW, SCREEN, type Rect } from './frame';
+import { BAR, MAP_VIEW, SCREEN, type Rect } from './frame';
 import { bayer, hash } from './noise';
 import { GOLD, INK, LIGHT_LUT, NEUTRAL, SHADOW_LUT } from './palette';
 
@@ -8,8 +8,7 @@ import { GOLD, INK, LIGHT_LUT, NEUTRAL, SHADOW_LUT } from './palette';
  * - `dissolve`: the next picture comes in block by block, in a random order;
  * - `clash`: the map darkens, then a gleaming edge sweeps across it like a blade, and the
  *   battlefield behind it flashes as the steel rings.
- * The frame round the picture stays put: only the picture and the bar change, and the adventure
- * map's right-hand panel, which only it has.
+ * The frame round the picture stays put: only the picture and the bar change.
  */
 export type TransitionStyle = 'fade' | 'dissolve' | 'clash';
 
@@ -56,13 +55,10 @@ const FRINGE = 12;
 /**
  * What each screen pixel is: 0 the frame, the same on every screen; 1 the picture that changes (the
  * map view, painting or battlefield, and the bar under it); 2 the picture's edge, where the parchment's
- * torn fringe may reach in, and the adventure map's right-hand panel with the frame round its narrower
- * view, which the other screens don't have. Pixels of 2 that are the same on both screens stay put.
+ * torn fringe may reach in. Pixels of 2 that are the same on both screens stay put.
  */
 const ZONE = (() => {
   const z = new Uint8Array(W * H);
-  const side = ADVENTURE_VIEW.x + ADVENTURE_VIEW.width - FRINGE;
-  for (let y = 0; y < MAP_VIEW.y + MAP_VIEW.height + FRINGE; y++) z.fill(2, y * W + side, (y + 1) * W);
   for (const r of [MAP_VIEW, BAR] as Rect[]) {
     for (let y = r.y; y < r.y + r.height; y++) {
       for (let x = r.x; x < r.x + r.width; x++) {

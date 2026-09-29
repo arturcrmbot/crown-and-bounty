@@ -323,7 +323,7 @@ export type Hero = {
 export type Action =
   | { type: 'go'; id: string }
   /** Records that a first-time map hint has been shown. */
-  | { type: 'hint'; id: 'ride' | 'place' | 'payday' }
+  | { type: 'hint'; id: 'ride' | 'place' | 'payday' | 'journal' }
   /** A choice on a place's card: one of its kind's own (`recruit`, `fight`...) or written as content (`page/choice`). */
   | { type: 'choose'; id: string; choice: string }
   | { type: 'endDay' }
@@ -371,11 +371,16 @@ export type Choice = { label: string; action: Action; disabled?: boolean; portra
  */
 export type BattleResultCard = { player: Army; enemy: Army; manaSpent: number; manaAvailable: number; sergeantsSpent?: number; after?: number };
 
+/** Something heard on the road, as the journal lists it: the words as they were said, who said them, and whether it has paid off. */
+export type Heard = { who: string; words: string; done: boolean };
+
 /**
  * A parchment card with a title, lines (with **bold** and *italics*), and choices. `wide` is for big
  * decisions. `portrait` puts a face at its top left; `poster` makes it a WANTED poster, which a
  * `stamp` slams across ("PAID") and an `inset` finishes with a picture and its line (the goose, home);
- * `tiles` lays the choices side by side, each with its face, for picking a hero.
+ * `tiles` lays the choices side by side, each with its face, for picking a hero. `journal` makes it a
+ * page of the journal: the face, stamped or not, is the poster pinned in, and under the lines come the
+ * things heard on the road, ticked off once they've paid off.
  */
 export type Card = {
   title: string;
@@ -388,6 +393,7 @@ export type Card = {
   inset?: { portrait: PortraitId; line: string };
   tiles?: boolean;
   battleResult?: BattleResultCard;
+  journal?: { heard: Heard[] };
 };
 
 /** What happened, for the screens to show. The rules never draw anything themselves. */

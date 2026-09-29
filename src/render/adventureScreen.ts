@@ -1,6 +1,6 @@
 import { Bitmap, blit } from './bitmap';
 import { Effects } from './effects';
-import { ADVENTURE_VIEW as VIEW, BAR_DIVIDERS, BOUNTY_PLATE, HERO_PLATE, MINIMAP, paintFrame, SCREEN, trim } from './frame';
+import { BAR_DIVIDERS, MAP_VIEW as VIEW, paintFrame, SCREEN } from './frame';
 import type { Point } from '../rules/map/geometry';
 import type { FogMask } from './fog';
 import type { MapTiles } from './mapTiles';
@@ -20,7 +20,7 @@ export type Placed = { sprite: Bitmap; frames?: Bitmap[]; frame?: number; x: num
 const footY = (o: Placed) => o.y + o.sprite.height;
 
 /**
- * The adventure screen: the map's view, with the right-hand panel beside it (see `minimap.ts`).
+ * The adventure screen: the map's view, with the minimap over its top right corner (see `minimap.ts`).
  * Static objects are baked into the map's tiles as they're painted, and only animated ones are drawn
  * each frame. Fogged pixels show the roadless `wild` map through the fog colour table.
  */
@@ -48,8 +48,6 @@ export class AdventureScreen {
 
   constructor(tiles: MapTiles, fog: FogMask) {
     const { frame, overlay } = paintFrame(BAR_DIVIDERS, VIEW);
-    // The right-hand panel's boxes: the minimap, and the plates under it (see `minimap.ts` and `panel.ts`).
-    for (const box of [MINIMAP, HERO_PLATE, BOUNTY_PLATE]) trim(frame, box);
     this.frame = frame;
     this.overlay = overlay;
     this.tiles = tiles;

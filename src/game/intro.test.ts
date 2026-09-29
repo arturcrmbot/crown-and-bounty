@@ -12,7 +12,7 @@ describe('the first commission briefing', () => {
 
   it('keeps the complete key reference on ?', () => {
     const text = keysCard().lines.join(' ');
-    for (const key of ['Shift', 'Esc', 'WASD', 'Space', 'E', 'H', 'M', 'S', 'W', 'D', 'A', 'R', 'Delete']) expect(text).toContain(`**${key}**`);
+    for (const key of ['Shift', 'Esc', 'WASD', 'Space', 'Tab', 'E', 'H', 'J', 'M', 'S', 'W', 'D', 'A', 'R', 'Delete']) expect(text).toContain(`**${key}**`);
   });
 
   it('says what he rides out with as lists in words (#115)', () => {

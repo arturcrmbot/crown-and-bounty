@@ -14,6 +14,19 @@ export type Happened = Record<string, FlagValue>;
 /** Something the King has heard you did on a commission, in his own words at court. */
 export type Memory = { when?: Happened; line: string };
 
+/**
+ * When something counts as heard, or as paid off: story flags standing as `Happened` says, a place
+ * visited (`seen`), or a place used up (`used`). Every part given must hold.
+ */
+export type Clue = { flags?: Happened; seen?: string; used?: string };
+
+/**
+ * Something heard on the road, for the journal: the `words` as they were said or written, and `who`
+ * said them. It's there once `heard` holds (a flag spent since still counts: a thing heard stays
+ * heard), and ticked off once `done` does. One with no `done` stays open, a question left hanging.
+ */
+export type Rumour = { who: string; words: string; heard: Clue; done?: Clue };
+
 /** One of the King's commissions: a province, a villain, and what everyone says about it. */
 export type Commission = {
   province: Province;
@@ -46,6 +59,8 @@ export type Commission = {
   memories?: Memory[];
   /** People met here who would ride on with Aldric: offered at court as boons, when their flags stand. */
   friends?: { id: FriendId; when: Happened }[];
+  /** Things heard on the road, for the journal, in the order it lists them: the open ones first, then those ticked off. */
+  heard?: Rumour[];
 };
 
 export const COMMISSIONS: Commission[] = [
@@ -89,6 +104,67 @@ export const COMMISSIONS: Commission[] = [
       { id: 'nan', when: { wolfpelt: false } },
       { id: 'dwarf', when: { dwarf: 'friend' } },
     ],
+    heard: [
+      {
+        who: 'Old Pike\u2019s journal, on its last page',
+        words: 'My boy is a sergeant in the Baron\u2019s patrol now, God help him. If you see him, tell Pike his mother wants him home.',
+        heard: { flags: { tower: 'journal' } },
+        done: { flags: { pikeHome: true } },
+      },
+      {
+        who: 'a letter with the Baron\u2019s seal, from the highwaymen',
+        words: 'All patrols back to the stockade if the King\u2019s man comes. G.',
+        heard: { flags: { orders: true } },
+        done: { flags: { orders: false } },
+      },
+      {
+        who: 'Old Wat, the old King\u2019s falconer',
+        words: 'Grimsby\u2019s lot are digging up the heath for the old King\u2019s gold, I hear. He never buried gold. Whatever he put in the ground, it was warm.',
+        heard: { seen: 'falconer' },
+        done: { flags: { dig: 'raided' } },
+      },
+      {
+        who: 'the Baron\u2019s orders, pinned to a spade',
+        words: 'Keep digging. It isn\u2019t gold, so don\u2019t pocket it: you\u2019ll know it when you see it. G.',
+        heard: { flags: { dig: 'raided' } },
+      },
+      {
+        who: 'Old Nan',
+        words: 'And if you ever bring me a good warm wolf pelt, I\u2019ll show you something hotter.',
+        heard: { seen: 'nan' },
+        done: { flags: { wolfpelt: false } },
+      },
+      {
+        who: 'Old Nan, of the Baron',
+        words: 'Screamed the house down every night, he did, till I sang him this.',
+        heard: { flags: { lullaby: true } },
+        done: { flags: { lullaby: false } },
+      },
+      {
+        who: 'Old Nan, of the hunt hall',
+        words: 'He kept the key at his lodge in the chase, on a nail by the door. Take the track past my back door. There\u2019s a bear sleeps on it now, dearie.',
+        heard: { flags: { nanHall: true } },
+        done: { flags: { huntKey: true } },
+      },
+      {
+        who: 'the old King\u2019s huntsmen',
+        words: 'Grimsby gave our job to Rook. We\u2019d like a word with him.',
+        heard: { flags: { huntsmen: true } },
+        done: { flags: { rook: true } },
+      },
+      {
+        who: 'St Aldhelm\u2019s shrine',
+        words: 'She heard. Next time you are near her, whistle the saint\u2019s hymn.',
+        heard: { flags: { aldhelm: 'prayed' } },
+        done: { flags: { goose: false } },
+      },
+      {
+        who: 'the youngest poacher',
+        words: 'Hollow oak, south of the old bridge. Take the horn, my lord. We won\u2019t be needing it.',
+        heard: { flags: { poachers: 'spared' } },
+        done: { used: 'cache' },
+      },
+    ],
   },
   {
     province: FENMARCH,
@@ -119,6 +195,14 @@ export const COMMISSIONS: Commission[] = [
       { line: '"Straight through the fen, and no fuss. I like that in an officer."' },
     ],
     friends: [{ id: 'anselm', when: { anselm: false } }],
+    heard: [
+      {
+        who: 'Brother Anselm, of his big sister',
+        words: 'She lives past the troll\u2019s bridge, in a hut on legs. The legs are the worst part. Give her this, and tell her to write to her brother.',
+        heard: { flags: { abbey: 'letter' } },
+        done: { flags: { anselm: false } },
+      },
+    ],
   },
 ];
 

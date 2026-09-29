@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BAR, MAP_VIEW, MINIMAP, SCREEN } from './frame';
+import { BAR, MAP_VIEW, SCREEN } from './frame';
 import { Transition, TRANSITION_TIME } from './transition';
 
 const W = SCREEN.width;
@@ -39,18 +39,5 @@ describe('screen transitions', () => {
     expect([10, 20]).toContain(out[at(4, 4)]);
     expect(out[middle]).not.toBe(10);
     expect(out[middle]).not.toBe(20);
-  });
-
-  it('fades the adventure map\u2019s panel with the picture, where the other screens have frame, and leaves what both share', () => {
-    const panel = at(MINIMAP.x + MINIMAP.width + 2, MINIMAP.y + 40);
-    const t = new Transition(from, 'fade');
-    t.age = TRANSITION_TIME.fade / 2;
-    t.compose(to, out);
-    expect(out[panel]).not.toBe(10);
-    expect(out[panel]).not.toBe(20);
-    const shared = to.slice();
-    shared[panel] = from[panel];
-    t.compose(shared, out);
-    expect(out[panel]).toBe(10);
   });
 });

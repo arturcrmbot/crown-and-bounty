@@ -11,7 +11,7 @@ function icon(rows: string[], colours: Record<string, number>): Bitmap {
   return sprite;
 }
 
-export const COIN = icon(
+const COIN = icon(
   ['..oooo..', '.oyyYYo.', 'oyyyyYYo', 'oyddyyYo', 'oydyyyyo', 'oyyyyydo', '.oyyddo.', '..oooo..'],
   { o: INK, y: GOLD[4], Y: GOLD[6], d: GOLD[2] },
 );
@@ -27,12 +27,12 @@ const FORK = icon(
   ['.t.t.t.', '.t.t.t.', '.ttttt.', '...h...', '...h...', '...h...', '...h...', '...h...'],
   { t: STONE[5], h: WOOD[3] },
 );
-export const HORSESHOE = icon(
+const HORSESHOE = icon(
   ['.oooooo.', 'oiiooiio', 'oio..oio', 'oio..oio', 'oio..oio', 'oo....oo'],
   { o: INK, i: STONE[6] },
 );
 /** A mana crystal, lit from the top left. */
-export const CRYSTAL = icon(
+const CRYSTAL = icon(
   ['...o...', '..oWo..', '.oWBbo.', 'oWBBbdo', 'oBBbbdo', 'oBbbddo', '.obbdo.', '..odo..', '...o...'],
   { o: INK, W: BLUE[6], B: BLUE[5], b: BLUE[4], d: BLUE[2] },
 );
@@ -67,20 +67,43 @@ export const HOURGLASS = icon(GLASS, { W: WOOD[5], w: WOOD[3], g: STONE[5], y: G
 const HOURGLASS_LIT = icon(GLASS, { W: GOLD[6], w: GOLD[4], g: NEUTRAL[7], y: GOLD[6] });
 export const HOURGLASS_AT = { x: BAR.x + BAR.width - 20, y: BAR.y + 7 };
 
-/** Where the map bar's dividers sit, from its left edge: the army, the bounty, then the day's numbers. */
-export const HUD_DIVIDERS = [440, 670];
+/** The journal, open at its pages, with a red ribbon: click it (or press J) to read it. It brightens under the pointer too. */
+const BOOK = [
+  '..ooo.....ooo..',
+  '.oPPPoo.ooPPPo.',
+  'oPPlllPoPlllPPo',
+  'oPPPPPPoPPPPPPo',
+  'oPlllPPoPPlllPo',
+  'oPPPPPPoPPPPPPo',
+  'oPlllPPoPPlllPo',
+  'oPPPPPPoPPPPPPo',
+  'oBBBBBBoBBBBBBo',
+  '.ooooooRoooooo.',
+  '.......R.......',
+];
+const JOURNAL = icon(BOOK, { o: INK, P: PARCHMENT[6], l: PARCHMENT[1], B: WOOD[4], R: RED[4] });
+const JOURNAL_LIT = icon(BOOK, { o: INK, P: NEUTRAL[7], l: PARCHMENT[2], B: GOLD[5], R: RED[5] });
+const JOURNAL_AT = { x: HOURGLASS_AT.x - 30, y: BAR.y + 8 };
+
+/** Where the map bar's dividers sit, from its left edge: the army, the bounty, then the day's numbers and the buttons. */
+export const HUD_DIVIDERS = [425, 645];
+/** How far apart the army's stacks stand on the bar. */
+const STACK_STEP = 60;
 
 /** One thing on the bar, and the stretch of it (screen pixels) that answers the pointer. */
 export type HudHit = { item: BarItem; x0: number; x1: number };
 
 /** Which things on the bar a click does something with. */
-export const clickable = (item: BarItem) => item.kind === 'hourglass' || item.kind === 'stack' || item.kind === 'mana' || item.kind === 'bounty';
+export const clickable = (item: BarItem) => item.kind === 'hourglass' || item.kind === 'journal' || item.kind === 'stack' || item.kind === 'mana' || item.kind === 'bounty';
 const same = (a: BarItem, b: BarItem) => a.kind === b.kind && (a.kind !== 'stack' || (b.kind === 'stack' && a.index === b.index));
+/** The buttons, which light up under the pointer rather than being underlined. */
+const button = (item: BarItem) => item.kind === 'hourglass' || item.kind === 'journal';
 
 /**
- * Repaints the bottom bar from the game state: gold, army, bounty, movement, mana and the day.
- * Everything keeps its own column, so nothing shifts as the numbers change. What a click would
- * work (`hover`) is underlined in gold. Returns where each thing sits, for hover labels and clicks.
+ * Repaints the bottom bar from the game state: gold, army, bounty, movement, mana and the day, then
+ * the journal and the hourglass. Everything keeps its own column, so nothing shifts as the numbers
+ * change. What a click would work (`hover`) is underlined in gold, or lit. Returns where each thing
+ * sits, for hover labels and clicks.
  */
 export function paintHud(frame: Bitmap, state: GameState, hover: BarItem | null = null): HudHit[] {
   paintBarBackground(frame, HUD_DIVIDERS);
@@ -99,7 +122,7 @@ export function paintHud(frame: Bitmap, state: GameState, hover: BarItem | null 
   };
   const left = BAR.x + 14;
   item({ kind: 'gold' }, left, 76, COIN, state.gold.toLocaleString('en-GB'), GOLD[6]);
-  state.army.forEach((stack, index) => item({ kind: 'stack', index }, left + 76 + index * 64, 64, TROOP_ICONS[stack.troop], String(stack.count)));
+  state.army.forEach((stack, index) => item({ kind: 'stack', index }, left + 76 + index * STACK_STEP, STACK_STEP, TROOP_ICONS[stack.troop], String(stack.count)));
   // The villain's name, without "Bounty:" when a long one needs the room.
   const villain = commissionOf(state).villain.toUpperCase();
   const room = HUD_DIVIDERS[1] - HUD_DIVIDERS[0] - 28;
@@ -109,10 +132,12 @@ export function paintHud(frame: Bitmap, state: GameState, hover: BarItem | null 
   item({ kind: 'movement' }, right, 50, HORSESHOE, String(Math.floor(state.movement)), state.movement < 2 ? RED[5] : PARCHMENT[6]);
   item({ kind: 'mana' }, right + 50, 62, CRYSTAL, `${state.hero.mana}/${heroStats(state).maxMana}`, state.hero.mana > 0 ? BLUE[6] : STONE[5]);
   item({ kind: 'day' }, right + 112, 0, null, `DAY  ${roman(state.day)}`);
-  const lit = hover?.kind === 'hourglass';
-  blit(frame, lit ? HOURGLASS_LIT : HOURGLASS, HOURGLASS_AT.x, HOURGLASS_AT.y);
-  hits.push({ item: { kind: 'hourglass' }, x0: HOURGLASS_AT.x - 6, x1: HOURGLASS_AT.x + HOURGLASS.width + 6 });
-  const under = hover && clickable(hover) && hover.kind !== 'hourglass' ? hits.find((h) => same(h.item, hover)) : null;
+  const lit = (kind: BarItem['kind']) => hover?.kind === kind;
+  blit(frame, lit('journal') ? JOURNAL_LIT : JOURNAL, JOURNAL_AT.x, JOURNAL_AT.y);
+  hits.push({ item: { kind: 'journal' }, x0: JOURNAL_AT.x - 6, x1: JOURNAL_AT.x + JOURNAL.width + 4 });
+  blit(frame, lit('hourglass') ? HOURGLASS_LIT : HOURGLASS, HOURGLASS_AT.x, HOURGLASS_AT.y);
+  hits.push({ item: { kind: 'hourglass' }, x0: HOURGLASS_AT.x - 5, x1: HOURGLASS_AT.x + HOURGLASS.width + 6 });
+  const under = hover && clickable(hover) && !button(hover) ? hits.find((h) => same(h.item, hover)) : null;
   if (under) for (let x = under.x0 + 5; x < under.x1 - 5; x++) frame.set(x, BAR.y + BAR.height - 5, GOLD[4]);
   return hits;
 }

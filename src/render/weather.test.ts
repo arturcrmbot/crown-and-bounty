@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Bitmap } from './bitmap';
-import { ADVENTURE_VIEW as VIEW, SCREEN } from './frame';
+import { MAP_VIEW as VIEW, SCREEN } from './frame';
 import { EVENING_LUT, FOG_LUT, LEAF, MORNING_LUT, NIGHT_LUT, SHADOW_LUT, STONE } from './palette';
 import { CLEAR, Weather } from './weather';
 
