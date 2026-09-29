@@ -1,10 +1,10 @@
 /**
- * The difficulty model: what each tier of enemy should feel like, as win chances at three moments of
+ * The difficulty model: what each tier of enemy should feel like, as win chances at two moments of
  * a commission. `start` is day I with the army you arrive with. `explored` is after a few days of
  * riding round, taking what's lying about, recruiting and beating the pests, without touching the
- * gates. `budget` is the target day (`docs/BALANCE.md`): a careful player has done everything but the
- * villain, and the villain is a hard fight: about a coin flip on his army alone, and likely with all he found.
- * The balance tests hold every province, hand-made or generated, to these for every background.
+ * gates. The balance tests hold every province, hand-made or generated, to these for every
+ * background. `reference` is a careful player on day 21, for the reports (`npm run difficulty`,
+ * `npm run sim:curve`): no test holds him to a number.
  */
 import { BACKGROUNDS } from '../content/backgrounds';
 import { playCommission } from './bot';
@@ -16,23 +16,18 @@ import { update, type GameState, type Tier } from './state';
 
 type Range = readonly [number, number];
 
-export const TARGETS: Record<Tier, { start?: Range; explored?: Range; budget?: Range }> = {
+export const TARGETS: Record<Tier, { start?: Range; explored?: Range }> = {
   /** An easy first fight: won from the start, with light losses. */
   pest: { start: [0.9, 1] },
   /** A fair fight from the start. */
   band: { start: [0.5, 1] },
   /** Too strong at first, so you explore and grow; beatable once you have. */
   gate: { start: [0, 0.35], explored: [0.75, 1] },
-  /**
-   * The villain: out of reach at the start, no better than a coin flip once the land round him is
-   * explored (without the gates), and on the target day a hard fight the reference hero wins more often
-   * than not with everything he found (`budget`). On his army alone, `npm run difficulty` and
-   * `npm run sim:curve` report it.
-   */
-  boss: { start: [0, 0.05], explored: [0, 0.5], budget: [0.5, 1] },
+  /** The villain: out of reach until the whole loop is done. */
+  boss: { start: [0, 0.05] },
 };
 
-/** The day a commission's villain is meant to be a coin flip for a careful player: the third week, in Aldmoor. */
+/** The day the reports look at a careful player: the third week. */
 export const TARGET_DAY = 21;
 
 /** The reference hero: a careful player who has done everything but the villain, on the target day. */

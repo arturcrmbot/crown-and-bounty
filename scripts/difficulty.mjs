@@ -1,6 +1,6 @@
 // The difficulty model's report: every tiered enemy's win chance at the start and once explored,
-// for every background, against the targets in rules/difficulty.ts, and in the first commission, the
-// villain on the target day for a careful player (the power budget). npm run difficulty [-- commission]
+// for every background, against the targets in rules/difficulty.ts, and in the first commission, a
+// careful player's odds at the villain's gate on day 21, as a report. npm run difficulty [-- commission]
 import { createServer } from 'vite';
 
 const chapter = Number(process.argv[2] ?? 1) - 1;
@@ -33,8 +33,7 @@ try {
       const villain = hero.locations.find((l) => l.kind === 'hideout');
       const all = winChance(hero, villain.id);
       const alone = winChance(bare(hero), villain.id);
-      const mark = (c, range) => (c >= range[0] && c <= range[1] ? ' ' : '!');
-      console.log(`          day ${TARGET_DAY}, a careful player at level ${hero.hero.level} (${hero.army.map((a) => `${a.count} ${a.troop}`).join(', ')}): ${villain.id} ${(all * 100).toFixed(0)}%${mark(all, TARGETS.boss.budget)} with everything, ${(alone * 100).toFixed(0)}% on his army alone  (${Math.round(performance.now() - t)} ms)`);
+      console.log(`          day ${TARGET_DAY}, a careful player at level ${hero.hero.level} (${hero.army.map((a) => `${a.count} ${a.troop}`).join(', ')}): ${villain.id} ${(all * 100).toFixed(0)}% with everything, ${(alone * 100).toFixed(0)}% on his army alone  (${Math.round(performance.now() - t)} ms)`);
     }
   }
 } finally {

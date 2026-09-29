@@ -106,7 +106,12 @@ The levers, in order, each a PR with the curve before and after:
 6. Grimsby and the gates sized to the new curve (#95), with a day-21 check in `npm run difficulty`, and
    `npm run sim:curve` (#94): the bot now plays as the careful player does.
 
-## Aldmoor to the budget (29 Sep, night)
+## Aldmoor resized (29 Sep, night)
+
+**Artur, that evening:** no target numbers. *"As long as the game is fair now I will play it and let you know if it's
+too easy or hard. But don't aim for some arbitrary number."* So the coin flip on day 21 is no longer a target, and no
+test holds Grimsby to one. `npm run sim:curve` and `npm run difficulty` still report the numbers below; Artur's play
+decides.
 
 With all six levers in: Grimsby's stockade is 1.75 times what it was (80 swordsmen, 42 crossbowmen), and he recruits
 3% a payday, not 5%; the patrol on the bridge is 70 swordsmen and 40 crossbowmen (was 50 and 29); Rook has 100 wolves
@@ -130,8 +135,8 @@ to 10 (the careful player), and the bot took him on day 9 to 12, at level 3 by t
   once at his walls never got back to him, so 1.75, and slower recruiting, it is.
 - **The Wizard and the Ranger are a week ahead.** The Wizard's own spells carry him (his mana is full for the one
   fight), and the Ranger has all his levels by day 10. Their levers come next: spell power, and his archers.
-- `npm run difficulty` holds the boss to a coin flip or less once explored (day 15, pests only), and to 50% or better
-  for the reference hero on day 21. `src/rules/budget.test.ts` checks the second, per background.
+- The bot storms Grimsby once it likes the odds, from day 21 at a coin flip, and later at worse: an army raised again
+  at the castle may do better, and it never sits out the commission.
 
 ## The approach
 
@@ -209,9 +214,8 @@ moved with these levers:
 
 - **`npm run sim:curve`** (#94) prints the table above for every background in Aldmoor, by day, for a careful player (or
   `--bot`, the old reckless one), with Grimsby as he stands, the day each gate falls, and his odds on day 21.
-- **`npm run difficulty`** has a checkpoint at the target day (day 21 in Aldmoor): the reference hero, a careful player who
-  has done everything but the villain, wins 50% or better with everything he found, and it reports his odds on his army
-  alone. The villain stays at 35% or less once explored (day 15, pests only).
+- **`npm run difficulty`** also reports a careful player on day 21 in Aldmoor, who has done everything but the villain:
+  his odds at Grimsby's gate with everything he found, and on his army alone. A report, not a target.
 - **The bot plays like a person** (#94, which takes over #14). It fights with a margin instead of at the cliff's edge, and
   takes the skills that multiply. Still to come: parleys, and bribing as a Courtier would.
 - **`npm run sim`** and **`npm run sim -- 8 --campaign`** give the days each commission takes, against its target day.

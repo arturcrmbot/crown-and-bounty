@@ -27,15 +27,16 @@ const scaled = (army: Army, k: number) => army.map((s) => (leads(s.troop) ? s : 
 
 /**
  * Whether a careful player would fight this enemy now: with a margin, so he keeps his army. The villain
- * he storms once he likes the odds, or, as the weeks go by and the villain recruits, sooner: losing at
- * his walls costs the army, not the commission.
+ * he storms once he likes the odds; from the target day (the third week) at a coin flip, and as the weeks
+ * go by and the villain recruits, at worse: losing at his walls costs the army, not the commission, and
+ * an army raised again from the castle may do better.
  */
 export function comfortable(state: GameState, place: Location): boolean {
   const foe = place.enemy;
   if (!foe || place.done || riddenOut(state, place) || !state.army.length) return false;
   if (place.kind === 'hideout') {
     const odds = winChance(state, place.id, 8);
-    return odds >= (state.day > 56 ? 0.25 : state.day > 42 ? 0.4 : state.day > 28 ? 0.6 : 0.8);
+    return odds >= (state.day > 42 ? 0.1 : state.day > 35 ? 0.2 : state.day > 28 ? 0.35 : state.day > 21 ? 0.5 : 0.8);
   }
   return winChance(state, place.id, 8, scaled(foe.army, MARGIN)) >= 0.75;
 }
