@@ -2,10 +2,37 @@ import { lineAt, type Point } from '../rules/map/geometry';
 import { forestAmount, pathHalfWidth, poolDistance, riverHalfWidth, shoreWobble, type MapModel } from '../rules/map/model';
 import { Bitmap } from './bitmap';
 import { fbm, hash, noise, rng, shade } from './noise';
-import { CYCLE_BOG, CYCLE_DEEP, CYCLE_FALL, CYCLE_SHALLOW, DIRT, EARTH, GOLD, GRASS, LEAF, NEUTRAL, RED, REED, ROCK, WATER } from './palette';
+import { CYCLE_BOG, CYCLE_DEEP, CYCLE_FALL, CYCLE_SHALLOW, DIRT, EARTH, GOLD, GRASS, LEAF, NEUTRAL, PLUM, RED, REED, ROCK, SAND, WATER } from './palette';
+import type { Region } from '../content/types';
 
 /** What each painted pixel is, for placing details. The rules keep their own, coarser map. */
-export const Ground = { Grass: 0, Water: 1, Bank: 2, Road: 3, Cliff: 4 } as const;
+export const Ground = { Grass: 0, Water: 1, Bank: 2, Road: 3, Cliff: 4, Field: 5, Hedge: 6, Rough: 7 } as const;
+
+/** Seeds for each kind of region's ragged edge. */
+const EDGES: Record<Region['kind'], number> = { fields: 101, heath: 102, downs: 103 };
+
+/** Fields are about this many pixels across: a patchwork cut from a jittered grid. */
+const FIELD = 84;
+/** How far round a ford the river runs shallow and stony. */
+const FORD_WATER = 34;
+
+/** What grows in a field, painted from its light, where it is, and whether it's on a furrow. */
+type Crop = (light: number, x: number, y: number, furrow: boolean) => number;
+const CROPS: [number, Crop][] = [
+  // Wheat, ripening in rows.
+  [0.22, (l, x, y, f) => shade(SAND, 0.56 + l + (f ? 0.07 : -0.05), x, y)],
+  // Barley, or hay: straw.
+  [0.12, (l, x, y, f) => shade(DIRT, 0.66 + l + (f ? 0.05 : -0.04), x, y)],
+  // Pasture: short grass, a shade brighter than the meadow.
+  [0.28, (l, x, y) => shade(GRASS, 0.57 + l, x, y)],
+  // Ploughed: brown furrows.
+  [0.14, (l, x, y, f) => shade(EARTH, 0.64 + l + (f ? 0.08 : -0.08), x, y)],
+  // Young crops: green rows in the earth.
+  [0.14, (l, x, y, f) => (f ? shade(GRASS, 0.56 + l, x, y) : shade(EARTH, 0.62 + l, x, y))],
+  // Fallow: rough grass going to seed.
+  [0.1, (l, x, y) => (hash(x, y, 86) < 0.3 ? shade(REED, 0.56 + l, x, y) : shade(GRASS, 0.5 + l, x, y))],
+];
+const FURROWS = [0, Math.PI / 2, Math.PI / 4, (Math.PI * 3) / 4].map((a) => [Math.cos(a), Math.sin(a)] as const);
 
 /** The land is painted in squares this many pixels across, as they come into view. */
 export const TILE = 128;
@@ -45,6 +72,11 @@ export class TerrainPainter {
   private readonly paths: Segment[];
   /** The top of the cliff's face in each column, with its painted wobble, or NaN where there is none. */
   private readonly cliffTops: Float32Array;
+  /** The province's regions by kind. */
+  private readonly regions: Record<Region['kind'], Region['at'][]>;
+  private readonly fords: readonly Point[];
+  /** The patchwork: each field's centre, whether it lies in the fields, and its crop and furrows. */
+  private readonly fields: { cols: number; rows: number; x: Float32Array; y: Float32Array; farmed: Uint8Array; crop: Uint8Array; furrow: Uint8Array } | null;
 
   constructor(map: MapModel) {
     this.map = map;
@@ -59,6 +91,108 @@ export class TerrainPainter {
         if (y !== undefined) this.cliffTops[x] = y + (noise(x / 6, 0, 71) - 0.5) * 5;
       }
     }
+    this.fords = map.province.fords ?? [];
+    const regions = map.province.regions ?? [];
+    this.regions = { fields: [], heath: [], downs: [] };
+    for (const r of regions) this.regions[r.kind].push(r.at);
+    this.fields = null;
+    if (this.regions.fields.length) {
+      const cols = Math.ceil(this.width / FIELD) + 1;
+      const rows = Math.ceil(this.height / FIELD) + 1;
+      const greens: Point[] = [...map.province.locations.map((l) => l.at), ...map.province.decor.map((d) => d.at), map.province.hero];
+      const fields = { cols, rows, x: new Float32Array(cols * rows), y: new Float32Array(cols * rows), farmed: new Uint8Array(cols * rows), crop: new Uint8Array(cols * rows), furrow: new Uint8Array(cols * rows) };
+      for (let j = 0; j < rows; j++) {
+        for (let i = 0; i < cols; i++) {
+          const k = j * cols + i;
+          fields.x[k] = (i + 0.15 + 0.7 * hash(i, j, 81)) * FIELD;
+          fields.y[k] = (j + 0.15 + 0.7 * hash(i, j, 82)) * FIELD;
+          // Places stand on a green of their own, not in a crop.
+          const green = greens.some(([gx, gy]) => Math.hypot(gx - fields.x[k], gy - fields.y[k]) < 76);
+          fields.farmed[k] = !green && this.within('fields', fields.x[k], fields.y[k]) > 0 ? 1 : 0;
+          let pick = hash(i, j, 83);
+          let crop = 0;
+          while (crop < CROPS.length - 1 && pick >= CROPS[crop][0]) pick -= CROPS[crop++][0];
+          fields.crop[k] = crop;
+          fields.furrow[k] = Math.floor(hash(i, j, 84) * FURROWS.length);
+        }
+      }
+      this.fields = fields;
+    }
+  }
+
+  /** How far inside a region of this kind a point lies: above zero inside, with a ragged edge. */
+  private within(kind: Region['kind'], x: number, y: number): number {
+    let most = -1;
+    for (const [cx, cy, rx, ry] of this.regions[kind]) {
+      if (Math.abs(x - cx) > rx * 1.4 || Math.abs(y - cy) > ry * 1.4) continue;
+      most = Math.max(most, 1 - Math.hypot((x - cx) / rx, (y - cy) / ry));
+    }
+    return most < -0.4 ? most : most + (fbm(x / 70, y / 70, 2, EDGES[kind]) - 0.5) * 0.4;
+  }
+
+  /**
+   * The colour of open land at a point, from its light: a field or the hedge round it, heather, the
+   * downs, or meadow. Says what sort of ground it is: tufts and petals only grow on grass.
+   */
+  private land(x: number, y: number, level: number, fen: boolean): { colour: number; ground: number } {
+    const light = (level - 0.52) * 0.45;
+    const fields = this.fields;
+    if (fields) {
+      // The two nearest field centres: the pixel is in the nearer one's field, and on a hedge where the two meet.
+      const ci = Math.floor(x / FIELD);
+      const cj = Math.floor(y / FIELD);
+      let a = -1;
+      let b = -1;
+      let da = Infinity;
+      let db = Infinity;
+      for (let j = Math.max(0, cj - 1); j <= Math.min(fields.rows - 1, cj + 1); j++) {
+        for (let i = Math.max(0, ci - 1); i <= Math.min(fields.cols - 1, ci + 1); i++) {
+          const k = j * fields.cols + i;
+          const d = (x - fields.x[k]) ** 2 + (y - fields.y[k]) ** 2;
+          if (d < da) {
+            [b, db] = [a, da];
+            [a, da] = [k, d];
+          } else if (d < db) [b, db] = [k, d];
+        }
+      }
+      if (fields.farmed[a] || fields.farmed[b]) {
+        const hedge = (db - da) / (2 * Math.hypot(fields.x[a] - fields.x[b], fields.y[a] - fields.y[b]));
+        // Most fields are hedged; some just meet, or have a gap.
+        const hedged = hash(Math.min(a, b), Math.max(a, b), 85) > 0.25 && noise(x / 9, y / 9, 86) > 0.22;
+        if (hedged && hedge < 1) return { colour: shade(LEAF, 0.34 + (noise(x / 2.5, y / 2.5, 87) - 0.5) * 0.4 + light, x, y), ground: Ground.Hedge };
+        if (fields.farmed[a]) {
+          const [fx, fy] = FURROWS[fields.furrow[a]];
+          const furrow = Math.floor((x * fx + y * fy + 4000) / 2.5) % 2 === 0;
+          const texture = (noise(x / 5, y / 5, 88) - 0.5) * 0.12 - (hedged && hedge < 2.5 ? 0.08 : 0);
+          return { colour: CROPS[fields.crop[a]][1](light + texture, x, y, furrow), ground: Ground.Field };
+        }
+      }
+    }
+    if (this.regions.downs.length && this.within('downs', x, y) > 0) {
+      // The downs roll: slopes lit from the north-west, pale grass, a chalky scar here and there.
+      const slope = fbm((x - 5) / 240, (y - 5) / 170, 2, 95) - fbm((x + 5) / 240, (y + 5) / 170, 2, 95);
+      const chalk = fbm(x / 22, y / 22, 2, 96) + (noise(x / 5, y / 5, 97) - 0.5) * 0.2 > 0.8;
+      if (chalk) return { colour: shade(SAND, 0.56 + light, x, y), ground: Ground.Rough };
+      // Never the brightest greens, which would glare through the mist.
+      return { colour: shade(GRASS, Math.min(0.74, 0.56 + light * 1.3 + slope * 5), x, y), ground: Ground.Grass };
+    }
+    if (this.regions.heath.length && this.within('heath', x, y) > 0) {
+      // The heath: clumps of heather, sprigs of it in flower, gorse, and dry grass between.
+      const heather = fbm(x / 20, y / 15, 2, 88) + (noise(x / 4, y / 4, 89) - 0.5) * 0.3;
+      if (heather > 0.64) {
+        // A clump of heather: brown stems, mauve flowers on top, thicker in the middle.
+        const bloom = hash(x, y, 90) < 0.3 + (heather - 0.64) * 3;
+        return { colour: bloom ? (hash(x, y, 92) < 0.3 ? PLUM[3] : PLUM[2]) : shade(EARTH, 0.45 + light + (noise(x / 2, y / 2, 96) - 0.5) * 0.3, x, y), ground: Ground.Rough };
+      }
+      if (hash(x, y, 91) < 0.01) return { colour: PLUM[3], ground: Ground.Rough };
+      if (hash(x, y, 93) < 0.002) return { colour: GOLD[5], ground: Ground.Rough };
+      // Between the heather, dry grass, with wiry green in the hollows.
+      const green = fbm(x / 24, y / 24, 2, 94) < 0.44;
+      return { colour: green ? shade(GRASS, level - 0.1, x, y) : shade(REED, 0.5 + light + (noise(x / 4, y / 4, 97) - 0.5) * 0.16, x, y), ground: Ground.Grass };
+    }
+    // Fen country: tussocks of straw-coloured sedge through the grass.
+    const sedge = fen && fbm(x / 34, y / 34, 2, 98) + (noise(x / 5, y / 5, 99) - 0.5) * 0.3 > 0.56;
+    return { colour: sedge ? shade(REED, level + 0.08, x, y) : shade(GRASS, level, x, y), ground: Ground.Grass };
   }
 
   /** Paints the tile at (tx, ty), counted in tiles. Tiles at the right and bottom edges may be smaller. */
@@ -94,6 +228,9 @@ export class TerrainPainter {
         const edge = r.d - halfWidth + (noise(x / 5, y / 5, 12) - 0.5) * 2.4;
         const top = this.cliffTops[x];
         const face = Number.isNaN(top) ? -1 : y - top;
+        const p = paths.d[i];
+        const pathHalf = pathHalfWidth(paths.s[i]) + (noise(x / 3, y / 3, 22) - 0.5) * 1.2;
+        const ford = this.fords.some(([fx, fy]) => Math.abs(x - fx) < FORD_WATER && Math.abs(y - fy) < FORD_WATER && Math.hypot(x - fx, y - fy) < FORD_WATER);
 
         if (face >= 0 && face < CLIFF_HEIGHT) {
           ground[i] = Ground.Cliff;
@@ -116,6 +253,24 @@ export class TerrainPainter {
           if (shore > -1.6) bitmap.data[i] = hash(x, y, 95) < 0.5 ? EARTH[1] : REED[0];
           else if (hash(x, y, 96) < 0.006) bitmap.data[i] = WATER[8];
           else bitmap.data[i] = CYCLE_BOG[phase];
+          continue;
+        }
+
+        if (edge < 0 && ford) {
+          // The ford: shallows over gravel, and stepping stones where the road wades across.
+          ground[i] = Ground.Water;
+          const phase = Math.floor(r.s / 3.4 + fbm(r.s / 18, (r.d * r.side) / 6, 2, 13) * 5) % 6;
+          // Stepping stones on a rough grid along the road, lit from above, the water breaking white below them.
+          const sx = Math.floor(x / 7);
+          const sy = Math.floor(y / 6);
+          const cx = sx * 7 + 3.5 + (hash(sx, sy, 97) - 0.5) * 2;
+          const cy = sy * 6 + 3 + (hash(sx, sy, 99) - 0.5) * 1.5;
+          const d = Math.hypot((x - cx) / 2.8, (y - cy) / 2.1);
+          const onStone = p < pathHalf + 1.5 && hash(sx, sy, 98) < 0.8;
+          if (onStone && d < 1) bitmap.data[i] = shade(ROCK, 0.86 - (y - cy + 2) * 0.12, x, y);
+          else if (onStone && d < 1.45 && y > cy) bitmap.data[i] = WATER[9];
+          else if (hash(x, y, 96) < 0.06) bitmap.data[i] = shade(ROCK, 0.45, x, y);
+          else bitmap.data[i] = hash(x, y, 14) < 0.45 ? WATER[8] : CYCLE_SHALLOW[(phase + 3) % 6];
           continue;
         }
 
@@ -142,6 +297,12 @@ export class TerrainPainter {
           const lit = r.side > 0 ? 0.62 : 0.3;
           const level = edge < 1.2 ? 0.1 : lit + (noise(x / 3, y / 3, 16) - 0.5) * 0.35;
           bitmap.data[i] = shade(EARTH, level, x, y);
+          if (ford && p < pathHalf + 1) {
+            // The road runs down the bank into the ford, churned to mud.
+            ground[i] = Ground.Road;
+            wild.data[i] = bitmap.data[i];
+            bitmap.data[i] = shade(DIRT, 0.42 + (noise(x / 3, y / 3, 23) - 0.5) * 0.3, x, y);
+          }
           continue;
         }
 
@@ -153,12 +314,9 @@ export class TerrainPainter {
         if (forest > 0.44) level -= Math.min(0.3, (forest - 0.44) * 1.4);
         if (!Number.isNaN(top) && face >= CLIFF_HEIGHT && face < CLIFF_HEIGHT + 8) level -= 0.28 - (face - CLIFF_HEIGHT) * 0.03;
 
-        // Fen country: tussocks of straw-coloured sedge through the grass.
-        const sedge = province.fen && fbm(x / 34, y / 34, 2, 98) + (noise(x / 5, y / 5, 99) - 0.5) * 0.3 > 0.56;
         if (province.fen) level -= 0.06;
-        wild.data[i] = sedge ? shade(REED, level + 0.08, x, y) : shade(GRASS, level, x, y);
-        const p = paths.d[i];
-        const pathHalf = pathHalfWidth(paths.s[i]) + (noise(x / 3, y / 3, 22) - 0.5) * 1.2;
+        const land = this.land(x, y, level, Boolean(province.fen));
+        wild.data[i] = land.colour;
         if (p < pathHalf) {
           ground[i] = Ground.Road;
           let dirt = 0.62 + (noise(x / 5, y / 5, 23) - 0.5) * 0.36 + (hash(x, y, 24) - 0.5) * 0.14;
@@ -167,14 +325,13 @@ export class TerrainPainter {
           bitmap.data[i] = shade(DIRT, dirt, x, y);
           continue;
         }
-        if (p < pathHalf + 1.8) level -= 0.16;
-
-        ground[i] = Ground.Grass;
-        bitmap.data[i] = sedge ? shade(REED, level + 0.08, x, y) : shade(GRASS, level, x, y);
+        ground[i] = land.ground;
+        bitmap.data[i] = p < pathHalf + 1.8 ? this.land(x, y, level - 0.16, Boolean(province.fen)).colour : land.colour;
       }
     }
 
-    for (let i = 0; i < w * h; i++) if (ground[i] !== Ground.Grass && ground[i] !== Ground.Road) wild.data[i] = bitmap.data[i];
+    // Water, banks and cliffs look the same with or without roads; the open land under the fog has none.
+    for (let i = 0; i < w * h; i++) if (ground[i] === Ground.Water || ground[i] === Ground.Bank || ground[i] === Ground.Cliff) wild.data[i] = bitmap.data[i];
 
     // Details, from this tile's own dice, placed where they fit inside it.
     const random = rng((Math.imul(tx + 1, 73856093) ^ Math.imul(ty + 1, 19349663) ^ 5) >>> 0);

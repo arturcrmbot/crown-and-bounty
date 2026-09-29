@@ -136,6 +136,11 @@ export function playStep(terrain: Terrain, rides: boolean) {
           noise(t + d, 0.05, 'bandpass', 900, 0.4 * loud);
           tone(200, t + d, 0.08, 'triangle', 0.22 * loud, 0.7);
           break;
+        case Terrain.Ford:
+          // Wading the ford: a splash, and the water running off.
+          noise(t + d, 0.12, 'bandpass', 2100, 0.34 * loud, 0.45);
+          noise(t + d + 0.04, 0.2, 'highpass', 3600, 0.1 * loud);
+          break;
         case Terrain.Forest:
           // A soft fall, with a leaf or twig underfoot.
           noise(t + d, 0.06, 'lowpass', 400, 0.35 * loud, 0.5);

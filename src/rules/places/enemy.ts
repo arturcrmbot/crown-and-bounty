@@ -206,6 +206,21 @@ function surrender(state: GameState, place: Location): Result | null {
   return beat(state, place.id, { title: 'They surrender!', lines, reward: foe.reward, xp: Math.round(battleXp(foe.army) / 2) });
 }
 
+/**
+ * Whether the bot would fight this enemy now: a band when the sergeants like the odds; a gatekeeper
+ * or the villain only when it's a sure thing, since losing to them costs the whole army, and that
+ * takes weeks to raise again in a big province, while the villain recruits. Once the days run
+ * short, a villain is worth a gamble.
+ */
+export function worthAFight(state: GameState, place: Location): boolean {
+  const foe = place.enemy;
+  if (!foe || place.done) return false;
+  const odds = winChance(state, place.id, 8);
+  if (place.kind === 'hideout' && ((state.day > 50 && odds >= 0.5) || (state.day > 75 && odds >= 0.25))) return true;
+  const sure = foe.tier === 'gate' || place.kind === 'hideout';
+  return odds >= (place.kind === 'hideout' ? 0.85 : 0.9) && (!sure || winChance(state, place.id, 16) >= 0.95);
+}
+
 /** What the two ways to fight mean, under their buttons. */
 export const FIGHT_NOTE = 'You command every stack yourself.';
 export const SERGEANTS_NOTE = 'They fight it out for you, by the same rules, in a moment.';
@@ -251,15 +266,11 @@ export function enemy(kind: 'patrol' | 'hideout'): PlaceKind {
     },
     worth(state, place) {
       if (place.done) return null;
-      const odds = winChance(state, place.id, 8);
-      if (kind === 'patrol') {
-        if (odds >= 0.9) return place.enemy!.reward + 200;
-        // A pack that would follow him is worth the ride, even when a fight would be a gamble.
-        const offer = tameOffer(state, place, 8);
-        return offer?.whole && offer.respected && offer.joining.length ? place.enemy!.reward + 200 : null;
-      }
-      // A villain is worth a gamble once the days are running out.
-      return odds >= 0.85 || (state.day > 30 && odds >= 0.5) || (state.day > 60 && odds >= 0.25) ? 5000 : null;
+      if (worthAFight(state, place)) return kind === 'patrol' ? place.enemy!.reward + 200 : 5000;
+      if (kind !== 'patrol') return null;
+      // A pack that would follow him is worth the ride, even when a fight would be a gamble.
+      const offer = tameOffer(state, place);
+      return offer?.whole && offer.respected && offer.joining.length ? place.enemy!.reward + 200 : null;
     },
   };
 }
