@@ -31,6 +31,7 @@ export const TROOP_SOUNDS: Record<TroopId, TroopSounds> = {
   poachers: { blow: 'dagger', cry: 'man', feet: 'boots' },
   bandits: { blow: 'club', cry: 'man', feet: 'boots' },
   boars: { blow: 'tusk', cry: 'boar', feet: 'trotters' },
+  rook: { blow: 'dagger', cry: 'man', feet: 'boots' },
   heroKnight: { blow: 'lance', cry: 'man', feet: 'hooves', armour: true },
   heroWizard: { blow: 'staff', cry: 'man', feet: 'boots' },
   heroRanger: { blow: 'blade', cry: 'man', feet: 'boots' },

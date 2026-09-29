@@ -1,4 +1,5 @@
 import { ARTIFACTS } from '../../content/artifacts';
+import type { PortraitId } from '../../content/portraits';
 import { crowd } from '../../content/troops';
 import { artifactChoices, foundNote, gainXp, giveArtifact, heroStats } from '../hero';
 import { close, locationById, show, TROOPS, troops, update, type Army, type Card, type Choice, type GameEvent, type GameState, type Location, type PlaceText, type Result } from '../state';
@@ -40,6 +41,12 @@ export function forceLine(army: Army, exact = true): string {
     .filter((s) => s.count > 0)
     .map((s) => (TROOPS[s.troop].leadership >= 99 ? `**${TROOPS[s.troop].one}**` : `**${exact ? troops(s.troop, s.count) : crowd(s.troop, s.count)}**`));
   return parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}` : (parts[0] ?? 'nobody');
+}
+
+/** The face of whoever leads an army, a villain or a captain, for its cards: none for a band with no leader, or none drawn. */
+export function faceOf(army: Army): { portrait?: PortraitId } {
+  const face = army.map((s) => TROOPS[s.troop].face).find(Boolean);
+  return face ? { portrait: face } : {};
 }
 
 /** Whether the hero's scouts count an enemy exactly: a Ranger's do, and anyone's with Scouting. */

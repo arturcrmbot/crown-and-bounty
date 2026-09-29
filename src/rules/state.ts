@@ -45,6 +45,8 @@ export type Enemy = {
   behaviour?: 'guard' | 'roam' | 'hunt';
   range?: number;
   home?: Point;
+  /** A band that holds its ground until `day`, then roams or hunts as `behaviour` says: that dawn, the news says so. */
+  wakes?: { day: number; news: string };
   /** How far off a hunter notices the hero, when it has keener eyes (or better spies) than most (`HUNT_SIGHT`). */
   sight?: number;
   /** A hunter that comes for the hero whatever the odds: a villain in a temper. */

@@ -8,7 +8,7 @@ import { Bitmap, SHADOW } from './bitmap';
 import { FogMask } from './fog';
 import { MapTiles } from './mapTiles';
 import { GOLD, INK, RED, SILHOUETTE } from './palette';
-import { animFrames, bodyHeight, everyFrame, STAND, troopFigure } from './battleSprites';
+import { animFrames, bodyHeight, everyFrame, STAND, troopFigure, type Figure } from './battleSprites';
 import { heroArtId } from './units';
 import {
   abbey, boulder, camp,
@@ -54,12 +54,38 @@ export type AdventureScene = {
 
 const place = (sprite: Bitmap, [x, y]: Point, footFromTop: number): Placed => ({ sprite, x: x - sprite.width / 2, y: y - footFromTop });
 
+/** The troop worth most in an army, leaving out its leader. */
+const mainTroop = (army: Army): TroopId | undefined =>
+  army.filter((s) => s.count > 0 && !leads(s.troop)).sort((a, b) => b.count * troopPower(b.troop) - a.count * troopPower(a.troop))[0]?.troop;
+
 /** The troop that stands for a stack on the map: its leader, a villain or a captain, if it has one; else the one worth most. */
 function leadTroop(army: Army): TroopId {
-  const living = army.filter((s) => s.count > 0);
-  const leader = living.find((s) => leads(s.troop));
-  if (leader) return leader.troop;
-  return [...living].sort((a, b) => b.count * troopPower(b.troop) - a.count * troopPower(a.troop))[0].troop;
+  return army.find((s) => s.count > 0 && leads(s.troop))?.troop ?? mainTroop(army) ?? army[0].troop;
+}
+
+/**
+ * A band's leader with one of his men at his heel, a step behind him and to the side, away from
+ * whoever comes: one sprite, with his feet where the leader's are, as wide on either side of them.
+ */
+function atHeel(leader: Bitmap, lead: Figure, man: Figure): { sprite: Bitmap; foot: number } {
+  const [lx, ly] = [-lead.x, -lead.y];
+  const [mx, my] = [-man.x, -man.y];
+  const [dx, dy] = [Math.round(leader.width * 0.62), -5];
+  const half = Math.max(lx, leader.width - lx, mx - dx, dx - mx + man.sprite.width);
+  const top = Math.min(-ly, dy - my);
+  const out = new Bitmap(half * 2, Math.max(leader.height - ly, dy - my + man.sprite.height) - top);
+  // His man first, behind him; a shadow only where nothing else is.
+  const paint = (src: Bitmap, x0: number, y0: number) => {
+    for (let y = 0; y < src.height; y++) {
+      for (let x = 0; x < src.width; x++) {
+        const v = src.data[y * src.width + x];
+        if (v !== 0 && (v !== SHADOW || out.get(x0 + x, y0 + y) === 0)) out.set(x0 + x, y0 + y, v);
+      }
+    }
+  };
+  paint(man.sprite, half + dx - mx, -top + dy - my);
+  paint(leader, half - lx, -top - ly);
+  return { sprite: out, foot: -top };
 }
 
 /** The sprite (or frames) that stands for a place on the map, and how far below its top the foot is. */
@@ -113,11 +139,20 @@ function landmark(l: Location): { frames: Bitmap[]; foot: number; animated: bool
       // and then it fidgets, as its Wesnoth unit does, each band in its own time.
       const lead = leadTroop(l.enemy!.army);
       const still = troopFigure(lead, 'red', -1, STAND, 'map');
-      const foot = -still.y;
       // Those Wesnoth gave no fidget just breathe: a pixel up for a moment, every couple of seconds.
       const fidget = animFrames(lead, 'idle').length > 1 ? everyFrame(lead, 'idle', 'red', -1, 'map', 120) : Array<Bitmap>(4).fill(raised(still.sprite));
+      let poses = [...Array<Bitmap>(fidget.length > 4 ? 24 : 14).fill(still.sprite), ...fidget];
+      let foot = -still.y;
+      // A villain or a captain has one of his men at his heel, so a band reads as his: a wolf at the huntsman's.
+      const men = leads(lead) ? mainTroop(l.enemy!.army) : undefined;
+      if (men) {
+        const man = troopFigure(men, 'red', -1, STAND, 'map');
+        const joined = poses.map((f) => atHeel(f, still, man));
+        poses = joined.map((j) => j.sprite);
+        foot = joined[0].foot;
+      }
       // The red ring under his feet says he is a foe, as the hero's gold one says he is your own.
-      const frames = [...Array<Bitmap>(fidget.length > 4 ? 24 : 14).fill(still.sprite), ...fidget].map((f) => ringed(f, foot, RED));
+      const frames = poses.map((f) => ringed(f, foot, RED, still.sprite.width));
       const turn = [...l.id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % frames.length;
       return { frames: [...frames.slice(turn), ...frames.slice(0, turn)], foot, animated: true };
     }
@@ -131,11 +166,11 @@ function raised(sprite: Bitmap): Bitmap {
   return out;
 }
 
-/** The ring round a figure's feet, bright with a dark edge: gold for the hero, red for a foe. */
-function ringed(sprite: Bitmap, foot: number, ramp: readonly number[] = GOLD): Bitmap {
+/** The ring round a figure's feet (as wide as `width` asks), bright with a dark edge: gold for the hero, red for a foe. */
+function ringed(sprite: Bitmap, foot: number, ramp: readonly number[] = GOLD, width = sprite.width): Bitmap {
   const out = new Bitmap(sprite.width, sprite.height + 6);
   out.data.set(sprite.data);
-  const rx = Math.round(sprite.width * 0.36);
+  const rx = Math.round(width * 0.36);
   const ry = Math.max(4, Math.round(rx * 0.26));
   for (const [grow, colour] of [[1, INK], [-1, ramp[3]], [0, ramp[6]]] as const) {
     for (let a = 0; a < Math.PI * 2; a += 0.005) {
