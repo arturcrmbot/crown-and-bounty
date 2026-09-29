@@ -106,6 +106,8 @@ try {
   check(start.hero.background === 'knight' && start.army[0].troop === 'knights', 'the knight rides out with his knights');
   await kc.choose('Ride out');
   check((await screen()) === 'adventure' && !(await kc.state()).opening, 'then he is on the map, his choice made');
+  const edge = await kc.state();
+  check(edge.hero.at[0] > edge.world.width - 200 && edge.hero.facing === -1, 'he starts at the east edge of Aldmoor, on the King\u2019s road, looking into the land');
   const heard = () => kc.call(() => window.__kc.sound().effects);
 
   check((await go('chest', 'Open')) === 'Treasure Chest', 'the chest opens on arrival');
@@ -136,8 +138,10 @@ try {
   check((await kc.lines()).includes('looks at you'), 'the patrol is too strong at first');
   await kc.choose('Retreat');
 
-  // The highwaymen on the tower road are an easy first fight: fought by hand, then left to the sergeants.
+  // The patrol holds the bridge, so the highwaymen on the heath's tower road are the long way round, by the ford.
+  const beforeFord = await kc.state();
   await go('highwaymen', 'Approach');
+  check((await kc.state()).day >= beforeFord.day + 2, `the far side of the river is days away by the ford (day ${(await kc.state()).day})`);
   await kc.choose('Fight');
   await page.waitForTimeout(200);
   check((await kc.call(() => window.__kc.screen())) === 'battle', 'fighting the highwaymen opens the battlefield');
@@ -221,7 +225,7 @@ try {
   check(learned.length > 0 && (await kc.state()).hero.level >= 2, `a first fight and some finds bring a level-up (${learned.join(', ')})`);
   await go('boars', 'Approach');
   await kc.choose('Let the sergeants');
-  check((await kc.title()) === 'Victory!', 'the sergeants see off the boars on the castle road');
+  check((await kc.title()) === 'Victory!', 'the sergeants see off the boars at the edge of the King\u2019s chase');
   await close();
   await go('castle', 'Visit');
   check(await kc.choose('Recruit'), 'the castle offers knights');

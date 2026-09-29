@@ -49,7 +49,7 @@ export function play(id: Sound, pan = 0, delay = 0) {
   sound(id, pan, delay);
 }
 
-const GROUND: Partial<Record<Terrain, Ground>> = { [Terrain.Road]: 'road', [Terrain.Bridge]: 'bridge', [Terrain.Forest]: 'forest' };
+const GROUND: Partial<Record<Terrain, Ground>> = { [Terrain.Road]: 'road', [Terrain.Bridge]: 'bridge', [Terrain.Ford]: 'ford', [Terrain.Forest]: 'forest' };
 
 /** One footfall (or hoofbeat, mounted), coloured by the terrain underfoot. */
 export function playStep(terrain: Terrain, rides: boolean) {

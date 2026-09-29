@@ -935,6 +935,10 @@ export class AdventureController implements Screen {
         return [(box.x0 + box.x1) / 2, (box.y0 + box.y1) / 2 + 6];
       },
       hover: () => this.label.text,
+      view: (x: number, y: number) => {
+        this.follow = false;
+        this.view.centreOn(x, y);
+      },
       frameHash: () => {
         let h = 0x811c9dc5;
         for (const v of this.view.screen.data) h = Math.imul(h ^ v, 0x01000193);

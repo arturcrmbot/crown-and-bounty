@@ -1,7 +1,7 @@
 import { apply, armyPower, choose, endDay, fight, hasNextCommission, learn, locationById, PLACE_KINDS, provinceOf, visit, winChance, type BoonId, type GameState, type Location } from './game';
 import { buildMap, type MapModel } from './map/model';
 import { planRoute, routeCosts, stepAlong } from './map/movement';
-import { hireOffer, tameOffer } from './places/enemy';
+import { hireOffer, tameOffer, worthAFight } from './places/enemy';
 
 export type BotRun = { won: boolean; day: number; gold: number; power: number; fights: number; retreats: number; level: number; log: string[]; start: GameState; state: GameState };
 
@@ -32,6 +32,8 @@ export function playCommission(start: GameState, map: MapModel, maxSteps = 20000
   };
   /** A hunter on the trail that would beat us, if any: then the day ends behind a town's walls. */
   const hunted = () => state.locations.find((l) => l.enemy?.trailing && !l.done && winChance(state, l.id, 8) < 0.6);
+  /** Enemies it rode up to today and left alone: not again until tomorrow. */
+  let passed = { day: state.day, ids: new Set<string>() };
   for (let guard = 0; guard < 400 && !state.over && !limits.stop?.(state); guard++) {
     let best: { id: string; route: number[]; score: number } | null = null;
     const shelter = hunted() ? state.locations.filter((l) => l.kind === 'castle' || l.kind === 'village') : [];
@@ -41,8 +43,10 @@ export function playCommission(start: GameState, map: MapModel, maxSteps = 20000
       const score = -(route.length ? routeCosts(state, map, route).at(-1)! : 0);
       if (!best || score > best.score) best = { id: l.id, route, score };
     }
+    if (passed.day !== state.day) passed = { day: state.day, ids: new Set() };
     for (const l of best ? [] : state.locations) {
       if (limits.allow && !limits.allow(l)) continue;
+      if (passed.ids.has(l.id)) continue;
       const value = PLACE_KINDS[l.kind].worth(state, l);
       if (value === null) continue;
       const route = planRoute(state, map, l.at, Boolean(l.enemy));
@@ -79,11 +83,17 @@ export function playCommission(start: GameState, map: MapModel, maxSteps = 20000
       continue;
     }
     // A ranger (or anyone with a way with beasts) takes a pack that would follow him, when they'd all come or a fight would be a gamble.
-    const pack = place.enemy && !place.done ? tameOffer(state, place, 8) : null;
-    const tamed = pack?.whole && pack.respected && pack.joining.length && (pack.all || winChance(state, place.id, 8) < 0.9) ? choose(state, place.id, 'tame') : null;
+    const pack = place.enemy && !place.done ? tameOffer(state, place) : null;
+    const tamed = pack?.whole && pack.respected && pack.joining.length && (pack.all || !worthAFight(state, place)) ? choose(state, place.id, 'tame') : null;
     if (tamed) {
       state = tamed.state;
       log.push(`day ${state.day}: tamed ${place.name}`);
+      continue;
+    }
+    // Days on the road: a villain may have recruited, or a pack not come to heel. Fight only if it's worth a fight now.
+    if (place.enemy && !place.done && !worthAFight(state, locationById(state, place.id))) {
+      log.push(`day ${state.day}: ${place.name} (not today)`);
+      passed.ids.add(place.id);
       continue;
     }
     if (place.enemy && !place.done) {

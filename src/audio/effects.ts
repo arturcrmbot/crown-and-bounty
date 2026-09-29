@@ -20,9 +20,9 @@ export type EffectDef = {
 type Play = EffectDef['play'];
 
 /** What the hero's feet (or his horse's hooves) fall on as he rides the map. */
-export type Ground = 'road' | 'bridge' | 'forest' | 'grass';
+export type Ground = 'road' | 'bridge' | 'ford' | 'forest' | 'grass';
 
-/** One footfall, coloured by the ground: a crunch on the road, hollow boards on a bridge, leaves in the wood, a thud on grass. */
+/** One footfall, coloured by the ground: a crunch on the road, hollow boards on a bridge, a splash in the ford, leaves in the wood, a thud on grass. */
 const footfall =
   (ground: Ground, loud: number): Play =>
   (ctx, dest, t) => {
@@ -32,6 +32,10 @@ const footfall =
       case 'bridge':
         burst(ctx, dest, t, 0.05, 'bandpass', 900, 0.4 * loud);
         return tone(ctx, dest, t, 200, 0.08, 0.22 * loud, 'triangle', 0.7);
+      case 'ford':
+        // Wading the ford: a splash, and the water running off.
+        burst(ctx, dest, t, 0.12, 'bandpass', 2100, 0.34 * loud, 0.45);
+        return burst(ctx, dest, t + 0.04, 0.2, 'bandpass', 4200, 0.1 * loud, 1, 0.8);
       case 'forest':
         // A soft fall, with a leaf or twig underfoot.
         burst(ctx, dest, t, 0.06, 'lowpass', 400, 0.8 * loud, 0.5);
@@ -130,10 +134,12 @@ const EVERYDAY = {
   // Footfalls under hoofbeats, and softer on grass and leaves than on a road or a bridge's boards.
   'foot:road': effect('faint', footfall('road', 0.65), 2),
   'foot:bridge': effect('faint', footfall('bridge', 0.65), 1.1),
+  'foot:ford': effect('faint', footfall('ford', 0.65)),
   'foot:forest': effect('faint', footfall('forest', 0.65), 2.6),
   'foot:grass': effect('faint', footfall('grass', 0.65), 2.5),
   'hoof:road': effect('faint', hoofbeat('road'), 1.2),
   'hoof:bridge': effect('faint', hoofbeat('bridge'), 0.8),
+  'hoof:ford': effect('faint', hoofbeat('ford'), 0.75),
   'hoof:forest': effect('faint', hoofbeat('forest'), 1.4),
   'hoof:grass': effect('faint', hoofbeat('grass'), 1.1),
 } satisfies Record<string, EffectDef>;

@@ -286,6 +286,8 @@ export class Game {
       idle: () => adventure()?.idle() ?? true,
       status: () => adventure()?.status() ?? null,
       centre: (id: string) => adventure()?.centre(id) ?? null,
+      /** Scrolls the map to centre on a map point, as a player would before clicking something far off. */
+      view: (x: number, y: number) => adventure()?.view(x, y),
       hover: () => adventure()?.hover() ?? null,
       screen: () => this.top.name,
       battle: () => (this.top instanceof BattleController ? this.top.debug() : null),

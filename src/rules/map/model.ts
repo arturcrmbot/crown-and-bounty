@@ -7,7 +7,7 @@ import type { Grid } from './pathfinding';
 /** Walk-grid cells are 8 map pixels square. */
 export const CELL = 8;
 
-export const Terrain = { Grass: 0, Road: 1, Water: 2, Cliff: 3, Forest: 4, Rock: 5, Building: 6, Bridge: 7 } as const;
+export const Terrain = { Grass: 0, Road: 1, Water: 2, Cliff: 3, Forest: 4, Rock: 5, Building: 6, Bridge: 7, Ford: 8 } as const;
 export type Terrain = (typeof Terrain)[keyof typeof Terrain];
 
 /** Half-width of the river in pixels, a distance `s` along it. The painter uses the same numbers. */
@@ -46,6 +46,9 @@ const FOOTPRINTS: Record<string, [number, number]> = {
   hut: [24, 12],
 };
 
+/** A road wades the river where it crosses within this many pixels of one of the province's fords. */
+const FORD_REACH = 40;
+
 /** An enemy stack holds the ground this far round it, so it can close a road. */
 const ENEMY_REACH = 22;
 
@@ -58,7 +61,7 @@ export type MapModel = {
   width: number;
   height: number;
   terrain: Uint8Array;
-  /** Movement cost per cell: 1 on roads and the bridge, 2 on grass, Infinity where nothing can pass. */
+  /** Movement cost per cell: 1 on roads and the bridge, 2 on grass and through a ford, Infinity where nothing can pass. */
   grid: Grid;
   river: Point[];
   paths: Point[][];
@@ -122,6 +125,24 @@ export function forestAmount(province: Province, x: number, y: number): number {
   return amount;
 }
 
+/** Which of the province's forests reaches furthest into a point (its index), or -1 for none: its trees are its own mix. */
+export function forestAt(province: Province, x: number, y: number): number {
+  const index = forestIndex(province);
+  const cx = Math.min(index.cols - 1, Math.max(0, Math.floor(x / INDEX_CELL)));
+  const cy = Math.min(index.rows - 1, Math.max(0, Math.floor(y / INDEX_CELL)));
+  let best = -1;
+  let most = 0;
+  for (const i of index.forests[cy * index.cols + cx]) {
+    const [fx, fy, rx, ry] = province.forests[i];
+    const amount = 1.05 - Math.hypot((x - fx) / rx, (y - fy) / ry) * 0.55;
+    if (amount > most) {
+      most = amount;
+      best = i;
+    }
+  }
+  return best;
+}
+
 /**
  * Distance from each cell's centre to the nearest of some polylines, and the distance along it
  * there, for cells within `radius` pixels (Infinity beyond). The same sums as `nearest`, done
@@ -167,6 +188,7 @@ export function buildMap(province: Province): MapModel {
   const river = smooth(province.river);
   const paths = province.paths.map((p) => smooth(p));
   const cliff = province.cliff ? smooth(province.cliff.line, 6) : null;
+  const fords = province.fords ?? [];
   const terrain = new Uint8Array(width * height);
   // Only nearness matters here: the river is at most ~17 px wide with its bank, roads block forest within 9 px.
   const riverField = cellField([river], 28, width, height);
@@ -184,7 +206,7 @@ export function buildMap(province: Province): MapModel {
       const face = top === undefined ? -99 : y - top;
       let t: Terrain = Terrain.Grass;
       if (province.cliff && face >= -3 && face < province.cliff.height + 3) t = Terrain.Cliff;
-      else if (r.d < riverHalfWidth(r.s) + 4 || poolEdge(province, x, y) < 3) t = onPath ? Terrain.Bridge : Terrain.Water;
+      else if (r.d < riverHalfWidth(r.s) + 4 || poolEdge(province, x, y) < 3) t = !onPath ? Terrain.Water : fords.some(([fx, fy]) => Math.hypot(x - fx, y - fy) < FORD_REACH) ? Terrain.Ford : Terrain.Bridge;
       else if (onPath) t = Terrain.Road;
       else if (p.d > 9 && forestAmount(province, x, y) > 0.5) t = Terrain.Forest;
       terrain[cy * width + cx] = t;
@@ -208,7 +230,7 @@ export function buildMap(province: Province): MapModel {
     return cells;
   };
   const block = (cells: number[], as: Terrain) => {
-    for (const i of cells) if (terrain[i] !== Terrain.Road && terrain[i] !== Terrain.Bridge) terrain[i] = as;
+    for (const i of cells) if (terrain[i] !== Terrain.Road && terrain[i] !== Terrain.Bridge && terrain[i] !== Terrain.Ford) terrain[i] = as;
   };
 
   for (const [x, y, w, h] of province.crags) block(cellsUnder(x, y, w * 0.9, h * 0.45), Terrain.Rock);
@@ -238,14 +260,15 @@ export function buildMap(province: Province): MapModel {
       const f = forestAmount(province, x, y);
       if (f < 0.5 || hash(gx, gy, 3) > (f > 0.56 ? 0.95 : 0.55) || !clear(x, y)) continue;
       const pick = hash(gx, gy, 4);
-      trees.push({ x, y, kind: pick < woods.pine ? 'pine' : pick < woods.pine + woods.willow ? 'willow' : 'oak', variant: hash(gx, gy, 5) });
+      const pine = province.forests[forestAt(province, x, y)]?.[4] ?? woods.pine;
+      trees.push({ x, y, kind: pick < pine ? 'pine' : pick < pine + woods.willow ? 'willow' : 'oak', variant: hash(gx, gy, 5) });
     }
   }
 
   const cost = new Float32Array(width * height);
   for (let i = 0; i < cost.length; i++) {
     const t = terrain[i];
-    cost[i] = t === Terrain.Road || t === Terrain.Bridge ? 1 : t === Terrain.Grass ? 2 : Infinity;
+    cost[i] = t === Terrain.Road || t === Terrain.Bridge ? 1 : t === Terrain.Grass || t === Terrain.Ford ? 2 : Infinity;
   }
 
   return { province, width, height, terrain, grid: { width, height, cost }, river, paths, cliff, trees };

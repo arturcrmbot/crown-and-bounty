@@ -150,11 +150,11 @@ describe('the map', () => {
     expect(daysAway(s, map, near)).toBe(0);
     // With his legs spent, even the nearest ride waits for tomorrow.
     expect(daysAway({ ...s, movement: 0 }, map, near)).toBe(1);
-    // The castle is a day's ride from the start, and Grimsby is out of reach behind his patrol.
+    // The castle is within the first day's ride, and Grimsby, the long way round by the ford, days away.
     const castle = locationById(s, 'castle').at;
     expect(daysAway(s, map, castle, true)).toBe(0);
     expect(daysAway({ ...s, movement: 10 }, map, castle, true)).toBe(1);
-    expect(daysAway(s, map, locationById(s, 'hideout').at, true)).toBeNull();
+    expect(daysAway(s, map, locationById(s, 'hideout').at, true)).toBeGreaterThanOrEqual(3);
     expect(whenThere(0)).toBe('today');
     expect(whenThere(1)).toBe('tomorrow');
     expect(whenThere(3)).toBe('in 3 days');
