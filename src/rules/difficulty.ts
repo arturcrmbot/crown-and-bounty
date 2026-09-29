@@ -6,6 +6,7 @@
  * background.
  */
 import { playCommission } from './bot';
+import { provinceOf } from './campaign';
 import { winChance } from './fight';
 import { mapOf } from './map/maps';
 import type { GameState, Tier } from './state';
@@ -23,14 +24,18 @@ export const TARGETS: Record<Tier, { start?: Range; explored?: Range }> = {
   boss: { start: [0, 0.05] },
 };
 
-/** Days of exploring before the `explored` checkpoint. */
+/** Days of exploring before the `explored` checkpoint, in a province as wide as the first ones (40 tiles). */
 export const EXPLORE_DAYS = 6;
+
+/** Days of exploring in this commission's province: longer in a wider one, as its rides are (Aldmoor's 100 tiles: 15). */
+export const exploreDays = (state: GameState) => Math.round((EXPLORE_DAYS * provinceOf(state).width) / (40 * 32));
 
 /** The `explored` checkpoint: the bot rides round, collects, recruits and beats pests, but no more. */
 export function explored(start: GameState): GameState {
+  const days = exploreDays(start);
   return playCommission(start, mapOf(start), 20000, {
     allow: (l) => !l.enemy || l.enemy.tier === 'pest',
-    stop: (s) => s.day >= EXPLORE_DAYS,
+    stop: (s) => s.day >= days,
   }).state;
 }
 

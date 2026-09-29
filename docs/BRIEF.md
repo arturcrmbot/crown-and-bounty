@@ -231,3 +231,23 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
     isn't tested for low spirits.
   - **Balance** isn't retuned here (#14): mixing now costs something, so the bot's Knight with tamed boars beats
     Grimsby less often once explored (94% to 56%), and every tier stays inside its targets.
+- **Aldmoor, bigger (29 Sep, #77, as sketched in `act1/aldmoor.md`):** the first commission is 100 by 75 tiles, two and
+  a half times as wide and as tall, so a day's ride on a road crosses about a third of it. Aldric starts at the east edge
+  on the King's road, facing into the land. The land has regions painted their own way: a patchwork of fields and hedges
+  round Castle Aldmoor and Westmere (every place keeps a green of its own), the heath west of the river (heather, dry grass
+  and gorse), the pale rolling downs to the north-east, the crags along the north, Darkwood (all pines) and the King's
+  chase (mostly oaks). The river runs from edge to edge. Pike's patrol no longer roams: it holds the old bridge, and the
+  ford below the falls in the crags is the long way round: the road wades over stepping stones, slower than a road (it
+  costs what grass does), with a splash underfoot. Everywhere west of the river is two days or more by the ford until
+  the patrol goes. Grimsby's stockade can be reached from day one, the long way: by the ford, over the heath and down the
+  track he rides out by; the wolves hold the short way from the bridge, and the dwarf's delving now runs from his mine in
+  the crags to Darkwood, behind them. Today's places moved into the new land, where the sketch puts them: the shrine by
+  the King's road, the chest on the downs, the butts, the mill on the river, Old Nan at the edge of the chase, the tower
+  and the highwaymen on the heath, St Aldhelm's Well on the heath road, the deserters at the crossroads over the bridge,
+  and Pike's camp on Westmere green. The difficulty model's explored checkpoint grows with a province's width (15 days in
+  Aldmoor, 6 elsewhere). Saves are version 7: an Aldmoor commission saved on the old map begins again on the new one,
+  with the hero it began with; later commissions carry on. Heather stays plum in the morning, the evening and the night,
+  and fades into the mist under the fog like the rest of the land. The bot takes on a gatekeeper or Grimsby only when
+  it's a sure thing (19 in 20 over sixteen battles), and looks again when it gets there: losing the whole army costs
+  weeks in a province this size, while Grimsby recruits. It wins Aldmoor with every background, by day 9 to 13 at the
+  median (6 to 38 in all).

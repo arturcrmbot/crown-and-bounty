@@ -22,18 +22,46 @@ describe('the logical map of Aldmoor', () => {
     }
   });
 
-  it('blocks the river except at the bridge', () => {
-    expect(terrainAt(872, 70)).toBe(Terrain.Water);
-    expect(terrainAt(748, 620)).toBe(Terrain.Water);
+  it('starts the hero at the east edge, on the King\u2019s road', () => {
+    expect(ALDMOOR.hero[0]).toBeGreaterThan(ALDMOOR.width - 200);
+    expect(terrainAt(...ALDMOOR.hero)).toBe(Terrain.Road);
+  });
+
+  it('is 100 by 75 tiles, so a day on a road crosses about a third of it', () => {
+    expect([ALDMOOR.width / 32, ALDMOOR.height / 32]).toEqual([100, 75]);
+    expect((150 * CELL) / ALDMOOR.width).toBeGreaterThan(0.3);
+    expect((150 * CELL) / ALDMOOR.width).toBeLessThan(0.4);
+  });
+
+  it('blocks the river from edge to edge, but for the old bridge and the ford', () => {
+    expect(terrainAt(1799, 100)).toBe(Terrain.Water);
+    expect(terrainAt(1632, 1200)).toBe(Terrain.Water);
+    expect(terrainAt(1456, 2080)).toBe(Terrain.Water);
     const bridges = [...map.terrain].filter((t) => t === Terrain.Bridge).length;
     expect(bridges).toBeGreaterThan(0);
     expect(bridges).toBeLessThan(12);
+    // The ford wades: slower than a road.
+    expect(terrainAt(1769, 360)).toBe(Terrain.Ford);
+    expect(map.grid.cost[cellIndex(map, 1769, 360)]).toBe(2);
+    // Nothing else crosses: the east bank at the top of the map can't be reached from the west but by those two.
+    const shut = { ...map.grid, cost: map.grid.cost.map((c, i) => (map.terrain[i] === Terrain.Bridge || map.terrain[i] === Terrain.Ford ? Infinity : c)) };
+    expect(findPath(shut, cellOf(3100, 1048), cellOf(1000, 800))).toBeNull();
   });
 
   it('blocks the forest and speeds up the roads', () => {
-    expect(terrainAt(140, 560)).toBe(Terrain.Forest);
-    expect(map.grid.cost[cellIndex(map, 440, 430)]).toBe(1);
-    expect(map.grid.cost[cellIndex(map, 600, 480)]).toBe(2);
+    expect(terrainAt(300, 1720)).toBe(Terrain.Forest);
+    expect(terrainAt(2700, 2190)).toBe(Terrain.Forest);
+    expect(map.grid.cost[cellIndex(map, 2900, 990)]).toBe(1);
+    expect(map.grid.cost[cellIndex(map, 3000, 1300)]).toBe(2);
+  });
+
+  it('grows pines in Darkwood and mostly oaks in the King\u2019s chase', () => {
+    const share = (x0: number, y0: number, x1: number, y1: number) => {
+      const here = map.trees.filter((t) => t.x >= x0 && t.x < x1 && t.y >= y0 && t.y < y1);
+      return here.filter((t) => t.kind === 'pine').length / here.length;
+    };
+    expect(share(100, 1600, 700, 2300)).toBeGreaterThan(0.85);
+    expect(share(2400, 2100, 3100, 2400)).toBeLessThan(0.5);
   });
 
   it('plants trees only in the forest', () => {
