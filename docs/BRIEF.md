@@ -189,6 +189,20 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   day. Treasure Hunter: half as much again from treasure, and at dawn the mist lifts over any within 300 paces. War
   Chest: the King's bankers pay a tenth of the purse every payday, up to 500. Two new ones: Scholar (four choices at
   every level-up) and the King's Favourite (four boons at court).
+- **The court remembers, and a boon carries someone forward (29 Sep, #79):** after a commission, King Osric's
+  welcome picks up to three things you did from the story's flags, the most telling first: Sergeant Pike home with
+  his mother, the goose's hymn under Grimsby's walls, Old Nan warm in the wolf pelt, the dwarf's kettle (or his
+  missing cart), the poachers off his deer, Pike's father's banner. An officer who did none of it gets a plain word
+  ("You went straight at him, and no nonsense"). His gold and boons follow on a card of their own. People you helped
+  can ride on with you, as boons: up to two of the three on offer (one is always the King's own), each with his face
+  and what he'd do. Sergeant Pike brings his old patrol, 20 swordsmen if you can lead them, and drills yours (+1
+  attack and defence); Old Nan rides in the baggage cart, and after every battle you win her charms put a tenth of
+  your fallen back on their feet; the Old Mine's dwarf smells gold (at dawn the mist lifts over treasure within 300
+  paces, and treasure gives a quarter more); from the Fenmarch, Brother Anselm prays over your men (+10% morale).
+  A companion rides with Aldric for the rest of the campaign, says hello as the next province opens, and shows on
+  the hero screen under his name. It's all data: each commission's `memories` and `friends` in
+  `content/campaign.ts`, the people in `content/friends.ts`. A generated province's villain has his own memory (his
+  weakness, used), beside the ones every generated province shares; generated provinces have no companions yet.
 - **Big maps (29 Sep, the groundwork for a bigger Aldmoor, #77):** the land is painted in tiles of 128 pixels as they
   come into view, with its trees and buildings, and the rest a tile a frame while nothing much is happening, so a
   province six times the size opens at once. Tufts, petals, reeds and lily pads are sprinkled tile by tile, as thickly

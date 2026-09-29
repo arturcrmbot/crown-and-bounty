@@ -129,12 +129,16 @@ export class CardView {
       choices.className = card.tiles ? 'choices tiles' : 'choices';
       for (const choice of card.choices) {
         const button = document.createElement('button');
-        button.textContent = choice.label;
+        // The label and the line under it go together, beside a face if there is one.
+        const words = document.createElement('span');
+        words.className = 'words';
+        words.textContent = choice.label;
         if (choice.detail) {
           const detail = document.createElement('small');
-          detail.textContent = choice.detail;
-          button.append(detail);
+          detail.innerHTML = format(choice.detail);
+          words.append(detail);
         }
+        button.append(words);
         if (choice.portrait) {
           button.classList.add('with-portrait');
           const face = document.createElement('img');

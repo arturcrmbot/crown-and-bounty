@@ -270,6 +270,8 @@ try {
     await kc.choose(await first());
   }
   check((await kc.title()) === 'The King\u2019s Court', 'the King receives him');
+  const speech = await kc.lines();
+  check(speech.includes('ore cart') && speech.includes('old Pike\u2019s banner'), 'and remembers what he did: the dwarf\u2019s cart, and the watchtower\u2019s banner');
   const atCourt = await kc.state();
   check(atCourt.gold === final.gold + 1500 && atCourt.campaign.court.boons.length === 3, 'the King adds 1,500 gold and offers three boons');
   await page.goto(`${server.url}?speed=8`);
@@ -279,6 +281,7 @@ try {
   // Continue waits for the unit art, and the court's card for the change of scene: give them a moment.
   await page.waitForFunction(() => window.__kc.screen() === 'court' && document.querySelector('.kc-card-wrap:not([hidden]) h3')?.textContent === 'The King\u2019s Court', null, { timeout: 15_000 }).catch(() => {});
   check((await screen()) === 'court' && (await kc.title()) === 'The King\u2019s Court', 'a reload at court comes back to court');
+  check((await kc.choose('Your Majesty')) && (await kc.title()) === 'The King\u2019s Thanks', 'after his welcome, the King offers his boons');
   const boon = await first();
   await kc.choose(boon);
   check((await kc.title())?.startsWith('Commission II'), `after ${boon}, the next commission is read out`);
