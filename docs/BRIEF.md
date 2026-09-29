@@ -2,6 +2,8 @@
 
 Working title. A small browser game, not commercial. The goal is quirky and fun, with the charm of Heroes of Might and Magic 2 and the structure of the original King's Bounty (1990).
 
+The story and the world are in [WORLD.md](WORLD.md) (29 Sep 2026). Where the villains and the story below differ from it, WORLD.md wins.
+
 ## Decided (with Artur, 25 Sep 2026)
 
 - **Premise:** you are the King's officer, taking bounty contracts on villains. Each run is a new commission: a new province, a new set of villains, and a deadline of 100 days.
@@ -9,10 +11,10 @@ Working title. A small browser game, not commercial. The goal is quirky and fun,
 - **No time loops or rewind lore.** Any bigger story runs quietly from one commission to the next.
 - **Run shape:** explore the fogged map, open chests (gold or leadership?), recruit at dwellings, fight roaming stacks. Every 7 days is payday: the King pays you, your troops take wages, and dwellings restock. Beating a villain's castle earns the bounty and a torn piece of the map. Dig in the right spot for the sceptre to win. If you reach day 100 without it, you lose.
 - **Characters vs troops:** your hero is the character, levelling up and learning skills, and maybe a second hero later. Troops are just numbers: 400 peasants are 400 peasants.
-- **Captains:** the rare exception. Once your army is big enough, a notable creature can sign on and bring a small group of its own, such as a dragon captain who is fussy about her hoard. Two or three per run, each with a quirk.
+- **Captains** (changed 29 Sep): the enemy's only. Aldric is the only hero you ever have, and every villain has named captains who lead his bands and fight as heroes do. See `WORLD.md` and #15.
 - **Villains have gimmicks and personality,** for example Baron Grimsby, who stole the royal goose.
 - **Tone:** warm, funny, storybook. The flavour text in `sketches/2d-map-mockup/` shows the voice.
-- **One hero across a campaign** (25 Sep, after the first playtest): levels, skills and gear carry over, and each commission is a new province. RPG depth goes into build choices first (a background, then skills and perks), then story choices, then captains.
+- **One hero across a campaign** (25 Sep, after the first playtest): levels, skills and gear carry over, and each commission is a new province. RPG depth goes into build choices first (a background, then skills and perks), then story choices.
 - **Battles are HoMM2-style:** a hex battlefield where stacks take turns, and the hero casts spells and uses skills. Auto-resolve uses the same engine.
 - **Adventure map is turn-based by day:** each day the hero gets a movement allowance. (Artur asked whether real time would suit a browser better. Turn-based days are assumed for now.)
 
