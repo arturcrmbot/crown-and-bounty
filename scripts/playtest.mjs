@@ -124,6 +124,11 @@ try {
   }
   for (const [id, verb] of [['tower', 'Enter'], ['castle', 'Visit']]) {
     if (await go(id, verb)) await look(id);
+    // The castle's armoury, and what the armourer would pay for anything in the pack.
+    if (id === 'castle' && (await press('Visit the armoury'))) {
+      await look('armoury');
+      if (await press('Sell him your spares')) await look('spares');
+    }
     await press('Close') || (await press('Not today'));
   }
 } catch (error) {
