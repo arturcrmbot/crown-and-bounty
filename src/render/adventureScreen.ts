@@ -13,8 +13,9 @@ import { CLEAR, type Sky, type Weather } from './weather';
 /**
  * `x` and `y` are the sprite's top-left in map pixels. `frames` animate it (flags, wheels);
  * `frame` pins the frame instead of following the clock (a walking hero steps with distance).
+ * `hidden` keeps it off the map for now: a band out of the hero's sight.
  */
-export type Placed = { sprite: Bitmap; frames?: Bitmap[]; frame?: number; x: number; y: number };
+export type Placed = { sprite: Bitmap; frames?: Bitmap[]; frame?: number; x: number; y: number; hidden?: boolean };
 
 const footY = (o: Placed) => o.y + o.sprite.height;
 
@@ -28,6 +29,8 @@ export class AdventureScreen {
   readonly frame: Bitmap;
   private readonly overlay: Bitmap;
   private readonly grain: Uint32Array;
+  /** For each pixel of the screen, the fog's colour there plus one, or 0 where the land is known: see `Weather.light`. */
+  private readonly veil = new Uint16Array(SCREEN.width * SCREEN.height);
   private readonly animated: Placed[] = [];
   readonly camera = { x: 0, y: 0 };
   readonly effects = new Effects();
@@ -96,7 +99,7 @@ export class AdventureScreen {
   }
 
   compose(tick: number): Bitmap {
-    const { screen } = this;
+    const { screen, veil } = this;
     const fog = this.fog.mask;
     const MAP_WIDTH = this.tiles.width;
     screen.data.set(this.frame.data);
@@ -117,21 +120,30 @@ export class AdventureScreen {
           let o = (VIEW.y + y - cy) * SCREEN.width + VIEW.x + x0 - cx;
           let i = (y - tile.y) * w + x0 - tile.x;
           let f = y * MAP_WIDTH + x0;
-          for (let x = x0; x < x1; x++, o++, i++, f++) screen.data[o] = fog[f] ? FOG_LUT[wild[i]] : map[i];
+          for (let x = x0; x < x1; x++, o++, i++, f++) {
+            if (fog[f]) {
+              const c = FOG_LUT[wild[i]];
+              screen.data[o] = c;
+              veil[o] = c + 1;
+            } else {
+              screen.data[o] = map[i];
+              veil[o] = 0;
+            }
+          }
         }
       }
     }
     drawRoute(screen, VIEW, VIEW.x - cx, VIEW.y - cy, this.route, this.camp);
     this.animated.sort((a, b) => footY(a) - footY(b));
     for (const o of this.animated) {
-      if (this.isFogged(o.x + o.sprite.width / 2, footY(o) - 2)) continue;
+      if (o.hidden || this.isFogged(o.x + o.sprite.width / 2, footY(o) - 2)) continue;
       const image = o.frames ? o.frames[(o.frame ?? tick) % o.frames.length] : o.sprite;
       blit(screen, image, VIEW.x + Math.round(o.x) - cx, VIEW.y + Math.round(o.y) - cy, VIEW);
     }
     const seen = (x: number, y: number) => !this.isFogged(x, y);
     this.weather?.drawSmoke(screen, VIEW.x - cx, VIEW.y - cy, VIEW, this.sky, seen);
     this.effects.draw(screen, VIEW.x - cx, VIEW.y - cy, VIEW, seen);
-    this.weather?.light(screen, this.sky, this.camera, VIEW);
+    this.weather?.light(screen, this.sky, this.camera, VIEW, veil);
     this.weather?.drawAir(screen, VIEW.x - cx, VIEW.y - cy, VIEW, this.sky, seen);
     this.effects.drawWords(screen, VIEW.x - cx, VIEW.y - cy, VIEW);
     for (const i of this.grain) screen.data[i] = GRAIN_LUT[screen.data[i]];

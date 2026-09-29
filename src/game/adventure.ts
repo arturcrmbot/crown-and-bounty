@@ -393,8 +393,9 @@ export class AdventureController implements Screen {
           break;
         case 'removed': {
           const gone = this.state.locations.find((l) => l.id === e.id);
-          if (gone) this.view.effects.puff(gone.at[0], gone.at[1], gone.enemy ? 'dust' : 'sparkle');
           const object = this.scene.pickups.get(e.id);
+          // Out of sight, it goes without anyone seeing it go.
+          if (gone && !object?.hidden) this.view.effects.puff(gone.at[0], gone.at[1], gone.enemy ? 'dust' : 'sparkle');
           if (object) this.view.remove(object);
           this.scene.pickups.delete(e.id);
           break;
@@ -692,6 +693,7 @@ export class AdventureController implements Screen {
     }
     // Shift gallops: three times the pace, for long rides.
     this.ride(held.has('shift') ? dt * GALLOP : dt);
+    this.showBands();
     const { hero } = this.scene;
     this.view.effects.update(dt, [this.drawn.x, this.drawn.y]);
     const walking = this.isRiding();
@@ -727,6 +729,23 @@ export class AdventureController implements Screen {
     this.paintMinimap();
     // A tile of the land further off is painted each frame, nearest the view first, until all of it is.
     this.view.warm();
+  }
+
+  /**
+   * Bands show on the map while the hero knows where they are (see `rules/map/sight.ts`): one that has
+   * walked off out of his sight in the night shows only while it's still in it, walking away.
+   */
+  private showBands() {
+    let sight: number | null = null;
+    for (const [id, object] of this.scene.pickups) {
+      if (!this.state.locations.find((l) => l.id === id)?.enemy?.unseen) {
+        object.hidden = false;
+        continue;
+      }
+      const at = this.walks.where(id);
+      sight ??= heroStats(this.state).sight;
+      object.hidden = !at || Math.hypot(at[0] - this.state.hero.at[0], at[1] - this.state.hero.at[1]) > sight;
+    }
   }
 
   /** The minimap, in the panel: it paints itself only when something it shows has moved on. */
@@ -902,7 +921,8 @@ export class AdventureController implements Screen {
       const l = this.state.locations.find((p) => p.id === id);
       return !!l && l.done && (l.kind === 'chest' || l.kind === 'gold' || l.kind === 'patrol');
     };
-    const hits = this.scene.hitboxes.filter((b) => x >= b.x0 && x < b.x1 && y >= b.y0 && y < b.y1 && !gone(b.id));
+    // A band out of sight isn't there to point at: the land where it stood is.
+    const hits = this.scene.hitboxes.filter((b) => x >= b.x0 && x < b.x1 && y >= b.y0 && y < b.y1 && !gone(b.id) && !this.scene.pickups.get(b.id)?.hidden);
     const heroFoot = h.y + this.scene.hero.foot;
     const inFront = hits.filter((b) => b.y1 > heroFoot + 2);
     const facing = this.moving() ? null : facingEnemy(this.state);
