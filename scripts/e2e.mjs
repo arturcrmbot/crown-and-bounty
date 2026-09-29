@@ -69,9 +69,37 @@ async function beatWhenReady(id, tries = 6) {
   return kc.title();
 }
 
+/**
+ * A band that moved in the night where he couldn't see it is off the map until he sees it again
+ * (#125): ride towards where it roams, as a player who'd seen it there would, and rein in once it's in sight.
+ */
+async function sight(id) {
+  const lost = () => kc.call((i) => Boolean(window.__kc.state().locations.find((l) => l.id === i)?.enemy?.unseen), id);
+  if (!(await lost())) return;
+  for (let day = 0; day < 8 && (await lost()); day++) {
+    await settle();
+    if (await kc.title()) await close();
+    const [x, y] = (await kc.state()).locations.find((l) => l.id === id).at;
+    await kc.view(x, y);
+    await kc.click(x, y);
+    await page.waitForFunction((i) => {
+      const s = window.__kc.status();
+      return !window.__kc.state().locations.find((l) => l.id === i)?.enemy?.unseen || (!s.riding && !s.visiting) || s.tired;
+    }, id, { timeout: 60_000 });
+    if (!(await lost())) break;
+    if ((await kc.status()).tired) {
+      await kc.choose('End the day');
+      await close();
+    }
+  }
+  if ((await kc.status()).riding) await page.keyboard.press('Escape');
+  check(!(await lost()), `${id}, out of sight since it moved, is back on the map once he rides near`);
+}
+
 /** Clicks a place, takes its action, and keeps riding (ending days when tired) until the hero gets there. */
 async function go(id, action) {
   await settle();
+  await sight(id);
   const [x, y] = await kc.centre(id);
   // If the hero stands in front of the place he takes the click, as he should: close his screen
   // and click another corner of the place, as a player would.

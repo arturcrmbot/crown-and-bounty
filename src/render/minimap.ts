@@ -60,11 +60,11 @@ function markOf(l: Location, out: boolean): MarkKind {
 /** Anything that says where the fog still lies, in map pixels: the adventure screen's own fog. */
 export type Fog = { isFogged(x: number, y: number): boolean };
 
-/** The places the hero has found, and the enemies in sight: whatever the map itself shows clear of the fog. */
+/** The places the hero has found, and the enemies he knows are there: whatever the map itself shows clear of the fog. */
 export function marksOf(locations: readonly Location[], fog: Fog): Mark[] {
   const out = new Set(locations.filter((l) => l.enemy?.lair && !l.done).map((l) => l.enemy!.lair));
   return locations
-    .filter((l) => !(l.done && VANISHES.has(l.kind)) && !fog.isFogged(l.at[0], l.at[1] - 2))
+    .filter((l) => !(l.done && VANISHES.has(l.kind)) && !l.enemy?.unseen && !fog.isFogged(l.at[0], l.at[1] - 2))
     .map((l) => ({ id: l.id, at: l.at, kind: markOf(l, out.has(l.id)) }))
     .sort((a, b) => ORDER[a.kind] - ORDER[b.kind]);
 }

@@ -62,6 +62,11 @@ export type Enemy = {
   rest?: number;
   /** A hunter on the hero's trail since dawn: if he's still in reach tonight, it falls on his camp. */
   trailing?: boolean;
+  /**
+   * Moved in the night where the hero couldn't see it: where it is now isn't known, and the map doesn't
+   * show it until he sees it again (see `map/sight.ts`). Only bands on the move ever are.
+   */
+  unseen?: boolean;
   /** A villain who rides out of his lair to meet the hero when he's hurt: see `Sortie`. */
   sortie?: Sortie;
   /** The hurts (story flags) he has already ridden out over. */

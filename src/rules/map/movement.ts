@@ -1,6 +1,7 @@
 import type { GameEvent, GameState } from '../game';
 import { heroStats } from '../hero';
 import { revealDisc } from './fog';
+import { seeBands } from './sight';
 import type { Point } from './geometry';
 import type { Location } from '../state';
 import { CELL, cellCentre, cellIndex, gridWithEnemies, standingEnemies, Terrain, type MapModel } from './model';
@@ -145,7 +146,8 @@ export const manaRidden = (rate: number, before: number, after: number) => (rate
 
 /**
  * One step along the route, if today's movement allows it. The hero moves to the next cell,
- * turns to face it, and sees further. A mystic's mana comes back as he rides.
+ * turns to face it, and sees further: the land, and any band out of sight that stands there. A
+ * mystic's mana comes back as he rides.
  */
 export function stepAlong(state: GameState, map: MapModel, route: number[]): { state: GameState; events: GameEvent[] } | null {
   if (route.length === 0) return null;
@@ -158,7 +160,7 @@ export function stepAlong(state: GameState, map: MapModel, route: number[]): { s
   const sight = revealDisc(state.explored, state.world, at[0], at[1], stats.sight);
   const movement = state.movement - cost;
   const mana = Math.max(state.hero.mana, Math.min(stats.maxMana, state.hero.mana + manaRidden(stats.manaRate, state.movement, movement)));
-  const next: GameState = { ...state, movement, hero: { ...state.hero, at, facing, mana }, explored: sight.bits };
+  const next = seeBands({ ...state, movement, hero: { ...state.hero, at, facing, mana }, explored: sight.bits }, at, stats.sight);
   const events: GameEvent[] = [{ type: 'moved', at, facing }];
   if (sight.changed) events.push({ type: 'reveal', at, radius: stats.sight });
   return { state: next, events };
