@@ -5,13 +5,24 @@ import { DIRT, GOLD, INK, NEUTRAL, STONE } from './palette';
 import { textMask } from './text';
 
 type Mote = { x: number; y: number; vx: number; vy: number; age: number; life: number };
-/** Words that rise off the map and fade: "+250 gold". `age` starts below 0 when it waits its turn. */
-type Floater = { x: number; y: number; sprite: Bitmap; age: number };
+/**
+ * Words that rise off the map and fade: "+250 gold". `age` starts below 0 when it waits its turn.
+ * `above` is how far it stands over its own rise to make room for the words that came after it from
+ * the same spot, and `lift` how far it has got there.
+ */
+type Floater = { x: number; y: number; sprite: Bitmap; age: number; above: number; lift: number };
 /** A burst at a point: dust where a foe went down, glitter where treasure was, a golden ring for a level. */
 type Puff = { x: number; y: number; age: number; life: number; kind: 'dust' | 'sparkle' | 'glow' };
 const FLOAT_LIFE = 1.7;
 /** Seconds between words rising from the same spot. */
 const FLOAT_GAP = 0.35;
+/** How far words rise, in pixels, and in how many seconds. */
+const FLOAT_RISE = 22;
+const FLOAT_RISE_TIME = 0.9;
+/** A line of rising words, outline and all, from the tops of its capitals to the tails of its g's and p's. */
+const FLOAT_LINE = 18;
+/** Seconds a word waits while the words already rising from its spot move up to make room for it. */
+const MAKE_ROOM = 0.2;
 
 type Bird = { home: Point; angle: number; radius: number; x: number; y: number; vx: number; vy: number; fleeing: boolean; flap: number };
 
@@ -34,9 +45,17 @@ export class Effects {
         else if ([-1, 0, 1].some((dj) => [-1, 0, 1].some((di) => mask.solid(i + di, j + dj)))) sprite.set(i + 1, j + 1, INK);
       }
     }
-    // Words rising from the same spot keep apart: each waits a moment after the one before.
-    for (const f of this.floaters) if (Math.abs(f.x + f.sprite.width / 2 - x) < 48 && Math.abs(f.y - y) < 48) delay = Math.max(delay, FLOAT_GAP - f.age);
-    this.floaters.push({ x: x - sprite.width / 2, y, sprite, age: -delay });
+    // Words rising from the same spot keep apart: each waits a moment after the one before, and those
+    // already there move up to make room, so they stack in the order they came, top to bottom.
+    let below = y;
+    for (let i = this.floaters.length - 1; i >= 0; i--) {
+      const f = this.floaters[i];
+      if (Math.abs(f.x + f.sprite.width / 2 - x) >= 48 || Math.abs(f.y - y) >= 48) continue;
+      delay = Math.max(delay, FLOAT_GAP - f.age, MAKE_ROOM);
+      f.above = Math.max(f.above, f.y - below + FLOAT_LINE);
+      below = f.y - f.above;
+    }
+    this.floaters.push({ x: x - sprite.width / 2, y, sprite, age: -delay, above: 0, lift: 0 });
   }
 
   puff(x: number, y: number, kind: Puff['kind']) {
@@ -58,7 +77,10 @@ export class Effects {
   }
 
   update(dt: number, rider: Point, shyness = 80) {
-    for (const f of this.floaters) f.age += dt;
+    for (const f of this.floaters) {
+      f.age += dt;
+      f.lift += (f.above - f.lift) * Math.min(1, dt * 10);
+    }
     this.floaters = this.floaters.filter((f) => f.age < FLOAT_LIFE);
     for (const p of this.puffs) p.age += dt;
     this.puffs = this.puffs.filter((p) => p.age < p.life);
@@ -118,7 +140,7 @@ export class Effects {
       if (f.age < 0) continue;
       const fade = Math.max(0, (f.age - FLOAT_LIFE + 0.5) / 0.5);
       const x0 = Math.round(ox + f.x);
-      const y0 = Math.round(oy + f.y - Math.min(1, f.age / 0.9) * 22);
+      const y0 = Math.round(oy + f.y - Math.min(1, f.age / FLOAT_RISE_TIME) * FLOAT_RISE - f.lift);
       for (let j = 0; j < f.sprite.height; j++) {
         for (let i = 0; i < f.sprite.width; i++) {
           const v = f.sprite.data[j * f.sprite.width + i];

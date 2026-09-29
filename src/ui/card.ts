@@ -263,7 +263,8 @@ export class CardView {
         else if (k && k.y1 + 10 <= maxY) y = k.y1 + 10;
         else if (!beside()) y = clampY(point.y + 30);
       }
-      return { x, y };
+      // Never outside the window, even when what it's about is out of sight.
+      return { x: Math.max(minX, Math.min(maxX - w, x)), y: clampY(y) };
     };
     const wide = () => spot(8, window.innerWidth - 8);
     let at = sides && w + 16 <= sides.right - sides.left ? spot(sides.left + 8, sides.right - 8) : wide();
