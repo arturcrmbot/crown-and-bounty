@@ -37,11 +37,11 @@ export const SKILLS: Record<SkillId, Skill> = {
     ranks: [
       { note: 'Blows in melee land 10% harder.', bonus: { melee: 0.1 } },
       {
-        note: 'Blows in melee land 20% harder, and your knights and swordsmen charge: after a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder, and nobody strikes back.',
+        note: 'Blows in melee land 20% harder, and your knights and swordsmen charge: after a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder, and nobody strikes back, but it winds them: they can\u2019t strike back themselves for the rest of that round and the next.',
         bonus: { melee: 0.2, charge: ['knights', 'swordsmen'] },
       },
       {
-        note: 'Blows in melee land 30% harder, and everyone who fights hand to hand charges: after a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder, and nobody strikes back.',
+        note: 'Blows in melee land 30% harder, and everyone who fights hand to hand charges: after a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder, and nobody strikes back, but it winds them: they can\u2019t strike back themselves for the rest of that round and the next.',
         bonus: { melee: 0.3, charge: FIGHTERS },
       },
     ],
@@ -192,7 +192,7 @@ export const PERKS: Record<PerkId, Perk> = {
   cavalryCharge: {
     id: 'cavalryCharge',
     name: 'Cavalry Charge',
-    note: 'Your knights charge: after a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder, and nobody strikes back.',
+    note: 'Your knights charge: after a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder, and nobody strikes back, but it winds them: they can\u2019t strike back themselves for the rest of that round and the next.',
     bonus: { charge: ['knights'] },
     trick: true,
   },
