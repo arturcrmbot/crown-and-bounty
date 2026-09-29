@@ -17,11 +17,14 @@ work; GitHub Actions does the long checks. Fix what a player would hate.
 ## The loop
 
 1. **Change** something small and visible.
-2. **Check** it locally, in your worktree: `npm run typecheck`, `npm run test:fast` and the tests for
-   what you touched (`npx vitest run <files>`); for a visible change, `npm run e2e` and the playtest
-   too (step 3), and `npm run visual` when it changes a frozen scene. Look at the screenshots. CI
-   checks the pull request again: the unit tests, the build, the bot's whole commissions, and the
-   play-through with a playtest per background.
+2. **Check** it locally, in your worktree, with the cheap checks: `npm run typecheck`,
+   `npm run test:fast` and the tests for what you touched (`npx vitest run <files>`); for a visible
+   change, `npm run e2e` and the playtest too (step 3), and `npm run visual` when it changes a frozen
+   scene. Look at the screenshots. Simulations and the bot's runs (`npm run sim`, `sim:battles`,
+   `sim:boss`, `difficulty`, `test:bot`) are only for a change that moves balance, with at most 10
+   seeds a background (`npm run sim -- 10`; the default is 30). A UI, content or bug change skips
+   them. CI checks the pull request again: the unit tests, the build, the bot's whole commissions
+   (which catch a regression), and the play-through with a playtest per background.
 3. **Playtest** only what a test can't judge (how a new screen looks, how a fight feels), quickly.
    Artur playtests and reports; his findings become GitHub Issues.
 4. **Ship** through a pull request, never a push to main. Commit with the Co-authored-by trailer, and
@@ -93,8 +96,11 @@ nothing can reach them.
   every tier inside its targets.
 - The game opens on the title and the prologue. Scripts press `New campaign`, `At your service`, `I’ll bring him in`, then a hero; `?quick=1` skips all of it.
   `?court=N`, `?commission=N`, `?battle=id`, `?reveal=1` and `?sceptre=1` jump straight to a scene.
-- Saves are keyed by version (`src/game/save.ts`). Bump it when the state's shape changes or when
-  generated maps come out differently for the same seed.
+- Saves are keyed by version (`src/game/save.ts`), and a bump drops them: it's for when the state's
+  shape changes or generated maps come out differently for the same seed. **No save-version bumps
+  while Artur is playing.** New places reach old saves through `withNewPlaces` (`rules/campaign.ts`),
+  and anything else new must load from an old save too (an optional field, say). If a change can't
+  keep old saves, stop and say so rather than bump.
 - Browsers only allow sound after a click or key press; M mutes.
 - No image-generation models. The units are Battle for Wesnoth's (`npm run wesnoth`; every file is
   credited in `public/assets/CREDITS.md`, and the game is GPL-2.0-or-later); all other art, music
