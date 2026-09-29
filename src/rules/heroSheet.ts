@@ -32,7 +32,7 @@ export function manaInBattle(mana: number, max?: number): string {
   return max === undefined ? `**${mana}** mana: none comes back in battle.` : `Mana **${mana}/${max}**: none comes back in battle, but it\u2019s full again at dawn.`;
 }
 
-/** The next payday: every seventh day, from day VIII. */
+/** The next payday: once a week, from day VIII (VIII, XV, XXII...). */
 export const nextPayday = (state: GameState) => state.day + PAYDAY_EVERY - ((state.day - 1) % PAYDAY_EVERY);
 
 /** What the King sends and the troops take on the next payday, as things stand. */
@@ -73,7 +73,7 @@ export function barNote(state: GameState, item: BarItem): string {
     case 'mana':
       return `${manaNote(state)} · click for the hero (H)`;
     case 'day':
-      return `Day ${roman(state.day)} of ${LAST_DAY} · payday every seventh day, next on day ${roman(nextPayday(state))}`;
+      return `Day ${roman(state.day)} of ${LAST_DAY} · payday once a week, next on day ${roman(nextPayday(state))}`;
     case 'hourglass':
       return 'End the day (E)';
   }

@@ -12,7 +12,7 @@ import { ambushCard, apply, bountyCard, commissionOf, describe, finishFight, her
 import { barNote } from '../rules/heroSheet';
 import type { Point } from '../rules/map/geometry';
 import { CELL, cellCentre, type MapModel, type Terrain } from '../rules/map/model';
-import { daysAway, planRoute, routeCosts, stepAlong } from '../rules/map/movement';
+import { daysAway, facingEnemy, planRoute, routeCosts, stepAlong } from '../rules/map/movement';
 import { statIcon } from '../render/artifactIcons';
 import { CardView } from '../ui/card';
 import { bitmapUrl } from '../ui/pixels';
@@ -309,6 +309,13 @@ export class AdventureController implements Screen {
     this.handle(events);
   }
 
+  /** Back from a save: a hero who stood at an enemy (its fight card up, as like as not) faces it again. */
+  resumeFacing() {
+    if (this.state.over || this.state.opening || this.state.ambush || this.state.battle) return;
+    const foe = facingEnemy(this.state);
+    if (foe && !this.view.isFogged(foe.at[0], foe.at[1])) this.run(visit(this.state, foe.id));
+  }
+
   private handle(events: GameEvent[]) {
     for (const [i, e] of events.entries()) {
       switch (e.type) {
@@ -556,7 +563,14 @@ export class AdventureController implements Screen {
     hero.object.frame = walking ? Math.floor(this.travelled / STRIDE) : undefined;
     hero.object.x = this.drawn.x - hero.idle[0].width / 2;
     hero.object.y = this.drawn.y - hero.foot;
-    this.view.route = this.route.length > 0 ? this.routeDots() : [];
+    if (this.route.length > 0) {
+      const { dots, camp } = this.routeMarks();
+      this.view.route = dots;
+      this.view.camp = camp;
+    } else {
+      this.view.route = [];
+      this.view.camp = null;
+    }
     if (this.follow) {
       const tx = this.drawn.x - MAP_VIEW.width / 2;
       const ty = this.drawn.y - MAP_VIEW.height / 2 - 20;
@@ -645,8 +659,8 @@ export class AdventureController implements Screen {
     }
   }
 
-  /** Dots every 10 pixels along the road ahead, gold while today's movement lasts. */
-  private routeDots() {
+  /** Marks every 10 pixels along the road ahead, with a camp where today's movement runs out. */
+  private routeMarks() {
     const costs = routeCosts(this.state, this.map, this.route);
     const points = curve([[this.drawn.x, this.drawn.y], ...this.route.map((i) => cellCentre(this.map, i))]);
     const dots: { at: Point; today: boolean }[] = [];
@@ -660,7 +674,10 @@ export class AdventureController implements Screen {
       for (let t = 10 - carry; t <= d; t += 10) dots.push({ at: [Math.round(ax + ((bx - ax) * t) / d), Math.round(ay + ((by - ay) * t) / d)], today });
       carry = (carry + d) % 10;
     }
-    return dots;
+    let lastToday = -1;
+    for (let i = 0; i < costs.length && costs[i] <= this.state.movement; i++) lastToday = i;
+    const camp = costs.at(-1)! > this.state.movement ? (lastToday >= 0 ? cellCentre(this.map, this.route[lastToday]) : ([this.drawn.x, this.drawn.y] as Point)) : null;
+    return { dots, camp };
   }
 
   /**
@@ -686,9 +703,10 @@ export class AdventureController implements Screen {
 
   /**
    * The place (or the hero) under a map point, front-most first. A place the hero stands in front of
-   * is still the hero; one drawn in front of him (lower on the map) takes the click.
+   * is still the hero; one drawn in front of him (lower on the map) takes the click. So does the
+   * enemy he has ridden up to (`here`), even behind him: a click there brings its fight card back.
    */
-  private under([x, y]: Point): { id: string; name: string; box?: Hitbox; fogged?: boolean } | null {
+  private under([x, y]: Point): { id: string; name: string; box?: Hitbox; fogged?: boolean; here?: boolean } | null {
     const h = this.scene.hero.object;
     const width = this.scene.hero.idle[0].width;
     const onHero = x >= h.x + 6 && x < h.x + width - 6 && y >= h.y + 4 && y < h.y + this.scene.hero.foot + 4;
@@ -699,11 +717,14 @@ export class AdventureController implements Screen {
     const hits = this.scene.hitboxes.filter((b) => x >= b.x0 && x < b.x1 && y >= b.y0 && y < b.y1 && !gone(b.id));
     const heroFoot = h.y + this.scene.hero.foot;
     const inFront = hits.filter((b) => b.y1 > heroFoot + 2);
+    const facing = this.moving() ? null : facingEnemy(this.state);
+    const behind = onHero && inFront.length === 0 && facing ? hits.find((b) => b.id === facing.id) : undefined;
+    if (behind) return { id: behind.id, name: placeNote(this.state, behind.id), box: behind, here: true };
     if (onHero && inFront.length === 0) return { id: 'hero', name: `${BACKGROUNDS[this.state.hero.background].short} \u00b7 ${this.moving() ? 'click (or Esc) to stop here' : 'click (or H) for his gear and army'}` };
     if (hits.length === 0) return null;
     const box = hits.reduce((front, b) => (b.y1 > front.y1 ? b : front));
     const fogged = this.view.isFogged((box.x0 + box.x1) / 2, box.y1 - 4);
-    return { id: box.id, name: fogged ? 'Unexplored' : placeNote(this.state, box.id), box, fogged };
+    return { id: box.id, name: fogged ? 'Unexplored' : placeNote(this.state, box.id), box, fogged, here: !fogged && box.id === facing?.id };
   }
 
   private anchorOf(id: string): Point {
@@ -720,6 +741,9 @@ export class AdventureController implements Screen {
       // On the move, a click on him reins in; standing, it opens his screen.
       if (this.moving()) this.stop();
       else this.openHero();
+    } else if (thing?.here) {
+      // The enemy he has ridden up to: its fight card comes back, however it was put away.
+      this.choose({ type: 'go', id: thing.id });
     } else if (thing?.box) {
       // A second click on a place whose card is open goes there, as in HoMM2.
       if (this.looking?.id === thing.id && this.cards.isOpen) return this.choose(this.looking.go);

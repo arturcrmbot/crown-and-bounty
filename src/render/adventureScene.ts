@@ -6,7 +6,7 @@ import { Terrain, type MapModel } from '../rules/map/model';
 import { AdventureScreen, type Placed } from './adventureScreen';
 import { Bitmap, blit, SHADOW } from './bitmap';
 import { FogMask } from './fog';
-import { GOLD, INK, SILHOUETTE } from './palette';
+import { GOLD, INK, RED, SILHOUETTE } from './palette';
 import { animFrames, bodyHeight, everyFrame, STAND, troopFigure } from './battleSprites';
 import { heroArtId } from './units';
 import {
@@ -108,11 +108,13 @@ function landmark(l: Location): { frames: Bitmap[]; foot: number; animated: bool
       // and then it fidgets, as its Wesnoth unit does, each band in its own time.
       const lead = leadTroop(l.enemy!.army);
       const still = troopFigure(lead, 'red', -1, STAND, 'map');
+      const foot = -still.y;
       // Those Wesnoth gave no fidget just breathe: a pixel up for a moment, every couple of seconds.
       const fidget = animFrames(lead, 'idle').length > 1 ? everyFrame(lead, 'idle', 'red', -1, 'map', 120) : Array<Bitmap>(4).fill(raised(still.sprite));
-      const frames = [...Array<Bitmap>(fidget.length > 4 ? 24 : 14).fill(still.sprite), ...fidget];
+      // The red ring under his feet says he is a foe, as the hero's gold one says he is your own.
+      const frames = [...Array<Bitmap>(fidget.length > 4 ? 24 : 14).fill(still.sprite), ...fidget].map((f) => ringed(f, foot, RED));
       const turn = [...l.id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % frames.length;
-      return { frames: [...frames.slice(turn), ...frames.slice(0, turn)], foot: -still.y, animated: true };
+      return { frames: [...frames.slice(turn), ...frames.slice(0, turn)], foot, animated: true };
     }
   }
 }
@@ -124,17 +126,17 @@ function raised(sprite: Bitmap): Bitmap {
   return out;
 }
 
-/** The gold ring round the hero's feet that says he is the one you move: bright, with a dark edge. */
-function ringed(sprite: Bitmap, foot: number): Bitmap {
+/** The ring round a figure's feet, bright with a dark edge: gold for the hero, red for a foe. */
+function ringed(sprite: Bitmap, foot: number, ramp: readonly number[] = GOLD): Bitmap {
   const out = new Bitmap(sprite.width, sprite.height + 6);
   out.data.set(sprite.data);
   const rx = Math.round(sprite.width * 0.36);
   const ry = Math.max(4, Math.round(rx * 0.26));
-  for (const [grow, colour] of [[1, INK], [-1, GOLD[3]], [0, GOLD[6]]] as const) {
+  for (const [grow, colour] of [[1, INK], [-1, ramp[3]], [0, ramp[6]]] as const) {
     for (let a = 0; a < Math.PI * 2; a += 0.005) {
       const x = Math.round(sprite.width / 2 + Math.cos(a) * (rx + grow));
       const y = Math.round(foot - 1 + Math.sin(a) * (ry + grow * 0.6));
-      if (out.get(x, y) === 0 || out.get(x, y) === SHADOW || grow === 0 && (out.get(x, y) === INK || out.get(x, y) === GOLD[3])) out.set(x, y, colour);
+      if (out.get(x, y) === 0 || out.get(x, y) === SHADOW || grow === 0 && (out.get(x, y) === INK || out.get(x, y) === ramp[3])) out.set(x, y, colour);
     }
   }
   return out;

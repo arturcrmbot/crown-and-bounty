@@ -68,6 +68,12 @@ describe('Aldmoor\u2019s finds', () => {
     const mine = locationById(back, 'mine').at;
     expect(Math.hypot(back.hero.at[0] - mine[0], back.hero.at[1] - mine[1])).toBeLessThan(80);
     expect(choose(cart, 'mine', 'delving/south')).toBeNull();
+    // "Not today" has nothing to say, so it just closes the card at either end.
+    for (const [id, key] of [['mine', 'delving/stay'], ['delving', 'open/stay']] as const) {
+      const stay = choose(friend, id, key)!;
+      expect(stay.state.hero.at).toEqual(friend.hero.at);
+      expect(stay.events.some((e) => e.type === 'card')).toBe(false);
+    }
   });
 
   it('the mill gives flour every week, and the miller\u2019s loaf or his mum\u2019s fair-wind charm once', () => {

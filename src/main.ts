@@ -4,7 +4,7 @@ import { TROOPS, type TroopId } from './content/troops';
 import { Game } from './game/game';
 import { Display } from './game/display';
 import { Input } from './game/input';
-import { failedCard, welcomeBackCard } from './game/intro';
+import { botRideCard, chapterStartCard, failedCard, welcomeBackCard } from './game/intro';
 import { loadGame, saveGame, stopSaving } from './game/save';
 import { SCREEN } from './render/frame';
 import { paletteWords } from './render/palette';
@@ -14,7 +14,8 @@ import { MuteButton } from './ui/mute';
 import { MixPanel } from './ui/mix';
 import { setUiScale } from './ui/scale';
 import { ARTIFACTS, type ArtifactId } from './content/artifacts';
-import { beginCommission, commissionAt, giveArtifact, hasNextCommission, newGame, startFight, type GameState } from './rules/game';
+import { beginCommission, commissionAt, giveArtifact, hasNextCommission, newGame, startFight, CAMPAIGN_LENGTH, type GameState } from './rules/game';
+import { playCampaignStarts } from './rules/bot';
 
 declare global {
   interface Window {
@@ -29,6 +30,8 @@ const TICK_MS = 120;
 
 // ?fresh=1 ignores the save, ?freeze=1 also stops the clock for exact screenshots, ?speed=8 rides faster.
 const query = new URLSearchParams(window.location.search);
+const chapterNumber = Number(query.get('chapter'));
+const requestedChapter = Number.isInteger(chapterNumber) && chapterNumber >= 2 && chapterNumber <= CAMPAIGN_LENGTH ? chapterNumber : null;
 const frozen = query.get('freeze') === '1';
 const saved = frozen || query.get('fresh') === '1' ? null : loadGame();
 // Carry on with any save, unless its campaign is over: then a new one begins.
@@ -37,12 +40,12 @@ if (frozen) stopSaving();
 
 // Every new campaign gets its own seed, so its later provinces are its own. ?seed=N (or ?freeze=1) fixes it.
 const seed = query.has('seed') ? Number(query.get('seed')) : frozen ? 1066 : crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000;
+const who = query.get('hero');
+const chosen = who && who in BACKGROUNDS ? (who as BackgroundId) : null;
 
 /** Debug starts: ?commission=2 rides into the second province, ?court=1 opens the court after the first. */
 function debugStart(): GameState {
   // ?hero=ranger (or knight, wizard, courtier) picks the background for a debug start, so the opening card doesn't ask.
-  const who = query.get('hero');
-  const chosen = who && who in BACKGROUNDS ? (who as BackgroundId) : null;
   const drafted = newGame(seed, undefined, chosen ?? 'knight');
   // ?gear=swordOfAldmoor,oldBanner wears gear into the first free slot of its kind, then the pack.
   const gear = (query.get('gear') ?? '').split(',').filter((id): id is ArtifactId => id in ARTIFACTS);
@@ -77,16 +80,44 @@ const game = new Game(display, Math.max(1, Number(query.get('speed') ?? 1)), !fr
 const input = new Input(display, game.input);
 // The title and the King's welcome come first, unless a debug start (or a frozen screenshot) wants straight in.
 // ?quick=1 skips them too; ?title=1 brings them back even when frozen.
-const quick = (frozen && query.get('title') !== '1') || ['quick', 'battle', 'court', 'commission', 'sceptre', 'reveal', 'x', 'hero', 'spells', 'army', 'gear'].some((k) => query.has(k));
+const quick = (frozen && query.get('title') !== '1') || ['quick', 'battle', 'chapter', 'court', 'commission', 'sceptre', 'reveal', 'x', 'hero', 'spells', 'army', 'gear'].some((k) => query.has(k));
 if (quick) {
-  await unitArt;
-  // ?reveal=1 lifts the fog, for looking the whole map over.
-  const start = resume ?? (query.has('reveal') ? { ...debugStart(), explored: debugStart().explored.map(() => -1) } : debugStart());
-  game.resume(start);
-  if (query.has('x')) game.adventure.view.centreOn(Number(query.get('x')), Number(query.get('y') ?? 480));
-  const dig = start.locations.find((l) => l.kind === 'dig');
-  if (query.get('sceptre') === '1' && dig) game.adventure.view.centreOn(dig.at[0], dig.at[1]);
-  if (game.top.name === 'adventure' && resume && !resume.opening) game.adventure.showCard(resume.over === 'lost' ? failedCard(resume) : welcomeBackCard(resume), null);
+  if (requestedChapter !== null) {
+    game.showTitle(null, () => newGame(seed));
+    game.showProgress(botRideCard(0, requestedChapter));
+    void (async () => {
+      await unitArt;
+      const journey = playCampaignStarts(newGame(seed, undefined, chosen ?? 'knight'));
+      let step = journey.next();
+      while (!step.done) {
+        const start = step.value;
+        if (start.campaign.chapter === requestedChapter - 1) {
+          game.resume(start);
+          game.adventure.showCard(chapterStartCard(start), null);
+          return;
+        }
+        game.showProgress(botRideCard(start.campaign.chapter, requestedChapter));
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+        step = journey.next();
+      }
+      const last = step.value.at(-1);
+      game.showProgress({
+        title: 'The bot is stuck',
+        lines: [last ? `He could not win Commission ${last.state.campaign.chapter + 1} twice, so he cannot ride ahead to Commission ${requestedChapter}. Try another seed.` : `He could not ride ahead to Commission ${requestedChapter}. Try another seed.`],
+        choices: [],
+        wide: true,
+      });
+    })();
+  } else {
+    await unitArt;
+    // ?reveal=1 lifts the fog, for looking the whole map over.
+    const start = resume ?? (query.has('reveal') ? { ...debugStart(), explored: debugStart().explored.map(() => -1) } : debugStart());
+    game.resume(start);
+    if (query.has('x')) game.adventure.view.centreOn(Number(query.get('x')), Number(query.get('y') ?? 480));
+    const dig = start.locations.find((l) => l.kind === 'dig');
+    if (query.get('sceptre') === '1' && dig) game.adventure.view.centreOn(dig.at[0], dig.at[1]);
+    if (game.top.name === 'adventure' && resume && !resume.opening) game.adventure.showCard(resume.over === 'lost' ? failedCard(resume) : welcomeBackCard(resume), null);
+  }
 } else game.showTitle(resume, () => newGame(seed));
 window.__kc = game.debug();
 // Sound may only start once the player has done something. Listen as the event comes in, before

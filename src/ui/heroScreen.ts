@@ -267,7 +267,7 @@ export class HeroScreen {
         ${tiles}
         <div class="totals">
           <div data-tip="${escape(sheet.leadership.line)}"><b>Leadership</b> ${leadershipUsed(army)} / ${s.leadership}</div>
-          <div data-tip="Paid every seventh day, with the King\u2019s money"><b>Wages</b> ${coins(pay)} gold a week</div>
+          <div data-tip="Paid once a week, from day VIII, with the King\u2019s money"><b>Wages</b> ${coins(pay)} gold a week</div>
           <div><b>Stacks</b> ${army.length} of 5</div>
         </div>
       </div>

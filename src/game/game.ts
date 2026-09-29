@@ -6,7 +6,7 @@ import { SCREEN } from '../render/frame';
 import { Transition, type TransitionStyle } from '../render/transition';
 import { setVeil } from '../ui/veil';
 import { mapOf } from '../rules/map/maps';
-import { hasNextCommission, toCourt, type GameEvent, type GameState } from '../rules/game';
+import { hasNextCommission, toCourt, type Card, type GameEvent, type GameState } from '../rules/game';
 import { AdventureController } from './adventure';
 import { BattleController } from './battle';
 import { CourtController } from './court';
@@ -97,9 +97,20 @@ export class Game {
             this.clear();
             this.push(new PrologueController(this.display, fresh(), (state) => whenUnitArt(() => this.change('dissolve', null, () => this.beginCommission(state, [])))));
           }),
-        onContinue: () => whenUnitArt(() => this.change('fade', null, () => this.resume(resume!))),
+        onContinue: () =>
+          whenUnitArt(() =>
+            this.change('fade', null, () => {
+              this.resume(resume!);
+              if (this.top === this.stack[0]) this.adventure.resumeFacing();
+            }),
+          ),
       }),
     );
+  }
+
+  showProgress(card: Card) {
+    const title = this.top;
+    if (title instanceof TitleController) title.showProgress(card);
   }
 
   /** Straight onto the map, as the state left it: in the middle of a battle, or on the way to court. */

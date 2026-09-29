@@ -2,7 +2,8 @@ import type { GameEvent, GameState } from '../game';
 import { heroStats } from '../hero';
 import { revealDisc } from './fog';
 import type { Point } from './geometry';
-import { cellCentre, cellIndex, gridWithEnemies, standingEnemies, Terrain, type MapModel } from './model';
+import type { Location } from '../state';
+import { CELL, cellCentre, cellIndex, gridWithEnemies, standingEnemies, Terrain, type MapModel } from './model';
 import { findPath, nearestPassable, reachableNear } from './pathfinding';
 
 /** How far the hero sees as he rides, in pixels. */
@@ -43,6 +44,26 @@ const standingGrid = (state: GameState, map: MapModel) => gridWithEnemies({ ...m
 
 /** How close (in cells) the hero rides up to an enemy he is going to face. */
 export const APPROACH = 6;
+
+/**
+ * The unbeaten enemy the hero stands at, having ridden up to it: the nearest one within his
+ * approach, or null. Its fight card belongs to him while he stays there.
+ */
+export function facingEnemy(state: GameState): Location | null {
+  const [x, y] = state.hero.at;
+  const reach = (APPROACH + 1) * CELL;
+  let best: Location | null = null;
+  let bestD = Infinity;
+  for (const l of state.locations) {
+    if (!l.enemy || l.done) continue;
+    const d = Math.hypot(l.at[0] - x, l.at[1] - y);
+    if (d <= reach && d < bestD) {
+      best = l;
+      bestD = d;
+    }
+  }
+  return best;
+}
 
 /**
  * The cells from the hero to `target` (excluding his own), or null if there is no way. With
