@@ -2,6 +2,7 @@ import { needsTarget, SPELLS, STATUSES, type SpellId, type StatusDef } from '../
 import { TROOPS, troops } from '../content/troops';
 import { chooseAction, finishEstimate } from '../rules/battle/ai';
 import { manaInBattle, signedShare, spiritsOf, uneasyWords } from '../rules/heroSheet';
+import { grumbleLine } from '../rules/army';
 import { coins } from '../rules/state';
 import { activeFighter, bardOf, battleAct, battleEnd, bribePrice, canCast, canJoin, casterOf, castsLeft, chargeOf, CHARGE_BONUS, fighterById, isCharge, isLeader, onField, options, ridesOut, spellCost, spellDamage, spellsOf, spellVictims, strike, unitOf, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
 import { paintBanner } from '../render/banner';
@@ -165,12 +166,16 @@ export class BattleController implements Screen {
     const room = canJoin(this.battle, target);
     const off = this.battle.hero.bribes ? `, less ${pct(this.battle.hero.bribes)}` : '';
     const jeer = STATUSES[art.jeer];
+    // Turncoats of a people his army won't march beside would be grumbled at: the card says so first.
+    const ours = this.battle.fighters.filter((x) => x.side === 'player' && onField(x)).map((x) => ({ troop: x.troop, count: x.count }));
+    const quarrel = room ? grumbleLine(ours, [target.troop]) : null;
     const lines =
       leave === null || join === null
         ? [`*${TROOPS[target.troop].name} take no gold.*`]
         : [
             `Pay them **${coins(leave)} gold** (${art.weeks.leave} weeks\u2019 wages${off}), and they go home.`,
             room ? `Pay them **${coins(join)} gold** (${art.weeks.join} weeks\u2019 wages${off}), and they fight for you, and ride on with you after.` : '*You have no room under your banner for them to come over.*',
+            ...(quarrel ? [quarrel] : []),
             `You carry **${coins(gold)} gold**.`,
           ];
     lines.push(`Jeer them, and they lose heart: ${spirits(jeer)} for ${jeer.rounds} rounds, a chance they lose their turn.`);

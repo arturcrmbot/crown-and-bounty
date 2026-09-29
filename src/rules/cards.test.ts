@@ -90,10 +90,10 @@ describe('the castle', () => {
     const grumble = '*Your Wolves and Wild Boars won\u2019t march happily beside Knights: \u221210% morale for all of them.*';
     const wild = { ...knight(), army: [{ troop: 'wolves' as const, count: 10 }, { troop: 'boars' as const, count: 5 }] };
     expect(cardOf(visit(wild, 'castle')).lines).toContain(grumble);
-    expect(cardOf(visit(knight(), 'castle')).lines.some((line) => line.includes('grumble'))).toBe(false);
+    expect(cardOf(visit(knight(), 'castle')).lines.some((line) => line.includes('march happily'))).toBe(false);
     // An old quarrel isn't news: the King's folk already march with the wolves.
     const mixed = { ...knight(), army: [...knight().army, { troop: 'wolves' as const, count: 10 }] };
-    expect(cardOf(visit(mixed, 'castle')).lines.some((line) => line.includes('grumble'))).toBe(false);
+    expect(cardOf(visit(mixed, 'castle')).lines.some((line) => line.includes('march happily'))).toBe(false);
   });
 
   it('warns before tamed beasts fall in with the King\u2019s folk', () => {
