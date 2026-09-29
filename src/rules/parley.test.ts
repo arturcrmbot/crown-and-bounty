@@ -39,6 +39,15 @@ describe('Grimsby\u2019s parley has a price, and a song to learn first', () => {
     expect(choose(fresh(), 'hideout', 'parley/pardon')).toBeNull();
   });
 
+  it('tells a Courtier who hasn\u2019t learned the song what he lacks, not who he is (#116)', () => {
+    const lullaby = (s: GameState) => button(cardOf(visit(s, 'hideout')), 'Sing him Old Nan\u2019s lullaby')!;
+    expect(lullaby(fresh())).toMatchObject({ label: 'Sing him Old Nan\u2019s lullaby (a song you don\u2019t know yet)', disabled: true });
+    // Anyone else can't sing it, song or no song, and hears only that.
+    expect(lullaby(fresh('knight'))).toMatchObject({ label: 'Sing him Old Nan\u2019s lullaby (Courtier)', disabled: true });
+    // Once he knows it, the button is his.
+    expect(lullaby(fresh('courtier', { lullaby: true }))).toEqual({ label: 'Sing him Old Nan\u2019s lullaby (Courtier)', action: { type: 'choose', id: 'hideout', choice: 'parley/lullaby' } });
+  });
+
   it('takes him for half the bounty, which goes to his old nanny, as the poster and the King both say', () => {
     const start = fresh('courtier', { lullaby: true });
     const sung = choose(start, 'hideout', 'parley/lullaby')!;

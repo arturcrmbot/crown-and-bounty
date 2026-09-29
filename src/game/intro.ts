@@ -5,7 +5,7 @@ import { troops } from '../content/troops';
 import { ARTIFACTS, type ArtifactId } from '../content/artifacts';
 import { FRIENDS } from '../content/friends';
 import { PERKS, RANKS, SKILLS } from '../content/skills';
-import { bountyCard, bountyOf, campaignLines, commissionOf, hasNextCommission, roman, type Card, type GameState } from '../rules/game';
+import { bountyCard, bountyOf, campaignLines, commissionOf, hasNextCommission, listed, roman, type Card, type GameState } from '../rules/game';
 
 /** The title screen's menu: carry on with a save, or begin again. */
 export function titleCard(resume: GameState | null): Card {
@@ -59,7 +59,7 @@ export function storyCard(background: BackgroundId, briefed = false): Card {
     portrait: background,
     lines: [
       ...(briefed ? [] : [`${b.title}: ${COMMISSIONS[0].brief.join(' ')}`]),
-      `You ride out with ${b.army.map((s) => troops(s.troop, s.count)).join(' and ')}${b.spells.length ? `, and ${b.spells.map((s) => SPELLS[s].name).join(', ')} in your spellbook` : ''}.`,
+      `You ride out with ${listed(b.army.map((s) => troops(s.troop, s.count)))}${b.spells.length ? `, and ${listed(b.spells.map((s) => SPELLS[s].name))} in your spellbook` : ''}.`,
       `**${b.signature.name}.** ${b.signature.note}`,
     ],
     choices: [{ label: 'Ride out', action: { type: 'close' } }],

@@ -101,7 +101,7 @@ const GRIMSBY_RIDES: Location = {
     reward: 400,
     threat: '*"There he is!"* shouts the Baron, pointing with the goose. *"Get him!"*',
     lastWords: 'A strategic retreat! Hold on tight, goose!',
-    flees: 'The Baron gallops home to his stockade, the goose under his arm and his guard nowhere at all.',
+    flees: 'The Baron gallops home to his stockade, the goose under his arm, and his guard limps after him.',
     loot: 'In the mud where he turned his pony: {gold}, the guard\u2019s pay.',
   },
 };
@@ -922,6 +922,7 @@ export const ALDMOOR: Province = {
             id: 'lullaby',
             label: 'Sing him Old Nan\u2019s lullaby',
             needs: { background: 'courtier', flag: 'lullaby' },
+            hint: 'a song you don\u2019t know yet',
             effects: { win: true, gold: 1000, xp: 450, flags: { lullaby: false } },
             lines: [
               'You tune your lute under the palisade and sing *Hush-a-bye, Baron*, all four verses, the way Old Nan sings it. By the second, his men are humming along. By the third, the Baron is sobbing into the goose.',

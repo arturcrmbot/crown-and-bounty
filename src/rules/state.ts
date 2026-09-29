@@ -66,7 +66,7 @@ export type Enemy = {
   sortie?: Sortie;
   /** The hurts (story flags) he has already ridden out over. */
   answered?: string[];
-  /** Beaten in the open once, he stays behind his walls. */
+  /** Only in older saves: beaten in the open, he came home without his guard. A save that loads gets it back (`unhumbled`). */
   humbled?: boolean;
   /**
    * A villain's band out of its lair (the lair's id): beaten, he flees home there; once it can't
@@ -192,12 +192,13 @@ export type Effects = {
 
 /**
  * A choice written as content: a button, what it needs, what it does, and what the card then says.
- * One the hero can't take shows greyed out; one whose `when` doesn't hold isn't there at all (a
- * question to ask only once there's something to ask about). One that takes a villain for a price
- * other than the poster's says `because` why, for the poster that comes back stamped PAID: "the
- * other half went on the Baron's lunch".
+ * One the hero can't take shows greyed out, naming only what he lacks; when that's a story need (a
+ * song he hasn't learned yet), it says its quiet `hint`, if it has one. One whose `when` doesn't
+ * hold isn't there at all (a question to ask only once there's something to ask about). One that
+ * takes a villain for a price other than the poster's says `because` why, for the poster that comes
+ * back stamped PAID: "the other half went on the Baron's lunch".
  */
-export type ContentChoice = { id: string; label: string; when?: Needs; needs?: Needs; effects?: Effects; lines?: string[]; because?: string };
+export type ContentChoice = { id: string; label: string; when?: Needs; needs?: Needs; hint?: string; effects?: Effects; lines?: string[]; because?: string };
 
 /**
  * A card written as content. A visit shows the first page whose `when` holds; an `answer` page is
@@ -354,8 +355,11 @@ export type Action =
 /** A button on a card. `detail` is a smaller line under the label (with **bold** and *italics*); `portrait` puts a face beside it. */
 export type Choice = { label: string; action: Action; disabled?: boolean; portrait?: PortraitId; detail?: string };
 
-/** A battle's losses and mana spent, for the result card. */
-export type BattleResultCard = { player: Army; enemy: Army; manaSpent: number; manaAvailable: number };
+/**
+ * A battle's losses and mana spent, for the result card: at its top, or after its first `after`
+ * lines (on a villain's card, once he's taken, before the bribes and the spoils).
+ */
+export type BattleResultCard = { player: Army; enemy: Army; manaSpent: number; manaAvailable: number; after?: number };
 
 /**
  * A parchment card with a title, lines (with **bold** and *italics*), and choices. `wide` is for big
@@ -408,6 +412,9 @@ export const show = (card: Card, at: Point | null = null, place?: string): GameE
 
 /** Gold amounts as written on a card: 2,000 not 2000. */
 export const coins = (n: number) => Math.round(n).toLocaleString('en-GB');
+
+/** A list in words: "3 Knights", "3 Knights and 2 Archers", "3 Knights, 2 Archers and 1 Swordsman". */
+export const listed = (items: readonly string[]) => (items.length > 1 ? `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}` : (items[0] ?? ''));
 
 export function roman(n: number): string {
   const numerals: [number, string][] = [[100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'], [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']];

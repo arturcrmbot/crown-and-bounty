@@ -9,7 +9,7 @@ import { SKILLS } from '../../content/skills';
 import { SPELLS } from '../../content/spells';
 import { foundNote, gainXp, giveArtifact, heroStats } from '../hero';
 import { revealDisc } from '../map/fog';
-import { addTroops, coins, countOf, joinLine, leadershipUsed, locationById, MAX_STACKS, TROOPS, troops, update, VANISHES, type Choice, type ContentChoice, type Effects, type GameEvent, type GameState, type Location, type Needs } from '../state';
+import { addTroops, coins, countOf, joinLine, leadershipUsed, listed, locationById, MAX_STACKS, TROOPS, troops, update, VANISHES, type Choice, type ContentChoice, type Effects, type GameEvent, type GameState, type Location, type Needs } from '../state';
 
 const STAT_WORDS = { attack: 'attack', defence: 'defence', spellPower: 'spell power', knowledge: 'knowledge' } as const;
 
@@ -38,7 +38,7 @@ export function meets(state: GameState, needs: Needs | undefined): boolean {
   return true;
 }
 
-/** "(Courtier)", "(400 gold)", "(Hedge Wizard, spell power 7)": what a choice asks, for its button. */
+/** "(Courtier)", "(400 gold)", "(Hedge Wizard, spell power 7)": what a choice he can take asks, for its button. */
 export function needsLabel(needs: Needs | undefined): string {
   if (!needs) return '';
   const parts = [
@@ -54,12 +54,36 @@ export function needsLabel(needs: Needs | undefined): string {
   return parts.length ? ` (${parts.join(', ')})` : '';
 }
 
-/** A content choice as a button: greyed out, with what it needs, when the hero can't take it. */
+/**
+ * What a greyed button says the hero lacks, and never what he has: a Courtier knows he's one. The
+ * wrong sort of hero hears only that, as nothing else would help him. A story need not met yet (a
+ * flag, a place not seen, a spell he knows already) says the choice's quiet `hint`, if it has one.
+ */
+export function lacksLabel(state: GameState, needs: Needs | undefined, hint?: string): string {
+  if (!needs) return '';
+  if (needs.background && state.hero.background !== needs.background) return ` (${BACKGROUNDS[needs.background].name})`;
+  const short = (part: Needs) => !meets(state, part);
+  const { flag, notFlag, seen, notArtifact, notSpell } = needs;
+  const parts = [
+    needs.skill && short({ skill: needs.skill }) && SKILLS[needs.skill].name,
+    needs.spellPower && short({ spellPower: needs.spellPower }) && `spell power ${needs.spellPower}`,
+    needs.level && short({ level: needs.level }) && `level ${needs.level}`,
+    needs.artifact && short({ artifact: needs.artifact }) && ARTIFACTS[needs.artifact].name,
+    needs.gold && short({ gold: needs.gold }) && `${coins(needs.gold)} gold`,
+    needs.mana && short({ mana: needs.mana }) && `${needs.mana} mana`,
+    needs.troop && short({ troop: needs.troop, count: needs.count }) && troops(needs.troop, needs.count ?? 1),
+    hint && short({ flag, notFlag, seen, notArtifact, notSpell }) && hint,
+  ].filter(Boolean);
+  return parts.length ? ` (${parts.join(', ')})` : '';
+}
+
+/** A content choice as a button: greyed out, with what he lacks, when the hero can't take it. */
 export function choiceButton(state: GameState, place: Location, choice: ContentChoice, key: string): Choice {
+  const can = meets(state, choice.needs);
   return {
-    label: `${choice.label}${needsLabel(choice.needs)}`,
+    label: `${choice.label}${can ? needsLabel(choice.needs) : lacksLabel(state, choice.needs, choice.hint)}`,
     action: { type: 'choose', id: place.id, choice: key },
-    ...(meets(state, choice.needs) ? {} : { disabled: true }),
+    ...(can ? {} : { disabled: true }),
   };
 }
 
@@ -149,7 +173,7 @@ export function applyEffects(state: GameState, place: Location, effects: Effects
       })
       .filter((s) => s.count > 0);
     next = update(next, place.id, { enemy: { ...foe, army } });
-    if (gone.length) lines.push(`${gone.join(' and ')} ${slipped === 1 ? 'slips' : 'slip'} away from ${place.name}.`);
+    if (gone.length) lines.push(`${listed(gone)} ${slipped === 1 ? 'slips' : 'slip'} away from ${place.name}.`);
   }
   if (effects.reveal) {
     const { at, radius } = effects.reveal;

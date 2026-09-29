@@ -36,9 +36,95 @@
   flex: 0 1 auto;
   min-height: 0;
   overflow-y: auto;
+  --fade-top: 0px;
+  --fade-bottom: 0px;
+  --clear-bottom: 0px;
+  --bar: 0px;
 }
 .kc-card .choices {
   flex: none;
+}
+/* Words run on out of sight: the cut edge fades, and "more" points down from a clear strip at the
+   foot of the words. The fade leaves the scrollbar alone (`--bar`, its width, set as it comes). */
+.kc-card.more-above .kc-card-body {
+  --fade-top: 22px;
+}
+.kc-card.more-below .kc-card-body {
+  --fade-bottom: 46px;
+  --clear-bottom: 19px;
+}
+.kc-card.more-above .kc-card-body,
+.kc-card.more-below .kc-card-body {
+  -webkit-mask:
+    linear-gradient(transparent, #000 var(--fade-top), #000 calc(100% - var(--fade-bottom)), transparent calc(100% - var(--clear-bottom))) left top / calc(100% - var(--bar)) 100% no-repeat,
+    linear-gradient(#000, #000) right top / var(--bar) 100% no-repeat;
+  mask:
+    linear-gradient(transparent, #000 var(--fade-top), #000 calc(100% - var(--fade-bottom)), transparent calc(100% - var(--clear-bottom))) left top / calc(100% - var(--bar)) 100% no-repeat,
+    linear-gradient(#000, #000) right top / var(--bar) 100% no-repeat;
+}
+.kc-card-more {
+  flex: none;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  height: 0;
+  font-size: 13px;
+  font-style: italic;
+  font-weight: bold;
+  color: #7a2a10;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 150ms;
+  pointer-events: none;
+}
+/* It fades in, and goes at once. Its visibility is the card's, so a card veiled while its screen
+   changes keeps "more" out of sight too. */
+.kc-card.more-below .kc-card-more {
+  visibility: inherit;
+  opacity: 1;
+}
+.kc-card-more span {
+  padding: 0 10px 1px;
+  line-height: 1.25;
+  cursor: pointer;
+  pointer-events: auto;
+  text-shadow: 0 0 3px #e4d0a2, 0 0 3px #e4d0a2;
+  animation: kc-more 1.8s ease-in-out infinite;
+}
+.kc-card-more span:hover {
+  color: #a42a10;
+}
+@keyframes kc-more {
+  0%,
+  60%,
+  100% {
+    transform: none;
+  }
+  80% {
+    transform: translateY(2px);
+  }
+}
+/* A slim scrollbar in the card's own inks, so a card that scrolls looks it. */
+.kc-card::-webkit-scrollbar,
+.kc-card-body::-webkit-scrollbar {
+  width: 6px;
+}
+.kc-card::-webkit-scrollbar-track,
+.kc-card-body::-webkit-scrollbar-track {
+  background: rgba(90, 62, 20, 0.14);
+}
+.kc-card::-webkit-scrollbar-thumb,
+.kc-card-body::-webkit-scrollbar-thumb {
+  background: #9a7a3a;
+}
+@supports not selector(::-webkit-scrollbar) {
+  .kc-card,
+  .kc-card-body {
+    scrollbar-width: thin;
+    scrollbar-color: #9a7a3a rgba(90, 62, 20, 0.14);
+  }
 }
 /* A face on the card, in a little gilt frame, top left. */
 .kc-card img.portrait {
@@ -319,7 +405,8 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .kc-card.unfold,
-  .kc-card.unfold .stamp {
+  .kc-card.unfold .stamp,
+  .kc-card-more span {
     animation: none;
   }
 }

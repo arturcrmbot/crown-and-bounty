@@ -151,6 +151,59 @@ try {
   check((await kc.state()).gold === gold + 250, 'the gold pile pays 250');
   await close();
 
+  // A card too long for its room says so ("more", and a fade), and turns its words from anywhere on
+  // it; the next card opens at its top, however far down the last one was read (#114, #117). The
+  // game's own cards, in the page, on letters longer than any in Aldmoor.
+  const letter = (title) => ({ title, lines: Array.from({ length: 30 }, (_, i) => `${i + 1}. The King\u2019s officer will kindly read to the end of this letter.`), choices: [{ label: 'Read on', action: { type: 'close' } }] });
+  const reading = () => kc.call(() => {
+    const card = document.querySelector('.kc-card-wrap.kc-test .kc-card');
+    const body = card.querySelector('.kc-card-body');
+    return { top: body.scrollTop, cardTop: card.scrollTop, hidden: body.scrollHeight - body.clientHeight, above: card.classList.contains('more-above'), below: card.classList.contains('more-below'), cue: getComputedStyle(card.querySelector('.kc-card-more')).visibility, title: card.querySelector('h3').textContent };
+  });
+  await kc.call(async (first) => {
+    const { CardView } = await import('/src/ui/card.ts');
+    const view = new CardView(() => {});
+    document.querySelector('.kc-card-wrap:last-child').classList.add('kc-test');
+    view.show(first);
+    view.place(null, 32, 480);
+    window.__cardTest = view;
+  }, letter('A long letter'));
+  await page.waitForTimeout(250);
+  const unread = await reading();
+  check(unread.hidden > 0 && unread.top === 0 && unread.below && !unread.above && unread.cue === 'visible', `a card too long for its room shows there\u2019s more (${unread.hidden}px out of sight)`);
+  const veiled = await kc.call(() => {
+    document.body.classList.add('kc-veiled');
+    const seen = getComputedStyle(document.querySelector('.kc-test .kc-card-more span')).visibility;
+    document.body.classList.remove('kc-veiled');
+    return seen;
+  });
+  check(veiled === 'hidden', 'and its "more" waits out of sight with it while a screen changes');
+  const readOn = await page.locator('.kc-test button', { hasText: 'Read on' }).boundingBox();
+  await page.mouse.move(readOn.x + readOn.width / 2, readOn.y + readOn.height / 2);
+  await page.mouse.wheel(0, 200);
+  await page.waitForTimeout(250);
+  const wheeled = await reading();
+  check(wheeled.top >= 150 && wheeled.above, `the wheel over its buttons turns its words (down ${Math.round(wheeled.top)}px)`);
+  await page.locator('.kc-test .kc-card-more span').click();
+  await page.waitForTimeout(600);
+  const paged = await reading();
+  check(paged.top > wheeled.top, `and "more" turns the page (down ${Math.round(paged.top)}px)`);
+  await page.mouse.wheel(0, 5000);
+  await page.waitForTimeout(400);
+  const read = await reading();
+  check(read.top >= read.hidden - 2 && !read.below && read.cue === 'hidden', 'read to the end, it stops saying there\u2019s more');
+  // As a choice does: this card goes, and whatever it leads to comes up in its place.
+  await kc.call((next) => {
+    window.__cardTest.hide();
+    window.__cardTest.show(next);
+  }, letter('Another long letter'));
+  const next = await reading();
+  check(next.title === 'Another long letter' && next.top === 0 && next.cardTop === 0 && !next.above && next.below, `the next card opens at its top (${next.top}px down)`);
+  await kc.call(() => {
+    window.__cardTest.dispose();
+    delete window.__cardTest;
+  });
+
   const before = await kc.state();
   await page.goto(`${server.url}?speed=8`);
   await kc.ready();
@@ -278,7 +331,7 @@ try {
   check((await beatWhenReady('patrol')) === 'Victory!', 'once explored, the sergeants beat the patrol');
   await close();
   // Taking his patrol off the bridge hurts Grimsby: he rides out with his guard to meet the hero, and
-  // falls on his camp. Beaten in the open, he flees home to his stockade, without his guard.
+  // falls on his camp. Beaten in the open, he flees home to his stockade, and his guard straggles in after him.
   const byGrimsby = () => ambushes.find((a) => a.who === 'Grimsby and his Guard');
   for (let night = 0; night < 8 && !byGrimsby(); night++) {
     await settle();
@@ -296,7 +349,8 @@ try {
   if (met) {
     check(met.title === 'Victory!' && met.lines.includes('Baron Grimsby flees home'), `beaten in the open, Grimsby flees home to his stockade (${met.title})`);
     const stockade = (await kc.state()).locations.find((l) => l.id === 'hideout');
-    check(stockade.enemy.humbled && stockade.enemy.army.some((s) => s.troop === 'baron'), 'and stays behind his walls, without his guard');
+    const swordsmen = stockade.enemy.army.find((s) => s.troop === 'swordsmen')?.count ?? 0;
+    check(!stockade.enemy.humbled && stockade.enemy.army.some((s) => s.troop === 'baron') && swordsmen >= 46, `and his guard straggles home after him (${swordsmen} swordsmen behind his walls)`);
   }
   check((await kc.state()).locations.some((l) => l.id === 'deserters'), 'deserters make camp by the crossroads');
   await go('deserters', 'Visit');
@@ -312,6 +366,13 @@ try {
   // To court: level-ups from the last battle, the King's thanks and a boon, then the next commission.
   const first = () => kc.call(() => document.querySelector('.kc-card-wrap:not([hidden]) button')?.textContent ?? null);
   check((await kc.title()) === 'Baron Grimsby is taken!' && (await kc.lines()).includes('Flemish'), 'Grimsby is taken, and has the last word');
+  const taken = await kc.call(() => {
+    const card = document.querySelector('.kc-card-wrap:not([hidden]) .kc-card');
+    const body = card.querySelector('.kc-card-body');
+    const [fallen, room] = [body.querySelector('.battle-result')?.getBoundingClientRect(), body.getBoundingClientRect()];
+    return { fallen: Boolean(fallen) && fallen.top >= room.top && fallen.bottom <= room.bottom, after: fallen ? Math.round(fallen.top - room.top) : null, long: body.scrollHeight > body.clientHeight + 2, more: card.classList.contains('more-below') };
+  });
+  check(taken.fallen && taken.more === taken.long, `his card has the fallen in sight, near its top (${taken.after}px down)${taken.long ? ', and says there\u2019s more below' : ''}`);
   check((await kc.choose('Claim the bounty')) && (await kc.title()) === 'WANTED' && (await kc.lines()).includes('paid in full'), 'his poster comes back, paid in full');
   check(await kc.choose('Ride to the King'), 'the poster sends Sir Aldric to court');
   await page.waitForTimeout(100);

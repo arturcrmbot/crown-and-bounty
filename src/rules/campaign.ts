@@ -4,9 +4,10 @@ import { FRIENDS, type FriendId } from '../content/friends';
 import { leads } from '../content/troops';
 import { VILLAINS } from '../content/villains';
 import { generateCommission } from './generate';
+import { unhumbled } from './map/sortie';
 import { heroStats, VETERANS } from './hero';
 import { beginCommission } from './scenario';
-import { addTroops, armyLine, close, coins, leadershipUsed, roll, roman, show, TROOPS, type Army, type BoonId, type Campaign, type Card, type Choice, type GameState, type Location, type Result } from './state';
+import { addTroops, armyLine, close, coins, leadershipUsed, listed, roll, roman, show, TROOPS, type Army, type BoonId, type Campaign, type Card, type Choice, type GameState, type Location, type Result } from './state';
 
 /** Commissions in a campaign: the hand-made ones, then provinces generated for this campaign. */
 export const CAMPAIGN_LENGTH = 5;
@@ -65,6 +66,11 @@ export function withNewPlaces(state: GameState): GameState {
       l = { ...l, wares: [...(l.wares ?? []), ...stock] };
     }
     if (!now || l.done) return l;
+    // A villain an older save left a guard short, beaten in the open, has his guard back.
+    if (l.enemy?.humbled) {
+      changed = true;
+      l = unhumbled(l);
+    }
     // A captain who has taken a band over since leads it now (Rook, the Baron's wolves), under his name, in his ways
     // and with his words, even if the hero has met the band before: who leads it isn't something that happened to it.
     const captains = l.kind === 'patrol' && l.enemy ? (now.enemy?.army ?? []).filter((s) => leads(s.troop) && !l.enemy!.army.some((x) => x.troop === s.troop)) : [];
@@ -234,8 +240,7 @@ function grant(state: GameState, id: BoonId): GameState {
 export function companyLine(state: GameState): string[] {
   const names = (state.hero.friends ?? []).map((id) => `**${FRIENDS[id].name}**`);
   if (!names.length) return [];
-  const all = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0];
-  return [`${all} ${names.length > 1 ? 'ride' : 'rides'} with you.`];
+  return [`${listed(names)} ${names.length > 1 ? 'ride' : 'rides'} with you.`];
 }
 
 /** The next commission, read out at court, with who and what will ride out for it. */

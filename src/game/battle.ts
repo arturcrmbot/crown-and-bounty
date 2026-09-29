@@ -4,7 +4,7 @@ import { CONTACT, TROOP_SOUNDS } from '../audio/blows';
 import { chooseAction, finishEstimate } from '../rules/battle/ai';
 import { manaInBattle, signedShare, spiritsOf, uneasyWords } from '../rules/heroSheet';
 import { grumbleLine } from '../rules/army';
-import { coins } from '../rules/state';
+import { coins, listed } from '../rules/state';
 import { activeFighter, bardOf, battleAct, battleEnd, bribePrice, canCast, canJoin, casterOf, castsLeft, chargeOf, CHARGE_BONUS, fighterById, isCharge, isLeader, onField, options, ridesOut, spellCost, spellDamage, spellsOf, spellVictims, strike, unitOf, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
 import { paintBanner } from '../render/banner';
 import { BattleScreen, BUTTONS, FIRE_FALL, FLOAT_RISE, hexAt, hexCentre, leaderAt, LOG_BOTTOM, spotOf, type BattleView, type Shot } from '../render/battleScreen';
@@ -205,6 +205,7 @@ export class BattleController implements Screen {
             `Pay them **${coins(leave)} gold** (${art.weeks.leave} weeks\u2019 wages${off}), and they go home.`,
             room ? `Pay them **${coins(join)} gold** (${art.weeks.join} weeks\u2019 wages${off}), and they fight for you, and ride on with you after.` : '*You have no room under your banner for them to come over.*',
             ...(quarrel ? [quarrel] : []),
+            '*Bought, not beaten, they teach you half what beating them would.*',
             `You carry **${coins(gold)} gold**.`,
           ];
     lines.push(`Jeer them, and they lose heart: ${spirits(jeer)} for ${jeer.rounds} rounds, a chance they lose their turn.`);
@@ -240,7 +241,7 @@ export class BattleController implements Screen {
       const f = fighterById(this.battle, id);
       return this.named(id) ? TROOPS[f.troop].name : `${f.side === 'player' ? 'your' : 'the'} ${TROOPS[f.troop].name}`;
     });
-    const who = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0];
+    const who = listed(names);
     const status = STATUSES[o.status].name;
     const one = o.fighters.length === 1 && this.named(o.fighters[0]);
     // "start slowed", but "start with Stone Skin".
@@ -1163,7 +1164,7 @@ export class BattleController implements Screen {
       const [, ...caught] = spellVictims(this.battle, action.spell, target);
       const ours = caught.filter((c) => c.side === 'player').map((c) => TROOPS[c.troop].name.toLowerCase());
       const theirs = caught.length - ours.length;
-      const more = [theirs ? `${theirs} more of theirs` : '', ours.length ? `your own ${ours.join(' and ')}!` : ''].filter(Boolean).join(', and ');
+      const more = [theirs ? `${theirs} more of theirs` : '', ours.length ? `your own ${listed(ours)}!` : ''].filter(Boolean).join(', and ');
       return `${SPELLS[action.spell].name}: ${damage} damage, ${wound(target, damage).killed} of ${whom} perish.${more ? ` It also hits ${more}` : ''}`;
     }
     if (action.type !== 'melee' && action.type !== 'shoot') return null;

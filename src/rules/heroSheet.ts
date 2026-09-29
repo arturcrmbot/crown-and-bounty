@@ -11,7 +11,7 @@ import { heroFighter, heroInBattle } from './fight';
 import { countsExactly, forceLine } from './places/common';
 import { heroStats, LEVELS, type StatId } from './hero';
 import { riddenOut } from './map/sortie';
-import { close, COMMISSION, coins, LAST_DAY, leadershipUsed, locationById, PAYDAY_EVERY, roman, wages, type Card, type GameState } from './state';
+import { close, COMMISSION, coins, LAST_DAY, leadershipUsed, listed, locationById, PAYDAY_EVERY, roman, wages, type Card, type GameState } from './state';
 
 /** How mana comes back, in a few words: at dawn, and for some heroes as they ride. */
 export function manaBack(state: GameState): string {
@@ -224,10 +224,7 @@ export function heroSheet(state: GameState): HeroSheet {
 export function leaderTraits(state: GameState): Note[] {
   const s = heroStats(state);
   const pct = (x: number) => `${Math.round(x * 100)}%`;
-  const names = (ids: TroopId[]) => {
-    const all = [...new Set(ids)].map((id) => TROOPS[id].name);
-    return all.length > 1 ? `${all.slice(0, -1).join(', ')} and ${all[all.length - 1]}` : (all[0] ?? '');
-  };
+  const names = (ids: TroopId[]) => listed([...new Set(ids)].map((id) => TROOPS[id].name));
   const out: Note[] = [];
   if (s.casts > 1) out.push({ name: `${s.casts} spells a round`, note: 'He casts again before the round is out.', trick: true });
   if (s.manaDiscount) out.push({ name: 'Hedge magic', note: `Every spell costs ${s.manaDiscount} less mana.` });
@@ -280,9 +277,6 @@ export function signedShare(x: number): string {
   return n === 0 ? '0' : `${n > 0 ? '+' : '\u2212'}${Math.abs(n)}%`;
 }
 
-/** A list in words: "Wolves", "Knights and Archers", "Knights, Archers and Peasants". */
-const namesOf = (names: string[]) => (names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : (names[0] ?? ''));
-
 /** A stack's luck and morale in battle, and why. */
 export type Spirits = {
   luck: number;
@@ -307,7 +301,7 @@ export function spiritsOf(b: BattleState, f: Fighter): Spirits {
 }
 
 /** Why a stack grumbles, in a few words: "uneasy beside the Wolves". Empty if it doesn't. */
-export const uneasyWords = (s: Spirits) => (s.uneasy.length ? `uneasy beside the ${namesOf(s.uneasy)}` : '');
+export const uneasyWords = (s: Spirits) => (s.uneasy.length ? `uneasy beside the ${listed(s.uneasy)}` : '');
 
 /** A stack card's luck and morale, a line each: the share, and what it does in battle. */
 function spiritRows(s: Spirits | null): StackSheet['stats'] {
@@ -322,7 +316,7 @@ function spiritRows(s: Spirits | null): StackSheet['stats'] {
 function spiritTraits(s: Spirits | null): Note[] {
   if (!s) return [];
   const named = [...s.gifts, ...s.moods].map((g) => ({ name: g.source, note: `${[g.luck ? `${signedShare(g.luck)} luck` : '', g.morale ? `${signedShare(g.morale)} morale` : ''].filter(Boolean).join(', ')}.` }));
-  const uneasy = s.uneasy.length ? [{ name: 'Uneasy company', note: `They won\u2019t march happily beside the ${namesOf(s.uneasy)}: ${signedShare(s.grumble)} morale.` }] : [];
+  const uneasy = s.uneasy.length ? [{ name: 'Uneasy company', note: `They won\u2019t march happily beside the ${listed(s.uneasy)}: ${signedShare(s.grumble)} morale.` }] : [];
   return [...named, ...uneasy];
 }
 
@@ -384,8 +378,7 @@ export function stackSheet(state: GameState, index: number): StackSheet | null {
 
 /** Who charges when the hero does: "He charges", or "He and his Knights charge", and what his troops need for it. */
 function chargeLine(state: GameState): string {
-  const others = [...new Set(heroStats(state).charge.filter((t) => !TROOPS[t].hero))].map((t) => TROOPS[t].name);
-  const list = others.length > 1 ? `${others.slice(0, -1).join(', ')} and ${others[others.length - 1]}` : others[0];
+  const list = listed([...new Set(heroStats(state).charge.filter((t) => !TROOPS[t].hero))].map((t) => TROOPS[t].name));
   return list
     ? `He and his ${list} charge: a quarter harder, and nobody strikes back. He rides in from behind the line; they need a run-up of 3 hexes, started clear of the enemy.`
     : 'He charges as he rides in from behind the line: a quarter harder, and nobody strikes back.';
@@ -397,7 +390,7 @@ function bribes(state: GameState): Note[] {
   if (!art) return [];
   const off = heroStats(state).bribes;
   const less = off ? `, less ${Math.round(off * 100)}%` : '';
-  return [{ name: 'Bribes', note: `He pays ${art.weeks.leave} weeks of a stack\u2019s wages to send it home, or ${art.weeks.join} to bring it over if it fits under his banner${less}. Beasts take no gold, and villains and captains can\u2019t be bought. His sergeants never spend his gold.` }];
+  return [{ name: 'Bribes', note: `He pays ${art.weeks.leave} weeks of a stack\u2019s wages to send it home, or ${art.weeks.join} to bring it over if it fits under his banner${less}. Bought, not beaten, they teach him half what beating them would. Beasts take no gold, and villains and captains can\u2019t be bought. His sergeants never spend his gold.` }];
 }
 
 /** The hero's own card, laid out like a stack's: how he fights from behind the line, and what he brings the army. */
