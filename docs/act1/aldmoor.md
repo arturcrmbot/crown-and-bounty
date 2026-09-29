@@ -12,6 +12,8 @@ when his guard is beaten.
 **Built (#76):** the hunt hall by the bridge, Old Nan's word, the lodge in the chase with its bears, and the huntsmen.
 **Built (#78):** the grain cart on payday, which a squad of Pike's patrol takes from Westmere to the stockade.
 **Built (#105):** the old King's falconer on the south-west heath, with a clue, his hawk, and a way home to the hall.
+**Built (#124):** something worth stopping for less than a day's ride from anywhere, and about every half day on the
+roads: eighteen small finds (`content/aldmoorFinds.ts`), and `npm run rides` to measure it.
 
 ![Aldmoor, bigger](aldmoor.svg)
 

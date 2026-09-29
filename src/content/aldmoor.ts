@@ -1,6 +1,7 @@
 import { nearest, smooth, type Point } from '../rules/map/geometry';
 import { hash, rng } from '../rules/noise';
 import type { ContentChoice, Location } from '../rules/state';
+import { FINDS } from './aldmoorFinds';
 import type { Province, Region } from './types';
 
 /** Aldmoor is 100 by 75 tiles of 32 pixels: a day's ride on a road crosses about a third of it. */
@@ -236,6 +237,8 @@ const riverX = (y: number) => {
   return smoothRiver[smoothRiver.length - 1][0];
 };
 const inWoods = ([x, y]: Point) => forests.some(([cx, cy, rx, ry]) => Math.hypot((x - cx) / rx, (y - cy) / ry) < 1.25);
+/** Clear of the small finds along the rides (#124) too: only what would stand on one goes, so nothing else moves. */
+const byNoFind = (place: number) => ([x, y]: readonly [number, number, ...unknown[]]) => FINDS.every(({ at: [fx, fy] }) => Math.hypot(fx - x, fy - y) > place);
 
 /** Points on a jittered grid `step` apart, from a fixed seed, where `keep` says. */
 function scatter(seed: number, step: number, keep: (p: Point, r: () => number) => boolean): Point[] {
@@ -264,14 +267,36 @@ function height([x, y]: Point): number {
 /** The crags: a range of rock along the north, cut by the river, with the downs' tors to the east. */
 const crags: [number, number, number, number][] = scatter(29, 96, (p, r) => r() < height(p) && clearOf(p, 46, 60, 90) && !inWoods(p)).map(([x, y], i) => {
   const big = 1 - y / 600;
-  return [x, y, Math.round(70 + hash(i, 1, 30) * 50 + big * 20), Math.round(48 + hash(i, 2, 30) * 36 + big * 22)];
-});
+  return [x, y, Math.round(70 + hash(i, 1, 30) * 50 + big * 20), Math.round(48 + hash(i, 2, 30) * 36 + big * 22)] as [number, number, number, number];
+}).filter(byNoFind(90));
 
 /** Lone trees in the fields and on the heath, and boulders on the heath and the downs. */
-const trees: [number, number, boolean][] = scatter(31, 170, (p, r) => r() < 0.3 && height(p) === 0 && clearOf(p, 18, 30, 60) && !inWoods(p)).map(([x, y], i) => [x, y, hash(i, 3, 31) < 0.4]);
-const rocks: [number, number, number][] = scatter(37, 150, (p, r) => r() < (p[0] < riverX(p[1]) ? 0.3 : 0.12) && clearOf(p, 14, 30, 50) && !inWoods(p)).map(([x, y], i) => [x, y, Math.round(5 + hash(i, 4, 37) * 4)]);
+const trees: [number, number, boolean][] = scatter(31, 170, (p, r) => r() < 0.3 && height(p) === 0 && clearOf(p, 18, 30, 60) && !inWoods(p))
+  .map(([x, y], i): [number, number, boolean] => [x, y, hash(i, 3, 31) < 0.4])
+  .filter(byNoFind(60));
+const rocks: [number, number, number][] = scatter(37, 150, (p, r) => r() < (p[0] < riverX(p[1]) ? 0.3 : 0.12) && clearOf(p, 14, 30, 50) && !inWoods(p))
+  .map(([x, y], i): [number, number, number] => [x, y, Math.round(5 + hash(i, 4, 37) * 4)])
+  .filter(byNoFind(50));
 
 const hero: Point = [3100, 1046];
+
+/** Aldmoor's lands, as the sketch names them (`docs/act1/aldmoor.svg`). */
+export const LANDS = { fields: 'the fields', downs: 'the downs', crags: 'the crags', heath: 'the heath', darkwood: 'Darkwood', chase: 'the King\u2019s chase' } as const;
+export type Land = keyof typeof LANDS;
+
+const darkwood = forests.filter(([, , , , pines]) => (pines ?? 0) >= 0.9);
+
+/**
+ * Which of Aldmoor's lands a point is in: the crags along the north, down to the road at their foot;
+ * west of the river the heath, with Darkwood south of it; east of it the downs, the fields round the
+ * castle and Westmere, and the King's chase in the south. For saying where a long ride is
+ * (`rules/map/rides.ts`).
+ */
+export function landOf([x, y]: Point): Land {
+  if (x < riverX(y)) return y < 540 ? 'crags' : darkwood.some(([cx, cy, rx, ry]) => Math.hypot((x - cx) / rx, (y - cy) / ry) < 1.15) ? 'darkwood' : 'heath';
+  if (y < 330 && x < 2440) return 'crags';
+  return y < 760 ? 'downs' : y > 1760 ? 'chase' : 'fields';
+}
 
 /** The first province: Aldmoor, where Baron Grimsby has gone to ground with the royal goose. */
 export const ALDMOOR: Province = {
@@ -1074,5 +1099,6 @@ export const ALDMOOR: Province = {
         loot: 'In Rook\u2019s hut by the kennels: {gold}, a fine grey pelt, and an old ranger\u2019s cloak his wolves had been sleeping on. *Old Nan would like that pelt.*',
       },
     },
+    ...FINDS,
   ],
 };

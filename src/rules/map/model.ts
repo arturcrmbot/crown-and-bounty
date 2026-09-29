@@ -49,6 +49,14 @@ const FOOTPRINTS: Record<string, [number, number]> = {
   hall: [74, 24],
   lodge: [46, 16],
   mews: [34, 14],
+  campfire: [26, 8],
+  fold: [52, 16],
+  boat: [44, 10],
+  skeps: [38, 8],
+  hayrick: [32, 12],
+  pond: [52, 16],
+  kiln: [44, 12],
+  nest: [40, 14],
 };
 
 /** A road wades the river where it crosses within this many pixels of one of the province's fords. */

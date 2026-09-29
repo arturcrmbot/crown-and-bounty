@@ -1254,4 +1254,344 @@ export function xMark(phase = 0): Bitmap {
   return shaped;
 }
 
+/** Smoke curling off to the east from (x, y) with `phase`, in puffs that grow as they rise, over whatever isn't drawn yet. */
+function smoke(sprite: Bitmap, x: number, y: number, phase: number, rise: number, shades: readonly [number, number]) {
+  for (let k = 0; k < 3; k++) {
+    const t = (phase + k / 3) % 1;
+    const cx = x + t * rise * 0.6 + Math.sin(t * 6 + k) * 1.2;
+    const cy = y - t * rise;
+    const r = 0.8 + t * 1.8;
+    for (let py = Math.floor(cy - r); py <= cy + r; py++) {
+      for (let px = Math.floor(cx - r); px <= cx + r; px++) {
+        if (((px - cx) / r) ** 2 + ((py - cy) / r) ** 2 > 1 || sprite.get(px, py) !== 0) continue;
+        if (t > 0.6 && (px + py) % 2 === 0) continue;
+        sprite.set(px, py, t < 0.35 ? shades[0] : shades[1]);
+      }
+    }
+  }
+}
+
+/**
+ * A pack dropped by the road: a lumpy leather sack with a blanket rolled and strapped across its top.
+ * As a `hamper`, the Baron's wicker picnic hamper instead, with a handle and a gold clasp. The foot is at 18.
+ */
+export function pack(hamper = false): Bitmap {
+  const sprite = new Bitmap(30, 22);
+  const foot = 18;
+  if (hamper) {
+    const STRAW = [DIRT[4], DIRT[5], DIRT[6], DIRT[7]];
+    for (let y = 7; y < foot; y++) {
+      for (let x = 4; x < 25; x++) {
+        const lid = y < 11;
+        const weave = ((x >> 1) + (y >> 1)) % 2 === 0 ? 0.14 : -0.14;
+        sprite.set(x, y, y === 11 ? DIRT[2] : flat(STRAW, clamp01((lid ? 0.62 : 0.5) - (x - 4) * 0.02 + weave - (y === foot - 1 ? 0.3 : 0)), x, y));
+      }
+    }
+    for (const sx of [9, 20]) for (let y = 7; y < foot; y++) sprite.set(sx, y, WOOD[2]);
+    for (let y = 10; y < 13; y++) for (let x = 14; x < 16; x++) sprite.set(x, y, GOLD[y === 10 ? 6 : 5]);
+    // The handle, arching over the lid.
+    for (let x = 10; x < 20; x++) sprite.set(x, x < 12 || x > 17 ? 5 : 4, WOOD[3]);
+    for (const hx of [10, 19]) sprite.set(hx, 6, WOOD[3]);
+  } else {
+    // The sack, lit from the top left.
+    for (let y = 6; y < foot; y++) {
+      for (let x = 3; x < 26; x++) {
+        const light = sphere(x, (y - 12) * 1.3 + 12, 14, 12, 10.5);
+        if (light === OUTSIDE) continue;
+        sprite.set(x, y, flat(four(EARTH, 3, 4, 5, 6), clamp01(0.12 + light * 0.8 + (noise(x / 2, y / 2, 93) - 0.5) * 0.25), x, y));
+      }
+    }
+    // The blanket, rolled and strapped across the top, in the King's blue.
+    for (let y = 3; y < 9; y++) {
+      for (let x = 5; x < 24; x++) {
+        const edge = x === 5 || x === 23;
+        sprite.set(x, y, edge ? BLUE[2] : flat(BLUE4, clamp01(0.9 - Math.abs((y - 3) / 6 - 0.3) * 1.3 - (x - 5) * 0.012), x, y));
+      }
+    }
+    for (const sx of [10, 18]) for (let y = 3; y < foot - 1; y++) sprite.set(sx, y, WOOD[1]);
+    sprite.set(18, 12, GOLD[5]);
+  }
+  const shaped = outline(sprite, INK);
+  shadowOval(shaped, 16, foot, 12, 2.2);
+  return shaped;
+}
+
+/**
+ * A cold campfire by the road: a ring of stones round grey ash and a last ember, a log to sit on,
+ * a letter weighed down with a stone, and a thread of smoke with `phase`. The foot is at 30.
+ */
+export function campfire(phase = 0): Bitmap {
+  const sprite = new Bitmap(44, 34);
+  const [cx, cy] = [18, 25];
+  // The log behind the fire, its sawn end towards you.
+  for (let y = 16; y < 21; y++) {
+    for (let x = 25; x < 41; x++) {
+      const end = x === 25 || x === 26;
+      sprite.set(x, y, end ? (Math.hypot(x - 26, y - 18.5) < 1.6 ? PARCHMENT[4] : PARCHMENT[2]) : flat(WOOD4, clamp01(0.85 - ((y - 16) / 5) * 0.75 + (hash(x >> 2, y, 94) - 0.5) * 0.1), x, y));
+    }
+  }
+  // The ash, and two charred sticks across it.
+  for (let y = cy - 3; y <= cy + 3; y++) {
+    for (let x = cx - 8; x <= cx + 8; x++) {
+      if (((x + 0.5 - cx) / 8) ** 2 + ((y + 0.5 - cy) / 3.4) ** 2 > 1) continue;
+      sprite.set(x, y, hash(x, y, 95) < 0.45 ? NEUTRAL[3] : NEUTRAL[4]);
+    }
+  }
+  for (let t = 0; t <= 1; t += 0.1) {
+    sprite.set(Math.round(cx - 5 + t * 10), Math.round(cy + 1 - t * 3), INK);
+    sprite.set(Math.round(cx - 4 + t * 9), Math.round(cy - 2 + t * 3), WOOD[0]);
+  }
+  // A last ember, that glows and fades.
+  const glow = Math.sin(phase * Math.PI * 2) > 0;
+  sprite.set(cx, cy, glow ? GOLD[5] : RED[4]);
+  sprite.set(cx + 1, cy, glow ? RED[5] : RED[3]);
+  // The ring of stones, each a lumpy grey pebble lit from the top left.
+  for (let k = 0; k < 9; k++) {
+    const a = (k / 9) * Math.PI * 2 + 0.3;
+    const [sx, sy] = [cx + Math.cos(a) * 10, cy + Math.sin(a) * 4.8];
+    for (let y = Math.floor(sy - 2); y <= sy + 2; y++) {
+      for (let x = Math.floor(sx - 2); x <= sx + 2; x++) {
+        const light = sphere(x, (y - sy) * 1.4 + sy, sx, sy, 2.2);
+        if (light !== OUTSIDE) sprite.set(x, y, flat(ROCK4, clamp01(0.3 + light * 0.75), x, y));
+      }
+    }
+  }
+  // The letter, under a stone on the near side.
+  for (let y = 28; y < 32; y++) for (let x = 29; x < 36; x++) sprite.set(x, y, y === 28 ? PARCHMENT[6] : x === 35 ? PARCHMENT[3] : PARCHMENT[5]);
+  for (const [x, y] of [[31, 29], [32, 30], [33, 29]]) sprite.set(x, y, NEUTRAL[3]);
+  for (let y = 27; y < 30; y++) for (let x = 33; x < 37; x++) sprite.set(x, y, flat(ROCK4, 0.7 - (x - 33) * 0.15, x, y));
+  const shaped = outline(sprite, INK);
+  castShadow(shaped, 3, 1, 18);
+  smoke(shaped, cx + 1, cy - 4, phase, 18, [NEUTRAL[5], NEUTRAL[4]]);
+  return shaped;
+}
+
+/** A sheep, facing left or right (`facing`), its woolly back lit from the top left. */
+function sheep(sprite: Bitmap, x: number, y: number, facing: number) {
+  for (let py = y - 4; py <= y + 2; py++) {
+    for (let px = x - 5; px <= x + 5; px++) {
+      const light = sphere(px, (py - y) * 1.4 + y, x, y, 5.2);
+      if (light === OUTSIDE) continue;
+      sprite.set(px, py, flat([NEUTRAL[4], NEUTRAL[5], NEUTRAL[6], NEUTRAL[7]], clamp01(0.3 + light * 0.75 + (hash(px, py, 97) - 0.5) * 0.25), px, py));
+    }
+  }
+  const head = x + facing * 6;
+  for (let py = y - 3; py <= y; py++) for (let px = head - 1; px <= head + 1; px++) sprite.set(px, py, INK);
+  sprite.set(head - facing, y - 4, INK);
+  for (const lx of [x - 3, x + 3]) for (let py = y + 3; py <= y + 4; py++) sprite.set(lx, py, INK);
+}
+
+/** A drystone sheepfold on the downs, with a gap for a gate, sheep inside it and a shepherd's crook leaning on the wall. */
+export function fold(): Bitmap {
+  const sprite = new Bitmap(62, 38);
+  const [cx, cy, rx, ry] = [30, 23, 26, 10];
+  const wall = (front: boolean) => {
+    for (let a = 0; a < Math.PI * 2; a += 0.004) {
+      if (Math.sin(a) > 0 !== front) continue;
+      // The gate: a gap in the near wall, on the right.
+      if (front && Math.abs(Math.cos(a) - 0.55) < 0.14) continue;
+      const x = Math.round(cx + Math.cos(a) * rx);
+      const y = Math.round(cy + Math.sin(a) * ry);
+      for (let h = 0; h < 6; h++) sprite.set(x, y - h, h === 5 ? STONE[6] : masonry(x, y - h, 0.72 - Math.cos(a) * 0.18 - (front ? 0.08 : 0.2), 96));
+    }
+  };
+  wall(false);
+  for (const [sx, sy, facing] of [[16, 19, 1], [30, 16, -1], [42, 19, -1], [24, 25, 1], [37, 26, 1]] as const) sheep(sprite, sx, sy, facing);
+  wall(true);
+  // The crook, leaning on the wall by the gate.
+  for (let y = 12; y < 34; y++) sprite.set(52 + Math.round((y - 12) * 0.12), y, WOOD[3]);
+  for (const [x, y] of [[51, 11], [51, 10], [52, 9], [53, 9], [54, 10], [54, 11]]) sprite.set(x, y, WOOD[3]);
+  const shaped = outline(sprite, INK);
+  castShadow(shaped, 4, 2, 20);
+  return shaped;
+}
+
+/** An eel-catcher's rowing boat, pulled up on the bank with its oars shipped, and wicker eel traps drying beside it. */
+export function boat(): Bitmap {
+  const sprite = new Bitmap(58, 30);
+  const [x0, x1] = [4, 42];
+  // The hull, pointed at both ends: a pale rim, the dark hollow inside it with the thwarts across, and its planked side below.
+  for (let x = x0; x < x1; x++) {
+    const u = (x - x0) / (x1 - x0 - 1);
+    const beam = 1 - Math.abs(2 * u - 1) ** 1.7;
+    const [rim, near, keel] = [Math.round(15 - beam * 6), Math.round(15 + beam * 1.2), Math.round(16 + beam * 6)];
+    for (let y = rim; y <= keel; y++) {
+      let colour: number;
+      if (y === rim || y === near) colour = y === rim ? WOOD[5] : WOOD[6];
+      else if (y < near) colour = (x - x0) % 9 === 5 && beam > 0.45 ? WOOD[5] : y === rim + 1 ? WOOD[0] : flat([WOOD[0], WOOD[1], WOOD[2], WOOD[3]], clamp01(0.3 + (y - rim) * 0.08), x, y);
+      else colour = (y - near) % 3 === 0 ? WOOD[1] : flat(WOOD4, clamp01(0.75 - (y - near) * 0.07 - u * 0.25), x, y);
+      sprite.set(x, y, colour);
+    }
+  }
+  // The oars, shipped along the thwarts.
+  for (let x = 9; x < 36; x++) sprite.set(x, 12 + Math.round((x - 9) * 0.04), WOOD[6]);
+  for (let x = 34; x < 39; x++) for (let y = 11; y < 14; y++) sprite.set(x, y, WOOD[5]);
+  // Eel traps: long wicker cones lying on the bank, bound with hoops.
+  const WICKER = [REED[1], REED[2], REED[3], REED[4]];
+  for (const [bx, by] of [[43, 24], [45, 18]] as const) {
+    for (let x = bx; x < bx + 12; x++) {
+      const half = 0.8 + (x - bx) * 0.24;
+      for (let y = Math.round(by - half); y <= by + half; y++) sprite.set(x, y, (x - bx) % 4 === 3 ? WOOD[1] : flat(WICKER, clamp01(0.8 - (y - by + half) / (half * 2) * 0.6), x, y));
+    }
+    for (let y = Math.round(by - 3.5); y <= by + 3.5; y++) sprite.set(bx + 12, y, INK);
+  }
+  const shaped = outline(sprite, INK);
+  castShadow(shaped, 4, 1, 16);
+  return shaped;
+}
+
+/** Beehives on the heath: straw skeps in a row on a plank bench, and their bees out and about with `phase`. */
+export function skeps(phase = 0): Bitmap {
+  const sprite = new Bitmap(48, 34);
+  const bench = 23;
+  for (let y = bench; y < bench + 3; y++) for (let x = 3; x < 44; x++) sprite.set(x, y, flat(WOOD4, 0.75 - (y - bench) * 0.25 - (x - 3) * 0.004, x, y));
+  for (const lx of [6, 40]) for (let y = bench + 3; y < bench + 8; y++) sprite.set(lx, y, WOOD[2]);
+  const STRAW = [GOLD[2], GOLD[3], GOLD[4], GOLD[5]];
+  for (const [cx, r] of [[12, 7], [24, 8.5], [36, 7]] as const) {
+    const tall = r * 1.5;
+    for (let y = Math.floor(bench - tall); y < bench; y++) {
+      for (let x = Math.floor(cx - r); x <= cx + r; x++) {
+        const light = sphere(x, (y - bench) / 1.5 + bench, cx, bench, r);
+        if (light === OUTSIDE) continue;
+        const coil = (y - bench) % 3 === 0 ? -0.22 : 0;
+        sprite.set(x, y, flat(STRAW, clamp01(0.15 + light * 0.8 + coil), x, y));
+      }
+    }
+    for (let y = bench - 3; y < bench; y++) for (let x = Math.round(cx) - 1; x <= Math.round(cx) + 1; x++) sprite.set(x, y, INK);
+  }
+  const shaped = outline(sprite, INK);
+  castShadow(shaped, 4, 2, 16);
+  // Bees, drifting round the hives.
+  for (let k = 0; k < 7; k++) {
+    const a = phase * Math.PI * 2 + k * 2.1;
+    const x = Math.round(24 + Math.cos(a * (k % 2 ? 1 : -1) + k) * (10 + k * 1.8));
+    const y = Math.round(9 + Math.sin(a * 2 + k) * 4 + (k % 3));
+    if (shaped.get(x, y) === 0) shaped.set(x, y, INK);
+  }
+  return shaped;
+}
+
+/** A hayrick in the stubble: a round stack of hay under a thatched cap, a pitchfork stuck in it, and a pair of boots sticking out of the top. */
+export function hayrick(): Bitmap {
+  const sprite = new Bitmap(44, 46);
+  const foot = 42;
+  const HAY = [GOLD[2], GOLD[3], GOLD[4], GOLD[5]];
+  // The stack: straight-sided and a little wider at the foot, the hay stroked downwards, lit from the left.
+  for (let y = 18; y < foot; y++) {
+    const half = 15 + (y - 18) * 0.12;
+    for (let x = Math.round(21 - half); x <= 21 + half; x++) {
+      const u = (x - 21) / half;
+      sprite.set(x, y, flat(HAY, clamp01(0.62 - u * 0.4 - Math.abs(u) ** 4 * 0.3 + (noise(x / 1.1, y / 6, 98) - 0.5) * 0.4 - (y > foot - 3 ? 0.2 : 0)), x, y));
+    }
+  }
+  // The thatched cap: a low cone, darker, its eaves ragged over the stack.
+  for (let y = 6; y < 21; y++) {
+    const half = 2 + (y - 6) * 1.12;
+    for (let x = Math.round(21 - half); x <= 21 + half; x++) if (y < 19 || hash(x, y, 99) < 0.55) sprite.set(x, y, flat(four(DIRT, 2, 3, 4, 5), clamp01(0.78 - ((x - 21) / half) * 0.35 - (y - 6) * 0.015 + (noise(x / 1.2, y / 3, 100) - 0.5) * 0.3), x, y));
+  }
+  // A pair of legs sticking out of the top, boots and all, toes turned out: the farmhand, guarding the hay.
+  for (const [bx, out] of [[17, -1], [23, 1]] as const) {
+    for (let y = 3; y < 9; y++) for (let dx = 0; dx < 2; dx++) sprite.set(bx + dx, y, flat(four(EARTH, 2, 3, 4, 5), 0.7 - dx * 0.3 - (y - 3) * 0.04, bx + dx, y));
+    for (let dx = 0; dx < 4; dx++) sprite.set(out < 0 ? bx + 1 - dx : bx + dx, 2, dx === 3 ? EARTH[1] : EARTH[3]);
+    for (let dx = 0; dx < 4; dx++) sprite.set(out < 0 ? bx + 1 - dx : bx + dx, 1, EARTH[1]);
+  }
+  // The pitchfork, stuck in at a slant, tines in the hay.
+  for (let t = 0; t < 24; t++) sprite.set(Math.round(36 + t * 0.3), 16 + t, WOOD[4]);
+  for (const dx of [-2, 0, 2]) for (let t = 0; t < 4; t++) sprite.set(35 + dx, 12 + t, STONE[6]);
+  for (let x = 33; x < 38; x++) sprite.set(x, 16, STONE[5]);
+  const shaped = outline(sprite, INK);
+  castShadow(shaped, 6, 2, 26);
+  return shaped;
+}
+
+/** A goose, white and indignant, facing left or right (`facing`). */
+function goose(sprite: Bitmap, x: number, y: number, facing: number) {
+  for (let py = y - 3; py <= y + 1; py++) for (let px = x - 4; px <= x + 4; px++) if (((px - x) / 4.4) ** 2 + ((py - y + 1) / 2.6) ** 2 <= 1) sprite.set(px, py, py < y - 1 ? NEUTRAL[7] : NEUTRAL[6]);
+  const neck = x + facing * 3;
+  for (let py = y - 6; py < y - 1; py++) sprite.set(neck, py, NEUTRAL[7]);
+  sprite.set(neck + facing, y - 6, GOLD[5]);
+  sprite.set(neck + facing * 2, y - 6, RED[5]);
+  sprite.set(neck, y - 6, INK);
+}
+
+/** A goose pond: still water inside a reedy edge, geese on it and on the bank, every one of them watching you. */
+export function pond(): Bitmap {
+  const sprite = new Bitmap(66, 34);
+  const [cx, cy, rx, ry] = [32, 22, 27, 9];
+  for (let y = cy - ry - 1; y <= cy + ry + 1; y++) {
+    for (let x = cx - rx - 1; x <= cx + rx + 1; x++) {
+      const d = Math.hypot((x + 0.5 - cx) / rx, (y + 0.5 - cy) / ry) + (noise(x / 3, y / 3, 101) - 0.5) * 0.12;
+      if (d > 1.06) continue;
+      sprite.set(x, y, d > 0.92 ? (y < cy ? EARTH[4] : EARTH[5]) : y < cy - ry * 0.4 ? WATER[3] : (x + y * 3) % 11 === 0 ? WATER[7] : WATER[5]);
+    }
+  }
+  // Reeds at the far edge, and a clump at the near one.
+  for (let k = 0; k < 16; k++) {
+    const a = Math.PI + (k / 15) * Math.PI;
+    const x = Math.round(cx + Math.cos(a) * rx * (0.9 + hash(k, 1, 102) * 0.1));
+    const base = Math.round(cy + Math.sin(a) * ry * 0.9);
+    if (hash(k, 2, 102) < 0.35) continue;
+    for (let h = 0; h < 4 + Math.floor(hash(k, 3, 102) * 4); h++) sprite.set(x, base - h, h > 4 ? REED[4] : k % 2 ? LEAF[5] : LEAF[4]);
+  }
+  for (const [x, y, facing] of [[20, 21, 1], [36, 24, -1], [46, 19, -1], [9, 30, 1]] as const) goose(sprite, x, y, facing);
+  return outline(sprite, INK);
+}
+
+/** A charcoal clamp at the edge of the chase: a low turf mound smoking from its vents with `phase`, and cordwood stacked beside it. */
+export function kiln(phase = 0): Bitmap {
+  const sprite = new Bitmap(56, 46);
+  const foot = 40;
+  const TURF = [EARTH[1], EARTH[2], EARTH[3], LEAF[3]];
+  for (let y = 18; y < foot; y++) {
+    for (let x = 3; x < 41; x++) {
+      const light = sphere(x, (y - foot) * 1.35 + foot, 22, foot, 18.5);
+      if (light === OUTSIDE) continue;
+      sprite.set(x, y, flat(TURF, clamp01(0.1 + light * 0.75 + (noise(x / 2.5, y / 2.5, 103) - 0.5) * 0.35), x, y));
+    }
+  }
+  const vents: [number, number][] = [[13, 31], [25, 28]];
+  for (const [x, y] of vents) for (let py = y; py < y + 2; py++) for (let px = x; px < x + 3; px++) sprite.set(px, py, INK);
+  // Cordwood, stacked by the clamp: rows of log ends.
+  for (let row = 0; row < 3; row++) {
+    for (let b = 0; b < 4 - row; b++) {
+      const [lx, ly] = [43 + b * 4 + row * 2, foot - 2 - row * 4];
+      for (let y = ly - 2; y <= ly + 1; y++) for (let x = lx - 2; x <= lx + 1; x++) sprite.set(x, y, Math.hypot(x + 0.5 - lx, y + 0.5 - ly) < 1 ? PARCHMENT[4] : WOOD[2]);
+    }
+  }
+  const shaped = outline(sprite, INK);
+  castShadow(shaped, 5, 2, 28);
+  for (const [i, [x, y]] of vents.entries()) smoke(shaped, x + 1, y - 2, (phase + i * 0.5) % 1, 18, [NEUTRAL[6], NEUTRAL[5]]);
+  return shaped;
+}
+
+/** An eagle's nest on top of a crag, a great tangle of sticks with something in it that glints with `phase`. */
+export function nest(phase = 0): Bitmap {
+  const rock = crag(34, 30, 104);
+  const sprite = new Bitmap(rock.width, rock.height + 8);
+  for (let y = 0; y < rock.height; y++) for (let x = 0; x < rock.width; x++) sprite.set(x, y + 8, rock.data[y * rock.width + x]);
+  // Where the rock tops out, the nest sits: a bowl of sticks, dark in the hollow, with a few poking out.
+  let top = sprite.height;
+  for (let y = 0; y < sprite.height && top === sprite.height; y++) if (sprite.get(Math.floor(rock.width / 2), y) !== 0) top = y;
+  const [cx, cy] = [Math.floor(rock.width / 2), top + 1];
+  const TWIGS = [WOOD[1], WOOD[2], WOOD[3], WOOD[4], WOOD[5]];
+  for (let y = cy - 5; y <= cy + 3; y++) {
+    for (let x = cx - 10; x <= cx + 10; x++) {
+      const d = Math.hypot((x + 0.5 - cx) / 9.5, (y + 0.5 - cy + 1) / 4);
+      if (d > 1) continue;
+      const hollow = d < 0.55 && y < cy;
+      sprite.set(x, y, hollow ? (y < cy - 2 ? WOOD[0] : INK) : TWIGS[Math.floor(hash(x, y, 105) * (y < cy - 1 ? 5 : 3))]);
+    }
+  }
+  for (let k = 0; k < 7; k++) {
+    const a = (k / 7) * Math.PI + hash(k, 1, 106) * 0.4;
+    for (let t = 0; t < 4; t++) sprite.set(Math.round(cx + Math.cos(a) * (9 + t)), Math.round(cy - 1 - Math.sin(a) * (3 + t * 0.6)), WOOD[hash(k, 2, 106) < 0.5 ? 2 : 4]);
+  }
+  const shaped = outline(sprite, INK);
+  // The glint: gold in the hollow, catching the sun now and then.
+  const glint = Math.sin(phase * Math.PI * 2) > 0.6;
+  for (const [dx, dy] of [[-1, 0], [0, 0], [2, 1]]) shaped.set(cx + dx, cy - 2 + dy, GOLD[glint ? 6 : 5]);
+  if (glint) for (const [dx, dy] of [[0, -1], [0, -2], [-1, -1], [1, -1]]) shaped.set(cx + dx, cy - 2 + dy, NEUTRAL[7]);
+  return shaped;
+}
+
 export { BLUE4, castShadow, COAT4, DIRT4, flat, GOLD4, OAK4, PLASTER4, RED4, shadowOval, sphere, STONE4, WOOD4 };
