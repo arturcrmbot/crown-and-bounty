@@ -31,6 +31,7 @@ const SCENES = {
   bridge: { query: '&reveal=1&x=1700&y=1460' },
   downs: { query: '&reveal=1&x=2900&y=420' },
   chase: { query: '&reveal=1&x=2400&y=1900' },
+  dig: { query: '&reveal=1&x=700&y=560' },
   battle: { query: '&battle=patrol', keepCard: true },
   court: { query: '&court=1', keepCard: true },
   courtwizard: { query: '&court=1&hero=wizard', keepCard: true },

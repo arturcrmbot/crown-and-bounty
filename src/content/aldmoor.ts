@@ -34,6 +34,8 @@ const at = {
   wolves: [1040, 1472],
   delving: [640, 1718],
   hideout: [320, 2128],
+  mrsPike: [2210, 1372],
+  diggings: [620, 470],
 } satisfies Record<string, Point>;
 
 /** Where the hero comes up at each end of the dwarf's old delving: beside its mouth, where he can be seen. */
@@ -92,6 +94,8 @@ const roads = {
   downs: [[2800, 958], [2826, 860], [2862, 760], [2910, 650], [2958, 560], [2988, 510]],
   // A cart track off the Darkwood road to the dwarf's old delving.
   delving: [[730, 1780], [700, 1756], [668, 1740], [646, 1724]],
+  // Off the heath road, to where Grimsby's men are digging for the old King's treasure.
+  dig: [[700, 530], [676, 508], [648, 490], [626, 476]],
 } satisfies Record<string, Point[]>;
 
 const paths: Point[][] = Object.values(roads);
@@ -134,6 +138,8 @@ const regions: Region[] = [
   { kind: 'downs', at: [2860, 380, 560, 340] },
   { kind: 'downs', at: [2210, 420, 330, 210] },
   { kind: 'heath', at: [800, 900, 820, 480] },
+  // Where Grimsby's men dig, just under the crags.
+  { kind: 'heath', at: [640, 530, 250, 120] },
   { kind: 'heath', at: [1320, 1240, 300, 260] },
   { kind: 'heath', at: [1380, 1920, 230, 440] },
 ];
@@ -212,6 +218,8 @@ export const ALDMOOR: Province = {
     { sprite: 'hut', at: [2180, 1420], place: 'village', seed: 4 },
     { sprite: 'hut', at: [2044, 1464], place: 'village', seed: 5 },
     { sprite: 'hut', at: [2020, 1376], place: 'village', seed: 6 },
+    { sprite: 'holes', at: [588, 452], place: 'diggings', seed: 7 },
+    { sprite: 'holes', at: [660, 448], place: 'diggings', seed: 8 },
   ],
   hero,
   heroFacing: -1,
@@ -353,6 +361,55 @@ export const ALDMOOR: Province = {
       ],
     },
     { id: 'village', kind: 'village', name: 'Westmere', at: at.village, done: false, recruits: { troop: 'peasants', count: 20, price: 10 }, text: { about: ['Population 340. Friendly, if nosy.'] } },
+    {
+      id: 'mrsPike',
+      kind: 'event',
+      look: 'house',
+      name: 'Mrs Pike\u2019s Cottage',
+      at: at.mrsPike,
+      done: false,
+      text: { about: ['A neat cottage on Westmere green, with a sergeant\u2019s coat on the washing line.', '*It hasn\u2019t been worn in a while.*'] },
+      pages: [
+        {
+          id: 'home',
+          when: { flag: 'pikeHome', notFlag: 'mrsPike' },
+          lines: [
+            'Mrs Pike opens the door before you knock. Her boy is at the table behind her, on his third breakfast.',
+            '*"You brought him home. With his father\u2019s journal, of all things."* She\u2019d like to thank you properly: with her late husband\u2019s **lucky horseshoe**, off the door, or with a **word** in the right ears round Westmere.',
+          ],
+          choices: [
+            {
+              id: 'horseshoe',
+              label: 'Take the old sergeant\u2019s horseshoe',
+              needs: { notArtifact: 'luckyHorseshoe' },
+              effects: { artifact: 'luckyHorseshoe', xp: 100, flags: { mrsPike: 'horseshoe' } },
+              lines: ['She takes it down from over the door. *"Never did him a bit of good. Then again, he never rode anywhere."*'],
+            },
+            {
+              id: 'word',
+              label: 'Let her tell Westmere',
+              effects: { leadership: 20, xp: 100, flags: { mrsPike: 'word' } },
+              lines: ['By teatime every mother in Westmere knows who brought Mrs Pike\u2019s boy home, and her sons are asking where to sign. **+20 leadership.**'],
+            },
+          ],
+        },
+        { id: 'fed', when: { flag: 'mrsPike' }, lines: ['Mrs Pike is feeding her boy, his patrol, and anyone else who stands still long enough.'], choices: [] },
+        {
+          id: 'gone',
+          when: { flag: 'patrolGone' },
+          lines: ['*"The patrol\u2019s gone from the bridge, they say. And my boy with it, into Darkwood, of all places."*', 'She goes back inside. The coat stays on the line.'],
+          choices: [],
+        },
+        {
+          id: 'waiting',
+          lines: [
+            'Mrs Pike is pegging out a sergeant\u2019s coat that nobody wears. *"My boy\u2019s in the Baron\u2019s patrol. On that bridge, in all weathers."*',
+            '*"His father would have known what to say to him. Wrote everything down, his father did."*',
+          ],
+          choices: [],
+        },
+      ],
+    },
     {
       id: 'mill',
       kind: 'mill',
@@ -524,14 +581,14 @@ export const ALDMOOR: Province = {
             id: 'bribe',
             label: 'Pay them to go home',
             needs: { gold: 900 },
-            effects: { done: true },
+            effects: { done: true, flags: { patrolGone: true } },
             lines: ['The sergeant counts the coins twice, salutes, and marches the patrol back to Darkwood. *"We got lost, my lord. Very lost."*'],
           },
           {
             id: 'orders',
             label: 'Show them the Baron\u2019s orders',
             needs: { flag: 'orders' },
-            effects: { done: true, xp: 300, reinforce: { id: 'hideout', share: 0.3 }, place: DESERTERS, flags: { orders: false } },
+            effects: { done: true, xp: 300, reinforce: { id: 'hideout', share: 0.3 }, place: DESERTERS, flags: { orders: false, patrolGone: true } },
             lines: [
               'The sergeant reads the letter upside down, then the right way up. *"Back to the stockade, lads. Baron\u2019s orders."*',
               'A few of them go. The rest decide they have had enough of the Baron, and make camp by the crossroads. *The few will be waiting for you behind Grimsby\u2019s walls.*',
@@ -541,14 +598,14 @@ export const ALDMOOR: Province = {
             id: 'pike',
             label: 'Give Sergeant Pike his father\u2019s journal',
             needs: { flag: 'pike' },
-            effects: { done: true, xp: 300, place: PIKES_CAMP, flags: { pike: false } },
+            effects: { done: true, xp: 300, place: PIKES_CAMP, flags: { pike: false, pikeHome: true } },
             lines: [
               'Sergeant Pike reads his father\u2019s journal twice, and blows his nose on his sleeve. *"Right, lads. Mum wants us home."*',
               'The whole patrol follows him home to Westmere, where they make camp on the green. *They would fight for the Crown now, for the right money.*',
             ],
           },
         ],
-        spoils: { place: DESERTERS },
+        spoils: { place: DESERTERS, flags: { patrolGone: true } },
         flees: 'Grimsby\u2019s patrol breaks and runs for Darkwood.',
         loot: 'You find {gold} on the road. And a dozen of them would rather fight for the Crown: they make camp by the crossroads, where **swordsmen** can now be hired.',
       },
@@ -631,6 +688,25 @@ export const ALDMOOR: Province = {
         spoils: { flags: { venison: true } },
         flees: 'The poachers drop the deer and run.',
         loot: 'You find {gold} and a haunch of the King\u2019s venison. *Something out there would love this.*',
+      },
+    },
+    {
+      id: 'diggings',
+      kind: 'patrol',
+      name: 'Grimsby\u2019s Dig',
+      at: at.diggings,
+      done: false,
+      text: { done: ['Forty holes in the heather, and not one of them the right one.'] },
+      enemy: {
+        look: 'soldiers',
+        tier: 'band',
+        lines: ['Grimsby\u2019s men, digging on the heath for the old King\u2019s treasure, and a good many more of them standing guard. They have dug forty holes so far.', '*None of them is the right one.*'],
+        army: [{ troop: 'swordsmen', count: 32 }, { troop: 'crossbowmen', count: 14 }, { troop: 'peasants', count: 30 }],
+        reward: 400,
+        threat: 'The foreman waves his spade at you. *"Dig your own hole!"*',
+        spoils: { flags: { dig: 'raided' } },
+        flees: 'The diggers drop their spades and run for Darkwood.',
+        loot: 'In the biggest hole: {gold} of the Baron\u2019s wages, and his orders, pinned to a spade. *"Keep digging. It isn\u2019t gold, so don\u2019t pocket it: you\u2019ll know it when you see it. G."*',
       },
     },
     {

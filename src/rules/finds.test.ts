@@ -302,3 +302,36 @@ describe('wells', () => {
     expect(visit(full, 'well').state.flags?.['drank:well']).toBeUndefined();
   });
 });
+
+describe('Aldmoor, bigger', () => {
+  const home = (s: GameState): GameState => ({ ...s, flags: { ...s.flags, pikeHome: true }, movement: 150 });
+
+  it('Mrs Pike waits for her boy, and thanks you once Pike is home: a horseshoe, or a word round Westmere', () => {
+    const start = fresh();
+    expect(cardOf(visit(start, 'mrsPike')).choices.map((c) => c.label)).toEqual(['Close']);
+    expect(cardOf(visit(start, 'mrsPike')).lines.join(' ')).toContain('My boy');
+    const gone = { ...start, flags: { patrolGone: true } };
+    expect(cardOf(visit(gone, 'mrsPike')).lines.join(' ')).toContain('Darkwood');
+    const shoe = take(home(start), 'mrsPike', 'home/horseshoe');
+    expect(shoe.hero.gear.trinket === 'luckyHorseshoe' || shoe.hero.pack.includes('luckyHorseshoe')).toBe(true);
+    const word = take(home(start), 'mrsPike', 'home/word');
+    expect(word.leadership).toBe(start.leadership + 20);
+    expect(cardOf(visit(word, 'mrsPike')).choices.map((c) => c.label)).toEqual(['Close']);
+  });
+
+  it('sends Pike home to Westmere when he reads his father\u2019s journal', () => {
+    const start = { ...fresh(), flags: { pike: true } };
+    const read = take(start, 'patrol', 'parley/pike');
+    expect(read.flags?.pikeHome).toBe(true);
+    const camp = locationById(read, 'deserters');
+    expect(Math.hypot(camp.at[0] - locationById(read, 'village').at[0], camp.at[1] - locationById(read, 'village').at[1])).toBeLessThan(200);
+  });
+
+  it('has Grimsby\u2019s men digging on the heath: raiding them sets the flag Grimsby answers to', () => {
+    const start = fresh();
+    const dig = locationById(start, 'diggings');
+    expect(dig.enemy?.tier).toBe('band');
+    const raided = beat(start, 'diggings', { title: 'Victory!', lines: [], reward: dig.enemy!.reward, xp: 0 }).state;
+    expect(raided.flags?.dig).toBe('raided');
+  });
+});
