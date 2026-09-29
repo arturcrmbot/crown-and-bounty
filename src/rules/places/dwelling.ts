@@ -10,6 +10,17 @@ import type { PlaceKind } from './kind';
 /** Volunteers every castle and village finds on payday. */
 export const RESTOCK = 10;
 
+/** Mana his castle would fill: what he's missing of the most he holds. */
+const missingMana = (state: GameState, place: Location) => (place.kind === 'castle' ? Math.max(0, heroStats(state).maxMana - state.hero.mana) : 0);
+
+/** At his castle, a quiet hour in the chapel fills his mana, as a holy well does. */
+function restAt(state: GameState, place: Location): { state: GameState; lines: string[] } {
+  const gained = missingMana(state, place);
+  if (!gained) return { state, lines: [] };
+  const max = heroStats(state).maxMana;
+  return { state: { ...state, hero: { ...state.hero, mana: max } }, lines: [`An hour in the castle chapel, and your head is clear again: **+${gained} mana**, ${max} of ${max}.`] };
+}
+
 /** How many of a recruiter's troops the hero can take now: capped by the offer, leadership and gold. */
 export function recruitable(state: GameState, id: string): number {
   const offer = locationById(state, id).recruits;
@@ -165,7 +176,11 @@ export const dwelling: PlaceKind = {
   about: (state, place) => ({ title: place.name, lines: aboutWords(state, place), choices: [ride(place, 'Visit'), close] }),
   arrive: (state, place) => {
     const page = firstPage(state, place);
-    return found(state, place, page ? pageCard(state, place, page) : recruitCard(state, place));
+    if (page) return found(state, place, pageCard(state, place, page));
+    // The chapel's mana first, then the recruits, and the card's way out as ever.
+    const home = restAt(state, place);
+    const card = recruitCard(home.state, place);
+    return found(home.state, place, { ...card, lines: [...home.lines, ...card.lines] });
   },
   card: (state, place, before) => recruitCard(state, place, before),
   choose(state, place, choice) {
@@ -180,10 +195,12 @@ export const dwelling: PlaceKind = {
   worth(state, place) {
     const content = bestChoice(state, place)?.worth;
     if (content) return content;
+    // A caster low on mana rides home to fill it, as he would to a well.
+    const mana = missingMana(state, place) > 10 ? missingMana(state, place) * 3 : 0;
     const n = recruitable(state, place.id);
-    if (n > 0) return n * troopPower(place.recruits!.troop) * 3;
+    if (n > 0) return n * troopPower(place.recruits!.troop) * 3 + mana;
     const room = makeRoom(state, place);
-    return room ? (room.count * troopPower(place.recruits!.troop) - room.loss) * 3 : null;
+    return room ? (room.count * troopPower(place.recruits!.troop) - room.loss) * 3 + mana : mana || null;
   },
   bot(state, place) {
     const best = bestChoice(state, place);
