@@ -55,6 +55,36 @@ describe('choices written as content', () => {
     expect(s.army.find((a) => a.troop === 'archers')!.count).toBe(15);
   });
 
+  it('name on a greyed button only what the hero lacks, never what he has (#116)', () => {
+    const questions: Location = {
+      ...hermit,
+      pages: [
+        {
+          id: 'start',
+          lines: ['An old man in a barrel.'],
+          choices: [
+            { id: 'hymn', label: 'Sing him the hermits\u2019 hymn', needs: { background: 'courtier', flag: 'hymn' }, hint: 'a hymn you don\u2019t know yet' },
+            { id: 'tea', label: 'Share his tea', needs: { background: 'courtier', flag: 'tea' } },
+            { id: 'barrel', label: 'Buy his other barrel', needs: { level: 3, gold: 200 } },
+            { id: 'hex', label: 'Out-hex him', needs: { background: 'wizard', spellPower: 7 } },
+          ],
+        },
+      ],
+    };
+    const labels = (state: GameState) => cardOf(visit({ ...state, locations: [...state.locations, questions] }, 'hermit'))!.card.choices.map((c) => `${c.label}${c.disabled ? ' [greyed]' : ''}`);
+    const hero = (background: 'knight' | 'courtier' | 'wizard', more: Partial<GameState> = {}): GameState => ({ ...newGame(1, ALDMOOR, background), opening: undefined, ...more });
+    // The wrong sort of hero is told only that.
+    expect(labels(hero('knight'))).toEqual(['Sing him the hermits\u2019 hymn (Courtier) [greyed]', 'Share his tea (Courtier) [greyed]', 'Buy his other barrel (level 3) [greyed]', 'Out-hex him (Hedge Wizard) [greyed]']);
+    // The right sort hears what he lacks: a story need says its quiet hint, if it has one, and a price he can pay isn't named.
+    expect(labels(hero('courtier'))).toEqual(['Sing him the hermits\u2019 hymn (a hymn you don\u2019t know yet) [greyed]', 'Share his tea [greyed]', 'Buy his other barrel (level 3) [greyed]', 'Out-hex him (Hedge Wizard) [greyed]']);
+    expect(labels(hero('wizard', { gold: 100 }))).toContain('Buy his other barrel (level 3, 200 gold) [greyed]');
+    expect(labels(hero('wizard'))).toContain('Out-hex him (spell power 7) [greyed]');
+    // A button he can press says what it is and what it costs, all of it.
+    expect(labels(hero('courtier', { flags: { hymn: true, tea: true } })).slice(0, 2)).toEqual(['Sing him the hermits\u2019 hymn (Courtier)', 'Share his tea (Courtier)']);
+    const strong = hero('wizard');
+    expect(labels({ ...strong, hero: { ...strong.hero, spellPower: 7, level: 3 } }).slice(2)).toEqual(['Buy his other barrel (level 3, 200 gold)', 'Out-hex him (Hedge Wizard, spell power 7)']);
+  });
+
   it('make St Aldhelm\u2019s shrine in Aldmoor, with nothing but content', () => {
     const state = fresh();
     expect(cardOf(visit(state, 'shrine'))!.card.choices.map((c) => c.label)).toEqual(['Pray for the royal goose', 'Borrow the saint\u2019s crown', 'Take the pilgrim\u2019s hat', 'Ride on']);

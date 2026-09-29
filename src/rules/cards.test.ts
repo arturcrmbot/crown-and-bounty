@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { ALDMOOR } from '../content/aldmoor';
-import { apply, bountyCard, endDay, joinLine, locationById, stillWithYou, visit, whenThere, type Card, type GameState, type Result } from './game';
+import { apply, bountyCard, endDay, joinLine, listed, locationById, lossesLine, stillWithYou, visit, whenThere, type Army, type Card, type GameState, type Result } from './game';
 import { ambushCard } from './days';
+import { applyEffects } from './effects';
 import { mapOf } from './map/maps';
 import { daysAway } from './map/movement';
 import { newGame } from './scenario';
@@ -127,6 +128,28 @@ describe('the odds', () => {
     const ranger = { ...state, hero: { ...state.hero, background: 'ranger' as const } };
     const scouted = cardOf(visit(ranger, 'patrol'));
     expect(scouted.lines.some((line) => line.includes('expect to lose about') && /\d+/.test(line))).toBe(true);
+    // Three kinds or more read as a list, with one "and" (#115).
+    expect(scouted.lines.find((line) => line.includes('expect to lose about'))).toMatch(/about \d+ [A-Z]\w+(, \d+ [A-Z]\w+)+ and \d+ [A-Z]\w+\.\*$/);
+  });
+});
+
+describe('lists in words', () => {
+  it('put commas between them and "and" only before the last, as the sergeants\u2019 cost line does (#115)', () => {
+    expect(listed([])).toBe('');
+    expect(listed(['3 Knights'])).toBe('3 Knights');
+    expect(listed(['3 Knights', '2 Archers'])).toBe('3 Knights and 2 Archers');
+    expect(listed(['3 Knights', '2 Archers', '1 Swordsman'])).toBe('3 Knights, 2 Archers and 1 Swordsman');
+    const before: Army = [{ troop: 'knights', count: 5 }, { troop: 'archers', count: 10 }, { troop: 'poachers', count: 2 }, { troop: 'swordsmen', count: 20 }];
+    const after: Army = [{ troop: 'knights', count: 3 }, { troop: 'archers', count: 9 }, { troop: 'swordsmen', count: 8 }];
+    expect(lossesLine(before, after)).toBe('You lost **2 Knights**, **1 Archer**, **2 Poachers** and **12 Swordsmen**.');
+  });
+
+  it('say who slips away from a band the same way', () => {
+    const state = knight();
+    const patrol = locationById(state, 'patrol');
+    const band = { ...patrol, enemy: { ...patrol.enemy!, army: [{ troop: 'swordsmen' as const, count: 20 }, { troop: 'crossbowmen' as const, count: 10 }, { troop: 'poachers' as const, count: 4 }] } };
+    const s = { ...state, locations: state.locations.map((l) => (l.id === 'patrol' ? band : l)) };
+    expect(applyEffects(s, band, { desert: { share: 0.5 } }).lines).toEqual(['**10 Swordsmen**, **5 Crossbowmen** and **2 Poachers** slip away from Grimsby\u2019s Patrol.']);
   });
 });
 

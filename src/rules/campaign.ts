@@ -6,7 +6,7 @@ import { VILLAINS } from '../content/villains';
 import { generateCommission } from './generate';
 import { heroStats, VETERANS } from './hero';
 import { beginCommission } from './scenario';
-import { addTroops, armyLine, close, coins, leadershipUsed, roll, roman, show, TROOPS, type Army, type BoonId, type Campaign, type Card, type Choice, type GameState, type Location, type Result } from './state';
+import { addTroops, armyLine, close, coins, leadershipUsed, listed, roll, roman, show, TROOPS, type Army, type BoonId, type Campaign, type Card, type Choice, type GameState, type Location, type Result } from './state';
 
 /** Commissions in a campaign: the hand-made ones, then provinces generated for this campaign. */
 export const CAMPAIGN_LENGTH = 5;
@@ -234,8 +234,7 @@ function grant(state: GameState, id: BoonId): GameState {
 export function companyLine(state: GameState): string[] {
   const names = (state.hero.friends ?? []).map((id) => `**${FRIENDS[id].name}**`);
   if (!names.length) return [];
-  const all = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0];
-  return [`${all} ${names.length > 1 ? 'ride' : 'rides'} with you.`];
+  return [`${listed(names)} ${names.length > 1 ? 'ride' : 'rides'} with you.`];
 }
 
 /** The next commission, read out at court, with who and what will ride out for it. */

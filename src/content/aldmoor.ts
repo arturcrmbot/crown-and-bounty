@@ -897,6 +897,7 @@ export const ALDMOOR: Province = {
             id: 'lullaby',
             label: 'Sing him Old Nan\u2019s lullaby',
             needs: { background: 'courtier', flag: 'lullaby' },
+            hint: 'a song you don\u2019t know yet',
             effects: { win: true, gold: 1000, xp: 450, flags: { lullaby: false } },
             lines: [
               'You tune your lute under the palisade and sing *Hush-a-bye, Baron*, all four verses, the way Old Nan sings it. By the second, his men are humming along. By the third, the Baron is sobbing into the goose.',

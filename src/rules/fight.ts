@@ -9,7 +9,7 @@ import { revealDisc } from './map/fog';
 import { fleeHome, fleesHome } from './map/sortie';
 import { battleEnd, createBattle, isLeader, SHOOTER_MELEE, survivors, type BattleHero, type BattleState, type Side } from './battle/battle';
 import { artifactChoices, foundNote, gainXp, giveArtifact, heroStats, namedBonuses } from './hero';
-import { addTroops, again, armyPower, close, coins, leadershipUsed, locationById, roll, roman, show, stillWithYou, troops, update, VANISHES, type Army, type BattleResultCard, type Choice, type GameEvent, type GameState, type Location, type Result } from './state';
+import { addTroops, again, armyPower, close, coins, leadershipUsed, listed, locationById, roll, roman, show, stillWithYou, troops, update, VANISHES, type Army, type BattleResultCard, type Choice, type GameEvent, type GameState, type Location, type Result } from './state';
 
 export function heroInBattle(state: GameState): BattleHero {
   const s = heroStats(state);
@@ -127,13 +127,13 @@ const heroAgainst = (state: GameState, place: Location): BattleHero => {
 /** Experience for a won battle: the fighting worth of what was beaten. */
 export const battleXp = (enemy: Army) => Math.round(armyPower(enemy));
 
-/** "You lost 3 Knights and 7 Archers." */
+/** "You lost 3 Knights, 7 Archers and 1 Swordsman." */
 export function lossesLine(before: Army, after: Army): string {
   const lost = before
     .map((s) => ({ troop: s.troop, dead: s.count - (after.find((a) => a.troop === s.troop)?.count ?? 0) }))
     .filter((l) => l.dead > 0)
     .map((l) => `**${troops(l.troop, l.dead)}**`);
-  return lost.length ? `You lost ${lost.join(' and ')}.` : 'Nobody on your side so much as stubbed a toe.';
+  return lost.length ? `You lost ${listed(lost)}.` : 'Nobody on your side so much as stubbed a toe.';
 }
 
 /** The likely cost of a fight, using the same fixed trials as the sergeants' odds. */
@@ -144,12 +144,12 @@ export function likelyLossesLine(state: GameState, id: string, samples = 16): st
   const losses = estimate.losses.filter((stack) => stack.count > 0).sort((a, b) => b.count - a.count);
   if (!losses.length) return '*The sergeants expect to bring everyone home.*';
   if (heroStats(state).counts) {
-    return `*The sergeants expect to lose about ${losses.map((stack) => troops(stack.troop, stack.count)).join(' and ')}.*`;
+    return `*The sergeants expect to lose about ${listed(losses.map((stack) => troops(stack.troop, stack.count)))}.*`;
   }
   const lost = losses.reduce((sum, stack) => sum + stack.count, 0);
   const army = state.army.reduce((sum, stack) => sum + stack.count, 0);
   const share = lost / army;
-  if (share < 0.1) return `*You\u2019d likely lose ${losses.map((stack) => crowd(stack.troop, stack.count)).join(' and ')}.*`;
+  if (share < 0.1) return `*You\u2019d likely lose ${listed(losses.map((stack) => crowd(stack.troop, stack.count)))}.*`;
   const amount = share < 0.3 ? 'about a fifth' : share < 0.45 ? 'about a third' : share < 0.65 ? 'about half' : share < 0.9 ? 'most' : 'nearly all';
   const first = losses.slice(0, 2).map((stack) => TROOPS[stack.troop].name);
   const order = first.length === 1 ? `${first[0]} first` : `${first[0]}, then ${first[1]}`;
@@ -293,7 +293,7 @@ export function afterVictory(state: GameState, before: Army): { state: GameState
       next = { ...next, army };
       up.push(`**${troops(stack.troop, count)}**`);
     }
-    if (up.length) lines.push(`${up.join(' and ')} get back on their feet.`);
+    if (up.length) lines.push(`${listed(up)} get back on their feet.`);
   }
   return { state: next, lines };
 }
@@ -321,8 +321,10 @@ export function finishFight(state: GameState): Result {
   };
   if (battle.result === 'won') {
     const after = afterVictory(base, state.army);
-    const opening = place.kind === 'hideout' ? [...ended, commissionOf(base).surrender, ...bribed, ...after.lines] : [...ended, enemy.flees, ...bribed, ...after.lines, enemy.loot.replace('{gold}', `**${coins(enemy.reward)} gold**`)];
-    return beat(after.state, place.id, { title: 'Victory!', lines: opening, reward: enemy.reward, xp: battleXp(enemy.army), battleResult });
+    const lair = place.kind === 'hideout';
+    const opening = lair ? [...ended, commissionOf(base).surrender, ...bribed, ...after.lines] : [...ended, enemy.flees, ...bribed, ...after.lines, enemy.loot.replace('{gold}', `**${coins(enemy.reward)} gold**`)];
+    // Beside his face, the fallen come once he's taken, before what it cost and what it paid.
+    return beat(after.state, place.id, { title: 'Victory!', lines: opening, reward: enemy.reward, xp: battleXp(enemy.army), battleResult: lair ? { ...battleResult, after: ended.length + 1 } : battleResult });
   }
   const castle = state.locations.find((l) => l.kind === 'castle');
   const home = castle ? ([castle.at[0], castle.at[1] + 14] as const) : state.hero.at;
