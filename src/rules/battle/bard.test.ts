@@ -75,6 +75,18 @@ describe('the Courtier, a bard', () => {
     expect(canJoin(full, of(full, 'bandits'))).toBe(false);
   });
 
+  it('brings over goblins his knights won\u2019t march happily beside: they grumble at each other', () => {
+    const b = fight([['goblins', 10], ['swordsmen', 30]]);
+    const goblins = of(b, 'goblins');
+    expect(moraleOf(b, of(b, 'knights', 'player'))).toBeCloseTo(0);
+    const { battle, events } = battleAct(b, { type: 'bribe', target: goblins.id, join: true });
+    const joined = events[0].type === 'bribe' ? events[0].joined! : -1;
+    expect(moraleOf(battle, of(battle, 'knights', 'player'))).toBeCloseTo(-0.1);
+    expect(moraleOf(battle, battle.fighters[joined])).toBeCloseTo(-0.1);
+    // The outlaws they left behind don't mind.
+    expect(moraleOf(battle, of(battle, 'swordsmen'))).toBe(0);
+  });
+
   it('jeers a stack: its morale drops, and now and then it loses heart and its turn', () => {
     const b = fight([['swordsmen', 50]]);
     const swordsmen = of(b, 'swordsmen');

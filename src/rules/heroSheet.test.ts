@@ -3,7 +3,7 @@ import { ALDMOOR } from '../content/aldmoor';
 import { createBattle } from './battle/battle';
 import { rowOf } from './battle/hex';
 import { apply, giveArtifact, heroInBattle, heroStats, type GameState } from './game';
-import { barNote, heroSheet, leaderSheet, manaInBattle, manaNote, nextPayday, stackSheet } from './heroSheet';
+import { barNote, heroSheet, leaderSheet, manaInBattle, manaNote, nextPayday, spiritsOf, stackSheet } from './heroSheet';
 import { newGame } from './scenario';
 
 const wizard = (): GameState => ({ ...newGame(1066, ALDMOOR, 'wizard'), opening: undefined });
@@ -199,6 +199,17 @@ describe('the hero screen', () => {
     const evened = stackSheet({ ...wild, hero: favoured.hero }, 0)!;
     expect(evened.stats.at(-1)).toEqual({ name: 'Morale', value: '0', note: 'steady: it evens out' });
     expect(evened.traits.map((t) => t.name)).toEqual(expect.arrayContaining(['Fortune\u2019s Favour', 'Uneasy company']));
+  });
+
+  it('names songs and jeers among the reasons, in battle', () => {
+    const b = createBattle({ place: 'x', seed: 1, player: [{ troop: 'knights', count: 5 }, { troop: 'wolves', count: 5 }], enemy: [{ troop: 'swordsmen', count: 5 }], hero: heroInBattle(knight()), obstacles: 0 });
+    const knights = { ...b.fighters[0], status: ['heartened' as const] };
+    const sung = { ...b, fighters: [knights, ...b.fighters.slice(1)] };
+    const s = spiritsOf(sung, knights);
+    expect(s.gifts).toEqual([]);
+    expect(s.moods).toEqual([{ source: 'Heartened', morale: 0.25 }]);
+    expect(s.uneasy).toEqual(['Wolves']);
+    expect(s.morale).toBeCloseTo(0.15);
   });
 });
 
