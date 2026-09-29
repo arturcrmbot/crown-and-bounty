@@ -164,7 +164,7 @@ describe('the map', () => {
     const poster = bountyCard(knight());
     expect(poster).toMatchObject({ title: 'WANTED', poster: true, portrait: 'grimsby' });
     expect(poster.lines[0]).toBe('**Baron Grimsby** of Aldmoor');
-    expect(poster.lines).toContain('Reward: **1,500 gold**. By day 100: **99 days** left.');
+    expect(poster.lines).toContain('Reward: **2,000 gold**. By day 100: **99 days** left.');
   });
 });
 

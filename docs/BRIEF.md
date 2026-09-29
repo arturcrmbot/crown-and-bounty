@@ -203,6 +203,17 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   the hero screen under his name. It's all data: each commission's `memories` and `friends` in
   `content/campaign.ts`, the people in `content/friends.ts`. A generated province's villain has his own memory (his
   weakness, used), beside the ones every generated province shares; generated provinces have no companions yet.
+- **The bounty paid, with a scene (29 Sep, #79):** when a villain's army is beaten, the fight stops on his last line,
+  in his own voice: after VICTORY, a bubble over his head with his words (Grimsby's *"Unhand me, sir! This doublet is
+  Flemish!"*), a babble pitched to him (the Baron rumbles, the witches cackle high), and the ribbon says it too. It
+  stays three seconds at any pace, or until a click. The card that says he's taken shows his face and his last words,
+  with the fallen after the story. Claiming the bounty puts his WANTED poster back up, PAID slammed across his face in
+  red ink with a thump, the reward "paid in full", and what came home: in Aldmoor, the royal goose in her crown. The
+  poster's price is now what the Crown pays at his lair (2,000 for Grimsby; the King's gold at court comes on top, as
+  before), and a deal that pays otherwise says why ("The poster said 2,000 gold. The Crown pays 1,000, because the
+  other half went on the lunch"). Put away, a won commission waits on its poster, which rides to court. It's data:
+  each commission's (and generated villain's) `face`, `wanted`, `lastWords` and `returned`, a leader's `voice`, and a
+  winning choice's `because`.
 - **Big maps (29 Sep, the groundwork for a bigger Aldmoor, #77):** the land is painted in tiles of 128 pixels as they
   come into view, with its trees and buildings, and the rest a tile a frame while nothing much is happening, so a
   province six times the size opens at once. Tufts, petals, reeds and lily pads are sprinkled tile by tile, as thickly

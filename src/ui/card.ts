@@ -18,6 +18,8 @@ const CHROME = 30;
 const CHOICES_GAP = 9;
 /** How much of a card's words should show above its buttons before it may cover the bar. */
 const SOME_WORDS = 72;
+/** When a poster's stamp lands, after the card has unfolded (the `kc-stamp` animation in card.css), in ms. */
+const STAMP_LANDS = 470;
 /** A box on the page (page pixels) that a card with nowhere in particular to be should keep clear of. */
 export type Keepout = { x0: number; y0: number; x1: number; y1: number };
 
@@ -121,7 +123,14 @@ export class CardView {
     const face = card.portrait ? `<img class="portrait" alt="" src="${portraitImage(card.portrait)}">` : '';
     const title = card.title ? `<h3>${escape(card.title)}</h3>` : '';
     const battle = card.battleResult ? battleResultMarkup(card.battleResult) : '';
-    this.body.innerHTML = `${card.poster ? title + face : face + title}${battle}${card.lines.map((l) => `<p>${format(l)}</p>`).join('')}`;
+    const lines = card.lines.map((l) => `<p>${format(l)}</p>`).join('');
+    // A poster's stamp lands across the face; its inset (what came home) closes it, with its line.
+    const stamp = card.stamp ? `<span class="stamp">${escape(card.stamp)}</span>` : '';
+    const inset = card.inset ? `<div class="inset"><img alt="" src="${portraitImage(card.inset.portrait)}"><p>${format(card.inset.line)}</p></div>` : '';
+    // Beside a face, the words come first and the fallen after them.
+    const words = face ? `${lines}${battle}` : `${battle}${lines}`;
+    this.body.innerHTML = card.poster ? `${title}<div class="mugshot">${face}${stamp}</div>${words}${inset}` : `${face}${title}${words}${inset}`;
+    if (fresh && card.stamp) setTimeout(() => play('stamp'), STAMP_LANDS);
     this.card.querySelector('.choices')?.remove();
     if (fresh) this.body.scrollTop = 0;
     if (card.choices.length) {

@@ -7,7 +7,7 @@
  */
 import { BATTLE_EFFECTS } from './blows';
 import { playNote } from './instruments';
-import { burst, crackle, swish, tone } from './synth';
+import { burst, crackle, rand, swish, tone, voice } from './synth';
 
 export type Loudness = 'faint' | 'soft' | 'firm' | 'loud';
 export type EffectDef = {
@@ -75,6 +75,32 @@ const brass = (ctx: BaseAudioContext, dest: AudioNode, t: number, calls: readonl
 
 const effect = (loud: Loudness, play: Play, level = 1): EffectDef => ({ loud, level, play });
 
+/** The vowels a babble is made of (their formants, in Hz): ah, eh, ee, oh, oo. */
+const VOWELS = [
+  [730, 1090, 2440],
+  [530, 1840, 2480],
+  [300, 2200, 2900],
+  [570, 840, 2410],
+  [320, 900, 2300],
+] as const;
+
+/**
+ * Words said aloud, the way a storybook game's people talk: a babble of `syllables` on the vowels
+ * above, around `pitch` (Hz), the last one falling as a sentence does. A pompous baron rumbles; a
+ * witch cackles high.
+ */
+export const babble =
+  (pitch: number, syllables: number): Play =>
+  (ctx, dest, t) => {
+    let at = t;
+    for (let i = 0; i < syllables; i++) {
+      const length = rand(0.07, 0.13);
+      const f = pitch * rand(0.85, 1.3) * (i === syllables - 1 ? 0.8 : 1);
+      voice(ctx, dest, at, { pitch: [[0, f], [1, f * rand(0.8, 1.1)]], length, vowel: VOWELS[Math.floor(Math.random() * VOWELS.length)], breath: 0.25, volume: 1 });
+      at += length + 0.03 + (Math.random() < 0.2 ? 0.08 : 0);
+    }
+  };
+
 /** The effects of the map, the cards and the hero screen. */
 const EVERYDAY = {
   click: effect('soft', (ctx, dest, t) => tone(ctx, dest, t, 520, 0.05, 0.12, 'square', 0.7), 3.5),
@@ -88,6 +114,15 @@ const EVERYDAY = {
     tone(ctx, dest, t + 0.06, 2637, 0.18, 0.14);
   }, 1.1),
   unfold: effect('soft', unfold, 0.8),
+  // A rubber stamp slammed down on the poster: a thump, a rap of wood, and the coins it stands for.
+  stamp: effect('firm', (ctx, dest, t) => {
+    burst(ctx, dest, t, 0.16, 'lowpass', 420, 1, 0.5);
+    tone(ctx, dest, t, 82, 0.18, 0.8, 'sine', 0.6);
+    burst(ctx, dest, t + 0.005, 0.04, 'bandpass', 1800, 0.45);
+    [1760, 2349].forEach((f, i) => tone(ctx, dest, t + 0.14 + i * 0.07, f, 0.3, 0.16));
+  }, 1.7),
+  // Someone speaking, at a middling pitch: a villain's last words use his own (`speak` in ui/sound.ts).
+  speech: effect('firm', babble(150, 8), 1.1),
   fold: effect('soft', fold, 0.9),
   coins: effect('firm', (ctx, dest, t) => [1320, 1760, 1480, 1980].forEach((f, i) => tone(ctx, dest, t + i * 0.055, f, 0.12, 0.35)), 1.3),
   day: effect('firm', (ctx, dest, t) => {

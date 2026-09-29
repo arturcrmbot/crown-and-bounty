@@ -583,6 +583,7 @@ export const ALDMOOR: Province = {
             needs: { background: 'courtier' },
             effects: { win: true, gold: 1000, xp: 450 },
             lines: ['Over a very long lunch, you explain what the Crown does to barons who keep geese that aren\u2019t theirs, and what it does for barons who don\u2019t. Grimsby signs for the taxes and hands over the goose.'],
+            because: 'the other half went on the lunch',
           },
         ],
         flees: 'The stockade gate falls open.',

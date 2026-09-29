@@ -132,6 +132,8 @@ export type BattleState = {
   volley?: boolean;
   /** The statuses the hero brought to the field, and where from: said as the battle opens. */
   opening?: { source: string; status: StatusId; fighters: number[] }[];
+  /** What the villain says when his army is beaten and he's taken: the fight stops on it. */
+  lastWords?: string;
 };
 
 /**

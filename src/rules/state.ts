@@ -127,8 +127,12 @@ export type Effects = {
   travel?: Point;
 };
 
-/** A choice written as content: a button, what it needs, what it does, and what the card then says. */
-export type ContentChoice = { id: string; label: string; needs?: Needs; effects?: Effects; lines?: string[] };
+/**
+ * A choice written as content: a button, what it needs, what it does, and what the card then says.
+ * One that takes a villain for a price other than the poster's says `because` why, for the poster
+ * that comes back stamped PAID: "the other half went on the Baron's lunch".
+ */
+export type ContentChoice = { id: string; label: string; needs?: Needs; effects?: Effects; lines?: string[]; because?: string };
 
 /**
  * A card written as content. A visit shows the first page whose `when` holds; an `answer` page is
@@ -192,6 +196,8 @@ export type GameState = {
   seed: number;
   locations: Location[];
   bounty: 'open' | 'paid';
+  /** What the Crown paid for the villain, and why, if not the poster's price. */
+  paid?: { gold: number; because?: string };
   over?: 'won' | 'lost';
   hero: Hero;
   /** The province's size in pixels, for fog and anything else that needs the map's shape. */
@@ -265,6 +271,8 @@ export type Action =
   | { type: 'dismiss'; index: number }
   | { type: 'background'; id: BackgroundId }
   | { type: 'mapSpell'; spell: MapSpellId }
+  /** Puts up the WANTED poster, stamped PAID once the bounty is. */
+  | { type: 'poster' }
   /** After a won commission: ride to the King. */
   | { type: 'court' }
   | { type: 'boon'; id: BoonId }
@@ -281,10 +289,22 @@ export type BattleResultCard = { player: Army; enemy: Army; manaSpent: number; m
 
 /**
  * A parchment card with a title, lines (with **bold** and *italics*), and choices. `wide` is for big
- * decisions. `portrait` puts a face at its top left; `poster` makes it a WANTED poster; `tiles` lays
- * the choices side by side, each with its face, for picking a hero.
+ * decisions. `portrait` puts a face at its top left; `poster` makes it a WANTED poster, which a
+ * `stamp` slams across ("PAID") and an `inset` finishes with a picture and its line (the goose, home);
+ * `tiles` lays the choices side by side, each with its face, for picking a hero.
  */
-export type Card = { title: string; lines: string[]; choices: Choice[]; wide?: boolean; portrait?: PortraitId; poster?: boolean; tiles?: boolean; battleResult?: BattleResultCard };
+export type Card = {
+  title: string;
+  lines: string[];
+  choices: Choice[];
+  wide?: boolean;
+  portrait?: PortraitId;
+  poster?: boolean;
+  stamp?: string;
+  inset?: { portrait: PortraitId; line: string };
+  tiles?: boolean;
+  battleResult?: BattleResultCard;
+};
 
 /** What happened, for the screens to show. The rules never draw anything themselves. */
 export type GameEvent =

@@ -1,6 +1,7 @@
 import type { ContentChoice, Enemy, Location, PlaceLook } from '../rules/state';
 import type { ArtifactId } from './artifacts';
 import type { Memory } from './campaign';
+import type { PortraitId } from './portraits';
 import type { TroopId } from './troops';
 
 /** What a generated province feels like: Aldmoor's heath and woods, or the Fenmarch's meres and reeds. */
@@ -16,6 +17,10 @@ export type Band = Omit<Enemy, 'army' | 'reward'> & { name: string; troops: [Tro
 export type VillainTemplate = {
   id: string;
   villain: string;
+  /** The face on the poster, what it wants him for, and his last line when taken (see `Commission`). */
+  face: PortraitId;
+  wanted: string;
+  lastWords: string;
   land: Land;
   brief: string[];
   surrender: string;
@@ -45,6 +50,9 @@ export const VILLAINS: VillainTemplate[] = [
   {
     id: 'grimsby-again',
     villain: 'Baron Grimsby',
+    face: 'grimsby',
+    wanted: 'for breaking out of the Tower, with the King\u2019s second-best hat.',
+    lastWords: 'Not the Tower again! The soup is dreadful!',
     land: 'heath',
     brief: [
       'Baron Grimsby has escaped from the Tower, and taken the King\u2019s second-best hat with him.',
@@ -108,6 +116,7 @@ export const VILLAINS: VillainTemplate[] = [
           needs: { background: 'courtier' },
           effects: { win: true, gold: 1500, xp: 700 },
           lines: ['Another long lunch. You point out that the Tower has a much better cook than his stockade. He hands over the hat with a sigh.'],
+          because: 'the rest went on another long lunch, and a better cook for the Tower',
         },
       ],
     },
@@ -115,6 +124,9 @@ export const VILLAINS: VillainTemplate[] = [
   {
     id: 'bramble',
     villain: 'Aunt Bramble',
+    face: 'bramble',
+    wanted: 'for turning the royal choir into frogs.',
+    lastWords: 'Drat! And after I taught those frogs to harmonise!',
     land: 'fen',
     brief: [
       'Aunt Bramble, Mother Mirrow\u2019s big sister, has turned the royal choir into frogs.',
@@ -178,6 +190,7 @@ export const VILLAINS: VillainTemplate[] = [
           needs: { background: 'wizard', spellPower: 10 },
           effects: { win: true, gold: 2500, xp: 1500 },
           lines: ['It takes all afternoon and most of your eyebrows, but your counter-hex holds. Aunt Bramble admits, grudgingly, that you are nearly as good as her sister said.'],
+          because: 'the choir wants singing lessons, and the Crown is paying',
         },
       ],
     },
@@ -185,6 +198,9 @@ export const VILLAINS: VillainTemplate[] = [
   {
     id: 'eloped',
     villain: 'Grimsby and Bramble',
+    face: 'grimsby',
+    wanted: 'for eloping, with the Crown Jewels for a wedding present.',
+    lastWords: 'Not on our honeymoon!',
     land: 'heath',
     brief: [
       'Baron Grimsby and Aunt Bramble have eloped, and taken the Crown Jewels as a wedding present.',
@@ -248,6 +264,7 @@ export const VILLAINS: VillainTemplate[] = [
           needs: { background: 'courtier' },
           effects: { win: true, gold: 3000, xp: 1500 },
           lines: ['You make a speech so moving that both of them weep, and hand over the Crown Jewels just to make you stop.'],
+          because: 'they kept the rest as a wedding present, and nobody had the heart to argue',
         },
         {
           id: 'present',
@@ -255,6 +272,7 @@ export const VILLAINS: VillainTemplate[] = [
           needs: { gold: 6000 },
           effects: { win: true, gold: 2000, xp: 600 },
           lines: ['Six thousand gold, in a nice box with a ribbon. Touched, the couple hand over the Crown Jewels and wave you off.'],
+          because: 'the Treasury says a present that size should have come with a receipt',
         },
       ],
     },
