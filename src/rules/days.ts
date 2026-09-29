@@ -3,6 +3,7 @@ import { heroMorning, heroPayday } from './dawn';
 import { TROOPS } from '../content/troops';
 import { heroStats } from './hero';
 import { mapOf } from './map/maps';
+import { haul, setOut } from './map/convoys';
 import { moveEnemies } from './map/roaming';
 import { rideHome, rideOut } from './map/sortie';
 import { payday as reopen } from './places';
@@ -44,16 +45,20 @@ export function endDay(state: GameState): Result {
   let next: GameState = { ...state, day, movement: stats.movement, hero: { ...state.hero, mana: stats.maxMana } };
   const lines: string[] = [];
   if (payday) {
-    const pay = Math.round(wages(state.army) * (1 + stats.wages));
+    // Rations in the baggage (Westmere's grain, caught on the road) feed the troops instead of their wages.
+    const fed = (state.rations ?? 0) > 0;
+    const pay = fed ? 0 : Math.round(wages(state.army) * (1 + stats.wages));
     const commission = COMMISSION + stats.payday;
     next = {
       ...next,
       gold: next.gold + commission - pay,
       locations: next.locations.map((l) => grow(reopen(l))),
+      ...(fed ? { rations: state.rations! - 1 } : {}),
     };
     const estates = heroPayday(next, stats);
     next = estates.state;
-    lines.push(`**Payday!** The King sends **${coins(commission)} gold**. Your troops take **${coins(pay)}** in wages.`, ...estates.rents, 'The mill has flour again, and there are fresh volunteers.', ...estates.lines);
+    const paid = fed ? 'Your troops eat the rations in your baggage this week, and draw **no wages**.' : `Your troops take **${coins(pay)}** in wages.`;
+    lines.push(`**Payday!** The King sends **${coins(commission)} gold**. ${paid}`, ...estates.rents, 'The mill has flour again, and there are fresh volunteers.', ...estates.lines);
     for (const l of state.locations) if (l.enemy?.grows && !l.done && (l.enemy.grown ?? 0) < MAX_GROWTH) lines.push(`Word on the road: **${l.name}** has taken on more men.`);
   }
   // Bands that wake today start to roam or hunt, and word gets about.
@@ -69,15 +74,18 @@ export function endDay(state: GameState): Result {
     events.push(show({ title: `Day ${roman(day)}`, lines, choices: next.over === 'lost' ? [tryAgain, again] : [close] }));
     return { state: next, events };
   }
-  // The night: a villain who has been hurt rides out, stacks on the move take their walk, a hunter may
-  // reach the camp, and a villain's band that can't find the hero goes home.
+  // The night: a villain who has been hurt rides out, convoys go on along their roads, stacks on the
+  // move take their walk, a hunter may reach the camp, and a villain's band that can't find the hero
+  // goes home. On payday's dawn, convoys set out.
   const out = rideOut(next);
-  const night = moveEnemies(out.state, mapOf(next));
+  const hauled = haul(out.state);
+  const night = moveEnemies(hauled.state, mapOf(next));
   const home = rideHome(night.state);
-  const morning = heroMorning(home.state, state);
+  const convoys = payday ? setOut(home.state) : { state: home.state, events: [], lines: [] };
+  const morning = heroMorning(convoys.state, state);
   next = morning.state;
-  events.push(...out.events, ...night.events, ...home.events, ...morning.events);
-  lines.push(...out.lines, ...home.lines);
+  events.push(...out.events, ...hauled.events, ...night.events, ...home.events, ...convoys.events, ...morning.events);
+  lines.push(...out.lines, ...home.lines, ...convoys.lines);
   const trailing = next.locations.filter((l) => l.enemy?.trailing && !l.done);
   for (const l of trailing) lines.push(`**${l.name}** are on your trail. Camp near them tonight and they’ll fall on you at dawn: ride clear, shelter in a town, or turn and fight.`);
   if (night.ambush) {

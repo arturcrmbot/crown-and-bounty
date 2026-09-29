@@ -14,7 +14,7 @@ import { animFrames, bodyHeight, everyFrame, STAND, troopFigure, type Figure } f
 import { heroArtId } from './units';
 import {
   abbey, boulder, camp,
-  butts, cottage, castle, standingStones, chest, crag, goldPile, hideout, holes, huntHall, hut, lodge, mill, mine, mirror, oak, peatHut, pine, signpost, stiltHut, shrine,
+  butts, CART_GROUND, cottage, castle, standingStones, chest, crag, goldPile, grainCart, hideout, holes, huntHall, hut, lodge, mill, mine, mirror, oak, peatHut, pine, signpost, stiltHut, shrine,
   stoneBridge, washingCottage, watchtower, well, willow, windmill, xMark,
 } from './sprites';
 import { TerrainPainter } from './terrain';
@@ -94,6 +94,28 @@ function atHeel(leader: Bitmap, lead: Figure, man: Figure): { sprite: Bitmap; fo
   return { sprite: out, foot: -top };
 }
 
+/**
+ * A convoy on the map: its cart ahead, heading west as its road does, and one of its escort (already
+ * in his red ring) walking at its tail. One sprite, with his feet and the cart's wheel on the ground.
+ */
+function withCart(escort: Bitmap, foot: number): { sprite: Bitmap; foot: number } {
+  const cart = grainCart();
+  const overlap = 6;
+  const top = Math.max(foot, CART_GROUND);
+  const out = new Bitmap(cart.width + escort.width - overlap, top + Math.max(escort.height - foot, cart.height - CART_GROUND));
+  const paint = (src: Bitmap, x0: number, y0: number) => {
+    for (let y = 0; y < src.height; y++) {
+      for (let x = 0; x < src.width; x++) {
+        const v = src.data[y * src.width + x];
+        if (v !== 0 && (v !== SHADOW || out.get(x0 + x, y0 + y) === 0)) out.set(x0 + x, y0 + y, v);
+      }
+    }
+  };
+  paint(cart, 0, top - CART_GROUND);
+  paint(escort, cart.width - overlap, top - foot);
+  return { sprite: out, foot: top };
+}
+
 /** The sprite (or frames) that stands for a place on the map, and how far below its top the foot is. */
 function landmark(l: Location): { frames: Bitmap[]; foot: number; animated: boolean } | null {
   switch (l.look) {
@@ -120,6 +142,14 @@ function landmark(l: Location): { frames: Bitmap[]; foot: number; animated: bool
       return { frames: l.recruits ? animation((t) => huntHall(true, t)) : [huntHall(false)], foot: 62, animated: true };
     case 'lodge':
       return { frames: [lodge()], foot: 46, animated: false };
+    case 'cart': {
+      // Pike's grain cart, and one of his lads at its tail in a foe's red ring, fidgeting as they wait.
+      const lead = leadTroop(l.enemy!.army);
+      const still = troopFigure(lead, 'red', -1, STAND, 'map');
+      const fidget = animFrames(lead, 'idle').length > 1 ? everyFrame(lead, 'idle', 'red', -1, 'map', 120) : Array<Bitmap>(4).fill(raised(still.sprite));
+      const joined = [...Array<Bitmap>(fidget.length > 4 ? 24 : 14).fill(still.sprite), ...fidget].map((f) => withCart(ringed(f, -still.y, RED), -still.y));
+      return { frames: joined.map((j) => j.sprite), foot: joined[0].foot, animated: true };
+    }
   }
   switch (l.kind) {
     case 'castle':
