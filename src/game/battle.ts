@@ -12,8 +12,9 @@ import { animLength, bodyHeight, hitTime, STAND, type AnimName } from '../render
 import { ART, type Missile } from '../render/units';
 import { MAP_VIEW } from '../render/frame';
 import { BLUE, GOLD, NEUTRAL, RED } from '../render/palette';
+import { paintSpeech } from '../render/speech';
 import { CardView } from '../ui/card';
-import { play } from '../ui/sound';
+import { play, speak } from '../ui/sound';
 import type { Display } from './display';
 import type { Screen } from './screen';
 
@@ -30,6 +31,8 @@ const MS = 0.00085;
 const FLINCH_EARLY = 126;
 /** Wesnoth pulses a unit red twice when it is hit: on for each of these stretches of the first 300 ms. */
 const pulse = (k: number) => (k > 0.05 && k < 0.35) || (k > 0.55 && k < 0.85);
+/** How long a villain's last words stay up, in seconds whatever the battle's pace: the fight stops on them, till a click. */
+const LAST_WORDS = 3.2;
 /** What a bard shouts at a stack he jeers. */
 const JEERS = ['Call that a sword?', 'Boo! Hiss!', 'Go home to mother!', 'Nice hat!', 'Is that all?', 'My goose fights better!'];
 /** A share as a whole percentage: "25%". */
@@ -102,6 +105,7 @@ export class BattleController implements Screen {
       time: 0,
       shake: 0,
       banner: null,
+      speech: null,
       finishOffer: false,
     };
     // What the hero brought to the field is said as the battle opens: "Advanced Archery: the Wolves start slowed."
@@ -142,6 +146,30 @@ export class BattleController implements Screen {
       start,
       tick: (t) => length && this.view.poses.set(id, { anim, ms: Math.min(length, (t * Math.max(0.3, length * MS)) / MS) }),
       end: () => this.view.poses.delete(id),
+    });
+  }
+
+  /**
+   * A leader says something aloud: a bubble over his head, his babble, and the ribbon says it too.
+   * It stays up `LAST_WORDS` seconds at any pace, or until a click.
+   */
+  private say(id: number, words: string) {
+    const f = fighterById(this.battle, id);
+    const hold = LAST_WORDS * this.pace * (this.auto ? 2.5 : 1);
+    this.step(hold, {
+      start: () => {
+        this.view.speech = { fighter: id, bubble: paintSpeech(`\u201c${words}\u201d`), age: 0, life: LAST_WORDS };
+        this.view.log = `${this.fighterName(id)}: \u201c${words}\u201d`;
+        this.view.poses.set(id, { anim: 'defend', ms: 0 });
+        speak(TROOPS[f.troop].voice ?? 150, words);
+      },
+      tick: (t) => {
+        if (this.view.speech) this.view.speech.age = t * LAST_WORDS;
+      },
+      end: () => {
+        this.view.speech = null;
+        this.view.poses.delete(id);
+      },
     });
   }
 
@@ -950,6 +978,8 @@ export class BattleController implements Screen {
               }
             },
           });
+          // A villain taken has the last word, in his own voice: the fight stops on it.
+          if (e.result === 'won' && leaders.length && this.battle.lastWords) this.say(leaders[0].id, this.battle.lastWords);
           break;
         }
         case 'turn': {
@@ -1209,6 +1239,11 @@ export class BattleController implements Screen {
 
   readonly input = {
     click: (x: number, y: number) => {
+      // A click moves on from a villain's last words.
+      if (this.view.speech && this.queue.length) {
+        this.queue[0].elapsed = this.queue[0].duration;
+        return;
+      }
       const button = BUTTONS.find((b) => x >= b.rect.x && x < b.rect.x + b.rect.width && y >= b.rect.y && y < b.rect.y + b.rect.height);
       if (button) return this.button(button.id);
       const hex = hexAt(x, y);

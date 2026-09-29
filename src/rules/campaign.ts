@@ -30,6 +30,9 @@ export function commissionAt(campaign: Pick<Campaign, 'seed'>, chapter: number):
 
 export const commissionOf = (state: GameState) => commissionAt(state.campaign, state.campaign.chapter);
 export const provinceOf = (state: GameState) => commissionOf(state).province;
+
+/** The bounty on the villain, as his WANTED poster gives it: what the Crown pays for taking him at his lair. */
+export const bountyOf = (state: Pick<GameState, 'locations'>) => state.locations.find((l) => l.kind === 'hideout')?.enemy?.reward ?? 0;
 export const hasNextCommission = (state: GameState) => state.campaign.chapter + 1 < CAMPAIGN_LENGTH;
 
 /** What a place says and offers, as opposed to what has happened to it: a save takes the newest. */

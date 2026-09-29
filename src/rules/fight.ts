@@ -4,7 +4,7 @@ import { ABILITIES, crowd, heroTroop, TROOPS, type HeroId, type TroopId } from '
 import type { StatusId } from '../content/spells';
 import { autoResolve } from './battle/ai';
 import { applyEffects } from './effects/core';
-import { CAMPAIGN_LENGTH, campaignLines, commissionOf, hasNextCommission, provinceOf } from './campaign';
+import { bountyOf, CAMPAIGN_LENGTH, campaignLines, commissionOf, hasNextCommission, provinceOf } from './campaign';
 import { revealDisc } from './map/fog';
 import { fleeHome, fleesHome } from './map/sortie';
 import { battleEnd, createBattle, isLeader, SHOOTER_MELEE, survivors, type BattleHero, type BattleState, type Side } from './battle/battle';
@@ -167,54 +167,66 @@ function fallen(battle: BattleState, side: Side): Army {
   return [...losses].map(([troop, count]) => ({ troop, count }));
 }
 
-/** Lines the armies up. The battle lives in the state until it's over. */
+/** Lines the armies up. The battle lives in the state until it's over. At his lair, the villain has his last words ready. */
 export function startFight(state: GameState, id: string): Result | null {
   const place = locationById(state, id);
   if (state.army.length === 0 || !place.enemy || place.done) return null;
   const [, seed] = roll(state.seed);
   const battle = createBattle({ place: id, seed: state.seed, player: state.army, enemy: place.enemy!.army, hero: heroAgainst(state, place), obstacles: place.kind === 'hideout' ? 3 : 5, ground: provinceOf(state).fen ? 'fen' : 'meadow', flees: fleesHome(state, place) });
-  return { state: { ...state, seed, battle }, events: [{ type: 'battle', place: id }] };
+  const words = place.kind === 'hideout' ? commissionOf(state).lastWords : undefined;
+  return { state: { ...state, seed, battle: words ? { ...battle, lastWords: words } : battle }, events: [{ type: 'battle', place: id }] };
 }
 
+/** Why the Crown pays other than the poster's price, when the choice that took him doesn't say. */
+const A_DEAL = 'he came of his own accord, more or less';
+
+/** "Baron Grimsby is taken!", or two of them. */
+const takenTitle = (villain: string) => `${villain} ${villain.includes(' and ') ? 'are' : 'is'} taken!`;
+
 /**
- * The villain is taken: the commission is won. `state` already has the bounty's gold; the card
- * says how it went and sends the hero to court, or ends the campaign after the last commission.
+ * The villain is taken: the commission is won. `state` already has the bounty's gold (`reward`). The
+ * card shows his face and says how it went; claiming the bounty puts up his WANTED poster, stamped
+ * PAID, which sends the hero to court (or back to the map, to dig, after the last commission). If
+ * the Crown pays other than the poster's price, `because` says why.
  */
-export function bountyPaid(state: GameState, id: string, opening: string[], reward: number, spoils: string[], battleResult?: BattleResultCard, decisions: Choice[] = []): Result {
+export function bountyPaid(state: GameState, id: string, opening: string[], reward: number, spoils: string[], battleResult?: BattleResultCard, decisions: Choice[] = [], because?: string): Result {
   const place = locationById(state, id);
   const c = commissionOf(state);
   const piece = state.campaign.chapter + 1;
   const sceptre = provinceOf(state).sceptre;
-  const lines = [...opening, `The Crown pays **${coins(reward)} gold**. ${c.homecoming}`, ...spoils];
+  const paid = { gold: reward, ...(reward !== bountyOf(state) ? { because: because ?? A_DEAL } : {}) };
+  const lines = [...opening, ...spoils];
+  const claim: Choice = { label: 'Claim the bounty', action: { type: 'poster' } };
+  const looks = { wide: true, ...(c.face ? { portrait: c.face } : {}), ...(battleResult ? { battleResult } : {}) };
   if (!hasNextCommission(state) && sceptre) {
     // The last piece of the map: the commission goes on until the hero digs where the X is.
     const x: Location = { id: 'sceptre', kind: 'dig', name: 'X Marks the Spot', at: sceptre, done: false };
     const seen = revealDisc(state.explored, state.world, sceptre[0], sceptre[1], 110).bits;
-    const next: GameState = { ...state, bounty: 'paid', explored: seen, locations: [...state.locations, x] };
+    const next: GameState = { ...state, bounty: 'paid', paid, explored: seen, locations: [...state.locations, x] };
     const card = {
       title: 'The last piece of the map!',
       lines: [...lines, `Among ${c.villain}\u2019s things: the last torn piece of an old map. Laid together, the ${piece} pieces show an **X**, right here in ${provinceOf(state).name}.`],
-      choices: [close],
-      ...(battleResult ? { wide: true, battleResult } : {}),
+      choices: [...decisions, claim],
+      ...looks,
     };
     return { state: next, events: [{ type: 'added', id: 'sceptre' }, { type: 'reveal', at: sceptre, radius: 110 }, show(card, place.at, place.id)] };
   }
-  const next: GameState = { ...state, bounty: 'paid', over: 'won' };
+  const next: GameState = { ...state, bounty: 'paid', paid, over: 'won' };
   const more = hasNextCommission(next);
   const card = {
-    title: 'The bounty is paid!',
+    title: takenTitle(c.villain),
     lines: [...lines, `Among ${c.villain}\u2019s things: a torn piece of an old map (**${piece} of ${CAMPAIGN_LENGTH}**).`, `*Commission complete on day ${roman(next.day)}.*`, ...(more ? [] : campaignLines(next))],
-    choices: [...decisions, ...(more ? [{ label: 'Ride to the King\u2019s court', action: { type: 'court' as const } }] : [again, close])],
-    ...(battleResult ? { wide: true, battleResult } : {}),
+    choices: [...decisions, ...(more ? [claim] : [again, close])],
+    ...looks,
   };
   return { state: next, events: [{ type: 'over', result: 'won' }, show(card, place.at, place.id)] };
 }
 
 /**
  * An enemy beaten, in battle or by other means: its gold, its artifact and the experience, the
- * enemy gone from the map, and at a hideout, the bounty.
+ * enemy gone from the map, and at a hideout, the bounty (with `because`, why it isn't the poster's).
  */
-export function beat(state: GameState, id: string, how: { title: string; lines: string[]; reward: number; xp: number; sayGold?: boolean; battleResult?: BattleResultCard; choices?: Choice[] }): Result {
+export function beat(state: GameState, id: string, how: { title: string; lines: string[]; reward: number; xp: number; sayGold?: boolean; battleResult?: BattleResultCard; choices?: Choice[]; because?: string }): Result {
   const place = locationById(state, id);
   let next = update({ ...state, gold: state.gold + how.reward }, id, { done: true });
   // A villain beaten in the open flees home to his walls, without his guard.
@@ -241,7 +253,7 @@ export function beat(state: GameState, id: string, how: { title: string; lines: 
     spoils.push(`**+${how.xp} experience.**`);
   }
   if (place.kind === 'hideout') {
-    const paid = bountyPaid(next, id, how.lines, how.reward, spoils, how.battleResult, decisions);
+    const paid = bountyPaid(next, id, how.lines, how.reward, spoils, how.battleResult, decisions, how.because);
     return { state: paid.state, events: [...events, ...paid.events] };
   }
   const gold = how.sayGold && how.reward ? [`**+${coins(how.reward)} gold.**`] : [];
@@ -288,7 +300,8 @@ export function finishFight(state: GameState): Result {
   const end = battleEnd(battle);
   // What his bribes cost comes out of his purse.
   const paid = Math.max(0, state.gold - (battle.hero.gold ?? state.gold));
-  const ended = end ? [`${end.army}, and **${end.leader}**.`] : [];
+  // And the villain's last words, on the card as on the field.
+  const ended = end ? [`${end.army}, and **${end.leader}**.`, ...(battle.result === 'won' && battle.lastWords ? [`*\u201c${battle.lastWords}\u201d*`] : [])] : [];
   const bribed = paid ? [`Bribes cost you **${coins(paid)} gold**.`] : [];
   // The battle rolled its own dice from the state's seed: carry on from where it stopped, not from the start again.
   const base: GameState = { ...state, seed: battle.seed, battle: undefined, army, gold: state.gold - paid, hero: { ...state.hero, mana: battle.hero.mana } };

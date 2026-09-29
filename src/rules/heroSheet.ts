@@ -6,8 +6,7 @@ import { MAP_SPELLS, SPELLS, STATUSES, type MapSpellId } from '../content/spells
 import { ABILITIES, abilitiesOf, TROOPS, troops, type TroopId } from '../content/troops';
 import { createBattle, grumbleOf, grumblesAt, luckOf, moraleOf, statsOf, type BattleState, type Fighter } from './battle/battle';
 import { rowOf } from './battle/hex';
-import { CAMPAIGN_LENGTH, commissionOf } from './campaign';
-import type { PortraitId } from '../content/portraits';
+import { bountyOf, CAMPAIGN_LENGTH, commissionOf, hasNextCommission } from './campaign';
 import { heroFighter, heroInBattle } from './fight';
 import { countsExactly, forceLine } from './places/common';
 import { heroStats, LEVELS, type StatId } from './hero';
@@ -84,26 +83,39 @@ export function barNote(state: GameState, item: BarItem): string {
 /** How far away a place is, for the label under the pointer: "today", "tomorrow", "in 3 days". */
 export const whenThere = (days: number) => (days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`);
 
-/** Faces for the villains' posters, by the name the commission gives. */
-const VILLAIN_FACES: [string, PortraitId][] = [['Grimsby', 'grimsby'], ['Mirrow', 'mirrow'], ['Bramble', 'bramble']];
+/** What the stamped poster says was paid: the poster's price in full, or what the Crown paid and why. */
+function paidLine(state: GameState): string {
+  const promised = bountyOf(state);
+  const paid = state.paid ?? { gold: promised };
+  if (paid.gold === promised) return `Reward: **${coins(promised)} gold**, paid in full.`;
+  return `The poster said **${coins(promised)} gold**. The Crown pays **${coins(paid.gold)}**, because ${paid.because ?? 'that was the deal'}.`;
+}
 
-/** The WANTED poster again, from the bar: who, why, the reward, and the days left. */
+/**
+ * The villain's WANTED poster, from the bar: who, what for, the reward, the days left and the pieces
+ * of the map so far. Once he's taken it comes back stamped PAID, with what was paid (and why, if not
+ * the poster's price), what came home (a picture of it, the goose, if there is one) and, once the
+ * commission is won, the way to court.
+ */
 export function bountyCard(state: GameState): Card {
   const c = commissionOf(state);
-  const face = VILLAIN_FACES.find(([name]) => c.villain.includes(name))?.[1];
-  const pieces = state.campaign.record.length + (state.bounty === 'paid' ? 1 : 0);
+  const paid = state.bounty === 'paid';
+  const pieces = state.campaign.record.length + (paid ? 1 : 0);
   const left = LAST_DAY - state.day;
+  const home = paid && c.returned ? { inset: { portrait: c.returned, line: c.homecoming } } : {};
   return {
-    title: state.bounty === 'paid' ? 'CAUGHT' : 'WANTED',
+    title: 'WANTED',
     poster: true,
-    ...(face ? { portrait: face } : {}),
+    ...(c.face ? { portrait: c.face } : {}),
+    ...(paid ? { stamp: 'PAID' } : {}),
+    ...home,
     lines: [
       `**${c.villain}** of ${c.province.name.replace(/^the /, 'the ')}`,
-      ...c.brief,
-      state.bounty === 'paid' ? 'The bounty is paid.' : `Reward: **${coins(c.reward)} gold**. By day ${LAST_DAY}: **${left} day${left === 1 ? '' : 's'}** left.`,
-      `*Pieces of the old map: ${pieces} of ${CAMPAIGN_LENGTH}.*`,
+      c.wanted ?? c.brief.join(' '),
+      paid ? paidLine(state) : `Reward: **${coins(bountyOf(state))} gold**. By day ${LAST_DAY}: **${left} day${left === 1 ? '' : 's'}** left.`,
+      ...(paid ? (c.returned ? [] : [c.homecoming]) : [`*Pieces of the old map: ${pieces} of ${CAMPAIGN_LENGTH}.*`]),
     ],
-    choices: [close],
+    choices: paid && state.over === 'won' && hasNextCommission(state) ? [{ label: 'Ride to the King\u2019s court', action: { type: 'court' } }] : [close],
   };
 }
 

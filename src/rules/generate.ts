@@ -472,7 +472,21 @@ export function generateCommission(seed: number, v: VillainTemplate, chapter: nu
   for (let tries = 0; tries < 60; tries++) {
     const province = attempt(seed + tries * 7919, v, chapter);
     if (playable(province)) {
-      return { province, villain: v.villain, brief: v.brief, surrender: v.surrender, homecoming: v.homecoming, timeout: v.timeout, praise: v.praise, arrival: v.arrival, reward: Math.round(2500 * strengthFor(chapter)), memories: [...(v.memories ?? []), ...MEMORIES] };
+      return {
+        province,
+        villain: v.villain,
+        face: v.face,
+        wanted: v.wanted,
+        brief: v.brief,
+        lastWords: v.lastWords,
+        surrender: v.surrender,
+        homecoming: v.homecoming,
+        timeout: v.timeout,
+        praise: v.praise,
+        arrival: v.arrival,
+        reward: Math.round(2500 * strengthFor(chapter)),
+        memories: [...(v.memories ?? []), ...MEMORIES],
+      };
     }
   }
   throw new Error(`No playable province for seed ${seed}`);

@@ -134,6 +134,8 @@ export type BattleState = {
   opening?: { source: string; status: StatusId; fighters: number[] }[];
   /** The enemy's leader flees home when his army is beaten, instead of being taken: a villain met in the open, with his walls to run to. */
   flees?: boolean;
+  /** What the villain says when his army is beaten and he's taken: the fight stops on it. */
+  lastWords?: string;
 };
 
 /**

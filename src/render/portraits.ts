@@ -47,7 +47,7 @@ const GREENSKIN = [LEAF[1], LEAF[3], LEAF[5], LEAF[6], LEAF[7]];
 const GREY = [FOG[3], FOG[5], FOG[7], FOG[8]];
 
 /** The heroes' faces agree with their figures on the map: the Horseman's helm, the Arch Mage's hood and beard, the Ranger's green hood, the Master at Arms' plumed hat. */
-const RECIPES: Record<PortraitId, Recipe> = {
+const RECIPES: Record<Exclude<PortraitId, 'goose'>, Recipe> = {
   king: { skin: SKIN, hair: WHITE, beard: 'full', beardColour: WHITE, hat: 'crown', clothes: [RED[1], RED[2], RED[3], RED[4]], collar: 'ermine', eyes: BLUE[4], mood: 'smile' },
   knight: { skin: SKIN, hair: BROWN, beard: 'stubble', beardColour: BROWN, hat: 'helm', hatColour: [STONE[2], STONE[4], STONE[5], STONE[6]], clothes: [BLUE[1], BLUE[2], BLUE[3], BLUE[4]], collar: 'mail', eyes: BLUE[5], mood: 'stern' },
   wizard: { skin: SKIN, hair: WHITE, beard: 'full', beardColour: WHITE, hat: 'hood', hatColour: [BLUE[0], BLUE[1], BLUE[3], BLUE[4]], hoodTrim: true, clothes: [ROCK[2], ROCK[3], ROCK[4], ROCK[5]], eyes: GOLD[5], mood: 'smile' },
@@ -66,7 +66,38 @@ const inEllipse = (x: number, y: number, cx: number, cy: number, rx: number, ry:
 /** Light from the top left: brighter up and to the left of a shape's centre. */
 const lit = (x: number, y: number, cx: number, cy: number, r: number) => 0.62 - ((x - cx) / r) * 0.28 - ((y - cy) / r) * 0.22;
 
+/** The royal goose, home at last, for the poster that comes back stamped PAID: her crown, and a blue ribbon. */
+function goose(): Bitmap {
+  const b = new Bitmap(PORTRAIT_SIZE, PORTRAIT_SIZE);
+  const fill = (test: (x: number, y: number) => boolean, colour: (x: number, y: number) => number) => {
+    for (let y = 0; y < PORTRAIT_SIZE; y++) for (let x = 0; x < PORTRAIT_SIZE; x++) if (test(x, y)) b.set(x, y, colour(x, y));
+  };
+  const feathers = (x: number, y: number, cx: number, cy: number, r: number) => shade(WHITE, lit(x, y, cx, cy, r) + 0.18, x, y);
+  // Her breast, and a folded wing with its feathers marked.
+  fill((x, y) => inEllipse(x, y, 30, 62, 27, 17), (x, y) => feathers(x, y, 26, 54, 24));
+  fill((x, y) => inEllipse(x, y, 43, 58, 15, 9) && !inEllipse(x, y, 42, 57, 13, 7.5), (x, y) => shade(WHITE, 0.3, x, y));
+  for (const [x0, y0] of [[36, 57], [41, 59], [46, 58], [50, 60]]) for (let k = 0; k < 4; k++) b.set(x0 + k, y0 + (k >> 1), NEUTRAL[5]);
+  // A long neck, curving up from the breast and forward to the head.
+  const centre = (y: number) => 33 + Math.sin(((y - 18) / 32) * Math.PI) * 4;
+  fill((x, y) => y >= 18 && y < 50 && Math.abs(x + 0.5 - centre(y)) < 4.5 + Math.max(0, y - 40) * 0.35, (x, y) => feathers(x, y, centre(y) - 2, y, 6));
+  // The head, the eye with its gleam, and the beak.
+  fill((x, y) => inEllipse(x, y, 30, 18, 9, 7), (x, y) => feathers(x, y, 28, 15, 9));
+  fill((x, y) => y >= 16 && y <= 22 && x >= 12 && x < 23 && Math.abs(y + 0.5 - 19 + (x - 23) * 0.06) < 2.6 - (23 - x) * 0.09, (_x, y) => (y < 19 ? RED[5] : RED[4]));
+  for (let x = 12; x < 22; x++) b.set(x, 19, x < 14 ? RED[3] : RED[2]);
+  for (const [x, y] of [[26, 16], [27, 16], [26, 17], [27, 17]]) b.set(x, y, INK);
+  b.set(26, 16, NEUTRAL[7]);
+  // A small gold crown, a red jewel in it.
+  fill((x, y) => y >= 9 && y < 12 && x >= 25 && x <= 36, (x, y) => (y === 9 ? GOLD[6] : x < 30 ? GOLD[5] : GOLD[4]));
+  for (const px of [25, 30, 36]) for (let y = 5; y < 9; y++) if (Math.abs(px - 30.5) < 6 || y > 6) b.set(px, y, y === 5 ? GOLD[6] : GOLD[5]);
+  b.set(30, 10, RED[5]);
+  // The King's blue ribbon round her neck, tied in a bow.
+  fill((x, y) => y >= 38 && y < 41 && Math.abs(x + 0.5 - centre(y)) < 5.5, (x) => (x < 36 ? BLUE[5] : BLUE[4]));
+  fill((x, y) => inEllipse(x, y, 30, 37.5, 3.5, 2.6) || inEllipse(x, y, 30.5, 42.5, 3, 2.4), (_x, y) => (y < 40 ? BLUE[5] : BLUE[3]));
+  return outline(b, INK);
+}
+
 export function portrait(id: PortraitId): Bitmap {
+  if (id === 'goose') return goose();
   const p = RECIPES[id];
   const b = new Bitmap(PORTRAIT_SIZE, PORTRAIT_SIZE);
   const fill = (test: (x: number, y: number) => boolean, colour: (x: number, y: number) => number, y0 = 0, y1 = PORTRAIT_SIZE, x0 = 0, x1 = PORTRAIT_SIZE) => {

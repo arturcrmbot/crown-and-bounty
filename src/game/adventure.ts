@@ -474,6 +474,10 @@ export class AdventureController implements Screen {
         this.plan(locationById(this.state, action.id).at, action.id);
         return;
       }
+      case 'poster':
+        // The bounty claimed: his poster comes back, stamped PAID.
+        this.showCard(bountyCard(this.state), null);
+        return;
       case 'background': {
         // Who he was, not something gained: no gold or troops rise off him for it.
         const chosen = apply(this.state, action);
