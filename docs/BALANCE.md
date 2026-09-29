@@ -1,7 +1,9 @@
 # King's Commission: balance
 
 How every commission becomes a proper challenge. Agreed with Artur on 29 Sep 2026, after he played Aldmoor end to
-end as the Knight. Read with `BRIEF.md` and `PLAN.md`. The numbers were measured on main on 29 Sep, after #82 and #83.
+end as the Knight. Read with `BRIEF.md` and `PLAN.md`. The numbers were measured on main on 29 Sep, after #82 and #83,
+on the old, small Aldmoor. Luck and morale (#84) and the bigger Aldmoor (#85) came in after, so the first job of
+`sim:curve` (below) is to measure them again.
 
 ## The problem
 
@@ -29,8 +31,8 @@ level-ups.
 - Aldric grows two and a half to three and a half times in a week or two, and the enemies stand still. Grimsby takes
   on 5% more men a payday, five times.
 - Leadership is full by about day 9, so strength levels off there, at about 2 Grimsbys.
-- The bot takes Grimsby on day 5 to 9 (the median), and commissions II to V on days 2 to 9, at levels 9 to 15
-  (`npm run sim -- 8 --campaign`).
+- **Grimsby falls in the first week.** Artur took him on day 8, and the bot takes him on day 5 to 9 (the median).
+  Commissions II to V fall on days 2 to 9, at levels 9 to 15 (`npm run sim -- 8 --campaign`).
 
 **Where the power comes from.** At day 9 or 21, one source is taken away and the strength measured again:
 
@@ -53,17 +55,22 @@ is a wall one day and a walkover the next, and a hero who waits a day never has 
 - The difficulty check's `explored` point is day 6, before the gates. That's where the Knight's 13% at the hideout
   came from. By the time a player reaches Grimsby, he has the gates' experience (about three levels), their loot, and
   a payday of recruits.
+- On a cliff, a single number means little. The Knight's chance at the explored hideout was 94% before #36, 13% after
+  it and #42, and 81% after #6. Each of those changes moved the commander's sums, not how hard the fight feels. The
+  strength in Grimsbys moves far less.
 - The bot fights as soon as its odds reach nine in ten, right at the cliff's edge, and loses most of its army doing
   it: the Knight bot beats the wolves on day 1 and keeps 5 of 42. So its curve sits below a player's.
 - It takes the trick perk at every level, never Offence or Armourer, and its sergeants never bribe.
 
 ## The approach
 
-1. **A power budget for each commission.** Each commission has a target day for its villain (Aldmoor's is about day
-   21, #77) and a reference hero: what a careful player has by then. Every enemy is sized against the reference hero
-   on the day he's meant to meet it, not against the hero of day 1.
+1. **A power budget for each commission.** Each commission has a target day for its villain and a reference hero:
+   what a careful player has by then. For Aldmoor that's about day 21 (#77), three weeks later than now. Every enemy
+   is sized against the reference hero on the day he's meant to meet it, not against the hero of day 1.
 2. **Caps on the big three.** The army, stats and gear, and spells still grow, but more slowly and up to a ceiling.
-   That keeps the reference hero predictable, and a player who grinds can't run away from the budget.
+   That keeps the reference hero predictable, and a player who grinds can't run away from the budget. The rise has to
+   slow as well as stop: today he's at his ceiling by day 9, so a stronger Grimsby alone would only move the coin flip
+   to day 9. The bigger Aldmoor (#85) spreads the rewards over three weeks, and the caps slow what each one adds.
 3. **A fix for each background that has a runaway of its own:** the Wizard's mana, the Ranger's taming and the
    Courtier's prices. The Knight has none, so the budget is his fix.
 
@@ -91,7 +98,9 @@ budget, "explored" moves to where a player really is when he reaches the gate.
 **Pests and bands** stay as they are: pests are won from the start, and bands are fair fights.
 
 **Every commission** follows the same rule, at its own target day, for the hero the campaign carried there. Generated
-provinces stop growing by a flat fifth, and each is sized to the reference hero it expects.
+provinces stop growing by a flat fifth, and each is sized to the reference hero it expects. The crooks of commissions
+II to V (proposed in #86) escalate in kind: rabble, then skill, then armour, then the best of everything. The budget
+sets how many.
 
 **Each background:**
 
