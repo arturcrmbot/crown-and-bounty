@@ -19,6 +19,7 @@
     "sim:battles": "node scripts/battles.mjs",
     "sim:boss": "node scripts/bossmargin.mjs",
     "rides": "node scripts/rides.mjs",
+    "sim:curve": "node scripts/curve.mjs",
     "deploy": "node scripts/deploy.mjs",
     "difficulty": "node scripts/difficulty.mjs",
     "wesnoth": "node scripts/wesnoth.mjs",

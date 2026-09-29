@@ -31,8 +31,9 @@ const learned = [];
 async function close() {
   if ((await kc.title())?.endsWith('ambush!')) {
     const who = (await kc.lines()).match(/At first light, (.+?) fall on your camp/)?.[1];
+    const id = (await kc.state()).ambush;
     await kc.choose('Let the sergeants');
-    ambushes.push({ who, day: (await kc.state()).day, title: await kc.title(), lines: await kc.lines() });
+    ambushes.push({ who, id, day: (await kc.state()).day, title: await kc.title(), lines: await kc.lines() });
   }
   await kc.choose('Close');
   await settle();
@@ -46,6 +47,8 @@ const ambushes = [];
  */
 async function beatWhenReady(id, tries = 6) {
   for (let attempt = 1; attempt <= tries; attempt++) {
+    // A hunter may have fallen on the camp at dawn and been seen off by the sergeants already.
+    if ((await kc.state()).locations.find((l) => l.id === id)?.done) return ambushes.some((a) => a.id === id && a.title === 'Victory!') ? 'Victory!' : 'done';
     await go(id, 'Approach');
     if ((await kc.lines()).includes('nervous') || attempt === tries) {
       await kc.choose('Let the sergeants');

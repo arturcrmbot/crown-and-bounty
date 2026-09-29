@@ -18,6 +18,10 @@ const aldmoor = (army: GameState['army'] = [{ troop: 'knights', count: 10 }], at
 const raided = (army?: GameState['army'], at?: Point) => aldmoor(army, at, { dig: 'raided' });
 const count = (s: GameState, id: string, troop: string) => locationById(s, id).enemy!.army.find((x) => x.troop === troop)?.count ?? 0;
 const band = (s: GameState) => s.locations.find((l) => l.id === 'grimsby');
+/** Grimsby's stockade as the content has it, and the share of it he rides out with. */
+const LAIR = ALDMOOR.locations.find((l) => l.id === 'hideout')!.enemy!;
+const MEN = (troop: string) => LAIR.army.find((x) => x.troop === troop)!.count;
+const GUARD = LAIR.sortie!.guard;
 const dist = (a: readonly number[], b: readonly number[]) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 const cardLines = (r: { events: GameEvent[] }) => r.events.flatMap((e) => (e.type === 'card' ? e.card.lines : []));
 /** Nights pass until something falls on the camp, or `n` have. */
@@ -31,16 +35,16 @@ describe('Grimsby riding out', () => {
     expect(band(nights(aldmoor(), 5))).toBeUndefined();
   });
 
-  it('rides out the night his dig is raided, with a third of his men, and comes up the road for the hero', () => {
+  it('rides out the night his dig is raided, with a fifth of his men, and comes up the road for the hero', () => {
     const start = raided();
     const r = endDay(start);
     const out = band(r.state)!;
     expect(out).toBeDefined();
     expect(out.done).toBe(false);
     expect(count(r.state, 'grimsby', 'baron')).toBe(1);
-    expect(count(r.state, 'grimsby', 'swordsmen')).toBe(Math.round(46 * 0.35));
+    expect(count(r.state, 'grimsby', 'swordsmen')).toBe(Math.round(MEN('swordsmen') * GUARD));
     expect(count(r.state, 'hideout', 'baron')).toBe(0);
-    expect(count(r.state, 'hideout', 'swordsmen') + count(r.state, 'grimsby', 'swordsmen')).toBe(46);
+    expect(count(r.state, 'hideout', 'swordsmen') + count(r.state, 'grimsby', 'swordsmen')).toBe(MEN('swordsmen'));
     // He has set off, and the dawn says so.
     const gate = ALDMOOR.locations.find((l) => l.id === 'hideout')!.enemy!.sortie!.band.at;
     expect(dist(out.at, start.hero.at)).toBeLessThan(dist(gate, start.hero.at));
@@ -75,8 +79,8 @@ describe('Grimsby riding out', () => {
     expect(r.state.bounty).toBe('open');
     // Home again, and his guard straggles in after him: his stockade is as strong as it was.
     expect(count(r.state, 'hideout', 'baron')).toBe(1);
-    expect(count(r.state, 'hideout', 'swordsmen')).toBe(46);
-    expect(count(r.state, 'hideout', 'crossbowmen')).toBe(24);
+    expect(count(r.state, 'hideout', 'swordsmen')).toBe(MEN('swordsmen'));
+    expect(count(r.state, 'hideout', 'crossbowmen')).toBe(MEN('crossbowmen'));
     expect(locationById(r.state, 'hideout').enemy!.humbled).toBeUndefined();
     expect(cardLines(r).join(' ')).toContain('Baron Grimsby flees home');
     // His gate is open again.
@@ -85,13 +89,14 @@ describe('Grimsby riding out', () => {
     expect(band(endDay(r.state).state)!.done).toBe(true);
     const again = endDay({ ...r.state, flags: { ...r.state.flags, patrolGone: true } }).state;
     expect(band(again)?.done).toBe(false);
-    expect(count(again, 'grimsby', 'swordsmen')).toBe(Math.round(46 * 0.35));
+    expect(count(again, 'grimsby', 'swordsmen')).toBe(Math.round(MEN('swordsmen') * GUARD));
   });
 
   it('gets his guard back in a save from before, when he came home without it', () => {
     const s = aldmoor();
     const lair = locationById(s, 'hideout');
-    const short = { ...lair, enemy: { ...lair.enemy!, humbled: true, army: [{ troop: 'swordsmen' as const, count: 30 }, { troop: 'crossbowmen' as const, count: 16 }, { troop: 'baron' as const, count: 1 }] } };
+    // As the stockade stood then: 46 swordsmen and 24 crossbowmen, a third of them his guard, which never came home.
+    const short = { ...lair, enemy: { ...lair.enemy!, humbled: true, sortie: { ...lair.enemy!.sortie!, guard: 0.35 }, army: [{ troop: 'swordsmen' as const, count: 30 }, { troop: 'crossbowmen' as const, count: 16 }, { troop: 'baron' as const, count: 1 }] } };
     const loaded = withNewPlaces({ ...s, locations: s.locations.map((l) => (l.id === 'hideout' ? short : l)) });
     expect(count(loaded, 'hideout', 'swordsmen')).toBe(46);
     expect(count(loaded, 'hideout', 'crossbowmen')).toBe(25);
@@ -112,7 +117,7 @@ describe('Grimsby riding out', () => {
     expect(home!.events.some((e) => e.type === 'removed' && e.id === 'grimsby')).toBe(true);
     expect(cardLines(home!).some((l) => l.includes('gone home to his stockade'))).toBe(true);
     expect(count(s, 'hideout', 'baron')).toBe(1);
-    expect(count(s, 'hideout', 'swordsmen')).toBe(46);
+    expect(count(s, 'hideout', 'swordsmen')).toBe(MEN('swordsmen'));
     expect(locationById(s, 'hideout').enemy!.humbled).toBeUndefined();
     // Hurt him again, and he comes out again.
     const again = endDay({ ...s, hero: { ...s.hero, at: HEATH }, flags: { ...s.flags, patrolGone: true } }).state;

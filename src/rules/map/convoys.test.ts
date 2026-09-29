@@ -8,6 +8,9 @@ import { nearest, smooth, type Point } from './geometry';
 const fresh = (): GameState => ({ ...newGame(1066, ALDMOOR, 'knight'), opening: undefined });
 const cart = (state: GameState) => locationById(state, 'cart');
 const patrol = (state: GameState) => locationById(state, 'patrol').enemy!.army;
+/** The patrol on the bridge as the content has it, and the share of it that goes with the cart. */
+const PATROL = ALDMOOR.locations.find((l) => l.id === 'patrol')!.enemy!.army;
+const SHARE = ALDMOOR.locations.find((l) => l.id === 'cart')!.enemy!.convoy!.share;
 const road = smooth(cart(fresh()).enemy!.convoy!.route);
 /** How far along its road the cart stands, and how far off it. */
 const along = (state: GameState) => nearest(road, cart(state).at[0], cart(state).at[1]);
@@ -36,9 +39,10 @@ describe('the grain cart', () => {
     const { state, last } = until(start, 8);
     expect(cart(state).done).toBe(false);
     expect(cart(state).at).toEqual(cart(start).enemy!.convoy!.route[0]);
-    expect(cart(state).enemy!.army).toEqual([{ troop: 'swordsmen', count: 10 }, { troop: 'crossbowmen', count: 6 }]);
+    const squad = PATROL.map((x) => ({ troop: x.troop, count: Math.round(x.count * SHARE) }));
+    expect(cart(state).enemy!.army).toEqual(squad);
     // The squad comes from the bridge, which is that much weaker while it's out.
-    expect(patrol(state)).toEqual([{ troop: 'swordsmen', count: 40 }, { troop: 'crossbowmen', count: 23 }]);
+    expect(patrol(state)).toEqual(PATROL.map((x, i) => ({ troop: x.troop, count: x.count - squad[i].count })));
     expect(last.events.some((e) => e.type === 'added' && e.id === 'cart')).toBe(true);
     expect(cardOf(last).lines.join(' ')).toMatch(/loading the village\u2019s grain/);
   });
@@ -59,7 +63,7 @@ describe('the grain cart', () => {
       expect(dist(cart(state).at, patrolAt)).toBeGreaterThanOrEqual(72);
       s = where.s;
     }
-    expect(patrol(state)).toEqual([{ troop: 'swordsmen', count: 50 }, { troop: 'crossbowmen', count: 29 }]);
+    expect(patrol(state)).toEqual(PATROL);
     // And it sets out again on the next payday.
     expect(cart(until(state, 15).state).done).toBe(false);
   });
@@ -79,7 +83,7 @@ describe('the grain cart', () => {
     expect(card.choices.map((c) => c.label)).toEqual(['Take it home to Westmere', 'Keep it for your men']);
     expect(card.lines.join(' ')).toMatch(/rations/);
     // The squad never goes back to the bridge.
-    expect(patrol(caught.state)).toEqual([{ troop: 'swordsmen', count: 40 }, { troop: 'crossbowmen', count: 23 }]);
+    expect(patrol(caught.state)).toEqual(PATROL.map((x) => ({ troop: x.troop, count: x.count - Math.round(x.count * SHARE) })));
   });
 
   it('feeds the troops on payday instead of their wages, or goes home to Westmere for its volunteers', () => {

@@ -3,13 +3,16 @@
  * a commission. `start` is day I with the army you arrive with. `explored` is after a few days of
  * riding round, taking what's lying about, recruiting and beating the pests, without touching the
  * gates. The balance tests hold every province, hand-made or generated, to these for every
- * background.
+ * background. `reference` is a careful player on day 21, for the reports (`npm run difficulty`,
+ * `npm run sim:curve`): no test holds him to a number.
  */
+import { BACKGROUNDS } from '../content/backgrounds';
 import { playCommission } from './bot';
 import { provinceOf } from './campaign';
 import { winChance } from './fight';
 import { mapOf } from './map/maps';
-import type { GameState, Tier } from './state';
+import { merge, riddenOut } from './map/sortie';
+import { update, type GameState, type Tier } from './state';
 
 type Range = readonly [number, number];
 
@@ -23,6 +26,29 @@ export const TARGETS: Record<Tier, { start?: Range; explored?: Range }> = {
   /** The villain: out of reach until the whole loop is done. */
   boss: { start: [0, 0.05] },
 };
+
+/** The day the reports look at a careful player: the third week. */
+export const TARGET_DAY = 21;
+
+/** The reference hero: a careful player who has done everything but the villain, on the target day. */
+export function reference(start: GameState, day = TARGET_DAY): GameState {
+  return atHome(playCommission(start, mapOf(start), 20000, { allow: (l) => l.kind !== 'hideout', stop: (s) => s.day >= day }).state);
+}
+
+/** The villain behind his walls with his whole army, as the hero would find him at his gate: a band he has out rides home first. */
+export function atHome(state: GameState): GameState {
+  let next = state;
+  for (const lair of state.locations) {
+    const band = lair.enemy?.sortie ? riddenOut(next, lair) : null;
+    if (!band) continue;
+    next = update(next, lair.id, { enemy: { ...lair.enemy!, army: merge(lair.enemy!.army, band.enemy!.army) } });
+    next = update(next, band.id, { done: true });
+  }
+  return next;
+}
+
+/** The same hero with his army alone: no gear, and only the spells he came with. */
+export const bare = (state: GameState): GameState => ({ ...state, hero: { ...state.hero, gear: {}, spells: [...BACKGROUNDS[state.hero.background].spells] } });
 
 /** Days of exploring before the `explored` checkpoint, in a province as wide as the first ones (40 tiles). */
 export const EXPLORE_DAYS = 6;

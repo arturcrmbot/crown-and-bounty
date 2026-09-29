@@ -1,11 +1,13 @@
 // The difficulty model's report: every tiered enemy's win chance at the start and once explored,
-// for every background, against the targets in rules/difficulty.ts. npm run difficulty [-- commission]
+// for every background, against the targets in rules/difficulty.ts, and in the first commission, a
+// careful player's odds at the villain's gate on day 21, as a report. npm run difficulty [-- commission]
 import { createServer } from 'vite';
 
 const chapter = Number(process.argv[2] ?? 1) - 1;
 const server = await createServer({ server: { middlewareMode: true }, appType: 'custom', logLevel: 'error' });
 try {
-  const { explored, odds, TARGETS } = await server.ssrLoadModule('/src/rules/difficulty.ts');
+  const { bare, explored, odds, reference, TARGETS, TARGET_DAY } = await server.ssrLoadModule('/src/rules/difficulty.ts');
+  const { winChance } = await server.ssrLoadModule('/src/rules/fight.ts');
   const { newGame, beginCommission, commissionAt } = await server.ssrLoadModule('/src/rules/game.ts');
   const mark = (tier, when, c) => {
     const range = TARGETS[tier][when];
@@ -25,6 +27,14 @@ try {
     });
     console.log(`${background.padEnd(9)} explored by day ${later.day}, level ${later.hero.level}, army ${later.army.map((a) => `${a.count} ${a.troop}`).join(', ')}  (${Math.round(performance.now() - t)} ms)`);
     console.log(`          ${cells.join('   ')}`);
+    if (chapter === 0) {
+      const t = performance.now();
+      const hero = reference(start);
+      const villain = hero.locations.find((l) => l.kind === 'hideout');
+      const all = winChance(hero, villain.id);
+      const alone = winChance(bare(hero), villain.id);
+      console.log(`          day ${TARGET_DAY}, a careful player at level ${hero.hero.level} (${hero.army.map((a) => `${a.count} ${a.troop}`).join(', ')}): ${villain.id} ${(all * 100).toFixed(0)}% with everything, ${(alone * 100).toFixed(0)}% on his army alone  (${Math.round(performance.now() - t)} ms)`);
+    }
   }
 } finally {
   await server.close();

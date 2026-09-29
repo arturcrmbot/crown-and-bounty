@@ -170,9 +170,11 @@ describe('Aldric behind the line', () => {
   });
 
   it('counts in the sergeants\u2019 odds: a hero grown strong wins close fights more often', () => {
+    // Against the patrol as it stood on 29 Sep (50 swordsmen, 29 crossbowmen), whatever size the content makes it now.
     const close = (level: number) => {
       const s = hero('knight', level);
-      return winChance({ ...s, army: s.army.map((a) => ({ ...a, count: Math.round(a.count * 1.5) })) }, 'patrol', 8);
+      const patrol = { ...s, locations: s.locations.map((l) => (l.id === 'patrol' ? { ...l, enemy: { ...l.enemy!, army: army(['swordsmen', 50], ['crossbowmen', 29]) } } : l)) };
+      return winChance({ ...patrol, army: s.army.map((a) => ({ ...a, count: Math.round(a.count * 1.5) })) }, 'patrol', 8);
     };
     expect(close(15)).toBeGreaterThan(close(1));
   });
