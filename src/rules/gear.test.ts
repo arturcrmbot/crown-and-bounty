@@ -14,7 +14,10 @@ import { costsFor } from './map/movement';
 import { beginCommission, newGame } from './scenario';
 
 const fresh = (background: BackgroundId = 'knight'): GameState => ({ ...newGame(1066, ALDMOOR, background), opening: undefined });
-const wearing = (ids: ArtifactId[], base = fresh()) => ids.reduce((s, id) => (s.hero.gear[ARTIFACTS[id].slot] ? equip(giveArtifact(s, id), id)!.state : giveArtifact(s, id)), base);
+const wearing = (ids: ArtifactId[], base = fresh()) => ids.reduce((s, id) => {
+  const given = giveArtifact(s, id);
+  return given.hero.gear[ARTIFACTS[id].slot] === id ? given : equip(given, id)!.state;
+}, base);
 const cardOf = (result: Result): Card => {
   const e = result.events.find((x) => x.type === 'card');
   if (!e || e.type !== 'card') throw new Error('no card');
@@ -153,7 +156,9 @@ describe('where the gear is', () => {
   it('in Aldmoor: the chain in the chest, the banner with the highwaymen, a hat at the shrine, a spyglass in the armoury', () => {
     const chest = apply(fresh(), { type: 'choose', id: 'chest', choice: 'keep' })!;
     expect(chest.state.hero.gear.trinket).toBe('surveyorsChain');
-    const beaten = apply(fresh(), { type: 'choose', id: 'highwaymen', choice: 'auto' })!.state;
+    const fight = apply(fresh(), { type: 'choose', id: 'highwaymen', choice: 'auto' })!;
+    expect(cardOf(fight).choices.map((c) => c.label)).toContain('Wear it');
+    const beaten = apply(fight.state, { type: 'equip', artifact: 'blackBanner' })!.state;
     expect(beaten.hero.gear.banner).toBe('blackBanner');
     const shrine = cardOf(visit(fresh(), 'shrine'));
     expect(shrine.choices.map((c) => c.label)).toContain('Take the pilgrim\u2019s hat');
