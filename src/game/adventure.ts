@@ -283,10 +283,10 @@ export class AdventureController implements Screen {
   }
 
   /** Adds one first-commission hint to the card already being shown, or shows it on its own. */
-  private teach(result: Result, id: HintId, line: string, card?: Omit<Card, 'lines'>): Result {
+  private teach(result: Result, id: HintId, line: string, card?: Omit<Card, 'lines'>, at: Point | null = null): Result {
     if (result.state.campaign.chapter !== 0 || result.state.flags?.[`hint:${id}`]) return result;
     const taught = apply(result.state, { type: 'hint', id })!;
-    if (card) return { state: taught.state, events: [...result.events, { type: 'card', card: { ...card, lines: [line] }, at: null }] };
+    if (card) return { state: taught.state, events: [...result.events, { type: 'card', card: { ...card, lines: [line] }, at }] };
     const events = [...result.events];
     const index = events.findIndex((event) => event.type === 'card');
     if (index >= 0) {
@@ -581,7 +581,8 @@ export class AdventureController implements Screen {
       this.view.scrollTo(this.view.camera.x + dx * SCROLL_SPEED, this.view.camera.y + dy * SCROLL_SPEED);
     }
     // Shift gallops: three times the pace, for long rides.
-    this.ride(held.has('shift') ? dt * GALLOP : dt);
+    // A contextual hint waits to be read before the first ride begins.
+    if (!this.cards.isOpen) this.ride(held.has('shift') ? dt * GALLOP : dt);
     const { hero } = this.scene;
     this.view.effects.update(dt, [this.drawn.x, this.drawn.y]);
     const walking = this.isRiding();
@@ -659,6 +660,7 @@ export class AdventureController implements Screen {
                 { label: 'Not yet', detail: 'Look around first: the route waits.', action: { type: 'close' } },
               ],
             },
+            [this.drawn.x, this.drawn.y - this.scene.hero.foot],
           );
           if (taught.events.length) this.run(taught);
         }
