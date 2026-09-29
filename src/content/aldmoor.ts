@@ -47,8 +47,8 @@ const at = {
 const DELVING_NORTH: Point = [1212, 330];
 const DELVING_SOUTH: Point = [668, 1744];
 
-/** The patrol's size: a gate, too strong for a fresh army (see `rules/difficulty.ts`). */
-const PATROL = { swordsmen: 50, crossbowmen: 29 };
+/** The patrol's size: a gate that holds the bridge for about a week (see `rules/difficulty.ts` and `docs/BALANCE.md`). */
+const PATROL = { swordsmen: 70, crossbowmen: 40 };
 
 /** The old King's huntsmen, waiting at his hunt hall for someone to open it. */
 const HUNTSMEN = 12;
@@ -900,16 +900,18 @@ export const ALDMOOR: Province = {
       enemy: {
         look: 'stockade',
         tier: 'boss',
-        grows: 0.05,
+        // He recruits 3% a payday, five times: enough that waiting costs something, not so much that he runs away from a hero beaten once at his walls.
+        grows: 0.03,
         charge: 'Storm the stockade',
         lines: ['A muddy stockade deep in Darkwood. Someone inside is honking.'],
-        army: [{ troop: 'swordsmen', count: 46 }, { troop: 'crossbowmen', count: 24 }, { troop: 'baron', count: 1 }],
+        // Sized to the power budget: a hard fight for a careful player on day 21 (docs/BALANCE.md).
+        army: [{ troop: 'swordsmen', count: 80 }, { troop: 'crossbowmen', count: 42 }, { troop: 'baron', count: 1 }],
         reward: 2000,
         threat: 'The Baron shouts from the palisade: *"I have the goose AND the walls!"*',
-        // Raid his dig, take his patrol off the bridge or his huntsman from his wolves, and he rides out with a third of his men to meet you.
+        // Raid his dig, take his patrol off the bridge or his huntsman from his wolves, and he rides out with a fifth of his men to meet you.
         sortie: {
           when: [{ flag: 'dig', is: 'raided' }, { flag: 'patrolGone' }, { flag: 'pikeHome' }, { flag: 'rook' }],
-          guard: 0.35,
+          guard: 0.2,
           band: GRIMSBY_RIDES,
           barred: ['The gate is barred, and for once nobody inside is honking.', '*"The Baron\u2019s out!"* shouts a sentry over the palisade. *"Looking for you, as it happens. He took the goose."*'],
           out: 'Word on the road: **Baron Grimsby** has ridden out of his stockade with his guard, looking for you.',
@@ -1086,7 +1088,7 @@ export const ALDMOOR: Province = {
         sight: 380,
         wakes: { day: 8, news: 'Word on the road: the Baron has told **Rook the Huntsman** to bring you in, and let his wolves off the leash.' },
         lines: ['Rook the Huntsman, the Baron\u2019s man, and the Baron\u2019s wolves, sitting on the path like they own it.', '*The best poacher Aldmoor ever had, until the Baron gave him the old King\u2019s huntsmen\u2019s job.*'],
-        army: [{ troop: 'wolves', count: 84 }, { troop: 'rook', count: 1 }],
+        army: [{ troop: 'wolves', count: 100 }, { troop: 'rook', count: 1 }],
         reward: 300,
         threat: 'Rook puts two fingers in his mouth and whistles, once. Every wolf in the pack looks at you.',
         lastWords: 'Don\u2019t tell the Baron! He\u2019ll give my job back to the old King\u2019s lot!',

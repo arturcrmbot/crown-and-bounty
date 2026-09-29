@@ -14,6 +14,8 @@ import { hireOffer } from './places/enemy';
 import { beginCommission, newGame } from './scenario';
 
 const fresh = (background: BackgroundId = 'knight'): GameState => ({ ...newGame(1066, ALDMOOR, background), opening: undefined });
+/** How many of a troop stand in a place's army, as the content has it. */
+const inContent = (id: string, troop: string) => ALDMOOR.locations.find((l) => l.id === id)!.enemy!.army.find((x) => x.troop === troop)!.count;
 const skilled = (skills: Partial<Record<SkillId, number>>, background: BackgroundId = 'knight', base = fresh(background)): GameState => ({ ...base, hero: { ...base.hero, skills } });
 const cardOf = (result: Result): Card => {
   const e = result.events.find((x) => x.type === 'card');
@@ -116,8 +118,9 @@ describe('Logistics', () => {
 
 describe('Scouting', () => {
   it('Basic: counts every enemy exactly', () => {
-    expect(about(fresh(), 'patrol').lines.some((l) => l.includes('50 Swordsmen'))).toBe(false);
-    expect(about(skilled({ scouting: 1 }), 'patrol').lines.some((l) => l.includes('50 Swordsmen'))).toBe(true);
+    const swordsmen = `${inContent('patrol', 'swordsmen')} Swordsmen`;
+    expect(about(fresh(), 'patrol').lines.some((l) => l.includes(swordsmen))).toBe(false);
+    expect(about(skilled({ scouting: 1 }), 'patrol').lines.some((l) => l.includes(swordsmen))).toBe(true);
   });
 
   it('Advanced: puts a number on the chances, and says what they carry', () => {
@@ -266,9 +269,9 @@ describe('Diplomacy', () => {
     const expert = rich(skilled({ diplomacy: 3 }));
     const patrol = hireOffer(expert, locationById(expert, 'patrol'))!;
     expect(patrol.all).toBe(true);
-    expect(patrol.price).toBe((50 * 4 + 29 * 3) * 12 * 2);
+    expect(patrol.price).toBe((inContent('patrol', 'swordsmen') * 4 + inContent('patrol', 'crossbowmen') * 3) * 12 * 2);
     const hired = apply(expert, { type: 'choose', id: 'patrol', choice: 'hire' })!.state;
-    expect(hired.army.find((s) => s.troop === 'swordsmen')?.count).toBe(50);
+    expect(hired.army.find((s) => s.troop === 'swordsmen')?.count).toBe(inContent('patrol', 'swordsmen'));
     expect(locationById(hired, 'patrol').done).toBe(true);
     // Never the villain, never beasts.
     expect(hireOffer(expert, locationById(expert, 'hideout'))).toBeNull();

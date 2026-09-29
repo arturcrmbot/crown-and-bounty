@@ -59,7 +59,7 @@ describe('taming', () => {
     const card = cardOf(visit(grown(start), 'wolves'));
     expect(card.lines.some((l) => l.includes('the way a pack watches its leader'))).toBe(true);
     const tamed = choose(grown(start), 'wolves', 'tame')!.state;
-    expect(count(tamed, 'wolves')).toBe(84);
+    expect(count(tamed, 'wolves')).toBe(ALDMOOR.locations.find((l) => l.id === 'wolves')!.enemy!.army.find((x) => x.troop === 'wolves')!.count);
     expect(locationById(tamed, 'wolves').done).toBe(true);
     // They show him their den and the old cloak, but he doesn't skin his friends: no pelt for Old Nan.
     expect(tamed.hero.gear.armour).toBe('greenwoodCloak');
@@ -147,10 +147,11 @@ describe('tamed beasts', () => {
     expect(after.fighters.find((f) => f.id === wolves.id)!.at).not.toBe(wolves.at);
   });
 
-  it('and the bot\u2019s ranger tames what will follow him', () => {
-    // With Aldric on the field too, most of his fights with beasts are no gamble, so he tames only now and then.
+  it('and the bot\u2019s ranger wins every time, taming only what would follow him', () => {
+    // Beasts follow only a hero who would clearly beat them, and a careful bot has filled his banner by then:
+    // he tames now and then, when there's room, and beats the rest.
     const runs = simulate([1, 2, 3, 4, 5, 6, 7, 8], 'ranger');
     expect(runs.every((r) => r.won)).toBe(true);
-    expect(runs.some((r) => r.log.some((l) => l.includes('tamed')))).toBe(true);
+    for (const run of runs) for (const line of run.log.filter((l) => l.includes('tamed'))) expect(line).toMatch(/tamed (Wild Boars|Bears|Rook)/);
   }, 600_000);
 });

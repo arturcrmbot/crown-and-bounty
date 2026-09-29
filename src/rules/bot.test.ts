@@ -31,7 +31,8 @@ describe('the bot', () => {
     while (!step.done && step.value.campaign.chapter < chapter) step = journey.next();
 
     expect(step.done).toBe(false);
-    if (!step.done) expect(step.value).toEqual(runs[chapter].start);
+    // The first try at that chapter: a commission lost and tried again adds a run before it.
+    if (!step.done) expect(step.value).toEqual(runs.find((r) => r.start.campaign.chapter === chapter)!.start);
   }, 600_000);
 
   it('offers each background as the beginning of a bot campaign', () => {

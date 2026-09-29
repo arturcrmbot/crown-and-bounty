@@ -96,13 +96,42 @@ with a margin and learns the skills that multiply) and the greedy bot, 5 seeds a
 
 The levers, in order, each a PR with the curve before and after:
 
-1. Grimsby's guard straggles home after him, so the stockade stays whole, and a new hurt sends him out again.
-2. Stacks paid off or bought over teach half what beating them would (Artur's call), as a surrender does.
-3. Slower growth: +5 leadership a level, not +10 (#97), and a skill's ranks spread over the level-ups.
-4. The Knight's charge has an answer: a stack that charges is winded, and can't strike back until its next turn.
-5. Beasts follow at nine in ten (#98); the Wizard's mana comes back a quarter a dawn (#99).
+1. Grimsby's guard straggles home after him, so the stockade stays whole, and a new hurt sends him out again (#131).
+2. Stacks paid off or bought over teach half what beating them would (Artur's call), as a surrender does (#132).
+3. Slower growth: +5 leadership a level, not +10 (#97), and a skill's ranks spread over the level-ups (#133).
+4. The Knight's charge has an answer: a stack that charges is winded, and can't strike back for the rest of that
+   round and the next (#134).
+5. Beasts follow at nine in ten (#98, #136); a quarter of the Wizard's mana comes back each dawn, and a holy well or
+   his castle fills it (#99, #138).
 6. Grimsby and the gates sized to the new curve (#95), with a day-21 check in `npm run difficulty`, and
-   `npm run sim:curve` (#94).
+   `npm run sim:curve` (#94): the bot now plays as the careful player does.
+
+## Aldmoor to the budget (29 Sep, night)
+
+With all six levers in: Grimsby's stockade is 1.75 times what it was (80 swordsmen, 42 crossbowmen), and he recruits
+3% a payday, not 5%; the patrol on the bridge is 70 swordsmen and 40 crossbowmen (was 50 and 29); Rook has 100 wolves
+(was 84); and Grimsby rides out with a fifth of his men, not a third. `npm run sim:curve -- 3`, a careful player:
+
+| Aldmoor, in Grimsbys | day 3 | day 7 | day 10 | day 14 | day 17 | day 21 | the bridge falls | Grimsby on day 21 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Knight | 0.83 | 1.02 | 1.26 | 1.43 | 2.75 | 3.06 | day 12 | 100% (100% on his army alone) |
+| Wizard | 0.99 | 1.23 | 1.16 | 2.29 | 2.42 | 2.35 | day 11 | 100% (100%) |
+| Ranger | 1.08 | 1.29 | 2.07 | 2.23 | 2.54 | 2.54 | day 9 | 100% (63%) |
+| Courtier | 1.10 | 1.43 | 1.43 | 2.01 | 2.61 | 2.61 | day 12 | 100% (94%) |
+| **Grimsby as he stands** | 1.74 | 1.74 | 1.79 | 1.79 | 1.85 | 1.85 | | |
+
+Before, Grimsby stood at 1.0 and fell to 0.7 once his guard was beaten, the bridge fell on day 2 to 4 (the bot) or 4
+to 10 (the careful player), and the bot took him on day 9 to 12, at level 3 by the sortie. Now:
+
+- **The bridge holds for a week and a half,** and Rook's wolves for nearly two.
+- **Grimsby is out of reach until the third week.** The bot, which now plays as the careful player does, takes him on
+  day 18 (the median of 12 seeds, 14 to 20). He's a hard fight on day 14 for the Knight and the Courtier; by day 21
+  every careful player beats him. Twice the stockade (tried first) made him a coin flip on day 21, but a bot beaten
+  once at his walls never got back to him, so 1.75, and slower recruiting, it is.
+- **The Wizard and the Ranger are a week ahead.** The Wizard's own spells carry him (his mana is full for the one
+  fight), and the Ranger has all his levels by day 10. Their levers come next: spell power, and his archers.
+- `npm run difficulty` holds the boss to a coin flip or less once explored (day 15, pests only), and to 50% or better
+  for the reference hero on day 21. `src/rules/budget.test.ts` checks the second, per background.
 
 ## The approach
 
@@ -178,12 +207,13 @@ moved with these levers:
 
 ## How it's measured
 
-- **`npm run sim:curve`** (#94, to build) prints the table above for every background and commission, by day, for the bot
-  and a careful player, against every enemy, with the budget beside it.
-- **`npm run difficulty`** gets a checkpoint at the target day. At the villain, the reference hero wins 35% to 65%
-  without the extras and 75% or better with them.
-- **The bot plays like a person** (#94, which takes over #14). It fights with a margin instead of at the cliff's edge, takes the skills that
-  multiply, uses parleys, and bribes as a Courtier would. The careful player above is its first draft.
+- **`npm run sim:curve`** (#94) prints the table above for every background in Aldmoor, by day, for a careful player (or
+  `--bot`, the old reckless one), with Grimsby as he stands, the day each gate falls, and his odds on day 21.
+- **`npm run difficulty`** has a checkpoint at the target day (day 21 in Aldmoor): the reference hero, a careful player who
+  has done everything but the villain, wins 50% or better with everything he found, and it reports his odds on his army
+  alone. The villain stays at 35% or less once explored (day 15, pests only).
+- **The bot plays like a person** (#94, which takes over #14). It fights with a margin instead of at the cliff's edge, and
+  takes the skills that multiply. Still to come: parleys, and bribing as a Courtier would.
 - **`npm run sim`** and **`npm run sim -- 8 --campaign`** give the days each commission takes, against its target day.
 - **`npm run sim:boss`** and **`npm run sim:battles`** stay as they are.
 - **Artur's playtests.** Only a person can say whether it's fun.

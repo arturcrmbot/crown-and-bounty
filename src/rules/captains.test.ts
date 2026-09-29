@@ -106,7 +106,7 @@ describe('Rook the Huntsman, Grimsby\u2019s captain', () => {
     expect(offer.respected).toBe(true);
     const r = choose(s, 'wolves', 'tame')!;
     expect(locationById(r.state, 'wolves').done).toBe(true);
-    expect(r.state.army.find((x) => x.troop === 'wolves')?.count).toBe(84);
+    expect(r.state.army.find((x) => x.troop === 'wolves')?.count).toBe(ALDMOOR.locations.find((l) => l.id === 'wolves')!.enemy!.army.find((x) => x.troop === 'wolves')!.count);
     expect(r.state.army.some((x) => x.troop === 'rook')).toBe(false);
     expect(cardLines(r.events).join(' ')).toContain('gives himself up');
     // Taken all the same: the pelt stays on the wolves, but Grimsby hears of it, and rides out.
