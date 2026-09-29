@@ -21,6 +21,12 @@ describe('the days', () => {
     for (let i = 0; i < 6; i++) s = endDay(s).state;
     expect(cardOf(endDay(s)).lines[0]).toContain('Payday!');
   });
+
+  it('records first-time hints in existing story flags', () => {
+    const first = apply(knight(), { type: 'hint', id: 'ride' })!;
+    expect(first.state.flags?.['hint:ride']).toBe(true);
+    expect(first.events).toEqual([]);
+  });
 });
 
 describe('the castle', () => {

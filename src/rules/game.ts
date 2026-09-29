@@ -45,6 +45,8 @@ export function apply(state: GameState, action: Action): Result | null {
       return castMapSpell(state, action.spell);
     case 'background':
       return { state: chooseBackground(state, action.id), events: [] };
+    case 'hint':
+      return { state: { ...state, flags: { ...state.flags, [`hint:${action.id}`]: true } }, events: [] };
     case 'court':
       return toCourt(state);
     case 'boon':

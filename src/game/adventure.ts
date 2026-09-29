@@ -31,6 +31,8 @@ import { backgroundCard, endCard, keysCard, storyCard } from './intro';
 import { clearSave, saveGame } from './save';
 import { Walks } from './walks';
 
+type HintId = Extract<Action, { type: 'hint' }>['id'];
+
 /** Seconds a new province's name holds the sky before cards may cover it. */
 const BANNER_HOLD = 2.4;
 /** How long night takes to fall and lift at the end of a day, in seconds. */
@@ -280,6 +282,20 @@ export class AdventureController implements Screen {
     saveGame(this.state);
   }
 
+  /** Adds one first-commission hint to the card already being shown, or shows it on its own. */
+  private teach(result: Result, id: HintId, line: string, card?: Omit<Card, 'lines'>): Result {
+    if (result.state.campaign.chapter !== 0 || result.state.flags?.[`hint:${id}`]) return result;
+    const taught = apply(result.state, { type: 'hint', id })!;
+    if (card) return { state: taught.state, events: [...result.events, { type: 'card', card: { ...card, lines: [line] }, at: null }] };
+    const events = [...result.events];
+    const index = events.findIndex((event) => event.type === 'card');
+    if (index >= 0) {
+      const event = events[index];
+      if (event.type === 'card') events[index] = { ...event, card: { ...event.card, lines: [...event.card.lines, line] } };
+    }
+    return { state: taught.state, events };
+  }
+
   /** Whatever the hero gained rises off him in words, one after another: gold, troops, leadership, experience. */
   private floatGains(before: GameState, after: GameState) {
     const gains: [string, number][] = [];
@@ -466,7 +482,9 @@ export class AdventureController implements Screen {
       default: {
         // Whatever the action shows replaces this card; if it shows nothing, the card is done.
         this.hideCard();
-        this.run(apply(this.state, action));
+        const result = apply(this.state, action);
+        const payday = action.type === 'endDay' && result?.events.some((event) => event.type === 'day' && event.payday);
+        this.run(result && payday ? this.teach(result, 'payday', '**Hint.** Payday returns every seven days: the King pays first, then the army takes its wages.') : result);
       }
     }
   }
@@ -484,6 +502,15 @@ export class AdventureController implements Screen {
     this.visiting = visitId;
     this.follow = true;
     this.tiredShown = false;
+    if (route.length) {
+      const taught = this.teach(
+        { state: this.state, events: [] },
+        'ride',
+        'Hold **Shift** to gallop. Click Aldric or press **Esc** to stop; **M** mutes sound, and **?** lists every key.',
+        { title: 'On the road', choices: [{ label: 'Ride on', action: { type: 'close' } }] },
+      );
+      if (taught.events.length) this.run(taught);
+    }
     if (route.length === 0 && visitId) this.arrive();
   }
 
@@ -503,7 +530,7 @@ export class AdventureController implements Screen {
     const id = this.visiting!;
     this.visiting = null;
     this.target = null;
-    this.run(visit(this.state, id));
+    this.run(this.teach(visit(this.state, id), 'place', '**Hint.** Click Aldric, or press **H**, whenever you want his gear and army.'));
   }
 
   // --- Each frame -------------------------------------------------------------------------
@@ -621,17 +648,19 @@ export class AdventureController implements Screen {
         if (!this.tiredShown) {
           this.tiredShown = true;
           saveGame(this.state);
-          this.showCard(
+          const taught = this.teach(
+            { state: this.state, events: [] },
+            'rest',
+            'End the day to rest, and he rides on at dawn. Red marks on the route are for tomorrow.',
             {
               title: ART[heroArtId(this.state.hero.background)].rides ? 'Your horse is spent' : 'Your legs are spent',
-              lines: ['End the day to rest, and he rides on at dawn. Red marks are for tomorrow.'],
               choices: [
                 { label: 'End the day (E)', action: { type: 'endDay' } },
                 { label: 'Not yet', detail: 'Look around first: the route waits.', action: { type: 'close' } },
               ],
             },
-            [this.drawn.x, this.drawn.y - this.scene.hero.foot],
           );
+          if (taught.events.length) this.run(taught);
         }
       }
       if (d === 0) break;
