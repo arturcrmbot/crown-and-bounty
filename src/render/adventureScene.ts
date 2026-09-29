@@ -4,8 +4,9 @@ import { VANISHES, type Army, type GameState, type Location } from '../rules/gam
 import type { Point } from '../rules/map/geometry';
 import { Terrain, type MapModel } from '../rules/map/model';
 import { AdventureScreen, type Placed } from './adventureScreen';
-import { Bitmap, blit, SHADOW } from './bitmap';
+import { Bitmap, SHADOW } from './bitmap';
 import { FogMask } from './fog';
+import { MapTiles } from './mapTiles';
 import { GOLD, INK, RED, SILHOUETTE } from './palette';
 import { animFrames, bodyHeight, everyFrame, STAND, troopFigure } from './battleSprites';
 import { heroArtId } from './units';
@@ -14,7 +15,7 @@ import {
   butts, cottage, castle, standingStones, chest, crag, goldPile, hideout, hut, mill, mine, mirror, oak, peatHut, pine, signpost, stiltHut, shrine, stoneBridge,
   watchtower, well, willow, windmill, xMark,
 } from './sprites';
-import { paintTerrain } from './terrain';
+import { TerrainPainter } from './terrain';
 
 const FRAMES = 8;
 const animation = <T>(make: (t: number) => T) => Array.from({ length: FRAMES }, (_, i) => make(i / FRAMES));
@@ -152,10 +153,9 @@ export function addPlace(scene: AdventureScene, l: Location) {
   scene.hitboxes.push({ id: l.id, x0: o.x, y0: o.y, x1: o.x + o.sprite.width, y1: o.y + o.sprite.height });
 }
 
-/** Paints the province and sets out everything on it, as the rules state has it right now. */
+/** Sets out the province and everything on it, as the rules state has it right now. The land is painted as it comes into view. */
 export function buildAdventureScene(map: MapModel, state: GameState): AdventureScene {
   const { province } = map;
-  const terrain = paintTerrain(map);
   const scenery: Placed[] = [];
   const landmarks: Placed[] = [];
   const hitboxes: Hitbox[] = [];
@@ -220,12 +220,11 @@ export function buildAdventureScene(map: MapModel, state: GameState): AdventureS
   }
 
   const isLandmark = new Set(landmarks);
-  for (const o of [...scenery, ...landmarks].sort((a, b) => footY(a) - footY(b))) {
-    blit(terrain.bitmap, o.sprite, Math.round(o.x), Math.round(o.y));
-    blit(terrain.wild, isLandmark.has(o) ? silhouette(o.sprite) : o.sprite, Math.round(o.x), Math.round(o.y));
-  }
+  const fixtures = [...scenery, ...landmarks]
+    .sort((a, b) => footY(a) - footY(b))
+    .map((o) => ({ sprite: o.sprite, wild: isLandmark.has(o) ? silhouette(o.sprite) : o.sprite, x: Math.round(o.x), y: Math.round(o.y) }));
   const fog = new FogMask(province.width, province.height, state.explored);
-  const view = new AdventureScreen(terrain.bitmap, terrain.wild, fog);
+  const view = new AdventureScreen(new MapTiles(new TerrainPainter(map), fixtures), fog);
   for (const o of animated) view.animate(o);
 
   for (const [id, objects] of parts) {
