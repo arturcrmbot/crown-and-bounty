@@ -42,8 +42,9 @@ What changes in today's game:
   Grimsby is now the grandson of one of the old King's friends, and the only crook who knows what the treasure
   really is.
 - **Mother Mirrow and Aunt Bramble go,** along with Grimsby's second commission and the elopement. Commissions II to
-  V get four new crooks, each with a map piece and a different people behind him (outlaws, elves, dwarves). The
-  Fenmarch keeps its map if one of them fits it.
+  V get four new crooks (see [act1/crooks.md](act1/crooks.md)), each with a map piece and a different people behind
+  him: Black Hollis's outlaws in the Fenmarch, which keeps its map, Elowen's elves, Gorm Goldtooth's dwarves, and
+  Rufus the First's knights.
 - **New troops:** elves and dwarves (Wesnoth's), and a wild monster or two in each province.
 - **The dig** at the end of commission V finds the Sceptre, with an egg for its orb. Until Act II exists, the
   campaign ends there: to be continued. A line or two earlier on should hint that the treasure is more than gold.
