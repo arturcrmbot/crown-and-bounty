@@ -454,4 +454,5 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
     none yet. The first thing heard in the first commission comes with a hint saying where it's gone.
   - **Nothing important went:** movement and mana stay on the bar, where they always were, with their hover labels;
     Aldric's face, level, experience and stats are on the hero screen (H). The army's stacks on the bar sit a little
-    closer, to make room for the book. The save doesn't change.
+    closer, to make room for the book. The save doesn't change. A save from before this has all the journal reads but
+    one: Old Nan's word on the hall needs a new flag (`nanHall`), so a hero who had it already won't find it written down.
