@@ -1,8 +1,13 @@
 import type { PortraitId } from '../content/portraits';
+import { troops, type TroopId } from '../content/troops';
+import { outline } from '../render/bitmap';
+import { INK } from '../render/palette';
 import { portraitOf } from '../render/portraits';
-import type { Action, Card } from '../rules/game';
+import { ART } from '../render/units';
+import { unitBitmap } from '../render/wesnoth';
+import type { Action, Army, Card } from '../rules/game';
 import './card.css';
-import { bitmapUrl } from './pixels';
+import { bitmapUrl, PARCHMENT_SHADOW } from './pixels';
 import { uiScale } from './scale';
 import { play } from './sound';
 
@@ -28,6 +33,31 @@ function portraitImage(id: PortraitId): string {
     images.set(id, url);
   }
   return url;
+}
+
+const fallenImages = new Map<string, string>();
+function fallenImage(id: TroopId, team: 'blue' | 'red'): string {
+  const key = `${id}:${team}`;
+  let url = fallenImages.get(key);
+  if (!url) {
+    url = bitmapUrl(outline(unitBitmap(ART[id].stand, team, 0.5), INK), PARCHMENT_SHADOW);
+    fallenImages.set(key, url);
+  }
+  return url;
+}
+
+function battleResultMarkup(card: NonNullable<Card['battleResult']>): string {
+  const side = (name: string, army: Army, team: 'blue' | 'red') => `
+    <section class="battle-result-side">
+      <h4>${name}</h4>
+      ${army.length ? army.map((stack) => `<div class="battle-result-unit"><img alt="" src="${fallenImage(stack.troop, team)}"><span>${escape(troops(stack.troop, stack.count))}</span></div>`).join('') : '<p class="battle-result-none">None fallen.</p>'}
+    </section>`;
+  const mana = card.manaSpent === 0
+    ? 'No mana spent.'
+    : card.manaSpent === card.manaAvailable
+      ? `They used all ${card.manaSpent} of your mana.`
+      : `They used ${card.manaSpent} of your mana.`;
+  return `<div class="battle-result">${side('Your fallen', card.player, 'blue')}${side('Their fallen', card.enemy, 'red')}</div><p class="battle-result-mana">${escape(mana)}</p>`;
 }
 
 /** The one parchment card on screen. It sits above whatever it describes and follows it around. */
@@ -71,7 +101,8 @@ export class CardView {
     this.card.classList.toggle('tiled', Boolean(card.tiles));
     const face = card.portrait ? `<img class="portrait" alt="" src="${portraitImage(card.portrait)}">` : '';
     const title = card.title ? `<h3>${escape(card.title)}</h3>` : '';
-    this.body.innerHTML = `${card.poster ? title + face : face + title}${card.lines.map((l) => `<p>${format(l)}</p>`).join('')}`;
+    const battle = card.battleResult ? battleResultMarkup(card.battleResult) : '';
+    this.body.innerHTML = `${card.poster ? title + face : face + title}${battle}${card.lines.map((l) => `<p>${format(l)}</p>`).join('')}`;
     this.card.querySelector('.choices')?.remove();
     if (fresh) this.body.scrollTop = 0;
     if (card.choices.length) {
