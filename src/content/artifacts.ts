@@ -46,7 +46,8 @@ export type ArtifactId =
   | 'stewardsLedger'
   | 'bonesDice'
   | 'rabbitsFoot'
-  | 'castellansPipes';
+  | 'castellansPipes'
+  | 'oldKingsHawk';
 
 /** A set of artifacts that do something more when all of them are worn. */
 export type SetId = 'regalia' | 'finery';
@@ -207,6 +208,14 @@ export const ARTIFACTS: Record<ArtifactId, Artifact> = {
     note: 'A 10% chance a stack\u2019s spirits win it another turn before the round moves on, if only to get further from the noise. The castellan is very glad to see them go.',
     bonus: { morale: 0.1 },
     price: 500,
+  },
+  // The old King's falconer's last hawk, from his bothy on the heath.
+  oldKingsHawk: {
+    id: 'oldKingsHawk',
+    name: 'Meg, the Old King\u2019s Hawk',
+    slot: 'trinket',
+    note: 'She flies ahead of you: see 80 paces further, and she counts every band you see.',
+    bonus: { sight: 80, counts: true },
   },
 };
 

@@ -235,7 +235,7 @@ export type Location = {
 
 /** Flavour for a place: before a visit, once it's used up, and on the visit itself. */
 export type PlaceText = { about?: string[]; done?: string[]; visit?: string[] };
-export type PlaceLook = 'abbey' | 'peathut' | 'windmill' | 'stilthut' | 'shrine' | 'camp' | 'cottage' | 'house' | 'stones' | 'range' | 'hall' | 'lodge' | 'cart';
+export type PlaceLook = 'abbey' | 'peathut' | 'windmill' | 'stilthut' | 'shrine' | 'camp' | 'cottage' | 'house' | 'stones' | 'range' | 'hall' | 'lodge' | 'cart' | 'mews';
 
 /** The campaign so far: which commission this is, how the others went, and how this one began. */
 export type Campaign = {

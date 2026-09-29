@@ -227,6 +227,45 @@ describe('the old King\u2019s hunt hall', () => {
   });
 });
 
+describe('the old King\u2019s falconer on the heath', () => {
+  it('is worth the ride over the river: a clue, and his last hawk', () => {
+    const start = fresh();
+    // Out on the south-west heath, west of the river: the long way round from the start, but a road to the door.
+    const [x, y] = locationById(start, 'falconer').at;
+    expect(x).toBeLessThan(800);
+    expect(y).toBeGreaterThan(900);
+    const map = mapOf(start);
+    // A day's ride from the heath road by the old watchtower.
+    const fromHeath: GameState = { ...start, movement: 150, hero: { ...start.hero, at: [1100, 900] } };
+    expect(daysAway(fromHeath, map, [x, y])).toBeLessThanOrEqual(1);
+    const card = cardOf(visit(start, 'falconer'));
+    expect(card.lines.join(' ')).toMatch(/it was warm/);
+    // No greyed-out button: before the hall is open, going home to it isn't on offer at all.
+    expect(card.choices.map((c) => `${c.label}${c.disabled ? ' [off]' : ''}`)).toEqual(['Take Meg with you', 'Ride on']);
+    expect(choose(start, 'falconer', 'meg/home')).toBeNull();
+    const meg = take(start, 'falconer', 'meg/meg');
+    expect(has(meg, 'oldKingsHawk')).toBe(true);
+    expect(heroStats(meg).counts).toBe(true);
+    expect(heroStats(meg).sight).toBeGreaterThan(heroStats(start).sight);
+    expect(labels(meg, 'falconer')).toEqual(['Close']);
+    expect(choose(meg, 'falconer', 'meg/meg')).toBeNull();
+  });
+
+  it('comes home to the hunt hall with his lads, once the huntsmen are back there', () => {
+    const keyed = take(fresh(), 'lodge', 'nail/key');
+    const open = take(keyed, 'hall', 'door/open');
+    expect(labels(open, 'falconer')).toEqual(['Take Meg with you', 'Ask him to come home to the hunt hall', 'Ride on']);
+    const waiting = locationById(open, 'hall').recruits!.count;
+    const home = choose(open, 'falconer', 'meg/home')!;
+    expect(locationById(home.state, 'hall').recruits!.count).toBe(waiting + 4);
+    expect(cardOf(home).lines.join(' ')).toMatch(/Rook/);
+    // He took Meg with him: the bothy is shut up.
+    expect(has(home.state, 'oldKingsHawk')).toBe(false);
+    expect(cardOf(visit(home.state, 'falconer')).lines.join(' ')).toMatch(/shut up/);
+    expect(choose(home.state, 'falconer', 'meg/meg')).toBeNull();
+  });
+});
+
 describe('the Fenmarch\u2019s finds', () => {
   it('Brother Anselm spares his staff, a thunderbolt, or a letter to his big sister, the witch', () => {
     expect(take(fen(), 'abbey', 'anselm/staff').hero.gear.weapon).toBe('abbotsStaff');
