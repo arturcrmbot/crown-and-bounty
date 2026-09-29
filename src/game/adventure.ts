@@ -563,7 +563,14 @@ export class AdventureController implements Screen {
     hero.object.frame = walking ? Math.floor(this.travelled / STRIDE) : undefined;
     hero.object.x = this.drawn.x - hero.idle[0].width / 2;
     hero.object.y = this.drawn.y - hero.foot;
-    this.view.route = this.route.length > 0 ? this.routeDots() : [];
+    if (this.route.length > 0) {
+      const { dots, camp } = this.routeMarks();
+      this.view.route = dots;
+      this.view.camp = camp;
+    } else {
+      this.view.route = [];
+      this.view.camp = null;
+    }
     if (this.follow) {
       const tx = this.drawn.x - MAP_VIEW.width / 2;
       const ty = this.drawn.y - MAP_VIEW.height / 2 - 20;
@@ -652,8 +659,8 @@ export class AdventureController implements Screen {
     }
   }
 
-  /** Dots every 10 pixels along the road ahead, gold while today's movement lasts. */
-  private routeDots() {
+  /** Marks every 10 pixels along the road ahead, with a camp where today's movement runs out. */
+  private routeMarks() {
     const costs = routeCosts(this.state, this.map, this.route);
     const points = curve([[this.drawn.x, this.drawn.y], ...this.route.map((i) => cellCentre(this.map, i))]);
     const dots: { at: Point; today: boolean }[] = [];
@@ -667,7 +674,10 @@ export class AdventureController implements Screen {
       for (let t = 10 - carry; t <= d; t += 10) dots.push({ at: [Math.round(ax + ((bx - ax) * t) / d), Math.round(ay + ((by - ay) * t) / d)], today });
       carry = (carry + d) % 10;
     }
-    return dots;
+    let lastToday = -1;
+    for (let i = 0; i < costs.length && costs[i] <= this.state.movement; i++) lastToday = i;
+    const camp = costs.at(-1)! > this.state.movement ? (lastToday >= 0 ? cellCentre(this.map, this.route[lastToday]) : ([this.drawn.x, this.drawn.y] as Point)) : null;
+    return { dots, camp };
   }
 
   /**
