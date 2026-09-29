@@ -2,7 +2,7 @@ import { needsTarget, SPELLS, STATUSES, type SpellId } from '../content/spells';
 import { TROOPS, troops } from '../content/troops';
 import { chooseAction, finishEstimate } from '../rules/battle/ai';
 import { manaInBattle } from '../rules/heroSheet';
-import { activeFighter, battleAct, canCast, casterOf, castsLeft, chargeOf, CHARGE_BONUS, fighterById, heroOnField, isCharge, options, rallyTargets, spellCost, spellDamage, spellsOf, spellVictims, strike, unitOf, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
+import { activeFighter, battleAct, canCast, casterOf, castsLeft, chargeOf, CHARGE_BONUS, fighterById, heroOnField, isCharge, options, rallyTargets, spellCost, spellDamage, spellsOf, spellVictims, strike, threatsToHero, unitOf, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
 import { paintBanner } from '../render/banner';
 import { BattleScreen, BUTTONS, FIRE_FALL, FLOAT_RISE, hexAt, hexCentre, LOG_BOTTOM, type BattleView, type Shot } from '../render/battleScreen';
 import { animLength, bodyHeight, hitTime, type AnimName } from '../render/battleSprites';
@@ -83,6 +83,7 @@ export class BattleController implements Screen {
       floaters: [],
       shots: [],
       log: 'To battle! Click a hex to move, or an enemy to attack.',
+      warning: null,
       active: activeFighter(battle)?.id ?? null,
       inspect: null,
       rallyPreview: new Set(),
@@ -760,6 +761,10 @@ export class BattleController implements Screen {
     }
     if (this.queue.length === 0) this.updateFinishOffer();
     const mine = !!f && f.side === 'player' && !this.auto && this.queue.length === 0 && !this.battle.volley;
+    const threats = mine ? threatsToHero(this.battle) : [];
+    v.warning = threats.length
+      ? `${threats.map((threat) => this.fighterName(threat.id)).join(' and ')} can reach Lord Aldric.`
+      : null;
     v.reach = mine && !v.targeting ? new Set(options(this.battle).moves.keys()) : new Set();
     if (this.pointer && mine) this.hoverAt(...this.pointer);
     else if (!mine) {

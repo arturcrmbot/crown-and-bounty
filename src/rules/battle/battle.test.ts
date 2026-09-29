@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { STATUSES, type StatusDef, type StatusId } from '../../content/spells';
 import { TROOPS } from '../../content/troops';
 import { autoResolve, chooseAction, finishEstimate } from './ai';
-import { activeFighter, battleAct, createBattle, enemyReach, fighterById, isCharge, options, QUIET_ROUNDS, rallyTargets, skillFactor, spellDamage, statsOf, strike, wound, type BattleHero, type BattleEvent, type BattleState } from './battle';
+import { activeFighter, battleAct, createBattle, enemyReach, fighterById, isCharge, options, QUIET_ROUNDS, rallyTargets, skillFactor, spellDamage, statsOf, strike, threatsToHero, wound, type BattleHero, type BattleEvent, type BattleState } from './battle';
 import { colOf, distance, hexIndex, neighbours, reachable } from './hex';
 
 const hero: BattleHero = { attack: 1, defence: 1, spellPower: 2, mana: 20, spells: ['bolt', 'bless', 'slow'], castRound: 0 };
@@ -95,6 +95,49 @@ describe('a battle', () => {
 
     expect(rallyTargets(positioned, source, destination).map((f) => f.id)).toEqual([friends[0].id]);
     expect(rallyTargets(positioned, { ...source, count: 0 }, destination)).toEqual([]);
+  });
+
+  it('warns of melee stacks that can reach Aldric before his next turn', () => {
+    const b = createBattle({
+      place: 'test',
+      seed: 7,
+      player: [{ troop: 'knights', count: 10 }],
+      enemy: [{ troop: 'swordsmen', count: 10 }],
+      hero: { ...hero, unit: { troop: 'heroCourtier', hp: 55, damage: [6, 10] } },
+      obstacles: 0,
+    });
+    const lord = b.fighters.find((f) => f.hero)!;
+    const enemy = b.fighters.find((f) => f.side === 'enemy')!;
+    const adjacent = neighbours(lord.at)[0];
+    const ready = {
+      ...b,
+      fighters: b.fighters.map((f) => f.id === enemy.id ? { ...f, at: adjacent } : f),
+      order: [b.fighters[0].id, enemy.id, lord.id],
+    };
+
+    expect(threatsToHero(ready).map((f) => f.id)).toEqual([enemy.id]);
+    expect(threatsToHero({ ...ready, order: [b.fighters[0].id, lord.id, enemy.id] })).toEqual([]);
+  });
+
+  it('warns of guarded shots or spells only when one can carry Aldric off', () => {
+    const create = (enemy: 'crossbowmen' | 'bramble', hp: number) => {
+      const b = createBattle({
+        place: 'test',
+        seed: 7,
+        player: [{ troop: 'knights', count: 10 }],
+        enemy: [{ troop: enemy, count: 100 }],
+        hero: { ...hero, unit: { troop: 'heroCourtier', hp, damage: [6, 10] } },
+        obstacles: 0,
+      });
+      const lord = b.fighters.find((f) => f.hero)!;
+      const foe = b.fighters.find((f) => f.side === 'enemy')!;
+      return { ...b, order: [b.fighters[0].id, foe.id, lord.id] };
+    };
+
+    expect(threatsToHero(create('crossbowmen', 55))).toEqual([]);
+    expect(threatsToHero(create('crossbowmen', 19))).toHaveLength(1);
+    expect(threatsToHero(create('bramble', 55))).toEqual([]);
+    expect(threatsToHero(create('bramble', 19))).toHaveLength(1);
   });
 
   it('lets trolls heal half the top troll\u2019s health at the start of their turn', () => {
