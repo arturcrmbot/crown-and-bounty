@@ -905,7 +905,7 @@ export const ALDMOOR: Province = {
         charge: 'Storm the stockade',
         lines: ['A muddy stockade deep in Darkwood. Someone inside is honking.'],
         // Sized to the power budget: a hard fight for a careful player on day 21 (docs/BALANCE.md).
-        army: [{ troop: 'swordsmen', count: 80 }, { troop: 'crossbowmen', count: 42 }, { troop: 'baron', count: 1 }],
+        army: [{ troop: 'swordsmen', count: 69 }, { troop: 'crossbowmen', count: 36 }, { troop: 'baron', count: 1 }],
         reward: 2000,
         threat: 'The Baron shouts from the palisade: *"I have the goose AND the walls!"*',
         // Raid his dig, take his patrol off the bridge or his huntsman from his wolves, and he rides out with a fifth of his men to meet you.

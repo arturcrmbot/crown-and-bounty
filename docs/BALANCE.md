@@ -113,9 +113,11 @@ too easy or hard. But don't aim for some arbitrary number."* So the coin flip on
 test holds Grimsby to one. `npm run sim:curve` and `npm run difficulty` still report the numbers below; Artur's play
 decides.
 
-With all six levers in: Grimsby's stockade is 1.75 times what it was (80 swordsmen, 42 crossbowmen), and he recruits
-3% a payday, not 5%; the patrol on the bridge is 70 swordsmen and 40 crossbowmen (was 50 and 29); Rook has 100 wolves
-(was 84); and Grimsby rides out with a fifth of his men, not a third. `npm run sim:curve -- 3`, a careful player:
+With all six levers in: Grimsby's stockade is half as big again as it was (69 swordsmen, 36 crossbowmen, was 46 and
+24), and he recruits 3% a payday, not 5%; the patrol on the bridge is 70 swordsmen and 40 crossbowmen (was 50 and 29);
+Rook has 100 wolves (was 84); and Grimsby rides out with a fifth of his men, not a third. 1.75 times the stockade was
+tried first (the table below): the play-through's plain player, who takes the first thing offered at every level-up,
+couldn't take him by day 79, so he was eased to 1.5. `npm run sim:curve -- 3`, a careful player, at 1.75:
 
 | Aldmoor, in Grimsbys | day 3 | day 7 | day 10 | day 14 | day 17 | day 21 | the bridge falls | Grimsby on day 21 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -123,20 +125,19 @@ With all six levers in: Grimsby's stockade is 1.75 times what it was (80 swordsm
 | Wizard | 0.99 | 1.23 | 1.16 | 2.29 | 2.42 | 2.35 | day 11 | 100% (100%) |
 | Ranger | 1.08 | 1.29 | 2.07 | 2.23 | 2.54 | 2.54 | day 9 | 100% (63%) |
 | Courtier | 1.10 | 1.43 | 1.43 | 2.01 | 2.61 | 2.61 | day 12 | 100% (94%) |
-| **Grimsby as he stands** | 1.74 | 1.74 | 1.79 | 1.79 | 1.85 | 1.85 | | |
+| **Grimsby as he stands (at 1.75)** | 1.74 | 1.74 | 1.79 | 1.79 | 1.85 | 1.85 | | |
 
 Before, Grimsby stood at 1.0 and fell to 0.7 once his guard was beaten, the bridge fell on day 2 to 4 (the bot) or 4
 to 10 (the careful player), and the bot took him on day 9 to 12, at level 3 by the sortie. Now:
 
-- **The bridge holds for a week and a half,** and Rook's wolves for nearly two.
-- **Grimsby is out of reach until the third week.** The bot, which now plays as the careful player does, takes him on
-  day 18 (the median of 12 seeds, 14 to 20). He's a hard fight on day 14 for the Knight and the Courtier; by day 21
-  every careful player beats him. Twice the stockade (tried first) made him a coin flip on day 21, but a bot beaten
-  once at his walls never got back to him, so 1.75, and slower recruiting, it is.
+- **The bridge holds for a week and a half,** and Rook's wolves for nearly two (they may fall on your camp first).
+- **Grimsby is out of reach for the first two weeks,** at 1.75 and so at 1.5 too. At 1.75 the bot took him on day 16 to
+  26 (10 of 12 Knight seeds); twice the stockade (tried first) left a bot beaten once at his walls unable to get back.
 - **The Wizard and the Ranger are a week ahead.** The Wizard's own spells carry him (his mana is full for the one
-  fight), and the Ranger has all his levels by day 10. Their levers come next: spell power, and his archers.
+  fight), and the Ranger has all his levels by day 10.
 - The bot storms Grimsby once it likes the odds, from day 21 at a coin flip, and later at worse: an army raised again
   at the castle may do better, and it never sits out the commission.
+- **What's left is Artur's playtest.** Measure again with `npm run sim:curve` if he finds it too easy or too hard.
 
 ## The approach
 
