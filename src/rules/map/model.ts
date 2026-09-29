@@ -44,6 +44,8 @@ const FOOTPRINTS: Record<string, [number, number]> = {
   signpost: [4, 4],
   hideout: [72, 28],
   hut: [24, 12],
+  house: [24, 12],
+  holes: [40, 6],
 };
 
 /** A road wades the river where it crosses within this many pixels of one of the province's fords. */

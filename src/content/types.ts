@@ -1,8 +1,8 @@
 import type { Location } from '../rules/game';
 import type { Point } from '../rules/map/geometry';
 
-/** A decorative object that belongs to a place: clicking it counts as clicking the place. */
-export type Decor = { sprite: 'hut'; at: Point; place: string; seed: number };
+/** A decorative object that belongs to a place: clicking it counts as clicking the place. `holes` are dug ones, with their spoil heaps. */
+export type Decor = { sprite: 'hut' | 'holes'; at: Point; place: string; seed: number };
 
 /**
  * A stretch of land painted its own way, as an ellipse (centre x, centre y, radius x, radius y) with a
