@@ -156,7 +156,8 @@ describe('the old King\u2019s hunt hall', () => {
   it('Old Nan knows where the old King kept its key, once you have seen it, and shows you the way', () => {
     const start = fresh();
     // Before the hall, she has nothing to be asked about, and the question can't be forced.
-    expect(labels(start, 'nan').some((l) => l.startsWith('Ask'))).toBe(false);
+    const asks = (state: GameState) => labels(state, 'nan').some((l) => l.includes('hunt hall'));
+    expect(asks(start)).toBe(false);
     expect(choose(start, 'nan', 'door/hall')).toBeNull();
     const seen = visit(start, 'hall').state;
     expect(labels(seen, 'nan')).toContain('Ask about the old King\u2019s hunt hall');
@@ -167,7 +168,11 @@ describe('the old King\u2019s hunt hall', () => {
     expect(isExplored(told.state, lodge)).toBe(true);
     expect(isExplored(seen, lodge)).toBe(false);
     // Asked once, the question goes.
-    expect(labels(told.state, 'nan').some((l) => l.startsWith('Ask'))).toBe(false);
+    expect(asks(told.state)).toBe(false);
+    // She knows the Baron's lullaby too: sung first, her other page asks the same question.
+    const sung = take(seen, 'nan', 'door/baron');
+    expect(labels(sung, 'nan')).toContain('Ask about the old King\u2019s hunt hall');
+    expect(asks(take(sung, 'nan', 'hearth/hall'))).toBe(false);
   });
 
   it('bears hold the only way to the lodge: beat them, tame them, or go round through the woods as a ranger', () => {

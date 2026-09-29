@@ -6,6 +6,7 @@ import { autoResolve } from './battle/ai';
 import { applyEffects } from './effects/core';
 import { bountyOf, CAMPAIGN_LENGTH, campaignLines, commissionOf, hasNextCommission, provinceOf } from './campaign';
 import { revealDisc } from './map/fog';
+import { fleeHome, fleesHome } from './map/sortie';
 import { battleEnd, createBattle, isLeader, SHOOTER_MELEE, survivors, type BattleHero, type BattleState, type Side } from './battle/battle';
 import { artifactChoices, foundNote, gainXp, giveArtifact, heroStats, namedBonuses } from './hero';
 import { addTroops, again, armyPower, close, coins, leadershipUsed, locationById, roll, roman, show, stillWithYou, troops, update, VANISHES, type Army, type BattleResultCard, type Choice, type GameEvent, type GameState, type Location, type Result } from './state';
@@ -171,8 +172,8 @@ export function startFight(state: GameState, id: string): Result | null {
   const place = locationById(state, id);
   if (state.army.length === 0 || !place.enemy || place.done) return null;
   const [, seed] = roll(state.seed);
-  const battle = createBattle({ place: id, seed: state.seed, player: state.army, enemy: place.enemy!.army, hero: heroAgainst(state, place), obstacles: place.kind === 'hideout' ? 3 : 5, ground: provinceOf(state).fen ? 'fen' : 'meadow' });
-  const words = place.kind === 'hideout' ? commissionOf(state).lastWords : undefined;
+  const battle = createBattle({ place: id, seed: state.seed, player: state.army, enemy: place.enemy!.army, hero: heroAgainst(state, place), obstacles: place.kind === 'hideout' ? 3 : 5, ground: provinceOf(state).fen ? 'fen' : 'meadow', flees: fleesHome(state, place) });
+  const words = place.enemy.lastWords ?? (place.kind === 'hideout' ? commissionOf(state).lastWords : undefined);
   return { state: { ...state, seed, battle: words ? { ...battle, lastWords: words } : battle }, events: [{ type: 'battle', place: id }] };
 }
 
@@ -228,6 +229,8 @@ export function bountyPaid(state: GameState, id: string, opening: string[], rewa
 export function beat(state: GameState, id: string, how: { title: string; lines: string[]; reward: number; xp: number; sayGold?: boolean; battleResult?: BattleResultCard; choices?: Choice[]; because?: string }): Result {
   const place = locationById(state, id);
   let next = update({ ...state, gold: state.gold + how.reward }, id, { done: true });
+  // A villain beaten in the open flees home to his walls, without his guard.
+  if (place.enemy?.lair) next = fleeHome(next, place);
   const events: GameEvent[] = VANISHES.has(place.kind) ? [{ type: 'removed', id }] : [];
   const spoils: string[] = [];
   const decisions = [...(how.choices ?? [])];
@@ -387,7 +390,7 @@ function simulateFight(state: GameState, place: Location, enemy: Army, samples: 
   const wonLosses: number[][] = state.army.map(() => []);
   const allLosses: number[][] = state.army.map(() => []);
   for (let i = 1; i <= samples; i++) {
-    const battle = createBattle({ place: place.id, seed: sampleSeed(i), player: state.army, enemy, hero: heroAgainst(state, place), obstacles: place.kind === 'hideout' ? 3 : 5 });
+    const battle = createBattle({ place: place.id, seed: sampleSeed(i), player: state.army, enemy, hero: heroAgainst(state, place), obstacles: place.kind === 'hideout' ? 3 : 5, flees: fleesHome(state, place) });
     const result = autoResolve(battle);
     const after = survivors(result, 'player');
     const won = result.result === 'won';

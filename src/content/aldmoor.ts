@@ -1,6 +1,6 @@
 import { nearest, smooth, type Point } from '../rules/map/geometry';
 import { hash, rng } from '../rules/noise';
-import type { Location } from '../rules/state';
+import type { ContentChoice, Location } from '../rules/state';
 import type { Province, Region } from './types';
 
 /** Aldmoor is 100 by 75 tiles of 32 pixels: a day's ride on a road crosses about a third of it. */
@@ -73,6 +73,65 @@ const PIKES_CAMP: Location = {
   at: [2036, 1512],
   recruits: { troop: 'swordsmen', count: 20, price: 60 },
   text: { about: ['The Baron\u2019s old patrol, camped on Westmere green, where their mothers can keep an eye on them.', 'Swordsmen, for hire.'] },
+};
+
+/**
+ * Grimsby and his guard, riding out of the stockade's gate when the King's man hurts him (see the
+ * hideout's `sortie`). He comes for the hero along the roads on his best pony, whatever the odds, as
+ * far as the heath and the old bridge, and goes home when he can't find him.
+ */
+const GRIMSBY_RIDES: Location = {
+  id: 'grimsby',
+  kind: 'patrol',
+  name: 'Grimsby and his Guard',
+  at: [298, 2168],
+  done: false,
+  enemy: {
+    look: 'soldiers',
+    behaviour: 'hunt',
+    bold: true,
+    range: 1200,
+    sight: 1800,
+    pace: 80,
+    patience: 7,
+    lines: ['Baron Grimsby on his best pony, the goose under one arm and his guard at his back. He has come out to teach the King\u2019s man a lesson.'],
+    army: [],
+    reward: 400,
+    threat: '*"There he is!"* shouts the Baron, pointing with the goose. *"Get him!"*',
+    lastWords: 'A strategic retreat! Hold on tight, goose!',
+    flees: 'The Baron gallops home to his stockade, the goose under his arm and his guard nowhere at all.',
+    loot: 'In the mud where he turned his pony: {gold}, the guard\u2019s pay.',
+  },
+};
+
+/** What Old Nan does for the King's man, whatever else she has told him: her charms, for gold or a wolf pelt. */
+const NAN_CHARMS: ContentChoice[] = [
+  {
+    id: 'stone',
+    label: 'Learn Stone Skin',
+    needs: { gold: 300, notSpell: 'stoneskin' },
+    effects: { spell: 'stoneskin' },
+    lines: ['She taps your men\u2019s shields with a wooden spoon. They go grey, and very hard. *"That\u2019ll keep the arrows out."*'],
+  },
+  {
+    id: 'fire',
+    label: 'Give her the wolf pelt',
+    needs: { flag: 'wolfpelt', notSpell: 'fireball' },
+    effects: { spell: 'fireball', flags: { wolfpelt: false } },
+    lines: ['*"Ooh, that\u2019s a warm one."* She wraps herself in it, and shows you how to set the air on fire. *"Mind your own lads, mind."*'],
+  },
+];
+const NAN_LEAVE: ContentChoice = { id: 'leave', label: 'Ride on', lines: ['You leave her to her cauldron. Something in it winks at you.'] };
+/** What Old Nan knows of the old King's hunt hall, once Aldric has seen it shut: where its key is, and what's in the way. */
+const NAN_HALL: ContentChoice = {
+  id: 'hall',
+  label: 'Ask about the old King\u2019s hunt hall',
+  when: { seen: 'hall', notFlag: 'lodge' },
+  effects: { flags: { lodge: 'told' }, reveal: { at: LODGE_VIEW, radius: 130 } },
+  lines: [
+    '*"The old King\u2019s hall? Shut up since he died, bless him. He kept the key at his lodge in the chase, on a nail by the door."*',
+    '*"Take the track past my back door. There\u2019s a bear sleeps on it now, dearie. Well. Some bears. Mind them."*',
+  ],
 };
 
 /** The roads, as the sketch has them. The river crosses two of them: at the old bridge, and at the ford. */
@@ -527,37 +586,32 @@ export const ALDMOOR: Province = {
       text: { about: ['A crooked cottage with a crooked chimney, at the edge of the wood.', '*The smoke is purple.*'] },
       pages: [
         {
+          id: 'hearth',
+          when: { flag: 'lullaby' },
+          lines: ['Old Nan is humming the Baron\u2019s lullaby over her cauldron. *"Back again, dearie? A charm, is it?"*'],
+          choices: [...NAN_CHARMS, NAN_HALL, NAN_LEAVE],
+        },
+        {
           id: 'door',
           lines: [
             'Old Nan peers at you over a steaming cauldron. *"The King\u2019s man! I know a charm or two, dearie, for them as can pay."*',
             '*"And if you ever bring me a good warm wolf pelt, I\u2019ll show you something hotter."*',
           ],
           choices: [
+            ...NAN_CHARMS,
             {
-              id: 'stone',
-              label: 'Learn Stone Skin',
-              needs: { gold: 300, notSpell: 'stoneskin' },
-              effects: { spell: 'stoneskin' },
-              lines: ['She taps your men\u2019s shields with a wooden spoon. They go grey, and very hard. *"That\u2019ll keep the arrows out."*'],
-            },
-            {
-              id: 'fire',
-              label: 'Give her the wolf pelt',
-              needs: { flag: 'wolfpelt', notSpell: 'fireball' },
-              effects: { spell: 'fireball', flags: { wolfpelt: false } },
-              lines: ['*"Ooh, that\u2019s a warm one."* She wraps herself in it, and shows you how to set the air on fire. *"Mind your own lads, mind."*'],
-            },
-            {
-              id: 'hall',
-              label: 'Ask about the old King\u2019s hunt hall',
-              when: { seen: 'hall', notFlag: 'lodge' },
-              effects: { flags: { lodge: 'told' }, reveal: { at: LODGE_VIEW, radius: 130 } },
+              // What she sings a Courtier can sing at Grimsby's walls (see the hideout's parleys).
+              id: 'baron',
+              label: 'Ask her about the Baron',
+              needs: { notFlag: 'lullaby' },
+              effects: { flags: { lullaby: true } },
               lines: [
-                '*"The old King\u2019s hall? Shut up since he died, bless him. He kept the key at his lodge in the chase, on a nail by the door."*',
-                '*"Take the track past my back door. There\u2019s a bear sleeps on it now, dearie. Well. Some bears. Mind them."*',
+                '*"Little Master Grimsby? I was his nanny, dearie, before he went to the bad. Screamed the house down every night, he did, till I sang him this."*',
+                'She rocks in her chair and sings you a lullaby, all four verses. By the end of it, you could do with a nap yourself.',
               ],
             },
-            { id: 'leave', label: 'Ride on', lines: ['You leave her to her cauldron. Something in it winks at you.'] },
+            NAN_HALL,
+            NAN_LEAVE,
           ],
         },
       ],
@@ -714,6 +768,15 @@ export const ALDMOOR: Province = {
         army: [{ troop: 'swordsmen', count: 46 }, { troop: 'crossbowmen', count: 24 }, { troop: 'baron', count: 1 }],
         reward: 2000,
         threat: 'The Baron shouts from the palisade: *"I have the goose AND the walls!"*',
+        // Raid his dig, or take his patrol off the bridge, and he rides out with a third of his men to meet you.
+        sortie: {
+          when: [{ flag: 'dig', is: 'raided' }, { flag: 'patrolGone' }, { flag: 'pikeHome' }],
+          guard: 0.35,
+          band: GRIMSBY_RIDES,
+          barred: ['The gate is barred, and for once nobody inside is honking.', '*"The Baron\u2019s out!"* shouts a sentry over the palisade. *"Looking for you, as it happens. He took the goose."*'],
+          out: 'Word on the road: **Baron Grimsby** has ridden out of his stockade with his guard, looking for you.',
+          home: 'Word on the road: **Baron Grimsby** has given up looking for you, and gone home to his stockade.',
+        },
         parleys: [
           {
             id: 'goose',
@@ -723,12 +786,16 @@ export const ALDMOOR: Province = {
             lines: ['You whistle the saint\u2019s hymn under the palisade. Inside, the royal goose hears it and makes a break for it, honking, and half the crossbowmen go after her. *They catch her in the end. The crossbowmen, you suspect, have kept running.*'],
           },
           {
-            id: 'pardon',
-            label: 'Talk the Baron round',
-            needs: { background: 'courtier' },
-            effects: { win: true, gold: 1000, xp: 450 },
-            lines: ['Over a very long lunch, you explain what the Crown does to barons who keep geese that aren\u2019t theirs, and what it does for barons who don\u2019t. Grimsby signs for the taxes and hands over the goose.'],
-            because: 'the other half went on the lunch',
+            // The Courtier's way: a bard's song, learned from Grimsby's old nanny, and the price is half the bounty, to her.
+            id: 'lullaby',
+            label: 'Sing him Old Nan\u2019s lullaby',
+            needs: { background: 'courtier', flag: 'lullaby' },
+            effects: { win: true, gold: 1000, xp: 450, flags: { lullaby: false } },
+            lines: [
+              'You tune your lute under the palisade and sing *Hush-a-bye, Baron*, all four verses, the way Old Nan sings it. By the second, his men are humming along. By the third, the Baron is sobbing into the goose.',
+              '*"Nobody\u2019s sung me that since I was six,"* he sniffs, and comes down to you, on one condition: half his bounty goes to his old nanny.',
+            ],
+            because: 'the other half went to the Baron\u2019s old nanny',
           },
         ],
         flees: 'The stockade gate falls open.',

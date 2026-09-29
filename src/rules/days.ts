@@ -4,6 +4,7 @@ import { TROOPS } from '../content/troops';
 import { heroStats } from './hero';
 import { mapOf } from './map/maps';
 import { moveEnemies } from './map/roaming';
+import { rideHome, rideOut } from './map/sortie';
 import { payday as reopen } from './places';
 import { FIGHT_NOTE, oddsLine, SERGEANTS_NOTE } from './places/enemy';
 import { likelyLossesLine, winChance } from './fight';
@@ -65,11 +66,15 @@ export function endDay(state: GameState): Result {
     events.push(show({ title: `Day ${roman(day)}`, lines, choices: next.over === 'lost' ? [tryAgain, again] : [close] }));
     return { state: next, events };
   }
-  // The night: stacks on the move, and a hunter may reach the camp.
-  const night = moveEnemies(next, mapOf(next));
-  const morning = heroMorning(night.state, state);
+  // The night: a villain who has been hurt rides out, stacks on the move take their walk, a hunter may
+  // reach the camp, and a villain's band that can't find the hero goes home.
+  const out = rideOut(next);
+  const night = moveEnemies(out.state, mapOf(next));
+  const home = rideHome(night.state);
+  const morning = heroMorning(home.state, state);
   next = morning.state;
-  events.push(...night.events, ...morning.events);
+  events.push(...out.events, ...night.events, ...home.events, ...morning.events);
+  lines.push(...out.lines, ...home.lines);
   const trailing = next.locations.filter((l) => l.enemy?.trailing && !l.done);
   for (const l of trailing) lines.push(`**${l.name}** are on your trail. Camp near them tonight and they’ll fall on you at dawn: ride clear, shelter in a town, or turn and fight.`);
   if (night.ambush) {

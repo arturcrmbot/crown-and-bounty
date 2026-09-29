@@ -4,8 +4,12 @@ The first commission, rebuilt with room to ride. Artur picked these ideas on 29 
 
 **Built (#77):** the space, the regions, the river with its bridge and ford, today's places in the new land, Mrs Pike
 in Westmere, and Grimsby's dig on the heath (raiding it sets `flags.dig`).
+**Built (#79):** the court that remembers what you did, the bounty paid with a scene, and the Courtier's parley at
+Grimsby's walls: Old Nan's lullaby, for half the bounty.
+**Built (#75):** Grimsby rides out to meet you when you raid his dig or take his patrol off the bridge, and flees home
+when his guard is beaten.
 **Built (#76):** the hunt hall by the bridge, Old Nan's word, the lodge in the chase with its bears, and the huntsmen.
-**Still to build:** Grimsby riding out (#75), Rook and his wolves (#15), and the grain cart (#78).
+**Still to build:** Rook and his wolves (#15), and the grain cart (#78).
 
 ![Aldmoor, bigger](aldmoor.svg)
 

@@ -57,11 +57,11 @@ describe('the bounty paid, with a scene', () => {
   });
 
   it('says why, when the Crown pays other than the poster\u2019s price', () => {
-    const courtier = { ...newGame(1, ALDMOOR, 'courtier'), opening: undefined };
-    const talked = apply(courtier, { type: 'choose', id: 'hideout', choice: 'parley/pardon' })!;
+    const courtier = { ...newGame(1, ALDMOOR, 'courtier'), opening: undefined, flags: { lullaby: true } };
+    const talked = apply(courtier, { type: 'choose', id: 'hideout', choice: 'parley/lullaby' })!;
     expect(cardOf(talked).title).toBe('Baron Grimsby is taken!');
-    expect(talked.state.paid).toEqual({ gold: 1000, because: 'the other half went on the lunch' });
-    expect(bountyCard(talked.state).lines).toContain('The poster said **2,000 gold**. The Crown pays **1,000**, because the other half went on the lunch.');
+    expect(talked.state.paid).toEqual({ gold: 1000, because: 'the other half went to the Baron\u2019s old nanny' });
+    expect(bountyCard(talked.state).lines).toContain('The poster said **2,000 gold**. The Crown pays **1,000**, because the other half went to the Baron\u2019s old nanny.');
     // A deal with no reason of its own still gives one.
     const quiet = { ...talked.state, paid: { gold: 1000, because: undefined } };
     expect(bountyCard(quiet).lines.some((l) => l.startsWith('The poster said **2,000 gold**.'))).toBe(true);

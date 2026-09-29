@@ -211,9 +211,19 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   red ink with a thump, the reward "paid in full", and what came home: in Aldmoor, the royal goose in her crown. The
   poster's price is now what the Crown pays at his lair (2,000 for Grimsby; the King's gold at court comes on top, as
   before), and a deal that pays otherwise says why ("The poster said 2,000 gold. The Crown pays 1,000, because the
-  other half went on the lunch"). Put away, a won commission waits on its poster, which rides to court. It's data:
-  each commission's (and generated villain's) `face`, `wanted`, `lastWords` and `returned`, a leader's `voice`, and a
-  winning choice's `because`.
+  other half went to the Baron's old nanny"). Put away, a won commission waits on its poster, which rides to court.
+  It's data: each commission's (and generated villain's) `face`, `wanted`, `lastWords` and `returned`, a leader's
+  `voice`, and a winning choice's `because`.
+- **Grimsby's parley has a price (29 Sep, #79):** in playtest 01, "Talk the Baron round" ended Aldmoor in one free
+  click. Now the Courtier sings him round, the bard's way, and it takes a song and half the bounty. Ask Old Nan about
+  the Baron and she turns out to have been his nanny (*"Screamed the house down every night, he did, till I sang him
+  this"*), and sings you the lullaby: a condition built towards, as the goose's hymn is. At his walls, a Courtier who
+  knows it can sing him Old Nan's lullaby: by the third verse the Baron is sobbing into the goose, and he comes
+  quietly on one condition, that half his bounty goes to his old nanny. The stamped poster says so, and so does the
+  King at court (*"Well. She did bring him up."*). Other heroes see the button greyed, "(Courtier)", as a hint; for
+  them the song is a story, and the King hopes they never sang it to him. The King also remembers Grimsby's dig on
+  the heath (*"He won't find it there"*) and Mrs Pike's pie. Generated commissions keep their parleys, each with its
+  reason, until the four crooks (`docs/act1/crooks.md`) replace them.
 - **Big maps (29 Sep, the groundwork for a bigger Aldmoor, #77):** the land is painted in tiles of 128 pixels as they
   come into view, with its trees and buildings, and the rest a tile a frame while nothing much is happening, so a
   province six times the size opens at once. Tufts, petals, reeds and lily pads are sprinkled tile by tile, as thickly
@@ -275,6 +285,24 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   (`patrolGone`, or `pikeHome`). A new player's pace: the bot, which knows where everything is, wins by day 11 to 14 at
   the median; the scripted play-through, waiting for paydays, on day 15; a player who explores in the fog and goes the
   wrong way now and then should take about three weeks. That is an estimate, not a measurement.
+- **Grimsby rides out (29 Sep, #75):** hurt Grimsby and he comes out to meet you, as the heroes do in HoMM. Raid his dig
+  on the heath, or take his patrol off the bridge (beaten, paid off, sent back with his orders, or home with Pike), and
+  the first night Aldric is within his reach he rides out of his stockade on his best pony, the goose under one arm and a
+  third of his men at his back (his guard). The dawn says so, and the mist lifts round him as he comes: 80 a night along
+  the roads (Aldric rides 150 a day), round his own wolves, as far as the heath and the old bridge, whatever the odds. He
+  falls on the camp at dawn as the hunters do, with a day's warning, and never comes into a town. While he's out, his
+  gate is barred ("for once nobody inside is honking"), and the men he left won't open it. Beat his guard, when he falls
+  on you or when you ride out to him, and he flees home without it: the field and the card say "Their army is beaten, and
+  Baron Grimsby flees home", and he turns and runs off the field. Beaten once, he stays behind his walls, a third weaker.
+  If he can't find Aldric (over the river, behind a town's walls, a ranger in the woods, or after a week of looking), he
+  rides home with his guard, and the next hurt sends him out again. On the map he's himself, the Grand Marshal in a red
+  ring, and his march plays near him instead of at his empty stockade. It's data: a villain's `sortie` (the story flags
+  that hurt him, the share that rides with him, his band and its words), and his band is a `bold` hunter with a `sight`,
+  `pace` and `patience` of its own. A hunter now makes for Aldric himself and stops short of him, so one waiting on the
+  bridge is met on it, not by the long way round. The bot still wins Aldmoor with every background; Grimsby rides out in
+  every run (64 of 64 over sixteen seeds) and is beaten in the open in most, which weakens the stockade, so the bot wins a
+  day sooner at the median (knight 12, wizard 9, ranger 11, courtier 11, against 13, 10, 12 and 11) and its worst runs are
+  shorter. The difficulty tiers don't move.
 - **The old King's hunt hall (29 Sep, #76, as sketched in `act1/aldmoor.md`):** down a lane off the bridge road, on
   Westmere's side of the river, stands the old King's hunt hall, shut up since he died: shutters closed, a bar across
   the door, a stag's antlers on the gable. Its card says only that, with no button at all, greyed out or not. Once
