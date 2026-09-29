@@ -1,7 +1,7 @@
 import { commissionOf } from './campaign';
 import { heroMorning, heroPayday } from './dawn';
 import { TROOPS } from '../content/troops';
-import { heroStats } from './hero';
+import { heroStats, rested } from './hero';
 import { mapOf } from './map/maps';
 import { haul, setOut } from './map/convoys';
 import { moveEnemies } from './map/roaming';
@@ -43,7 +43,7 @@ export function endDay(state: GameState): Result {
   const day = state.day + 1;
   const payday = (day - 1) % PAYDAY_EVERY === 0;
   const stats = heroStats(state);
-  let next: GameState = { ...state, day, movement: stats.movement, hero: { ...state.hero, mana: stats.maxMana } };
+  let next: GameState = { ...state, day, movement: stats.movement, hero: { ...state.hero, mana: rested(state.hero.mana, stats.maxMana) } };
   const lines: string[] = [];
   if (payday) {
     // Rations in the baggage (Westmere's grain, caught on the road) feed the troops instead of their wages.
