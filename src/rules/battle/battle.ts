@@ -1,6 +1,6 @@
 import { needsTarget, SPELLS, STATUSES, type SpellId, type StatusId } from '../../content/spells';
 import { ABILITIES, abilitiesOf, feuding, isBeast, TROOPS, unitPower, type TroopDef, type TroopId } from '../../content/troops';
-import { MAX_STACKS, roll, type Army } from '../state';
+import { listed, MAX_STACKS, roll, type Army } from '../state';
 import { COLS, HEXES, hexIndex, NEIGHBOURS, neighbours, reachable, ROWS } from './hex';
 
 export type Side = 'player' | 'enemy';
@@ -1035,7 +1035,7 @@ export function battleEnd(b: BattleState): { army: string; leader: string } | nu
   const taken = b.result === 'won' ? b.fighters.filter((f) => f.side === 'enemy' && isLeader(f)).map((f) => leaderName(b, f)) : [];
   if (!taken.length) return null;
   const many = taken.length > 1;
-  const names = many ? `${taken.slice(0, -1).join(', ')} and ${taken[taken.length - 1]}` : taken[0];
+  const names = listed(taken);
   const fate = b.flees ? `${many ? 'flee' : 'flees'} home` : `${many ? 'are' : 'is'} taken`;
   return { army: b.quiet !== undefined && b.quiet >= QUIET_ROUNDS ? 'The rest of them give up and run for it' : 'Their army is beaten', leader: `${names} ${fate}` };
 }

@@ -14,4 +14,8 @@ describe('the first commission briefing', () => {
     const text = keysCard().lines.join(' ');
     for (const key of ['Shift', 'Esc', 'WASD', 'Space', 'E', 'H', 'M', 'S', 'W', 'D', 'A', 'R', 'Delete']) expect(text).toContain(`**${key}**`);
   });
+
+  it('says what he rides out with as lists in words (#115)', () => {
+    expect(storyCard('wizard').lines.join(' ')).toContain('Archers, and Lightning Bolt, Bless, Slow and Haste in your spellbook.');
+  });
 });

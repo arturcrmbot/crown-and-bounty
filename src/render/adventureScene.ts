@@ -14,7 +14,7 @@ import { animFrames, bodyHeight, everyFrame, STAND, troopFigure, type Figure } f
 import { heroArtId } from './units';
 import {
   abbey, boulder, camp,
-  butts, CART_GROUND, cottage, castle, standingStones, chest, crag, goldPile, grainCart, hideout, holes, huntHall, hut, lodge, mill, mine, mirror, oak, peatHut, pine, signpost, stiltHut, shrine,
+  butts, CART_GROUND, cottage, castle, standingStones, chest, crag, goldPile, grainCart, hideout, holes, huntHall, hut, lodge, mews, mill, mine, mirror, oak, peatHut, pine, signpost, stiltHut, shrine,
   stoneBridge, washingCottage, watchtower, well, willow, windmill, xMark,
 } from './sprites';
 import { TerrainPainter } from './terrain';
@@ -142,6 +142,8 @@ function landmark(l: Location): { frames: Bitmap[]; foot: number; animated: bool
       return { frames: l.recruits ? animation((t) => huntHall(true, t)) : [huntHall(false)], foot: 62, animated: true };
     case 'lodge':
       return { frames: [lodge()], foot: 46, animated: false };
+    case 'mews':
+      return { frames: [mews()], foot: 36, animated: false };
     case 'cart': {
       // Pike's grain cart, and one of his lads at its tail in a foe's red ring, fidgeting as they wait.
       const lead = leadTroop(l.enemy!.army);

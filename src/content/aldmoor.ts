@@ -27,6 +27,7 @@ const at = {
   hall: [1872, 1624],
   lodge: [2652, 2092],
   bears: [2476, 2020],
+  falconer: [566, 1090],
   poachers: [2816, 1488],
   boars: [2688, 1664],
   cache: [1768, 1716],
@@ -158,6 +159,8 @@ const roads = {
   nan: [[2104, 1392], [2118, 1480], [2146, 1580], [2186, 1680], [2226, 1770], [2262, 1846]],
   // On past Old Nan's back door, into the King's chase, to the old King's hunting lodge.
   lodge: [[2262, 1846], [2282, 1896], [2330, 1944], [2400, 1986], [2476, 2020], [2548, 2052], [2604, 2082], [2644, 2098]],
+  // A track off Grimsby's road, out across the heath to the old King's falconer.
+  falconer: [[406, 1080], [450, 1084], [500, 1090], [548, 1094]],
   // A lane off the bridge road down to the old King's hunt hall.
   hall: [[1880, 1456], [1884, 1520], [1878, 1580], [1872, 1628]],
   // Westmere north-west to the mill on the river.
@@ -656,6 +659,58 @@ export const ALDMOOR: Province = {
       ],
     },
     {
+      // The old King's falconer, on the open heath west of the river: a clue, his hawk, and, once the
+      // huntsmen are back at the hall, himself and his lads.
+      id: 'falconer',
+      kind: 'event',
+      look: 'mews',
+      name: 'The Falconer\u2019s Bothy',
+      at: at.falconer,
+      done: false,
+      text: { about: ['A low stone bothy out on the heath, and a hawk on a block outside it.', '*She watches you all the way in.*'] },
+      pages: [
+        {
+          id: 'gone',
+          when: { flag: 'watHome' },
+          lines: ['The bothy is shut up. An old falconer\u2019s glove hangs on the perch, for whoever comes next.'],
+          choices: [],
+        },
+        {
+          id: 'meg',
+          when: { notFlag: 'falconer' },
+          lines: [
+            'Old Wat was the old King\u2019s falconer, and Meg is the last of his hawks. *"Forty years on this heath, sir, and nobody left to hunt for."*',
+            '*"Grimsby\u2019s lot are digging up the heath for the old King\u2019s gold, I hear. He never buried gold. Whatever he put in the ground, it was warm."*',
+          ],
+          choices: [
+            {
+              id: 'meg',
+              label: 'Take Meg with you',
+              effects: { artifact: 'oldKingsHawk', flags: { falconer: 'meg' } },
+              lines: ['*"She\u2019ll come back to you, if you\u2019re worth coming back to."* Meg steps onto your wrist as if she\u2019d been waiting for you.'],
+            },
+            {
+              id: 'home',
+              label: 'Ask him to come home to the hunt hall',
+              when: { flag: 'huntsmen' },
+              effects: { flags: { falconer: 'home', watHome: true }, recruits: { at: 'hall', troop: 'huntsmen', count: 4 }, xp: 100 },
+              lines: [
+                '*"The lads are back at the hall?"* Old Wat whistles, and three lean lads come up out of the heather: his apprentices. *"Then so are we, all four of us, and Meg."*',
+                '*"And if we meet that Rook on the way, he\u2019ll get a clip round the ear. I taught him everything he knows."*',
+              ],
+            },
+            { id: 'leave', label: 'Ride on' },
+          ],
+        },
+        {
+          id: 'glove',
+          when: { flag: 'falconer' },
+          lines: ['Old Wat is mending a jess by the door, and whistling to nobody. *"Look after her, sir."*'],
+          choices: [],
+        },
+      ],
+    },
+    {
       id: 'lodge',
       kind: 'event',
       look: 'lodge',
@@ -842,6 +897,7 @@ export const ALDMOOR: Province = {
             id: 'lullaby',
             label: 'Sing him Old Nan\u2019s lullaby',
             needs: { background: 'courtier', flag: 'lullaby' },
+            hint: 'a song you don\u2019t know yet',
             effects: { win: true, gold: 1000, xp: 450, flags: { lullaby: false } },
             lines: [
               'You tune your lute under the palisade and sing *Hush-a-bye, Baron*, all four verses, the way Old Nan sings it. By the second, his men are humming along. By the third, the Baron is sobbing into the goose.',

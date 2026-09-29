@@ -1116,6 +1116,44 @@ export function lodge(): Bitmap {
   return shaped;
 }
 
+/**
+ * The old King's falconer's bothy on the open heath: dry-stone walls under a turf roof, a door, a
+ * little window, and his last hawk on her block perch outside, watching.
+ */
+export function mews(): Bitmap {
+  const sprite = new Bitmap(54, 42);
+  const foot = 36;
+  const TURF = [LEAF[2], LEAF[3], LEAF[4], LEAF[5]];
+  // Dry-stone walls, lit on the left.
+  for (let y = 20; y < foot; y++) for (let x = 6; x < 36; x++) sprite.set(x, y, masonry(x, y, 0.72 - (x - 6) * 0.012, 85));
+  // A turf roof, heavy and a little shaggy at the eaves.
+  for (let y = 9; y < 21; y++) {
+    const k = (y - 9) / 12;
+    for (let x = 4 - Math.round(k * 2); x < 38 + Math.round(k * 2); x++) {
+      const shag = y === 20 && hash(x, y, 86) < 0.4 ? -0.3 : 0;
+      sprite.set(x, y, flat(TURF, clamp01(0.7 - (x - 4) * 0.01 - k * 0.25 + (noise(x / 2, y / 2, 87) - 0.5) * 0.35 + shag), x, y));
+    }
+  }
+  // The door and a window with a candle in it.
+  for (let y = 25; y < foot; y++) for (let x = 14; x < 20; x++) sprite.set(x, y, x === 14 || y === 25 ? WOOD[0] : flat(WOOD4, 0.35, x, y));
+  for (let y = 25; y < 29; y++) for (let x = 26; x < 30; x++) sprite.set(x, y, y === 25 || x === 26 ? STONE[2] : GOLD[5]);
+  // The block perch: a post, and on it the hawk, her pale breast to the light.
+  for (let y = 24; y < foot; y++) for (let x = 43; x < 49; x++) sprite.set(x, y, y === 24 ? PARCHMENT[2] : flat(WOOD4, 0.7 - (x - 43) * 0.12, x, y));
+  const hawk: [number, number, number][] = [
+    [45, 15, 2], [46, 15, 2], [44, 16, 2], [45, 16, 3], [46, 16, 2], [47, 16, 1],
+    [44, 17, 3], [45, 17, 4], [46, 17, 2], [47, 17, 1], [44, 18, 4], [45, 18, 4], [46, 18, 2], [47, 18, 1],
+    [44, 19, 4], [45, 19, 4], [46, 19, 2], [47, 19, 1], [44, 20, 3], [45, 20, 4], [46, 20, 2], [47, 20, 1],
+    [45, 21, 3], [46, 21, 2], [47, 21, 1], [46, 22, 1], [47, 22, 1], [48, 22, 1], [45, 23, 0], [46, 23, 0],
+  ];
+  const FEATHER = [INK, WOOD[1], WOOD[3], PARCHMENT[3], PARCHMENT[5]];
+  for (const [x, y, c] of hawk) sprite.set(x, y, FEATHER[c]);
+  sprite.set(44, 15, GOLD[5]);
+  sprite.set(43, 16, GOLD[4]);
+  const shaped = outline(sprite, INK);
+  castShadow(shaped, 5, 2, 24);
+  return shaped;
+}
+
 /** Where the grain cart's wheel and the ox's hooves meet the ground, from the top of its sprite. */
 export const CART_GROUND = 37;
 

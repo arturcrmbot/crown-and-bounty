@@ -10,7 +10,7 @@ import { artifactChoices, heroStats, knowsTrick } from '../hero';
 import { close, leadershipUsed, locationById, show, TROOPS, type Card, type ContentChoice, type GameState, type Location, type Page, type Result } from '../state';
 import { applyEffects, choiceButton, meets, owns, pay } from './core';
 
-export { applyEffects, choiceButton, meets, needsLabel, owns } from './core';
+export { applyEffects, choiceButton, lacksLabel, meets, needsLabel, owns } from './core';
 
 /** The first of a place's content pages that holds now. */
 export const firstPage = (state: GameState, place: Location): Page | undefined => place.pages?.find((p) => !p.answer && meets(state, p.when));
