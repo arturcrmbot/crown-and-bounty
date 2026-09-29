@@ -4,7 +4,8 @@ import { MAP_VIEW, paintFrame, SCREEN } from './frame';
 import type { Point } from '../rules/map/geometry';
 import type { FogMask } from './fog';
 import { bayer, hash, noise } from './noise';
-import { FOG_LUT, GOLD, GRAIN_LUT, INK, RED, SHADOW_LUT } from './palette';
+import { FOG_LUT, GRAIN_LUT, SHADOW_LUT } from './palette';
+import { drawRoute, type RouteMark } from './route';
 import { CLEAR, type Sky, type Weather } from './weather';
 
 /**
@@ -33,7 +34,9 @@ export class AdventureScreen {
   sky: Sky = CLEAR;
   weather: Weather | null = null;
   /** The route still ahead of the hero: gold dots for today, red for later days. */
-  route: { at: Point; today: boolean }[] = [];
+  route: RouteMark[] = [];
+  /** Where the hero will make camp when the gold part of a route runs out. */
+  camp: Point | null = null;
   private readonly map: Bitmap;
   private readonly wild: Bitmap;
   private readonly fog: FogMask;
@@ -101,11 +104,7 @@ export class AdventureScreen {
         screen.data[o] = fog[i] ? FOG_LUT[wild[i]] : map[i];
       }
     }
-    for (const { at: [x, y], today } of this.route) {
-      const sx = MAP_VIEW.x + x - cx;
-      const sy = MAP_VIEW.y + y - cy;
-      for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) this.dot(sx + i, sy + j, i === 0 && j === 0 ? (today ? GOLD[6] : RED[4]) : INK);
-    }
+    drawRoute(screen, MAP_VIEW, MAP_VIEW.x - cx, MAP_VIEW.y - cy, this.route, this.camp);
     this.animated.sort((a, b) => footY(a) - footY(b));
     for (const o of this.animated) {
       if (this.isFogged(o.x + o.sprite.width / 2, footY(o) - 2)) continue;
@@ -132,9 +131,5 @@ export class AdventureScreen {
     }
     blit(screen, this.overlay, 0, 0);
     return screen;
-  }
-
-  private dot(x: number, y: number, color: number) {
-    if (x >= MAP_VIEW.x && y >= MAP_VIEW.y && x < MAP_VIEW.x + MAP_VIEW.width && y < MAP_VIEW.y + MAP_VIEW.height) this.screen.set(x, y, color);
   }
 }
