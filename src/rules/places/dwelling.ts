@@ -1,7 +1,7 @@
 import { ARTIFACTS, type ArtifactId } from '../../content/artifacts';
 import { troopPower } from '../../content/troops';
 import { dismiss } from '../army';
-import { artifactChoices, giveArtifact, heroStats } from '../hero';
+import { artifactChoices, giveArtifact, heroStats, slotTaken } from '../hero';
 import { addTroops, close, coins, joinLine, leadershipUsed, locationById, TROOPS, troops, update, type Card, type Choice, type GameState, type Location, type Result } from '../state';
 import { found, option, priceOf, ride, say, words } from './common';
 import type { PlaceKind } from './kind';
@@ -93,8 +93,8 @@ function buy(state: GameState, place: Location, artifact: ArtifactId): Result | 
   const price = ARTIFACTS[artifact]?.price ?? 0;
   if (!place.wares?.includes(artifact) || owns(state, artifact) || state.gold < price) return null;
   const next = giveArtifact(update({ ...state, gold: state.gold - price }, place.id, { wares: place.wares.filter((w) => w !== artifact) }), artifact);
-  const worn = next.hero.gear[ARTIFACTS[artifact].slot] === artifact;
-  const where = ARTIFACTS[artifact].drawback ? 'you keep it in your pack until you choose whether to wear it' : worn ? 'you put it on straight away' : 'it goes in your pack, since you wear something there already (H to swap)';
+  const worn = Object.values(next.hero.gear).includes(artifact);
+  const where = ARTIFACTS[artifact].drawback ? 'you keep it in your pack until you choose whether to wear it' : worn ? 'you put it on straight away' : `it goes in your pack, since ${slotTaken(artifact)} (H to swap)`;
   return say(next, place, armouryCard(next, locationById(next, place.id), [`**${ARTIFACTS[artifact].name}** is yours: ${where}.`], artifactChoices(next, artifact)));
 }
 

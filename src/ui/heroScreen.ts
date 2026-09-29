@@ -1,4 +1,4 @@
-import { ARTIFACTS, SLOTS, type ArtifactId, type Slot } from '../content/artifacts';
+import { ARTIFACTS, slotAcceptsArtifact, slotsForArtifact, SLOTS, type ArtifactId, type Slot } from '../content/artifacts';
 import type { MapSpellId } from '../content/spells';
 import { outline } from '../render/bitmap';
 import { artifactIcon, slotGhost, statIcon } from '../render/artifactIcons';
@@ -211,7 +211,7 @@ export class HeroScreen {
     const slots = SLOTS.map((slot) => {
       const id = gear[slot];
       const place: Place = { kind: 'slot', slot };
-      const spare = pack.find((p) => ARTIFACTS[p].slot === slot);
+      const spare = pack.find((p) => slotAcceptsArtifact(slot, ARTIFACTS[p].slot));
       const empty = spare
         ? `**${SLOT_NAMES[slot]}**: nothing on.\n*Drag the ${ARTIFACTS[spare].name} here from the pack, or double-click it there.*`
         : `**${SLOT_NAMES[slot]}**: nothing yet.\n*Artifacts turn up in chests and old places, as spoils, and in castle armouries.*`;
@@ -333,7 +333,7 @@ export class HeroScreen {
   private actionFor(from: Place, to: Place): Action | null {
     const { pack, gear } = this.state.hero;
     if (from.kind === 'pack' && pack[from.index]) {
-      if (to.kind === 'slot') return ARTIFACTS[pack[from.index]].slot === to.slot ? { type: 'wear', from: from.index } : null;
+      if (to.kind === 'slot') return slotAcceptsArtifact(to.slot, ARTIFACTS[pack[from.index]].slot) ? { type: 'wear', from: from.index, slot: to.slot } : null;
       if (to.kind === 'pack' && to.index !== from.index && (to.index < pack.length || from.index < pack.length - 1)) return { type: 'movePack', from: from.index, to: to.index };
     }
     if (from.kind === 'slot' && gear[from.slot] && to.kind === 'pack') return { type: 'unequip', slot: from.slot, to: to.index };
@@ -354,7 +354,7 @@ export class HeroScreen {
   private landing(action: Action): Place | null {
     switch (action.type) {
       case 'wear':
-        return { kind: 'slot', slot: ARTIFACTS[this.state.hero.pack[action.from]].slot };
+        return { kind: 'slot', slot: action.slot ?? slotsForArtifact(ARTIFACTS[this.state.hero.pack[action.from]].slot).find((slot) => !this.state.hero.gear[slot]) ?? ARTIFACTS[this.state.hero.pack[action.from]].slot };
       case 'unequip':
         return { kind: 'pack', index: Math.min(action.to ?? this.state.hero.pack.length, this.state.hero.pack.length) };
       case 'movePack':

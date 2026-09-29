@@ -13,8 +13,8 @@ import { toggleMute, wakeAudio } from './audio/context';
 import { MuteButton } from './ui/mute';
 import { MixPanel } from './ui/mix';
 import { setUiScale } from './ui/scale';
-import { ARTIFACTS, type ArtifactId } from './content/artifacts';
-import { beginCommission, commissionAt, giveArtifact, hasNextCommission, newGame, startFight, CAMPAIGN_LENGTH, type GameState } from './rules/game';
+import { ARTIFACTS, slotsForArtifact, type ArtifactId } from './content/artifacts';
+import { beginCommission, commissionAt, equip, giveArtifact, hasNextCommission, newGame, startFight, CAMPAIGN_LENGTH, type GameState } from './rules/game';
 import { playCampaignStarts } from './rules/bot';
 
 declare global {
@@ -47,9 +47,15 @@ const chosen = who && who in BACKGROUNDS ? (who as BackgroundId) : null;
 function debugStart(): GameState {
   // ?hero=ranger (or knight, wizard, courtier) picks the background for a debug start, so the opening card doesn't ask.
   const drafted = newGame(seed, undefined, chosen ?? 'knight');
-  // ?gear=swordOfAldmoor,oldBanner gives artifacts: worn if their slot is free, in the pack if not.
+  // ?gear=swordOfAldmoor,oldBanner wears gear into the first free slot of its kind, then the pack.
+  // Nobody is asked here, so gear with a drawback goes on too.
   const gear = (query.get('gear') ?? '').split(',').filter((id): id is ArtifactId => id in ARTIFACTS);
-  const picked = gear.reduce(giveArtifact, chosen ? { ...drafted, opening: undefined } : drafted);
+  const dress = (state: GameState, id: ArtifactId) => {
+    const given = giveArtifact(state, id);
+    const free = slotsForArtifact(ARTIFACTS[id].slot).some((slot) => !given.hero.gear[slot]);
+    return free && given.hero.pack.includes(id) ? (equip(given, id)?.state ?? given) : given;
+  };
+  const picked = gear.reduce(dress, chosen ? { ...drafted, opening: undefined } : drafted);
   // ?spells=fireball,stoneskin teaches spells for a debug start.
   const taught = (query.get('spells') ?? '').split(',').filter((id): id is SpellId => id in SPELLS && !picked.hero.spells.includes(id as SpellId));
   const first = taught.length ? { ...picked, hero: { ...picked.hero, spells: [...picked.hero.spells, ...taught] } } : picked;
