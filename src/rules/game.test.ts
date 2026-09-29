@@ -1,5 +1,7 @@
 import { describe as suite, expect, it } from 'vitest';
-import { apply, armyPower, countOf, endDay, fight, finishFight, leadershipUsed, locationById, roman, startFight, visit, wages, type Result } from './game';
+import { apply, armyPower, countOf, endDay, fight, finishFight, leadershipUsed, locationById, manaLine, roman, startFight, visit, wages, type Result } from './game';
+import { chooseAction, sergeantsAct } from './battle/ai';
+import { activeFighter, battleAct, onField, spellCost, type BattleState } from './battle/battle';
 import { isExplored } from './map/fog';
 import { buildMap, cellIndex } from './map/model';
 import { newGame } from './scenario';
@@ -106,6 +108,62 @@ suite('fights', () => {
       manaSpent: 7,
       manaAvailable: 30,
     });
+  });
+
+  it('says who spent the mana: you, casting by hand, or your sergeants', () => {
+    const card = (manaSpent: number, sergeantsSpent?: number) => manaLine({ manaSpent, manaAvailable: 10, ...(sergeantsSpent ? { sergeantsSpent } : {}) });
+    expect(card(0)).toBe('No mana spent.');
+    expect(card(5)).toBe('You used 5 of your mana.');
+    expect(card(10)).toBe('You used all 10 of your mana.');
+    expect(card(5, 5)).toBe('The sergeants used 5 of your mana.');
+    expect(card(10, 10)).toBe('The sergeants used all 10 of your mana.');
+    expect(card(8, 3)).toBe('You used 5 of your mana, and the sergeants another 3.');
+    expect(card(10, 5)).toBe('You used 5 of your mana, and the sergeants the other 5.');
+  });
+
+  it('counts the mana you cast yourself as yours, and what the sergeants cast while they had command as theirs', () => {
+    const fresh = newGame(7, undefined, 'wizard');
+    const state = { ...fresh, army: [{ troop: 'knights' as const, count: 10 }], hero: { ...fresh.hero, mana: 30 } };
+    const started = startFight(state, 'poachers')!.state;
+    // On to the next of your stacks' turns (in a round after `after`, if given): yours defend, theirs fight.
+    const onTo = (b: BattleState, after?: number) => {
+      for (let i = 0; i < 200 && !b.result; i++) {
+        const f = activeFighter(b)!;
+        if (f.side === 'player' && !b.volley && (after === undefined || b.round > after)) return b;
+        b = battleAct(b, f.side === 'player' ? { type: 'defend' } : chooseAction(b)).battle;
+      }
+      throw new Error('No turn of yours');
+    };
+    const bolt = (b: BattleState) => ({ type: 'cast' as const, spell: 'bolt' as const, target: b.fighters.find((f) => f.side === 'enemy' && onField(f))!.id });
+    const battle = onTo(started.battle!);
+    const cost = spellCost(battle, 'bolt');
+    const byHand = battleAct(battle, bolt(battle)).battle;
+    expect(byHand.hero.mana).toBe(30 - cost);
+    expect(byHand.hero.sergeantsSpent).toBeUndefined();
+    const bySergeants = sergeantsAct(battle, bolt(battle)).battle;
+    expect(bySergeants.hero.mana).toBe(30 - cost);
+    expect(bySergeants.hero.sergeantsSpent).toBe(cost);
+    // A move that costs no mana leaves their count as it was.
+    expect(sergeantsAct(bySergeants, { type: 'defend' }).battle.hero.sergeantsSpent).toBe(cost);
+    // He casts one himself, then hands over to his sergeants, who cast another the next round.
+    const later = onTo(byHand, byHand.round);
+    const both = sergeantsAct(later, bolt(later)).battle;
+    expect(both.hero.mana).toBe(30 - 2 * cost);
+    expect(both.hero.sergeantsSpent).toBe(cost);
+    const reportOf = (b: BattleState) => cardOf(finishFight({ ...started, battle: { ...b, result: 'won', fighters: b.fighters.map((f) => (f.side === 'enemy' ? { ...f, count: 0 } : f)) } })).battleResult!;
+    expect(reportOf(bySergeants).sergeantsSpent).toBe(cost);
+    expect(manaLine(reportOf(byHand))).toBe(`You used ${cost} of your mana.`);
+    expect(manaLine(reportOf(bySergeants))).toBe(`The sergeants used ${cost} of your mana.`);
+    expect(manaLine(reportOf(both))).toBe(`You used ${cost} of your mana, and the sergeants another ${cost}.`);
+  });
+
+  it('leaves the mana to the sergeants in a fight left to them, and says so', () => {
+    const fresh = newGame(7, undefined, 'wizard');
+    const state = { ...fresh, army: [{ troop: 'peasants' as const, count: 30 }], hero: { ...fresh.hero, mana: 30 } };
+    const report = cardOf(fight(state, 'poachers')!).battleResult!;
+    expect(report.manaSpent).toBeGreaterThan(0);
+    expect(report.sergeantsSpent).toBe(report.manaSpent);
+    expect(manaLine(report)).toMatch(/^The sergeants used /);
   });
 
   it('beats the poachers with the starting army, with light losses', () => {

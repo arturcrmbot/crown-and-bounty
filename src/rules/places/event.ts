@@ -1,6 +1,6 @@
 import { bestChoice, firstPage, pageCard, takeChoice } from '../effects';
 import { close } from '../state';
-import { found, note, ride, words } from './common';
+import { aboutWords, found, note, ride, words } from './common';
 import type { PlaceKind } from './kind';
 
 /**
@@ -8,7 +8,7 @@ import type { PlaceKind } from './kind';
  * first page whose `when` holds is the one a visit shows, so flags move its story along.
  */
 export const event: PlaceKind = {
-  about: (_, place) => ({ title: place.name, lines: words(place, 'about'), choices: [ride(place, 'Visit'), close] }),
+  about: (state, place) => ({ title: place.name, lines: aboutWords(state, place), choices: [ride(place, 'Visit'), close] }),
   arrive(state, place) {
     const page = firstPage(state, place);
     return found(state, place, page ? pageCard(state, place, page) : note(place, words(place, 'done')));
