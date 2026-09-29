@@ -7,7 +7,7 @@ import { withNewPlaces } from './campaign';
 import { apply, commissionAt, heroStats, locationById, visit, type Card, type GameState, type Location, type Result } from './game';
 import { beat } from './fight';
 import { mapOf } from './map/maps';
-import { planRoute } from './map/movement';
+import { daysAway, planRoute } from './map/movement';
 import { beginCommission, newGame } from './scenario';
 
 const fresh = (background: BackgroundId = 'knight'): GameState => ({ ...newGame(1066, ALDMOOR, background), opening: undefined });
@@ -79,13 +79,15 @@ describe('Aldmoor\u2019s finds', () => {
     // The delving's far end stays bricked up until the dwarf opens it.
     expect(labels(start, 'delving')).toEqual(['Close']);
     expect(labels(friend, 'delving')).toContain('Ride the old delving north');
+    // From the mine, the stockade is days away the long way round; the delving comes up a morning's ride from it.
     const map = mapOf(start);
     const hideout = locationById(start, 'hideout').at;
-    expect(planRoute(friend, map, hideout, true)).toBeNull();
+    const atMine: GameState = { ...friend, movement: 150, hero: { ...friend.hero, at: locationById(friend, 'mine').at } };
+    expect(daysAway(atMine, map, hideout, true)).toBeGreaterThanOrEqual(2);
     const through = choose(friend, 'mine', 'delving/south')!;
     expect(through.events.some((e) => e.type === 'moved')).toBe(true);
     expect(through.state.movement).toBe(0);
-    expect(planRoute(through.state, map, hideout, true)).not.toBeNull();
+    expect(daysAway({ ...through.state, movement: 150 }, map, hideout, true)).toBe(0);
     const back = take({ ...through.state, movement: 150 }, 'delving', 'open/north');
     const mine = locationById(back, 'mine').at;
     expect(Math.hypot(back.hero.at[0] - mine[0], back.hero.at[1] - mine[1])).toBeLessThan(80);

@@ -85,6 +85,23 @@ describe('the castle', () => {
     const full: GameState = { ...knight(), leadership: 5000, army: (['knights', 'archers', 'swordsmen', 'crossbowmen', 'bandits'] as const).map((troop) => ({ troop, count: 1 })) };
     expect(cardOf(visit(full, 'village')).lines).toContain('Five companies are all one officer can lead. Dismiss one (H) to make room.');
   });
+
+  it('warns before recruits join companies they won\u2019t march happily beside', () => {
+    const grumble = '*Your Wolves and Wild Boars won\u2019t march happily beside Knights: \u221210% morale for all of them.*';
+    const wild = { ...knight(), army: [{ troop: 'wolves' as const, count: 10 }, { troop: 'boars' as const, count: 5 }] };
+    expect(cardOf(visit(wild, 'castle')).lines).toContain(grumble);
+    expect(cardOf(visit(knight(), 'castle')).lines.some((line) => line.includes('march happily'))).toBe(false);
+    // An old quarrel isn't news: the King's folk already march with the wolves.
+    const mixed = { ...knight(), army: [...knight().army, { troop: 'wolves' as const, count: 10 }] };
+    expect(cardOf(visit(mixed, 'castle')).lines.some((line) => line.includes('march happily'))).toBe(false);
+  });
+
+  it('warns before tamed beasts fall in with the King\u2019s folk', () => {
+    const ranger: GameState = { ...newGame(1066, ALDMOOR, 'ranger'), opening: undefined };
+    const card = cardOf(visit(ranger, 'boars'));
+    expect(card.choices.map((c) => c.label)).toContain('Tame as many as you can lead (3 of 9)');
+    expect(card.lines).toContain('*Your Knights and Archers won\u2019t march happily beside Wild Boars: \u221210% morale for all of them.*');
+  });
 });
 
 describe('the odds', () => {
@@ -133,11 +150,11 @@ describe('the map', () => {
     expect(daysAway(s, map, near)).toBe(0);
     // With his legs spent, even the nearest ride waits for tomorrow.
     expect(daysAway({ ...s, movement: 0 }, map, near)).toBe(1);
-    // The castle is a day's ride from the start, and Grimsby is out of reach behind his patrol.
+    // The castle is within the first day's ride, and Grimsby, the long way round by the ford, days away.
     const castle = locationById(s, 'castle').at;
     expect(daysAway(s, map, castle, true)).toBe(0);
     expect(daysAway({ ...s, movement: 10 }, map, castle, true)).toBe(1);
-    expect(daysAway(s, map, locationById(s, 'hideout').at, true)).toBeNull();
+    expect(daysAway(s, map, locationById(s, 'hideout').at, true)).toBeGreaterThanOrEqual(3);
     expect(whenThere(0)).toBe('today');
     expect(whenThere(1)).toBe('tomorrow');
     expect(whenThere(3)).toBe('in 3 days');

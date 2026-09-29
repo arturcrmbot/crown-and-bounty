@@ -7,7 +7,7 @@ import { playNote } from '../audio/instruments';
 import { sting } from '../audio/stings';
 import { Terrain } from '../rules/map/model';
 
-export type Sound = 'click' | 'coins' | 'hit' | 'shoot' | 'bolt' | 'spell' | 'day' | 'levelUp' | 'victory' | 'defeat' | 'dig' | 'fanfare' | 'charge' | 'page' | 'lift' | 'equip' | 'march' | 'jeer' | 'song' | 'luckySong' | 'falter';
+export type Sound = 'click' | 'coins' | 'hit' | 'shoot' | 'bolt' | 'spell' | 'day' | 'levelUp' | 'victory' | 'defeat' | 'dig' | 'fanfare' | 'charge' | 'page' | 'lift' | 'equip' | 'march' | 'jeer' | 'song' | 'luckySong' | 'falter' | 'cheer';
 
 /** Sound effects go to the effects bus of the shared audio context (see `audio/context.ts`). */
 export { toggleMute, wakeAudio as wakeSound } from '../audio/context';
@@ -125,6 +125,10 @@ export function play(sound: Sound) {
         // Spirits sinking: a low drone that sags.
         tone(196, t, 0.5, 'triangle', 0.35, 0.7);
         break;
+      case 'cheer':
+        // A short call rising on the brass: good spirits, and a stack goes again.
+        for (const [midi, at, length] of [[62, 0, 0.09], [67, 0.1, 0.3]] as [number, number, number][]) playNote(a.ctx, a.sfx, 'brass', t + at, midi, length, 0.28);
+        break;
       case 'dig':
         [0, 0.25, 0.5].forEach((d) => noise(t + d, 0.1, 'lowpass', 500, 0.8));
         tone(1568, t + 0.8, 0.9, 'sine', 0.35);
@@ -153,6 +157,11 @@ export function playStep(terrain: Terrain, rides: boolean) {
           // Hollow boards underfoot.
           noise(t + d, 0.05, 'bandpass', 900, 0.4 * loud);
           tone(200, t + d, 0.08, 'triangle', 0.22 * loud, 0.7);
+          break;
+        case Terrain.Ford:
+          // Wading the ford: a splash, and the water running off.
+          noise(t + d, 0.12, 'bandpass', 2100, 0.34 * loud, 0.45);
+          noise(t + d + 0.04, 0.2, 'highpass', 3600, 0.1 * loud);
           break;
         case Terrain.Forest:
           // A soft fall, with a leaf or twig underfoot.

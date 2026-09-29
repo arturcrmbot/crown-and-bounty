@@ -97,6 +97,12 @@ function nearest(r: number, g: number, b: number, exclude: Set<number>): number 
   return best;
 }
 
+/** The nearest colour on one ramp. */
+function nearestIn(ramp: readonly number[], r: number, g: number, b: number): number {
+  const others = new Set(COLORS.map((_, i) => i).filter((i) => !ramp.includes(i)));
+  return nearest(r, g, b, others);
+}
+
 const cycling = new Set(CYCLES.flat());
 /** Colours that turn with the clock: sprites must never be painted in them. */
 export const CYCLING: ReadonlySet<number> = cycling;
@@ -119,6 +125,8 @@ export const FOG_LUT = new Uint8Array(256).map((_, i) => {
   const [r, g, b] = cycling.has(i) && !CYCLE_BOG.includes(i) ? COLORS[WATER[3]] : COLORS[i];
   const luma = 0.3 * r + 0.59 * g + 0.11 * b;
   const mix = (c: number) => (c * 0.45 + luma * 0.55) * 0.78;
+  // Heather under the mist is just more of the misty land, not a patch of slate.
+  if (PLUM.includes(i)) return nearestIn(FOG, mix(r), mix(g), mix(b) + 6);
   return nearest(mix(r), mix(g), mix(b) + 6, excluded);
 });
 
@@ -147,7 +155,9 @@ function tint(f: (r: number, g: number, b: number) => [number, number, number], 
     if (i >= COLORS.length) return i;
     if (cycling.has(i)) return water(i);
     const [r, g, b] = f(...COLORS[i]);
-    return nearest(Math.max(0, Math.min(255, r)), Math.max(0, Math.min(255, g)), Math.max(0, Math.min(255, b)), excluded);
+    const [cr, cg, cb] = [Math.max(0, Math.min(255, r)), Math.max(0, Math.min(255, g)), Math.max(0, Math.min(255, b))];
+    // Plum (the heather on the heath, a witch's smoke) stays plum in any light: at night it darkens rather than turning blue.
+    return PLUM.includes(i) ? nearestIn(PLUM, cr, cg, cb) : nearest(cr, cg, cb, excluded);
   });
 }
 const clampByte = (v: number) => Math.max(0, Math.min(255, v));

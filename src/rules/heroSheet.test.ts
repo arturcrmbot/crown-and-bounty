@@ -3,7 +3,7 @@ import { ALDMOOR } from '../content/aldmoor';
 import { createBattle } from './battle/battle';
 import { rowOf } from './battle/hex';
 import { apply, giveArtifact, heroInBattle, heroStats, type GameState } from './game';
-import { barNote, heroSheet, leaderSheet, manaInBattle, manaNote, nextPayday, stackSheet } from './heroSheet';
+import { barNote, heroSheet, leaderSheet, manaInBattle, manaNote, nextPayday, spiritsOf, stackSheet } from './heroSheet';
 import { newGame } from './scenario';
 
 const wizard = (): GameState => ({ ...newGame(1066, ALDMOOR, 'wizard'), opening: undefined });
@@ -174,6 +174,42 @@ describe('the hero screen', () => {
     expect(archers.traits.map((t) => t.name)).toEqual(['Shooter', 'Pathfinder', 'First volley (Pathfinder)']);
     const horned = stackSheet(giveArtifact(ranger, 'poachersHorn'), 1)!;
     expect(horned.traits.filter((t) => t.name.startsWith('First volley')).map((t) => t.name)).toEqual(['First volley (Pathfinder, The Poacher\u2019s Horn)']);
+  });
+
+  it('gives every stack its luck and morale, and says why', () => {
+    expect(stackSheet(knight(), 0)!.stats.slice(-2)).toEqual([
+      { name: 'Luck', value: '0', note: 'none to speak of' },
+      { name: 'Morale', value: '0', note: 'steady' },
+    ]);
+    const favoured = { ...knight(), hero: { ...knight().hero, perks: ['fortunesFavour' as const] } };
+    expect(stackSheet(favoured, 0)!.stats.slice(-2)).toEqual([
+      { name: 'Luck', value: '+10%', note: 'chance a blow lands twice as hard' },
+      { name: 'Morale', value: '+10%', note: 'chance they go again, each round' },
+    ]);
+    // Why, a line for each gift among the traits.
+    expect(stackSheet(favoured, 0)!.traits).toContainEqual({ name: 'Fortune\u2019s Favour', note: '+10% luck, +10% morale.' });
+    const footed = stackSheet(giveArtifact(favoured, 'rabbitsFoot'), 1)!;
+    expect(footed.stats.at(-2)).toMatchObject({ name: 'Luck', value: '+20%' });
+    expect(footed.traits).toContainEqual({ name: 'A Rabbit\u2019s Foot', note: '+10% luck.' });
+    // Wild things in the King's army: both sides grumble.
+    const wild = { ...knight(), army: [...knight().army, { troop: 'wolves' as const, count: 10 }] };
+    expect(stackSheet(wild, 0)!.stats.at(-1)).toEqual({ name: 'Morale', value: '\u221210%', note: 'chance they lose heart, and their turn' });
+    expect(stackSheet(wild, 0)!.traits).toContainEqual({ name: 'Uneasy company', note: 'They won\u2019t march happily beside the Wolves: \u221210% morale.' });
+    expect(stackSheet(wild, 2)!.traits).toContainEqual({ name: 'Uneasy company', note: 'They won\u2019t march happily beside the Knights and Archers: \u221210% morale.' });
+    const evened = stackSheet({ ...wild, hero: favoured.hero }, 0)!;
+    expect(evened.stats.at(-1)).toEqual({ name: 'Morale', value: '0', note: 'steady: it evens out' });
+    expect(evened.traits.map((t) => t.name)).toEqual(expect.arrayContaining(['Fortune\u2019s Favour', 'Uneasy company']));
+  });
+
+  it('names songs and jeers among the reasons, in battle', () => {
+    const b = createBattle({ place: 'x', seed: 1, player: [{ troop: 'knights', count: 5 }, { troop: 'wolves', count: 5 }], enemy: [{ troop: 'swordsmen', count: 5 }], hero: heroInBattle(knight()), obstacles: 0 });
+    const knights = { ...b.fighters[0], status: ['heartened' as const] };
+    const sung = { ...b, fighters: [knights, ...b.fighters.slice(1)] };
+    const s = spiritsOf(sung, knights);
+    expect(s.gifts).toEqual([]);
+    expect(s.moods).toEqual([{ source: 'Heartened', morale: 0.25 }]);
+    expect(s.uneasy).toEqual(['Wolves']);
+    expect(s.morale).toBeCloseTo(0.15);
   });
 });
 

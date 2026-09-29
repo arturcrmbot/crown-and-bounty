@@ -1,9 +1,9 @@
 import { ARTIFACTS, type Slot } from '../content/artifacts';
 import { BACKGROUNDS, type BackgroundId, type Bonus } from '../content/backgrounds';
 import { PERKS, RANKS, SKILLS, skillNote, type SkillId } from '../content/skills';
-import { MAP_SPELLS, SPELLS, type MapSpellId } from '../content/spells';
+import { MAP_SPELLS, SPELLS, STATUSES, type MapSpellId } from '../content/spells';
 import { ABILITIES, abilitiesOf, TROOPS, troops, type TroopId } from '../content/troops';
-import { createBattle, statsOf } from './battle/battle';
+import { createBattle, grumbleOf, grumblesAt, luckOf, moraleOf, statsOf, type BattleState, type Fighter } from './battle/battle';
 import { rowOf } from './battle/hex';
 import { CAMPAIGN_LENGTH, commissionOf } from './campaign';
 import type { PortraitId } from '../content/portraits';
@@ -247,6 +247,58 @@ export type StackSheet = {
 /** A battle row as words: the stacks line up centre first, then above and below. */
 const ROW_WORDS = ['at the top', 'near the top', 'above the middle', 'just above the middle', 'in the middle', 'just below the middle', 'below the middle', 'near the bottom', 'at the bottom'].map((w) => `${w} of the line`);
 
+/** A share of luck or morale as the cards give it: "+10%", "\u221210%", or "0". */
+export function signedShare(x: number): string {
+  const n = Math.round(x * 100);
+  return n === 0 ? '0' : `${n > 0 ? '+' : '\u2212'}${Math.abs(n)}%`;
+}
+
+/** A list in words: "Wolves", "Knights and Archers", "Knights, Archers and Peasants". */
+const namesOf = (names: string[]) => (names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : (names[0] ?? ''));
+
+/** A stack's luck and morale in battle, and why. */
+export type Spirits = {
+  luck: number;
+  morale: number;
+  /** What Aldric brings his side, by name (a perk, a trinket), and the luck and morale each adds. */
+  gifts: { source: string; luck?: number; morale?: number }[];
+  /** Songs and jeers on the stack, while they last, and what each adds. */
+  moods: { source: string; luck?: number; morale?: number }[];
+  /** The companies of its own side it won't march happily beside, and the morale that costs it. */
+  uneasy: string[];
+  grumble: number;
+};
+
+export function spiritsOf(b: BattleState, f: Fighter): Spirits {
+  const [luck, morale] = f.side === 'player' ? [b.hero.luck ?? 0, b.hero.morale ?? 0] : [0, 0];
+  const named = f.side === 'player' ? (b.hero.spirits ?? []) : [];
+  const share = (source: string, l: number, m: number) => ({ source, ...(l ? { luck: l } : {}), ...(m ? { morale: m } : {}) });
+  // A hero whose gifts have no names (a battle saved before they had them) still brings them.
+  const gifts = named.length || (!luck && !morale) ? named : [share(b.hero.name ?? 'Aldric', luck, morale)];
+  const moods = f.status.flatMap((s) => (STATUSES[s].luck || STATUSES[s].morale ? [share(STATUSES[s].name, STATUSES[s].luck ?? 0, STATUSES[s].morale ?? 0)] : []));
+  return { luck: luckOf(b, f), morale: moraleOf(b, f), gifts, moods, uneasy: [...new Set(grumblesAt(b, f).map((o) => TROOPS[o.troop].name))], grumble: -grumbleOf(b, f) };
+}
+
+/** Why a stack grumbles, in a few words: "uneasy beside the Wolves". Empty if it doesn't. */
+export const uneasyWords = (s: Spirits) => (s.uneasy.length ? `uneasy beside the ${namesOf(s.uneasy)}` : '');
+
+/** A stack card's luck and morale, a line each: the share, and what it does in battle. */
+function spiritRows(s: Spirits | null): StackSheet['stats'] {
+  const [luck, morale] = [s?.luck ?? 0, s?.morale ?? 0];
+  return [
+    { name: 'Luck', value: signedShare(luck), note: luck ? 'chance a blow lands twice as hard' : 'none to speak of' },
+    { name: 'Morale', value: signedShare(morale), note: morale > 0 ? 'chance they go again, each round' : morale < 0 ? 'chance they lose heart, and their turn' : s?.uneasy.length ? 'steady: it evens out' : 'steady' },
+  ];
+}
+
+/** Why, among the card's traits: each gift (or song) by name, and the company it won't march happily beside. */
+function spiritTraits(s: Spirits | null): Note[] {
+  if (!s) return [];
+  const named = [...s.gifts, ...s.moods].map((g) => ({ name: g.source, note: `${[g.luck ? `${signedShare(g.luck)} luck` : '', g.morale ? `${signedShare(g.morale)} morale` : ''].filter(Boolean).join(', ')}.` }));
+  const uneasy = s.uneasy.length ? [{ name: 'Uneasy company', note: `They won\u2019t march happily beside the ${namesOf(s.uneasy)}: ${signedShare(s.grumble)} morale.` }] : [];
+  return [...named, ...uneasy];
+}
+
 export function stackSheet(state: GameState, index: number): StackSheet | null {
   const stack = state.army[index];
   if (!stack) return null;
@@ -274,12 +326,12 @@ export function stackSheet(state: GameState, index: number): StackSheet | null {
     if (bonus.melee) traits.push({ name, note: `+${pct(bonus.melee)} damage in melee.` });
     if (bonus.ranged && t.shots) traits.push({ name, note: `+${pct(bonus.ranged)} damage with their shots.` });
     if (bonus.armour) traits.push({ name, note: `They take ${pct(bonus.armour)} less damage.` });
-    if (bonus.luck) traits.push({ name, note: `${pct(bonus.luck)} chance a blow lands lucky: twice as hard.` });
-    if (bonus.morale) traits.push({ name, note: `${pct(bonus.morale)} chance they go again before the round moves on.` });
   }
   // One charge, however many things teach it.
   if (chargedBy.length) traits.push({ name: `Charge (${chargedBy.join(', ')})`, note: 'After a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder, and nobody strikes back.', trick: true });
   if (volleyBy.length) traits.push({ name: `First volley (${volleyBy.join(', ')})`, note: 'A free volley before every battle, except at a villain\u2019s walls.', trick: true });
+  const spirits = f ? spiritsOf(b, f) : null;
+  traits.push(...spiritTraits(spirits));
   const wage = Math.round(stack.count * t.wage * (1 + s.wages));
   const row = f ? ROW_WORDS[rowOf(f.at)] : ROW_WORDS[4];
   return {
@@ -293,6 +345,7 @@ export function stackSheet(state: GameState, index: number): StackSheet | null {
       { name: 'Health', value: String(t.hp), note: 'each troop' },
       { name: 'Speed', value: String(t.speed), note: 'hexes a turn' },
       ...(t.shots ? [{ name: 'Shots', value: String(shots), note: from(shots, t.shots) }] : []),
+      ...spiritRows(spirits),
     ],
     traits,
     leadership: `Leadership: ${t.leadership} each, ${coins(stack.count * t.leadership)} in all (${leadershipUsed(state.army)} of ${s.leadership} in use)`,

@@ -35,6 +35,8 @@ export function kc(page) {
     state: () => call(() => window.__kc.state()),
     status: () => call(() => window.__kc.status()),
     centre: (id) => call((i) => window.__kc.centre(i), id),
+    /** Scrolls the map to a point first, as a player would before clicking something far off. */
+    view: (x, y) => call(([vx, vy]) => window.__kc.view(vx, vy), [x, y]),
     click: (x, y) => call(([cx, cy]) => window.__kc.click(cx, cy), [x, y]),
     frameHash: () => call(() => window.__kc.frameHash()),
   };

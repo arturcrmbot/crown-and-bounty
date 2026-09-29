@@ -1,34 +1,44 @@
-import type { Point } from '../rules/map/geometry';
+import { nearest, smooth, type Point } from '../rules/map/geometry';
+import { hash, rng } from '../rules/noise';
 import type { Location } from '../rules/state';
-import type { Province } from './types';
+import type { Province, Region } from './types';
 
-/** Map points of every place in the province, in pixels on the 40 x 30 tile map. */
+/** Aldmoor is 100 by 75 tiles of 32 pixels: a day's ride on a road crosses about a third of it. */
+const W = 100 * 32;
+const H = 75 * 32;
+
+/**
+ * Map points of every place in the province, in pixels. The land is laid out as in the sketch
+ * (`docs/act1/aldmoor.svg`): the farmland round Castle Aldmoor and Westmere in the middle of the east,
+ * the downs to the north-east, the King's chase to the south-east, the crags along the north, the heath
+ * west of the river and Darkwood in the south-west, where Grimsby has his stockade.
+ */
 const at = {
-  castle: [1120, 212],
-  tower: [290, 226],
-  mine: [150, 196],
-  mill: [818, 566],
-  village: [966, 822],
-  patrol: [404, 586],
-  signpost: [520, 520],
-  chest: [458, 702],
-  well: [908, 592],
-  gold: [640, 560],
-  hideout: [104, 850],
-  wolves: [256, 700],
-  shrine: [676, 506],
-  poachers: [880, 684],
-  highwaymen: [366, 336],
-  boars: [1040, 424],
-  nan: [1012, 556],
-  cache: [772, 800],
-  butts: [612, 640],
-  delving: [205, 828],
+  castle: [2520, 864],
+  signpost: [2462, 912],
+  shrine: [2912, 930],
+  gold: [2990, 1192],
+  chest: [2992, 500],
+  butts: [2356, 1150],
+  village: [2104, 1392],
+  mill: [1680, 1182],
+  well: [1502, 1252],
+  nan: [2300, 1846],
+  poachers: [2816, 1488],
+  boars: [2688, 1664],
+  cache: [1768, 1716],
+  patrol: [1670, 1466],
+  highwaymen: [1296, 1044],
+  tower: [1032, 812],
+  mine: [1264, 312],
+  wolves: [1040, 1472],
+  delving: [640, 1718],
+  hideout: [320, 2128],
 } satisfies Record<string, Point>;
 
 /** Where the hero comes up at each end of the dwarf's old delving: beside its mouth, where he can be seen. */
-const DELVING_NORTH: Point = [200, 214];
-const DELVING_SOUTH: Point = [205, 862];
+const DELVING_NORTH: Point = [1212, 330];
+const DELVING_SOUTH: Point = [668, 1744];
 
 /** The patrol's size: a gate, too strong for a fresh army (see `rules/difficulty.ts`). */
 const PATROL = { swordsmen: 50, crossbowmen: 29 };
@@ -39,75 +49,176 @@ const DESERTERS: Location = {
   kind: 'village',
   look: 'camp',
   name: 'Deserters\u2019 Camp',
-  at: [468, 628],
+  at: [1578, 1560],
   done: false,
   recruits: { troop: 'swordsmen', count: 12, price: 60 },
   text: { about: ['Grimsby\u2019s former men, sharpening their swords and their excuses.', 'Swordsmen, for hire.'] },
 };
 
-/** The same camp when Sergeant Pike brings the whole patrol home: more of them, and in a better mood. */
-const PIKES_CAMP: Location = { ...DESERTERS, recruits: { troop: 'swordsmen', count: 20, price: 60 } };
+/** The same camp when Sergeant Pike brings the whole patrol home to Westmere: more of them, and in a better mood. */
+const PIKES_CAMP: Location = {
+  ...DESERTERS,
+  name: 'Pike\u2019s Camp',
+  at: [2036, 1512],
+  recruits: { troop: 'swordsmen', count: 20, price: 60 },
+  text: { about: ['The Baron\u2019s old patrol, camped on Westmere green, where their mothers can keep an eye on them.', 'Swordsmen, for hire.'] },
+};
 
-const paths: Point[][] = [
-  // Watchtower, past the signpost and the hero, over the bridge to Westmere.
-  [[292, 236], [330, 300], [380, 362], [440, 430], [500, 510], [540, 590], [592, 660], [650, 706], [700, 724], [762, 742], [842, 772], [930, 800]],
-  // Castle down through the cliff gap to Westmere.
-  [[1112, 214], [1080, 282], [1030, 334], [992, 404], [970, 480], [954, 580], [944, 680], [936, 790]],
-  // From the signpost south-west into Darkwood.
-  [[500, 512], [432, 560], [344, 622], [254, 700], [172, 780], [80, 862]],
-  // A spur from the tower path up to the mine.
-  [[330, 300], [262, 250], [200, 214], [150, 196]],
+/** The roads, as the sketch has them. The river crosses two of them: at the old bridge, and at the ford. */
+const roads = {
+  // The King's road, in from the east edge, past St Aldhelm's shrine to the castle.
+  king: [[3232, 1072], [3100, 1046], [3000, 1022], [2900, 990], [2800, 958], [2700, 922], [2610, 890], [2532, 870]],
+  // The castle down through the fields to Westmere.
+  westmere: [[2500, 876], [2462, 936], [2420, 1000], [2384, 1056], [2330, 1130], [2270, 1210], [2224, 1280], [2160, 1346], [2104, 1388]],
+  // Westmere west over the old bridge, past the crossroads, to the kennels at the edge of Darkwood.
+  bridge: [[2104, 1392], [2040, 1422], [1960, 1442], [1880, 1456], [1800, 1464], [1740, 1466], [1670, 1464], [1600, 1470], [1544, 1488], [1460, 1510], [1370, 1528], [1280, 1530], [1180, 1510], [1100, 1488], [1040, 1472]],
+  // On from the kennels, through Darkwood, round to the gate of Grimsby's stockade.
+  darkwood: [[1040, 1472], [980, 1520], [900, 1600], [820, 1690], [730, 1780], [640, 1870], [550, 1960], [470, 2050], [420, 2128], [376, 2168], [340, 2164], [322, 2138]],
+  // The crossroads north over the heath, past the watchtower, to the crags.
+  heath: [[1544, 1488], [1520, 1400], [1480, 1300], [1420, 1200], [1350, 1100], [1280, 1030], [1190, 960], [1100, 900], [1010, 846], [920, 760], [840, 670], [770, 590], [700, 530]],
+  // The castle north-west through the downs, over the ford, the long way round.
+  ford: [[2466, 890], [2420, 836], [2370, 770], [2310, 690], [2240, 612], [2160, 544], [2076, 482], [1990, 432], [1900, 396], [1830, 370], [1769, 360], [1700, 366], [1620, 378], [1520, 392]],
+  // Over the ford to the dwarf's old mine.
+  mine: [[1520, 392], [1450, 372], [1380, 348], [1310, 326], [1266, 318]],
+  // Over the ford along the foot of the crags, west across the heath.
+  crags: [[1520, 392], [1420, 426], [1300, 456], [1180, 476], [1060, 494], [940, 512], [820, 524], [700, 530]],
+  // The way Grimsby rides out: from his gate, through Darkwood and up the west of the heath.
+  grimsby: [[700, 530], [620, 640], [540, 780], [460, 940], [390, 1120], [330, 1320], [292, 1520], [274, 1700], [270, 1880], [258, 2000], [244, 2090], [258, 2160], [298, 2168], [318, 2140]],
+  // Westmere south to Old Nan's, at the edge of the King's chase.
+  nan: [[2104, 1392], [2118, 1480], [2146, 1580], [2186, 1680], [2226, 1770], [2262, 1846]],
+  // Westmere north-west to the mill on the river.
+  mill: [[2104, 1388], [2046, 1330], [1976, 1272], [1900, 1226], [1812, 1198], [1736, 1188], [1700, 1186]],
+  // A lane off the King's road, up into the downs.
+  downs: [[2800, 958], [2826, 860], [2862, 760], [2910, 650], [2958, 560], [2988, 510]],
+  // A cart track off the Darkwood road to the dwarf's old delving.
+  delving: [[730, 1780], [700, 1756], [668, 1740], [646, 1724]],
+} satisfies Record<string, Point[]>;
+
+const paths: Point[][] = Object.values(roads);
+
+/** The river, north to south: the only ways over are the old bridge and the ford. */
+const river: Point[] = [[1760, -80], [1808, 240], [1696, 560], [1776, 880], [1632, 1200], [1672, 1456], [1536, 1760], [1456, 2080], [1392, 2480]];
+
+/** Woods as ellipses, with their share of pines: dark Darkwood, the oaks of the King's chase, a copse on the downs, and spinneys between. */
+const forests: [number, number, number, number, number?][] = [
+  // Darkwood.
+  [300, 1720, 330, 420, 0.95],
+  [560, 2130, 520, 300, 0.95],
+  [800, 1860, 260, 260, 0.95],
+  [620, 1520, 240, 180, 0.9],
+  [1060, 2190, 250, 230, 0.9],
+  [150, 1360, 170, 150, 0.9],
+  // The King's chase.
+  [2700, 2190, 560, 260, 0.35],
+  [3060, 1700, 200, 420, 0.35],
+  [2250, 2240, 300, 200, 0.35],
+  [2440, 2000, 190, 130, 0.3],
+  [1990, 2180, 230, 220, 0.35],
+  // On the downs.
+  [2870, 300, 180, 130, 0.5],
+  [2620, 180, 120, 90, 0.5],
+  // Spinneys on the heath and among the fields.
+  [860, 1210, 120, 80],
+  [1400, 640, 90, 60],
+  [2710, 700, 70, 50],
+  [2560, 1310, 90, 60],
 ];
 
-const hero: Point = [546, 612];
+/** The fields round the castle and Westmere, the downs to the north-east, and the heath west of the river. */
+const regions: Region[] = [
+  { kind: 'fields', at: [2540, 990, 430, 280] },
+  { kind: 'fields', at: [2150, 1360, 360, 270] },
+  { kind: 'fields', at: [2780, 1290, 250, 190] },
+  { kind: 'fields', at: [1900, 1250, 220, 170] },
+  { kind: 'fields', at: [1930, 1620, 190, 140] },
+  { kind: 'downs', at: [2860, 380, 560, 340] },
+  { kind: 'downs', at: [2210, 420, 330, 210] },
+  { kind: 'heath', at: [800, 900, 820, 480] },
+  { kind: 'heath', at: [1320, 1240, 300, 260] },
+  { kind: 'heath', at: [1380, 1920, 230, 440] },
+];
+
+const smoothRoads = paths.map((p) => smooth(p));
+const smoothRiver = smooth(river);
+const places = Object.values(at);
+const clearOf = ([x, y]: Point, road: number, water: number, place: number) =>
+  smoothRoads.every((r) => nearest(r, x, y).d > road) && nearest(smoothRiver, x, y).d > water && places.every(([px, py]) => Math.hypot(px - x, py - y) > place);
+const riverX = (y: number) => {
+  for (let i = 0; i < smoothRiver.length - 1; i++) {
+    const [ax, ay] = smoothRiver[i];
+    const [bx, by] = smoothRiver[i + 1];
+    if (y >= ay && y <= by) return ax + ((bx - ax) * (y - ay)) / (by - ay);
+  }
+  return smoothRiver[smoothRiver.length - 1][0];
+};
+const inWoods = ([x, y]: Point) => forests.some(([cx, cy, rx, ry]) => Math.hypot((x - cx) / rx, (y - cy) / ry) < 1.25);
+
+/** Points on a jittered grid `step` apart, from a fixed seed, where `keep` says. */
+function scatter(seed: number, step: number, keep: (p: Point, r: () => number) => boolean): Point[] {
+  const random = rng(seed);
+  const out: Point[] = [];
+  for (let y = step / 2; y < H; y += step) {
+    for (let x = step / 2; x < W; x += step) {
+      const p: Point = [Math.round(x + (random() - 0.5) * step * 0.8), Math.round(y + (random() - 0.5) * step * 0.8)];
+      if (keep(p, random)) out.push(p);
+    }
+  }
+  return out;
+}
+
+/**
+ * How high the land stands: 1 in the crags along the north, less in the downs to the north-east,
+ * nothing in the fields, on the heath or in the woods.
+ */
+function height([x, y]: Point): number {
+  const wobble = (hash(Math.floor(x / 120), 0, 7) - 0.5) * 70;
+  if (x < riverX(y) - 40) return Math.max(0, Math.min(1, (470 + wobble - y) / 120));
+  if (x < 2440) return Math.max(0, Math.min(1, (420 + wobble - (x - 1800) * 0.18 - y) / 140));
+  return y < 620 ? 0.16 : 0;
+}
+
+/** The crags: a range of rock along the north, cut by the river, with the downs' tors to the east. */
+const crags: [number, number, number, number][] = scatter(29, 96, (p, r) => r() < height(p) && clearOf(p, 46, 60, 90) && !inWoods(p)).map(([x, y], i) => {
+  const big = 1 - y / 600;
+  return [x, y, Math.round(70 + hash(i, 1, 30) * 50 + big * 20), Math.round(48 + hash(i, 2, 30) * 36 + big * 22)];
+});
+
+/** Lone trees in the fields and on the heath, and boulders on the heath and the downs. */
+const trees: [number, number, boolean][] = scatter(31, 170, (p, r) => r() < 0.3 && height(p) === 0 && clearOf(p, 18, 30, 60) && !inWoods(p)).map(([x, y], i) => [x, y, hash(i, 3, 31) < 0.4]);
+const rocks: [number, number, number][] = scatter(37, 150, (p, r) => r() < (p[0] < riverX(p[1]) ? 0.3 : 0.12) && clearOf(p, 14, 30, 50) && !inWoods(p)).map(([x, y], i) => [x, y, Math.round(5 + hash(i, 4, 37) * 4)]);
+
+const hero: Point = [3100, 1046];
 
 /** The first province: Aldmoor, where Baron Grimsby has gone to ground with the royal goose. */
 export const ALDMOOR: Province = {
   id: 'aldmoor',
   name: 'Aldmoor',
-  width: 40 * 32,
-  height: 30 * 32,
-  river: [
-    [900, -20], [872, 70], [904, 170], [880, 270], [848, 350], [828, 420], [812, 480],
-    [786, 548], [748, 620], [712, 700], [690, 780], [660, 860], [640, 990],
-  ],
-  cliff: { line: [[640, 452], [700, 440], [760, 436], [830, 440], [900, 432], [952, 420]], height: 24 },
+  width: W,
+  height: H,
+  river,
+  // The river drops over a step in the crags above the ford.
+  cliff: { line: [[1690, 214], [1750, 206], [1810, 200], [1870, 204], [1930, 214]], height: 24 },
   paths,
-  forests: [
-    [140, 560, 200, 230],
-    [1010, 110, 100, 90],
-    [1140, 670, 170, 170],
-    [420, 930, 250, 100],
-    // Joins Darkwood to the south wood, so the road past the wolves is the only way to Grimsby.
-    [300, 810, 120, 70],
-    [700, 300, 78, 56],
-    [1236, 150, 70, 90],
-  ],
-  crags: [
-    [60, 110, 120, 86], [170, 90, 130, 96], [290, 104, 120, 84], [400, 80, 128, 92], [520, 96, 110, 76], [610, 70, 90, 64],
-    [110, 150, 90, 56], [460, 136, 80, 50],
-    [236, 262, 50, 32], [346, 256, 40, 26],
-    [676, 444, 46, 30], [744, 436, 36, 24], [916, 426, 44, 30],
-    [1236, 360, 60, 46], [1206, 470, 54, 40],
-  ],
-  trees: [
-    [1040, 250, false], [1188, 262, false], [1172, 290, true],
-    [1000, 760, false], [884, 790, false], [1080, 842, true],
-    [478, 694, false], [612, 520, false], [872, 604, true], [884, 522, true], [380, 420, false],
-  ],
-  rocks: [[258, 244, 8], [320, 250, 6], [270, 276, 5], [188, 222, 7], [206, 236, 5], [620, 610, 5], [960, 540, 6], [1062, 300, 5]],
-  flocks: [[1010, 90]],
+  forests,
+  regions,
+  // The long way round: the road wades the river below the falls.
+  fords: [[1769, 360]],
+  crags,
+  trees,
+  rocks,
+  flocks: [[2880, 300], [900, 820], [2600, 2100]],
   decor: [
-    { sprite: 'hut', at: [968, 772], place: 'village', seed: 3 },
-    { sprite: 'hut', at: [1016, 818], place: 'village', seed: 4 },
-    { sprite: 'hut', at: [904, 838], place: 'village', seed: 5 },
-    { sprite: 'hut', at: [1050, 770], place: 'village', seed: 6 },
+    { sprite: 'hut', at: [2098, 1330], place: 'village', seed: 3 },
+    { sprite: 'hut', at: [2180, 1420], place: 'village', seed: 4 },
+    { sprite: 'hut', at: [2044, 1464], place: 'village', seed: 5 },
+    { sprite: 'hut', at: [2020, 1376], place: 'village', seed: 6 },
   ],
   hero,
+  heroFacing: -1,
   explored: {
-    trails: [paths[1], paths[0].slice(4)],
+    trails: [roads.king],
     trailRadius: 120,
-    discs: [[at.castle[0], at.castle[1], 170], [hero[0], hero[1], 190]],
+    discs: [[at.castle[0], at.castle[1], 180], [hero[0], hero[1], 200]],
   },
   locations: [
     {
@@ -190,7 +301,7 @@ export const ALDMOOR: Province = {
               effects: { artifact: 'dwarvenHelm', flags: { dwarf: 'friend', delving: true }, reveal: { at: at.delving, radius: 70 } },
               lines: [
                 'It takes all afternoon. At the bottom, the dwarf gives you his spare helmet and a long look.',
-                '*"A King\u2019s man with manners. Here: the old delving runs under Darkwood, and comes up behind them wolves. Mind your head."*',
+                '*"A King\u2019s man with manners. Here: the old delving runs south under the heath, and comes up in Darkwood, behind them wolves. Mind your head."*',
               ],
             },
           ],
@@ -198,7 +309,7 @@ export const ALDMOOR: Province = {
         {
           id: 'delving',
           when: { flag: 'delving' },
-          lines: ['The dwarf nods at the rails. *"South, under Darkwood, and up behind the wolves. Takes all day."*'],
+          lines: ['The dwarf nods at the rails. *"South, under the heath, and up in Darkwood behind the wolves. Takes all day."*'],
           choices: [
             {
               id: 'south',
@@ -228,7 +339,7 @@ export const ALDMOOR: Province = {
         {
           id: 'open',
           when: { flag: 'delving' },
-          lines: ['The bricks are down. The rails run north under Darkwood, all the way back to the Old Mine.'],
+          lines: ['The bricks are down. The rails run north under the heath, all the way back to the Old Mine in the crags.'],
           choices: [
             {
               id: 'north',
@@ -287,9 +398,9 @@ export const ALDMOOR: Province = {
       done: false,
       text: {
         about: [
-          '**NORTH:** the Old Watchtower.',
-          '**EAST:** Westmere, over the old bridge.',
-          '**SOUTH-WEST:** Darkwood, and Baron Grimsby, who owes the Crown three years of taxes and one goose.',
+          '**SOUTH-WEST:** Westmere, and the old bridge.',
+          '**NORTH-WEST:** the ford, the long way round.',
+          '**OVER THE RIVER:** the heath, and Darkwood, and Baron Grimsby, who owes the Crown three years of taxes and one goose.',
         ],
       },
     },
@@ -404,9 +515,7 @@ export const ALDMOOR: Province = {
       enemy: {
         look: 'soldiers',
         tier: 'gate',
-        behaviour: 'roam',
-        range: 90,
-        lines: ['Grimsby\u2019s men, with goose feathers in their helmets. They patrol the crossroads, and they are not in a hurry.'],
+        lines: ['Grimsby\u2019s men, with goose feathers in their helmets. They hold the old bridge, and they are not in a hurry.'],
         army: [{ troop: 'swordsmen', count: PATROL.swordsmen }, { troop: 'crossbowmen', count: PATROL.crossbowmen }],
         reward: 500,
         threat: 'They level their spears.',
@@ -435,7 +544,7 @@ export const ALDMOOR: Province = {
             effects: { done: true, xp: 300, place: PIKES_CAMP, flags: { pike: false } },
             lines: [
               'Sergeant Pike reads his father\u2019s journal twice, and blows his nose on his sleeve. *"Right, lads. Mum wants us home."*',
-              'The whole patrol follows him off to the crossroads, where they make camp. *They would fight for the Crown now, for the right money.*',
+              'The whole patrol follows him home to Westmere, where they make camp on the green. *They would fight for the Crown now, for the right money.*',
             ],
           },
         ],
@@ -487,12 +596,13 @@ export const ALDMOOR: Province = {
       name: 'Poachers',
       at: at.poachers,
       done: false,
+      artifact: 'rabbitsFoot',
       enemy: {
         look: 'soldiers',
         tier: 'pest',
         behaviour: 'roam',
         range: 60,
-        lines: ['Poachers, with the King\u2019s deer over their shoulders.'],
+        lines: ['Poachers, with the King\u2019s deer over their shoulders.', '*Their leader keeps touching a rabbit\u2019s foot on a string, for luck.*'],
         army: [{ troop: 'poachers', count: 16 }],
         reward: 150,
         threat: 'They nock their arrows, a little guiltily.',
@@ -561,7 +671,7 @@ export const ALDMOOR: Province = {
         tier: 'pest',
         behaviour: 'roam',
         range: 60,
-        lines: ['Wild boars, rooting up the castle road.'],
+        lines: ['Wild boars, rooting at the edge of the King\u2019s chase.'],
         army: [{ troop: 'boars', count: 9 }],
         reward: 80,
         threat: 'The biggest one lowers its tusks and scrapes the ground.',
