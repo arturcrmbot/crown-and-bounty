@@ -28,7 +28,7 @@ import type { Display } from './display';
 import type { Input } from './input';
 import type { Screen } from './screen';
 import { backgroundCard, endCard, keysCard, storyCard } from './intro';
-import { clearSave, saveGame } from './save';
+import { clearSave, keepMinimap, minimapWanted, saveGame } from './save';
 import { Walks } from './walks';
 import { tiredResult } from './adventureCards';
 import { doorsOf, hiddenShare, HIDES, reachOf, type Reach } from './doors';
@@ -58,23 +58,6 @@ const GALLOP = 3;
 /** The crossed swords, twice their size, for the pointer over an enemy. */
 let swords: string | null = null;
 const swordsCursor = () => (swords ??= `url("${bitmapUrl(statIcon('attack'), 0, 2)}") 16 16, pointer`);
-
-/** Whether the player has folded the minimap away (Tab, or its button): kept like the sound's settings, not in the save. */
-const MINIMAP_KEY = 'kings-commission/minimap';
-function minimapWanted(): boolean {
-  try {
-    return localStorage.getItem(MINIMAP_KEY) !== 'folded';
-  } catch {
-    return true;
-  }
-}
-function keepMinimap(shown: boolean) {
-  try {
-    localStorage.setItem(MINIMAP_KEY, shown ? 'out' : 'folded');
-  } catch {
-    // Nowhere to remember it; it still works for now.
-  }
-}
 
 /** Cuts the corners of a cell-by-cell route so the dots curve like the ride does. */
 function curve(points: Point[]): Point[] {
