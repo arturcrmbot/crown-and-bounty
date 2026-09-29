@@ -139,7 +139,7 @@ export type BattleView = {
   /** What a stack looks like while a change plays out (newts, or null for itself), instead of what its statuses say. */
   looks: Map<number, Critter | null>;
   reach: Set<number>;
-  hover: { hex: number; kind: 'move' | 'melee' | 'shoot' | 'spell' } | null;
+  hover: { hex: number; kind: 'move' | 'melee' | 'shoot' | 'spell' | 'bard' } | null;
   floaters: Floater[];
   shots: Shot[];
   log: string;
@@ -150,6 +150,8 @@ export type BattleView = {
   /** What the pointed-at action would do, shown instead of the log. */
   preview: string | null;
   targeting: string | null;
+  /** A bard is taking his turn: the Defend button sings instead. */
+  bard: boolean;
   /** Seconds since the battle opened, for breathing and flags. */
   time: number;
   /** How hard the field shakes this frame, in pixels. */
@@ -307,11 +309,11 @@ export class BattleScreen {
       fillHex(screen, active.at, LIGHT_LUT, 1);
       outlineHex(screen, active.at, GOLD[5]);
     }
-    if (view.hover) outlineHex(screen, view.hover.hex, view.hover.kind === 'move' ? GOLD[6] : view.hover.kind === 'spell' ? BLUE[6] : RED[5]);
+    if (view.hover) outlineHex(screen, view.hover.hex, view.hover.kind === 'move' || view.hover.kind === 'bard' ? GOLD[6] : view.hover.kind === 'spell' ? BLUE[6] : RED[5]);
 
-    // The fallen stay where they fell, under everyone still standing.
+    // The fallen stay where they fell, under everyone still standing. Those paid off walked away.
     for (const f of b.fighters) {
-      if (f.count > 0 || view.dying.has(f.id) || isLeader(f)) continue;
+      if (f.count > 0 || view.dying.has(f.id) || isLeader(f) || f.left) continue;
       const [cx, cy] = hexCentre(f.at);
       const { sprite, x, y } = corpseSprite(f.troop, f.side === 'player' ? 'blue' : 'red', f.side === 'player' ? 1 : -1);
       blit(screen, sprite, Math.round(cx + x), Math.round(cy + 12 + y), MAP_VIEW);
@@ -650,7 +652,7 @@ export class BattleScreen {
     for (const button of BUTTONS) {
       const { x, y, width, height } = button.rect;
       const disabled = button.id === 'spells' && !Object.values(SPELLS).some((s) => canCast(b, s.id));
-      const label = button.id === 'auto' && view.finishOffer ? 'Finish' : button.label;
+      const label = button.id === 'auto' && view.finishOffer ? 'Finish' : button.id === 'defend' && view.bard ? 'Sing' : button.label;
       for (let j = 0; j < height; j++) {
         for (let i = 0; i < width; i++) {
           const edge = i === 0 || j === 0 ? GOLD[4] : i === width - 1 || j === height - 1 ? INK : -1;

@@ -180,7 +180,7 @@ export const BACKGROUNDS: Record<BackgroundId, Background> = {
     title: 'Lord Aldric, Courtier',
     short: 'Lord Aldric',
     pitch: 'Knows everyone, owes no one. Cheaper troops, fatter paydays, a full purse.',
-    playstyle: 'Pay your way. Starts rich, bribes cheap, and buys whole bands of cutthroats.',
+    playstyle: 'Talk your way through. Starts rich, bribes cheap, and in battle pays, jeers and sings instead of fighting.',
     stats: { attack: 1, defence: 1, spellPower: 2, knowledge: 2 },
     leadership: 125,
     gold: 2400,

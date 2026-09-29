@@ -2,7 +2,7 @@ import { ARTIFACTS, type Slot } from '../content/artifacts';
 import { BACKGROUNDS, type BackgroundId, type Bonus } from '../content/backgrounds';
 import { PERKS, RANKS, SKILLS, skillNote, type SkillId } from '../content/skills';
 import { MAP_SPELLS, SPELLS, type MapSpellId } from '../content/spells';
-import { abilitiesOf, TROOPS, troops, type TroopId } from '../content/troops';
+import { ABILITIES, abilitiesOf, TROOPS, troops, type TroopId } from '../content/troops';
 import { createBattle, statsOf } from './battle/battle';
 import { rowOf } from './battle/hex';
 import { CAMPAIGN_LENGTH, commissionOf } from './campaign';
@@ -311,6 +311,15 @@ function chargeLine(state: GameState): string {
     : 'He charges as he rides in from behind the line: a quarter harder, and nobody strikes back.';
 }
 
+/** What a bard pays to send a stack home, or bring it over, in weeks of its wages: after his share off every bribe. */
+function bribes(state: GameState): Note[] {
+  const art = (TROOPS[heroFighter(state).troop].abilities ?? []).map((a) => ABILITIES[a].bard).find(Boolean);
+  if (!art) return [];
+  const off = heroStats(state).bribes;
+  const less = off ? `, less ${Math.round(off * 100)}%` : '';
+  return [{ name: 'Bribes', note: `He pays ${art.weeks.leave} weeks of a stack\u2019s wages to send it home, or ${art.weeks.join} to bring it over if it fits under his banner${less}. Beasts take no gold, and villains and captains can\u2019t be bought. His sergeants never spend his gold.` }];
+}
+
 /** The hero's own card, laid out like a stack's: how he fights from behind the line, and what he brings the army. */
 export type LeaderSheet = { troop: TroopId; title: string; note: string; stats: StackSheet['stats']; traits: Note[]; lines: string[] };
 
@@ -336,6 +345,7 @@ export function leaderSheet(state: GameState): LeaderSheet {
     ...(me.charges ? [{ name: 'Charge', note: chargeLine(state), trick: true }] : []),
     ...(me.shots ? [{ name: 'Shooter', note: 'Shoots from behind the line, at any stack on the field.' }] : []),
     ...me.abilities.map((a) => ({ name: a.name, note: a.note })),
+    ...bribes(state),
     // How many spells a round is said above, and who charges too.
     ...leaderTraits(state).filter((n) => !n.name.endsWith('spells a round') && !(me.charges && n.name === 'Charge')),
   ];

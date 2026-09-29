@@ -1,8 +1,9 @@
-import { needsTarget, SPELLS, STATUSES, type SpellId } from '../content/spells';
+import { needsTarget, SPELLS, STATUSES, type SpellId, type StatusDef } from '../content/spells';
 import { TROOPS, troops } from '../content/troops';
 import { chooseAction, finishEstimate } from '../rules/battle/ai';
 import { manaInBattle } from '../rules/heroSheet';
-import { activeFighter, battleAct, battleEnd, canCast, casterOf, castsLeft, chargeOf, CHARGE_BONUS, fighterById, isCharge, isLeader, onField, options, ridesOut, spellCost, spellDamage, spellsOf, spellVictims, strike, unitOf, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
+import { coins } from '../rules/state';
+import { activeFighter, bardOf, battleAct, battleEnd, bribePrice, canCast, canJoin, casterOf, castsLeft, chargeOf, CHARGE_BONUS, fighterById, isCharge, isLeader, onField, options, ridesOut, spellCost, spellDamage, spellsOf, spellVictims, strike, unitOf, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
 import { paintBanner } from '../render/banner';
 import { BattleScreen, BUTTONS, FIRE_FALL, FLOAT_RISE, hexAt, hexCentre, leaderAt, LOG_BOTTOM, spotOf, type BattleView, type Shot } from '../render/battleScreen';
 import { animLength, bodyHeight, hitTime, STAND, type AnimName } from '../render/battleSprites';
@@ -27,6 +28,12 @@ const MS = 0.00085;
 const FLINCH_EARLY = 126;
 /** Wesnoth pulses a unit red twice when it is hit: on for each of these stretches of the first 300 ms. */
 const pulse = (k: number) => (k > 0.05 && k < 0.35) || (k > 0.55 && k < 0.85);
+/** What a bard shouts at a stack he jeers. */
+const JEERS = ['Call that a sword?', 'Boo! Hiss!', 'Go home to mother!', 'Nice hat!', 'Is that all?', 'My goose fights better!'];
+/** A share as a whole percentage: "25%". */
+const pct = (x: number) => `${Math.round(Math.abs(x) * 100)}%`;
+/** What a song or a jeer does to spirits, in words: "+25% morale", "−30% morale", "+20% luck". */
+const spirits = (s: StatusDef) => [s.morale ? `${s.morale > 0 ? '+' : '\u2212'}${pct(s.morale)} morale` : '', s.luck ? `+${pct(s.luck)} luck` : ''].filter(Boolean).join(', ');
 
 /**
  * A battle on screen. The rules decide everything; this plays each event as a little animation,
@@ -66,6 +73,8 @@ export class BattleController implements Screen {
       if (action.type === 'spell' && needsTarget(action.spell)) this.view.targeting = action.spell;
       else if (action.type === 'spell') this.perform({ type: 'cast', spell: action.spell });
       else if (action.type === 'retreat') this.perform({ type: 'retreat' });
+      else if (action.type === 'bard') this.perform(action.move === 'jeer' ? { type: 'jeer', target: action.target } : { type: 'bribe', target: action.target, join: action.move === 'buy' });
+      else if (action.type === 'sing') this.perform({ type: 'sing', song: action.song });
     });
     this.view = {
       positions: new Map(),
@@ -87,6 +96,7 @@ export class BattleController implements Screen {
       inspect: null,
       preview: null,
       targeting: null,
+      bard: false,
       time: 0,
       shake: 0,
       banner: null,
@@ -115,7 +125,79 @@ export class BattleController implements Screen {
   private turnLine(id: number): string | null {
     const f = fighterById(this.battle, id);
     if (f.side !== 'player' || !isLeader(f)) return null;
+    if (bardOf(f)) return `${this.fighterName(id)}: click one of their stacks to pay or jeer it, or press Sing. Or Wait.`;
     return `${this.fighterName(id)} ${ridesOut(f) ? 'can ride out at any stack in reach, strike, and ride back' : 'can shoot any stack from behind the line'}. Or Wait.`;
+  }
+
+  /**
+   * A bard's flourish as he makes his move, and `start` as it begins (the words, the sound): his
+   * fidget (a bow, hat off) or his casting frames, the first moments of them.
+   */
+  private flourish(id: number, anim: 'idle' | 'cast', start: () => void) {
+    const f = fighterById(this.battle, id);
+    const length = ART[f.troop][anim] ? Math.min(700, animLength(f.troop, anim)) : 0;
+    this.step(Math.max(0.3, length * MS), {
+      start,
+      tick: (t) => length && this.view.poses.set(id, { anim, ms: Math.min(length, (t * Math.max(0.3, length * MS)) / MS) }),
+      end: () => this.view.poses.delete(id),
+    });
+  }
+
+  /** The forecast for a bard's moves on one of their stacks: what paying them off would cost, and what a jeer does. */
+  private bardLine(id: number) {
+    const f = activeFighter(this.battle)!;
+    const target = fighterById(this.battle, id);
+    const leave = bribePrice(this.battle, f, target);
+    const join = bribePrice(this.battle, f, target, true);
+    const jeer = `or jeer them (${spirits(STATUSES[bardOf(f)!.jeer])})`;
+    if (leave === null) return `${this.fighterName(id)} take no gold: ${jeer.slice(3)}.`;
+    return `${this.fighterName(id)}: ${coins(leave)} gold to go home${join !== null && canJoin(this.battle, target) ? `, ${coins(join)} to join you` : ''}; ${jeer}.`;
+  }
+
+  /** A bard's moves on one of their stacks, each with its price or what it does, before he makes it. */
+  private bardCard(id: number) {
+    const f = activeFighter(this.battle)!;
+    const art = bardOf(f)!;
+    const target = fighterById(this.battle, id);
+    const gold = this.battle.hero.gold ?? 0;
+    const leave = bribePrice(this.battle, f, target);
+    const join = bribePrice(this.battle, f, target, true);
+    const room = canJoin(this.battle, target);
+    const off = this.battle.hero.bribes ? `, less ${pct(this.battle.hero.bribes)}` : '';
+    const jeer = STATUSES[art.jeer];
+    const lines =
+      leave === null || join === null
+        ? [`*${TROOPS[target.troop].name} take no gold.*`]
+        : [
+            `Pay them **${coins(leave)} gold** (${art.weeks.leave} weeks\u2019 wages${off}), and they go home.`,
+            room ? `Pay them **${coins(join)} gold** (${art.weeks.join} weeks\u2019 wages${off}), and they fight for you, and ride on with you after.` : '*You have no room under your banner for them to come over.*',
+            `You carry **${coins(gold)} gold**.`,
+          ];
+    lines.push(`Jeer them, and they lose heart: ${spirits(jeer)} for ${jeer.rounds} rounds, a chance they lose their turn.`);
+    this.cards.show({
+      title: this.fighterName(id, target.count),
+      lines,
+      choices: [
+        ...(leave === null ? [] : [{ label: `Pay them to go (${coins(leave)} gold)`, action: { type: 'bard' as const, move: 'bribe' as const, target: id }, disabled: leave > gold }]),
+        ...(join === null || !room ? [] : [{ label: `Pay them to join you (${coins(join)} gold)`, action: { type: 'bard' as const, move: 'buy' as const, target: id }, disabled: join > gold }]),
+        { label: 'Jeer them', action: { type: 'bard', move: 'jeer', target: id } },
+        { label: 'Close', action: { type: 'close' } },
+      ],
+    });
+  }
+
+  /** A bard's songs, and what each does for every stack of yours, before he sings. */
+  private songCard() {
+    const art = bardOf(activeFighter(this.battle)!)!;
+    this.cards.show({
+      title: 'Sing',
+      lines: art.songs.map((id) => {
+        const s = STATUSES[id];
+        const what = s.luck ? 'a chance each blow lands twice as hard' : 'a chance each stack goes again before the round moves on';
+        return `**${s.song![0].toUpperCase()}${s.song!.slice(1)}**: ${spirits(s)} for every stack of yours, for ${s.rounds} rounds: ${what}.`;
+      }),
+      choices: [...art.songs.map((id) => ({ label: `Sing ${STATUSES[id].song}`, action: { type: 'sing' as const, song: id } })), { label: 'Close', action: { type: 'close' } }],
+    });
   }
 
   /** One thing the hero brought, and whom it touches, in words. */
@@ -180,7 +262,10 @@ export class BattleController implements Screen {
   private float(id: number, text: string, color: number, from?: [number, number]) {
     const f = fighterById(this.battle, id);
     // Over the stack's own hex, not wherever a blow has knocked it, so it never lands on the attacker.
-    const [x, y] = from ?? this.spot(id);
+    // Words over a leader at the edge of the field are nudged in, so none are cut off.
+    const [spotX, y] = from ?? this.spot(id);
+    const half = text.length * 4 + 4;
+    const x = Math.min(Math.max(spotX, MAP_VIEW.x + half), MAP_VIEW.x + MAP_VIEW.width - half);
     const top = Math.max(FLOAT_TOP, y + 12 - bodyHeight(f.troop, 'battle') - 16);
     // Words are 8 px a letter and 16 px a line, and all rise together, so where they are now is where they stay apart.
     const clash = (at: number) => this.view.floaters.some((o) => Math.abs(o.x - x) < ((o.text.length + text.length) * 8) / 2 + 4 && Math.abs(o.y - o.age * FLOAT_RISE - at) < 16);
@@ -649,6 +734,103 @@ export class BattleController implements Screen {
         case 'round':
           this.step(0.05, { start: () => (v.log = `Round ${e.round}.`) });
           break;
+        case 'falter':
+          this.step(0.6, {
+            start: () => {
+              play('falter');
+              this.float(e.fighter, 'Falters', RED[6]);
+              v.log = `${this.fighterName(e.fighter)} ${this.verb(e.fighter, 'lose')} heart, and ${this.named(e.fighter) ? 'his' : 'their'} turn.`;
+              v.poses.set(e.fighter, { anim: 'defend', ms: 0 });
+            },
+            end: () => v.poses.delete(e.fighter),
+          });
+          break;
+        case 'bribe': {
+          // They stay as they were till the coins change hands: then they go home, or come over in your colours.
+          const target = fighterById(this.battle, e.target);
+          const [tx, ty] = hexCentre(target.at);
+          const joined = e.joined;
+          v.dying.add(e.target);
+          v.counts.set(e.target, e.count);
+          if (joined !== undefined) v.hidden.add(joined);
+          this.flourish(e.fighter, 'idle', () => {
+            play('coins');
+            this.float(e.fighter, `\u2212${coins(e.gold)} gold`, GOLD[6]);
+            v.log = `${this.fighterName(e.fighter)} pays ${this.objectName(e.target)} ${coins(e.gold)} gold: ${joined === undefined ? 'they shoulder their weapons and go home.' : 'they turn their coats, and fight for you!'}`;
+          });
+          if (joined === undefined) {
+            const edge = target.side === 'player' ? MAP_VIEW.x - 40 : MAP_VIEW.x + MAP_VIEW.width + 40;
+            const frames = !!ART[target.troop].move;
+            const length = 0.3 + Math.abs(edge - tx) / 240;
+            this.step(length, {
+              start: () => {
+                v.facings.set(e.target, target.side === 'player' ? -1 : 1);
+                play('march');
+              },
+              tick: (t) => {
+                const hop = frames ? 0 : Math.abs(Math.sin(t * Math.PI * 6)) * 3;
+                v.positions.set(e.target, [tx + (edge - tx) * t, ty - hop]);
+                v.poses.set(e.target, frames ? { anim: 'move', ms: t * length * 1000 } : STAND);
+              },
+              end: () => {
+                v.dying.delete(e.target);
+                for (const map of [v.positions, v.poses, v.facings, v.counts]) map.delete(e.target);
+              },
+            });
+          } else {
+            this.step(0.35, {
+              start: () => {
+                this.puff(e.target);
+                v.dying.delete(e.target);
+                v.counts.delete(e.target);
+                v.hidden.delete(joined);
+                this.float(joined, `+${e.count}`, GOLD[6]);
+              },
+            });
+          }
+          break;
+        }
+        case 'jeer': {
+          const jeer = JEERS[(e.target + this.battle.round) % JEERS.length];
+          this.flourish(e.fighter, 'cast', () => {
+            play('jeer');
+            this.float(e.fighter, jeer, NEUTRAL[7]);
+            v.log = `${this.fighterName(e.fighter)} jeers at ${this.objectName(e.target)}: \u201c${jeer}\u201d They lose heart.`;
+          });
+          this.step(0.5, {
+            start: () => {
+              this.float(e.target, STATUSES[e.status].name, RED[5]);
+              v.poses.set(e.target, { anim: 'defend', ms: 0 });
+            },
+            end: () => v.poses.delete(e.target),
+          });
+          break;
+        }
+        case 'song': {
+          const status = STATUSES[e.status];
+          // Gold motes swirl over every stack the song reaches.
+          const motes = e.targets.map((id): Shot => {
+            const [x, y] = this.spot(id);
+            return { from: [x, y], to: [x, y - 14], t: 0, kind: 'sparkle', color: GOLD[6] };
+          });
+          this.flourish(e.fighter, 'idle', () => {
+            play(status.luck ? 'luckySong' : 'song');
+            v.log = `${this.fighterName(e.fighter)} strikes up ${status.song}: ${status.luck ? 'your stacks feel lucky' : 'your stacks take heart'}.`;
+          });
+          this.step(0.9, {
+            start: () => {
+              v.shots.push(...motes);
+              for (const id of e.targets) this.float(id, status.name, GOLD[6]);
+            },
+            tick: (t) => {
+              for (const mote of motes) mote.t = t;
+            },
+            end: () => {
+              for (const mote of motes) v.shots.splice(v.shots.indexOf(mote), 1);
+            },
+          });
+          break;
+        }
         case 'volley':
           // An order: he bellows it, and the shots that follow are his men's.
           if (e.spell) this.cast(e.spell, before, e.by);
@@ -787,6 +969,8 @@ export class BattleController implements Screen {
     // Where the acting stack can walk to, or how far a leader who rides out can ride.
     const opts = mine && !v.targeting ? options(this.battle) : null;
     v.reach = opts ? new Set([...opts.moves.keys(), ...(opts.rides?.keys() ?? [])]) : new Set();
+    // A bard's Defend button sings instead.
+    v.bard = mine && !!f && !!bardOf(f);
     if (this.pointer && mine) this.hoverAt(...this.pointer);
     else if (!mine) {
       v.hover = null;
@@ -815,7 +999,7 @@ export class BattleController implements Screen {
   }
 
   /** What clicking a hex would do, for the stack whose turn it is. */
-  private intent(hex: number, x: number, y: number): { action: BattleAction; kind: 'move' | 'melee' | 'shoot' | 'spell' } | null {
+  private intent(hex: number, x: number, y: number): { action: BattleAction; kind: 'move' | 'melee' | 'shoot' | 'spell' | 'bard' } | null {
     const f = activeFighter(this.battle);
     if (!f || f.side !== 'player' || this.auto || this.queue.length > 0) return null;
     const occupant = this.battle.fighters.find((o) => onField(o) && o.at === hex);
@@ -824,6 +1008,8 @@ export class BattleController implements Screen {
       if (occupant && (occupant.side === 'enemy') === (spell.on === 'enemy')) return { action: { type: 'cast', spell: spell.id, target: occupant.id }, kind: 'spell' };
       return null;
     }
+    // A bard's turn: a click on one of theirs asks what to do with them (pay them, or jeer them).
+    if (bardOf(f)) return occupant && occupant.side === 'enemy' ? { action: { type: 'jeer', target: occupant.id }, kind: 'bard' } : null;
     const opts = options(this.battle);
     if (occupant && occupant.side === 'enemy') {
       if (opts.shoot.includes(occupant.id)) return { action: { type: 'shoot', target: occupant.id }, kind: 'shoot' };
@@ -869,6 +1055,7 @@ export class BattleController implements Screen {
   private forecast(action: BattleAction): string | null {
     const f = activeFighter(this.battle);
     if (!f) return null;
+    if (action.type === 'jeer' || action.type === 'bribe') return this.bardLine(action.target);
     const target = 'target' in action && action.target !== undefined ? fighterById(this.battle, action.target) : null;
     if (!target) return null;
     const t = TROOPS[target.troop];
@@ -906,6 +1093,8 @@ export class BattleController implements Screen {
     }
     if (!mine || this.auto) return;
     if (id === 'wait') this.perform({ type: 'wait' });
+    // A bard has nothing to defend against: the button sings instead.
+    else if (id === 'defend' && bardOf(f)) this.songCard();
     else if (id === 'defend') this.perform({ type: 'defend' });
     else if (id === 'retreat') this.confirmRetreat();
     else this.openSpellbook();
@@ -960,7 +1149,8 @@ export class BattleController implements Screen {
       if (button) return this.button(button.id);
       const hex = hexAt(x, y);
       const intent = hex === null ? null : this.intent(hex, x, y);
-      if (intent) this.perform(intent.action);
+      if (intent?.kind === 'bard' && intent.action.type === 'jeer') this.bardCard(intent.action.target);
+      else if (intent) this.perform(intent.action);
     },
     hover: (x: number, y: number) => {
       this.pointer = [x, y];

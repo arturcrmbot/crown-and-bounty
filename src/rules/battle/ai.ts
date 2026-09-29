@@ -1,7 +1,7 @@
 import { abilitiesOf, type TroopId } from '../../content/troops';
 import { needsTarget, SPELLS, STATUSES } from '../../content/spells';
 import {
-  activeFighter, battleAct, canCast, casterSide, castersOf, CHARGE_BONUS, CHARGE_HEXES, fighterById, hasTurn, isLeader, onField, rideFrom, ridesOut, spellsOf, hasStatus, isRanged, options, powerOf, spellCost, spellDamage, speedOf, statsOf, stepsTo, strike, unitOf, wound,
+  activeFighter, bardOf, battleAct, canCast, casterSide, castersOf, CHARGE_BONUS, CHARGE_HEXES, fighterById, hasTurn, isLeader, moraleOf, onField, rideFrom, ridesOut, spellsOf, hasStatus, isRanged, options, powerOf, spellCost, spellDamage, speedOf, statsOf, stepsTo, strike, unitOf, wound,
   type BattleAction, type BattleState, type Fighter, type Options, type Side,
 } from './battle';
 import { distance, HEXES, NEIGHBOURS, reachMask } from './hex';
@@ -259,6 +259,8 @@ function threat(b: BattleState, side: Side, mask: Uint8Array): { now: number; la
     if (f.side !== side || !hasTurn(f) || f.status.some((st) => STATUSES[st].skipsTurn)) continue;
     const leader = isLeader(f);
     const pinned = !leader && foes.some((o) => NEIGHBOURS[f.at].includes(o.at));
+    // Spirits count: good morale is a chance of another blow, bad morale a chance of none.
+    const spirit = Math.max(0, 1 + moraleOf(b, f));
     if (f.shots > 0 && !pinned) {
       let best = 0;
       let target = -1;
@@ -266,7 +268,7 @@ function threat(b: BattleState, side: Side, mask: Uint8Array): { now: number; la
         const gain = loss(b, o, strike(b, f, o, true).damage);
         if (gain > best) [best, target] = [gain, o.id];
       }
-      if (target >= 0) add(now, target, best);
+      if (target >= 0) add(now, target, best * spirit);
       continue;
     }
     if (leader && !ridesOut(f)) continue;
@@ -290,8 +292,8 @@ function threat(b: BattleState, side: Side, mask: Uint8Array): { now: number; la
       if (soon && gain > best) [best, target] = [gain, o.id];
       else if (!soon && gain > bestLater) [bestLater, targetLater] = [gain, o.id];
     }
-    if (target >= 0) add(now, target, best);
-    else if (targetLater >= 0) add(later, targetLater, bestLater);
+    if (target >= 0) add(now, target, best * spirit);
+    else if (targetLater >= 0) add(later, targetLater, bestLater * spirit);
   }
   const total = (map: Map<number, number>) => [...map].reduce((sum, [id, worth]) => sum + Math.min(worth, stackWorth(b, fighterById(b, id))), 0);
   return { now: total(now), later: total(later) };
@@ -336,14 +338,21 @@ export function evaluate(b: BattleState, side: Side, w: Weights = CAREFUL): numb
   return score;
 }
 
-/** Every action the acting stack could take (the hero's spells come separately). */
+/**
+ * Every action the acting stack could take (the hero's spells come separately). A bard jeers and
+ * sings, but the sergeants never spend your gold: bribes are yours to make, by hand.
+ */
 export function stackActions(b: BattleState): BattleAction[] {
   const opts = options(b);
+  const f = activeFighter(b);
+  const bard = f && bardOf(f);
   return [
     ...opts.shoot.map((target): BattleAction => ({ type: 'shoot', target })),
     ...opts.melee.map((m): BattleAction => ({ type: 'melee', target: m.target, from: m.from })),
     ...[...opts.moves.keys()].map((to): BattleAction => ({ type: 'move', to })),
     { type: 'defend' },
+    ...(bard ? b.fighters.filter((o) => onField(o) && o.side !== f.side).map((o): BattleAction => ({ type: 'jeer', target: o.id })) : []),
+    ...(bard ? bard.songs.map((song): BattleAction => ({ type: 'sing', song })) : []),
   ];
 }
 

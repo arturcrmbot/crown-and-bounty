@@ -104,7 +104,7 @@ describe('Aldric behind the line', () => {
     expect(commander(lancer)).toMatchObject({ type: 'melee', target: foe.id });
   });
 
-  it('shoots from behind the line as the Wizard and the Ranger, and as the Courtier takes no turn at all', () => {
+  it('shoots from behind the line as the Wizard and the Ranger, and as the Courtier strikes no blow at all', () => {
     for (const background of ['wizard', 'ranger'] as const) {
       const b = battleOf(hero(background), 'patrol');
       const me = aldric(b);
@@ -115,9 +115,12 @@ describe('Aldric behind the line', () => {
       const shot = battleAct(turn, { type: 'shoot', target: swordsmen.id }).events.filter((e) => e.type === 'hit');
       expect(shot).toHaveLength(1);
     }
+    // The Courtier takes his turn as a bard (see bard.test.ts), but never with a blow or a shot.
     const court = battleOf(hero('courtier'), 'patrol');
-    expect(hasTurn(aldric(court))).toBe(false);
-    expect(court.order).not.toContain(aldric(court).id);
+    const lord = aldric(court);
+    expect(hasTurn(lord)).toBe(true);
+    const his = options({ ...court, order: [lord.id] });
+    expect([...his.melee, ...his.shoot, ...his.moves.keys()]).toEqual([]);
     expect(canCast(court, 'bless')).toBe(true);
   });
 

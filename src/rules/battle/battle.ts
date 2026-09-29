@@ -1,6 +1,6 @@
 import { needsTarget, SPELLS, STATUSES, type SpellId, type StatusId } from '../../content/spells';
 import { ABILITIES, abilitiesOf, TROOPS, unitPower, type TroopDef, type TroopId } from '../../content/troops';
-import { roll, type Army } from '../state';
+import { MAX_STACKS, roll, type Army } from '../state';
 import { COLS, HEXES, hexIndex, NEIGHBOURS, neighbours, reachable, ROWS } from './hex';
 
 export type Side = 'player' | 'enemy';
@@ -33,6 +33,8 @@ export type Fighter = {
   unit?: UnitNumbers;
   /** Aldric himself, who leads your side from behind the line: the side's spells are his to cast. */
   hero?: boolean;
+  /** How many walked off the field without a blow: paid to go home, or gone over to the other side. */
+  left?: number;
   /** A villain who leads his side as Aldric does his: his own spellbook, cast from behind his men. */
   book?: Spellbook;
 };
@@ -71,6 +73,10 @@ export type BattleHero = Spellbook & {
   /** Chance a stack's good spirits win it another turn before the round moves on. */
   morale?: number;
   manaDiscount?: number;
+  /** The gold he carries, for a bard's bribes, the share off every bribe, and the leadership he has free for troops who come over. */
+  gold?: number;
+  bribes?: number;
+  room?: number;
   /** Extra attack, defence and shots for kinds of troop. */
   troops?: Partial<Record<TroopId, { attack: number; defence: number; shots: number }>>;
   /** Enemy troops that start slowed. */
@@ -144,7 +150,11 @@ export type BattleAction =
   /** A spell or an order. `target` for those aimed at a stack; `by` for a villain's (none for Aldric's). */
   | { type: 'cast'; spell: SpellId; target?: number; by?: number }
   | { type: 'volley' }
-  | { type: 'retreat' };
+  | { type: 'retreat' }
+  /** A bard's moves: pay a stack to leave the field (or `join`, to fight for him), jeer one, or sing over his own. */
+  | { type: 'bribe'; target: number; join?: boolean }
+  | { type: 'jeer'; target: number }
+  | { type: 'sing'; song: StatusId };
 
 export type BattleEvent =
   /** A stack walks its path; a leader who rides out rides in from his side's edge along it, to strike. */
@@ -171,6 +181,14 @@ export type BattleEvent =
   | { type: 'turn'; fighter: number }
   /** Good spirits win a stack another turn before the round moves on (once a round). */
   | { type: 'morale'; fighter: number }
+  /** Low spirits: a stack loses heart, and its turn. */
+  | { type: 'falter'; fighter: number }
+  /** A bard pays `count` of a stack `gold` to leave the field, or to fight for him as a new stack (`joined`). */
+  | { type: 'bribe'; fighter: number; target: number; gold: number; count: number; joined?: number }
+  /** A bard jeers a stack, which takes the status. */
+  | { type: 'jeer'; fighter: number; target: number; status: StatusId }
+  /** A bard sings, and every stack of his side on the field takes the song's status. */
+  | { type: 'song'; fighter: number; status: StatusId; targets: number[] }
   | { type: 'round'; round: number }
   | { type: 'end'; result: 'won' | 'lost' | 'fled'; rout?: boolean };
 
@@ -181,9 +199,10 @@ const LINE_UP = [4, 2, 6, 0, 8];
 
 const alive = (f: Fighter) => f.count > 0;
 
-const troopsWith = (has: (a: (typeof ABILITIES)[keyof typeof ABILITIES]) => boolean | undefined) => new Set(Object.values(TROOPS).filter((t) => (t.abilities ?? []).some((a) => has(ABILITIES[a]))).map((t) => t.id));
+const troopsWith = (has: (a: (typeof ABILITIES)[keyof typeof ABILITIES]) => unknown) => new Set(Object.values(TROOPS).filter((t) => (t.abilities ?? []).some((a) => has(ABILITIES[a]))).map((t) => t.id));
 const LEADS = troopsWith((a) => a.leads);
 const RIDES = troopsWith((a) => a.rides);
+const BARDS = troopsWith((a) => a.bard);
 /** Aldric, a villain or a captain: he leads from behind his side's line, and nothing can reach him there (`leads` in content/troops.ts). */
 export const isLeader = (f: Pick<Fighter, 'troop'>) => LEADS.has(f.troop);
 /** A leader who rides out from behind the line to strike, and back. */
@@ -191,7 +210,9 @@ export const ridesOut = (f: Pick<Fighter, 'troop'>) => RIDES.has(f.troop);
 /** A stack standing on the field: the only kind of fighter a blow, a shot or a spell can reach. */
 export const onField = (f: Fighter) => f.count > 0 && !LEADS.has(f.troop);
 /** Whether a fighter has a turn of his own: every stack does, but a leader only with something to do in it. */
-export const hasTurn = (f: Fighter) => f.count > 0 && (!LEADS.has(f.troop) || f.shots > 0 || RIDES.has(f.troop));
+export const hasTurn = (f: Fighter) => f.count > 0 && (!LEADS.has(f.troop) || f.shots > 0 || RIDES.has(f.troop) || BARDS.has(f.troop));
+/** A bard's repertoire (`bard` in content/troops.ts), if the fighter is one. */
+export const bardOf = (f: Pick<Fighter, 'troop'>) => (BARDS.has(f.troop) ? abilitiesOf(f.troop).find((a) => a.bard)!.bard! : null);
 export const fighterById = (b: BattleState, id: number) => b.fighters.find((f) => f.id === id)!;
 export const activeFighter = (b: BattleState): Fighter | null => (b.result || b.order.length === 0 ? null : fighterById(b, b.order[0]));
 export const hasStatus = (f: Fighter, status: StatusId) => f.status.includes(status);
@@ -246,6 +267,17 @@ export const speedOf = (f: Fighter) => {
   return times === 1 ? base : Math.ceil(base * times);
 };
 export const isRanged = (f: Fighter) => f.shots > 0;
+
+/** What a stack's statuses add to one of its numbers (a song's morale, a jeer's). */
+const fromStatuses = (f: Fighter, of: 'morale' | 'luck') => f.status.reduce((sum, s) => sum + (STATUSES[s][of] ?? 0), 0);
+/**
+ * A stack's morale: its side's (the hero's, for yours), with what songs and jeers add. Above
+ * nought, the chance it goes again before the round moves on; below, the chance it loses heart and
+ * its turn as the turn comes.
+ */
+export const moraleOf = (b: BattleState, f: Fighter) => (f.side === 'player' ? (b.hero.morale ?? 0) : 0) + fromStatuses(f, 'morale');
+/** The chance a stack's blow lands lucky, twice as hard: its side's (the hero's, for yours), with what songs add. */
+export const luckOf = (b: BattleState, f: Fighter) => (f.side === 'player' ? (b.hero.luck ?? 0) : 0) + fromStatuses(f, 'luck');
 
 function turnOrder(fighters: Fighter[]): number[] {
   return fighters
@@ -495,7 +527,7 @@ export function strike(b: BattleState, attacker: Fighter, target: Fighter, range
   const armour = target.side === 'player' ? 1 - (b.hero.armour ?? 0) : 1;
   const shield = ranged ? statusShot(target) : 1;
   // A lucky blow lands twice as hard. Without a seed (the AI's look-ahead), the chance is spread over the average instead.
-  const luckChance = attacker.side === 'player' ? (b.hero.luck ?? 0) : 0;
+  const luckChance = luckOf(b, attacker);
   let lucky = false;
   let luck = 1;
   if (luckChance > 0) {
@@ -600,6 +632,26 @@ function summoned(b: BattleState, side: Side, troop: TroopId, share: number): nu
   if (own > 0) return Math.max(1, Math.round(own * share));
   const worth = b.fighters.filter((f) => f.side === side && !isLeader(f)).reduce((sum, f) => sum + f.startCount * powerOf(f), 0);
   return Math.max(1, Math.round((worth * share) / unitPower(TROOPS[troop])));
+}
+
+/**
+ * What a bard pays a stack of the other side to leave the field, or with `join` to fight for him: so
+ * many weeks of its wages, less the hero's share off every bribe, to the nearest ten. Null for
+ * troops who take no gold (beasts), for a leader (nothing can reach him), and for a bard who isn't
+ * yours: the gold is your purse.
+ */
+export function bribePrice(b: BattleState, bard: Fighter, target: Fighter, join = false): number | null {
+  const art = bardOf(bard);
+  const wage = TROOPS[target.troop].wage;
+  if (!art || bard.side !== 'player' || target.side === bard.side || !onField(target) || !wage) return null;
+  const weeks = join ? art.weeks.join : art.weeks.leave;
+  return Math.max(10, Math.round((target.count * wage * weeks * (1 - (b.hero.bribes ?? 0))) / 10) * 10);
+}
+
+/** Whether a stack paid to change sides would fit under the hero's banner: leadership for all of it, and a place in his line. */
+export function canJoin(b: BattleState, target: Fighter): boolean {
+  const line = new Set(b.fighters.filter((f) => f.side === 'player' && onField(f)).map((f) => f.troop));
+  return target.count * TROOPS[target.troop].leadership <= (b.hero.room ?? 0) && (line.has(target.troop) || line.size < MAX_STACKS);
 }
 
 /**
@@ -774,6 +826,40 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
       next = { ...next, result: 'fled' };
       events.push({ type: 'end', result: 'fled' });
       return { battle: next, events };
+    case 'bribe': {
+      // The gold goes, and so do they: home, or over to his side as a stack of his own, next round.
+      const target = fighters.find((x) => x.id === action.target);
+      const price = target ? bribePrice(b, f, target, action.join) : null;
+      if (!target || price === null || price > (b.hero.gold ?? 0) || (action.join && !canJoin(b, target))) return { battle: b, events: [] };
+      const count = target.count;
+      next.hero.gold = (b.hero.gold ?? 0) - price;
+      target.left = (target.left ?? 0) + count;
+      target.count = 0;
+      let joined: number | undefined;
+      if (action.join) {
+        joined = fighters.length;
+        fighters.push({ id: joined, side: f.side, troop: target.troop, count, startCount: count, hp: target.hp, at: target.at, shots: target.shots, retaliated: false, defending: false, waited: false, status: [] });
+        next.hero.room = (b.hero.room ?? 0) - count * TROOPS[target.troop].leadership;
+      }
+      events.push({ type: 'bribe', fighter: f.id, target: target.id, gold: price, count, ...(joined !== undefined ? { joined } : {}) });
+      break;
+    }
+    case 'jeer': {
+      const art = bardOf(f);
+      const target = fighters.find((x) => x.id === action.target && onField(x) && x.side !== f.side);
+      if (!art || !target) return { battle: b, events: [] };
+      addStatus(target, art.jeer, b.round);
+      events.push({ type: 'jeer', fighter: f.id, target: target.id, status: art.jeer });
+      break;
+    }
+    case 'sing': {
+      const art = bardOf(f);
+      if (!art?.songs.includes(action.song)) return { battle: b, events: [] };
+      const on = fighters.filter((x) => onField(x) && x.side === f.side);
+      for (const x of on) addStatus(x, action.song, b.round);
+      events.push({ type: 'song', fighter: f.id, status: action.song, targets: on.map((x) => x.id) });
+      break;
+    }
   }
   return settle(next, events, true, expected);
 }
@@ -788,9 +874,9 @@ function settle(b: BattleState, events: BattleEvent[], endTurn: boolean, expecte
     order = order.slice(1);
     // Good spirits: a chance the stack goes again before the round moves on, once a round. The
     // AI's look-ahead (`expected`) skips the roll, so it never sees a bonus turn that may not come.
-    const morale = b.hero.morale ?? 0;
     const acted = fighterById(b, actedId);
-    if (!expected && morale > 0 && acted.side === 'player' && !acted.moraleUsed) {
+    const morale = moraleOf(b, acted);
+    if (!expected && morale > 0 && !acted.moraleUsed) {
       const [v, rolled] = roll(seed);
       seed = rolled;
       if (v < morale) {
@@ -837,6 +923,17 @@ function settle(b: BattleState, events: BattleEvent[], endTurn: boolean, expecte
       next = { ...next, order: next.order.slice(1) };
       continue;
     }
+    // Low spirits: a chance the stack loses heart, and its turn, once a turn (not again after a wait).
+    const spirit = moraleOf(next, first);
+    if (!expected && spirit < 0 && !first.waited) {
+      const [v, rolled] = roll(next.seed);
+      next = { ...next, seed: rolled };
+      if (v < -spirit) {
+        next = { ...next, order: next.order.slice(1) };
+        events.push({ type: 'falter', fighter: first.id });
+        continue;
+      }
+    }
     // A stack turned into newts loses its turn, and then it wears off.
     const skip = first.status.find((st) => STATUSES[st].skipsTurn);
     if (!skip) break;
@@ -863,9 +960,19 @@ function settle(b: BattleState, events: BattleEvent[], endTurn: boolean, expecte
   return { battle: next, events };
 }
 
-/** The survivors of one side, as an army again. Its leader isn't part of it: Aldric rides on with his. */
+/**
+ * The survivors of one side, as an army again: troops who came over join their own kind. Its leader
+ * isn't part of it: Aldric rides on with his.
+ */
 export function survivors(b: BattleState, side: Side): Army {
-  return b.fighters.filter((f) => f.side === side && onField(f)).map((f) => ({ troop: f.troop, count: f.count }));
+  const army: Army = [];
+  for (const f of b.fighters) {
+    if (f.side !== side || !onField(f)) continue;
+    const same = army.find((s) => s.troop === f.troop);
+    if (same) same.count += f.count;
+    else army.push({ troop: f.troop, count: f.count });
+  }
+  return army;
 }
 
 /** A leader's name, as the words at the end of a battle give it: Aldric's as his background has it, or the villain's. */
