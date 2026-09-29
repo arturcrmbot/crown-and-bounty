@@ -1,6 +1,6 @@
 import { BACKGROUNDS } from '../content/backgrounds';
 import { ARTIFACTS, type ArtifactId } from '../content/artifacts';
-import { ABILITIES, heroTroop, TROOPS, type HeroId, type TroopId } from '../content/troops';
+import { ABILITIES, crowd, heroTroop, TROOPS, type HeroId, type TroopId } from '../content/troops';
 import type { StatusId } from '../content/spells';
 import { autoResolve } from './battle/ai';
 import { applyEffects } from './effects/core';
@@ -110,6 +110,26 @@ export function lossesLine(before: Army, after: Army): string {
     .filter((l) => l.dead > 0)
     .map((l) => `**${troops(l.troop, l.dead)}**`);
   return lost.length ? `You lost ${lost.join(' and ')}.` : 'Nobody on your side so much as stubbed a toe.';
+}
+
+/** The likely cost of a fight, using the same fixed trials as the sergeants' odds. */
+export function likelyLossesLine(state: GameState, id: string, samples = 16): string {
+  const place = locationById(state, id);
+  if (!place.enemy || !state.army.length) return '';
+  const estimate = simulateFight(state, place, place.enemy.army, samples);
+  const losses = estimate.losses.filter((stack) => stack.count > 0).sort((a, b) => b.count - a.count);
+  if (!losses.length) return '*The sergeants expect to bring everyone home.*';
+  if (heroStats(state).counts) {
+    return `*The sergeants expect to lose about ${losses.map((stack) => troops(stack.troop, stack.count)).join(' and ')}.*`;
+  }
+  const lost = losses.reduce((sum, stack) => sum + stack.count, 0);
+  const army = state.army.reduce((sum, stack) => sum + stack.count, 0);
+  const share = lost / army;
+  if (share < 0.1) return `*You\u2019d likely lose ${losses.map((stack) => crowd(stack.troop, stack.count)).join(' and ')}.*`;
+  const amount = share < 0.3 ? 'about a fifth' : share < 0.45 ? 'about a third' : share < 0.65 ? 'about half' : share < 0.9 ? 'most' : 'nearly all';
+  const first = losses.slice(0, 2).map((stack) => TROOPS[stack.troop].name);
+  const order = first.length === 1 ? `${first[0]} first` : `${first[0]}, then ${first[1]}`;
+  return `*You\u2019d likely lose ${amount} of your army, ${order}.*`;
 }
 
 function fallen(battle: BattleState, side: Side): Army {
@@ -297,6 +317,7 @@ const sampleSeed = (i: number) => (Math.imul(i + 1, 0x9e3779b1) ^ 0x85ebca6b) >>
 
 /** Recent answers, since the same odds get asked for again and again (every card, every bot step). */
 const chances = new Map<string, number>();
+const estimates = new Map<string, { chance: number; losses: Army }>();
 
 /** `army` asks about only part of the enemy: the beasts among a band, say. */
 export function winChance(state: GameState, id: string, samples = 16, army?: Army): number {
@@ -306,19 +327,46 @@ export function winChance(state: GameState, id: string, samples = 16, army?: Arm
   const key = JSON.stringify([state.army, heroInBattle(state), enemy, place.kind, provinceOf(state).fen ?? false, samples]);
   const known = chances.get(key);
   if (known !== undefined) return known;
-  const chance = simulateChance(state, place, enemy, samples);
-  if (chances.size > 2000) chances.clear();
-  chances.set(key, chance);
-  return chance;
+  const estimate = simulateFight(state, place, enemy, samples);
+  if (chances.size > 2000) {
+    chances.clear();
+    estimates.clear();
+  }
+  chances.set(key, estimate.chance);
+  estimates.set(key, estimate);
+  return estimate.chance;
 }
 
-function simulateChance(state: GameState, place: Location, enemy: Army, samples: number): number {
+function simulateFight(state: GameState, place: Location, enemy: Army, samples: number): { chance: number; losses: Army } {
+  const key = JSON.stringify([state.army, heroInBattle(state), enemy, place.kind, provinceOf(state).fen ?? false, samples]);
+  const known = estimates.get(key);
+  if (known) return known;
   let wins = 0;
+  const wonLosses: number[][] = state.army.map(() => []);
+  const allLosses: number[][] = state.army.map(() => []);
   for (let i = 1; i <= samples; i++) {
     const battle = createBattle({ place: place.id, seed: sampleSeed(i), player: state.army, enemy, hero: heroAgainst(state, place), obstacles: place.kind === 'hideout' ? 3 : 5 });
-    if (autoResolve(battle).result === 'won') wins++;
+    const result = autoResolve(battle);
+    const after = survivors(result, 'player');
+    const won = result.result === 'won';
+    if (won) wins++;
+    state.army.forEach((stack, index) => {
+      const lost = stack.count - (after.find((survivor) => survivor.troop === stack.troop)?.count ?? 0);
+      allLosses[index].push(lost);
+      if (won) wonLosses[index].push(lost);
+    });
   }
-  return wins / samples;
+  const source = wins ? wonLosses : allLosses;
+  const losses = state.army.map((stack, index) => {
+    const values = source[index].sort((a, b) => a - b);
+    const middle = Math.floor(values.length / 2);
+    const count = Math.round(values.length % 2 ? values[middle] : (values[middle - 1] + values[middle]) / 2);
+    return { troop: stack.troop, count };
+  });
+  const estimate = { chance: wins / samples, losses };
+  if (estimates.size > 2000) estimates.clear();
+  estimates.set(key, estimate);
+  return estimate;
 }
 
 /** A whole battle at once: both sides play by the same rules and AI as a hand-fought one. */
