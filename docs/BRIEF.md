@@ -4,6 +4,8 @@ Working title. A small browser game, not commercial. The goal is quirky and fun,
 
 The story and the world are in [WORLD.md](WORLD.md) (29 Sep 2026). Where the villains and the story below differ from it, WORLD.md wins.
 
+The balance is in [BALANCE.md](BALANCE.md) (29 Sep 2026): a power budget for each commission, caps on what makes the hero run away, and how the sims measure it.
+
 ## Decided (with Artur, 25 Sep 2026)
 
 - **Premise:** you are the King's officer, taking bounty contracts on villains. Each run is a new commission: a new province, a new set of villains, and a deadline of 100 days.
