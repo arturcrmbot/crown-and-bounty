@@ -125,7 +125,7 @@ const NAN_LEAVE: ContentChoice = { id: 'leave', label: 'Ride on', lines: ['You l
 /** What Old Nan knows of the old King's hunt hall, once Aldric has seen it shut: where its key is, and what's in the way. */
 const NAN_HALL: ContentChoice = {
   id: 'hall',
-  label: 'Ask about the old King\u2019s hunt hall',
+  label: 'Ask her about the old King\u2019s hunt hall',
   when: { seen: 'hall', notFlag: 'lodge' },
   effects: { flags: { lodge: 'told' }, reveal: { at: LODGE_VIEW, radius: 130 } },
   lines: [

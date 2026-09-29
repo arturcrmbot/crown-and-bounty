@@ -160,7 +160,7 @@ describe('the old King\u2019s hunt hall', () => {
     expect(asks(start)).toBe(false);
     expect(choose(start, 'nan', 'door/hall')).toBeNull();
     const seen = visit(start, 'hall').state;
-    expect(labels(seen, 'nan')).toContain('Ask about the old King\u2019s hunt hall');
+    expect(labels(seen, 'nan')).toContain('Ask her about the old King\u2019s hunt hall');
     const told = choose(seen, 'nan', 'door/hall')!;
     expect(cardOf(told).lines.join(' ')).toMatch(/lodge in the chase/);
     expect(told.events.some((e) => e.type === 'reveal')).toBe(true);
@@ -171,7 +171,7 @@ describe('the old King\u2019s hunt hall', () => {
     expect(asks(told.state)).toBe(false);
     // She knows the Baron's lullaby too: sung first, her other page asks the same question.
     const sung = take(seen, 'nan', 'door/baron');
-    expect(labels(sung, 'nan')).toContain('Ask about the old King\u2019s hunt hall');
+    expect(labels(sung, 'nan')).toContain('Ask her about the old King\u2019s hunt hall');
     expect(asks(take(sung, 'nan', 'hearth/hall'))).toBe(false);
   });
 
