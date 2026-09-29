@@ -4,7 +4,7 @@ import { PERKS, RANKS, SKILLS, type PerkId, type SkillId } from '../content/skil
 import type { MapSpellId, SpellId, StatusId } from '../content/spells';
 import type { TroopId } from '../content/troops';
 import { SHOOTER_MELEE } from './battle/battle';
-import { close, roll, roman, show, type Card, type Choice, type GameEvent, type GameState, type Result } from './state';
+import { close, roll, roman, show, type Card, type Choice, type ContentChoice, type GameEvent, type GameState, type Location, type Needs, type Result } from './state';
 
 /** A level-up waiting for the player to choose: skills (`skill:archery`) or perks (`perk:warchest`). */
 export type Offer = { level: number; stat: StatId; options: string[] };
@@ -496,6 +496,38 @@ export function unequip(state: GameState, slot: Slot, to = state.hero.pack.lengt
 export function movePack(state: GameState, from: number, to: number): Result | null {
   const pack = moveWithin(state.hero.pack, from, to);
   return pack ? { state: { ...state, hero: { ...state.hero, pack } }, events: [] } : null;
+}
+
+/** What an armourer pays for gear with no price on it: relics, villains' things, finds. */
+export const UNPRICED_SALE = 400;
+
+/** What an armourer pays for an artifact: half its price, or 400 gold if it has none. */
+export const salePrice = (id: ArtifactId) => {
+  const price = ARTIFACTS[id].price;
+  return price ? Math.floor(price / 2) : UNPRICED_SALE;
+};
+
+/**
+ * The place where a choice still asks for an artifact (`needs.artifact`, or a page's `when`), if
+ * any: a page its flags haven't closed, or a parley with a band still standing. It can't be sold.
+ */
+export function wantedAt(state: GameState, id: ArtifactId): Location | undefined {
+  // A flag that closes a page, or a spent one (a parley's goose already called), rules a choice out for good.
+  const open = (needs: Needs | undefined) => !(needs?.notFlag && state.flags?.[needs.notFlag]) && !(needs?.flag && state.flags?.[needs.flag] === false);
+  const asks = (choice: ContentChoice) => choice.needs?.artifact === id && open(choice.needs);
+  return state.locations.find(
+    (place) =>
+      (place.pages ?? []).some((page) => open(page.when) && (page.when?.artifact === id || page.choices.some(asks))) ||
+      (!place.done && (place.enemy?.parleys ?? []).some(asks)),
+  );
+}
+
+/** Sells an artifact from the pack for its sale price. Null if it isn't in the pack, or a choice still needs it. */
+export function sell(state: GameState, id: ArtifactId): Result | null {
+  const at = state.hero.pack.indexOf(id);
+  if (at < 0 || wantedAt(state, id)) return null;
+  const pack = state.hero.pack.filter((_, i) => i !== at);
+  return { state: { ...state, gold: state.gold + salePrice(id), hero: { ...state.hero, pack } }, events: [] };
 }
 
 /** A fresh hero of a background, standing at `at`. */

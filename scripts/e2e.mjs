@@ -220,6 +220,15 @@ try {
   await close();
   await go('castle', 'Visit');
   check(await kc.choose('Recruit'), 'the castle offers knights');
+  // The armoury buys spares: the highwaymen's Black Banner waits in the pack, kept rather than worn.
+  const [spare] = (await kc.state()).hero.pack;
+  check(Boolean(spare) && (await kc.choose('Visit the armoury')) && (await kc.choose('Sell him your spares')), `the armourer offers to buy his spares (${spare})`);
+  const purse = (await kc.state()).gold;
+  const offer = await kc.call(() => [...document.querySelectorAll('.kc-card-wrap:not([hidden]) button:not(:disabled)')].map((b) => b.textContent).find((t) => t.startsWith('Sell ')) ?? '');
+  const [, paid = ''] = offer.match(/\(([\d,]+) gold\)$/) ?? [];
+  check(Boolean(paid) && (await kc.choose(offer)), `with the price on its button: ${offer}`);
+  const sold = await kc.state();
+  check(sold.gold === purse + Number(paid.replace(/,/g, '')) && !sold.hero.pack.includes(spare) && (await kc.lines()).includes(`is his, for ${paid} gold`), `and pays ${paid} gold for it`);
   await close();
   await go('poachers', 'Approach');
   await kc.choose('Let the sergeants');
