@@ -183,19 +183,22 @@ export type Reach = { start: number; g: Float32Array; from: Int32Array };
 /**
  * Dijkstra from `start` over the whole grid, with the same steps and costs as `findPath`: one search
  * answers the way to every place at once, which is what the bot and the ride's hover label ask.
+ * From several starts at once, each cell gets the way to the nearest of them.
  */
-export function reachFrom(grid: Grid, start: Cell): Reach {
+export function reachFrom(grid: Grid, start: Cell | readonly Cell[]): Reach {
   const { width, height, cost } = grid;
   const size = width * height;
   const g = new Float32Array(size).fill(Infinity);
   const from = new Int32Array(size).fill(-1);
-  const startIndex = start.y * width + start.x;
-  const reach = { start: startIndex, g, from };
-  if (!passable(grid, start.x, start.y)) return reach;
+  const starts = 'x' in start ? [start] : start;
+  const reach = { start: starts.length ? starts[0].y * width + starts[0].x : -1, g, from };
   const done = new Uint8Array(size);
   const heap = new Heap();
-  g[startIndex] = 0;
-  heap.push(0, startIndex);
+  for (const s of starts) {
+    if (!passable(grid, s.x, s.y)) continue;
+    g[s.y * width + s.x] = 0;
+    heap.push(0, s.y * width + s.x);
+  }
   while (heap.size > 0) {
     const current = heap.pop();
     if (done[current]) continue;

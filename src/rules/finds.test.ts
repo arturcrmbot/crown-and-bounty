@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ALDMOOR } from '../content/aldmoor';
+import { FINDS } from '../content/aldmoorFinds';
 import type { BackgroundId } from '../content/backgrounds';
 import { isBeast } from '../content/troops';
 import { FENMARCH } from '../content/fenmarch';
@@ -11,6 +12,7 @@ import { CELL } from './map/model';
 import { gridSize, isExplored as seenBit } from './map/fog';
 import { mapOf } from './map/maps';
 import { daysAway, planRoute } from './map/movement';
+import { hireOffer } from './places/enemy';
 import { beginCommission, newGame } from './scenario';
 
 const fresh = (background: BackgroundId = 'knight'): GameState => ({ ...newGame(1066, ALDMOOR, background), opening: undefined });
@@ -378,6 +380,92 @@ describe('one-off finds', () => {
 
   it('are no longer the flat bonus of old: no find gives a stat for good', () => {
     for (const p of provinces) for (const l of p.locations) for (const page of l.pages ?? []) for (const c of page.choices) expect(c.effects?.stats, `${p.id} ${l.id}/${c.id}`).toBeUndefined();
+  });
+});
+
+describe('Aldmoor\u2019s small finds along the rides (#124)', () => {
+  it('a lost pack or the Baron\u2019s hamper says what the gold was in, and is gone once taken', () => {
+    const start = fresh();
+    const hamper = visit(start, 'hamper');
+    expect(hamper.state.gold).toBe(start.gold + 100);
+    expect(cardOf(hamper).lines.join(' ')).toMatch(/\*\*100 gold\*\*.*More pie/);
+    expect(locationById(hamper.state, 'hamper').done).toBe(true);
+    expect(hamper.events.some((e) => e.type === 'removed' && e.id === 'hamper')).toBe(true);
+    // A pile with nothing to say is still just scooped up.
+    const pile = visit(start, 'gold');
+    expect(pile.events.some((e) => e.type === 'card')).toBe(false);
+    expect(pile.state.gold).toBe(start.gold + 250);
+  });
+
+  it('Old Tam thanks you for his ewes, however you get them back from the rustlers', () => {
+    const start = { ...fresh(), gold: 500 };
+    expect(labels(start, 'shepherd')).toEqual(['Close']);
+    expect(cardOf(visit(start, 'shepherd')).lines.join(' ')).toMatch(/Rustlers/);
+    const beaten = beat(start, 'rustlers', { title: 'Victory!', lines: [], reward: 90, xp: 0 }).state;
+    const bought = take(start, 'rustlers', 'parley/buy');
+    expect(bought.gold).toBe(start.gold - 80);
+    // A courtier talks them round instead, so he's never offered them for hire, and the ewes still go home.
+    const courtier = fresh('courtier');
+    expect(hireOffer(courtier, locationById(courtier, 'rustlers'))).toBeNull();
+    const shamed = take(courtier, 'rustlers', 'parley/shame');
+    for (const back of [beaten, bought, shamed]) {
+      expect(labels(back, 'shepherd')).toEqual(['Shake his hand']);
+      const thanked = take(back, 'shepherd', 'home/thanks');
+      expect(thanked.hero.xp).toBe(back.hero.xp + 60);
+      expect(labels(thanked, 'shepherd')).toEqual(['Close']);
+      expect(choose(thanked, 'shepherd', 'home/thanks')).toBeNull();
+    }
+  });
+
+  it('the Baron\u2019s tax collectors can be fought, paid off, or audited by a courtier, who can\u2019t hire them', () => {
+    const knight = { ...fresh(), gold: 500 };
+    expect(labels(knight, 'collectors')).toContain('Pay what they say you owe (100 gold)');
+    expect(labels(knight, 'collectors')).toContain('Ask to see their sums (Courtier) [off]');
+    expect(locationById(take(knight, 'collectors', 'parley/pay'), 'collectors').done).toBe(true);
+    const courtier = fresh('courtier');
+    expect(hireOffer(courtier, locationById(courtier, 'collectors'))).toBeNull();
+    const audited = take(courtier, 'collectors', 'parley/audit');
+    expect(locationById(audited, 'collectors').done).toBe(true);
+    expect(audited.hero.xp).toBe(courtier.hero.xp + 60);
+  });
+
+  it('honey, a smoked eel and St Hubert\u2019s blessing each give a longer day, once', () => {
+    for (const [id, choice, more] of [['skeps', 'honey/honey', 40], ['eelcatcher', 'net/eel', 30], ['hubert', 'apple/pray', 30]] as const) {
+      const start = { ...fresh(), movement: 50, gold: 100 };
+      const taken = take(start, id, choice);
+      expect(taken.movement, id).toBe(50 + more);
+      expect(labels(taken, id), id).toEqual(['Close']);
+      expect(choose(taken, id, choice), id).toBeNull();
+    }
+  });
+
+  it('the Grey Wethers show half the heath from the top', () => {
+    const start = fresh();
+    const tower = locationById(start, 'tower').at;
+    expect(isExplored(start, tower)).toBe(false);
+    const climbed = take(start, 'stones', 'ring/climb');
+    expect(isExplored(climbed, tower)).toBe(true);
+    expect(labels(climbed, 'stones')).toEqual(['Close']);
+  });
+
+  it('the rest are words worth the ride: gossip, a signpost\u2019s joke, a scrap of the Baron\u2019s orders', () => {
+    const start = fresh();
+    for (const id of ['diggersCamp', 'picketsCamp', 'hayrick', 'goosePond', 'charcoal', 'crossroads', 'tollboard']) {
+      const card = cardOf(visit(start, id));
+      expect(card.lines.join(' ').length, id).toBeGreaterThan(60);
+      expect(card.choices.map((c) => c.label), id).toEqual(['Close']);
+    }
+    expect(cardOf(visit(start, 'diggersCamp')).lines.join(' ')).toMatch(/G\."/);
+    expect(cardOf(visit(start, 'picketsCamp')).lines.join(' ')).toMatch(/G\."/);
+  });
+
+  it('reach a save made before them, and nothing else changes', () => {
+    const s = fresh();
+    const ids = new Set(FINDS.map((f) => f.id));
+    const old: GameState = JSON.parse(JSON.stringify({ ...s, locations: s.locations.filter((l) => !ids.has(l.id)) }));
+    const loaded = withNewPlaces(old);
+    expect(loaded.locations.map((l) => l.id).sort()).toEqual(s.locations.map((l) => l.id).sort());
+    expect(loaded.locations.filter((l) => !ids.has(l.id))).toEqual(old.locations);
   });
 });
 

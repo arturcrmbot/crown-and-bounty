@@ -244,7 +244,9 @@ export type Location = {
  * holds (the old delving, once the dwarf has opened it).
  */
 export type PlaceText = { about?: string[]; done?: string[]; visit?: string[]; later?: { when: Needs; about: string[] }[] };
-export type PlaceLook = 'abbey' | 'peathut' | 'windmill' | 'stilthut' | 'shrine' | 'camp' | 'cottage' | 'house' | 'stones' | 'range' | 'hall' | 'lodge' | 'cart' | 'mews';
+export type PlaceLook =
+  | 'abbey' | 'peathut' | 'windmill' | 'stilthut' | 'shrine' | 'camp' | 'cottage' | 'house' | 'stones' | 'range' | 'hall' | 'lodge' | 'cart' | 'mews'
+  | 'pack' | 'hamper' | 'campfire' | 'fold' | 'boat' | 'skeps' | 'hayrick' | 'pond' | 'kiln' | 'nest';
 
 /** The campaign so far: which commission this is, how the others went, and how this one began. */
 export type Campaign = {

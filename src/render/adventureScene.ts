@@ -13,8 +13,8 @@ import { GOLD, INK, RED, SILHOUETTE } from './palette';
 import { animFrames, bodyHeight, everyFrame, STAND, troopFigure, type Figure } from './battleSprites';
 import { heroArtId } from './units';
 import {
-  abbey, boulder, camp,
-  butts, CART_GROUND, cottage, castle, standingStones, chest, crag, goldPile, grainCart, hideout, holes, huntHall, hut, lodge, mews, mill, mine, mirror, oak, peatHut, pine, signpost, stiltHut, shrine,
+  abbey, boat, boulder, camp, campfire,
+  butts, CART_GROUND, cottage, castle, standingStones, chest, crag, fold, goldPile, grainCart, hayrick, hideout, holes, huntHall, hut, kiln, lodge, mews, mill, mine, mirror, nest, oak, pack, peatHut, pine, pond, signpost, skeps, stiltHut, shrine,
   stoneBridge, washingCottage, watchtower, well, willow, windmill, xMark,
 } from './sprites';
 import { TerrainPainter } from './terrain';
@@ -144,6 +144,26 @@ function landmark(l: Location): { frames: Bitmap[]; foot: number; animated: bool
       return { frames: [lodge()], foot: 46, animated: false };
     case 'mews':
       return { frames: [mews()], foot: 36, animated: false };
+    case 'pack':
+    case 'hamper':
+      return { frames: [pack(l.look === 'hamper')], foot: 18, animated: true };
+    case 'campfire':
+      return { frames: animation((t) => campfire(t)), foot: 30, animated: true };
+    case 'fold':
+      return { frames: [fold()], foot: 34, animated: false };
+    case 'boat':
+      return { frames: [boat()], foot: 26, animated: false };
+    // Still, so they show through the mist as the silhouettes that draw a player off the road.
+    case 'skeps':
+      return { frames: [skeps(0.3)], foot: 31, animated: false };
+    case 'hayrick':
+      return { frames: [hayrick()], foot: 42, animated: false };
+    case 'pond':
+      return { frames: [pond()], foot: 31, animated: false };
+    case 'kiln':
+      return { frames: [kiln(0.3)], foot: 40, animated: false };
+    case 'nest':
+      return { frames: animation((t) => nest(t)), foot: 38, animated: true };
     case 'cart': {
       // Pike's grain cart, and one of his lads at its tail in a foe's red ring, fidgeting as they wait.
       const lead = leadTroop(l.enemy!.army);
