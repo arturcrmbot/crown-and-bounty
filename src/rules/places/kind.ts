@@ -12,6 +12,8 @@ export type PlaceKind = {
   arrive(state: GameState, place: Location): Result;
   /** One of this kind's own choices, by id. */
   choose?(state: GameState, place: Location, choice: string): Result | null;
+  /** Its own card with what just happened on top, after a choice written as content that leads to no page of its own. */
+  card?(state: GameState, place: Location, before: string[]): Card;
   /** Payday: reopen, or restock. */
   payday?(place: Location): Location;
   /** How much the bot wants to ride there now, or null if not at all. */

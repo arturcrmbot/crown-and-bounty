@@ -28,6 +28,7 @@ export function meets(state: GameState, needs: Needs | undefined): boolean {
   if (needs.notArtifact && owns(state, needs.notArtifact)) return false;
   if (needs.flag && !state.flags?.[needs.flag]) return false;
   if (needs.notFlag && state.flags?.[needs.notFlag]) return false;
+  if (needs.seen && !state.locations.find((l) => l.id === needs.seen)?.seen) return false;
   if (needs.gold && state.gold < needs.gold) return false;
   if (needs.mana && hero.mana < needs.mana) return false;
   if (needs.troop && countOf(state.army, needs.troop) < (needs.count ?? 1)) return false;
@@ -153,6 +154,18 @@ export function applyEffects(state: GameState, place: Location, effects: Effects
     next = grown.state;
     events.push(...grown.events);
     lines.push(`**+${effects.xp} experience.**`);
+  }
+  if (effects.recruits) {
+    const { at = place.id, troop, count, price = 0, restock } = effects.recruits;
+    const where = next.locations.find((l) => l.id === at);
+    const had = where?.recruits;
+    const recruits = had && (!troop || troop === had.troop) ? { ...had, count: had.count + count } : troop ? { troop, count, price, ...(restock === undefined ? {} : { restock }) } : null;
+    if (where && recruits) {
+      next = update(next, at, { recruits });
+      events.push({ type: 'changed', id: at });
+      // This place's own card says who waits here; another place's is a ride away.
+      if (at !== place.id) lines.push(`**${where.name}** has **${count} more ${TROOPS[recruits.troop][count === 1 ? 'one' : 'name']}** to recruit.`);
+    }
   }
   if (effects.place && !next.locations.some((l) => l.id === effects.place!.id)) {
     next = { ...next, locations: [...next.locations, effects.place] };

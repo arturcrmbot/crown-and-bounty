@@ -22,7 +22,8 @@ export function heroPayday(state: GameState, paid = heroStats(state)): { state: 
   const lines: string[] = [];
   const extra = Math.round(RESTOCK * s.restock);
   if (extra > 0) {
-    next = { ...next, locations: next.locations.map((l) => (l.recruits && dwelling(l.kind) ? { ...l, recruits: { ...l.recruits, count: l.recruits.count + extra } } : l)) };
+    // Only where volunteers come on payday at all: nobody new turns up at the old King's hunt hall.
+    next = { ...next, locations: next.locations.map((l) => (l.recruits && dwelling(l.kind) && l.recruits.restock !== 0 ? { ...l, recruits: { ...l.recruits, count: l.recruits.count + extra } } : l)) };
     lines.push(`Your stewards have been busy: every castle and village has **${extra} more volunteers** than usual.`);
   }
   if (s.volunteers > 0) {

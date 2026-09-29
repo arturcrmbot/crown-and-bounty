@@ -55,7 +55,7 @@ export function choose(state: GameState, id: string, choice: string): Result | n
   }
   const page = place.pages?.find((p) => p.id === head);
   const option = page?.choices.find((c) => c.id === key);
-  return page && option && meets(state, page.when) ? takeChoice(state, place, option) : null;
+  return page && option && meets(state, page.when) ? takeChoice(state, place, option, PLACE_KINDS[place.kind].card) : null;
 }
 
 /** Payday for a place: its kind reopens or restocks it. */

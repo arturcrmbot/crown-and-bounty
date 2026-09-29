@@ -24,16 +24,19 @@ export function choiceButton(state: GameState, place: Location, choice: ContentC
 /** The first of a place's content pages that holds now. */
 export const firstPage = (state: GameState, place: Location): Page | undefined => place.pages?.find((p) => !p.answer && meets(state, p.when));
 
-/** A content page as a card. */
+/** A content page as a card. Choices whose `when` doesn't hold aren't there. */
 export function pageCard(state: GameState, place: Location, page: Page, before: string[] = []): Card {
-  const choices = page.choices.map((c) => choiceButton(state, place, c, `${page.id}/${c.id}`));
+  const choices = page.choices.filter((c) => meets(state, c.when)).map((c) => choiceButton(state, place, c, `${page.id}/${c.id}`));
   return { title: page.title ?? place.name, lines: [...before, ...page.lines], choices: choices.length ? choices : [close] };
 }
 
-/** Takes a content choice: checks and pays for it, does what it says, and shows what comes next. */
-export function takeChoice(state: GameState, place: Location, choice: ContentChoice): Result | null {
+/**
+ * Takes a content choice: checks and pays for it, does what it says, and shows what comes next: the
+ * page it leads to, or `then` (the place's own card, with what was said on top), or just the words.
+ */
+export function takeChoice(state: GameState, place: Location, choice: ContentChoice, then?: (state: GameState, place: Location, before: string[]) => Card): Result | null {
   if (place.done && !place.pages?.length) return null;
-  if (!meets(state, choice.needs)) return null;
+  if (!meets(state, choice.when) || !meets(state, choice.needs)) return null;
   const effects = choice.effects ?? {};
   const paid = pay(state, choice.needs);
   if (effects.win) {
@@ -48,10 +51,10 @@ export function takeChoice(state: GameState, place: Location, choice: ContentCho
   const page = effects.page ? after.pages?.find((p) => p.id === effects.page) : undefined;
   // A choice with nothing to say, like "Not today", just closes the card.
   if (!page && !lines.length) return { state: done.state, events: done.events };
-  const card = page ? pageCard(done.state, after, page, lines) : { title: place.name, lines, choices: [close] };
+  const card = page ? pageCard(done.state, after, page, lines) : then ? then(done.state, after, lines) : { title: place.name, lines, choices: [close] };
+  // Wear it or keep it: the decision replaces the way out.
   const decisions = effects.artifact ? artifactChoices(done.state, effects.artifact) : [];
-  const choices = [...decisions, ...card.choices.filter((c) => c.action.type !== 'close')];
-  if (choices.length) card.choices = choices;
+  if (decisions.length) card.choices = [...decisions, ...card.choices.filter((c) => c.action.type !== 'close')];
   return { state: done.state, events: [...done.events, show(card, place.at, place.id)] };
 }
 
@@ -81,6 +84,11 @@ export function choiceWorth(state: GameState, choice: ContentChoice): number {
     room -= count * TROOPS[stack.troop].leadership;
     worth += count * troopPower(stack.troop) * 3;
   }
+  // Troops waiting at a place are worth nearly what troops who join are: it's only a ride.
+  if (e.recruits?.troop && !e.recruits.at) {
+    const count = Math.max(0, Math.min(e.recruits.count, Math.floor(room / TROOPS[e.recruits.troop].leadership)));
+    worth += count * troopPower(e.recruits.troop) * (e.recruits.price ? 1 : 3);
+  }
   if (e.reveal) worth += 20;
   if (e.flags) worth += 20;
   return worth - (choice.needs?.gold ?? 0) - (choice.needs?.mana ?? 0) * 2;
@@ -90,7 +98,7 @@ export function choiceWorth(state: GameState, choice: ContentChoice): number {
 export function bestChoice(state: GameState, place: Location): { choice: ContentChoice; worth: number } | null {
   let best: { choice: ContentChoice; worth: number } | null = null;
   for (const choice of firstPage(state, place)?.choices ?? []) {
-    if (!choice.effects || !meets(state, choice.needs)) continue;
+    if (!choice.effects || !meets(state, choice.when) || !meets(state, choice.needs)) continue;
     const worth = choiceWorth(state, choice);
     if (worth > 0 && (!best || worth > best.worth)) best = { choice, worth };
   }

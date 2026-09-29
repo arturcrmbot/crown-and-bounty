@@ -2,6 +2,7 @@ import { ARTIFACTS, type ArtifactId } from '../../content/artifacts';
 import { troopPower } from '../../content/troops';
 import { dismiss, grumbleLine } from '../army';
 import { artifactChoices, giveArtifact, heroStats, salePrice, sell, slotTaken, wantedAt } from '../hero';
+import { bestChoice, firstPage, pageCard, takeChoice } from '../effects';
 import { addTroops, close, coins, joinLine, leadershipUsed, locationById, TROOPS, troops, update, type Card, type Choice, type GameState, type Location, type Result } from '../state';
 import { found, option, priceOf, ride, say, words } from './common';
 import type { PlaceKind } from './kind';
@@ -15,7 +16,8 @@ export function recruitable(state: GameState, id: string): number {
   if (!offer) return 0;
   if (!addTroops(state.army, offer.troop, 1)) return 0;
   const room = Math.floor((heroStats(state).leadership - leadershipUsed(state.army)) / TROOPS[offer.troop].leadership);
-  return Math.max(0, Math.min(offer.count, room, Math.floor(state.gold / priceOf(state, offer.price))));
+  const each = priceOf(state, offer.price);
+  return Math.max(0, Math.min(offer.count, room, each ? Math.floor(state.gold / each) : offer.count));
 }
 
 /** Recruits a quartermaster talks them into throwing in with `count`, on top of the offer: as many as he can lead. */
@@ -48,18 +50,19 @@ function recruitCard(state: GameState, place: Location, before: string[] = []): 
   const armoury = place.wares && (place.wares.length || state.hero.pack.length) ? [option(place, 'Visit the armoury', 'armoury')] : [];
   const leave = before.length ? close : { label: 'Not today', action: { type: 'close' as const } };
   if (!offer || place.done || offer.count === 0) {
-    return { title: place.name, lines: [...before, '"All out of volunteers, officer. Come back after payday."'], choices: [...armoury, close] };
+    // A place with its own words for when everyone has gone says so; the rest restock on payday.
+    return { title: place.name, lines: [...before, ...(place.text?.done ?? ['"All out of volunteers, officer. Come back after payday."'])], choices: [...armoury, close] };
   }
   const count = recruitable(state, place.id);
   const room = Math.floor((heroStats(state).leadership - leadershipUsed(state.army)) / TROOPS[offer.troop].leadership);
   const each = priceOf(state, offer.price);
-  const purse = Math.floor(state.gold / each);
-  const lines = [...before, `**${troops(offer.troop, offer.count)}** will join you for **${coins(each)} gold** each.`];
+  const purse = each ? Math.floor(state.gold / each) : offer.count;
+  const lines = [...before, each ? `**${troops(offer.troop, offer.count)}** will join you for **${coins(each)} gold** each.` : `**${troops(offer.troop, offer.count)}** will join you, and ask for nothing.`];
   // Companies that won't march happily beside them say so before they join, not after.
   const grumble = grumbleLine(state.army, [offer.troop]);
   if (grumble) lines.push(grumble);
   // Gear that puts honest recruits off (the Black Banner) says so, or the price is a mystery.
-  const shunned = Object.values(state.hero.gear).find((id) => id && (ARTIFACTS[id].bonus.recruitPrice ?? 0) > 0);
+  const shunned = each && Object.values(state.hero.gear).find((id) => id && (ARTIFACTS[id].bonus.recruitPrice ?? 0) > 0);
   if (shunned) lines.push(`*They don\u2019t like the look of your ${ARTIFACTS[shunned].name.replace(/^The /, '')}: that\u2019s ${Math.round((ARTIFACTS[shunned].bonus.recruitPrice ?? 0) * 100)}% dearer.*`);
   // Say why fewer than are on offer can come: no room in the line, not enough leadership, or not enough gold.
   const slot = Boolean(addTroops(state.army, offer.troop, 1));
@@ -67,7 +70,8 @@ function recruitCard(state: GameState, place: Location, before: string[] = []): 
   else if (room < offer.count) lines.push(room > 0 ? `You can only lead ${room} more.` : 'You can\u2019t lead any more troops. Find some leadership first.');
   if (slot && room > 0 && purse < Math.min(offer.count, room)) lines.push(purse > 0 ? `Your purse runs to ${purse}.` : `You can\u2019t pay for even one.`);
   const free = count > 0 ? thrownIn(state, place, count) : 0;
-  const hire = count > 0 ? option(place, `Recruit ${count}${free ? ` + ${free} free` : ''} (${coins(count * each)} gold)`, 'recruit') : option(place, 'Recruit', 'recruit', true);
+  const price = each ? `${coins(count * each)} gold` : 'free';
+  const hire = count > 0 ? option(place, `Recruit ${count}${free ? ` + ${free} free` : ''} (${price})`, 'recruit') : option(place, 'Recruit', 'recruit', true);
   return { title: place.name, lines, choices: [hire, ...armoury, leave] };
 }
 
@@ -153,10 +157,17 @@ function makeRoom(state: GameState, place: Location): { index: number; count: nu
   return count > 0 && count * troopPower(offer.troop) > worth(index) * 1.5 ? { index, count, loss: worth(index) } : null;
 }
 
-/** Castles and villages: troops to recruit, restocked every payday, and sometimes an armoury. */
+/**
+ * Castles and villages: troops to recruit, restocked every payday, and sometimes an armoury. A page
+ * written as content comes first while one holds (the old King's hunt hall, locked).
+ */
 export const dwelling: PlaceKind = {
   about: (_, place) => ({ title: place.name, lines: words(place, 'about'), choices: [ride(place, 'Visit'), close] }),
-  arrive: (state, place) => found(state, place, recruitCard(state, place)),
+  arrive: (state, place) => {
+    const page = firstPage(state, place);
+    return found(state, place, page ? pageCard(state, place, page) : recruitCard(state, place));
+  },
+  card: (state, place, before) => recruitCard(state, place, before),
   choose(state, place, choice) {
     if (choice === 'recruit') return recruit(state, place);
     if (choice === 'armoury') return say(state, place, armouryCard(state, place));
@@ -165,15 +176,19 @@ export const dwelling: PlaceKind = {
     if (choice.startsWith('sell:')) return sellTo(state, place, choice.slice(5) as ArtifactId);
     return null;
   },
-  payday: (place) => (place.recruits ? { ...place, recruits: { ...place.recruits, count: place.recruits.count + RESTOCK } } : place),
+  payday: (place) => (place.recruits ? { ...place, recruits: { ...place.recruits, count: place.recruits.count + (place.recruits.restock ?? RESTOCK) } } : place),
   worth(state, place) {
+    const content = bestChoice(state, place)?.worth;
+    if (content) return content;
     const n = recruitable(state, place.id);
     if (n > 0) return n * troopPower(place.recruits!.troop) * 3;
     const room = makeRoom(state, place);
     return room ? (room.count * troopPower(place.recruits!.troop) - room.loss) * 3 : null;
   },
   bot(state, place) {
-    let next = state;
+    const best = bestChoice(state, place);
+    let next = best ? (takeChoice(state, place, best.choice)?.state ?? state) : state;
+    place = locationById(next, place.id);
     // A line full of weaker companies sends the weakest home to make room.
     const room = recruitable(next, place.id) > 0 ? null : makeRoom(next, place);
     if (room) next = dismiss(next, room.index)?.state ?? next;

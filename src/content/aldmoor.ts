@@ -24,6 +24,9 @@ const at = {
   mill: [1680, 1182],
   well: [1502, 1252],
   nan: [2300, 1846],
+  hall: [1872, 1624],
+  lodge: [2652, 2092],
+  bears: [2476, 2020],
   poachers: [2816, 1488],
   boars: [2688, 1664],
   cache: [1768, 1716],
@@ -42,6 +45,12 @@ const DELVING_SOUTH: Point = [668, 1744];
 
 /** The patrol's size: a gate, too strong for a fresh army (see `rules/difficulty.ts`). */
 const PATROL = { swordsmen: 50, crossbowmen: 29 };
+
+/** The old King's huntsmen, waiting at his hunt hall for someone to open it. */
+const HUNTSMEN = 12;
+
+/** What Old Nan's word shows of the chase: the lodge, and what sleeps on the track to it. */
+const LODGE_VIEW: Point = [2570, 2056];
 
 /** Where Grimsby's men make camp once they've had enough of him: beaten, or sent home with his orders. */
 const DESERTERS: Location = {
@@ -86,6 +95,10 @@ const roads = {
   grimsby: [[700, 530], [620, 640], [540, 780], [460, 940], [390, 1120], [330, 1320], [292, 1520], [274, 1700], [270, 1880], [258, 2000], [244, 2090], [258, 2160], [298, 2168], [318, 2140]],
   // Westmere south to Old Nan's, at the edge of the King's chase.
   nan: [[2104, 1392], [2118, 1480], [2146, 1580], [2186, 1680], [2226, 1770], [2262, 1846]],
+  // On past Old Nan's back door, into the King's chase, to the old King's hunting lodge.
+  lodge: [[2262, 1846], [2282, 1896], [2330, 1944], [2400, 1986], [2476, 2020], [2548, 2052], [2604, 2082], [2644, 2098]],
+  // A lane off the bridge road down to the old King's hunt hall.
+  hall: [[1880, 1456], [1884, 1520], [1878, 1580], [1872, 1628]],
   // Westmere north-west to the mill on the river.
   mill: [[2104, 1388], [2046, 1330], [1976, 1272], [1900, 1226], [1812, 1198], [1736, 1188], [1700, 1186]],
   // A lane off the King's road, up into the downs.
@@ -477,9 +490,84 @@ export const ALDMOOR: Province = {
               effects: { spell: 'fireball', flags: { wolfpelt: false } },
               lines: ['*"Ooh, that\u2019s a warm one."* She wraps herself in it, and shows you how to set the air on fire. *"Mind your own lads, mind."*'],
             },
+            {
+              id: 'hall',
+              label: 'Ask about the old King\u2019s hunt hall',
+              when: { seen: 'hall', notFlag: 'lodge' },
+              effects: { flags: { lodge: 'told' }, reveal: { at: LODGE_VIEW, radius: 130 } },
+              lines: [
+                '*"The old King\u2019s hall? Shut up since he died, bless him. He kept the key at his lodge in the chase, on a nail by the door."*',
+                '*"Take the track past my back door. There\u2019s a bear sleeps on it now, dearie. Well. Some bears. Mind them."*',
+              ],
+            },
             { id: 'leave', label: 'Ride on', lines: ['You leave her to her cauldron. Something in it winks at you.'] },
           ],
         },
+      ],
+    },
+    {
+      id: 'hall',
+      kind: 'village',
+      look: 'hall',
+      name: 'The King\u2019s Hunt Hall',
+      at: at.hall,
+      done: false,
+      text: {
+        about: ['The old King\u2019s hunt hall, by the bridge.', '*Antlers over the door, and shutters nobody has opened since he died.*'],
+        done: ['The fires are lit, and every one of the old King\u2019s huntsmen has gone with you.'],
+      },
+      pages: [
+        {
+          id: 'locked',
+          when: { notFlag: 'huntKey' },
+          lines: ['The old King\u2019s hunt hall, shut up since he died.', '*The lock is the size of a loaf. Somebody still oils it.*'],
+          choices: [],
+        },
+        {
+          id: 'door',
+          when: { flag: 'huntKey', notFlag: 'huntsmen' },
+          lines: ['The old King\u2019s key fits the lock. It turns stiffly, as if it has been waiting for you.'],
+          choices: [
+            {
+              id: 'open',
+              label: 'Open the hall',
+              effects: { flags: { huntsmen: true }, recruits: { troop: 'huntsmen', count: HUNTSMEN, restock: 0 }, xp: 100 },
+              lines: [
+                'Dust, antlers, and the old King\u2019s chair by the cold hearth. By evening the fires are lit, and grey, lean men are at the door: *the old King\u2019s huntsmen, come home.*',
+                '*"Grimsby gave our job to Rook,"* says the eldest. *"We\u2019d like a word with him. We\u2019ll come with you for nothing, sir, if you\u2019re going his way."*',
+              ],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: 'lodge',
+      kind: 'event',
+      look: 'lodge',
+      name: 'The Old King\u2019s Lodge',
+      at: at.lodge,
+      done: false,
+      text: { about: ['The old King\u2019s hunting lodge, deep in the chase.', '*Nobody has lit a fire here in years.*'] },
+      pages: [
+        {
+          id: 'nail',
+          when: { notFlag: 'huntKey' },
+          lines: [
+            'Antlers, cobwebs, and the old King\u2019s chair by the cold hearth, as if he had only just stepped out.',
+            'On a nail by the door hangs a big iron **key** with a stag on its bow, beside his old hunting coat.',
+          ],
+          choices: [
+            {
+              id: 'key',
+              label: 'Take the key',
+              effects: { flags: { huntKey: true, lodge: 'key' }, treasure: 150 },
+              lines: ['It is heavier than it looks. *The stag on it is the one over the door of the old hunt hall by the bridge.*', 'In a pocket of the coat: a purse of the old King\u2019s crowns.'],
+            },
+            { id: 'leave', label: 'Leave it on its nail' },
+          ],
+        },
+        { id: 'empty', when: { flag: 'huntKey' }, lines: ['The lodge is quiet. The nail by the door is empty.'], choices: [] },
       ],
     },
     {
@@ -678,6 +766,24 @@ export const ALDMOOR: Province = {
         tamed: 'You lay a trail of acorns, and the boars follow it like a procession, all the way into your baggage train. They seem to think it was their idea.',
         flees: 'The boars crash off into the woods.',
         loot: 'Truffles where they were rooting! Worth {gold} at market.',
+      },
+    },
+    {
+      id: 'bears',
+      kind: 'patrol',
+      name: 'Bears',
+      at: at.bears,
+      done: false,
+      enemy: {
+        look: 'wolves',
+        tier: 'band',
+        lines: ['Bears, asleep across the track to the old King\u2019s lodge.', '*The biggest one is snoring. The trees shake a little.*'],
+        army: [{ troop: 'bears', count: 7 }],
+        reward: 150,
+        threat: 'The biggest bear gets up. It goes on getting up for quite a long time.',
+        tamed: 'You sit down in the track, and wait. At dusk the biggest bear comes and sits beside you, and leans. *The others decide that makes you family.*',
+        flees: 'The bears lumber off into the chase, grumbling.',
+        loot: 'In the hollow oak they were sleeping under: {gold} in old coins, and a great deal of honey.',
       },
     },
     {

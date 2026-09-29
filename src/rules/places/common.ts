@@ -8,8 +8,8 @@ export const DISCOVERY_XP = 40;
 
 /** Gold from treasure, with the hero's knack for finding it. */
 export const loot = (state: GameState, gold: number) => Math.round(gold * (1 + heroStats(state).loot));
-/** A recruit's price after the hero's charm. */
-export const priceOf = (state: GameState, base: number) => Math.max(1, Math.round(base * (1 + heroStats(state).recruitPrice)));
+/** A recruit's price after the hero's charm. Those who ask nothing still ask nothing. */
+export const priceOf = (state: GameState, base: number) => (base > 0 ? Math.max(1, Math.round(base * (1 + heroStats(state).recruitPrice))) : 0);
 
 /** The usual words for each kind of place, for provinces that don't give their own. */
 const USUAL: Record<Location['kind'], PlaceText> = {

@@ -2,7 +2,7 @@ import type { BackgroundId } from './backgrounds';
 import type { SpellId, StatusId } from './spells';
 
 /** Every kind of troop, with HoMM2-style numbers. Troops are just numbers: 400 peasants are 400 peasants. */
-export type TroopId = 'peasants' | 'archers' | 'knights' | 'swordsmen' | 'crossbowmen' | 'wolves' | 'baron' | 'goblins' | 'trolls' | 'witch' | 'bramble' | 'poachers' | 'bandits' | 'boars' | HeroId;
+export type TroopId = 'peasants' | 'archers' | 'knights' | 'swordsmen' | 'crossbowmen' | 'wolves' | 'baron' | 'goblins' | 'trolls' | 'witch' | 'bramble' | 'poachers' | 'bandits' | 'boars' | 'bears' | 'huntsmen' | HeroId;
 /** Aldric himself, as each background fights: one of a kind, like the villains, and never in the army. */
 export type HeroId = 'heroKnight' | 'heroWizard' | 'heroRanger' | 'heroCourtier';
 
@@ -31,6 +31,8 @@ export type TroopDef = {
   abilities?: Ability[];
   /** A beast's feelings about following a hero it respects, for the card that says it joined. */
   tamed?: string;
+  /** Why a troop that isn't a beast draws no wages, for its card on the hero screen. */
+  unpaid?: string;
   /**
    * The hero's own numbers grow: `damage` is his at level I, and each level adds `perLevel` to both
    * ends of it. A caster's damage also grows by `perPower` for every point of spell power.
@@ -65,7 +67,7 @@ export function feuding(a: TroopId, b: TroopId): boolean {
 /** A villain's magic: spell power, mana, spells he knows, and orders he can give a few times a battle for no mana. */
 export type Caster = { spellPower: number; mana: number; casts?: number; spells?: SpellId[]; charges?: { spell: SpellId; uses: number }[] };
 
-export type Ability = 'regenerates' | 'hexes' | 'leads' | 'rides' | 'bard' | 'firstStrike' | 'stings' | 'pierce';
+export type Ability = 'regenerates' | 'hexes' | 'leads' | 'rides' | 'bard' | 'firstStrike' | 'stings' | 'pierce' | 'hunter';
 
 /**
  * Troop abilities, as data the battle engine reads at fixed moments. A new ability that uses
@@ -99,6 +101,8 @@ export type AbilityDef = {
   firstStrike?: boolean;
   /** Its blows cut this much off the target's defence, armour and all. */
   pierce?: number;
+  /** Its blows and shots land this much harder on beasts (see `isBeast`). */
+  hunts?: number;
 };
 
 export const ABILITIES: Record<Ability, AbilityDef> = {
@@ -114,6 +118,7 @@ export const ABILITIES: Record<Ability, AbilityDef> = {
   firstStrike: { name: 'First Strike', note: 'Pitchforks first: it strikes before whatever attacks it, unless that also strikes first.', firstStrike: true },
   stings: { name: 'Stinging Bite', note: 'Whatever it hits up close is poisoned: a little health lost each turn, though it never falls past a sliver.', stingStatus: 'poisoned' },
   pierce: { name: 'Piercing Bolts', note: 'Its bolts punch through armour: -1 defence against them.', pierce: 1 },
+  hunter: { name: 'Hunter', note: 'Knows its quarry: its shots and blows land half as hard again on wolves, boars, bears and every other beast.', hunts: 0.5 },
 };
 
 /** The abilities of a kind of troop, with their rules. */
@@ -146,6 +151,17 @@ export const TROOPS: Record<TroopId, TroopDef> = {
   poachers: { id: 'poachers', name: 'Poachers', one: 'Poacher', hp: 7, attack: 3, defence: 2, damage: [1, 3], speed: 4, shots: 6, leadership: 1, wage: 1, people: 'outlaw', note: 'Other people\u2019s deer, other people\u2019s rabbits, and now, other people\u2019s officers.' },
   bandits: { id: 'bandits', name: 'Highwaymen', one: 'Highwayman', hp: 11, attack: 4, defence: 3, damage: [2, 3], speed: 5, leadership: 2, wage: 2, people: 'outlaw', note: 'Stand and deliver. Mostly they stand.' },
   boars: { id: 'boars', name: 'Wild Boars', one: 'Wild Boar', hp: 18, attack: 5, defence: 4, damage: [2, 4], speed: 5, leadership: 2, wage: 0, people: 'wild', note: 'Bristles, tusks and a very short temper.', tamed: 'The boars decide you are the biggest boar they have ever met, and trot after you, grunting happily.' },
+  bears: {
+    id: 'bears', name: 'Bears', one: 'Bear', hp: 80, attack: 9, defence: 7, damage: [10, 16], speed: 5, leadership: 12, wage: 0, people: 'wild',
+    note: 'Big, brown, and not at all sorry about it.',
+    tamed: 'The biggest bear sniffs your hand, sneezes, and leans on you. *The others decide that makes you family.*',
+  },
+  // The old King's huntsmen: they draw no wages, but they aren't beasts. They serve the King still.
+  huntsmen: {
+    id: 'huntsmen', name: 'Huntsmen', one: 'Huntsman', hp: 18, attack: 7, defence: 4, damage: [3, 5], speed: 5, shots: 16, leadership: 3, wage: 0, people: 'loyal', abilities: ['hunter'],
+    note: 'The old King\u2019s huntsmen: grey, lean, and never known to miss.',
+    unpaid: 'They serve the old King still, and they have a score to settle with Rook.',
+  },
   // Aldric in battle, as each background fights from behind the line. His numbers grow with him: see `hero`.
   heroKnight: {
     id: 'heroKnight', name: 'Sir Aldric', one: 'Sir Aldric', hp: 80, attack: 5, defence: 5, damage: [12, 18], speed: 6, leadership: 99, wage: 0, abilities: ['leads', 'rides'],
@@ -169,8 +185,8 @@ export const TROOPS: Record<TroopId, TroopDef> = {
   },
 };
 
-/** Beasts draw no wages and follow no villain: a hero with a way with beasts can win them over. */
-export const isBeast = (id: TroopId) => TROOPS[id].wage === 0 && TROOPS[id].leadership < 99;
+/** Beasts are wild things that draw no wages and follow no villain: a hero with a way with beasts can win them over. */
+export const isBeast = (id: TroopId) => TROOPS[id].wage === 0 && TROOPS[id].leadership < 99 && TROOPS[id].people === 'wild';
 
 const HEROES = Object.fromEntries(Object.values(TROOPS).flatMap((t) => (t.hero ? [[t.hero.background, t.id]] : []))) as Record<BackgroundId, HeroId>;
 /** The troop that is Aldric himself, as a background fights. */

@@ -15,8 +15,8 @@ export const RANKS = ['Basic', 'Advanced', 'Expert'] as const;
 /** Fast troops that rush a line of archers: stakes in the ground slow them down. */
 const RUSHERS: TroopId[] = ['wolves', 'boars', 'goblins'];
 /** Everyone who fights hand to hand. */
-const FIGHTERS: TroopId[] = ['knights', 'swordsmen', 'peasants', 'bandits', 'wolves', 'boars', 'goblins', 'trolls'];
-const MAIL = { archers: { defence: 2 }, crossbowmen: { defence: 2 }, poachers: { defence: 2 } };
+const FIGHTERS: TroopId[] = ['knights', 'swordsmen', 'peasants', 'bandits', 'wolves', 'boars', 'bears', 'goblins', 'trolls'];
+const MAIL = { archers: { defence: 2 }, crossbowmen: { defence: 2 }, poachers: { defence: 2 }, huntsmen: { defence: 2 } };
 
 export const SKILLS: Record<SkillId, Skill> = {
   archery: {
@@ -51,7 +51,7 @@ export const SKILLS: Record<SkillId, Skill> = {
     name: 'Armourer',
     ranks: [
       { note: 'Your troops take 7% less damage.', bonus: { armour: 0.07 } },
-      { note: 'Your troops take 14% less damage, and your shooters wear mail: +2 defence for archers, crossbowmen and poachers.', bonus: { armour: 0.14, troops: MAIL } },
+      { note: 'Your troops take 14% less damage, and your shooters wear mail: +2 defence for archers, crossbowmen, poachers and huntsmen.', bonus: { armour: 0.14, troops: MAIL } },
       {
         note: 'Your troops take 21% less damage, your shooters wear mail, and you keep your gear like new: +1 defence for every piece you wear.',
         bonus: { armour: 0.21, troops: MAIL, gearDefence: 1 },

@@ -1,7 +1,7 @@
 import { ARTIFACTS } from '../../content/artifacts';
 import { isBeast, TROOPS } from '../../content/troops';
 import { grumbleLine } from '../army';
-import { applyEffects, choiceButton } from '../effects';
+import { applyEffects, choiceButton, meets } from '../effects';
 import { battleXp, beat, fight, likelyLossesLine, startFight, winChance } from '../fight';
 import { artifactChoices, foundNote, gainXp, giveArtifact, heroStats } from '../hero';
 import { addTroops, close, coins, leadershipUsed, show, stillWithYou, update, type Army, type Choice, type ContentChoice, type GameState, type Location, type Result } from '../state';
@@ -22,7 +22,7 @@ export function haggled(state: GameState, parley: ContentChoice): ContentChoice 
  * them. One whose story flag has been spent (the goose already called) is gone.
  */
 const parleys = (state: GameState, place: Location) =>
-  (place.enemy?.parleys ?? []).filter((p) => !(p.needs?.flag && state.flags?.[p.needs.flag] === false)).map((p) => choiceButton(state, place, haggled(state, p), `parley/${p.id}`));
+  (place.enemy?.parleys ?? []).filter((p) => meets(state, p.when) && !(p.needs?.flag && state.flags?.[p.needs.flag] === false)).map((p) => choiceButton(state, place, haggled(state, p), `parley/${p.id}`));
 
 /** Who of a band would fit under the hero's banner: as many as his leadership and his stacks allow. */
 function joiners(state: GameState, band: Army): Army {

@@ -237,3 +237,23 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   it's a sure thing (19 in 20 over sixteen battles), and looks again when it gets there: losing the whole army costs
   weeks in a province this size, while Grimsby recruits. It wins Aldmoor with every background, by day 9 to 13 at the
   median (6 to 38 in all).
+- **The old King's hunt hall (29 Sep, #76, as sketched in `act1/aldmoor.md`):** down a lane off the bridge road, on
+  Westmere's side of the river, stands the old King's hunt hall, shut up since he died: shutters closed, a bar across
+  the door, a stag's antlers on the gable. Its card says only that, with no button at all, greyed out or not. Once
+  Aldric has been there, Old Nan can be asked about it (a choice with a `when` isn't on the card until it holds): the old
+  King kept the key at his hunting lodge in the chase, on a nail by the door, and bears sleep on the track to it now.
+  The mist lifts over the lodge. The track runs on from her back door into the King's chase. Seven bears (Wesnoth's
+  Cave Bear: 80 health, attack 9, defence 7, damage 10–16, 12 leadership) hold it, a band: a fair fight for a fresh
+  army, and a costly one for the Knight, who loses about a third of his; the Wizard, the Ranger and the Courtier do
+  better. They're beasts, so a Ranger who has room can tame them, and a Ranger (or anyone in the Greenwood Cloak) can
+  go round them through the woods. The lodge gives up the key and a purse of the old King's crowns (150 gold). With
+  the key the hall opens: the door stands open, the windows glow, smoke rises and the King's pennant flies again, and
+  twelve of the old King's huntsmen (Wesnoth's Huntsman) come back to it. They're veteran bowmen (18 health, attack 7,
+  defence 4, damage 3–5, 16 shots, 3 leadership) who ask no price and draw no wages, and who hunt: their shots and
+  blows land half as hard again on beasts, Rook's wolves among them. Grimsby gave their job to Rook, and they'd like a
+  word with him. They wait at the hall for as long as it takes Aldric to find room to lead them, and no more come. The
+  Armourer's mail covers them, and Expert Offence's charge counts bears among the fighters. Castles and villages now
+  show a page written as content first, while one holds, and their recruit card after a choice there; an effect can put
+  volunteers at a place (`recruits`, free, or with no payday restock); and beasts are wild things with no wages, so the
+  huntsmen say on their card why they serve for nothing. The bot opens the hall and takes the huntsmen when it has the
+  key, and still wins Aldmoor with every background.
