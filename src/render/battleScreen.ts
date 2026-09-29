@@ -23,10 +23,10 @@ const oneOfAKind = (f: Fighter) => TROOPS[f.troop].name === TROOPS[f.troop].one;
 /** A leader's figure is drawn inside this box round where he stands, for pointing at him. */
 const LEADER_BOX = { half: 34, above: 96, below: 14 };
 
-/** Whose standard flies over the enemy: Grimsby's goose, the fen's moon, a skull for outlaws; beasts carry none. */
+/** Whose standard flies over the enemy: Grimsby's goose (over his huntsman's wolves too), the fen's moon, a skull for outlaws; beasts carry none. */
 function standardOf(troops: TroopId[]): Standard | null {
   const has = (...ids: TroopId[]) => troops.some((t) => ids.includes(t));
-  if (has('baron', 'swordsmen', 'crossbowmen')) return { cloth: [RED[1], RED[2], RED[3], RED[4]], emblem: 'goose' };
+  if (has('baron', 'rook', 'swordsmen', 'crossbowmen')) return { cloth: [RED[1], RED[2], RED[3], RED[4]], emblem: 'goose' };
   if (has('witch', 'bramble', 'goblins', 'trolls')) return { cloth: [PLUM[1], PLUM[2], PLUM[3], PLUM[4]], emblem: 'moon' };
   if (has('bandits', 'poachers')) return { cloth: [LEAF[0], LEAF[1], LEAF[2], LEAF[3]], emblem: 'skull' };
   return null;

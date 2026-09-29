@@ -6,6 +6,7 @@ import { mapOf } from './map/maps';
 import { moveEnemies } from './map/roaming';
 import { rideHome, rideOut } from './map/sortie';
 import { payday as reopen } from './places';
+import { faceOf } from './places/common';
 import { FIGHT_NOTE, oddsLine, SERGEANTS_NOTE } from './places/enemy';
 import { likelyLossesLine, winChance } from './fight';
 import { again, close, COMMISSION, coins, LAST_DAY, locationById, PAYDAY_EVERY, roman, show, wages, type Card, type Choice, type GameEvent, type GameState, type Location, type Result } from './state';
@@ -18,7 +19,7 @@ export function ambushCard(state: GameState, before: string[] = []): Card {
     { label: 'Let the sergeants handle it', detail: SERGEANTS_NOTE, action: { type: 'choose', id: foe.id, choice: 'auto' } },
     { label: 'Run for it (lose a fifth of the army)', action: { type: 'choose', id: foe.id, choice: 'flee' } },
   ];
-  return { title: `Day ${roman(state.day)}: ambush!`, lines: [...before, `At first light, **${foe.name}** fall on your camp!`, foe.enemy!.threat, oddsLine(winChance(state, foe.id)), likelyLossesLine(state, foe.id)], choices };
+  return { title: `Day ${roman(state.day)}: ambush!`, ...faceOf(foe.enemy!.army), lines: [...before, `At first light, **${foe.name}** fall on your camp!`, foe.enemy!.threat, oddsLine(winChance(state, foe.id)), likelyLossesLine(state, foe.id)], choices };
 }
 
 /** A villain recruits on payday; the villain himself stays one. */
@@ -55,6 +56,8 @@ export function endDay(state: GameState): Result {
     lines.push(`**Payday!** The King sends **${coins(commission)} gold**. Your troops take **${coins(pay)}** in wages.`, ...estates.rents, 'The mill has flour again, and there are fresh volunteers.', ...estates.lines);
     for (const l of state.locations) if (l.enemy?.grows && !l.done && (l.enemy.grown ?? 0) < MAX_GROWTH) lines.push(`Word on the road: **${l.name}** has taken on more men.`);
   }
+  // Bands that wake today start to roam or hunt, and word gets about.
+  for (const l of next.locations) if (l.enemy?.wakes?.day === day && !l.done) lines.push(l.enemy.wakes.news);
   const events: GameEvent[] = [{ type: 'day', day, payday }];
   if (day > LAST_DAY && state.bounty === 'open') {
     next = { ...next, over: 'lost' };
