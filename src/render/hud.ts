@@ -11,7 +11,7 @@ function icon(rows: string[], colours: Record<string, number>): Bitmap {
   return sprite;
 }
 
-const COIN = icon(
+export const COIN = icon(
   ['..oooo..', '.oyyYYo.', 'oyyyyYYo', 'oyddyyYo', 'oydyyyyo', 'oyyyyydo', '.oyyddo.', '..oooo..'],
   { o: INK, y: GOLD[4], Y: GOLD[6], d: GOLD[2] },
 );
@@ -27,12 +27,12 @@ const FORK = icon(
   ['.t.t.t.', '.t.t.t.', '.ttttt.', '...h...', '...h...', '...h...', '...h...', '...h...'],
   { t: STONE[5], h: WOOD[3] },
 );
-const HORSESHOE = icon(
+export const HORSESHOE = icon(
   ['.oooooo.', 'oiiooiio', 'oio..oio', 'oio..oio', 'oio..oio', 'oo....oo'],
   { o: INK, i: STONE[6] },
 );
 /** A mana crystal, lit from the top left. */
-const CRYSTAL = icon(
+export const CRYSTAL = icon(
   ['...o...', '..oWo..', '.oWBbo.', 'oWBBbdo', 'oBBbbdo', 'oBbbddo', '.obbdo.', '..odo..', '...o...'],
   { o: INK, W: BLUE[6], B: BLUE[5], b: BLUE[4], d: BLUE[2] },
 );

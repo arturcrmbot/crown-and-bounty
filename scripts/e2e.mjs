@@ -115,6 +115,27 @@ try {
   check((await screen()) === 'adventure' && !(await kc.state()).opening, 'then he is on the map, his choice made');
   const edge = await kc.state();
   check(edge.hero.at[0] > edge.world.width - 200 && edge.hero.facing === -1, 'he starts at the east edge of Aldmoor, on the King\u2019s road, looking into the land');
+
+  // The minimap in the right-hand panel: a click looks there, a drag steers the view, Space brings it back to him.
+  const camera = () => kc.call(() => window.__kc.camera());
+  await page.waitForTimeout(200);
+  await page.mouse.click(760, 175);
+  const far = await camera();
+  check(far.x === 0 && far.y > 1800 && String((await kc.state()).hero.at) === String(edge.hero.at), `a click on the minimap\u2019s corner looks at Darkwood, across the province (${Math.round(far.x)}, ${Math.round(far.y)}), and he stays put`);
+  await page.mouse.move(760, 175);
+  await page.mouse.down();
+  await page.mouse.move(850, 110, { steps: 8 });
+  await page.mouse.up();
+  const steered = await camera();
+  check(Math.abs(steered.x - 1236) < 20 && Math.abs(steered.y - 960) < 20, `a drag on the minimap steers the view to the middle of Aldmoor (${Math.round(steered.x)}, ${Math.round(steered.y)})`);
+  await page.keyboard.press(' ');
+  // The view follows him up to the map's edge (the view is 712 by 464).
+  const home = await page.waitForFunction(({ at, world }) => {
+    const c = window.__kc.camera();
+    const near = (v, target, most) => Math.abs(v - Math.max(0, Math.min(most, target))) < 30;
+    return near(c.x, at[0] - 356, world.width - 712) && near(c.y, at[1] - 252, world.height - 464);
+  }, { at: edge.hero.at, world: edge.world }, { timeout: 10_000 }).then(() => true, () => false);
+  check(home, 'and Space brings the view back to him');
   const heard = () => kc.call(() => window.__kc.sound().effects);
 
   check((await go('chest', 'Open')) === 'Treasure Chest', 'the chest opens on arrival');
