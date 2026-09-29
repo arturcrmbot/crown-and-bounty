@@ -91,7 +91,7 @@ export const ARTIFACTS: Record<ArtifactId, Artifact> = {
     id: 'brannocsLance',
     name: 'Sir Brannoc\u2019s Lance',
     slot: 'weapon',
-    note: '+1 attack, and your knights and swordsmen charge: after a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder, and nobody strikes back.',
+    note: '+1 attack, and your knights and swordsmen charge: after a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder, and nobody strikes back, but it winds them: they can\u2019t strike back themselves for the rest of that round and the next.',
     bonus: { attack: 1, charge: ['knights', 'swordsmen'] },
   },
   twinWand: {

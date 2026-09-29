@@ -1176,7 +1176,7 @@ export class BattleController implements Screen {
     const left = wound(target, damage);
     const back = !ranged && !charge && !leader && left.count > 0 && !target.retaliated ? ' They will strike back.' : '';
     // A leader's blow gets no answer: nothing can reach him, and he's back behind the line before they turn.
-    const after = leader && !ranged ? ` ${this.fighterName(f.id)} rides back behind the line, and nobody can strike back.` : charge ? ' No one can strike back at a charge.' : '';
+    const after = leader && !ranged ? ` ${this.fighterName(f.id)} rides back behind the line, and nobody can strike back.` : charge ? ' No one can strike back at a charge, but it winds them: they won\u2019t strike back themselves for the rest of this round and the next.' : '';
     return `${charge ? 'Charge! ' : ''}${ranged ? 'Shoot' : 'Attack'} ${whom}: about ${damage} damage, ${left.killed} perish.${back}${after}`;
   }
 

@@ -132,7 +132,7 @@ export const BACKGROUNDS: Record<BackgroundId, Background> = {
     spells: ['bless'],
     signature: {
       name: 'Banner of the Realm',
-      note: 'Knights get +1 attack and +1 defence, and they charge, as Sir Aldric does himself: after a run-up of 3 hexes or more, started clear of the enemy, they hit a quarter harder, and nobody can strike back.',
+      note: 'Knights get +1 attack and +1 defence, and they charge, as Sir Aldric does himself: after a run-up of 3 hexes or more, started clear of the enemy, they hit a quarter harder, and nobody can strike back, but it winds them: they can\u2019t strike back themselves for the rest of that round and the next.',
       bonus: { troops: { knights: { attack: 1, defence: 1 } }, charge: ['knights', 'heroKnight'] },
     },
     growth: { attack: 4, defence: 4, spellPower: 1, knowledge: 1 },
