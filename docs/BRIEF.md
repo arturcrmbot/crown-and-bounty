@@ -161,3 +161,10 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   day. Treasure Hunter: half as much again from treasure, and at dawn the mist lifts over any within 300 paces. War
   Chest: the King's bankers pay a tenth of the purse every payday, up to 500. Two new ones: Scholar (four choices at
   every level-up) and the King's Favourite (four boons at court).
+- **Big maps (29 Sep, the groundwork for a bigger Aldmoor, #77):** the land is painted in tiles of 128 pixels as they
+  come into view, with its trees and buildings, and the rest a tile a frame while nothing much is happening, so a
+  province six times the size opens at once. Tufts, petals, reeds and lily pads are sprinkled tile by tile, as thickly
+  as before. The fog, the walk grid and the start's explored land are worked out only where something is. Routes are
+  read off one search from the hero, which answers the way to every place at once (for the bot, and for the hover
+  label's days), and he rides up to an enemy from his own side of it: to a patrol on a bridge from his own bank, not
+  the long way round to the far one.

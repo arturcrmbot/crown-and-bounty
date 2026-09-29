@@ -66,22 +66,57 @@ export type MapModel = {
   trees: Tree[];
 };
 
-/** How much forest wants to grow at a point: above one half means woodland. Landmarks keep a clearing. */
-export function forestAmount(province: Province, x: number, y: number): number {
-  let amount = 0;
-  for (const [cx, cy, rx, ry] of province.forests) {
-    const d = Math.hypot((x - cx) / rx, (y - cy) / ry);
-    amount = Math.max(amount, 1.05 - d * 0.55);
-  }
-  amount += (fbm(x / 40, y / 40, 2, 61) - 0.5) * 0.3;
+/**
+ * The forests and clearings that reach each square of a province, in their own order, so that
+ * `forestAmount` only looks at those near the point: a forest reaches 1.91 times its radii (beyond,
+ * it wants no trees at all), a clearing its own radius.
+ */
+type ForestIndex = { clearings: [number, number, number][]; forests: number[][]; nearClearings: number[][]; cols: number; rows: number };
+const INDEX_CELL = 64;
+const forestIndexes = new WeakMap<Province, ForestIndex>();
+
+function forestIndex(province: Province): ForestIndex {
+  let index = forestIndexes.get(province);
+  if (index) return index;
   const clearings: [number, number, number][] = [
     // Enemies stand on roads that are clear already; a clearing round them would open a way past.
     ...province.locations.filter((l) => !l.enemy).map((l) => [l.at[0], l.at[1] - 10, 38] as [number, number, number]),
     [province.hero[0], province.hero[1] - 10, 38],
     ...province.locations.filter((l) => l.kind === 'hideout').map((l) => [l.at[0], l.at[1] - 20, 64] as [number, number, number]),
   ];
-  for (const [cx, cy, r] of clearings) {
-    const d = Math.hypot(x - cx, y - cy) / r;
+  const cols = Math.ceil(province.width / INDEX_CELL) + 1;
+  const rows = Math.ceil(province.height / INDEX_CELL) + 1;
+  const forests: number[][] = Array.from({ length: cols * rows }, () => []);
+  const nearClearings: number[][] = Array.from({ length: cols * rows }, () => []);
+  const mark = (lists: number[][], item: number, x0: number, y0: number, x1: number, y1: number) => {
+    for (let cy = Math.max(0, Math.floor(y0 / INDEX_CELL)); cy <= Math.min(rows - 1, Math.floor(y1 / INDEX_CELL)); cy++) {
+      for (let cx = Math.max(0, Math.floor(x0 / INDEX_CELL)); cx <= Math.min(cols - 1, Math.floor(x1 / INDEX_CELL)); cx++) lists[cy * cols + cx].push(item);
+    }
+  };
+  province.forests.forEach(([cx, cy, rx, ry], i) => mark(forests, i, cx - rx * 1.92, cy - ry * 1.92, cx + rx * 1.92, cy + ry * 1.92));
+  clearings.forEach(([cx, cy, r], i) => mark(nearClearings, i, cx - r, cy - r, cx + r, cy + r));
+  index = { clearings, forests, nearClearings, cols, rows };
+  forestIndexes.set(province, index);
+  return index;
+}
+
+/** How much forest wants to grow at a point: above one half means woodland. Landmarks keep a clearing. */
+export function forestAmount(province: Province, x: number, y: number): number {
+  const index = forestIndex(province);
+  // Points just off the map (a tree's jitter) look in the nearest square, which lists everything reaching past the edge.
+  const cx = Math.min(index.cols - 1, Math.max(0, Math.floor(x / INDEX_CELL)));
+  const cy = Math.min(index.rows - 1, Math.max(0, Math.floor(y / INDEX_CELL)));
+  const at = cy * index.cols + cx;
+  let amount = 0;
+  for (const i of index.forests[at]) {
+    const [fx, fy, rx, ry] = province.forests[i];
+    const d = Math.hypot((x - fx) / rx, (y - fy) / ry);
+    amount = Math.max(amount, 1.05 - d * 0.55);
+  }
+  amount += (fbm(x / 40, y / 40, 2, 61) - 0.5) * 0.3;
+  for (const i of index.nearClearings[at]) {
+    const [kx, ky, r] = index.clearings[i];
+    const d = Math.hypot(x - kx, y - ky) / r;
     if (d < 1) amount -= (1 - d) * 0.8;
   }
   return amount;
