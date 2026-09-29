@@ -59,10 +59,17 @@ async function press(label) {
   return true;
 }
 
+/** Scrolls to a place, as a player would, and clicks it. */
+async function clickPlace(id) {
+  const [x, y] = await kc.centre(id);
+  await kc.view(x, y);
+  await page.waitForTimeout(60);
+  await kc.click(x, y);
+}
+
 /** Rides to a place (ending days when tired) and takes `action` on arrival. */
 async function go(id, action) {
-  const [x, y] = await kc.centre(id);
-  await kc.click(x, y);
+  await clickPlace(id);
   if ((await kc.title()) === 'Unexplored') action = 'Ride there';
   if (!(await press(action))) return false;
   for (let guard = 0; guard < 20; guard++) {
@@ -104,8 +111,7 @@ try {
     if (await go(id, verb)) await look(id);
     await press('Keep') || (await press('Close'));
   }
-  const [px, py] = await kc.centre('patrol');
-  await kc.click(px, py);
+  await clickPlace('patrol');
   await look('patrol-card');
   await press('Close');
   if (await go('patrol', 'Approach')) {

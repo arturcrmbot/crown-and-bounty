@@ -25,21 +25,25 @@ describe('enemies on the map', () => {
 
   it('wander their territory when they roam, and never stand where nobody could', () => {
     const map = buildMap(ALDMOOR);
-    const home = locationById(aldmoor(), 'patrol').at;
+    const home = locationById(aldmoor(), 'poachers').at;
     let s = aldmoor();
     const seen = new Set<string>();
     for (let i = 0; i < 12; i++) {
       s = endDay(s).state;
-      const at = locationById(s, 'patrol').at;
+      const at = locationById(s, 'poachers').at;
       seen.add(String(at));
-      expect(dist(at, home)).toBeLessThanOrEqual(90 * 1.6 + 8);
+      expect(dist(at, home)).toBeLessThanOrEqual(60 * 1.6 + 8);
       expect(Number.isFinite(map.grid.cost[cellIndex(map, at[0], at[1])])).toBe(true);
     }
     expect(seen.size).toBeGreaterThan(3);
   });
 
   it('move the same way every time for the same seed', () => {
-    expect(locationById(nights(aldmoor(), 6), 'patrol').at).toEqual(locationById(nights(aldmoor(), 6), 'patrol').at);
+    expect(locationById(nights(aldmoor(), 6), 'poachers').at).toEqual(locationById(nights(aldmoor(), 6), 'poachers').at);
+  });
+
+  it('hold the old bridge: Pike\u2019s patrol never leaves it', () => {
+    expect(locationById(nights(aldmoor(), 12), 'patrol').at).toEqual(locationById(aldmoor(), 'patrol').at);
   });
 
   it('come for a weaker hero in their territory, and fall on his camp at dawn', () => {

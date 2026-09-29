@@ -17,7 +17,7 @@ export function beginCommission(province: Province, seed: number, start: Campaig
     seed,
     locations: structuredClone(province.locations),
     bounty: 'open',
-    hero: { ...structuredClone(start.hero), at: province.hero, facing: 1 },
+    hero: { ...structuredClone(start.hero), at: province.hero, facing: province.heroFacing ?? 1 },
     world: { width: province.width, height: province.height },
     explored: startingExplored(province),
     campaign: { chapter, seed: campaignSeed, record, start: structuredClone(start) },
