@@ -405,6 +405,13 @@ export function rallyOf(b: BattleState, f: Fighter): { attack: number; defence: 
   return rallied ? { attack, defence } : null;
 }
 
+/** Friendly stacks a rallying fighter would reach from `at`, without moving it in the battle state. */
+export function rallyTargets(b: BattleState, source: Fighter, at: number): Fighter[] {
+  if (!alive(source) || !AURAS.has(source.troop)) return [];
+  const adjacent = new Set(NEIGHBOURS[at]);
+  return b.fighters.filter((f) => alive(f) && f.side === source.side && f.id !== source.id && adjacent.has(f.at));
+}
+
 /** Everything a stack gets besides its own attack and defence: the hero's skills, and any rally. */
 function helpOf(b: BattleState, f: Fighter): { attack: number; defence: number } {
   const skill = heroSkill(b, f);
