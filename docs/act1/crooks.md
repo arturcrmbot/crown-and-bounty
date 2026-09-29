@@ -1,7 +1,7 @@
 # The four crooks
 
-Commissions II to V (#13), proposed on 29 Sep 2026. Broad strokes: the details get settled as each one is built, and
-none of it is built yet.
+Commissions II to V (#13). Artur agreed these broad strokes on 29 Sep 2026; the details get settled as each one is
+built, and none of it is built yet.
 
 ## All four
 
@@ -33,7 +33,7 @@ thunderers, berserkers, gryphons), to the best of everything. The wild monsters 
 giant spiders in the Wychwood, gryphons on Silverfell and great wolves on the downs. The bog goblins and the troll
 leave the Fenmarch for Act II, as WORLD.md's table has it.
 
-## II. Black Hollis, the Bandit King
+## II. Black Hollis, the Bandit King (#87)
 
 > **WANTED: Black Hollis, the Bandit King,** for robbing the King's roads, burning Tuttle Mill, and holding the tax
 > collector to ransom. Twice. Reward: **2,000 gold**, alive. *Bring an army. He has one.*
@@ -54,7 +54,7 @@ leave the Fenmarch for Act II, as WORLD.md's table has it.
   home, and charging me for his time."* He rides with you after, and wages cost a tenth less.
 - **The egg:** Old Tom's sack, in his cell, still smells of smoke.
 
-## III. Elowen of the Hollow Oak
+## III. Elowen of the Hollow Oak (#88)
 
 > **WANTED: Elowen of the Hollow Oak, aged ninety-three** (young, for an elf), for growing an oak through the King's
 > hunting lodge (overnight), shutting the woodcutters of Axebury in with brambles, and taking every swan on the
@@ -76,7 +76,7 @@ leave the Fenmarch for Act II, as WORLD.md's table has it.
   keeps it, and takes the new road out of your reward. Her cousins, elvish archers, can be hired next time.
 - **The egg:** the trees can hear it.
 
-## IV. Gorm Goldtooth
+## IV. Gorm Goldtooth (#89)
 
 > **WANTED: Gorm Goldtooth, Master of the Mountain** (self-appointed), for shutting the King's silver mines,
 > tunnelling into the cellars of Castle Fellgate, and sending the King a bill for the mountain. Reward: **4,000
@@ -98,7 +98,7 @@ leave the Fenmarch for Act II, as WORLD.md's table has it.
   tunnel in the last province.
 - **The egg:** the ledger says *"Setting for an orb. Gold. Leave room for it to grow."*
 
-## V. Rufus the First
+## V. Rufus the First (#90)
 
 > **WANTED: Sir Rufus Brannoc, who calls himself King Rufus the First,** for taking the King's castles, minting
 > pennies with his own face on them, and knighting his horse. Reward: **5,000 gold**, alive. *He has knights. And
@@ -125,7 +125,7 @@ leave the Fenmarch for Act II, as WORLD.md's table has it.
 **Hand-made, like Aldmoor, one at a time,** each in a session of its own once Aldmoor is the golden example, the
 Fenmarch first. Chests, gold and lone trees can still fall where the seed puts them.
 
-| | Hand-made (my pick) | Set pieces on generated land | Generated, as today |
+| | Hand-made (chosen) | Set pieces on generated land | Generated, as today |
 | --- | --- | --- | --- |
 | **Feels** | new every time | new places, on land that looks alike | the same castle, tower, mine and mill, shuffled |
 | **Answers far off** | far because they're put there | needs rules for "far" and "over the river" | a note at the tower |
@@ -136,10 +136,10 @@ way to move on the map, a tune, a theme and portraits. Hollis is the cheapest, s
 half there; Gorm is the dearest, with a new people, a new land, tunnels and fliers. Until each is built, today's
 generated commission can wear his poster, so the story reads right from end to end.
 
-## For Artur
+## Decided (Artur, 29 Sep)
 
-1. **How to build II to V:** hand-made like Aldmoor, one at a time (my pick); set pieces on generated land; or
-   generated, as today.
-2. **The fifth crook:** Rufus, a pretender with knights and whoever the others left (my pick); a necromancer with the
-   dead, brought forward from Act II; or a crook of one of the three peoples, with the best of all three.
-3. **The mirrors:** each crook fights like one of Aldric's backgrounds (my pick), or each in a style of his own.
+1. **Hand-made like Aldmoor,** one at a time, the Fenmarch first: not set pieces on generated land, nor generated as
+   today.
+2. **Rufus the First is the fifth crook:** not a necromancer brought forward from Act II, nor a crook of one of the
+   three peoples.
+3. **Each crook fights like one of Aldric's backgrounds,** not in a style of his own.
