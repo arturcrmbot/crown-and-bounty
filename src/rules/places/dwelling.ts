@@ -177,8 +177,10 @@ export const dwelling: PlaceKind = {
   arrive: (state, place) => {
     const page = firstPage(state, place);
     if (page) return found(state, place, pageCard(state, place, page));
+    // The chapel's mana first, then the recruits, and the card's way out as ever.
     const home = restAt(state, place);
-    return found(home.state, place, recruitCard(home.state, place, home.lines));
+    const card = recruitCard(home.state, place);
+    return found(home.state, place, { ...card, lines: [...home.lines, ...card.lines] });
   },
   card: (state, place, before) => recruitCard(state, place, before),
   choose(state, place, choice) {
