@@ -36,6 +36,7 @@ describe('saved games', () => {
 
     saveGame(previous);
     expect(values.has('kings-commission/save/v5-g2')).toBe(false);
+    values.set('kings-commission/save/v5-g2', JSON.stringify(previous));
     clearSave();
 
     expect(loadGame()).toBeNull();
