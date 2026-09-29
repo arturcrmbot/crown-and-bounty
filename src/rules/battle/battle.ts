@@ -27,6 +27,8 @@ export type Fighter = {
   moraleUsed?: boolean;
   /** The round a status wears off at the start of (those with `rounds`). */
   until?: Partial<Record<StatusId, number>>;
+  /** The others of its side it won't march happily beside (see `FEUDS` in content/troops.ts), living or not. */
+  uneasy?: number[];
   unit?: UnitNumbers;
   /**
    * Aldric himself, a stack of one: the side's spells are his to cast, and only while he stands.
@@ -268,6 +270,7 @@ export function createBattle(args: { place: string; seed: number; player: Army; 
     const at = heroHex(fighters.filter((f) => f.side === 'player').length);
     fighters.push({ id: fighters.length, side: 'player', troop, count: 1, startCount: 1, hp: unit.hp, at, shots: shotsOf(troop, 'player'), retaliated: false, defending: false, waited: false, status: brought(troop, 'player'), unit, hero: true });
   }
+  markFeuds(fighters);
   for (const f of fighters) for (const status of f.status) wearsOff(f, status, 1);
   // The opening words: what each thing he brought does to whom.
   const opening = (args.hero.brought ?? [])
@@ -424,19 +427,17 @@ function helpOf(b: BattleState, f: Fighter): { attack: number; defence: number }
 /** Morale a stack loses for every people in its army it won't march beside (see `FEUDS` in content/troops.ts). */
 export const GRUMBLE = 0.1;
 
-/** For each battle state's stacks, the others of their side they won't march beside, found once (living or not). */
-const feuds = new WeakMap<readonly Fighter[], { length: number; of: Map<number, Fighter[]> }>();
+/** Marks who won't march happily beside whom, as the armies take the field or a stack marches in. */
+function markFeuds(fighters: Fighter[]) {
+  for (const f of fighters) {
+    const ids = fighters.filter((o) => o.side === f.side && o.id !== f.id && feuding(f.troop, o.troop)).map((o) => o.id);
+    if (ids.length) f.uneasy = ids;
+    else delete f.uneasy;
+  }
+}
 
 /** The living stacks of its own side a stack grumbles at: of a people its own won't march with. */
-export function grumblesAt(b: BattleState, f: Pick<Fighter, 'id'>): Fighter[] {
-  let known = feuds.get(b.fighters);
-  if (!known || known.length !== b.fighters.length) {
-    const of = new Map(b.fighters.map((x) => [x.id, b.fighters.filter((o) => o.side === x.side && o.id !== x.id && feuding(x.troop, o.troop))]));
-    feuds.set(b.fighters, (known = { length: b.fighters.length, of }));
-  }
-  const them = known.of.get(f.id);
-  return them?.length ? them.filter(alive) : [];
-}
+export const grumblesAt = (b: BattleState, f: Pick<Fighter, 'uneasy'>): Fighter[] => (f.uneasy ?? []).map((id) => fighterById(b, id)).filter(alive);
 
 /** A stack's luck: the chance any blow of its lands lucky, twice as hard. Aldric brings it to his side. */
 export const luckOf = (b: BattleState, f: Pick<Fighter, 'side'>) => (f.side === 'player' ? (b.hero.luck ?? 0) : 0);
@@ -444,12 +445,18 @@ export const luckOf = (b: BattleState, f: Pick<Fighter, 'side'>) => (f.side === 
 /**
  * A stack's morale. Above nought, the chance its good spirits win it another turn before the round
  * moves on; below, the chance it hangs back as its turn comes round, and loses it. Aldric brings his
- * to his side, and every people it won't march beside takes `GRUMBLE` off.
+ * to his side, and every people it won't march beside takes `GRUMBLE` off, while any of them stand.
  */
-export function moraleOf(b: BattleState, f: Pick<Fighter, 'id' | 'side'>): number {
+export function moraleOf(b: BattleState, f: Pick<Fighter, 'side' | 'uneasy'>): number {
   const base = f.side === 'player' ? (b.hero.morale ?? 0) : 0;
-  const them = grumblesAt(b, f);
-  return them.length ? base - GRUMBLE * new Set(them.map((o) => TROOPS[o.troop].people)).size : base;
+  if (!f.uneasy) return base;
+  const peoples: string[] = [];
+  for (const id of f.uneasy) {
+    const o = fighterById(b, id);
+    const people = TROOPS[o.troop].people!;
+    if (alive(o) && !peoples.includes(people)) peoples.push(people);
+  }
+  return base - GRUMBLE * peoples.length;
 }
 
 /** The attack-against-defence multiplier, HoMM2 style. */
@@ -780,6 +787,7 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
           if (at === null || count <= 0) return { battle: b, events: [] };
           const t = TROOPS[effect.troop];
           fighters.push({ id: fighters.length, side, troop: effect.troop, count, startCount: count, hp: t.hp, at, shots: t.shots ?? 0, retaliated: false, defending: false, waited: false, status: [] });
+          markFeuds(fighters);
           events.push({ type: 'summon', ...cast, fighter: fighters.length - 1 });
           break;
         }
