@@ -1,5 +1,6 @@
 import { needsTarget, SPELLS, STATUSES, type SpellId, type StatusDef } from '../content/spells';
 import { TROOPS, troops } from '../content/troops';
+import { CONTACT, TROOP_SOUNDS } from '../audio/blows';
 import { chooseAction, finishEstimate } from '../rules/battle/ai';
 import { manaInBattle } from '../rules/heroSheet';
 import { coins } from '../rules/state';
@@ -7,7 +8,7 @@ import { activeFighter, bardOf, battleAct, battleEnd, bribePrice, canCast, canJo
 import { paintBanner } from '../render/banner';
 import { BattleScreen, BUTTONS, FIRE_FALL, FLOAT_RISE, hexAt, hexCentre, leaderAt, LOG_BOTTOM, spotOf, type BattleView, type Shot } from '../render/battleScreen';
 import { animLength, bodyHeight, hitTime, STAND, type AnimName } from '../render/battleSprites';
-import { ART } from '../render/units';
+import { ART, type Missile } from '../render/units';
 import { MAP_VIEW } from '../render/frame';
 import { BLUE, GOLD, NEUTRAL, RED } from '../render/palette';
 import { CardView } from '../ui/card';
@@ -274,6 +275,33 @@ export class BattleController implements Screen {
     this.view.floaters.push({ x, y: at, text, color, age: 0 });
   }
 
+  /** Where on the field a sound comes from: your side on the left, theirs on the right, as far across as it is. */
+  private panAt(x: number) {
+    const half = MAP_VIEW.width / 2;
+    return Math.max(-0.7, Math.min(0.7, ((x - MAP_VIEW.x - half) / half) * 0.7));
+  }
+
+  /**
+   * What a blow or a shot sounds like as it lands: the attacker's weapon (a knight's charge is his
+   * lance), or the shot hitting home; steel ringing on the target's armour; and its cry, if it's
+   * hurt and still standing (one that falls gives its death cry as it goes).
+   */
+  private landSound(e: Extract<BattleEvent, { type: 'hit' }>, missile: Missile | null, dies: boolean, x: number) {
+    const pan = this.panAt(x);
+    const attacker = fighterById(this.battle, e.attacker);
+    const target = TROOP_SOUNDS[fighterById(this.battle, e.target).troop];
+    if (missile) play(`land:${missile}`, pan);
+    else play(`blow:${e.charge && ART[attacker.troop].charge ? 'lance' : TROOP_SOUNDS[attacker.troop].blow}`, pan);
+    const lands = missile ? 0 : CONTACT;
+    if (target.armour) play('armour', pan, lands);
+    if (!dies && e.damage > 0) play(`hurt:${target.cry}`, pan, lands + 0.06);
+  }
+
+  /** A stack's death cry, as the last of it falls. */
+  private deathCry(id: number) {
+    play(`dies:${TROOP_SOUNDS[fighterById(this.battle, id).troop].cry}`, this.panAt(this.spot(id)[0]));
+  }
+
   /** A burst where a blow lands, blood for the wounded, and a jolt that grows with the damage. */
   private impact(target: number, damage: number, heavy: boolean) {
     const f = fighterById(this.battle, target);
@@ -296,7 +324,10 @@ export class BattleController implements Screen {
     if (!ART[f.troop].death) return this.poof(target);
     const length = animLength(f.troop, 'death');
     this.step(length * MS, {
-      start: () => this.view.facings.set(target, this.facingOf(f)),
+      start: () => {
+        this.view.facings.set(target, this.facingOf(f));
+        this.deathCry(target);
+      },
       tick: (t) => this.view.poses.set(target, { anim: 'death', ms: t * length }),
       end: () => {
         this.view.poses.delete(target);
@@ -394,6 +425,7 @@ export class BattleController implements Screen {
       start: () => {
         this.view.shots.push(dust);
         this.view.dying.delete(target);
+        this.deathCry(target);
       },
       tick: (t) => (dust.t = t),
       end: () => this.view.shots.splice(this.view.shots.indexOf(dust), 1),
@@ -480,7 +512,7 @@ export class BattleController implements Screen {
       this.step(0.16 + len / 1500, {
         start: () => {
           v.shots.push(shot);
-          play(missile === 'hex' || missile === 'magic' ? 'spell' : 'shoot');
+          play(`loose:${missile}`, this.panAt(ax));
         },
         tick: (t) => {
           shot.t = t;
@@ -497,7 +529,7 @@ export class BattleController implements Screen {
         v.poses.set(e.target, { anim: flinch(), ms: 0 });
         v.counts.set(e.target, left.count);
         v.health.set(e.target, left.hp);
-        if (!e.ranged) play('hit');
+        this.landSound(e, missile, dies, tx);
         this.impact(e.target, e.damage, !e.ranged);
         if (e.charge) {
           this.float(e.attacker, 'Charge!', GOLD[6], from);
@@ -575,6 +607,7 @@ export class BattleController implements Screen {
           if (leader && !back) out.set(e.fighter, path[path.length - 1]);
           // Riders gallop and beasts lope, in their own frames; folk on foot hop from hex to hex.
           const frames = !!ART[f.troop].move;
+          const feet = `feet:${TROOP_SOUNDS[f.troop].feet}` as const;
           for (const [n, to] of path.entries()) {
             const a = n === 0 ? start : path[n - 1];
             // A hex a step for a stack; a leader gallops, however far his first and last stretches are.
@@ -583,6 +616,7 @@ export class BattleController implements Screen {
               start: () => {
                 if (n === 0 && !back) v.log = `${this.fighterName(e.fighter)} ${this.verb(e.fighter, leader ? 'ride out' : 'advance')}...`;
                 if (to[0] !== a[0]) v.facings.set(e.fighter, to[0] > a[0] ? 1 : -1);
+                play(feet, this.panAt(to[0]));
               },
               tick: (t) => {
                 const hop = frames ? 0 : Math.sin(t * Math.PI) * 4;
@@ -638,6 +672,7 @@ export class BattleController implements Screen {
             start: () => {
               v.health.set(e.fighter, hurt.hp - e.hurt);
               this.float(e.fighter, `-${e.hurt}`, RED[6]);
+              play(`hurt:${TROOP_SOUNDS[fighterById(this.battle, e.fighter).troop].cry}`, this.panAt(this.spot(e.fighter)[0]));
               v.log = `${this.fighterName(e.fighter)} ${this.verb(e.fighter, 'wince')}: the poison bites deep.`;
             },
           });
@@ -677,6 +712,10 @@ export class BattleController implements Screen {
           const impact = () => {
             landed = true;
             play(look.kind === 'sparkle' ? 'spell' : 'bolt');
+            // The stacks it hurts cry out (two at most, not a whole choir); those it kills cry as they fall.
+            for (const { h } of victims.filter((x) => x.h.damage > 0 && !x.dies).slice(0, 2)) {
+              play(`hurt:${TROOP_SOUNDS[fighterById(this.battle, h.target).troop].cry}`, this.panAt(this.spot(h.target)[0]), 0.08);
+            }
             for (const id of changes) {
               v.looks.delete(id);
               this.puff(id);

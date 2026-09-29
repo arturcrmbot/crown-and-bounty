@@ -5,6 +5,7 @@ import { sting, type StingId } from '../audio/stings';
 import { SCREEN } from '../render/frame';
 import { Transition, type TransitionStyle } from '../render/transition';
 import { setVeil } from '../ui/veil';
+import { effectsHeard } from '../ui/sound';
 import { mapOf } from '../rules/map/maps';
 import { hasNextCommission, toCourt, type Card, type GameEvent, type GameState } from '../rules/game';
 import { AdventureController } from './adventure';
@@ -291,8 +292,8 @@ export class Game {
       /** What the hero screen shows, while it's open. */
       hero: () => (this.top instanceof HeroController ? this.top.sheet.describe() : null),
       frameHash: () => hashOf(this.top.bitmap.data),
-      /** What's playing and what the land sounds like, once sound is awake. */
-      sound: () => ({ music: nowPlaying(), ambience: heard() }),
+      /** What's playing, what the land sounds like, and the last effects asked for, once sound is awake. */
+      sound: () => ({ music: nowPlaying(), ambience: heard(), effects: effectsHeard() }),
       /** The sky over the map: the day's light, mist, rain, wind and night (see `render/weather.ts`). */
       sky: () => (this.stack[0] instanceof AdventureController ? this.stack[0].view.sky : null),
       /** Moves the clock on by hand, even when frozen: for frame-by-frame screenshots of an animation. */
