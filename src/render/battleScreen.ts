@@ -118,6 +118,8 @@ export type BattleView = {
   floaters: Floater[];
   shots: Shot[];
   log: string;
+  /** An imminent threat to Aldric, held on the ribbon whenever nothing is being weighed up. */
+  warning: string | null;
   /** Whose turn it is, for the bar. */
   active: number | null;
   /** A stack under the pointer: the bar shows it instead of the acting one. */
@@ -360,7 +362,7 @@ export class BattleScreen {
     for (const t of view.floaters) drawText(screen, t.text, Math.round(t.x - t.text.length * 4), Math.round(t.y - t.age * FLOAT_RISE), t.color, INK, 15);
     if (view.banner) drawBanner(screen, view.banner.sprite, MAP_VIEW.x + MAP_VIEW.width / 2, MAP_VIEW.y + 150, view.banner.age, view.banner.life);
     if (view.shake > 0.5) this.shake(view.shake, view.time);
-    this.logLine(view.preview ?? view.log);
+    this.logLine(view.preview ?? view.warning ?? view.log);
     this.turnStrip(b);
     this.bar(b, view);
     blit(screen, this.overlay, 0, 0);

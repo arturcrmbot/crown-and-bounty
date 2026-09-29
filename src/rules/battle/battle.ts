@@ -534,6 +534,43 @@ export function spellVictims(b: BattleState, spell: SpellId, target: Fighter): F
   return [target, ...b.fighters.filter((f) => alive(f) && f.id !== target.id && around.has(f.at))];
 }
 
+/** Enemy stacks that can take Aldric off the field before he acts again. */
+export function threatsToHero(b: BattleState): Fighter[] {
+  const hero = heroOnField(b);
+  if (!hero || !alive(hero) || b.result) return [];
+
+  const heroIndex = b.order.indexOf(hero.id);
+  const upcoming = new Map<number, boolean>();
+  const add = (id: number, nextRound: boolean) => {
+    if (!upcoming.has(id)) upcoming.set(id, nextRound);
+  };
+  if (heroIndex > 0) {
+    for (const id of b.order.slice(1, heroIndex)) add(id, false);
+  } else {
+    for (const id of b.order.slice(heroIndex === 0 ? 1 : 0)) add(id, false);
+    for (const f of b.fighters) {
+      if (f.side === 'enemy' && alive(f) && speedOf(f) > speedOf(hero)) add(f.id, true);
+    }
+  }
+
+  return [...upcoming].flatMap(([id, nextRound]) => {
+    const enemy = b.fighters.find((f) => f.id === id);
+    if (!enemy || !alive(enemy) || enemy.side !== 'enemy' || enemy.status.some((s) => STATUSES[s].skipsTurn)) return [];
+    const state = nextRound ? { ...b, round: b.round + 1 } : b;
+
+    const meleeReach = reachable(enemy.at, speedOf(enemy), (i) => blocked(b, i, enemy.id));
+    const melee = NEIGHBOURS[hero.at].includes(enemy.at) || NEIGHBOURS[hero.at].some((hex) => meleeReach.has(hex));
+    const ranged = enemy.shots > 0 && !adjacentEnemy(b, enemy) && strike(b, enemy, hero, true).damage >= hero.hp;
+    const spell = spellsOf(state, enemy.id).some((id) => {
+      if (!needsTarget(id) || SPELLS[id].on !== 'enemy' || !canCast(state, id, enemy.id)) return false;
+      const damage = spellDamage(state, id, enemy.id);
+      if (!damage || shotOn(hero, damage) < hero.hp) return false;
+      return b.fighters.some((target) => alive(target) && target.side === 'player' && spellVictims(state, id, target).some((victim) => victim.id === hero.id));
+    });
+    return melee || ranged || spell ? [enemy] : [];
+  });
+}
+
 /** Puts a status on a stack, once. */
 const addStatus = (f: Fighter, status: StatusId, round: number) => {
   if (!f.status.includes(status)) f.status = [...f.status, status];
