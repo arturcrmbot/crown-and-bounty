@@ -126,12 +126,16 @@ describe('a battle', () => {
         seed: 7,
         player: [{ troop: 'knights', count: 10 }],
         enemy: [{ troop: enemy, count: 100 }],
-        hero: { ...hero, unit: { troop: 'heroCourtier', hp, damage: [6, 10] } },
+        hero: { ...hero, unit: { troop: 'heroCourtier', hp: 55, damage: [6, 10] } },
         obstacles: 0,
       });
       const lord = b.fighters.find((f) => f.hero)!;
       const foe = b.fighters.find((f) => f.side === 'enemy')!;
-      return { ...b, order: [b.fighters[0].id, foe.id, lord.id] };
+      return {
+        ...b,
+        fighters: b.fighters.map((f) => f.id === lord.id ? { ...f, hp } : f),
+        order: [b.fighters[0].id, foe.id, lord.id],
+      };
     };
 
     expect(threatsToHero(create('crossbowmen', 55))).toEqual([]);
