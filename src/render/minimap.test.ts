@@ -128,13 +128,18 @@ describe('the minimap', () => {
     expect(marks.map((m) => m.id)).not.toContain('hideout');
     // With the mist lifted: the King's castle, the villain's lair, the bands on the roads, and the treasure.
     const kinds = Object.fromEntries(marksOf(state.locations, CLEAR).map((m) => [m.id, m.kind]));
-    expect(kinds).toMatchObject({ castle: 'town', village: 'town', hideout: 'lair', patrol: 'foe', wolves: 'foe', chest: 'treasure', gold: 'treasure' });
+    expect(kinds).toMatchObject({ castle: 'town', village: 'town', hideout: 'villain', patrol: 'foe', wolves: 'foe', chest: 'treasure', gold: 'treasure' });
     // What's used up and gone from the map is gone from the minimap; a used place turns grey.
     const used = state.locations.map((l) => (l.id === 'chest' || l.id === 'tower' || l.id === 'patrol' ? { ...l, done: true } : l));
     const after = Object.fromEntries(marksOf(used, CLEAR).map((m) => [m.id, m.kind]));
     expect(after.chest).toBeUndefined();
     expect(after.patrol).toBeUndefined();
     expect(after.tower).toBe('spent');
+    // When he rides out, the villain is marked where he rides, and his lair as his men's.
+    const lair = state.locations.find((l) => l.id === 'hideout')!;
+    const band: Location = { id: 'grimsbyRides', kind: 'patrol', name: 'Baron Grimsby', at: [2000, 1300], done: false, enemy: { ...lair.enemy!, lair: 'hideout' } };
+    const riding = Object.fromEntries(marksOf([...state.locations, band], CLEAR).map((m) => [m.id, m.kind]));
+    expect(riding).toMatchObject({ grimsbyRides: 'villain', hideout: 'foe' });
   });
 
   it('shows the marks, the hero on top of them and the view\u2019s frame, and paints again only when one of them moves', () => {

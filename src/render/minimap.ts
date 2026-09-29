@@ -21,7 +21,7 @@ export const MINIMAP_COLOURS = {
   bridge: STONE[6],
   road: DIRT[6],
   town: BLUE[5],
-  lair: RED[5],
+  villain: RED[5],
   foe: RED[4],
   treasure: GOLD[5],
   place: PARCHMENT[6],
@@ -33,22 +33,24 @@ export const MINIMAP_COLOURS = {
 };
 
 /**
- * What a mark on the minimap stands for: a castle or village (where troops are for hire), the
- * villain's lair, an enemy band, treasure (and the X where the sceptre lies), any other place, or a
- * place already used up.
+ * What a mark on the minimap stands for: a castle or village (where troops are for hire), the villain
+ * (in his lair, or where he rides when he's out), an enemy band, treasure (and the X where the sceptre
+ * lies), any other place, or a place already used up.
  */
-export type MarkKind = 'town' | 'lair' | 'foe' | 'treasure' | 'place' | 'spent';
+export type MarkKind = 'town' | 'villain' | 'foe' | 'treasure' | 'place' | 'spent';
 export type Mark = { id: string; at: Point; kind: MarkKind };
 
 /** Drawn in this order, so enemies and the villain come out on top of what they stand near. */
-const ORDER: Record<MarkKind, number> = { spent: 0, place: 1, treasure: 2, town: 3, foe: 4, lair: 5 };
+const ORDER: Record<MarkKind, number> = { spent: 0, place: 1, treasure: 2, town: 3, foe: 4, villain: 5 };
 /** How big each mark is, in minimap pixels, inside its ink edge. */
-const SIZE: Record<MarkKind, number> = { spent: 2, place: 2, treasure: 2, town: 3, foe: 3, lair: 3 };
+const SIZE: Record<MarkKind, number> = { spent: 2, place: 2, treasure: 2, town: 3, foe: 3, villain: 3 };
 /** How far the hero's diamond reaches from its heart, ink edge included. */
 const HERO_REACH = 3;
 
-function markOf(l: Location): MarkKind {
-  if (l.kind === 'hideout') return l.done ? 'spent' : 'lair';
+/** `out` is whether a villain's band has ridden out of this place: then he's marked where he rides, and his lair as his men's. */
+function markOf(l: Location, out: boolean): MarkKind {
+  if (l.enemy?.lair && !l.done) return 'villain';
+  if (l.kind === 'hideout') return l.done ? 'spent' : out ? 'foe' : 'villain';
   if (l.enemy && !l.done) return 'foe';
   if (l.kind === 'castle' || l.kind === 'village') return 'town';
   if (l.kind === 'chest' || l.kind === 'gold' || l.kind === 'dig') return l.done ? 'spent' : 'treasure';
@@ -60,9 +62,10 @@ export type Fog = { isFogged(x: number, y: number): boolean };
 
 /** The places the hero has found, and the enemies in sight: whatever the map itself shows clear of the fog. */
 export function marksOf(locations: readonly Location[], fog: Fog): Mark[] {
+  const out = new Set(locations.filter((l) => l.enemy?.lair && !l.done).map((l) => l.enemy!.lair));
   return locations
     .filter((l) => !(l.done && VANISHES.has(l.kind)) && !fog.isFogged(l.at[0], l.at[1] - 2))
-    .map((l) => ({ id: l.id, at: l.at, kind: markOf(l) }))
+    .map((l) => ({ id: l.id, at: l.at, kind: markOf(l, out.has(l.id)) }))
     .sort((a, b) => ORDER[a.kind] - ORDER[b.kind]);
 }
 
@@ -205,8 +208,8 @@ export class Minimap {
     for (let my = 0; my < this.height; my++) target.data.set(this.base.subarray(my * this.width, (my + 1) * this.width), (this.top + my) * target.width + this.left);
     for (const mark of this.marks) {
       const [mx, my] = this.pixel(mark.at[0], mark.at[1] - 4);
-      // The villain's lair has his gold at its heart.
-      this.dot(target, mx, my, SIZE[mark.kind], MINIMAP_COLOURS[mark.kind], mark.kind === 'lair' ? MINIMAP_COLOURS.gold : undefined);
+      // The villain's mark has his gold at its heart.
+      this.dot(target, mx, my, SIZE[mark.kind], MINIMAP_COLOURS[mark.kind], mark.kind === 'villain' ? MINIMAP_COLOURS.gold : undefined);
     }
     this.box(target, frame, MINIMAP_COLOURS.view);
     this.diamond(target, hx, hy);
