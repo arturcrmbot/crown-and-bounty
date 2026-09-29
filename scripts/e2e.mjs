@@ -359,7 +359,7 @@ try {
   check((await beatWhenReady('patrol')) === 'Victory!', 'once explored, the sergeants beat the patrol');
   await close();
   // Taking his patrol off the bridge hurts Grimsby: he rides out with his guard to meet the hero, and
-  // falls on his camp. Beaten in the open, he flees home to his stockade, without his guard.
+  // falls on his camp. Beaten in the open, he flees home to his stockade, and his guard straggles in after him.
   const byGrimsby = () => ambushes.find((a) => a.who === 'Grimsby and his Guard');
   for (let night = 0; night < 8 && !byGrimsby(); night++) {
     await settle();
@@ -377,7 +377,8 @@ try {
   if (met) {
     check(met.title === 'Victory!' && met.lines.includes('Baron Grimsby flees home'), `beaten in the open, Grimsby flees home to his stockade (${met.title})`);
     const stockade = (await kc.state()).locations.find((l) => l.id === 'hideout');
-    check(stockade.enemy.humbled && stockade.enemy.army.some((s) => s.troop === 'baron'), 'and stays behind his walls, without his guard');
+    const swordsmen = stockade.enemy.army.find((s) => s.troop === 'swordsmen')?.count ?? 0;
+    check(!stockade.enemy.humbled && stockade.enemy.army.some((s) => s.troop === 'baron') && swordsmen >= 46, `and his guard straggles home after him (${swordsmen} swordsmen behind his walls)`);
   }
   check((await kc.state()).locations.some((l) => l.id === 'deserters'), 'deserters make camp by the crossroads');
   await go('deserters', 'Visit');

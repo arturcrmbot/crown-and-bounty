@@ -71,7 +71,7 @@ export type Enemy = {
   sortie?: Sortie;
   /** The hurts (story flags) he has already ridden out over. */
   answered?: string[];
-  /** Beaten in the open once, he stays behind his walls. */
+  /** Only in older saves: beaten in the open, he came home without his guard. A save that loads gets it back (`unhumbled`). */
   humbled?: boolean;
   /**
    * A villain's band out of its lair (the lair's id): beaten, he flees home there; once it can't
