@@ -1,8 +1,8 @@
 import { ARTIFACTS, type ArtifactId } from '../../content/artifacts';
 import { troopPower } from '../../content/troops';
 import { dismiss } from '../army';
-import { giveArtifact, heroStats } from '../hero';
-import { addTroops, close, coins, joinLine, leadershipUsed, locationById, TROOPS, troops, update, type Card, type GameState, type Location, type Result } from '../state';
+import { artifactChoices, giveArtifact, heroStats, slotTaken } from '../hero';
+import { addTroops, close, coins, joinLine, leadershipUsed, locationById, TROOPS, troops, update, type Card, type Choice, type GameState, type Location, type Result } from '../state';
 import { found, option, priceOf, ride, say, words } from './common';
 import type { PlaceKind } from './kind';
 
@@ -71,19 +71,20 @@ function recruitCard(state: GameState, place: Location, before: string[] = []): 
 const owns = (state: GameState, id: ArtifactId) => Object.values(state.hero.gear).includes(id) || state.hero.pack.includes(id);
 
 /** The armoury's wares: one button each, with its price and what it does, greyed when it's too dear. */
-function armouryCard(state: GameState, place: Location, before: string[] = []): Card {
+function armouryCard(state: GameState, place: Location, before: string[] = [], decisions: Choice[] = []): Card {
   const wares = (place.wares ?? []).filter((w) => !owns(state, w));
   return {
     title: `${place.name}: the armoury`,
     wide: true,
     lines: [...before, wares.length ? 'The armourer polishes something that was already clean.' : 'Nothing left but a very tired whetstone.'],
     choices: [
+      ...decisions,
       ...wares.map((w) => {
         const price = ARTIFACTS[w].price ?? 0;
         const short = price - state.gold;
         return { ...option(place, `Buy ${ARTIFACTS[w].name} (${coins(price)} gold)`, `buy:${w}`, short > 0), detail: `${ARTIFACTS[w].note}${short > 0 ? ` You\u2019re ${coins(short)} gold short.` : ''}` };
       }),
-      close,
+      ...(decisions.length ? [] : [close]),
     ],
   };
 }
@@ -93,8 +94,8 @@ function buy(state: GameState, place: Location, artifact: ArtifactId): Result | 
   if (!place.wares?.includes(artifact) || owns(state, artifact) || state.gold < price) return null;
   const next = giveArtifact(update({ ...state, gold: state.gold - price }, place.id, { wares: place.wares.filter((w) => w !== artifact) }), artifact);
   const worn = Object.values(next.hero.gear).includes(artifact);
-  const where = worn ? 'you put it on straight away' : 'it goes in your pack, since you wear something there already (H to swap)';
-  return say(next, place, armouryCard(next, locationById(next, place.id), [`**${ARTIFACTS[artifact].name}** is yours: ${where}.`]));
+  const where = ARTIFACTS[artifact].drawback ? 'you keep it in your pack until you choose whether to wear it' : worn ? 'you put it on straight away' : `it goes in your pack, since ${slotTaken(artifact)} (H to swap)`;
+  return say(next, place, armouryCard(next, locationById(next, place.id), [`**${ARTIFACTS[artifact].name}** is yours: ${where}.`], artifactChoices(next, artifact)));
 }
 
 /**

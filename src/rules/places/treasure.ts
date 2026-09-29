@@ -1,6 +1,6 @@
 import { ARTIFACTS } from '../../content/artifacts';
-import { foundNote, giveArtifact, heroStats } from '../hero';
-import { close, coins, leadershipUsed, update, type GameState, type Location, type Result } from '../state';
+import { artifactChoices, foundNote, giveArtifact, heroStats } from '../hero';
+import { close, coins, leadershipUsed, update, type Choice, type GameState, type Location, type Result } from '../state';
 import { loot, note, option, ride, say, words } from './common';
 import type { PlaceKind } from './kind';
 
@@ -11,13 +11,21 @@ function openChest(state: GameState, place: Location, take: 'keep' | 'give'): Re
   const removed = { type: 'removed', id: place.id } as const;
   // Some chests hold more than coin, and that he keeps either way.
   const found: string[] = [];
+  let choices: Choice[] = [];
   if (place.artifact) {
     opened = giveArtifact(opened, place.artifact);
     found.push(`And under the coins: **${ARTIFACTS[place.artifact].name}**. ${foundNote(opened, place.artifact)}`);
+    choices = artifactChoices(opened, place.artifact);
   }
-  if (take === 'keep') return say({ ...opened, gold: state.gold + gold }, place, note(place, [`**+${coins(gold)} gold.** The villagers will never know.`, ...found]), removed);
+  if (take === 'keep') {
+    const card = note(place, [`**+${coins(gold)} gold.** The villagers will never know.`, ...found]);
+    if (choices.length) card.choices = choices;
+    return say({ ...opened, gold: state.gold + gold }, place, card, removed);
+  }
   const leadership = Math.round(gold / 20);
-  return say({ ...opened, leadership: state.leadership + leadership }, place, note(place, [`The villagers cheer. **+${leadership} leadership.**`, 'Somebody starts a song about you. It rhymes \u201cAldric\u201d with \u201cbald trick\u201d.', ...found]), removed);
+  const card = note(place, [`The villagers cheer. **+${leadership} leadership.**`, 'Somebody starts a song about you. It rhymes \u201cAldric\u201d with \u201cbald trick\u201d.', ...found]);
+  if (choices.length) card.choices = choices;
+  return say({ ...opened, leadership: state.leadership + leadership }, place, card, removed);
 }
 
 /** A treasure chest: keep the gold, or hand it out for leadership. */

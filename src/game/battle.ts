@@ -1,8 +1,8 @@
 import { needsTarget, SPELLS, STATUSES, type SpellId } from '../content/spells';
 import { TROOPS, troops } from '../content/troops';
-import { chooseAction } from '../rules/battle/ai';
+import { chooseAction, finishEstimate } from '../rules/battle/ai';
 import { manaInBattle } from '../rules/heroSheet';
-import { activeFighter, battleAct, canCast, casterOf, castsLeft, chargeOf, CHARGE_BONUS, fighterById, heroOnField, isCharge, options, spellCost, spellDamage, spellsOf, spellVictims, strike, unitOf, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
+import { activeFighter, battleAct, canCast, casterOf, castsLeft, chargeOf, CHARGE_BONUS, fighterById, heroOnField, isCharge, options, rallyTargets, spellCost, spellDamage, spellsOf, spellVictims, strike, unitOf, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
 import { paintBanner } from '../render/banner';
 import { BattleScreen, BUTTONS, FIRE_FALL, FLOAT_RISE, hexAt, hexCentre, LOG_BOTTOM, type BattleView, type Shot } from '../render/battleScreen';
 import { animLength, bodyHeight, hitTime, type AnimName } from '../render/battleSprites';
@@ -45,6 +45,8 @@ export class BattleController implements Screen {
   private readonly hooks: { onChange: (b: BattleState) => void; onDone: (b: BattleState) => void };
   private readonly pace: number;
   private auto = false;
+  private finishState: BattleState | null = null;
+  private finishLine: string | null = null;
   private sparks: Shot[] = [];
   private think = 0;
   private finished = false;
@@ -83,11 +85,13 @@ export class BattleController implements Screen {
       log: 'To battle! Click a hex to move, or an enemy to attack.',
       active: activeFighter(battle)?.id ?? null,
       inspect: null,
+      rallyPreview: new Set(),
       preview: null,
       targeting: null,
       time: 0,
       shake: 0,
       banner: null,
+      finishOffer: false,
     };
     // What the hero brought to the field is said as the battle opens: "Advanced Archery: the Wolves start slowed."
     const opening = battle.round === 1 && !battle.struck ? (battle.opening ?? []) : [];
@@ -463,8 +467,12 @@ export class BattleController implements Screen {
     // A villain's spell or order is his to show, whoever's turn it is.
     this.acting = action.type === 'volley' ? null : action.type === 'cast' && action.by !== undefined ? action.by : (activeFighter(before)?.id ?? null);
     this.battle = battle;
+    this.finishState = null;
+    this.finishLine = null;
+    this.view.finishOffer = false;
     this.view.targeting = null;
     this.view.hover = null;
+    this.view.rallyPreview.clear();
     this.hooks.onChange(battle);
     this.animate(events, before);
     return true;
@@ -750,6 +758,7 @@ export class BattleController implements Screen {
         }
       }
     }
+    if (this.queue.length === 0) this.updateFinishOffer();
     const mine = !!f && f.side === 'player' && !this.auto && this.queue.length === 0 && !this.battle.volley;
     v.reach = mine && !v.targeting ? new Set(options(this.battle).moves.keys()) : new Set();
     if (this.pointer && mine) this.hoverAt(...this.pointer);
@@ -811,6 +820,10 @@ export class BattleController implements Screen {
     const hex = hexAt(x, y);
     const intent = hex === null ? null : this.intent(hex, x, y);
     this.view.hover = intent && hex !== null ? { hex, kind: intent.kind } : null;
+    const active = activeFighter(this.battle);
+    this.view.rallyPreview = intent?.kind === 'move' && active?.troop === 'heroCourtier' && hex !== null
+      ? new Set(rallyTargets(this.battle, active, hex).map((f) => f.id))
+      : new Set();
     this.view.inspect = hex === null ? null : (this.battle.fighters.find((f) => f.count > 0 && f.at === hex)?.id ?? null);
     const under = this.view.inspect === null ? null : fighterById(this.battle, this.view.inspect);
     this.view.preview = intent ? this.forecast(intent.action) : under?.book ? this.bookLine(under.id) : null;
@@ -860,6 +873,7 @@ export class BattleController implements Screen {
     const mine = !!f && f.side === 'player' && this.queue.length === 0;
     if (id === 'auto') {
       this.auto = !this.auto;
+      this.view.finishOffer = false;
       this.view.log = this.auto ? 'Your sergeants take over. Press Auto again to take back command.' : 'You take command again.';
       return;
     }
@@ -868,6 +882,20 @@ export class BattleController implements Screen {
     else if (id === 'defend') this.perform({ type: 'defend' });
     else if (id === 'retreat') this.confirmRetreat();
     else this.openSpellbook();
+  }
+
+  private updateFinishOffer() {
+    if (this.finishState !== this.battle) {
+      this.finishState = this.battle;
+      const acting = activeFighter(this.battle);
+      const estimate = acting?.side === 'player' && !this.battle.volley ? finishEstimate(this.battle) : null;
+      const costs = estimate?.losses.map(({ troop, count }) => `~${count} ${TROOPS[troop].name}`);
+      this.finishLine = estimate
+        ? `Finish it: sergeants take over; likely lose ${costs!.length ? costs!.join(', ') : 'no troops'}.`
+        : null;
+    }
+    this.view.finishOffer = !this.auto && this.finishLine !== null;
+    if (this.view.finishOffer) this.view.log = this.finishLine!;
   }
 
   private confirmRetreat() {
@@ -925,6 +953,7 @@ export class BattleController implements Screen {
       this.view.hover = null;
       this.view.inspect = null;
       this.view.preview = null;
+      this.view.rallyPreview.clear();
     },
     key: (key: string) => {
       if (key === 'escape') {

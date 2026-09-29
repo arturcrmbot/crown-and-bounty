@@ -6,7 +6,7 @@
 import { ARTIFACTS } from '../../content/artifacts';
 import { troopPower } from '../../content/troops';
 import { beat } from '../fight';
-import { heroStats, knowsTrick } from '../hero';
+import { artifactChoices, heroStats, knowsTrick } from '../hero';
 import { close, leadershipUsed, locationById, show, TROOPS, type Card, type Choice, type ContentChoice, type GameState, type Location, type Page, type Result } from '../state';
 import { applyEffects, meets, needsLabel, owns, pay } from './core';
 
@@ -39,7 +39,7 @@ export function takeChoice(state: GameState, place: Location, choice: ContentCho
   if (effects.win) {
     const { gold: reward = 0, xp = 0, win: _, done: __, ...rest } = effects;
     const done = applyEffects(paid, place, rest);
-    const won = beat(done.state, place.id, { title: place.name, lines: [...(choice.lines ?? []), ...done.lines], reward, xp, sayGold: true });
+    const won = beat(done.state, place.id, { title: place.name, lines: [...(choice.lines ?? []), ...done.lines], reward, xp, sayGold: true, choices: rest.artifact ? artifactChoices(done.state, rest.artifact) : [] });
     return { state: won.state, events: [...done.events, ...won.events] };
   }
   const done = applyEffects(paid, place, effects);
@@ -49,6 +49,9 @@ export function takeChoice(state: GameState, place: Location, choice: ContentCho
   // A choice with nothing to say, like "Not today", just closes the card.
   if (!page && !lines.length) return { state: done.state, events: done.events };
   const card = page ? pageCard(done.state, after, page, lines) : { title: place.name, lines, choices: [close] };
+  const decisions = effects.artifact ? artifactChoices(done.state, effects.artifact) : [];
+  const choices = [...decisions, ...card.choices.filter((c) => c.action.type !== 'close')];
+  if (choices.length) card.choices = choices;
   return { state: done.state, events: [...done.events, show(card, place.at, place.id)] };
 }
 

@@ -231,6 +231,8 @@ export type Hero = {
 /** What the player can do from a card. `go` rides to a location and visits it on arrival. */
 export type Action =
   | { type: 'go'; id: string }
+  /** Records that a first-time map hint has been shown. */
+  | { type: 'hint'; id: 'ride' | 'place' | 'payday' }
   /** A choice on a place's card: one of its kind's own (`recruit`, `fight`...) or written as content (`page/choice`). */
   | { type: 'choose'; id: string; choice: string }
   | { type: 'endDay' }
@@ -265,12 +267,15 @@ export type Action =
 /** A button on a card. `detail` is a smaller line under the label; `portrait` puts a face beside it. */
 export type Choice = { label: string; action: Action; disabled?: boolean; portrait?: PortraitId; detail?: string };
 
-/** A parchment card: a title, a few lines (with **bold** and *italics*), and choices. `wide` is for big decisions. */
+/** A battle's losses and mana spent, for the result card. */
+export type BattleResultCard = { player: Army; enemy: Army; manaSpent: number; manaAvailable: number };
+
 /**
- * A parchment card. `portrait` puts a face at its top left. `poster` makes it a WANTED poster, with the
- * face in the middle. `tiles` lays the choices side by side, each with its face, for picking a hero.
+ * A parchment card with a title, lines (with **bold** and *italics*), and choices. `wide` is for big
+ * decisions. `portrait` puts a face at its top left; `poster` makes it a WANTED poster; `tiles` lays
+ * the choices side by side, each with its face, for picking a hero.
  */
-export type Card = { title: string; lines: string[]; choices: Choice[]; wide?: boolean; portrait?: PortraitId; poster?: boolean; tiles?: boolean };
+export type Card = { title: string; lines: string[]; choices: Choice[]; wide?: boolean; portrait?: PortraitId; poster?: boolean; tiles?: boolean; battleResult?: BattleResultCard };
 
 /** What happened, for the screens to show. The rules never draw anything themselves. */
 export type GameEvent =

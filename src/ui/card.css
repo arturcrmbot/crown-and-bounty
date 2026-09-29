@@ -54,6 +54,43 @@
 .kc-card .choices {
   clear: both;
 }
+.kc-card .battle-result {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 8px 0 4px;
+  padding: 7px 0 5px;
+  border-top: 1px solid #a88652;
+  border-bottom: 1px solid #a88652;
+}
+.kc-card .battle-result-side h4 {
+  margin: 0 0 4px;
+  font-size: 14px;
+  color: #6e1a0c;
+}
+.kc-card .battle-result-unit {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 30px;
+  font-size: 12px;
+  line-height: 1.15;
+}
+.kc-card .battle-result-unit img {
+  flex: none;
+  width: 28px;
+  height: 30px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+.kc-card .battle-result-none {
+  margin: 2px 0;
+  font-style: italic;
+  font-size: 12px;
+}
+.kc-card .battle-result-mana {
+  font-style: italic;
+}
 .kc-card button.with-portrait {
   display: flex;
   align-items: center;

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ALDMOOR } from '../content/aldmoor';
 import { apply, bountyCard, endDay, joinLine, locationById, stillWithYou, visit, whenThere, type Card, type GameState, type Result } from './game';
+import { ambushCard } from './days';
 import { mapOf } from './map/maps';
 import { daysAway } from './map/movement';
 import { newGame } from './scenario';
@@ -20,6 +21,12 @@ describe('the days', () => {
     let s = knight();
     for (let i = 0; i < 6; i++) s = endDay(s).state;
     expect(cardOf(endDay(s)).lines[0]).toContain('Payday!');
+  });
+
+  it('records first-time hints in existing story flags', () => {
+    const first = apply(knight(), { type: 'hint', id: 'ride' })!;
+    expect(first.state.flags?.['hint:ride']).toBe(true);
+    expect(first.events).toEqual([]);
   });
 });
 
@@ -48,6 +55,25 @@ describe('the castle', () => {
     expect(cardOf(apply(armed, { type: 'choose', id: 'castle', choice: 'buy:helmOfFarSight' })).lines[0]).toContain('it goes in your pack');
   });
 
+  it('asks before wearing a bought artifact with a drawback', () => {
+    const start = knight();
+    const rich = {
+      ...start,
+      gold: 5000,
+      locations: start.locations.map((l) => l.id === 'castle' ? { ...l, wares: [...(l.wares ?? []), 'headsmansAxe' as const] } : l),
+    };
+    const bought = apply(rich, { type: 'choose', id: 'castle', choice: 'buy:headsmansAxe' })!;
+    expect(bought.state.hero.gear.weapon).toBeUndefined();
+    expect(bought.state.hero.pack).toContain('headsmansAxe');
+    expect(cardOf(bought).choices.map((c) => c.label)).toContain('Wear it');
+    expect(cardOf(bought).choices.map((c) => c.label)).toContain('Keep it in your pack');
+  });
+
+  it('still offers a way out when arriving somewhere with nothing to wear', () => {
+    expect(cardOf(visit(knight(), 'castle')).choices.map((c) => c.label)).toContain('Not today');
+    expect(cardOf(visit(knight(), 'village')).choices.map((c) => c.label)).toContain('Not today');
+  });
+
   it('says why fewer can be recruited than are on offer', () => {
     const poor = { ...knight(), gold: 35 };
     const village = cardOf(visit(poor, 'village'));
@@ -70,6 +96,20 @@ describe('the odds', () => {
     expect(sergeants).toMatchObject({ label: 'Let the sergeants handle it', detail: 'They fight it out for you, by the same rules, in a moment.' });
     const strong = { ...knight(), leadership: 5000, army: [{ troop: 'knights' as const, count: 200 }] };
     expect(cardOf(visit(strong, 'patrol')).lines).toContain('They look nervous. *You should win.*');
+  });
+
+  it('forecasts likely losses on threat and ambush cards, with exact counts for Rangers', () => {
+    const army = [{ troop: 'swordsmen' as const, count: 12 }, { troop: 'knights' as const, count: 2 }, { troop: 'poachers' as const, count: 2 }, { troop: 'archers' as const, count: 1 }];
+    const state = { ...knight(), army };
+    const threat = cardOf(visit(state, 'patrol'));
+    expect(threat.lines.some((line) => line.includes('You\u2019d likely lose') || line.includes('bring everyone home'))).toBe(true);
+
+    const ambush = ambushCard({ ...state, ambush: 'patrol' });
+    expect(ambush.lines.some((line) => line.includes('You\u2019d likely lose') || line.includes('bring everyone home'))).toBe(true);
+
+    const ranger = { ...state, hero: { ...state.hero, background: 'ranger' as const } };
+    const scouted = cardOf(visit(ranger, 'patrol'));
+    expect(scouted.lines.some((line) => line.includes('expect to lose about') && /\d+/.test(line))).toBe(true);
   });
 });
 

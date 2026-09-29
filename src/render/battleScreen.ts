@@ -5,6 +5,7 @@ import { COLS, colOf, HEXES, ROWS, rowOf } from '../rules/battle/hex';
 import { Bitmap, blit } from './bitmap';
 import { critters, critterSprite, type Critter } from './critters';
 import { animLength, corpseSprite, hurtSprite, standard, STAND, troopFigure, type Pose, type Standard } from './battleSprites';
+import { upcomingFighters } from './battleOrder';
 import { ART } from './units';
 import { drawBanner } from './banner';
 import { BAR, MAP_VIEW, paintBarBackground, paintFrame, SCREEN, type Rect } from './frame';
@@ -74,6 +75,24 @@ export type Shot = { from: [number, number]; to: [number, number]; t: number; ki
 /** How much of a fireball's flight is the fall from the sky; it bursts after that. */
 export const FIRE_FALL = 0.35;
 
+const turnIcons = new Map<string, Bitmap>();
+
+function turnIcon(troop: Fighter['troop'], side: Fighter['side']) {
+  const team = side === 'player' ? 'blue' : 'red';
+  const key = `${troop}|${team}`;
+  let icon = turnIcons.get(key);
+  if (!icon) {
+    const figure = troopFigure(troop, team, side === 'player' ? 1 : -1, STAND, 'map').sprite;
+    const scale = Math.min(16 / figure.width, 16 / figure.height, 1);
+    icon = new Bitmap(Math.max(1, Math.round(figure.width * scale)), Math.max(1, Math.round(figure.height * scale)));
+    for (let y = 0; y < icon.height; y++) {
+      for (let x = 0; x < icon.width; x++) icon.set(x, y, figure.get(Math.floor(x / scale), Math.floor(y / scale)));
+    }
+    turnIcons.set(key, icon);
+  }
+  return icon;
+}
+
 /** What the battle controller wants drawn this frame, on top of the rules state. */
 export type BattleView = {
   /** Where a stack is drawn while it walks, instead of its hex. */
@@ -103,6 +122,8 @@ export type BattleView = {
   active: number | null;
   /** A stack under the pointer: the bar shows it instead of the acting one. */
   inspect: number | null;
+  /** Stacks the Courtier would rally if he moved to the hovered hex. */
+  rallyPreview: Set<number>;
   /** What the pointed-at action would do, shown instead of the log. */
   preview: string | null;
   targeting: string | null;
@@ -112,6 +133,8 @@ export type BattleView = {
   shake: number;
   /** VICTORY or DEFEAT across the field at the end. */
   banner: { sprite: Bitmap; age: number; life: number } | null;
+  /** The safe-finish offer replaces Auto in the bar while the player can accept it. */
+  finishOffer: boolean;
 };
 
 export const BUTTONS: { id: 'spells' | 'wait' | 'defend' | 'auto' | 'retreat'; label: string; rect: Rect }[] = ['spells', 'wait', 'defend', 'auto', 'retreat'].map((id, i) => ({
@@ -289,6 +312,18 @@ export class BattleScreen {
       const [ox, oy] = view.offsets.get(f.id) ?? [0, 0];
       this.ring(Math.round(px + ox), Math.round(py + oy + 12));
     }
+    for (const f of shown) {
+      if (f.hero || f.side !== 'player' || !rallyOf(b, f)) continue;
+      const [px, py] = place(f.id, f.at);
+      const [ox, oy] = view.offsets.get(f.id) ?? [0, 0];
+      this.auraRing(Math.round(px + ox), Math.round(py + oy + 12));
+    }
+    for (const f of shown) {
+      if (!view.rallyPreview.has(f.id)) continue;
+      const [px, py] = place(f.id, f.at);
+      const [ox, oy] = view.offsets.get(f.id) ?? [0, 0];
+      this.auraRing(Math.round(px + ox), Math.round(py + oy + 12), true);
+    }
     shown.sort((x, y) => place(x.id, x.at)[1] - place(y.id, y.at)[1]);
     for (const f of shown) {
       const [px, py] = place(f.id, f.at);
@@ -326,6 +361,7 @@ export class BattleScreen {
     if (view.banner) drawBanner(screen, view.banner.sprite, MAP_VIEW.x + MAP_VIEW.width / 2, MAP_VIEW.y + 150, view.banner.age, view.banner.life);
     if (view.shake > 0.5) this.shake(view.shake, view.time);
     this.logLine(view.preview ?? view.log);
+    this.turnStrip(b);
     this.bar(b, view);
     blit(screen, this.overlay, 0, 0);
     return screen;
@@ -351,6 +387,20 @@ export class BattleScreen {
     const [rx, ry] = [26, 8];
     for (const [grow, colour] of [[1, INK], [-1, GOLD[3]], [0, GOLD[6]]] as const) {
       for (let a = 0; a < Math.PI * 2; a += 0.004) {
+        const x = Math.round(cx + Math.cos(a) * (rx + grow));
+        const y = Math.round(cy + Math.sin(a) * (ry + grow * 0.6));
+        if (y >= MAP_VIEW.y && y < MAP_VIEW.y + MAP_VIEW.height) this.screen.set(x, y, colour);
+      }
+    }
+  }
+
+  /** Gold marks on friendly stacks lifted by the Courtier; dotted gold previews a hovered move. */
+  private auraRing(cx: number, cy: number, preview = false) {
+    const [rx, ry] = [30, 10];
+    const strokes: [number, number][] = preview ? [[0, GOLD[6]]] : [[1, INK], [-1, GOLD[3]], [0, GOLD[6]]];
+    for (const [grow, colour] of strokes) {
+      for (let a = 0; a < Math.PI * 2; a += 0.004) {
+        if (preview && Math.floor(a * 18) % 2) continue;
         const x = Math.round(cx + Math.cos(a) * (rx + grow));
         const y = Math.round(cy + Math.sin(a) * (ry + grow * 0.6));
         if (y >= MAP_VIEW.y && y < MAP_VIEW.y + MAP_VIEW.height) this.screen.set(x, y, colour);
@@ -392,6 +442,58 @@ export class BattleScreen {
       }
     }
     drawText(this.screen, text, x + 3, y - 2, NEUTRAL[7], INK, 11);
+  }
+
+  /** The next turns, as small versions of the figures on the field. */
+  private turnStrip(b: BattleState) {
+    const next = b.result ? [] : upcomingFighters(b);
+    if (!next.length) return;
+    const { screen } = this;
+    const labelWidth = 34;
+    const cellWidth = 38;
+    const width = labelWidth + next.length * cellWidth + 6;
+    const height = 20;
+    const x0 = MAP_VIEW.x + Math.floor((MAP_VIEW.width - width) / 2);
+    const y0 = LOG_BOTTOM + 2;
+    screen.fill(x0, y0, width, height, WOOD[1]);
+    for (let x = x0; x < x0 + width; x++) {
+      screen.set(x, y0, GOLD[4]);
+      screen.set(x, y0 + height - 1, INK);
+    }
+    for (let y = y0; y < y0 + height; y++) {
+      screen.set(x0, y, GOLD[4]);
+      screen.set(x0 + width - 1, y, INK);
+    }
+    drawText(screen, 'NEXT', x0 + 4, y0 + 5, GOLD[6], INK, 9);
+
+    next.forEach((fighter, i) => {
+      const x = x0 + labelWidth + i * cellWidth;
+      const border = i === 0 ? GOLD[6] : fighter.side === 'player' ? BLUE[4] : RED[4];
+      for (let dx = 0; dx < cellWidth - 2; dx++) {
+        screen.set(x + dx, y0 + 2, border);
+        screen.set(x + dx, y0 + height - 3, INK);
+      }
+      for (let dy = 2; dy < height - 2; dy++) {
+        screen.set(x, y0 + dy, border);
+        screen.set(x + cellWidth - 3, y0 + dy, INK);
+      }
+      const icon = turnIcon(fighter.troop, fighter.side);
+      const iconX = x + 2;
+      const iconY = y0 + Math.floor((height - icon.height) / 2);
+      if (fighter.hero) this.smallRing(iconX + Math.floor(icon.width / 2), y0 + height / 2);
+      blit(screen, icon, iconX, iconY);
+      if (!fighter.hero) {
+        drawText(screen, String(fighter.count), x + 20, y0 + 5, PARCHMENT[6], INK, 9);
+      }
+    });
+  }
+
+  private smallRing(cx: number, cy: number) {
+    for (const [rx, ry, color] of [[9, 8, INK], [8, 7, GOLD[4]], [7, 6, GOLD[6]]] as const) {
+      for (let a = 0; a < Math.PI * 2; a += 0.08) {
+        this.screen.set(Math.round(cx + Math.cos(a) * rx), Math.round(cy + Math.sin(a) * ry), color);
+      }
+    }
   }
 
   private shot(s: Shot) {
@@ -565,19 +667,23 @@ export class BattleScreen {
       const info = `${who}  ·  Att ${attack} Def ${defence} Dmg ${t.damage[0]}-${t.damage[1]} HP ${view.health.get(f.id) ?? f.hp}/${t.hp} Spd ${speedOf(f)}${f.shots ? ` Shots ${f.shots}` : ''}${tags}`;
       drawText(screen, info, BAR.x + 12, text, f.side === 'player' ? PARCHMENT[6] : RED[6], INK);
     }
+    // Aldric's health stays beside the mana even while another fighter is under the pointer.
+    const hero = b.fighters.find((x) => x.hero);
+    if (hero) drawText(screen, `Aldric ${view.health.get(hero.id) ?? hero.hp}/${unitOf(hero).hp}`, BUTTONS[0].rect.x - 164, text, BLUE[6], INK);
     // A villain's mana while you look at him; your own otherwise.
     const mana = f?.book ? `Mana ${f.book.mana}` : `Mana ${b.hero.mana}`;
     drawText(screen, mana, BUTTONS[0].rect.x - 70, text, f?.book ? RED[6] : BLUE[6], INK);
     for (const button of BUTTONS) {
       const { x, y, width, height } = button.rect;
       const disabled = button.id === 'spells' && !Object.values(SPELLS).some((s) => canCast(b, s.id));
+      const label = button.id === 'auto' && view.finishOffer ? 'Finish' : button.label;
       for (let j = 0; j < height; j++) {
         for (let i = 0; i < width; i++) {
           const edge = i === 0 || j === 0 ? GOLD[4] : i === width - 1 || j === height - 1 ? INK : -1;
           screen.set(x + i, y + j, edge >= 0 ? edge : shade(STONE, 0.42 - j * 0.01 + (noise((x + i) / 4, (y + j) / 4, 41) - 0.5) * 0.2, x + i, y + j));
         }
       }
-      drawText(screen, button.label, x + Math.round(width / 2 - button.label.length * 3.4), y + 1, disabled ? STONE[4] : PARCHMENT[6], INK, 12);
+      drawText(screen, label, x + Math.round(width / 2 - label.length * 3.4), y + 1, disabled ? STONE[4] : PARCHMENT[6], INK, 12);
     }
   }
 

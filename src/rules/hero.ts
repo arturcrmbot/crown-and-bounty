@@ -4,7 +4,7 @@ import { PERKS, RANKS, SKILLS, type PerkId, type SkillId } from '../content/skil
 import type { MapSpellId, SpellId, StatusId } from '../content/spells';
 import type { TroopId } from '../content/troops';
 import { SHOOTER_MELEE } from './battle/battle';
-import { roll, roman, show, type Card, type GameEvent, type GameState, type Result } from './state';
+import { close, roll, roman, show, type Card, type Choice, type GameEvent, type GameState, type Result } from './state';
 
 /** A level-up waiting for the player to choose: skills (`skill:archery`) or perks (`perk:warchest`). */
 export type Offer = { level: number; stat: StatId; options: string[] };
@@ -404,20 +404,36 @@ export function learn(state: GameState, option: string): Result | null {
   return { state: next, events: card ? [show(card)] : [] };
 }
 
-/** Puts an artifact in the pack, and wears it straight away if its slot is free. */
+/**
+ * Puts an artifact in the pack, and wears it straight away if it has no drawback and a slot of its
+ * kind is free: a trinket takes the first free one of the three.
+ */
 export function giveArtifact(state: GameState, id: ArtifactId): GameState {
-  const slot = slotsForArtifact(ARTIFACTS[id].slot).find((candidate) => !state.hero.gear[candidate]);
+  const artifact = ARTIFACTS[id];
+  const slot = artifact.drawback ? undefined : slotsForArtifact(artifact.slot).find((candidate) => !state.hero.gear[candidate]);
   if (slot) return { ...state, hero: { ...state.hero, gear: { ...state.hero.gear, [slot]: id } } };
   return { ...state, hero: { ...state.hero, pack: [...state.hero.pack, id] } };
 }
 
-/** Says where a just-found artifact went: on him, or into the pack because that slot is taken. */
+/** The choice shown when a drawback artifact is found. */
+export function artifactChoices(state: GameState, id: ArtifactId): Choice[] {
+  if (!ARTIFACTS[id].drawback || !state.hero.pack.includes(id)) return [];
+  return [
+    { label: 'Wear it', action: { type: 'equip', artifact: id } },
+    { label: 'Keep it in your pack', action: close.action },
+  ];
+}
+
+/** Why a find without a drawback went into the pack: its slot is taken, or all three trinket slots are. */
+export const slotTaken = (id: ArtifactId) => (ARTIFACTS[id].slot === 'trinket' ? 'all three trinket slots are taken' : 'you wear something there already');
+
+/** Says where a just-found artifact went: on him, or into the pack until he chooses to wear it. */
 export function foundNote(state: GameState, id: ArtifactId): string {
   const a = ARTIFACTS[id];
   const set = setLine(state, id);
-  const worn = Object.values(state.hero.gear).includes(id);
-  const reason = a.slot === 'trinket' ? 'all three trinket slots are taken' : `its ${a.slot} slot is already occupied`;
-  const note = worn ? `You put it on. ${a.note}` : `${a.note} It goes in your pack, since ${reason}: **H** to swap.`;
+  const note = Object.values(state.hero.gear).includes(id) ? `You put it on. ${a.note}` : a.drawback
+    ? `${a.note} It goes in your pack until you choose whether to wear it.`
+    : `${a.note} It goes in your pack, since ${slotTaken(id)}: **H** to swap.`;
   return set ? `${note} ${set}` : note;
 }
 
