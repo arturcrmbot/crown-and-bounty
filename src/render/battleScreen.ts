@@ -639,6 +639,9 @@ export class BattleScreen {
       const info = `${who}  ·  Att ${attack} Def ${defence} Dmg ${t.damage[0]}-${t.damage[1]} HP ${view.health.get(f.id) ?? f.hp}/${t.hp} Spd ${speedOf(f)}${f.shots ? ` Shots ${f.shots}` : ''}${tags}`;
       drawText(screen, info, BAR.x + 12, text, f.side === 'player' ? PARCHMENT[6] : RED[6], INK);
     }
+    // Aldric's health stays beside the mana even while another fighter is under the pointer.
+    const hero = b.fighters.find((x) => x.hero);
+    if (hero) drawText(screen, `Aldric ${view.health.get(hero.id) ?? hero.hp}/${unitOf(hero).hp}`, BUTTONS[0].rect.x - 164, text, BLUE[6], INK);
     // A villain's mana while you look at him; your own otherwise.
     const mana = f?.book ? `Mana ${f.book.mana}` : `Mana ${b.hero.mana}`;
     drawText(screen, mana, BUTTONS[0].rect.x - 70, text, f?.book ? RED[6] : BLUE[6], INK);
