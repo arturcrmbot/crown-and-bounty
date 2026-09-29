@@ -265,7 +265,11 @@ describe('old saves', () => {
     expect(locationById(loaded, 'mill').pages).toBeUndefined();
     const wolves = locationById(loaded, 'wolves');
     expect(wolves.at).toEqual([260, 704]);
-    expect(wolves.enemy!.army).toEqual([{ troop: 'wolves', count: 90 }]);
+    // As many wolves as there were, and Rook the Huntsman, who has taken them over since, in his ways.
+    expect(wolves.enemy!.army).toEqual([{ troop: 'wolves', count: 90 }, { troop: 'rook', count: 1 }]);
+    expect(wolves.name).toBe('Rook\u2019s Wolves');
+    expect(wolves.enemy!.behaviour).toBe('hunt');
+    expect(wolves.enemy!.wakes?.day).toBe(8);
     expect(wolves.enemy!.parleys!.map((p) => p.id)).toEqual(['venison']);
     expect(wolves.enemy!.tamed).toBeTruthy();
     expect(loaded.locations.some((l) => l.id === 'delving')).toBe(true);
