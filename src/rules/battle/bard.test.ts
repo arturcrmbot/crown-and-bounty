@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { STATUSES } from '../../content/spells';
 import type { TroopId } from '../../content/troops';
-import { finishFight, heroInBattle, startFight, type GameState } from '../game';
+import { battleXp, finishFight, heroInBattle, startFight, type GameState } from '../game';
 import { newGame } from '../scenario';
 import { chooseAction, stackActions } from './ai';
 import { bardOf, battleAct, bribePrice, canJoin, createBattle, hasTurn, luckOf, moraleOf, onField, options, strike, survivors, type BattleHero, type BattleState } from './battle';
@@ -152,7 +152,11 @@ describe('the Courtier, a bard', () => {
     expect(done.state.gold).toBe(state.gold - price + reward);
     expect(done.state.army.find((s) => s.troop === 'bandits')?.count).toBe(bandits.count);
     const card = done.events.find((e) => e.type === 'card');
-    expect(card?.type === 'card' && card.card.lines).toContain(`Bribes cost you **${price} gold**.`);
+    expect(card?.type === 'card' && card.card.lines).toContain(`Bribes cost you **${price} gold**, and those you paid off teach you half what beating them would.`);
+    // Bought, not beaten: half what the fight would have taught.
+    const full = battleXp(state.locations.find((l) => l.id === 'highwaymen')!.enemy!.army);
+    expect(done.state.hero.xp - state.hero.xp).toBe(full - Math.round(battleXp([{ troop: 'bandits', count: bandits.count }]) / 2));
+    expect(card?.type === 'card' && card.card.lines).toContain(`**+${full - Math.round(full / 2)} experience.**`);
     // Troops who walked off didn't fall: the card counts no highwaymen among their dead.
     expect(card?.type === 'card' && card.card.battleResult?.enemy).toEqual([]);
   });
