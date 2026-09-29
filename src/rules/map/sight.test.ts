@@ -98,11 +98,29 @@ describe('bands out of sight', () => {
     const s = aldmoor();
     const [hx, hy] = s.hero.at;
     const before = withBands(s, { ...band('wagon', [hx - 700, hy]), done: true });
-    const after = withBands(s, band('wagon', [hx - 700, hy]), band('baron', [hx - 900, hy], { behaviour: 'hunt', trailing: true }), band('sortie', [hx - 900, hy + 40]));
+    const after = withBands(s, band('wagon', [hx - 700, hy]), band('baron', [hx - 900, hy], { behaviour: 'hunt', trailing: true }), band('sortie', [hx - 900, hy + 120]));
     const dawn = loseSight(before, after);
     expect(unseen(dawn, 'wagon')).toBe(true);
     expect(unseen(dawn, 'sortie')).toBe(true);
     expect(unseen(dawn, 'baron')).toBe(false);
+  });
+
+  it('is seen at dawn when it\u2019s on his trail, even if it couldn\u2019t take a step tonight, and so is anything standing by it', () => {
+    const s = aldmoor();
+    const [hx, hy] = s.hero.at;
+    const before = withBands(s, band('stuck', [hx - 600, hy], { behaviour: 'hunt', unseen: true }), band('beside', [hx - 630, hy], { unseen: true }), band('off', [hx - 700, hy], { unseen: true }));
+    const after = { ...before, locations: before.locations.map((l) => (l.id === 'stuck' ? { ...l, enemy: { ...l.enemy!, trailing: true } } : l)) };
+    const dawn = loseSight(before, after);
+    expect(unseen(dawn, 'stuck')).toBe(false);
+    expect(unseen(dawn, 'beside')).toBe(false);
+    expect(unseen(dawn, 'off')).toBe(true);
+    // In play: a bold hunter that can't find a step it may take tonight still picks up the trail, and the dawn shows it.
+    const [x, y] = s.hero.at;
+    const hunter = band('hunter', [x - 170, y], { behaviour: 'hunt', bold: true, sight: 400, range: 100, home: [x, y], unseen: true });
+    const night = endDay(withBands(s, hunter));
+    expect(night.events.some((e) => e.type === 'enemyMoved' && e.id === 'hunter')).toBe(false);
+    expect(locationById(night.state, 'hunter').enemy!.trailing).toBe(true);
+    expect(unseen(night.state, 'hunter')).toBe(false);
   });
 
   it('comes back on the map as soon as he rides within sight of it, and not before', () => {

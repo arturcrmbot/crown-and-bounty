@@ -13,6 +13,9 @@ import type { Point } from './geometry';
 
 const within = (l: Location, [x, y]: Point, radius: number) => Math.hypot(l.at[0] - x, l.at[1] - y) <= radius;
 
+/** How much of the mist lifts round a hunter on the hero's trail, so he can see it coming. */
+export const SPOTTED = 48;
+
 /** Bands out of sight that stand within `radius` of `at` are seen: back on the map where they stand. */
 export function seeBands(state: GameState, at: Point, radius: number): GameState {
   if (!state.locations.some((l) => l.enemy?.unseen && within(l, at, radius))) return state;
@@ -31,18 +34,22 @@ export function look(state: GameState, at: Point, radius: number): { state: Game
 }
 
 /**
- * Dawn, after the night's moves (`before` is how things stood at nightfall): a band that has moved,
- * or come out, is seen if it stands within the hero's sight of his camp or is on his trail, and is
- * out of sight if not. Bands that stayed put are as he last knew them.
+ * Dawn, after the night's moves (`before` is how things stood at nightfall): the mist has lifted round
+ * every hunter on the hero's trail, as the news says, and whatever stands there is seen, moved or
+ * not. Otherwise a band that has moved, or come out, is seen if it stands within the hero's sight of
+ * his camp, and is out of sight if not; one that stayed put is as he last knew it.
  */
 export function loseSight(before: GameState, after: GameState): GameState {
   const was = new Map(before.locations.map((l) => [l.id, l]));
   const sight = heroStats(after).sight;
+  const trails = after.locations.filter((l) => l.enemy?.trailing && !l.done).map((l) => l.at);
   let changed = false;
   const locations = after.locations.map((l) => {
+    if (!l.enemy || l.done) return l;
     const old = was.get(l.id);
-    if (!l.enemy || l.done || (old && !old.done && old.at[0] === l.at[0] && old.at[1] === l.at[1])) return l;
-    const unseen = !l.enemy.trailing && !within(l, after.hero.at, sight);
+    const moved = !old || old.done || old.at[0] !== l.at[0] || old.at[1] !== l.at[1];
+    const spotted = trails.some((at) => within(l, at, SPOTTED));
+    const unseen = spotted ? false : moved ? !within(l, after.hero.at, sight) : Boolean(l.enemy.unseen);
     if (Boolean(l.enemy.unseen) === unseen) return l;
     changed = true;
     const { unseen: _, ...enemy } = l.enemy;

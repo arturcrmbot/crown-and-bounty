@@ -15,6 +15,7 @@ import { mapOf } from './maps';
 import { CELL, cellCentre, cellIndex, gridWithEnemies, standingEnemies, Terrain, type MapModel } from './model';
 import { stepCost } from './movement';
 import { findPath, nearestPassable } from './pathfinding';
+import { SPOTTED } from './sight';
 
 /** How far a hunter notices the hero, and how close is close enough to fall on him. */
 export const HUNT_SIGHT = 260;
@@ -139,5 +140,3 @@ export function moveEnemies(state: GameState, map: MapModel): { state: GameState
   return { state: { ...next, seed, locations, explored }, events, ambush: ambush?.id ?? null };
 }
 
-/** How much of the mist lifts round a hunter on the hero's trail, so he can see it coming. */
-const SPOTTED = 48;
