@@ -10,7 +10,7 @@ Grimsby's walls: Old Nan's lullaby, for half the bounty.
 when his guard is beaten.
 **Built (#15):** Rook the Huntsman, Grimsby's captain, leads the wolves from the kennels, and hunts you from week 2.
 **Built (#76):** the hunt hall by the bridge, Old Nan's word, the lodge in the chase with its bears, and the huntsmen.
-**Still to build:** the grain cart (#78).
+**Built (#78):** the grain cart on payday, which a squad of Pike's patrol takes from Westmere to the stockade.
 
 ![Aldmoor, bigger](aldmoor.svg)
 

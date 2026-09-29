@@ -321,6 +321,11 @@ describe('one-off finds', () => {
         for (const page of l.pages ?? []) {
           const flag = page.when?.notFlag;
           const doers = page.choices.filter((c) => c.effects && Object.keys(c.effects).some((k) => k !== 'travel'));
+          // A question a victory asks (the grain cart's) waits on a flag its spoils set, and any answer spends it.
+          if (page.answer && page.when?.flag && !flag) {
+            for (const c of page.choices) expect(c.effects?.flags?.[page.when.flag], `${p.id} ${l.id}/${page.id}/${c.id}`).toBe(false);
+            continue;
+          }
           if (!doers.length || l.kind === 'event' && !flag) continue;
           expect(flag, `${p.id} ${l.id}/${page.id}`).toBeTruthy();
           for (const c of doers) expect(c.effects!.flags?.[flag!], `${p.id} ${l.id}/${page.id}/${c.id}`).toBeTruthy();

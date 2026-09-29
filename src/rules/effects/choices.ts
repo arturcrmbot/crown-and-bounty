@@ -7,19 +7,10 @@ import { ARTIFACTS } from '../../content/artifacts';
 import { troopPower } from '../../content/troops';
 import { beat } from '../fight';
 import { artifactChoices, heroStats, knowsTrick } from '../hero';
-import { close, leadershipUsed, locationById, show, TROOPS, type Card, type Choice, type ContentChoice, type GameState, type Location, type Page, type Result } from '../state';
-import { applyEffects, meets, needsLabel, owns, pay } from './core';
+import { close, leadershipUsed, locationById, show, TROOPS, type Card, type ContentChoice, type GameState, type Location, type Page, type Result } from '../state';
+import { applyEffects, choiceButton, meets, owns, pay } from './core';
 
-export { applyEffects, meets, needsLabel, owns } from './core';
-
-/** A content choice as a button: greyed out, with what it needs, when the hero can't take it. */
-export function choiceButton(state: GameState, place: Location, choice: ContentChoice, key: string): Choice {
-  return {
-    label: `${choice.label}${needsLabel(choice.needs)}`,
-    action: { type: 'choose', id: place.id, choice: key },
-    ...(meets(state, choice.needs) ? {} : { disabled: true }),
-  };
-}
+export { applyEffects, choiceButton, meets, needsLabel, owns } from './core';
 
 /** The first of a place's content pages that holds now. */
 export const firstPage = (state: GameState, place: Location): Page | undefined => place.pages?.find((p) => !p.answer && meets(state, p.when));
