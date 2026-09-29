@@ -6,7 +6,7 @@ import { Weather, type Sky } from '../render/weather';
 
 /** Where smoke rises: the smoke hole in every cottage's thatch, and the kitchens of castles. */
 function chimneysOf(map: MapModel, state: GameState): Point[] {
-  const huts = map.province.decor.map((d) => [d.at[0] + 3, d.at[1] - 24] as Point);
+  const huts = map.province.decor.filter((d) => d.sprite === 'hut').map((d) => [d.at[0] + 3, d.at[1] - 24] as Point);
   const castles = state.locations.filter((l) => l.kind === 'castle').map((l) => [l.at[0] + 18, l.at[1] - 78] as Point);
   return [...huts, ...castles];
 }

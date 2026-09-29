@@ -12,8 +12,8 @@ import { animFrames, bodyHeight, everyFrame, STAND, troopFigure } from './battle
 import { heroArtId } from './units';
 import {
   abbey, boulder, camp,
-  butts, cottage, castle, standingStones, chest, crag, goldPile, hideout, hut, mill, mine, mirror, oak, peatHut, pine, signpost, stiltHut, shrine, stoneBridge,
-  watchtower, well, willow, windmill, xMark,
+  butts, cottage, castle, standingStones, chest, crag, goldPile, hideout, holes, hut, mill, mine, mirror, oak, peatHut, pine, signpost, stiltHut, shrine, stoneBridge,
+  washingCottage, watchtower, well, willow, windmill, xMark,
 } from './sprites';
 import { TerrainPainter } from './terrain';
 
@@ -75,6 +75,8 @@ function landmark(l: Location): { frames: Bitmap[]; foot: number; animated: bool
       return { frames: animation((t) => camp(t * Math.PI * 2)), foot: 36, animated: true };
     case 'cottage':
       return { frames: animation((t) => cottage(t)), foot: 44, animated: true };
+    case 'house':
+      return { frames: [washingCottage(11)], foot: 28, animated: false };
     case 'stones':
       return { frames: [standingStones()], foot: 36, animated: false };
     case 'range':
@@ -178,7 +180,7 @@ export function buildAdventureScene(map: MapModel, state: GameState): AdventureS
   province.rocks.forEach(([x, y, size], i) => scenery.push(place(boulder(260 + i, size), [x, y], Math.ceil(size * 0.8) + 2)));
   province.crags.forEach(([x, y, w, h], i) => scenery.push(place(crag(w, h, 40 + i), [x, y], h)));
   for (const d of province.decor) {
-    const o = place(hut(d.seed), d.at, 28);
+    const o = d.sprite === 'holes' ? place(holes(d.seed), d.at, 26) : place(hut(d.seed), d.at, 28);
     landmarks.push(o);
     partOf(d.place, o);
   }

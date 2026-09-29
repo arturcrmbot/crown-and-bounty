@@ -237,3 +237,14 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   it's a sure thing (19 in 20 over sixteen battles), and looks again when it gets there: losing the whole army costs
   weeks in a province this size, while Grimsby recruits. It wins Aldmoor with every background, by day 9 to 13 at the
   median (6 to 38 in all).
+- **Mrs Pike and Grimsby's dig (29 Sep, #77):** Mrs Pike lives on Westmere green, her boy's sergeant's coat on the
+  washing line. Until he's home she only talks about him, and hints that his father wrote everything down; if the
+  patrol is beaten or paid off, she knows he's gone into Darkwood. Once the journal sends Pike home (his camp moves
+  to Westmere green), she thanks Aldric with her late husband's lucky horseshoe, or a word round Westmere (+20
+  leadership): no flat stats, as with every find. Grimsby's men dig for the old King's treasure on the heath under the
+  crags, forty holes and a spade: a band worth a real fight from day one (32 swordsmen, 14 crossbowmen, 30 peasants),
+  with his wages and his orders in the biggest hole, which hint that what he's after isn't gold. Beating them sets
+  `flags.dig = 'raided'`, which Grimsby riding out (#75) answers to. The patrol's every ending sets a flag too
+  (`patrolGone`, or `pikeHome`). A new player's pace: the bot, which knows where everything is, wins by day 11 to 14 at
+  the median; the scripted play-through, waiting for paydays, on day 15; a player who explores in the fog and goes the
+  wrong way now and then should take about three weeks. That is an estimate, not a measurement.
