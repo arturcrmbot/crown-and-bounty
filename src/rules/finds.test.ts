@@ -5,6 +5,7 @@ import { FENMARCH } from '../content/fenmarch';
 import type { Province } from '../content/types';
 import { withNewPlaces } from './campaign';
 import { apply, commissionAt, heroStats, locationById, visit, type Card, type GameState, type Location, type Result } from './game';
+import { beat } from './fight';
 import { mapOf } from './map/maps';
 import { planRoute } from './map/movement';
 import { beginCommission, newGame } from './scenario';
@@ -27,6 +28,27 @@ const has = (state: GameState, artifact: string) => Object.values(state.hero.gea
 const count = (army: GameState['army'], troop: string) => army.find((s) => s.troop === troop)?.count ?? 0;
 
 describe('Aldmoor\u2019s finds', () => {
+  it('asks before wearing the highwaymen\u2019s Black Banner', () => {
+    const result = beat(fresh(), 'highwaymen', { title: 'Victory!', lines: [], reward: 0, xp: 0 });
+    expect(result.state.hero.gear.banner).toBeUndefined();
+    expect(result.state.hero.pack).toContain('blackBanner');
+    expect(cardOf(result).choices.map((c) => c.label)).toEqual(['Wear it', 'Keep it in your pack']);
+    expect(apply(result.state, cardOf(result).choices[0].action)!.state.hero.gear.banner).toBe('blackBanner');
+  });
+
+  it('asks before wearing a drawback artifact found at a place', () => {
+    const start = fresh();
+    const state = {
+      ...start,
+      locations: start.locations.map((l) => l.id === 'tower' ? { ...l, pages: undefined, artifact: 'blackBanner' as const, seen: false, done: false } : l),
+    };
+    const found = visit(state, 'tower');
+    expect(found.state.hero.gear.banner).toBeUndefined();
+    expect(found.state.hero.pack).toContain('blackBanner');
+    expect(cardOf(found).choices.map((c) => c.label)).toEqual(['Wear it', 'Keep it in your pack']);
+    expect(apply(found.state, cardOf(found).choices[0].action)!.state.hero.gear.banner).toBe('blackBanner');
+  });
+
   it('the watchtower\u2019s crows let you take the banner or the journal, and the journal brings Sergeant Pike home', () => {
     const banner = take(fresh(), 'tower', 'top/banner');
     expect(banner.hero.gear.banner).toBe('oldBanner');
@@ -278,4 +300,3 @@ describe('wells', () => {
     expect(visit(full, 'well').state.flags?.['drank:well']).toBeUndefined();
   });
 });
-

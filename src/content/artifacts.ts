@@ -45,7 +45,7 @@ export type ArtifactId =
 /** A set of artifacts that do something more when all of them are worn. */
 export type SetId = 'regalia' | 'finery';
 
-export type Artifact = { id: ArtifactId; name: string; slot: Slot; note: string; bonus: Bonus; price?: number; set?: SetId };
+export type Artifact = { id: ArtifactId; name: string; slot: Slot; note: string; bonus: Bonus; drawback?: true; price?: number; set?: SetId };
 
 export const ARTIFACTS: Record<ArtifactId, Artifact> = {
   swordOfAldmoor: { id: 'swordOfAldmoor', name: 'Sword of Aldmoor', slot: 'weapon', note: '+2 attack. Came with the castle, like the damp.', bonus: { attack: 2 }, price: 900 },
@@ -118,16 +118,18 @@ export const ARTIFACTS: Record<ArtifactId, Artifact> = {
     slot: 'weapon',
     note: '+3 spell power, but every spell costs a mana more. She stirred everything with it, the choir included.',
     bonus: { spellPower: 3, manaDiscount: -1 },
+    drawback: true,
   },
   // Gear with a price, and gear that changes how you ride, talk and count.
-  headsmansAxe: { id: 'headsmansAxe', name: 'The Headsman\u2019s Axe', slot: 'weapon', note: '+4 attack, but \u22122 defence. Nobody near it is safe, you included.', bonus: { attack: 4, defence: -2 }, price: 1100 },
-  kingsPlate: { id: 'kingsPlate', name: 'The King\u2019s Plate', slot: 'armour', note: '+5 defence, but \u221240 movement a day. You clank.', bonus: { defence: 5, movement: -40 }, price: 1500 },
+  headsmansAxe: { id: 'headsmansAxe', name: 'The Headsman\u2019s Axe', slot: 'weapon', note: '+4 attack, but \u22122 defence. Nobody near it is safe, you included.', bonus: { attack: 4, defence: -2 }, drawback: true, price: 1100 },
+  kingsPlate: { id: 'kingsPlate', name: 'The King\u2019s Plate', slot: 'armour', note: '+5 defence, but \u221240 movement a day. You clank.', bonus: { defence: 5, movement: -40 }, drawback: true, price: 1500 },
   friarsHabit: {
     id: 'friarsHabit',
     name: 'A Friar\u2019s Habit',
     slot: 'armour',
     note: '+2 knowledge, but \u22121 defence: it is only wool. Folk give a friar a better price: bribes cost a tenth less.',
     bonus: { knowledge: 2, defence: -1, bribes: 0.1 },
+    drawback: true,
     price: 900,
   },
   pilgrimsHat: {
@@ -143,6 +145,7 @@ export const ARTIFACTS: Record<ArtifactId, Artifact> = {
     slot: 'banner',
     note: '+10 leadership, and bands far weaker than you surrender when you ride up: nobody wants to fight under the skull. Honest folk shun it: recruits cost a tenth more.',
     bonus: { leadership: 10, cows: true, recruitPrice: 0.1 },
+    drawback: true,
   },
   recruitingDrum: {
     id: 'recruitingDrum',

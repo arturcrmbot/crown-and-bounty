@@ -55,6 +55,25 @@ describe('the castle', () => {
     expect(cardOf(apply(armed, { type: 'choose', id: 'castle', choice: 'buy:helmOfFarSight' })).lines[0]).toContain('it goes in your pack');
   });
 
+  it('asks before wearing a bought artifact with a drawback', () => {
+    const start = knight();
+    const rich = {
+      ...start,
+      gold: 5000,
+      locations: start.locations.map((l) => l.id === 'castle' ? { ...l, wares: [...(l.wares ?? []), 'headsmansAxe' as const] } : l),
+    };
+    const bought = apply(rich, { type: 'choose', id: 'castle', choice: 'buy:headsmansAxe' })!;
+    expect(bought.state.hero.gear.weapon).toBeUndefined();
+    expect(bought.state.hero.pack).toContain('headsmansAxe');
+    expect(cardOf(bought).choices.map((c) => c.label)).toContain('Wear it');
+    expect(cardOf(bought).choices.map((c) => c.label)).toContain('Keep it in your pack');
+  });
+
+  it('still offers a way out when arriving somewhere with nothing to wear', () => {
+    expect(cardOf(visit(knight(), 'castle')).choices.map((c) => c.label)).toContain('Not today');
+    expect(cardOf(visit(knight(), 'village')).choices.map((c) => c.label)).toContain('Not today');
+  });
+
   it('says why fewer can be recruited than are on offer', () => {
     const poor = { ...knight(), gold: 35 };
     const village = cardOf(visit(poor, 'village'));
