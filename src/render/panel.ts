@@ -1,5 +1,5 @@
 import { BACKGROUNDS } from '../content/backgrounds';
-import { bountyCard, CAMPAIGN_LENGTH, coins, commissionOf, heroStats, LAST_DAY, LEVELS, mapPieces, roman, type BarItem, type GameState } from '../rules/game';
+import { bountyOf, CAMPAIGN_LENGTH, coins, commissionOf, heroStats, LAST_DAY, LEVELS, mapPieces, roman, type BarItem, type GameState } from '../rules/game';
 import { Bitmap, blit } from './bitmap';
 import { BOUNTY_PLATE, HERO_PLATE, type Rect } from './frame';
 import { COIN, CRYSTAL, HORSESHOE } from './hud';
@@ -67,7 +67,7 @@ export class Panel {
 }
 
 const heroKey = (s: GameState) => `${s.hero.background}|${s.hero.level}|${s.hero.xp}`;
-const bountyKey = (s: GameState) => `${commissionOf(s).villain}|${s.bounty}|${s.day}|${mapPieces(s)}`;
+const bountyKey = (s: GameState) => `${commissionOf(s).villain}|${s.bounty}|${s.day}|${mapPieces(s)}|${bountyOf(s)}|${s.paid?.gold}`;
 
 /** Slate, a little darker towards the foot. */
 function slate(b: Bitmap, seed: number) {
@@ -141,26 +141,43 @@ function paintHero(b: Bitmap, state: GameState) {
   blit(b, CRYSTAL, 9, MANA_Y + 1);
 }
 
-/** The bounty's plate: WANTED (or CAUGHT) over the villain's face, the reward, the days left, and the pieces of the old map. */
+/**
+ * The bounty's plate, as the poster is: WANTED over the villain's face (stamped PAID once he's taken),
+ * the reward (or what the Crown paid), the days left, and the pieces of the old map.
+ */
 function paintBounty(b: Bitmap, state: GameState) {
   slate(b, 40);
   const c = commissionOf(state);
   const paid = state.bounty === 'paid';
-  const title = paid ? 'CAUGHT' : 'WANTED';
-  drawText(b, title, Math.round((b.width - textMask(title, 13).width) / 2), 5, paid ? GOLD[6] : RED[5], INK);
-  const face = bountyCard(state).portrait;
-  framedFace(b, face ? portraitOf(face) : null, POSTER_FACE.x, POSTER_FACE.y);
+  drawText(b, 'WANTED', Math.round((b.width - textMask('WANTED', 13).width) / 2), 5, RED[5], INK);
+  framedFace(b, c.face ? portraitOf(c.face) : null, POSTER_FACE.x, POSTER_FACE.y);
+  if (paid) stamp(b, 'PAID', POSTER_FACE.x + PORTRAIT_SIZE / 2, POSTER_FACE.y + PORTRAIT_SIZE - 22);
   const name = lines(c.villain, b.width - TEXT_X - 6, 13).slice(0, 2);
   name.forEach((line, i) => drawText(b, line, TEXT_X, 27 + i * 15, GOLD[6], INK));
   const y = 30 + name.length * 15;
   blit(b, COIN, TEXT_X, y + 4);
-  drawText(b, coins(c.reward), TEXT_X + 12, y, GOLD[5], INK);
+  drawText(b, coins(paid ? (state.paid?.gold ?? bountyOf(state)) : bountyOf(state)), TEXT_X + 12, y, GOLD[5], INK);
   const left = LAST_DAY - state.day;
   drawText(b, paid ? 'Bounty paid' : `${left} day${left === 1 ? '' : 's'} left`, TEXT_X, y + 18, paid ? GOLD[5] : left <= 10 ? RED[5] : PARCHMENT[6], INK);
   // The torn pieces of the old map: one for every bounty paid, the rest still to find.
   const found = mapPieces(state);
   const x0 = Math.round((b.width - (CAMPAIGN_LENGTH * SCRAP.width + (CAMPAIGN_LENGTH - 1) * SCRAP.gap)) / 2);
   for (let k = 0; k < CAMPAIGN_LENGTH; k++) scrap(b, x0 + k * (SCRAP.width + SCRAP.gap), SCRAP.y, k, k < found);
+}
+
+/** A word stamped in red ink across a face, in a red box, as on the poster once the bounty is paid. */
+function stamp(b: Bitmap, word: string, cx: number, y: number) {
+  const mask = textMask(word, 13, 2);
+  const [w, h] = [mask.width + 6, mask.height + 2];
+  const x0 = Math.round(cx - w / 2);
+  for (let j = 0; j < h; j++) {
+    for (let i = 0; i < w; i++) {
+      const edge = i < 2 || j < 2 || i >= w - 2 || j >= h - 2;
+      // Stamped ink takes unevenly: a pixel of the edge missing here and there.
+      if (edge && hash(i, j, 65) > 0.15) b.set(x0 + i, y + j, RED[3]);
+      else if (!edge && mask.solid(i - 3, j - 1) && hash(i, j, 66) > 0.1) b.set(x0 + i, y + j, RED[4]);
+    }
+  }
 }
 
 /** A torn scrap of the old map, with a stretch of red-inked road on it; or, not found yet, its outline in faint gold. */

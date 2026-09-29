@@ -7,7 +7,7 @@
  */
 import { BATTLE_EFFECTS } from './blows';
 import { playNote } from './instruments';
-import { burst, crackle, swish, tone } from './synth';
+import { burst, crackle, rand, swish, tone, voice } from './synth';
 
 export type Loudness = 'faint' | 'soft' | 'firm' | 'loud';
 export type EffectDef = {
@@ -15,6 +15,8 @@ export type EffectDef = {
   loud: Loudness;
   /** Scales the whole effect, to bring it to its mark. */
   level: number;
+  /** An effect that is music itself (the heralds' fanfare, the bard's songs) ducks the score a little for this long, so the two don't clash. */
+  duck?: number;
   play: (ctx: BaseAudioContext, dest: AudioNode, at: number) => void;
 };
 type Play = EffectDef['play'];
@@ -73,11 +75,37 @@ const brass = (ctx: BaseAudioContext, dest: AudioNode, t: number, calls: readonl
   for (const [midi, at, length] of calls) playNote(ctx, dest, 'brass', t + at, midi, length, volume);
 };
 
-const effect = (loud: Loudness, play: Play, level = 1): EffectDef => ({ loud, level, play });
+const effect = (loud: Loudness, play: Play, level = 1, duck?: number): EffectDef => ({ loud, level, play, ...(duck ? { duck } : {}) });
+
+/** The vowels a babble is made of (their formants, in Hz): ah, eh, ee, oh, oo. */
+const VOWELS = [
+  [730, 1090, 2440],
+  [530, 1840, 2480],
+  [300, 2200, 2900],
+  [570, 840, 2410],
+  [320, 900, 2300],
+] as const;
+
+/**
+ * Words said aloud, the way a storybook game's people talk: a babble of `syllables` on the vowels
+ * above, around `pitch` (Hz), the last one falling as a sentence does. A pompous baron rumbles; a
+ * witch cackles high.
+ */
+export const babble =
+  (pitch: number, syllables: number): Play =>
+  (ctx, dest, t) => {
+    let at = t;
+    for (let i = 0; i < syllables; i++) {
+      const length = rand(0.07, 0.13);
+      const f = pitch * rand(0.85, 1.3) * (i === syllables - 1 ? 0.8 : 1);
+      voice(ctx, dest, at, { pitch: [[0, f], [1, f * rand(0.8, 1.1)]], length, vowel: VOWELS[Math.floor(Math.random() * VOWELS.length)], breath: 0.25, volume: 1 });
+      at += length + 0.03 + (Math.random() < 0.2 ? 0.08 : 0);
+    }
+  };
 
 /** The effects of the map, the cards and the hero screen. */
 const EVERYDAY = {
-  click: effect('soft', (ctx, dest, t) => tone(ctx, dest, t, 520, 0.05, 0.12, 'square', 0.7), 3.5),
+  click: effect('soft', (ctx, dest, t) => tone(ctx, dest, t, 520, 0.05, 0.12, 'square', 0.7), 3.8),
   // A page of the hero's book turning.
   page: effect('soft', (ctx, dest, t) => burst(ctx, dest, t, 0.16, 'bandpass', 2600, 0.35, 0.45), 3),
   lift: effect('soft', (ctx, dest, t) => burst(ctx, dest, t, 0.05, 'bandpass', 1400, 0.3, 1.6), 7.5),
@@ -88,6 +116,15 @@ const EVERYDAY = {
     tone(ctx, dest, t + 0.06, 2637, 0.18, 0.14);
   }, 1.1),
   unfold: effect('soft', unfold, 0.8),
+  // A rubber stamp slammed down on the poster: a thump, a rap of wood, and the coins it stands for.
+  stamp: effect('firm', (ctx, dest, t) => {
+    burst(ctx, dest, t, 0.16, 'lowpass', 420, 1, 0.5);
+    tone(ctx, dest, t, 82, 0.18, 0.8, 'sine', 0.6);
+    burst(ctx, dest, t + 0.005, 0.04, 'bandpass', 1800, 0.45);
+    [1760, 2349].forEach((f, i) => tone(ctx, dest, t + 0.14 + i * 0.07, f, 0.3, 0.16));
+  }, 1.7),
+  // Someone speaking, at a middling pitch: a villain's last words use his own (`speak` in ui/sound.ts).
+  speech: effect('firm', babble(150, 8), 1.3),
   fold: effect('soft', fold, 0.9),
   coins: effect('firm', (ctx, dest, t) => [1320, 1760, 1480, 1980].forEach((f, i) => tone(ctx, dest, t + i * 0.055, f, 0.12, 0.35)), 1.3),
   day: effect('firm', (ctx, dest, t) => {
@@ -99,12 +136,12 @@ const EVERYDAY = {
     tone(ctx, dest, t + 0.8, 1568, 0.9, 0.35);
   }, 0.76),
   // Boots going off down the road.
-  march: effect('soft', (ctx, dest, t) => [0, 0.14, 0.28, 0.42].forEach((d, i) => burst(ctx, dest, t + d, 0.06, 'lowpass', 600, 0.55 - i * 0.12)), 6.8),
+  march: effect('soft', (ctx, dest, t) => [0, 0.14, 0.28, 0.42].forEach((d, i) => burst(ctx, dest, t + d, 0.06, 'lowpass', 600, 0.55 - i * 0.12)), 6),
   // Three quick calls up the chord of G, then the whole chord held, on the drum.
   fanfare: effect('loud', (ctx, dest, t) => {
     brass(ctx, dest, t, [[55, 0, 0.15], [59, 0.16, 0.15], [62, 0.32, 0.15], [67, 0.5, 1.2], [62, 0.5, 1.2], [59, 0.5, 1.2]], 0.3);
     playNote(ctx, dest, 'tabor', t + 0.5, 43, 0.3, 0.7);
-  }),
+  }, 1, 1.5),
   // A hunting horn: two quick calls and a long one, and hooves.
   charge: effect('loud', (ctx, dest, t) => {
     brass(ctx, dest, t, [[67, 0, 0.1], [67, 0.12, 0.1], [74, 0.24, 0.45]], 0.34);
@@ -116,12 +153,12 @@ const EVERYDAY = {
   song: effect('firm', (ctx, dest, t) => {
     [55, 59, 62, 67, 62, 67].forEach((midi, i) => playNote(ctx, dest, 'lute', t + i * 0.13, midi, 0.3, 0.45));
     playNote(ctx, dest, 'tabor', t + 0.52, 43, 0.3, 0.5);
-  }, 0.22),
+  }, 0.22, 1),
   // A lucky song: a lilting run on the lute, and a bell at the end.
   luckySong: effect('firm', (ctx, dest, t) => {
     [64, 67, 69, 72, 69, 76].forEach((midi, i) => playNote(ctx, dest, 'lute', t + i * 0.11, midi, 0.28, 0.42));
     playNote(ctx, dest, 'bell', t + 0.7, 84, 0.8, 0.18);
-  }, 0.26),
+  }, 0.26, 1),
   // Spirits sinking: a low drone that sags.
   falter: effect('firm', (ctx, dest, t) => tone(ctx, dest, t, 196, 0.5, 0.35, 'triangle', 0.7), 2.1),
   // A short call rising on the brass: good spirits, and a stack goes again.

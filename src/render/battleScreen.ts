@@ -4,10 +4,11 @@ import { canCast, hasTurn, isLeader, lookOf, luckOf, moraleOf, speedOf, statsOf,
 import { COLS, colOf, HEXES, hexIndex, ROWS, rowOf } from '../rules/battle/hex';
 import { Bitmap, blit } from './bitmap';
 import { critters, critterSprite, type Critter } from './critters';
-import { animLength, corpseSprite, hurtSprite, standard, STAND, troopFigure, type Pose, type Standard } from './battleSprites';
+import { animLength, bodyHeight, corpseSprite, hurtSprite, standard, STAND, troopFigure, type Pose, type Standard } from './battleSprites';
 import { upcomingFighters } from './battleOrder';
 import { ART } from './units';
 import { drawBanner } from './banner';
+import { TIP } from './speech';
 import { BAR, MAP_VIEW, paintBarBackground, paintFrame, SCREEN, type Rect } from './frame';
 import { bayer, hash, noise, shade } from './noise';
 import { BLUE, CYCLE_BOG, EARTH, GOLD, GRASS, INK, LEAF, LIGHT_LUT, NEUTRAL, PARCHMENT, PLUM, RED, REED, SHADOW_LUT, STONE, WOOD } from './palette';
@@ -158,6 +159,8 @@ export type BattleView = {
   shake: number;
   /** VICTORY or DEFEAT across the field at the end. */
   banner: { sprite: Bitmap; age: number; life: number } | null;
+  /** A leader's last words, in a bubble over his head (`render/speech.ts`), for `life` seconds. */
+  speech: { fighter: number; bubble: Bitmap; age: number; life: number } | null;
   /** The safe-finish offer replaces Auto in the bar while the player can accept it. */
   finishOffer: boolean;
 };
@@ -368,6 +371,7 @@ export class BattleScreen {
     }
     for (const s of view.shots) this.shot(s);
     for (const t of view.floaters) drawText(screen, t.text, Math.round(t.x - t.text.length * 4), Math.round(t.y - t.age * FLOAT_RISE), t.color, INK, 15);
+    if (view.speech) this.speech(b, view.speech);
     if (view.banner) drawBanner(screen, view.banner.sprite, MAP_VIEW.x + MAP_VIEW.width / 2, MAP_VIEW.y + 150, view.banner.age, view.banner.life);
     if (view.shake > 0.5) this.shake(view.shake, view.time);
     this.logLine(view.preview ?? view.log);
@@ -375,6 +379,18 @@ export class BattleScreen {
     this.bar(b, view);
     blit(screen, this.overlay, 0, 0);
     return screen;
+  }
+
+  /** A leader's words in a bubble to the upper left of him, its tail's tip just over his head, as it rises and fades. */
+  private speech(b: BattleState, speech: NonNullable<BattleView['speech']>) {
+    const f = b.fighters.find((x) => x.id === speech.fighter);
+    if (!f) return;
+    const [px, py] = spotOf(b, f);
+    const head = py + 12 - bodyHeight(f.troop, 'battle');
+    const { bubble } = speech;
+    const x0 = Math.max(MAP_VIEW.x + 4, Math.min(MAP_VIEW.x + MAP_VIEW.width - bubble.width - 4, px - (bubble.width - 3 - TIP)));
+    const y0 = Math.max(LOG_BOTTOM + 6, head - 4 - (bubble.height - 3));
+    drawBanner(this.screen, bubble, x0 + bubble.width / 2, y0, speech.age, speech.life);
   }
 
   /** Jolts the field (not the frame round it) by up to `amount` pixels, for a heavy blow. */

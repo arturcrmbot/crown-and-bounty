@@ -43,7 +43,7 @@ async function beatWhenReady(id, tries = 6) {
     if ((await kc.lines()).includes('nervous') || attempt === tries) {
       await kc.choose('Let the sergeants');
       const title = await kc.title();
-      if (title === 'Victory!' || title === 'The bounty is paid!') return title;
+      if (title === 'Victory!' || title?.endsWith('is taken!')) return title;
       await close();
     } else await kc.choose('Retreat');
     do {
@@ -283,7 +283,9 @@ try {
 
   // To court: level-ups from the last battle, the King's thanks and a boon, then the next commission.
   const first = () => kc.call(() => document.querySelector('.kc-card-wrap:not([hidden]) button')?.textContent ?? null);
-  check(await kc.choose('Ride to the King'), 'the bounty card sends Sir Aldric to court');
+  check((await kc.title()) === 'Baron Grimsby is taken!' && (await kc.lines()).includes('Flemish'), 'Grimsby is taken, and has the last word');
+  check((await kc.choose('Claim the bounty')) && (await kc.title()) === 'WANTED' && (await kc.lines()).includes('paid in full'), 'his poster comes back, paid in full');
+  check(await kc.choose('Ride to the King'), 'the poster sends Sir Aldric to court');
   await page.waitForTimeout(100);
   check((await screen()) === 'court', 'the throne room opens');
   while ((await kc.title())?.startsWith('Level')) {

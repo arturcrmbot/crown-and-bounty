@@ -38,6 +38,8 @@ export type TroopDef = {
   hero?: { background: BackgroundId; perLevel: { damage: number }; perPower?: number };
   /** A villain who leads his side as a hero does: his spellbook, and his orders (see `Spellbook` in rules/battle/battle.ts). */
   caster?: Caster;
+  /** How a leader sounds when he speaks aloud: the pitch his babble runs around, in Hz (see `speak` in ui/sound.ts). */
+  voice?: number;
 };
 
 /**
@@ -130,6 +132,7 @@ export const TROOPS: Record<TroopId, TroopDef> = {
     id: 'baron', name: 'Baron Grimsby', one: 'Baron Grimsby', hp: 160, attack: 11, defence: 10, damage: [9, 14], speed: 4, leadership: 99, wage: 0,
     note: 'Carries the royal goose under one arm, and gives the orders with the other.', abilities: ['leads'],
     caster: { spellPower: 2, mana: 15, spells: ['haste', 'slow'], charges: [{ spell: 'shieldwall', uses: 1 }, { spell: 'crossbows', uses: 2 }, { spell: 'guard', uses: 1 }] },
+    voice: 104,
   },
   goblins: { id: 'goblins', name: 'Bog Goblins', one: 'Bog Goblin', hp: 5, attack: 4, defence: 2, damage: [1, 3], speed: 6, leadership: 1, wage: 1, people: 'wild', note: 'Small, green, in a tremendous hurry, and their bite poisons.', abilities: ['stings'] },
   trolls: { id: 'trolls', name: 'Trolls', one: 'Troll', hp: 70, attack: 9, defence: 7, damage: [8, 12], speed: 3, leadership: 12, wage: 20, people: 'wild', note: 'Big, slow, and very attached to their bridge.', abilities: ['regenerates'] },
@@ -137,11 +140,13 @@ export const TROOPS: Record<TroopId, TroopDef> = {
     id: 'witch', name: 'Mother Mirrow', one: 'Mother Mirrow', hp: 140, attack: 8, defence: 8, damage: [6, 10], speed: 4, shots: 8, leadership: 99, wage: 0,
     note: 'Throws hexes, and the occasional ladle.', abilities: ['leads', 'hexes'],
     caster: { spellPower: 2, mana: 14, spells: ['newts', 'slow', 'brew'] },
+    voice: 330,
   },
   bramble: {
     id: 'bramble', name: 'Aunt Bramble', one: 'Aunt Bramble', hp: 170, attack: 9, defence: 9, damage: [7, 11], speed: 4, shots: 10, leadership: 99, wage: 0,
     note: 'Mother Mirrow\u2019s big sister. Bigger hat, worse temper.', abilities: ['leads', 'hexes'],
     caster: { spellPower: 3, mana: 14, spells: ['frogs', 'bolt', 'brew'] },
+    voice: 262,
   },
   poachers: { id: 'poachers', name: 'Poachers', one: 'Poacher', hp: 7, attack: 3, defence: 2, damage: [1, 3], speed: 4, shots: 6, leadership: 1, wage: 1, people: 'outlaw', note: 'Other people\u2019s deer, other people\u2019s rabbits, and now, other people\u2019s officers.' },
   bandits: { id: 'bandits', name: 'Highwaymen', one: 'Highwayman', hp: 11, attack: 4, defence: 3, damage: [2, 3], speed: 5, leadership: 2, wage: 2, people: 'outlaw', note: 'Stand and deliver. Mostly they stand.' },

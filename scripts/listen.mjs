@@ -1,13 +1,16 @@
 // Listens to the sound without ears: renders tracks, stings, effects and ambience offline in headless
 // Edge, through the game's own buses and master chain, and prints how loud they are (as a listener
 // hears loudness: K-weighted, in LUFS, see ITU-R BS.1770), how far each sits from its mark in the mix
-// (`MARKS` in src/audio/context.ts), how they end, how bright they are and how the tracks loop.
+// (`MARKS` in src/audio/context.ts), how far the score ducks under each sting, how they end, how
+// bright they are and how the tracks loop.
 //   npm run listen                 (everything)
 //   npm run listen -- stings       (or tracks, effects, ambience, or a name: heath, victory, blow:bite...)
+//   npm run listen -- --check      (and fail if anything sits too far from its mark, or peaks too high)
 import { openPage } from './lib/browser.mjs';
 import { startServer } from './lib/server.mjs';
 
 const only = process.argv.slice(2).filter((a) => !a.startsWith('--'));
+const checking = process.argv.includes('--check');
 const server = await startServer();
 const { browser, page, errors } = await openPage();
 try {
@@ -17,10 +20,11 @@ try {
   const report = await page.evaluate(async (wanted) => {
     const { playNote } = await import('/src/audio/instruments.ts');
     const { STINGS } = await import('/src/audio/stings.ts');
-    const { TRACKS, notesOf, loopUnits, midiOf, gateLevel } = await import('/src/audio/score.ts');
+    const { TRACKS, notesOf, loopUnits, midiOf, gateLevel, moodLevel } = await import('/src/audio/score.ts');
     const { LEVELS, MARKS, masterChain } = await import('/src/audio/context.ts');
-    const { AMBIENT_CALLS, AMBIENT_LAYERS } = await import('/src/audio/ambience.ts');
+    const { AMBIENT_BEDS, AMBIENT_CALLS, AMBIENT_LAYERS } = await import('/src/audio/ambience.ts');
     const { EFFECTS } = await import('/src/audio/effects.ts');
+    const { duck, deepen, DUCK_IN } = await import('/src/audio/music.ts');
     // BS.1770's K-weighting filters are given for 48 kHz.
     const RATE = 48000;
     const want = (group, name) => !wanted.length || wanted.includes(group) || wanted.includes(name);
@@ -152,12 +156,47 @@ try {
       }
     }
 
+    const MOODS = { map: { intensity: 0, balance: 0 }, start: { intensity: 0.25, balance: 0 }, heated: { intensity: 0.85, balance: 0 }, winning: { intensity: 0.85, balance: 0.6 }, losing: { intensity: 0.85, balance: -0.6 } };
+    /** Plays the stretch of a track's time [from, to) (laps wrap round) in a mood, as the game does, starting `offset` seconds into the render. */
+    function playTrack(ctx, dest, track, from, to, mood, offset = 0) {
+      const loop = loopUnits(track) * track.unit;
+      const whole = moodLevel(track, mood);
+      for (let lap = Math.floor(from / loop); lap <= Math.floor(to / loop); lap++) {
+        for (const n of notesOf(track)) {
+          const t = lap * loop + n.at * track.unit;
+          if (t < from || t >= to) continue;
+          const level = gateLevel(n.gate, mood) * whole;
+          if (level > 0.02) playNote(ctx, dest, n.instrument, t - from + offset, n.midi, n.length * track.unit, n.volume * level);
+        }
+      }
+    }
+    /** K-weighted loudness of a stretch [from, to) seconds, ungated: for the music under a duck. */
+    const between = (data, from, to) => {
+      const k = kweight(data.subarray(Math.floor(from * RATE), Math.floor(to * RATE)));
+      let sum = 0;
+      for (const v of k) sum += v * v;
+      return round(lufs(sum / Math.max(1, k.length)));
+    };
+    /**
+     * How the score steps back under something played over it: the heath's tune ducked at 3 s as the
+     * game ducks it, and its loudness just before and under the duck.
+     */
+    async function ducked(seconds, depth) {
+      const music = await render(4 + seconds, LEVELS.music, (ctx, dest) => {
+        const g = ctx.createGain();
+        g.connect(dest);
+        duck(g.gain, 3, deepen({ depth: 1, until: 0 }, 3, seconds, depth));
+        playTrack(ctx, g, TRACKS.heath, 0, 4 + seconds, MOODS.map);
+      });
+      return { before: between(music, 1, 3), under: between(music, 3 + DUCK_IN, 3 + Math.max(DUCK_IN + 0.3, seconds)) };
+    }
+
     const out = { marks: MARKS, stings: [], tracks: [], effects: [], ambience: [] };
     for (const [id, def] of Object.entries(EFFECTS)) {
       if (!want('effects', id) && !want('effects', id.split(':')[0])) continue;
-      // Most effects vary a little each time: the loudness is the mean of a few.
+      // Most effects vary a little each time: the loudness is the mean of a few, the peak the highest.
       const takes = [];
-      for (let take = 0; take < 3; take++) {
+      for (let take = 0; take < 5; take++) {
         takes.push(
           await render(3, LEVELS.sfx, (ctx, dest) => {
             const g = ctx.createGain();
@@ -171,7 +210,14 @@ try {
       const off = round(loudness - MARKS[def.loud]);
       // The level that would put it right on its mark.
       const fit = Number((def.level * 10 ** (-off / 20)).toPrecision(2));
-      out.effects.push({ id, loud: def.loud, level: def.level, fit, loudness, off, peak: peak(takes[0]), rings: tail(takes[0]), bright: brightness(takes[0]) });
+      const dip = def.duck ? await ducked(def.duck, 0.5) : null;
+      out.effects.push({ id, loud: def.loud, level: def.level, fit, loudness, off, peak: Math.max(...takes.map(peak)), rings: tail(takes[0]), bright: brightness(takes[0]), duck: dip && { seconds: def.duck, dip: round(dip.under - dip.before), over: round(loudness - dip.under) } });
+    }
+    for (const [id, make] of Object.entries(AMBIENT_BEDS)) {
+      if (!want('ambience', id)) continue;
+      const data = await render(8, LEVELS.ambience, (ctx, dest) => make(ctx, dest));
+      const body = data.subarray(RATE);
+      out.ambience.push({ id, kind: 'bed', peak: peak(body), loudness: integrated(body) });
     }
     for (const [id, make] of Object.entries(AMBIENT_LAYERS)) {
       if (!want('ambience', id)) continue;
@@ -190,27 +236,17 @@ try {
         for (const [instrument, at, note, length, volume] of def.hits) playNote(ctx, dest, instrument, 0.05 + at, instrument === 'tabor' || instrument === 'rim' ? 0 : midiOf(note), length, volume * def.level);
       });
       const loudness = momentary(data);
-      out.stings.push({ id, peak: peak(data), loudness, off: round(loudness - MARKS.sting), rings: tail(data), duck: def.duck, next: def.next ?? null });
+      const dip = await ducked(def.duck, 0.3);
+      out.stings.push({ id, peak: peak(data), loudness, off: round(loudness - MARKS.sting), rings: tail(data), duck: def.duck, dip: round(dip.under - dip.before), over: round(loudness - dip.under), next: def.next ?? null });
     }
-    const MOODS = { map: { intensity: 0, balance: 0 }, start: { intensity: 0.25, balance: 0 }, heated: { intensity: 0.85, balance: 0 }, winning: { intensity: 0.85, balance: 0.6 }, losing: { intensity: 0.85, balance: -0.6 } };
     for (const [id, track] of Object.entries(TRACKS)) {
       if (!want('tracks', id)) continue;
       const loop = loopUnits(track) * track.unit;
-      const notes = notesOf(track);
-      const gated = notes.some((n) => n.gate);
-      /** Renders the stretch of track time [from, to) (laps wrap round), in a mood, and returns it without its 3 s lead-in. */
+      const gated = notesOf(track).some((n) => n.gate);
+      /** Renders the stretch of track time [from, to) in a mood, and returns it without its 3 s lead-in (the notes still ringing from before). */
       const stretch = async (from, to, mood) => {
         const lead = 3;
-        const data = await render(to - from + lead + 2, LEVELS.music, (ctx, dest) => {
-          for (let lap = Math.floor((from - lead) / loop); lap <= Math.floor(to / loop); lap++) {
-            for (const n of notes) {
-              const t = lap * loop + n.at * track.unit;
-              if (t < from - lead || t >= to) continue;
-              const level = gateLevel(n.gate, mood);
-              if (level > 0.02) playNote(ctx, dest, n.instrument, t - (from - lead), n.midi, n.length * track.unit, n.volume * level);
-            }
-          }
-        });
+        const data = await render(to - from + lead + 2, LEVELS.music, (ctx, dest) => playTrack(ctx, dest, track, from - lead, to, mood));
         return data.subarray(Math.floor(lead * RATE), Math.floor((lead + to - from) * RATE));
       };
       // Each pass of the form on its own, so a quiet verse can't hide.
@@ -227,7 +263,7 @@ try {
       const seam = await stretch(loop - 3, loop + 3, MOODS.map);
       const moods = {};
       if (gated) for (const [name, mood] of Object.entries(MOODS)) moods[name] = integrated(await stretch(0, Math.min(loop, 20), mood));
-      out.tracks.push({ id, seconds: Math.round(loop), loudness: whole, off: round(whole - MARKS.music), passes, seamBefore: integrated(seam.subarray(0, 3 * RATE)), seamAfter: integrated(seam.subarray(3 * RATE)), moods });
+      out.tracks.push({ id, seconds: Math.round(loop), loudness: whole, off: round(whole - MARKS.music), passes, seamBefore: integrated(seam.subarray(0, 3 * RATE)), seamAfter: integrated(seam.subarray(3 * RATE)), moods, gated });
     }
     return out;
   }, only);
@@ -241,23 +277,44 @@ try {
     }
   }
   if (report.stings.length) {
-    console.log(`\nStings (music bus and master): their loudest 400 ms in LUFS against the stings' mark (${marks.sting}), peak dBFS, how long they ring, the duck, and when the next screen's music may start`);
-    console.log('id        loudest   off   peak  rings  duck  next');
-    for (const s of report.stings) console.log(`${s.id.padEnd(9)} ${String(s.loudness).padStart(6)} ${sign(s.off).padStart(5)} ${String(s.peak).padStart(6)} ${String(s.rings).padStart(5)}s ${String(s.duck).padStart(4)}s ${s.next === null ? '' : `${s.next}s`}`);
+    console.log(`\nStings (music bus and master): their loudest 400 ms in LUFS against the stings' mark (${marks.sting}), peak dBFS, how long they ring, how long and how far the score ducks under them (LU), how far they stand over it, and when the next screen's music may start`);
+    console.log('id        loudest   off   peak  rings  duck    dip   over  next');
+    for (const s of report.stings) console.log(`${s.id.padEnd(9)} ${String(s.loudness).padStart(6)} ${sign(s.off).padStart(5)} ${String(s.peak).padStart(6)} ${String(s.rings).padStart(5)}s ${String(s.duck).padStart(4)}s ${String(s.dip).padStart(6)} ${sign(s.over).padStart(6)}  ${s.next === null ? '' : `${s.next}s`}`);
   }
   if (report.effects.length) {
-    console.log(`\nEffects (effects bus and master): their loudest 100 ms in LUFS, against their mark (soft ${marks.soft}, firm ${marks.firm}, loud ${marks.loud}), peak dBFS, how long they ring, and how bright (Hz)`);
+    console.log(`\nEffects (effects bus and master): their loudest 100 ms in LUFS, against their mark (faint ${marks.faint}, soft ${marks.soft}, firm ${marks.firm}, loud ${marks.loud}), the level that would put them on it, peak dBFS, how long they ring, how bright (Hz), and how the score steps back under the ones that are music`);
     console.log('id              mark  level  (fit)  loudest   off   peak  rings  bright');
     for (const e of report.effects) {
-      console.log(`${e.id.padEnd(15)} ${e.loud.padEnd(5)} ${String(e.level).padStart(5)} ${`(${e.fit})`.padStart(6)}  ${String(e.loudness).padStart(6)} ${sign(e.off).padStart(5)} ${String(e.peak).padStart(6)} ${String(e.rings).padStart(5)}s ${String(e.bright).padStart(6)}`);
+      const under = e.duck ? `  ducks the score ${e.duck.dip} LU for ${e.duck.seconds}s, and stands ${sign(e.duck.over)} over it` : '';
+      console.log(`${e.id.padEnd(15)} ${e.loud.padEnd(5)} ${String(e.level).padStart(5)} ${`(${e.fit})`.padStart(6)}  ${String(e.loudness).padStart(6)} ${sign(e.off).padStart(5)} ${String(e.peak).padStart(6)} ${String(e.rings).padStart(5)}s ${String(e.bright).padStart(6)}${under}`);
     }
   }
   if (report.ambience.length) {
-    console.log(`\nAmbience at its loudest, right on top of it (ambience bus and master): layers as they go on (LUFS, gated), calls at their loudest 100 ms; its mark is ${marks.ambience}`);
+    console.log(`\nAmbience (ambience bus and master): the beds under a screen and the land's layers at their loudest, right on top of them (LUFS, gated), and its calls at their loudest 100 ms; its mark is ${marks.ambience}`);
     console.log('id          kind  loudness   peak  rings');
     for (const a of report.ambience) console.log(`${a.id.padEnd(11)} ${a.kind.padEnd(5)} ${String(a.loudness).padStart(7)}  ${String(a.peak).padStart(6)}  ${a.rings === undefined ? '' : `${a.rings}s`}`);
   }
   if (errors.length) console.log(`page errors: ${errors.join(' | ')}`);
+  if (checking) {
+    // What the mix promises: every track (and a villain's theme, by his lair and in his battle) at the
+    // music's mark, every sting at its own, every effect near its mark and none near clipping, and
+    // nothing in the ambience louder than its mark.
+    const faults = [];
+    const near = (what, value, mark, give) => Math.abs(value - mark) > give && faults.push(`${what}: ${value} LUFS, its mark ${mark} (\u00b1${give})`);
+    for (const t of report.tracks) {
+      near(t.id, t.loudness, marks.music, 1);
+      if (t.gated) near(`${t.id} as a fight starts`, t.moods.start, marks.music, 1.5);
+    }
+    for (const s of report.stings) near(`sting ${s.id}`, s.loudness, marks.sting, 1.5);
+    const GIVE = { faint: 4, soft: 3, firm: 3, loud: 3 };
+    for (const e of report.effects) {
+      near(e.id, e.loudness, marks[e.loud], GIVE[e.loud]);
+      if (e.peak > -1) faults.push(`${e.id}: peaks at ${e.peak} dBFS`);
+    }
+    for (const a of report.ambience) if (a.kind !== 'call' && a.loudness > marks.ambience + 2) faults.push(`${a.id}: ${a.loudness} LUFS, louder than the ambience's mark (${marks.ambience})`);
+    console.log(faults.length ? `\n${faults.length} off the mark:\n  ${faults.join('\n  ')}` : '\nEverything sits on its mark.');
+    if (faults.length) process.exitCode = 1;
+  }
 } finally {
   await browser.close();
   await server.close();
