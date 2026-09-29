@@ -138,13 +138,22 @@ try {
   await kc.choose('Fight');
   await page.waitForTimeout(200);
   check((await kc.call(() => window.__kc.screen())) === 'battle', 'fighting the highwaymen opens the battlefield');
-  // Wait for our first turn, then move the acting stack by clicking a hex it can reach.
-  await page.waitForFunction(() => {
-    const b = window.__kc.battle();
-    const s = b.battle();
-    const f = s.fighters.find((x) => x.id === s.order[0]);
-    return !b.busy() && f.side === 'player';
-  }, null, { timeout: 20_000 });
+  // Wait for the first turn of one of our stacks, then move it by clicking a hex it can reach. Sir
+  // Aldric leads from behind the line and never walks the field: on his turns, he waits.
+  for (let guard = 0; guard < 10; guard++) {
+    await page.waitForFunction(() => {
+      const b = window.__kc.battle();
+      const s = b.battle();
+      const f = s.fighters.find((x) => x.id === s.order[0]);
+      return !b.busy() && f.side === 'player';
+    }, null, { timeout: 20_000 });
+    const leader = await kc.call(() => {
+      const b = window.__kc.battle();
+      const s = b.battle();
+      return s.fighters.find((x) => x.id === s.order[0]).hero && b.moves().length === 0 && b.act({ type: 'defend' });
+    });
+    if (!leader) break;
+  }
   const moved = await kc.call(() => {
     const b = window.__kc.battle();
     const s = b.battle();

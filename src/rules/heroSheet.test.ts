@@ -178,39 +178,38 @@ describe('the hero screen', () => {
 });
 
 describe('the hero\u2019s own card', () => {
-  it('shows how he fights, from his troop and himself, and what happens if he falls', () => {
+  it('shows how he fights from behind the line, from his troop and himself', () => {
     const me = leaderSheet(knight());
     expect(me.troop).toBe('heroKnight');
     expect(me.title).toBe('Sir Aldric, Knight of the Realm');
     expect(me.stats).toEqual([
       { name: 'Attack', value: '6', note: '5 as a fighter, +1 from his Attack' },
-      { name: 'Defence', value: '6', note: '5 as a fighter, +1 from his Defence' },
       { name: 'Damage', value: '12\u201318', note: 'each blow: +2 a level' },
-      { name: 'Health', value: '80', note: '+10 a level' },
-      { name: 'Speed', value: '6', note: 'hexes a turn' },
+      { name: 'Speed', value: '6', note: 'hexes he rides out' },
     ]);
     const names = me.traits.map((t) => t.name);
-    expect(names.slice(0, 4)).toEqual(['Leads', 'Spells', 'Charge', 'Bodyguard']);
+    expect(names.slice(0, 5)).toEqual(['Leads', 'Spells', 'Charge', 'Behind the line', 'Rides out']);
     expect(names.filter((n) => n === 'Charge')).toHaveLength(1);
     expect(me.traits[2].note.startsWith('He and his Knights charge')).toBe(true);
-    expect(me.traits[1].note).toBe('One a round from the 1 in his book, but only while he stands. Mana 10/10: none comes back in battle.');
-    expect(me.lines[0]).toBe('In battle Sir Aldric stands below the middle of the line.');
-    expect(me.lines[1]).toContain('carried from the field, not killed');
-    expect(me.lines[1]).toContain('no further that day');
+    expect(me.traits[1].note).toBe('One a round from the 1 in his book, cast from behind the line. Mana 10/10: none comes back in battle.');
+    expect(me.lines[0]).toBe('In battle Sir Aldric stands behind his men, where no blow, shot or spell can reach him.');
+    expect(me.lines[1]).toBe('If his army is beaten, he retreats, and rides home to raise another.');
   });
 
-  it('knows a caster\u2019s bolts grow with his spell power, and a courtier\u2019s rally', () => {
+  it('knows a caster\u2019s bolts grow with his spell power, and that a courtier strikes no blow', () => {
     const w = leaderSheet(wizard());
     expect(w.stats.find((s) => s.name === 'Damage')).toEqual({ name: 'Damage', value: '12\u201314', note: 'each blow: +1 a level, +3 per spell power' });
     expect(w.traits[0]).toEqual({ name: 'Leads', note: 'Every stack fights with +1 defence.' });
     expect(w.stats.find((s) => s.name === 'Shots')).toEqual({ name: 'Shots', value: '10', note: 'a battle' });
+    expect(w.traits.find((t) => t.name === 'Shooter')?.note).toBe('Shoots from behind the line, at any stack on the field.');
     expect(w.traits.map((t) => t.name)).not.toContain('2 spells a round');
     const courtier = { ...newGame(1066, ALDMOOR, 'courtier'), opening: undefined };
-    expect(leaderSheet(courtier).traits.map((t) => t.name)).toContain('Rallies');
-    // A stack's own numbers don't depend on standing beside him; the rally is said as a trait.
+    const lord = leaderSheet(courtier);
+    expect(lord.stats).toEqual([]);
+    expect(lord.traits.map((t) => t.name)).toEqual(['Leads', 'Spells', 'Behind the line']);
     const knights = stackSheet(courtier, 0)!;
     expect(knights.stats[0]).toEqual({ name: 'Attack', value: '9', note: '8 their own, +1 from Lord Aldric' });
-    expect(knights.traits).toContainEqual({ name: 'Rallied', note: 'Beside Lord Aldric they fight with +2 attack and +2 defence.' });
-    expect(stackSheet(knight(), 0)!.traits.map((t) => t.name)).not.toContain('Rallied');
+    expect(knights.traits.map((t) => t.name)).not.toContain('Rallied');
   });
 });
+

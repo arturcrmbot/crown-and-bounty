@@ -2,7 +2,7 @@ import { ARTIFACTS, type Slot } from '../content/artifacts';
 import { BACKGROUNDS, type BackgroundId, type Bonus } from '../content/backgrounds';
 import { PERKS, RANKS, SKILLS, skillNote, type SkillId } from '../content/skills';
 import { MAP_SPELLS, SPELLS, type MapSpellId } from '../content/spells';
-import { ABILITIES, abilitiesOf, TROOPS, troops, type TroopId } from '../content/troops';
+import { abilitiesOf, TROOPS, troops, type TroopId } from '../content/troops';
 import { createBattle, statsOf } from './battle/battle';
 import { rowOf } from './battle/hex';
 import { CAMPAIGN_LENGTH, commissionOf } from './campaign';
@@ -247,16 +247,13 @@ export type StackSheet = {
 /** A battle row as words: the stacks line up centre first, then above and below. */
 const ROW_WORDS = ['at the top', 'near the top', 'above the middle', 'just above the middle', 'in the middle', 'just below the middle', 'below the middle', 'near the bottom', 'at the bottom'].map((w) => `${w} of the line`);
 
-/** What the hero's own presence adds to the stacks beside him in battle (Lord Aldric's rally). */
-const rallies = (state: GameState) => (TROOPS[heroFighter(state).troop].abilities ?? []).flatMap((a) => (ABILITIES[a].aura ? [ABILITIES[a].aura!] : []));
-
 export function stackSheet(state: GameState, index: number): StackSheet | null {
   const stack = state.army[index];
   if (!stack) return null;
   const t = TROOPS[stack.troop];
   const s = heroStats(state);
   const who = BACKGROUNDS[state.hero.background].short;
-  // The numbers the battle itself would use: without the hero on the field, whose rally depends on who stands beside him.
+  // The numbers the battle itself would use, for the army alone.
   const b = createBattle({ place: 'sheet', seed: 1, player: state.army, enemy: [], hero: { ...heroInBattle(state), unit: undefined }, obstacles: 0 });
   const mine = b.fighters.filter((f) => f.side === 'player' && f.troop === stack.troop);
   const f = mine.length === 1 ? mine[0] : b.fighters.filter((x) => x.side === 'player')[index];
@@ -283,7 +280,6 @@ export function stackSheet(state: GameState, index: number): StackSheet | null {
   // One charge, however many things teach it.
   if (chargedBy.length) traits.push({ name: `Charge (${chargedBy.join(', ')})`, note: 'After a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder, and nobody strikes back.', trick: true });
   if (volleyBy.length) traits.push({ name: `First volley (${volleyBy.join(', ')})`, note: 'A free volley before every battle, except at a villain\u2019s walls.', trick: true });
-  for (const aura of rallies(state)) traits.push({ name: 'Rallied', note: `Beside ${who} they fight with +${aura.attack} attack and +${aura.defence} defence.` });
   const wage = Math.round(stack.count * t.wage * (1 + s.wages));
   const row = f ? ROW_WORDS[rowOf(f.at)] : ROW_WORDS[4];
   return {
@@ -306,14 +302,16 @@ export function stackSheet(state: GameState, index: number): StackSheet | null {
   };
 }
 
-/** Who charges when the hero does: "He charges", or "He and his Knights charge". */
+/** Who charges when the hero does: "He charges", or "He and his Knights charge", and what his troops need for it. */
 function chargeLine(state: GameState): string {
   const others = [...new Set(heroStats(state).charge.filter((t) => !TROOPS[t].hero))].map((t) => TROOPS[t].name);
   const list = others.length > 1 ? `${others.slice(0, -1).join(', ')} and ${others[others.length - 1]}` : others[0];
-  return list ? `He and his ${list} charge` : 'He charges';
+  return list
+    ? `He and his ${list} charge: a quarter harder, and nobody strikes back. He rides in from behind the line; they need a run-up of 3 hexes, started clear of the enemy.`
+    : 'He charges as he rides in from behind the line: a quarter harder, and nobody strikes back.';
 }
 
-/** The hero's own card, laid out like a stack's: how he fights, what he brings the army, and what happens if he falls. */
+/** The hero's own card, laid out like a stack's: how he fights from behind the line, and what he brings the army. */
 export type LeaderSheet = { troop: TroopId; title: string; note: string; stats: StackSheet['stats']; traits: Note[]; lines: string[] };
 
 export function leaderSheet(state: GameState): LeaderSheet {
@@ -332,34 +330,32 @@ export function leaderSheet(state: GameState): LeaderSheet {
     {
       name: 'Spells',
       note: spells
-        ? `${s.casts === 1 ? 'One' : s.casts} a round from the ${spells} in his book, but only while he stands. Mana ${state.hero.mana}/${s.maxMana}: none comes back in battle.`
+        ? `${s.casts === 1 ? 'One' : s.casts} a round from the ${spells} in his book, cast from behind the line. Mana ${state.hero.mana}/${s.maxMana}: none comes back in battle.`
         : 'None in his book yet: a teacher or a shrine could help.',
     },
-    ...(me.charges ? [{ name: 'Charge', note: `${chargeLine(state)}: after a run-up of 3 hexes, started clear of the enemy, a quarter harder, and nobody strikes back.`, trick: true }] : []),
-    ...(me.shots ? [{ name: 'Shooter', note: 'Shoots from anywhere, unless an enemy stands beside him. In melee he hits at half strength.' }] : []),
+    ...(me.charges ? [{ name: 'Charge', note: chargeLine(state), trick: true }] : []),
+    ...(me.shots ? [{ name: 'Shooter', note: 'Shoots from behind the line, at any stack on the field.' }] : []),
     ...me.abilities.map((a) => ({ name: a.name, note: a.note })),
     // How many spells a round is said above, and who charges too.
     ...leaderTraits(state).filter((n) => !n.name.endsWith('spells a round') && !(me.charges && n.name === 'Charge')),
   ];
-  // Where he takes the field: in the line with his army.
-  const b = createBattle({ place: 'sheet', seed: 1, player: state.army, enemy: [], hero: heroInBattle(state), obstacles: 0 });
-  const at = b.fighters.find((f) => f.hero)?.at;
+  // Nothing can reach him, so only the numbers of his own blows (if he strikes at all) and his turn's place count.
+  const blows = me.strikes
+    ? [
+        { name: 'Attack', value: String(me.attack), note: from(me.attack, t.attack, 'Attack') },
+        { name: 'Damage', value: me.damage[0] === me.damage[1] ? `${me.damage[0]}` : `${me.damage[0]}\u2013${me.damage[1]}`, note: `each blow${growth ? `: ${growth}` : ''}` },
+        { name: 'Speed', value: String(me.speed), note: t.abilities?.includes('rides') ? 'hexes he rides out' : 'when his turn comes' },
+      ]
+    : [];
   return {
     troop: me.troop,
     title: BACKGROUNDS[state.hero.background].title,
     note: t.note,
-    stats: [
-      { name: 'Attack', value: String(me.attack), note: from(me.attack, t.attack, 'Attack') },
-      { name: 'Defence', value: String(me.defence), note: from(me.defence, t.defence, 'Defence') },
-      { name: 'Damage', value: me.damage[0] === me.damage[1] ? `${me.damage[0]}` : `${me.damage[0]}\u2013${me.damage[1]}`, note: `each blow${growth ? `: ${growth}` : ''}` },
-      { name: 'Health', value: String(me.hp), note: grow ? `+${grow.perLevel.hp} a level` : '' },
-      { name: 'Speed', value: String(me.speed), note: 'hexes a turn' },
-      ...(me.shots ? [{ name: 'Shots', value: String(me.shots), note: 'a battle' }] : []),
-    ],
+    stats: [...blows, ...(me.shots ? [{ name: 'Shots', value: String(me.shots), note: 'a battle' }] : [])],
     traits,
     lines: [
-      `In battle ${who} stands ${at === undefined ? ROW_WORDS[4] : ROW_WORDS[rowOf(at)]}.`,
-      `If he falls, he\u2019s carried from the field, not killed: the battle goes on without him or his spells, and he goes no further that day.`,
+      `In battle ${who} stands behind his men, where no blow, shot or spell can reach him.`,
+      'If his army is beaten, he retreats, and rides home to raise another.',
     ],
   };
 }

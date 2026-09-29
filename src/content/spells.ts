@@ -90,7 +90,7 @@ export type SpellDef = {
   look: { kind: 'bolt' | 'fire' | 'sparkle'; colour: 'gold' | 'blue' | 'red' };
   /** An order: what the caster bellows, and how ("bellows", "roars"). The log says it that way. */
   shout?: { verb: string; words: string };
-  /** Only once the caster is down to this share of his health. */
+  /** Only once the caster's troops are down to this share of the health they began with. */
   hurt?: number;
 };
 
@@ -135,6 +135,6 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   },
   guard: {
     id: 'guard', name: 'Call the Guard', mana: 0, on: 'friend', effect: { kind: 'summon', troop: 'swordsmen', share: 0.3 }, look: { kind: 'sparkle', colour: 'red' },
-    shout: { verb: 'roars', words: 'Call the guard!' }, hurt: 0.6, note: 'Once he\u2019s hurt: fresh swordsmen march in from his edge of the field, near a third as many as he began with.',
+    shout: { verb: 'roars', words: 'Call the guard!' }, hurt: 0.6, note: 'Once his men are hurt: fresh swordsmen march in from his edge of the field, near a third as many as he began with.',
   },
 };

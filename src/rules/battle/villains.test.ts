@@ -3,7 +3,7 @@ import { TROOPS, type TroopId } from '../../content/troops';
 import { finishFight, heroInBattle, startFight, type GameState } from '../game';
 import { newGame } from '../scenario';
 import { autoResolve, castActions } from './ai';
-import { activeFighter, battleAct, canCast, castsLeft, createBattle, fighterById, statsOf, type BattleHero, type BattleState, type Fighter } from './battle';
+import { activeFighter, battleAct, canCast, castsLeft, createBattle, fighterById, options, statsOf, type BattleHero, type BattleState, type Fighter } from './battle';
 import { COLS, neighbours } from './hex';
 
 const hero: BattleHero = { attack: 2, defence: 2, spellPower: 2, mana: 20, spells: ['bolt'], castRound: 0 };
@@ -33,8 +33,9 @@ describe('villains who cast and give orders', () => {
     const baron = of(b, 'baron');
     const before = statsOf(b, of(b, 'swordsmen')).defence;
     const { battle, events } = battleAct(b, { type: 'cast', spell: 'shieldwall', by: baron.id });
-    expect(events.filter((e) => e.type === 'spell' && e.by === baron.id)).toHaveLength(3);
-    for (const f of battle.fighters) expect(f.status.includes('shieldwall')).toBe(f.side === 'enemy');
+    // His two stacks on the field; he stands behind them, where no spell lands.
+    expect(events.filter((e) => e.type === 'spell' && e.by === baron.id)).toHaveLength(2);
+    for (const f of battle.fighters) expect(f.status.includes('shieldwall')).toBe(f.side === 'enemy' && f.id !== baron.id);
     expect(statsOf(battle, of(battle, 'swordsmen')).defence).toBe(before + 3);
     const book = fighterById(battle, baron.id).book!;
     expect(book.mana).toBe(15);
@@ -63,11 +64,12 @@ describe('villains who cast and give orders', () => {
     expect(activeFighter(battle)!.id).toBe(of(b, 'swordsmen').id);
   });
 
-  it('roars "Call the guard!" once he is hurt: fresh swordsmen march in at his edge of the field, next round', () => {
+  it('roars "Call the guard!" once his men are hurt: fresh swordsmen march in at his edge of the field, next round', () => {
     let b = turnOf(baronFight(), 'swordsmen');
     const baron = of(b, 'baron');
     expect(canCast(b, 'guard', baron.id)).toBe(false);
-    b = change(b, baron.id, { hp: 90 });
+    // 9 swordsmen of 20 and all 10 crossbowmen: under three fifths of the health they began with.
+    b = change(b, of(b, 'swordsmen').id, { count: 9 });
     expect(canCast(b, 'guard', baron.id)).toBe(true);
     const { battle, events } = battleAct(b, { type: 'cast', spell: 'guard', by: baron.id });
     const summon = events.find((e) => e.type === 'summon')!;
@@ -79,25 +81,27 @@ describe('villains who cast and give orders', () => {
     expect(canCast(battle, 'guard', baron.id)).toBe(false);
   });
 
-  it('casts only while he stands, on his own side\u2019s turns', () => {
+  it('casts from behind his men, on his own side\u2019s turns, and takes no turn of his own', () => {
     const b = baronFight();
     const baron = of(b, 'baron');
     expect(battleAct(turnOf(b, 'knights'), { type: 'cast', spell: 'shieldwall', by: baron.id }).events).toHaveLength(0);
-    const down = change(turnOf(b, 'swordsmen'), baron.id, { count: 0, hp: 0 });
-    expect(canCast(down, 'shieldwall', baron.id)).toBe(false);
-    expect(castActions(down).some((a) => a.type === 'cast')).toBe(false);
+    expect(castActions(turnOf(b, 'swordsmen')).some((a) => a.type === 'cast' && a.by === baron.id)).toBe(true);
+    expect(b.order).not.toContain(baron.id);
   });
 
-  it('Mother Mirrow turns your stacks into newts, slows them, and brews her own back up; a newt can\u2019t cast', () => {
+  it('Mother Mirrow turns your stacks into newts, slows them, and brews her own back up, from behind her goblins', () => {
     const b = createBattle({ place: 'hideout', seed: 3, player: army(['knights', 10], ['archers', 20]), enemy: army(['trolls', 6], ['goblins', 60], ['witch', 1]), hero: { ...hero, unit: { troop: 'heroWizard', hp: 50, damage: [4, 6] } } });
     const witch = of(b, 'witch');
     expect(witch.book).toMatchObject({ name: 'Mother Mirrow', mana: 14, spells: ['newts', 'slow', 'brew'] });
-    // She turns Aldric himself into a newt: no spells till he's himself again.
-    const aldric = b.fighters.find((f) => f.hero)!;
-    const newt = battleAct(turnOf(b, 'goblins'), { type: 'cast', spell: 'newts', target: aldric.id, by: witch.id }).battle;
-    expect(fighterById(newt, aldric.id).status).toContain('newts');
+    // She turns your knights into newts, but her spells can't reach Aldric behind the line.
+    const newt = battleAct(turnOf(b, 'goblins'), { type: 'cast', spell: 'newts', target: of(b, 'knights').id, by: witch.id }).battle;
+    expect(of(newt, 'knights').status).toContain('newts');
     expect(fighterById(newt, witch.id).book!.mana).toBe(8);
-    expect(canCast(turnOf(newt, 'archers'), 'bolt')).toBe(false);
+    const aldric = b.fighters.find((f) => f.hero)!;
+    expect(battleAct(turnOf(b, 'goblins'), { type: 'cast', spell: 'newts', target: aldric.id, by: witch.id }).events).toEqual([]);
+    expect(canCast(turnOf(newt, 'archers'), 'bolt')).toBe(true);
+    // Her hexes fly from behind her goblins, at any of your stacks.
+    expect(options(turnOf(b, 'witch')).shoot.sort()).toEqual(b.fighters.filter((f) => f.side === 'player' && !f.hero).map((f) => f.id).sort());
     // Left to herself, she casts.
     const end = autoResolve(b);
     expect(of(end, 'witch').book!.mana).toBeLessThan(14);

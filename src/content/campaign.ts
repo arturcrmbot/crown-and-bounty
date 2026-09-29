@@ -9,7 +9,7 @@ export type Commission = {
   villain: string;
   /** Read out when the commission is given. */
   brief: string[];
-  /** The first lines of the bounty card, when the villain's hideout falls. */
+  /** What the villain does once he's taken, on the bounty card after the words the field said it in. */
   surrender: string;
   homecoming: string;
   /** Day 100 comes and goes with the villain still at large. */
@@ -27,7 +27,7 @@ export const COMMISSIONS: Commission[] = [
     province: ALDMOOR,
     villain: 'Baron Grimsby',
     brief: ['Baron Grimsby owes the Crown three years of taxes and one goose. Bring him in.'],
-    surrender: 'Baron Grimsby surrenders, still clutching the goose.',
+    surrender: 'He comes quietly, still clutching the goose.',
     homecoming: 'The royal goose is going home.',
     timeout: 'The King\u2019s patience has run out. So has the goose\u2019s.',
     praise: '"Grimsby in irons, and my goose home!" King Osric beams. "Splendid. Simply splendid."',
@@ -41,7 +41,7 @@ export const COMMISSIONS: Commission[] = [
       'Mother Mirrow, a bog witch of the Fenmarch, has turned the King\u2019s tax collector into a newt.',
       '"He was a very good tax collector," says the King. "Bring him back. Un-newted, ideally."',
     ],
-    surrender: 'Mother Mirrow throws down her ladle. "Fine! Take your newt." The newt looks relieved.',
+    surrender: 'She throws down her ladle. "Fine! Take your newt." The newt looks relieved.',
     homecoming: 'The tax collector is un-newted by teatime, and only slightly damp.',
     timeout: 'Word comes from court: the tax collector has settled into newt life. The King is not pleased.',
     praise: '"The fen is quiet, and my tax collector is dry," says King Osric. "Well done, well done."',
