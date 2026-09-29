@@ -1,12 +1,12 @@
 # King's Commission: plan
 
-How the game fits together, how the code is structured, how every part gets tested, and the milestones. Read with `BRIEF.md`.
+How the game fits together, how the code is structured, how every part gets tested, and the milestones. Read with `BRIEF.md`, and `WORLD.md` for the story, the three acts and their villains: where this plan differs from it (five commissions, Mirrow and Bramble, captains who join you), `WORLD.md` wins.
 
 ## Decided (with Artur, 25 Sep 2026)
 
 - **Campaign:** one hero across a campaign. Levels, skills and gear carry over, and each commission is a new province.
 - **Battles:** HoMM2-style. A hex battlefield where stacks take turns, and the hero casts spells and uses skills. Auto-resolve runs the same battle engine, so both give the same results.
-- **RPG depth, in this order:** build choices first (a background, then skills and perks as you level), then story choices with reputation, then captains with quests and loyalty.
+- **RPG depth, in this order:** build choices first (a background, then skills and perks as you level), then story choices with reputation. Captains are the enemy's (29 Sep, `WORLD.md`).
 - **Keep from the prototype:** the 2D HoMM2 look, parchment cards instead of panels, the thin bottom bar, restrained fog, click-to-ride with daily movement, and the warm, dry voice.
 
 ## The loops
@@ -44,7 +44,7 @@ flowchart LR
 **Army**
 - Troops are just numbers. Up to five stacks, capped by leadership.
 - Dwellings recruit, payday takes wages, and morale drops when the army mixes troops that dislike each other.
-- Captains come later: rare notable creatures that join with a small group and a quirk.
+- Captains are the enemy's: named lieutenants who lead a villain's bands, and fight as heroes do (#15).
 
 **Adventure map**
 - The current renderer stays. Provinces get assembled from hand-made set pieces (castle, village, ruin, mine, lair) placed on generated land, which keeps the hand-painted feel while every run differs.
@@ -108,10 +108,10 @@ Each milestone ends with tests green, screenshots in the side panel, and a playt
 | M2 | **Hero builds.** 4 backgrounds, XP and levels, stats, a 3-way pick of 12–16 skills and perks, 10 artifacts, and the hero sheet. | Two play-throughs with different backgrounds feel different. |
 | M3 | **Campaign shell.** The court between commissions, carry-over, the commission briefing, a second hand-made province, and saves. | Commission I, then the court, then Commission II, with the hero carried over. |
 | M4 | **Generated provinces and villains.** Set-piece generation, 3 villains with gimmicks, map pieces and the dig for the prize. | 200 seeds valid, the bot finishes them, and you find them varied. |
-| M5 | **Story choices and captains.** Dialogue options gated by background and skills, reputation, and 2–3 captains with quirks. | Choices change outcomes you can notice. |
+| M5 | **Story choices.** Dialogue options gated by background and skills, and reputation. (Captains who join you were dropped on 29 Sep: they're the enemy's.) | Choices change outcomes you can notice. |
 | M6 | **Polish.** Animation, portraits, sound, then music. | Later. |
 
-**Progress:** M0 to M4 are done: generated provinces for commissions III to V, two recurring villains, map pieces and the dig for the sceptre. Parleys are a first taste of M5. M2's hero sheet is done as a HoMM2-style hero screen with the army in it (28 Sep). Next: captains, story choices at places other than enemies, then polish (M6). The polish rounds below came first, after Artur's playtests (27 and 28 Sep).
+**Progress:** M0 to M4 are done: generated provinces for commissions III to V, two recurring villains, map pieces and the dig for the sceptre. Parleys are a first taste of M5. M2's hero sheet is done as a HoMM2-style hero screen with the army in it (28 Sep). Next: story choices at places other than enemies, then polish (M6). The polish rounds below came first, after Artur's playtests (27 and 28 Sep).
 
 ## Polish rounds (from 27 Sep)
 
@@ -125,10 +125,10 @@ full critique. Each round ends with a playtest, a deploy and a new entry in that
 | R2 | **Scale and juice.** A scale bible, one creature per map enemy, bigger fighters, feedback for every action. | Screenshots read at a glance, and nothing happens silently. **Mostly done:** rising gains, level glow, dust and glitter, nightfall; in battle, commanders and standards, sparks, shake, corpses, kill counts, breathing and the end ribbon. Melee winds up, lunges, knocks the target back and sprays blood, and counts drop as each blow lands (28 Sep). Since 28 Sep the troops and the hero are Battle for Wesnoth's units, on one scale, in team colours, with Wesnoth's own attack, defend, idle and death frames: the flash, the numbers, the sound and the jolt come on the frame where the blow lands. The hero is his background's figure: the Knight on horseback, the Wizard, Ranger and Courtier on foot. Cards unfold, and since 28 Sep they grow with the page and a pointer over an enemy turns to crossed swords. Still to do: more cursors (riding, visiting), a fuller battlefield. |
 | R3 | **Gating and rewards.** Small fights first, the patrol as a gate, honest odds, rewards that matter. | You explore before you fight, and every fight pays in something you can feel. **Started:** six relics that carry the heroes' tricks, Fireball and Stone Skin, the wolves' cloak and pelt, relic gatekeepers and charm shrines in generated provinces. Since 28 Sep, enemies can't be waited out, Aldmoor Butts replaces lost archers, and every find (towers, mines, mills, shrines, in every province) is a choice between a relic, a spell, troops, gold, a secret or a shortcut, some of which come back later. Since 28 Sep the level-up skills change how you play too: Advanced and Expert ranks teach a trick (stakes, charges, cheaper riding off the road, scouts who put numbers on the odds, rents, volunteers, mana while riding), and Diplomacy is new. Gear has character too: two sets that complete, villains' gear, gear with a price, and gear that changes how you ride, count and collect. Perks bend rules now (carried-over movement, free recruits, interest, a fourth choice). **Next:** a spellbook worth filling. Then a slower experience curve. |
 | R4 | **Playstyles.** Each background's own mechanics, and several paths past every enemy. | Two runs with different backgrounds play differently. **Started:** the knight's charge (no strike-back), the ranger's forest paths, opening volley and tamed beasts, the wizard's two casts a round and Far Sight, the courtier's half-price bribes and hired bands. Since 28 Sep, seven trick perks teach any hero another's trick, and every level offers one; the Hawthorn Crown and Beast Friend teach taming. Aldric fights on the field his own way too: the Knight's charge, the Wizard's bolts, the Ranger's bow, the Courtier's rally. |
-| R5 | **RPG.** Quests with choices, captains, more troops. | Choices you make come back later. **Started:** in Aldmoor, spared poachers show their cache, their venison gets you past the wolves, the highwaymen's orders send the patrol to Grimsby, and the wolves' pelt buys Fireball from Old Nan. Since 28 Sep, finds come back too: Pike's journal sends the patrol home, the goose lures Grimsby's crossbowmen away, Anselm's letter thins the witch's goblins, a generated tower's note gives the villain's weakness, and two shortcuts (the dwarf's delving, the cutters' punt) slip past a gate. Still to do: captains, more troops, story that lasts beyond one commission. |
+| R5 | **RPG.** Quests with choices, more troops. | Choices you make come back later. **Started:** in Aldmoor, spared poachers show their cache, their venison gets you past the wolves, the highwaymen's orders send the patrol to Grimsby, and the wolves' pelt buys Fireball from Old Nan. Since 28 Sep, finds come back too: Pike's journal sends the patrol home, the goose lures Grimsby's crossbowmen away, Anselm's letter thins the witch's goblins, a generated tower's note gives the villain's weakness, and two shortcuts (the dwarf's delving, the cutters' punt) slip past a gate. Still to do: more troops, and story that lasts beyond one commission (`WORLD.md`). |
 
 ## Still open
 
-- **What carries over between commissions?** Built as recommended: the hero (level, skills, perks, gear), gold and leadership carry over. Troops disband, apart from a quarter of each stack as veterans, and the background's levy joins again. Captains will carry over when they exist.
+- **What carries over between commissions?** Built as recommended: the hero (level, skills, perks, gear), gold and leadership carry over. Troops disband, apart from a quarter of each stack as veterans, and the background's levy joins again.
 - **Map movement:** free movement over the 8 px walk grid (as now), or snapped to square tiles? My recommendation: keep it free.
 - **Difficulty settings:** decide once M1's balance sims exist.

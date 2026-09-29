@@ -64,9 +64,13 @@ This comes from playtest 01 (the Courtier in Aldmoor).
 ## Artur's rules
 
 - **Hint, don't tell.** Clues are quiet. *"Whatever you find, don't let it get cold"* was far too loud.
-- **Heroes and captains fight, but can't be touched.** Aldric, the villains and the enemy's captains strike and
-  cast in battle, but nobody can strike or cast at them. Each needs his army: when it's beaten, so is he. Aldric
-  retreats, and a villain is taken.
-- **Captains are the enemy's.** Aldric is the only hero you ever have. Every villain has captains (Rook the
+- **Heroes and captains fight, but can't be touched** (#36). Aldric, the villains and the enemy's captains stand
+  behind their troops, not in the line, and act from there. The Ranger shoots, and the Wizard throws bolts and
+  casts; the Knight rides out, strikes and rides back. Villains and captains fight the same way, each in his own
+  style. No blow and no spell can reach them, friend or foe (a Fireball passes over them), so their blows get no
+  strike back. Each needs his army: when it's beaten, so is he. Aldric retreats, and a villain is taken.
+- **The Courtier is a bard** (#42). He has no attack: he bribes, taunts and sings. Whether he's renamed the Bard,
+  with a new face and lines, is still open.
+- **Captains are the enemy's** (#15). Aldric is the only hero you ever have. Every villain has captains (Rook the
   Huntsman leads Grimsby's wolves) who fight the same way.
 - **No gimmicks** that cost code and add little. Scarecrows that spy for Grimsby were one.
