@@ -7,7 +7,7 @@ import { playNote } from '../audio/instruments';
 import { sting } from '../audio/stings';
 import { Terrain } from '../rules/map/model';
 
-export type Sound = 'click' | 'coins' | 'hit' | 'shoot' | 'bolt' | 'spell' | 'day' | 'levelUp' | 'victory' | 'defeat' | 'dig' | 'fanfare' | 'charge' | 'page' | 'lift' | 'equip' | 'march' | 'jeer' | 'song' | 'luckySong' | 'falter';
+export type Sound = 'click' | 'coins' | 'hit' | 'shoot' | 'bolt' | 'spell' | 'day' | 'levelUp' | 'victory' | 'defeat' | 'dig' | 'fanfare' | 'charge' | 'page' | 'lift' | 'equip' | 'march' | 'jeer' | 'song' | 'luckySong' | 'falter' | 'cheer';
 
 /** Sound effects go to the effects bus of the shared audio context (see `audio/context.ts`). */
 export { toggleMute, wakeAudio as wakeSound } from '../audio/context';
@@ -124,6 +124,10 @@ export function play(sound: Sound) {
       case 'falter':
         // Spirits sinking: a low drone that sags.
         tone(196, t, 0.5, 'triangle', 0.35, 0.7);
+        break;
+      case 'cheer':
+        // A short call rising on the brass: good spirits, and a stack goes again.
+        for (const [midi, at, length] of [[62, 0, 0.09], [67, 0.1, 0.3]] as [number, number, number][]) playNote(a.ctx, a.sfx, 'brass', t + at, midi, length, 0.28);
         break;
       case 'dig':
         [0, 0.25, 0.5].forEach((d) => noise(t + d, 0.1, 'lowpass', 500, 0.8));

@@ -1,5 +1,6 @@
 import { ARTIFACTS } from '../../content/artifacts';
 import { isBeast, TROOPS } from '../../content/troops';
+import { grumbleLine } from '../army';
 import { applyEffects, choiceButton } from '../effects';
 import { battleXp, beat, fight, likelyLossesLine, startFight, winChance } from '../fight';
 import { artifactChoices, foundNote, gainXp, giveArtifact, heroStats } from '../hero';
@@ -164,6 +165,14 @@ function tameLine(state: GameState, place: Location): string[] {
   return [offer.respected ? '*The beasts watch you the way a pack watches its leader.*' : '*Beasts follow only someone who could beat them, and these don\u2019t think you could. Not yet.*'];
 }
 
+/** Before a band is hired or tamed: who in the army won't march happily beside them. */
+function grumbleLines(state: GameState, place: Location): string[] {
+  const tamed = tameOffer(state, place);
+  const joining = [...(hireOffer(state, place)?.joining ?? []), ...(tamed?.respected ? tamed.joining : [])].map((s) => s.troop);
+  const line = joining.length ? grumbleLine(state.army, joining) : null;
+  return line ? [line] : [];
+}
+
 /** Odds the sergeants think are safe: the enemy looks nervous, and a band this weak surrenders to a diplomat. */
 export const SAFE = 0.9;
 
@@ -247,7 +256,7 @@ export function enemy(kind: 'patrol' | 'hideout'): PlaceKind {
       const yields = cowed(state, place, chance) ? [option(place, 'Demand their surrender', 'surrender')] : [];
       return say(state, place, {
         title: place.name,
-        lines: [foe.threat, oddsLine(chance), likelyLossesLine(state, place.id), ...scouts, ...carriesLine(state, place), ...tameLine(state, place)],
+        lines: [foe.threat, oddsLine(chance), likelyLossesLine(state, place.id), ...scouts, ...carriesLine(state, place), ...tameLine(state, place), ...grumbleLines(state, place)],
         choices: [{ ...option(place, foe.charge ?? 'Fight', 'fight'), detail: FIGHT_NOTE }, { ...option(place, 'Let the sergeants handle it', 'auto'), detail: SERGEANTS_NOTE }, ...yields, ...hireButton(state, place), ...tameButton(state, place), ...parleys(state, place), retreat],
       });
     },

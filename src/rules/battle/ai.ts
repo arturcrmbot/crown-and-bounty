@@ -1,7 +1,7 @@
 import { abilitiesOf, type TroopId } from '../../content/troops';
 import { needsTarget, SPELLS, STATUSES } from '../../content/spells';
 import {
-  activeFighter, bardOf, battleAct, canCast, casterSide, castersOf, CHARGE_BONUS, CHARGE_HEXES, fighterById, hasTurn, isLeader, moraleOf, onField, rideFrom, ridesOut, spellsOf, hasStatus, isRanged, options, powerOf, spellCost, spellDamage, speedOf, statsOf, stepsTo, strike, unitOf, wound,
+  activeFighter, bardOf, battleAct, canCast, casterSide, castersOf, CHARGE_BONUS, CHARGE_HEXES, fighterById, hasTurn, isLeader, luckOf, moraleOf, onField, rideFrom, ridesOut, spellsOf, hasStatus, isRanged, options, powerOf, spellCost, spellDamage, speedOf, statsOf, stepsTo, strike, unitOf, wound,
   type BattleAction, type BattleState, type Fighter, type Options, type Side,
 } from './battle';
 import { distance, HEXES, NEIGHBOURS, reachMask } from './hex';
@@ -180,7 +180,7 @@ const PRESENCE = 0.5;
 /** How much of what a stack's top troop will heal before it acts again counts as healed already. */
 const HEALED = 0.5;
 
-/** What one troop of a stack is worth as it stands: health times damage, with skill, bless, speed and shots. */
+/** What one troop of a stack is worth as it stands: health times damage, with skill, bless, luck, morale, speed and shots. */
 function troopWorth(b: BattleState, f: Fighter): number {
   const t = unitOf(f);
   const { attack, defence } = statsOf(b, f);
@@ -189,9 +189,14 @@ function troopWorth(b: BattleState, f: Fighter): number {
   const player = f.side === 'player';
   const skill = player ? 1 + Math.max(b.hero.melee ?? 0, f.shots > 0 ? (b.hero.ranged ?? 0) : 0) : 1;
   const armour = player ? 1 / (1 - (b.hero.armour ?? 0)) : 1;
+  // Luck at its average, and morale as the share of a turn more (or less) the stack can expect each round.
+  const spirits = (1 + luckOf(b, f)) * actions(b, f);
   // Shooters are worth more by kind, not by arrows left: spending an arrow is judged by what it hits.
-  return Math.sqrt(t.hp * armour * damage * skill) * (1 + (attack + defence) / 20) * (t.shots ? 1.35 : 1) * (0.8 + 0.05 * speedOf(f));
+  return Math.sqrt(t.hp * armour * damage * skill * spirits) * (1 + (attack + defence) / 20) * (t.shots ? 1.35 : 1) * (0.8 + 0.05 * speedOf(f));
 }
+
+/** The turns a stack can expect for every one it's due: one, and its morale's chance of another, or of losing it. */
+const actions = (b: BattleState, f: Fighter) => Math.max(0, 1 + moraleOf(b, f));
 
 /** Share of a troop's health its top troop heals at the start of each of its turns. */
 const heals = new Map<Fighter['troop'], number>();
@@ -260,7 +265,7 @@ function threat(b: BattleState, side: Side, mask: Uint8Array): { now: number; la
     const leader = isLeader(f);
     const pinned = !leader && foes.some((o) => NEIGHBOURS[f.at].includes(o.at));
     // Spirits count: good morale is a chance of another blow, bad morale a chance of none.
-    const spirit = Math.max(0, 1 + moraleOf(b, f));
+    const spirit = actions(b, f);
     if (f.shots > 0 && !pinned) {
       let best = 0;
       let target = -1;

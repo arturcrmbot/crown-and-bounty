@@ -1,6 +1,6 @@
 /**
- * Pictures for the artifacts added with sets, villains' gear and gear with a price: the same 16 by
- * 16 letters as `artifactIcons.ts`, which reads these after its own.
+ * Pictures for the artifacts added with sets, villains' gear, gear with a price, and luck and
+ * morale: the same 16 by 16 letters as `artifactIcons.ts`, which reads these after its own.
  */
 import type { ArtifactId } from '../content/artifacts';
 
@@ -220,5 +220,59 @@ export const MORE_PICTURES: Partial<Record<ArtifactId, string[]>> = {
     '................',
     '................',
     '................',
+  ],
+  bonesDice: [
+    '................',
+    '................',
+    '.NNNNNm.........',
+    '.NoNNNm.........',
+    '.NNNNNm.........',
+    '.NNNoNm.NNNNNm..',
+    '.mmmmmm.NoNNNm..',
+    '........NNNNNm..',
+    '........NNoNNm..',
+    '........NNNNNm..',
+    '........NNNNoM..',
+    '........MMMMMM..',
+    '................',
+    '................',
+    '................',
+    '................',
+  ],
+  rabbitsFoot: [
+    '..SSs...........',
+    '.S..s...........',
+    '.s..S...........',
+    '..sSGg..........',
+    '....GGgh........',
+    '.....hNCc.......',
+    '.....NNCcc......',
+    '......NCCcca....',
+    '.......NCcCca...',
+    '.......NCCCcca..',
+    '........CCcCcca.',
+    '.........CCccca.',
+    '..........CcaMa.',
+    '...........MoMo.',
+    '............Mo..',
+    '................',
+  ],
+  castellansPipes: [
+    '............GG..',
+    '..........GGWw..',
+    '........GGWw....',
+    '......GGWw..GG..',
+    '.v....Ww...GWw..',
+    '..w.......GWw...',
+    '...wRRqRRGWw....',
+    '..RRRqRRqWw.....',
+    '.RRRRqRRqRRr....',
+    '.qqqqqqqqqqrq...',
+    '.RRRRqRRqRrrq...',
+    '.gggggggggrrq...',
+    '..rrrqrrqrrq....',
+    '...rrqrrqrq.....',
+    '....W...........',
+    '....v...........',
   ],
 };
