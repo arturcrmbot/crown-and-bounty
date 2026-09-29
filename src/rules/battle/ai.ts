@@ -1,7 +1,7 @@
 import { abilitiesOf, type TroopId } from '../../content/troops';
 import { needsTarget, SPELLS, STATUSES } from '../../content/spells';
 import {
-  activeFighter, battleAct, canCast, casterSide, castersOf, CHARGE_BONUS, CHARGE_HEXES, fighterById, spellsOf, hasStatus, isRanged, options, powerOf, spellCost, spellDamage, speedOf, statsOf, stepsTo, strike, unitOf, wound,
+  activeFighter, battleAct, canCast, casterSide, castersOf, CHARGE_BONUS, CHARGE_HEXES, fighterById, spellsOf, hasStatus, isRanged, luckOf, moraleOf, options, powerOf, spellCost, spellDamage, speedOf, statsOf, stepsTo, strike, unitOf, wound,
   type BattleAction, type BattleState, type Fighter, type Options, type Side,
 } from './battle';
 import { distance, HEXES, NEIGHBOURS, reachMask } from './hex';
@@ -183,7 +183,7 @@ const PRESENCE = 0.5;
 /** How much of what a stack's top troop will heal before it acts again counts as healed already. */
 const HEALED = 0.5;
 
-/** What one troop of a stack is worth as it stands: health times damage, with skill, bless, speed and shots. */
+/** What one troop of a stack is worth as it stands: health times damage, with skill, bless, luck, morale, speed and shots. */
 function troopWorth(b: BattleState, f: Fighter): number {
   const t = unitOf(f);
   const { attack, defence } = statsOf(b, f);
@@ -192,9 +192,14 @@ function troopWorth(b: BattleState, f: Fighter): number {
   const player = f.side === 'player';
   const skill = player ? 1 + Math.max(b.hero.melee ?? 0, f.shots > 0 ? (b.hero.ranged ?? 0) : 0) : 1;
   const armour = player ? 1 / (1 - (b.hero.armour ?? 0)) : 1;
+  // Luck at its average, and morale as the share of a turn more (or less) the stack can expect each round.
+  const spirits = (1 + luckOf(b, f)) * actions(b, f);
   // Shooters are worth more by kind, not by arrows left: spending an arrow is judged by what it hits.
-  return Math.sqrt(t.hp * armour * damage * skill) * (1 + (attack + defence) / 20) * (t.shots ? 1.35 : 1) * (0.8 + 0.05 * speedOf(f));
+  return Math.sqrt(t.hp * armour * damage * skill * spirits) * (1 + (attack + defence) / 20) * (t.shots ? 1.35 : 1) * (0.8 + 0.05 * speedOf(f));
 }
+
+/** The turns a stack can expect for every one it's due: one, and its morale's chance of another, or of losing it. */
+const actions = (b: BattleState, f: Fighter) => Math.max(0, 1 + moraleOf(b, f));
 
 /** Share of a troop's health its top troop heals at the start of each of its turns. */
 const heals = new Map<Fighter['troop'], number>();
@@ -253,6 +258,8 @@ function threat(b: BattleState, side: Side, mask: Uint8Array, keep = 0): { now: 
   for (const f of b.fighters) {
     // A stack that will lose its turn (turned into newts) threatens nobody this time.
     if (f.count <= 0 || f.side !== side || f.status.some((st) => STATUSES[st].skipsTurn)) continue;
+    // Morale's expected extra turn (or the one low spirits may cost it) counts for its blows too.
+    const turns = actions(b, f);
     const pinned = foes.some((o) => NEIGHBOURS[f.at].includes(o.at));
     if (f.shots > 0 && !pinned) {
       let best = 0;
@@ -261,7 +268,7 @@ function threat(b: BattleState, side: Side, mask: Uint8Array, keep = 0): { now: 
         const gain = loss(b, o, strike(b, f, o, true).damage);
         if (gain > best) [best, target] = [gain, o.id];
       }
-      if (target >= 0) add(now, target, best);
+      if (target >= 0) add(now, target, best * turns);
       continue;
     }
     const speed = speedOf(f);
@@ -283,8 +290,8 @@ function threat(b: BattleState, side: Side, mask: Uint8Array, keep = 0): { now: 
       if (soon && gain > best) [best, target] = [gain, o.id];
       else if (!soon && gain > bestLater) [bestLater, targetLater] = [gain, o.id];
     }
-    if (target >= 0) add(now, target, best);
-    else if (targetLater >= 0) add(later, targetLater, bestLater);
+    if (target >= 0) add(now, target, best * turns);
+    else if (targetLater >= 0) add(later, targetLater, bestLater * turns);
   }
   // A hero the other side means to keep counts that much more (see `keep`).
   const kept = (id: number, worth: number) => (fighterById(b, id).hero ? worth * (1 + keep) : worth);

@@ -175,6 +175,31 @@ describe('the hero screen', () => {
     const horned = stackSheet(giveArtifact(ranger, 'poachersHorn'), 1)!;
     expect(horned.traits.filter((t) => t.name.startsWith('First volley')).map((t) => t.name)).toEqual(['First volley (Pathfinder, The Poacher\u2019s Horn)']);
   });
+
+  it('gives every stack its luck and morale, and says why', () => {
+    expect(stackSheet(knight(), 0)!.stats.slice(-2)).toEqual([
+      { name: 'Luck', value: '0', note: 'none to speak of' },
+      { name: 'Morale', value: '0', note: 'steady' },
+    ]);
+    const favoured = { ...knight(), hero: { ...knight().hero, perks: ['fortunesFavour' as const] } };
+    expect(stackSheet(favoured, 0)!.stats.slice(-2)).toEqual([
+      { name: 'Luck', value: '+10%', note: 'chance a blow lands twice as hard' },
+      { name: 'Morale', value: '+10%', note: 'chance they go again, each round' },
+    ]);
+    // Why, a line for each gift among the traits.
+    expect(stackSheet(favoured, 0)!.traits).toContainEqual({ name: 'Fortune\u2019s Favour', note: '+10% luck, +10% morale.' });
+    const footed = stackSheet(giveArtifact(favoured, 'rabbitsFoot'), 1)!;
+    expect(footed.stats.at(-2)).toMatchObject({ name: 'Luck', value: '+20%' });
+    expect(footed.traits).toContainEqual({ name: 'A Rabbit\u2019s Foot', note: '+10% luck.' });
+    // Wild things in the King's army: both sides grumble.
+    const wild = { ...knight(), army: [...knight().army, { troop: 'wolves' as const, count: 10 }] };
+    expect(stackSheet(wild, 0)!.stats.at(-1)).toEqual({ name: 'Morale', value: '\u221210%', note: 'chance they hang back, and lose a turn' });
+    expect(stackSheet(wild, 0)!.traits).toContainEqual({ name: 'Uneasy company', note: 'They won\u2019t march happily beside the Wolves: \u221210% morale.' });
+    expect(stackSheet(wild, 2)!.traits).toContainEqual({ name: 'Uneasy company', note: 'They won\u2019t march happily beside the Knights and Archers: \u221210% morale.' });
+    const evened = stackSheet({ ...wild, hero: favoured.hero }, 0)!;
+    expect(evened.stats.at(-1)).toEqual({ name: 'Morale', value: '0', note: 'steady: it evens out' });
+    expect(evened.traits.map((t) => t.name)).toEqual(expect.arrayContaining(['Fortune\u2019s Favour', 'Uneasy company']));
+  });
 });
 
 describe('the hero\u2019s own card', () => {

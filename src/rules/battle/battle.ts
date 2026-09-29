@@ -1,5 +1,5 @@
 import { needsTarget, SPELLS, STATUSES, type SpellId, type StatusId } from '../../content/spells';
-import { ABILITIES, abilitiesOf, TROOPS, unitPower, type TroopDef, type TroopId } from '../../content/troops';
+import { ABILITIES, abilitiesOf, feuding, TROOPS, unitPower, type TroopDef, type TroopId } from '../../content/troops';
 import { roll, type Army } from '../state';
 import { COLS, HEXES, hexIndex, NEIGHBOURS, neighbours, reachable } from './hex';
 
@@ -23,7 +23,7 @@ export type Fighter = {
   waited: boolean;
   /** Spells and abilities on the stack, for the rest of the battle unless `until` says otherwise. */
   status: StatusId[];
-  /** Whether good morale has already won this stack a second turn this round (once a round). */
+  /** Whether morale has had its say for this stack this round: won it a second turn, or tested its low spirits (once a round). */
   moraleUsed?: boolean;
   /** The round a status wears off at the start of (those with `rounds`). */
   until?: Partial<Record<StatusId, number>>;
@@ -70,6 +70,8 @@ export type BattleHero = Spellbook & {
   luck?: number;
   /** Chance a stack's good spirits win it another turn before the round moves on. */
   morale?: number;
+  /** Where his luck and morale come from, by name, for saying why: "Fortune's Favour", "A Rabbit's Foot". */
+  spirits?: { source: string; luck?: number; morale?: number }[];
   manaDiscount?: number;
   /** Extra attack, defence and shots for kinds of troop. */
   troops?: Partial<Record<TroopId, { attack: number; defence: number; shots: number }>>;
@@ -166,8 +168,8 @@ export type BattleEvent =
   | { type: 'spell'; spell: SpellId; target: number; damage: number; killed: number; splash?: boolean; healed?: number; raised?: number; by?: number }
   | { type: 'wait' | 'defend'; fighter: number }
   | { type: 'turn'; fighter: number }
-  /** Good spirits win a stack another turn before the round moves on (once a round). */
-  | { type: 'morale'; fighter: number }
+  /** Good spirits win a stack another turn before the round moves on, or low spirits (`bad`) lose it this one (once a round). */
+  | { type: 'morale'; fighter: number; bad?: boolean }
   | { type: 'round'; round: number }
   | { type: 'end'; result: 'won' | 'lost' | 'fled'; rout?: boolean };
 
@@ -419,6 +421,37 @@ function helpOf(b: BattleState, f: Fighter): { attack: number; defence: number }
   return rally ? { attack: skill.attack + rally.attack, defence: skill.defence + rally.defence } : skill;
 }
 
+/** Morale a stack loses for every people in its army it won't march beside (see `FEUDS` in content/troops.ts). */
+export const GRUMBLE = 0.1;
+
+/** For each battle state's stacks, the others of their side they won't march beside, found once (living or not). */
+const feuds = new WeakMap<readonly Fighter[], { length: number; of: Map<number, Fighter[]> }>();
+
+/** The living stacks of its own side a stack grumbles at: of a people its own won't march with. */
+export function grumblesAt(b: BattleState, f: Pick<Fighter, 'id'>): Fighter[] {
+  let known = feuds.get(b.fighters);
+  if (!known || known.length !== b.fighters.length) {
+    const of = new Map(b.fighters.map((x) => [x.id, b.fighters.filter((o) => o.side === x.side && o.id !== x.id && feuding(x.troop, o.troop))]));
+    feuds.set(b.fighters, (known = { length: b.fighters.length, of }));
+  }
+  const them = known.of.get(f.id);
+  return them?.length ? them.filter(alive) : [];
+}
+
+/** A stack's luck: the chance any blow of its lands lucky, twice as hard. Aldric brings it to his side. */
+export const luckOf = (b: BattleState, f: Pick<Fighter, 'side'>) => (f.side === 'player' ? (b.hero.luck ?? 0) : 0);
+
+/**
+ * A stack's morale. Above nought, the chance its good spirits win it another turn before the round
+ * moves on; below, the chance it hangs back as its turn comes round, and loses it. Aldric brings his
+ * to his side, and every people it won't march beside takes `GRUMBLE` off.
+ */
+export function moraleOf(b: BattleState, f: Pick<Fighter, 'id' | 'side'>): number {
+  const base = f.side === 'player' ? (b.hero.morale ?? 0) : 0;
+  const them = grumblesAt(b, f);
+  return them.length ? base - GRUMBLE * new Set(them.map((o) => TROOPS[o.troop].people)).size : base;
+}
+
 /** The attack-against-defence multiplier, HoMM2 style. */
 export function skillFactor(attack: number, defence: number): number {
   return attack >= defence ? Math.min(4, 1 + 0.1 * (attack - defence)) : Math.max(0.3, 1 - 0.05 * (defence - attack));
@@ -455,7 +488,7 @@ export function strike(b: BattleState, attacker: Fighter, target: Fighter, range
   const armour = target.side === 'player' ? 1 - (b.hero.armour ?? 0) : 1;
   const shield = ranged ? statusShot(target) : 1;
   // A lucky blow lands twice as hard. Without a seed (the AI's look-ahead), the chance is spread over the average instead.
-  const luckChance = attacker.side === 'player' ? (b.hero.luck ?? 0) : 0;
+  const luckChance = luckOf(b, attacker);
   let lucky = false;
   let luck = 1;
   if (luckChance > 0) {
@@ -788,9 +821,9 @@ function settle(b: BattleState, events: BattleEvent[], endTurn: boolean, expecte
     order = order.slice(1);
     // Good spirits: a chance the stack goes again before the round moves on, once a round. The
     // AI's look-ahead (`expected`) skips the roll, so it never sees a bonus turn that may not come.
-    const morale = b.hero.morale ?? 0;
     const acted = fighterById(b, actedId);
-    if (!expected && morale > 0 && acted.side === 'player' && !acted.moraleUsed) {
+    const morale = moraleOf(b, acted);
+    if (!expected && morale > 0 && !acted.moraleUsed) {
       const [v, rolled] = roll(seed);
       seed = rolled;
       if (v < morale) {
@@ -833,9 +866,20 @@ function settle(b: BattleState, events: BattleEvent[], endTurn: boolean, expecte
     // A stack turned into newts loses its turn, and then it wears off.
     const first = fighterById(next, next.order[0]);
     const skip = first.status.find((st) => STATUSES[st].skipsTurn);
-    if (!skip) break;
-    next = { ...next, order: next.order.slice(1), fighters: next.fighters.map((f) => (f.id === first.id ? { ...f, status: f.status.filter((st) => st !== skip) } : f)) };
-    events.push({ type: 'skip', fighter: first.id, status: skip });
+    if (skip) {
+      next = { ...next, order: next.order.slice(1), fighters: next.fighters.map((f) => (f.id === first.id ? { ...f, status: f.status.filter((st) => st !== skip) } : f)) };
+      events.push({ type: 'skip', fighter: first.id, status: skip });
+      continue;
+    }
+    // Low spirits: as its turn comes round, a chance the stack hangs back and loses it, once a round.
+    // The AI's look-ahead doesn't roll for it either (see `troopWorth` in ai.ts for what it expects).
+    const morale = expected || first.moraleUsed ? 0 : moraleOf(next, first);
+    if (morale >= 0) break;
+    const [v, rolled] = roll(next.seed);
+    const lost = v < -morale;
+    next = { ...next, seed: rolled, order: lost ? next.order.slice(1) : next.order, fighters: next.fighters.map((f) => (f.id === first.id ? { ...f, moraleUsed: true } : f)) };
+    if (!lost) break;
+    events.push({ type: 'morale', fighter: first.id, bad: true });
   }
   const acting = fighterById(next, next.order[0]);
   if (acting.defending) next = { ...next, fighters: next.fighters.map((f) => (f.id === acting.id ? { ...f, defending: false } : f)) };

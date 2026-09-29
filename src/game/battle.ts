@@ -1,7 +1,7 @@
 import { needsTarget, SPELLS, STATUSES, type SpellId } from '../content/spells';
 import { TROOPS, troops } from '../content/troops';
 import { chooseAction, finishEstimate } from '../rules/battle/ai';
-import { manaInBattle } from '../rules/heroSheet';
+import { manaInBattle, signedShare, spiritsOf, uneasyWords } from '../rules/heroSheet';
 import { activeFighter, battleAct, canCast, casterOf, castsLeft, chargeOf, CHARGE_BONUS, fighterById, heroOnField, isCharge, options, rallyTargets, spellCost, spellDamage, spellsOf, spellVictims, strike, threatsToHero, unitOf, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
 import { paintBanner } from '../render/banner';
 import { BattleScreen, BUTTONS, FIRE_FALL, FLOAT_RISE, hexAt, hexCentre, LOG_BOTTOM, type BattleView, type Shot } from '../render/battleScreen';
@@ -545,10 +545,26 @@ export class BattleController implements Screen {
           break;
         }
         case 'morale': {
-          this.step(0.3, {
+          // Good spirits win a stack another turn, and it jumps for joy; low ones make it cower, and lose this one.
+          const why = e.bad ? uneasyWords(spiritsOf(this.battle, fighterById(this.battle, e.fighter))) : '';
+          this.step(e.bad ? 0.6 : 0.35, {
             start: () => {
-              this.float(e.fighter, 'Morale!', GOLD[6]);
-              v.log = `${this.fighterName(e.fighter)} ${this.verb(e.fighter, 'cheer')}: good spirits win them another turn.`;
+              play(e.bad ? 'grumble' : 'cheer');
+              if (e.bad) {
+                v.poses.set(e.fighter, { anim: 'defend', ms: 0 });
+                this.float(e.fighter, 'Low morale!', RED[6]);
+                v.log = `${this.fighterName(e.fighter)} ${this.verb(e.fighter, 'hang')} back${why ? `, ${why}` : ', in low spirits'}, and ${this.named(e.fighter) ? 'loses a turn' : 'lose their turn'}.`;
+              } else {
+                this.float(e.fighter, 'Morale!', GOLD[6]);
+                v.log = `${this.fighterName(e.fighter)} ${this.verb(e.fighter, 'cheer')}, and ${this.named(e.fighter) ? 'goes' : 'go'} again before the round moves on.`;
+              }
+            },
+            tick: (t) => {
+              if (!e.bad) v.offsets.set(e.fighter, [0, -Math.round(Math.sin(t * Math.PI) * 8)]);
+            },
+            end: () => {
+              v.poses.delete(e.fighter);
+              v.offsets.delete(e.fighter);
             },
           });
           break;
@@ -831,8 +847,19 @@ export class BattleController implements Screen {
       : new Set();
     this.view.inspect = hex === null ? null : (this.battle.fighters.find((f) => f.count > 0 && f.at === hex)?.id ?? null);
     const under = this.view.inspect === null ? null : fighterById(this.battle, this.view.inspect);
-    this.view.preview = intent ? this.forecast(intent.action) : under?.book ? this.bookLine(under.id) : null;
+    this.view.preview = intent ? this.forecast(intent.action) : under?.book ? this.bookLine(under.id) : under ? this.spiritsLine(under.id) : null;
     this.display.canvas.style.cursor = intent ? 'pointer' : 'default';
+  }
+
+  /** A stack's luck and morale, and why, for when you look it over: nothing if it has neither. */
+  private spiritsLine(id: number): string | null {
+    const s = spiritsOf(this.battle, fighterById(this.battle, id));
+    const shares = [s.luck ? `luck ${signedShare(s.luck)}` : '', s.morale || s.uneasy.length ? `morale ${signedShare(s.morale)}` : ''].filter(Boolean);
+    if (!shares.length) return null;
+    // One gift is named; several are Aldric's, and his hero screen says which.
+    const gifts = s.gifts.length === 1 ? s.gifts[0].source : s.gifts.length ? `from ${this.battle.hero.name ?? 'Aldric'}` : '';
+    const why = [gifts, uneasyWords(s)].filter(Boolean).join('; ');
+    return `${this.fighterName(id)}: ${shares.join(', ')}${why ? ` (${why})` : ''}.`;
   }
 
   /** A villain's spells and orders, for when you look him over. */

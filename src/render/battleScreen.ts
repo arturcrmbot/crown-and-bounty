@@ -1,6 +1,6 @@
 import { abilitiesOf, TROOPS, type TroopId } from '../content/troops';
 import { SPELLS, STATUSES } from '../content/spells';
-import { canCast, lookOf, rallyOf, speedOf, statsOf, unitOf, type BattleState, type Fighter } from '../rules/battle/battle';
+import { canCast, lookOf, luckOf, moraleOf, rallyOf, speedOf, statsOf, unitOf, type BattleState, type Fighter } from '../rules/battle/battle';
 import { COLS, colOf, HEXES, ROWS, rowOf } from '../rules/battle/hex';
 import { Bitmap, blit } from './bitmap';
 import { critters, critterSprite, type Critter } from './critters';
@@ -12,7 +12,7 @@ import { BAR, MAP_VIEW, paintBarBackground, paintFrame, SCREEN, type Rect } from
 import { bayer, hash, noise, shade } from './noise';
 import { BLUE, CYCLE_BOG, EARTH, GOLD, GRASS, INK, LEAF, LIGHT_LUT, NEUTRAL, PARCHMENT, PLUM, RED, REED, SHADOW_LUT, STONE, WOOD } from './palette';
 import { boulder, oak, pine, willow } from './sprites';
-import { drawText } from './text';
+import { drawText, textMask } from './text';
 
 /** The King's blue with his gold star, over Aldric's side. */
 const ROYAL: Standard = { cloth: [BLUE[1], BLUE[2], BLUE[3], BLUE[4]], emblem: 'star' };
@@ -661,13 +661,20 @@ export class BattleScreen {
     if (view.targeting) drawText(screen, `Cast ${view.targeting}: pick a target (Esc to cancel)`, BAR.x + 12, text, GOLD[6], INK);
     else if (f) {
       const t = unitOf(f);
-      const tags = [...abilitiesOf(f.troop).map((a) => ` ${a.name}`), ...f.status.filter((s) => s !== 'hasted').map((s) => ` ${STATUSES[s].name}`), rallyOf(b, f) ? ' Rallied' : '', f.defending ? ' Defending' : ''].join('');
+      const share = (x: number) => `${x > 0 ? '+' : '\u2212'}${Math.round(Math.abs(x) * 100)}%`;
+      const [luck, morale] = [luckOf(b, f), moraleOf(b, f)];
+      const spirits = `${Math.round(luck * 100) ? ` Luck ${share(luck)}` : ''}${Math.round(morale * 100) ? ` Morale ${share(morale)}` : ''}`;
+      const tags = [spirits, ...abilitiesOf(f.troop).map((a) => ` ${a.name}`), ...f.status.filter((s) => s !== 'hasted').map((s) => ` ${STATUSES[s].name}`), rallyOf(b, f) ? ' Rallied' : '', f.defending ? ' Defending' : ''].join('');
       const { attack, defence } = statsOf(b, f);
       const count = countOf(f);
       // A named foe is one of a kind: "Baron Grimsby", not "1 Baron Grimsby".
       const who = t.name === t.one ? t.name : `${count} ${count === 1 ? t.one : t.name}`;
       const info = `${who}  ·  Att ${attack} Def ${defence} Dmg ${t.damage[0]}-${t.damage[1]} HP ${view.health.get(f.id) ?? f.hp}/${t.hp} Spd ${speedOf(f)}${f.shots ? ` Shots ${f.shots}` : ''}${tags}`;
-      drawText(screen, info, BAR.x + 12, text, f.side === 'player' ? PARCHMENT[6] : RED[6], INK);
+      // A long line gets smaller type rather than running into Aldric's health and the mana.
+      const room = BUTTONS[0].rect.x - (b.fighters.some((x) => x.hero) ? 164 : 70) - 8 - (BAR.x + 12);
+      let size = 13;
+      while (size > 10 && textMask(info, size).width > room) size--;
+      drawText(screen, info, BAR.x + 12, text + Math.floor((13 - size) / 2), f.side === 'player' ? PARCHMENT[6] : RED[6], INK, size);
     }
     // Aldric's health stays beside the mana even while another fighter is under the pointer.
     const hero = b.fighters.find((x) => x.hero);
@@ -689,12 +696,15 @@ export class BattleScreen {
     }
   }
 
-  /** The last thing that happened, on a dark strip across the top of the field. */
+  /** The last thing that happened, on a dark strip across the top of the field: smaller type if it's too long for it. */
   private logLine(text: string) {
     if (!text) return;
     const y0 = LOG_TOP;
-    for (let y = y0; y < LOG_BOTTOM; y++) for (let x = MAP_VIEW.x + 150; x < MAP_VIEW.x + MAP_VIEW.width - 150; x++) this.screen.set(x, y, SHADOW_LUT[SHADOW_LUT[this.screen.get(x, y)]]);
-    drawText(this.screen, text, Math.round(MAP_VIEW.x + MAP_VIEW.width / 2 - text.length * 3.3), y0 - 1, PARCHMENT[6], INK, 13);
+    const [left, right] = [MAP_VIEW.x + 150, MAP_VIEW.x + MAP_VIEW.width - 150];
+    for (let y = y0; y < LOG_BOTTOM; y++) for (let x = left; x < right; x++) this.screen.set(x, y, SHADOW_LUT[SHADOW_LUT[this.screen.get(x, y)]]);
+    let size = 13;
+    while (size > 11 && textMask(text, size).width > right - left) size--;
+    drawText(this.screen, text, Math.round(MAP_VIEW.x + MAP_VIEW.width / 2 - (text.length * 3.3 * size) / 13), y0 - 1 + Math.floor((13 - size) / 2), PARCHMENT[6], INK, size);
   }
 }
 

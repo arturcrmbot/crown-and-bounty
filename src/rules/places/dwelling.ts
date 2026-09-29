@@ -1,6 +1,6 @@
 import { ARTIFACTS, type ArtifactId } from '../../content/artifacts';
 import { troopPower } from '../../content/troops';
-import { dismiss } from '../army';
+import { dismiss, grumbleLine } from '../army';
 import { artifactChoices, giveArtifact, heroStats, slotTaken } from '../hero';
 import { addTroops, close, coins, joinLine, leadershipUsed, locationById, TROOPS, troops, update, type Card, type Choice, type GameState, type Location, type Result } from '../state';
 import { found, option, priceOf, ride, say, words } from './common';
@@ -54,6 +54,9 @@ function recruitCard(state: GameState, place: Location, before: string[] = []): 
   const each = priceOf(state, offer.price);
   const purse = Math.floor(state.gold / each);
   const lines = [...before, `**${troops(offer.troop, offer.count)}** will join you for **${coins(each)} gold** each.`];
+  // Companies that won't march happily beside them say so before they join, not after.
+  const grumble = grumbleLine(state.army, [offer.troop]);
+  if (grumble) lines.push(grumble);
   // Gear that puts honest recruits off (the Black Banner) says so, or the price is a mystery.
   const shunned = Object.values(state.hero.gear).find((id) => id && (ARTIFACTS[id].bonus.recruitPrice ?? 0) > 0);
   if (shunned) lines.push(`*They don\u2019t like the look of your ${ARTIFACTS[shunned].name.replace(/^The /, '')}: that\u2019s ${Math.round((ARTIFACTS[shunned].bonus.recruitPrice ?? 0) * 100)}% dearer.*`);

@@ -7,7 +7,7 @@ import { playNote } from '../audio/instruments';
 import { sting } from '../audio/stings';
 import { Terrain } from '../rules/map/model';
 
-export type Sound = 'click' | 'coins' | 'hit' | 'shoot' | 'bolt' | 'spell' | 'day' | 'levelUp' | 'victory' | 'defeat' | 'dig' | 'fanfare' | 'charge' | 'page' | 'lift' | 'equip' | 'march';
+export type Sound = 'click' | 'coins' | 'hit' | 'shoot' | 'bolt' | 'spell' | 'day' | 'levelUp' | 'victory' | 'defeat' | 'dig' | 'fanfare' | 'charge' | 'page' | 'lift' | 'equip' | 'march' | 'cheer' | 'grumble';
 
 /** Sound effects go to the effects bus of the shared audio context (see `audio/context.ts`). */
 export { toggleMute, wakeAudio as wakeSound } from '../audio/context';
@@ -106,6 +106,16 @@ export function play(sound: Sound) {
       case 'march':
         // Boots going off down the road.
         [0, 0.14, 0.28, 0.42].forEach((d, i) => noise(t + d, 0.06, 'lowpass', 600, 0.55 - i * 0.12));
+        break;
+      case 'cheer':
+        // A short call rising on the brass: good spirits, and a stack goes again.
+        for (const [midi, at, length] of [[62, 0, 0.09], [67, 0.1, 0.3]] as [number, number, number][]) playNote(a.ctx, a.sfx, 'brass', t + at, midi, length, 0.28);
+        break;
+      case 'grumble':
+        // A low mutter falling away: a stack in low spirits hangs back.
+        noise(t, 0.5, 'lowpass', 420, 0.35, 0.6);
+        tone(147, t, 0.3, 'triangle', 0.3, 0.85);
+        tone(123, t + 0.22, 0.4, 'triangle', 0.3, 0.8);
         break;
       case 'dig':
         [0, 0.25, 0.5].forEach((d) => noise(t + d, 0.1, 'lowpass', 500, 0.8));
