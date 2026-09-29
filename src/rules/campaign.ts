@@ -37,7 +37,7 @@ export const hasNextCommission = (state: GameState) => state.campaign.chapter + 
 
 /** What a place says and offers, as opposed to what has happened to it: a save takes the newest. */
 const WORDS = ['text', 'pages', 'artifact', 'reveals', 'gold'] as const;
-const ENEMY_WORDS = ['lines', 'threat', 'flees', 'loot', 'tamed', 'parleys', 'spoils', 'sortie'] as const;
+const ENEMY_WORDS = ['lines', 'threat', 'flees', 'loot', 'tamed', 'parleys', 'spoils', 'sortie', 'lastWords'] as const;
 const pick = <T extends object>(from: T | undefined, keys: readonly (keyof T)[]) => JSON.stringify(keys.map((k) => from?.[k] ?? null));
 
 /**

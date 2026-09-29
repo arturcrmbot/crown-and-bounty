@@ -73,6 +73,8 @@ export type Enemy = {
   lines: string[];
   army: Army;
   reward: number;
+  /** What its leader, a villain or a captain, says as his army is beaten: the fight stops on it. */
+  lastWords?: string;
   /** What the card says when a hero with a way with beasts wins them over, instead of each beast's usual words. */
   tamed?: string;
   /** What they do when you ride up, how they lose, and where the gold was. */

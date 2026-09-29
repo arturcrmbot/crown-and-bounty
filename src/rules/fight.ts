@@ -173,7 +173,7 @@ export function startFight(state: GameState, id: string): Result | null {
   if (state.army.length === 0 || !place.enemy || place.done) return null;
   const [, seed] = roll(state.seed);
   const battle = createBattle({ place: id, seed: state.seed, player: state.army, enemy: place.enemy!.army, hero: heroAgainst(state, place), obstacles: place.kind === 'hideout' ? 3 : 5, ground: provinceOf(state).fen ? 'fen' : 'meadow', flees: fleesHome(state, place) });
-  const words = place.kind === 'hideout' ? commissionOf(state).lastWords : undefined;
+  const words = place.enemy.lastWords ?? (place.kind === 'hideout' ? commissionOf(state).lastWords : undefined);
   return { state: { ...state, seed, battle: words ? { ...battle, lastWords: words } : battle }, events: [{ type: 'battle', place: id }] };
 }
 

@@ -940,6 +940,10 @@ export class BattleController implements Screen {
           const end = battleEnd(this.battle);
           const beaten = e.result === 'won' ? 'enemy' : e.result === 'lost' ? 'player' : null;
           const leaders = end ? this.battle.fighters.filter((f) => f.side === beaten && isLeader(f) && f.count > 0) : [];
+          // A villain taken has the last word, in his own voice, and the fight stops on it; one with his
+          // walls to run to has a parting shot before he goes.
+          const words = e.result === 'won' && leaders.length ? this.battle.lastWords : undefined;
+          if (words && this.battle.flees) this.say(leaders[0].id, words);
           this.step(2.2, {
             start: () => {
               const [title, line] =
@@ -978,8 +982,7 @@ export class BattleController implements Screen {
               }
             },
           });
-          // A villain taken has the last word, in his own voice: the fight stops on it.
-          if (e.result === 'won' && leaders.length && this.battle.lastWords) this.say(leaders[0].id, this.battle.lastWords);
+          if (words && !this.battle.flees) this.say(leaders[0].id, words);
           break;
         }
         case 'turn': {
