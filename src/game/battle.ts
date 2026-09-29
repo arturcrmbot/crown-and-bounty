@@ -762,7 +762,9 @@ export class BattleController implements Screen {
     if (this.queue.length === 0) this.updateFinishOffer();
     const mine = !!f && f.side === 'player' && !this.auto && this.queue.length === 0 && !this.battle.volley;
     const threats = mine ? threatsToHero(this.battle) : [];
-    v.warning = threats.length ? `${this.fighterName(threats[0].id)} can reach Lord Aldric.` : null;
+    v.warning = threats.length
+      ? `${this.fighterName(threats[0].id)} can reach ${this.fighterName(heroOnField(this.battle)!.id)}.`
+      : null;
     v.reach = mine && !v.targeting ? new Set(options(this.battle).moves.keys()) : new Set();
     if (this.pointer && mine) this.hoverAt(...this.pointer);
     else if (!mine) {
