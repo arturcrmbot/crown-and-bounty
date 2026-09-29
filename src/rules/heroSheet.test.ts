@@ -47,14 +47,12 @@ describe('the bottom bar', () => {
     expect(barNote(w, { kind: 'stack', index: 0 })).toContain('8 Knights');
     expect(barNote(w, { kind: 'mana' })).toContain('Mana 30/30');
     expect(barNote(w, { kind: 'movement' })).toBe('150 movement left today, of 150 · E ends the day');
-    expect(barNote(w, { kind: 'bounty' })).toBe('Wanted: Baron Grimsby, by day 100 · 99 days left · click for the poster');
+    expect(barNote(w, { kind: 'bounty' })).toBe('Wanted: Baron Grimsby, by day 100 · 99 days left · click for the journal (J)');
+    expect(barNote({ ...w, bounty: 'paid' }, { kind: 'bounty' })).toBe('The bounty on Baron Grimsby is paid · click for the journal (J)');
     expect(barNote(w, { kind: 'day' })).toBe('Day I of 100 · payday once a week, next on day VIII');
     expect(barNote({ ...w, day: 7 }, { kind: 'day' })).toContain('next on day VIII');
+    expect(barNote(w, { kind: 'journal' })).toBe('The journal (J): the bounty, and what you\u2019ve heard on the road');
     expect(barNote(w, { kind: 'hourglass' })).toBe('End the day (E)');
-    // The panel's plates beside the minimap: Aldric's, and the pieces of the old map on the bounty's.
-    expect(barNote(w, { kind: 'hero' })).toBe('Aldric the Hedge Wizard \u00b7 level I \u00b7 click (or H) for his gear and army');
-    expect(barNote(w, { kind: 'pieces' })).toContain('Pieces of the old map: 0 of 5');
-    expect(barNote({ ...w, bounty: 'paid' }, { kind: 'pieces' })).toContain('1 of 5');
   });
 });
 

@@ -123,12 +123,15 @@ const NAN_CHARMS: ContentChoice[] = [
   },
 ];
 const NAN_LEAVE: ContentChoice = { id: 'leave', label: 'Ride on', lines: ['You leave her to her cauldron. Something in it winks at you.'] };
-/** What Old Nan knows of the old King's hunt hall, once Aldric has seen it shut: where its key is, and what's in the way. */
+/**
+ * What Old Nan knows of the old King's hunt hall, once Aldric has seen it shut: where its key is, and
+ * what's in the way. `nanHall` keeps, for the journal, that she told him, once the key sets `lodge`.
+ */
 const NAN_HALL: ContentChoice = {
   id: 'hall',
   label: 'Ask her about the old King\u2019s hunt hall',
   when: { seen: 'hall', notFlag: 'lodge' },
-  effects: { flags: { lodge: 'told' }, reveal: { at: LODGE_VIEW, radius: 130 } },
+  effects: { flags: { lodge: 'told', nanHall: true }, reveal: { at: LODGE_VIEW, radius: 130 } },
   lines: [
     '*"The old King\u2019s hall? Shut up since he died, bless him. He kept the key at his lodge in the chase, on a nail by the door."*',
     '*"Take the track past my back door. There\u2019s a bear sleeps on it now, dearie. Well. Some bears. Mind them."*',

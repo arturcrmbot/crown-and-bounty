@@ -3,13 +3,12 @@ import { troops } from '../content/troops';
 import { addPlace, buildAdventureScene, refreshPlace, setHeroFigure, type AdventureScene, type Hitbox } from '../render/adventureScene';
 import { BANNER_TIME, drawBanner, paintBanner } from '../render/banner';
 import type { Bitmap } from '../render/bitmap';
-import { ADVENTURE_VIEW as VIEW, BAR } from '../render/frame';
+import { BAR, MAP_VIEW as VIEW } from '../render/frame';
 import { BLUE, GOLD, NEUTRAL, PARCHMENT, RED } from '../render/palette';
 import { clickable, paintHud, type HudHit } from '../render/hud';
-import { Panel, type PanelHit } from '../render/panel';
 import { ART, heroArtId } from '../render/units';
 import type { BattleState } from '../rules/battle/battle';
-import { ambushCard, apply, bountyCard, commissionOf, describe, finishFight, heroStats, levelUpCard, locationById, placeNote, roman, VANISHES, visit, whenThere, type Action, type Card, type GameEvent, type GameState, type Result } from '../rules/game';
+import { ambushCard, apply, bountyCard, commissionOf, describe, finishFight, heardOf, heroStats, journalCard, levelUpCard, locationById, placeNote, roman, VANISHES, visit, whenThere, type Action, type Card, type GameEvent, type GameState, type Result } from '../rules/game';
 import { barNote } from '../rules/heroSheet';
 import type { Point } from '../rules/map/geometry';
 import { CELL, cellCentre, type MapModel, type Terrain } from '../rules/map/model';
@@ -29,7 +28,7 @@ import type { Display } from './display';
 import type { Input } from './input';
 import type { Screen } from './screen';
 import { backgroundCard, endCard, keysCard, storyCard } from './intro';
-import { clearSave, saveGame } from './save';
+import { clearSave, keepMinimap, minimapWanted, saveGame } from './save';
 import { Walks } from './walks';
 import { tiredResult } from './adventureCards';
 import { doorsOf, hiddenShare, HIDES, reachOf, type Reach } from './doors';
@@ -115,10 +114,6 @@ export class AdventureController implements Screen {
   /** Where each thing on the bottom bar sits, as last painted, and which one the pointer is on. */
   private hud: HudHit[] = [];
   private hudHover: HudHit | null = null;
-  /** The plates under the minimap, where their parts sit, and which one the pointer is on. */
-  private readonly panel = new Panel();
-  private panelHits: PanelHit[] = [];
-  private panelHover: PanelHit | null = null;
   /** Whether the pointer went down on the minimap: then a drag steers the view, as in HoMM2. */
   private steering = false;
   /**
@@ -130,6 +125,8 @@ export class AdventureController implements Screen {
   private restartAsked = false;
   /** The place whose card is open because the player clicked it: a second click there goes to it. */
   private looking: { id: string; go: Action; label: string } | null = null;
+  /** The journal is the card on screen: J puts it away. */
+  private reading = false;
   private readonly speed: number;
   /** How much faster than life scripts run the map (?speed=8). */
   private readonly pace: number;
@@ -182,6 +179,7 @@ export class AdventureController implements Screen {
     for (const [i, home] of (map.province.flocks ?? []).entries()) this.scene.view.effects.addFlock(home, 5, 4 + i);
     // While the opening card asks who he was, he stands low in the view, so the card fits above him.
     this.scene.view.centreOn(state.hero.at[0] + 40, state.hero.at[1] - (state.opening ? 180 : 70));
+    this.scene.minimap.shown = minimapWanted();
     this.repaintHud();
   }
 
@@ -191,6 +189,7 @@ export class AdventureController implements Screen {
 
   render(tick: number): Uint8Array {
     const frame = this.view.compose(tick);
+    this.scene.minimap.draw(frame);
     if (this.banner) drawBanner(frame, this.banner.sprite, VIEW.x + VIEW.width / 2, this.banner.y, this.banner.age);
     return frame.data;
   }
@@ -270,6 +269,7 @@ export class AdventureController implements Screen {
 
   showCard(card: Card, at: Point | null) {
     this.cardPlace = null;
+    this.reading = false;
     // A new province's name gets its moment across the sky before any card covers it.
     if (this.banner && this.banner.age < BANNER_HOLD) {
       this.held = { card, at };
@@ -293,6 +293,7 @@ export class AdventureController implements Screen {
   hideCard() {
     this.looking = null;
     this.cardPlace = null;
+    this.reading = false;
     this.restartAsked = false;
     this.focus = null;
     this.cards.hide();
@@ -303,9 +304,12 @@ export class AdventureController implements Screen {
   private run(result: Result | null) {
     if (!result) return;
     const before = this.state;
-    this.state = result.state;
+    // The first thing heard on the road says where it has gone.
+    const heard = heardOf(result.state).length > heardOf(before).length;
+    const told = heard ? this.teach(result, 'journal', '**Hint.** What you hear on the road goes in your journal: press **J**, or click the book on the bar.') : result;
+    this.state = told.state;
     if (this.state.gold > before.gold) play('coins');
-    this.handle(result.events);
+    this.handle(told.events);
     this.floatGains(before, this.state);
     saveGame(this.state);
   }
@@ -449,31 +453,27 @@ export class AdventureController implements Screen {
   private repaintHud() {
     this.hudMovement = Math.floor(this.state.movement);
     this.hud = paintHud(this.view.frame, this.state, this.hudHover && this.barClickable(this.hudHover) ? this.hudHover.item : null);
-    this.panelHits = this.panel.paint(this.view.frame, this.state, this.panelHover && this.panelClickable() ? this.panelHover.item : null);
   }
 
-  /** The part of a plate under a screen point, if any: the gauges before the plate they're on. */
-  private onPanel(x: number, y: number): PanelHit | null {
-    return this.panelHits.find((h) => x >= h.x0 && x < h.x1 && y >= h.y0 && y < h.y1) ?? null;
+  /** The journal: the commission's poster, pinned in, and what's been heard on the road. J, or the book on the bar. */
+  private openJournal() {
+    if (this.state.opening || this.state.over || this.state.ambush) return;
+    this.showCard(journalCard(this.state), null);
+    this.reading = true;
   }
 
-  /** Lights the plate the pointer is on, as it moves. */
-  private hoverPanel(hit: PanelHit | null) {
-    if (hit?.item.kind === this.panelHover?.item.kind) return;
-    this.panelHover = hit;
-    this.repaintHud();
+  /** Folds the minimap away, or brings it back: Tab, or its button. The choice is kept for next time. */
+  private toggleMinimap() {
+    const { minimap } = this.scene;
+    minimap.shown = !minimap.shown;
+    keepMinimap(minimap.shown);
+    play(minimap.shown ? 'unfold' : 'fold');
+    this.steering = false;
   }
 
-  /** Whether a click on the plates does anything right now. */
-  private panelClickable() {
-    return !this.state.opening && !this.state.over && !this.state.ambush;
-  }
-
-  /** Aldric's plate opens the hero screen; the bounty's shows the poster. */
-  private clickPanel({ item }: PanelHit) {
-    if (!this.panelClickable()) return;
-    if (item.kind === 'bounty' || item.kind === 'pieces') this.showCard(bountyCard(this.state), null);
-    else this.openHero();
+  /** What the minimap's button says under the pointer. */
+  private minimapButtonNote() {
+    return this.scene.minimap.shown ? 'Fold the map away (Tab)' : `Unfold the map of ${this.map.province.name} (Tab)`;
   }
 
   /** Underlines what a click on the bar would work, as the pointer moves over it. */
@@ -748,10 +748,10 @@ export class AdventureController implements Screen {
     }
   }
 
-  /** The minimap, in the panel: it paints itself only when something it shows has moved on. */
+  /** The minimap, over the view's top right corner: it paints itself again only when something it shows has moved on. */
   private paintMinimap() {
     const { camera } = this.view;
-    this.scene.minimap.paint(this.view.frame, this.state.locations, [this.drawn.x, this.drawn.y], { x: camera.x, y: camera.y, width: VIEW.width, height: VIEW.height });
+    this.scene.minimap.paint(this.state.locations, [this.drawn.x, this.drawn.y], { x: camera.x, y: camera.y, width: VIEW.width, height: VIEW.height });
   }
 
   /** The player looks around for himself: the view stops following the hero, or gliding to a card. */
@@ -992,11 +992,11 @@ export class AdventureController implements Screen {
     return clickable(item);
   }
 
-  /** The hourglass ends the day; the army and the mana open the hero; the bounty shows the poster. */
+  /** The hourglass ends the day; the army and the mana open the hero; the book and the bounty open the journal. */
   private clickBar(hit: HudHit) {
     if (!this.barClickable(hit)) return;
     if (hit.item.kind === 'hourglass') this.choose({ type: 'endDay' });
-    else if (hit.item.kind === 'bounty') this.showCard(bountyCard(this.state), null);
+    else if (hit.item.kind === 'journal' || hit.item.kind === 'bounty') this.openJournal();
     else this.openHero(hit.item.kind === 'stack' ? hit.item.index : null);
   }
 
@@ -1042,35 +1042,35 @@ export class AdventureController implements Screen {
       if (this.steering) this.steer(x, y);
     },
     click: (x: number, y: number) => {
+      const { minimap } = this.scene;
+      if (minimap.onButton(x, y)) return this.toggleMinimap();
       // The press on the minimap has moved the view already.
-      if (this.scene.minimap.contains(x, y)) return;
+      if (minimap.contains(x, y)) return;
       const bar = this.onBar(x, y);
       if (bar) return this.clickBar(bar);
-      const plate = this.onPanel(x, y);
-      if (plate) return this.clickPanel(plate);
       const point = this.view.toMap(x, y);
       if (point) this.clickMap(point);
     },
     look: (x: number, y: number) => {
+      if (this.scene.minimap.onButton(x, y) || this.scene.minimap.contains(x, y)) return;
       const point = this.view.toMap(x, y);
       if (point) this.lookMap(point);
     },
     hover: (x: number, y: number, clientX: number, clientY: number) => {
+      const { minimap } = this.scene;
       const bar = this.onBar(x, y);
       this.hoverBar(bar);
-      const plate = bar ? null : this.onPanel(x, y);
-      this.hoverPanel(plate);
-      if (bar || plate) {
-        const hit = (bar ?? plate)!;
+      minimap.lit = !bar && minimap.onButton(x, y);
+      if (bar) {
         this.resting = null;
-        this.display.canvas.style.cursor = (bar ? this.barClickable(bar) : this.panelClickable()) ? 'pointer' : 'default';
-        this.label.show(barNote(this.state, hit.item), clientX, clientY);
+        this.display.canvas.style.cursor = this.barClickable(bar) ? 'pointer' : 'default';
+        this.label.show(barNote(this.state, bar.item), clientX, clientY);
         return;
       }
-      if (this.scene.minimap.contains(x, y)) {
+      if (minimap.lit || minimap.contains(x, y)) {
         this.resting = null;
         this.display.canvas.style.cursor = 'pointer';
-        this.label.show(this.minimapNote(x, y), clientX, clientY);
+        this.label.show(minimap.lit ? this.minimapButtonNote() : this.minimapNote(x, y), clientX, clientY);
         return;
       }
       const point = this.view.toMap(x, y);
@@ -1105,14 +1105,23 @@ export class AdventureController implements Screen {
     leave: () => {
       this.label.hide();
       this.hoverBar(null);
-      this.hoverPanel(null);
+      this.scene.minimap.lit = false;
       this.resting = null;
     },
     key: (key: string) => {
+      // Tab folds the minimap away and back, whatever else is up, and the browser doesn't move its focus.
+      if (key === 'tab') {
+        this.toggleMinimap();
+        return true;
+      }
       if (this.state.opening) return;
       if (key === 'e' && !this.state.over && !this.state.ambush) this.choose({ type: 'endDay' });
       else if (key === 'h' && !this.state.over && !this.state.ambush) this.openHero();
-      else if (key === '?') this.showCard(keysCard(), null);
+      else if (key === 'j') {
+        // J puts the journal away again, as H does the hero.
+        if (this.reading && this.cards.isOpen) this.hideCard();
+        else this.openJournal();
+      } else if (key === '?') this.showCard(keysCard(), null);
       else if (this.cards.key(key)) return;
       // Space brings the view back to the hero, whenever a card doesn't want it for its button.
       else if (key === ' ') {
@@ -1144,6 +1153,8 @@ export class AdventureController implements Screen {
         return [(box.x0 + box.x1) / 2, (box.y0 + box.y1) / 2 + 6];
       },
       hover: () => this.label.text,
+      /** Whether the minimap is out, or folded away. */
+      minimap: () => this.scene.minimap.shown,
       view: (x: number, y: number) => {
         this.letGo();
         this.view.centreOn(x, y);

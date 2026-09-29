@@ -71,3 +71,28 @@ export function clearSave() {
     // Nothing to clear.
   }
 }
+
+/**
+ * Whether the player has folded the minimap away (Tab, or its button). It's kept apart from the save,
+ * like the sound's settings, so it holds for every campaign; frozen test pages start with it out and
+ * keep nothing.
+ */
+const MINIMAP_KEY = 'kings-commission/minimap';
+
+export function minimapWanted(): boolean {
+  if (!saving) return true;
+  try {
+    return localStorage.getItem(MINIMAP_KEY) !== 'folded';
+  } catch {
+    return true;
+  }
+}
+
+export function keepMinimap(shown: boolean) {
+  if (!saving) return;
+  try {
+    localStorage.setItem(MINIMAP_KEY, shown ? 'out' : 'folded');
+  } catch {
+    // Nowhere to remember it; it still works for now.
+  }
+}

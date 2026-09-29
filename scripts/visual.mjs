@@ -49,6 +49,9 @@ const SCENES = {
   hero: { query: `&hero=wizard&gear=${GEAR}&army=knights:8,archers:22,peasants:40`, steps: ['key:h'], dom: true },
   herostack: { query: `&hero=wizard&gear=${GEAR}&army=knights:8,archers:22,peasants:40`, steps: ['key:h', 'place:stack:0'], dom: true },
   heroleader: { query: `&hero=knight&gear=oldBanner,brannocsLance&army=knights:10,archers:20,peasants:30`, steps: ['key:h', 'place:hero'], dom: true },
+  // The minimap folded away into its button, and the journal with things heard, one of them ticked off (#130).
+  folded: { query: '', steps: ['Knight of the Realm', 'Ride out', 'key:Tab'] },
+  journal: { query: '&hero=knight&flags=tower:journal,pike:false,pikeHome:true,orders:true,poachers:spared', steps: ['key:j'], dom: true },
 };
 const approve = process.argv.includes('--approve');
 const file = 'test/visual.json';

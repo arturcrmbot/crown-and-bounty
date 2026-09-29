@@ -268,7 +268,7 @@ export class Game {
     leave: () => this.top.input.leave(),
     key: (key) => {
       this.skip();
-      this.top.input.key(key);
+      return this.top.input.key(key);
     },
   };
 
@@ -292,6 +292,8 @@ export class Game {
       /** Where the map's view looks: its top left, in map pixels. */
       camera: () => adventure()?.camera() ?? null,
       hover: () => adventure()?.hover() ?? null,
+      /** Whether the map's minimap is out (true), folded away (false), or there's no map (null). */
+      minimap: () => adventure()?.minimap() ?? null,
       screen: () => this.top.name,
       battle: () => (this.top instanceof BattleController ? this.top.debug() : null),
       /** What the hero screen shows, while it's open. */

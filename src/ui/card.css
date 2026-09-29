@@ -356,6 +356,127 @@
   text-align: center;
 }
 
+/* The journal, open at two pages: the commission on the left, its WANTED poster pinned in, and on the
+   right what's been heard on the road, each ticked off in red ink once it has paid off. */
+.kc-card.journal {
+  width: 600px;
+}
+.kc-card.journal .kc-card-body {
+  display: grid;
+  grid-template-columns: 230px 1fr;
+  gap: 0 18px;
+}
+.kc-card .pinned {
+  position: relative;
+  width: 112px;
+  margin: 8px auto 12px;
+  padding: 5px 0 7px;
+  text-align: center;
+  background: linear-gradient(#e2cc98, #c9ad74);
+  border: 1px solid #8c7148;
+  box-shadow: 2px 2px 0 rgba(12, 8, 3, 0.35);
+  transform: rotate(-2deg);
+}
+/* The pin that holds it in, a red diamond. */
+.kc-card .pinned::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  margin-left: -4px;
+  background: #d2432b;
+  border: 1px solid #340808;
+  transform: rotate(45deg);
+}
+.kc-card .pinned b {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 17px;
+  line-height: 1;
+  letter-spacing: 3px;
+  color: #2a1a08;
+}
+.kc-card .pinned .mugshot {
+  position: relative;
+  width: 100px;
+  margin: 0 auto;
+}
+.kc-card .pinned img.portrait {
+  float: none;
+  display: block;
+  margin: 0 auto;
+}
+.kc-card .pinned .stamp {
+  padding: 2px 6px 0 9px;
+  font-size: 22px;
+  letter-spacing: 3px;
+  border-width: 3px;
+}
+.kc-card.journal.unfold .stamp {
+  animation: none;
+}
+.kc-card .heard {
+  padding-left: 17px;
+  border-left: 1px solid #a88652;
+}
+.kc-card .heard h4 {
+  margin: 0 0 8px;
+  font-size: 19px;
+  font-variant: small-caps;
+  letter-spacing: 1px;
+  color: #6e1a0c;
+}
+.kc-card .heard ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.kc-card .heard li {
+  position: relative;
+  margin: 0 0 8px;
+  padding-left: 21px;
+}
+.kc-card .heard .words {
+  font-style: italic;
+}
+.kc-card .heard small {
+  display: block;
+  font-size: 12.5px;
+  line-height: 1.25;
+  color: #5a3e14;
+}
+/* A box to tick, and the tick once it has paid off. */
+.kc-card .heard li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  width: 10px;
+  height: 10px;
+  border: 1px solid #5a3e14;
+  background: rgba(255, 240, 200, 0.35);
+}
+.kc-card .heard li.done {
+  color: #6f5f3f;
+}
+.kc-card .heard li.done::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: -1px;
+  width: 5px;
+  height: 12px;
+  border: solid #b0231a;
+  border-width: 0 3px 3px 0;
+  transform: rotate(40deg);
+}
+.kc-card .heard .none {
+  font-style: italic;
+  color: #5a3e14;
+}
+
 /* Heroes to pick from, side by side: face on top, name, then how he plays. */
 .kc-card.tiled {
   width: 640px;

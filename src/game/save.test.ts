@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ALDMOOR } from '../content/aldmoor';
 import { FENMARCH } from '../content/fenmarch';
 import { beginCommission, newGame } from '../rules/scenario';
-import { clearSave, loadGame, saveGame } from './save';
+import { clearSave, keepMinimap, loadGame, minimapWanted, saveGame } from './save';
 
 /** A localStorage of its own for each test. */
 function storage() {
@@ -65,6 +65,21 @@ describe('saved games', () => {
     expect(loaded.campaign.chapter).toBe(1);
     expect(loaded.day).toBe(9);
     expect(loaded.gold).toBe(4321);
+  });
+
+  it('keeps the minimap folded away apart from the save, and a frozen page starts with it out and keeps nothing', async () => {
+    const values = storage();
+    expect(minimapWanted()).toBe(true);
+    keepMinimap(false);
+    expect(values.get('kings-commission/minimap')).toBe('folded');
+    expect(minimapWanted()).toBe(false);
+    expect([...values.keys()]).toEqual(['kings-commission/minimap']);
+    vi.resetModules();
+    const frozen = await import('./save');
+    frozen.stopSaving();
+    expect(frozen.minimapWanted()).toBe(true);
+    frozen.keepMinimap(true);
+    expect(values.get('kings-commission/minimap')).toBe('folded');
   });
 
   it('does not restore an old campaign after saving and clearing a new one', () => {
