@@ -19,7 +19,7 @@ export function grumbleLine(army: Army, newcomers: readonly TroopId[]): string |
     return all.length > 1 ? `${all.slice(0, -1).join(', ')} and ${all[all.length - 1]}` : all[0];
   };
   const quarrel = fresh.filter((t) => old.some((o) => feuding(o, t)));
-  return `*Your ${names(old)} won\u2019t march happily beside ${names(quarrel)}: all of them would grumble, with ${Math.round(GRUMBLE * 100)}% less morale.*`;
+  return `*Your ${names(old)} won\u2019t march happily beside ${names(quarrel)}: \u2212${Math.round(GRUMBLE * 100)}% morale for all of them.*`;
 }
 
 /** Moves a stack along the army line: onto another, the two swap. Its place sets its row in battle. */

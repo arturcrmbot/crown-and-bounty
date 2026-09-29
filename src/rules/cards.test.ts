@@ -87,7 +87,7 @@ describe('the castle', () => {
   });
 
   it('warns before recruits join companies they won\u2019t march happily beside', () => {
-    const grumble = '*Your Wolves and Wild Boars won\u2019t march happily beside Knights: all of them would grumble, with 10% less morale.*';
+    const grumble = '*Your Wolves and Wild Boars won\u2019t march happily beside Knights: \u221210% morale for all of them.*';
     const wild = { ...knight(), army: [{ troop: 'wolves' as const, count: 10 }, { troop: 'boars' as const, count: 5 }] };
     expect(cardOf(visit(wild, 'castle')).lines).toContain(grumble);
     expect(cardOf(visit(knight(), 'castle')).lines.some((line) => line.includes('grumble'))).toBe(false);
@@ -100,7 +100,7 @@ describe('the castle', () => {
     const ranger: GameState = { ...newGame(1066, ALDMOOR, 'ranger'), opening: undefined };
     const card = cardOf(visit(ranger, 'boars'));
     expect(card.choices.map((c) => c.label)).toContain('Tame as many as you can lead (3 of 9)');
-    expect(card.lines).toContain('*Your Knights and Archers won\u2019t march happily beside Wild Boars: all of them would grumble, with 10% less morale.*');
+    expect(card.lines).toContain('*Your Knights and Archers won\u2019t march happily beside Wild Boars: \u221210% morale for all of them.*');
   });
 });
 
