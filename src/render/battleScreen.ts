@@ -122,6 +122,8 @@ export type BattleView = {
   active: number | null;
   /** A stack under the pointer: the bar shows it instead of the acting one. */
   inspect: number | null;
+  /** Stacks the Courtier would rally if he moved to the hovered hex. */
+  rallyPreview: Set<number>;
   /** What the pointed-at action would do, shown instead of the log. */
   preview: string | null;
   targeting: string | null;
@@ -310,6 +312,18 @@ export class BattleScreen {
       const [ox, oy] = view.offsets.get(f.id) ?? [0, 0];
       this.ring(Math.round(px + ox), Math.round(py + oy + 12));
     }
+    for (const f of shown) {
+      if (f.hero || f.side !== 'player' || !rallyOf(b, f)) continue;
+      const [px, py] = place(f.id, f.at);
+      const [ox, oy] = view.offsets.get(f.id) ?? [0, 0];
+      this.auraRing(Math.round(px + ox), Math.round(py + oy + 12));
+    }
+    for (const f of shown) {
+      if (!view.rallyPreview.has(f.id)) continue;
+      const [px, py] = place(f.id, f.at);
+      const [ox, oy] = view.offsets.get(f.id) ?? [0, 0];
+      this.auraRing(Math.round(px + ox), Math.round(py + oy + 12), true);
+    }
     shown.sort((x, y) => place(x.id, x.at)[1] - place(y.id, y.at)[1]);
     for (const f of shown) {
       const [px, py] = place(f.id, f.at);
@@ -373,6 +387,20 @@ export class BattleScreen {
     const [rx, ry] = [26, 8];
     for (const [grow, colour] of [[1, INK], [-1, GOLD[3]], [0, GOLD[6]]] as const) {
       for (let a = 0; a < Math.PI * 2; a += 0.004) {
+        const x = Math.round(cx + Math.cos(a) * (rx + grow));
+        const y = Math.round(cy + Math.sin(a) * (ry + grow * 0.6));
+        if (y >= MAP_VIEW.y && y < MAP_VIEW.y + MAP_VIEW.height) this.screen.set(x, y, colour);
+      }
+    }
+  }
+
+  /** Gold marks on friendly stacks lifted by the Courtier; dotted gold previews a hovered move. */
+  private auraRing(cx: number, cy: number, preview = false) {
+    const [rx, ry] = [30, 10];
+    const strokes: [number, number][] = preview ? [[0, GOLD[6]]] : [[1, INK], [-1, GOLD[3]], [0, GOLD[6]]];
+    for (const [grow, colour] of strokes) {
+      for (let a = 0; a < Math.PI * 2; a += 0.004) {
+        if (preview && Math.floor(a * 18) % 2) continue;
         const x = Math.round(cx + Math.cos(a) * (rx + grow));
         const y = Math.round(cy + Math.sin(a) * (ry + grow * 0.6));
         if (y >= MAP_VIEW.y && y < MAP_VIEW.y + MAP_VIEW.height) this.screen.set(x, y, colour);

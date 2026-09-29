@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { STATUSES, type StatusDef, type StatusId } from '../../content/spells';
 import { TROOPS } from '../../content/troops';
 import { autoResolve, chooseAction, finishEstimate } from './ai';
-import { activeFighter, battleAct, createBattle, enemyReach, fighterById, isCharge, options, QUIET_ROUNDS, skillFactor, spellDamage, statsOf, strike, wound, type BattleHero, type BattleEvent, type BattleState } from './battle';
+import { activeFighter, battleAct, createBattle, enemyReach, fighterById, isCharge, options, QUIET_ROUNDS, rallyTargets, skillFactor, spellDamage, statsOf, strike, wound, type BattleHero, type BattleEvent, type BattleState } from './battle';
 import { colOf, distance, hexIndex, neighbours, reachable } from './hex';
 
 const hero: BattleHero = { attack: 1, defence: 1, spellPower: 2, mana: 20, spells: ['bolt', 'bless', 'slow'], castRound: 0 };
@@ -68,6 +68,33 @@ describe('a battle', () => {
     expect(fighterById(shot.battle, 0).shots).toBe(11);
     const pinned = { ...ready, fighters: ready.fighters.map((f) => (f.side === 'enemy' ? { ...f, at: hexIndex(1, 4) } : f)) };
     expect(options(pinned).shoot).toEqual([]);
+  });
+
+  it('previews the friends a Courtier would rally from another hex', () => {
+    const b = createBattle({
+      place: 'test',
+      seed: 7,
+      player: [{ troop: 'knights', count: 10 }, { troop: 'archers', count: 10 }],
+      enemy: [{ troop: 'wolves', count: 10 }],
+      hero: { ...hero, unit: { troop: 'heroCourtier', hp: 55, damage: [6, 10] } },
+      obstacles: 0,
+    });
+    const source = b.fighters.find((f) => f.hero)!;
+    const destination = hexIndex(2, 4);
+    const [near, enemyNear] = neighbours(destination);
+    const friends = b.fighters.filter((f) => f.side === 'player' && !f.hero);
+    const enemy = b.fighters.find((f) => f.side === 'enemy')!;
+    const positioned = {
+      ...b,
+      fighters: b.fighters.map((f) =>
+        f.id === friends[0].id ? { ...f, at: near } :
+        f.id === friends[1].id ? { ...f, at: hexIndex(8, 8) } :
+        f.id === enemy.id ? { ...f, at: enemyNear } : f,
+      ),
+    };
+
+    expect(rallyTargets(positioned, source, destination).map((f) => f.id)).toEqual([friends[0].id]);
+    expect(rallyTargets(positioned, { ...source, count: 0 }, destination)).toEqual([]);
   });
 
   it('lets trolls heal half the top troll\u2019s health at the start of their turn', () => {

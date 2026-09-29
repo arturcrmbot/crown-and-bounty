@@ -2,7 +2,7 @@ import { needsTarget, SPELLS, STATUSES, type SpellId } from '../content/spells';
 import { TROOPS, troops } from '../content/troops';
 import { chooseAction, finishEstimate } from '../rules/battle/ai';
 import { manaInBattle } from '../rules/heroSheet';
-import { activeFighter, battleAct, canCast, casterOf, castsLeft, chargeOf, CHARGE_BONUS, fighterById, heroOnField, isCharge, options, spellCost, spellDamage, spellsOf, spellVictims, strike, unitOf, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
+import { activeFighter, battleAct, canCast, casterOf, castsLeft, chargeOf, CHARGE_BONUS, fighterById, heroOnField, isCharge, options, rallyTargets, spellCost, spellDamage, spellsOf, spellVictims, strike, unitOf, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
 import { paintBanner } from '../render/banner';
 import { BattleScreen, BUTTONS, FIRE_FALL, FLOAT_RISE, hexAt, hexCentre, LOG_BOTTOM, type BattleView, type Shot } from '../render/battleScreen';
 import { animLength, bodyHeight, hitTime, type AnimName } from '../render/battleSprites';
@@ -85,6 +85,7 @@ export class BattleController implements Screen {
       log: 'To battle! Click a hex to move, or an enemy to attack.',
       active: activeFighter(battle)?.id ?? null,
       inspect: null,
+      rallyPreview: new Set(),
       preview: null,
       targeting: null,
       time: 0,
@@ -471,6 +472,7 @@ export class BattleController implements Screen {
     this.view.finishOffer = false;
     this.view.targeting = null;
     this.view.hover = null;
+    this.view.rallyPreview.clear();
     this.hooks.onChange(battle);
     this.animate(events, before);
     return true;
@@ -818,6 +820,10 @@ export class BattleController implements Screen {
     const hex = hexAt(x, y);
     const intent = hex === null ? null : this.intent(hex, x, y);
     this.view.hover = intent && hex !== null ? { hex, kind: intent.kind } : null;
+    const active = activeFighter(this.battle);
+    this.view.rallyPreview = intent?.kind === 'move' && active?.troop === 'heroCourtier' && hex !== null
+      ? new Set(rallyTargets(this.battle, active, hex).map((f) => f.id))
+      : new Set();
     this.view.inspect = hex === null ? null : (this.battle.fighters.find((f) => f.count > 0 && f.at === hex)?.id ?? null);
     const under = this.view.inspect === null ? null : fighterById(this.battle, this.view.inspect);
     this.view.preview = intent ? this.forecast(intent.action) : under?.book ? this.bookLine(under.id) : null;
@@ -947,6 +953,7 @@ export class BattleController implements Screen {
       this.view.hover = null;
       this.view.inspect = null;
       this.view.preview = null;
+      this.view.rallyPreview.clear();
     },
     key: (key: string) => {
       if (key === 'escape') {
