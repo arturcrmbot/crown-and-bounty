@@ -58,15 +58,16 @@ export function tone(ctx: BaseAudioContext, dest: AudioNode, at: number, frequen
   o.stop(at + length + 0.02);
 }
 
-/** A burst of noise through a filter, that starts at once (or over `attack`) and dies away: thumps, knocks, hisses. */
-export function burst(ctx: BaseAudioContext, dest: AudioNode, at: number, length: number, type: BiquadFilterType, frequency: number, volume: number, sweep = 1, q = 1, attack = 0) {
+/**
+ * A burst of noise through a filter, that comes in over `attack` (2 ms: sharp, but without the click
+ * of a sudden edge) and dies away: thumps, knocks, hisses.
+ */
+export function burst(ctx: BaseAudioContext, dest: AudioNode, at: number, length: number, type: BiquadFilterType, frequency: number, volume: number, sweep = 1, q = 1, attack = 0.002) {
   const source = noiseFrom(ctx, at, length);
   const f = filter(ctx, type, frequency, q, at, frequency * sweep, at + length);
   const g = ctx.createGain();
-  if (attack > 0) {
-    g.gain.setValueAtTime(0.0001, at);
-    g.gain.exponentialRampToValueAtTime(volume, at + attack);
-  } else g.gain.setValueAtTime(volume, at);
+  g.gain.setValueAtTime(0.0001, at);
+  g.gain.exponentialRampToValueAtTime(volume, at + Math.min(attack, length / 2));
   g.gain.exponentialRampToValueAtTime(0.0001, at + length);
   source.connect(f).connect(g).connect(dest);
 }
