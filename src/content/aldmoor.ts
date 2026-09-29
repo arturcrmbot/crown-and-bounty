@@ -66,6 +66,35 @@ const PIKES_CAMP: Location = {
   text: { about: ['The Baron\u2019s old patrol, camped on Westmere green, where their mothers can keep an eye on them.', 'Swordsmen, for hire.'] },
 };
 
+/**
+ * Grimsby and his guard, riding out of the stockade's gate when the King's man hurts him (see the
+ * hideout's `sortie`). He comes for the hero along the roads on his best pony, whatever the odds, as
+ * far as the heath and the old bridge, and goes home when he can't find him.
+ */
+const GRIMSBY_RIDES: Location = {
+  id: 'grimsby',
+  kind: 'patrol',
+  name: 'Grimsby and his Guard',
+  at: [298, 2168],
+  done: false,
+  enemy: {
+    look: 'soldiers',
+    behaviour: 'hunt',
+    bold: true,
+    range: 1200,
+    sight: 1800,
+    pace: 80,
+    patience: 7,
+    lines: ['Baron Grimsby on his best pony, the goose under one arm and his guard at his back. He has come out to teach the King\u2019s man a lesson.'],
+    army: [],
+    reward: 400,
+    threat: '*"There he is!"* shouts the Baron, pointing with the goose. *"Get him!"*',
+    lastWords: 'A strategic retreat! Hold on tight, goose!',
+    flees: 'The Baron gallops home to his stockade, the goose under his arm and his guard nowhere at all.',
+    loot: 'In the mud where he turned his pony: {gold}, the guard\u2019s pay.',
+  },
+};
+
 /** What Old Nan does for the King's man, whatever else she has told him: her charms, for gold or a wolf pelt. */
 const NAN_CHARMS: ContentChoice[] = [
   {
@@ -649,6 +678,15 @@ export const ALDMOOR: Province = {
         army: [{ troop: 'swordsmen', count: 46 }, { troop: 'crossbowmen', count: 24 }, { troop: 'baron', count: 1 }],
         reward: 2000,
         threat: 'The Baron shouts from the palisade: *"I have the goose AND the walls!"*',
+        // Raid his dig, or take his patrol off the bridge, and he rides out with a third of his men to meet you.
+        sortie: {
+          when: [{ flag: 'dig', is: 'raided' }, { flag: 'patrolGone' }, { flag: 'pikeHome' }],
+          guard: 0.35,
+          band: GRIMSBY_RIDES,
+          barred: ['The gate is barred, and for once nobody inside is honking.', '*"The Baron\u2019s out!"* shouts a sentry over the palisade. *"Looking for you, as it happens. He took the goose."*'],
+          out: 'Word on the road: **Baron Grimsby** has ridden out of his stockade with his guard, looking for you.',
+          home: 'Word on the road: **Baron Grimsby** has given up looking for you, and gone home to his stockade.',
+        },
         parleys: [
           {
             id: 'goose',

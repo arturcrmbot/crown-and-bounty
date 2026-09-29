@@ -27,11 +27,18 @@ async function settle() {
 }
 const learned = [];
 
-/** Closes the card, then deals with any level-up it was hiding. */
+/** Closes the card, then deals with any level-up it was hiding. An enemy that falls on the camp at dawn is left to the sergeants. */
 async function close() {
+  if ((await kc.title())?.endsWith('ambush!')) {
+    const who = (await kc.lines()).match(/At first light, (.+?) fall on your camp/)?.[1];
+    await kc.choose('Let the sergeants');
+    ambushes.push({ who, day: (await kc.state()).day, title: await kc.title(), lines: await kc.lines() });
+  }
   await kc.choose('Close');
   await settle();
 }
+/** Who fell on the camp, when, and how it went. */
+const ambushes = [];
 
 /**
  * Takes on an enemy the way a patient player would: ride up, and if the sergeants don't like the
@@ -249,6 +256,27 @@ try {
   // Explored and grown: back to the patrol, the wolves, and Grimsby, each when the sergeants like the odds.
   check((await beatWhenReady('patrol')) === 'Victory!', 'once explored, the sergeants beat the patrol');
   await close();
+  // Taking his patrol off the bridge hurts Grimsby: he rides out with his guard to meet the hero, and
+  // falls on his camp. Beaten in the open, he flees home to his stockade, without his guard.
+  const byGrimsby = () => ambushes.find((a) => a.who === 'Grimsby and his Guard');
+  for (let night = 0; night < 8 && !byGrimsby(); night++) {
+    await settle();
+    const day = (await kc.state()).day;
+    await page.keyboard.press('e');
+    await page.waitForFunction((d) => window.__kc.state().day > d, day, { timeout: 10_000 }).catch(() => {});
+    await page.waitForTimeout(400);
+    await close();
+  }
+  const met = byGrimsby();
+  const now = await kc.state();
+  const band = now.locations.find((l) => l.id === 'grimsby');
+  const why = band ? `his band ${band.done ? 'went home' : `is at ${band.at.map(Math.round)}`}` : 'he never rode out';
+  check(Boolean(met), `Grimsby rides out once his patrol is beaten, and falls on the camp${met ? ` on day ${met.day}` : `: he never came (${why}; Aldric at ${now.hero.at.map(Math.round)})`}`);
+  if (met) {
+    check(met.title === 'Victory!' && met.lines.includes('Baron Grimsby flees home'), `beaten in the open, Grimsby flees home to his stockade (${met.title})`);
+    const stockade = (await kc.state()).locations.find((l) => l.id === 'hideout');
+    check(stockade.enemy.humbled && stockade.enemy.army.some((s) => s.troop === 'baron'), 'and stays behind his walls, without his guard');
+  }
   check((await kc.state()).locations.some((l) => l.id === 'deserters'), 'deserters make camp by the crossroads');
   await go('deserters', 'Visit');
   check(await kc.choose('Recruit'), 'the deserters\u2019 camp offers swordsmen');
@@ -318,6 +346,7 @@ try {
   await kc.begin();
   await kc.choose('New campaign');
   check((await kc.title()) === 'King Osric' && (await kc.state()).campaign.chapter === 0, 'a new campaign starts over with the King');
+  if (ambushes.length) console.log(`     ambushed: ${ambushes.map((a) => `${a.who} on day ${a.day} (${a.title})`).join(', ')}`);
   check(errors.length === 0, `no page errors${errors.length ? `: ${errors.join(' | ')}` : ''}`);
 } catch (error) {
   check(false, String(error));

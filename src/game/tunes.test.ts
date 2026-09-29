@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ALDMOOR } from '../content/aldmoor';
 import { FENMARCH } from '../content/fenmarch';
-import { startFight } from '../rules/game';
+import { endDay, startFight } from '../rules/game';
 import { beginCommission, newGame } from '../rules/scenario';
 import { battleMood, battleTune, lairTune, provinceTune, villainTune } from './tunes';
 
@@ -25,6 +25,15 @@ describe('which tune plays', () => {
     // Once the villain is taken, his lair is quiet.
     const won = { ...aldmoor, locations: aldmoor.locations.map((l) => (l.id === stockade.id ? { ...l, done: true } : l)) };
     expect(lairTune(won, stockade.at)).toBeNull();
+  });
+
+  it("Grimsby's march rides out with him, and leaves his stockade quiet", () => {
+    const s = { ...newGame(7, ALDMOOR, 'knight'), opening: undefined };
+    const out = endDay({ ...s, flags: { dig: 'raided' }, hero: { ...s.hero, at: [700, 530] } }).state;
+    const band = out.locations.find((l) => l.id === 'grimsby')!;
+    const stockade = out.locations.find((l) => l.kind === 'hideout')!;
+    expect(lairTune(out, band.at)).toBe('grimsby');
+    expect(lairTune(out, [stockade.at[0] + 80, stockade.at[1] + 60])).toBeNull();
   });
 
   it('a battle builds, and knows who is winning', () => {

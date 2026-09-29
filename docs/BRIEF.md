@@ -285,3 +285,21 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   (`patrolGone`, or `pikeHome`). A new player's pace: the bot, which knows where everything is, wins by day 11 to 14 at
   the median; the scripted play-through, waiting for paydays, on day 15; a player who explores in the fog and goes the
   wrong way now and then should take about three weeks. That is an estimate, not a measurement.
+- **Grimsby rides out (29 Sep, #75):** hurt Grimsby and he comes out to meet you, as the heroes do in HoMM. Raid his dig
+  on the heath, or take his patrol off the bridge (beaten, paid off, sent back with his orders, or home with Pike), and
+  the first night Aldric is within his reach he rides out of his stockade on his best pony, the goose under one arm and a
+  third of his men at his back (his guard). The dawn says so, and the mist lifts round him as he comes: 80 a night along
+  the roads (Aldric rides 150 a day), round his own wolves, as far as the heath and the old bridge, whatever the odds. He
+  falls on the camp at dawn as the hunters do, with a day's warning, and never comes into a town. While he's out, his
+  gate is barred ("for once nobody inside is honking"), and the men he left won't open it. Beat his guard, when he falls
+  on you or when you ride out to him, and he flees home without it: the field and the card say "Their army is beaten, and
+  Baron Grimsby flees home", and he turns and runs off the field. Beaten once, he stays behind his walls, a third weaker.
+  If he can't find Aldric (over the river, behind a town's walls, a ranger in the woods, or after a week of looking), he
+  rides home with his guard, and the next hurt sends him out again. On the map he's himself, the Grand Marshal in a red
+  ring, and his march plays near him instead of at his empty stockade. It's data: a villain's `sortie` (the story flags
+  that hurt him, the share that rides with him, his band and its words), and his band is a `bold` hunter with a `sight`,
+  `pace` and `patience` of its own. A hunter now makes for Aldric himself and stops short of him, so one waiting on the
+  bridge is met on it, not by the long way round. The bot still wins Aldmoor with every background; Grimsby rides out in
+  every run (64 of 64 over sixteen seeds) and is beaten in the open in most, which weakens the stockade, so the bot wins a
+  day sooner at the median (knight 12, wizard 9, ranger 11, courtier 11, against 13, 10, 12 and 11) and its worst runs are
+  shorter. The difficulty tiers don't move.
