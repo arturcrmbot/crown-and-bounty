@@ -9,7 +9,7 @@ import { clickable, paintHud, type HudHit } from '../render/hud';
 import { Panel, type PanelHit } from '../render/panel';
 import { ART, heroArtId } from '../render/units';
 import type { BattleState } from '../rules/battle/battle';
-import { ambushCard, apply, bountyCard, commissionOf, describe, finishFight, heroStats, levelUpCard, locationById, placeNote, roman, visit, whenThere, type Action, type Card, type GameEvent, type GameState, type Result } from '../rules/game';
+import { ambushCard, apply, bountyCard, commissionOf, describe, finishFight, heroStats, levelUpCard, locationById, placeNote, roman, VANISHES, visit, whenThere, type Action, type Card, type GameEvent, type GameState, type Result } from '../rules/game';
 import { barNote } from '../rules/heroSheet';
 import type { Point } from '../rules/map/geometry';
 import { CELL, cellCentre, type MapModel, type Terrain } from '../rules/map/model';
@@ -32,6 +32,7 @@ import { backgroundCard, endCard, keysCard, storyCard } from './intro';
 import { clearSave, saveGame } from './save';
 import { Walks } from './walks';
 import { tiredResult } from './adventureCards';
+import { doorsOf, hiddenShare, HIDES, reachOf, type Reach } from './doors';
 
 type HintId = Extract<Action, { type: 'hint' }>['id'];
 
@@ -95,10 +96,19 @@ export class AdventureController implements Screen {
   private visiting: string | null = null;
   /** Where the hero is drawn; it chases his cell in the rules. */
   private readonly drawn: { x: number; y: number };
+  /** How far his figure reaches from his feet, worked out once for each figure he takes. */
+  private figure: { sprite: Bitmap; reach: Reach } | null = null;
   private travelled = 0;
   private sinceDust = 0;
   private sinceStep = 0;
   private follow = false;
+  /** A point the view glides to (a card's, out of sight when it opened), unless it's following the hero. */
+  private focus: Point | null = null;
+  /**
+   * A route that ran on past nightfall: he rides on at dawn, once the day's card is put away and no
+   * enemy is falling on his camp, and the view goes with him.
+   */
+  private dawnRide = false;
   private tiredShown = false;
   private cardAnchor: Point | null = null;
   private hudMovement = -1;
@@ -113,9 +123,9 @@ export class AdventureController implements Screen {
   private steering = false;
   /**
    * What the pointer rests on, open ground or a place: after a moment, its label adds how long the
-   * ride there is. `name` is the place's label without it.
+   * ride there is. `name` is the place's label without it; `place` the place, whose door he rides to.
    */
-  private resting: { key: string; point: Point; approach: boolean; name: string | null; client: [number, number]; still: number; text?: string; asOf?: string } | null = null;
+  private resting: { key: string; point: Point; approach: boolean; place?: string; name: string | null; client: [number, number]; still: number; text?: string; asOf?: string } | null = null;
   /** "Start over?" is on screen: a second Start a new campaign really does. */
   private restartAsked = false;
   /** The place whose card is open because the player clicked it: a second click there goes to it. */
@@ -270,12 +280,21 @@ export class AdventureController implements Screen {
     this.restartAsked = false;
     this.label.hide();
     this.cards.show(card);
+    // A card about something out of sight brings the view to it, so it never opens about nothing.
+    if (at && !this.inView(at)) this.focus = at;
+  }
+
+  /** Whether a map point is in the view. */
+  private inView([x, y]: Point) {
+    const { camera } = this.view;
+    return x >= camera.x && x < camera.x + VIEW.width && y >= camera.y && y < camera.y + VIEW.height;
   }
 
   hideCard() {
     this.looking = null;
     this.cardPlace = null;
     this.restartAsked = false;
+    this.focus = null;
     this.cards.hide();
   }
 
@@ -384,6 +403,8 @@ export class AdventureController implements Screen {
           this.tiredShown = false;
           this.nightfall = 0;
           this.sinceDawn = 0;
+          // Yesterday's route still ahead: he rides on (see `ride`).
+          this.dawnRide = this.route.length > 0;
           play('day');
           if (e.payday) sting('payday');
           // A quiet dawn has no card: the new day's number rises off the hero as the light comes back.
@@ -404,6 +425,7 @@ export class AdventureController implements Screen {
           this.view.effects.puff(e.at[0], e.at[1], 'dust');
           this.route = [];
           this.target = null;
+          this.dawnRide = false;
           this.follow = true;
           break;
         case 'enemyMoved':
@@ -535,18 +557,22 @@ export class AdventureController implements Screen {
     }
   }
 
-  /** Plots a route to `target`. With `visitId`, the hero visits that place when he gets there. */
+  /** Plots a route to `target`. With `visitId`, the hero visits that place when he gets there, from its door (see `doorOf`). */
   plan(target: Point, visitId: string | null) {
     const facing = visitId ? locationById(this.state, visitId) : null;
-    const route = planRoute(this.state, this.map, target, Boolean(facing?.enemy && !facing.done));
+    const approach = Boolean(facing?.enemy && !facing.done);
+    const to = visitId && !approach ? this.doorOf(visitId) : target;
+    const route = planRoute(this.state, this.map, to, approach);
     if (!route) {
       this.showCard({ title: 'No way through', lines: ['Not even a goat could get there from here.'], choices: [] }, target);
       return;
     }
     this.route = route;
-    this.target = route.length ? target : null;
+    this.target = route.length ? to : null;
     this.visiting = visitId;
     this.follow = true;
+    this.focus = null;
+    this.dawnRide = false;
     this.tiredShown = false;
     if (route.length) {
       const taught = this.teach(
@@ -577,6 +603,44 @@ export class AdventureController implements Screen {
     this.visiting = null;
     this.target = null;
     this.run(this.teach(visit(this.state, id), 'place', '**Hint.** Click Aldric, or press **H**, whenever you want his gear and army.'));
+  }
+
+  /** How far the hero's figure reaches from his feet, as he looks now. */
+  private heroReach(): Reach {
+    const sprite = this.scene.hero.idle[0];
+    if (this.figure?.sprite !== sprite) this.figure = { sprite, reach: reachOf(sprite, this.scene.hero.foot) };
+    return this.figure.reach;
+  }
+
+  /** Where a route ends: the cell he'd stop in, or where he stands if he's there already. */
+  private routeEnd(route: number[]): Point {
+    return route.length ? cellCentre(this.map, route[route.length - 1]) : this.state.hero.at;
+  }
+
+  /**
+   * Where the hero stands to visit a place. Where the rules would stop him, in front of it, he would
+   * hide a shrine, a cottage or a signpost under his hat or his horse; then he waits beside it
+   * instead, at its door as HoMM2's heroes do, on whichever side is the shorter ride, so that it
+   * still shows and a click on it still opens its card. A castle's gate hides nothing much; enemies
+   * he rides up to, and treasure he picks up, are as the rules have them.
+   */
+  private doorOf(id: string): Point {
+    const place = locationById(this.state, id);
+    const box = this.scene.hitboxes.find((b) => b.id === id);
+    if (!box || (place.enemy && !place.done) || VANISHES.has(place.kind)) return place.at;
+    const figure = this.heroReach();
+    const there = planRoute(this.state, this.map, place.at);
+    if (!there || hiddenShare(box, figure, this.routeEnd(there)) < HIDES) return place.at;
+    let best: { at: Point; cost: number } | null = null;
+    for (const door of doorsOf(box, place.at[1], figure)) {
+      const route = planRoute(this.state, this.map, door);
+      const end = route && this.routeEnd(route);
+      // A door that's blocked (a tree, the river) sends him somewhere else: that's no door.
+      if (!route || !end || Math.hypot(end[0] - door[0], end[1] - door[1]) > CELL * 1.5 || hiddenShare(box, figure, end) >= HIDES) continue;
+      const cost = route.length ? routeCosts(this.state, this.map, route)[route.length - 1] : 0;
+      if (!best || cost < best.cost) best = { at: end, cost };
+    }
+    return best?.at ?? place.at;
   }
 
   // --- Each frame -------------------------------------------------------------------------
@@ -623,7 +687,7 @@ export class AdventureController implements Screen {
     const dx = (held.has('arrowright') || held.has('d') ? 1 : 0) - (held.has('arrowleft') || held.has('a') ? 1 : 0);
     const dy = (held.has('arrowdown') || held.has('s') ? 1 : 0) - (held.has('arrowup') || held.has('w') ? 1 : 0);
     if (dx || dy) {
-      this.follow = false;
+      this.letGo();
       this.view.scrollTo(this.view.camera.x + dx * SCROLL_SPEED, this.view.camera.y + dy * SCROLL_SPEED);
     }
     // Shift gallops: three times the pace, for long rides.
@@ -650,6 +714,14 @@ export class AdventureController implements Screen {
       const k = Math.min(1, dt * 2.5);
       this.view.scrollTo(this.view.camera.x + (tx - this.view.camera.x) * k, this.view.camera.y + (ty - this.view.camera.y) * k);
       if (!walking && Math.hypot(tx - this.view.camera.x, ty - this.view.camera.y) < 2) this.follow = false;
+    } else if (this.focus) {
+      // Gliding to a card's point: there, or as near as the map's edge lets the view come.
+      const { camera, tiles } = this.view;
+      const tx = Math.max(0, Math.min(tiles.width - VIEW.width, this.focus[0] - VIEW.width / 2));
+      const ty = Math.max(0, Math.min(tiles.height - VIEW.height, this.focus[1] - VIEW.height / 2 - 20));
+      const k = Math.min(1, dt * 2.5);
+      this.view.scrollTo(camera.x + (tx - camera.x) * k, camera.y + (ty - camera.y) * k);
+      if (Math.hypot(tx - camera.x, ty - camera.y) < 2) this.focus = null;
     }
     if (Math.floor(this.state.movement) !== this.hudMovement) this.repaintHud();
     this.paintMinimap();
@@ -663,9 +735,15 @@ export class AdventureController implements Screen {
     this.scene.minimap.paint(this.view.frame, this.state.locations, [this.drawn.x, this.drawn.y], { x: camera.x, y: camera.y, width: VIEW.width, height: VIEW.height });
   }
 
+  /** The player looks around for himself: the view stops following the hero, or gliding to a card. */
+  private letGo() {
+    this.follow = false;
+    this.focus = null;
+  }
+
   /** Looks at the part of the map under a point of the minimap, as a press or a drag on it does. */
   private steer(x: number, y: number) {
-    this.follow = false;
+    this.letGo();
     this.resting = null;
     this.view.centreOn(...this.scene.minimap.toMap(x, y));
     this.paintMinimap();
@@ -691,7 +769,7 @@ export class AdventureController implements Screen {
     if (r.still < (r.text ? 0.3 : 0.15)) return;
     r.still = 0;
     r.asOf = asOf;
-    const days = daysAway(this.state, this.map, r.point, r.approach);
+    const days = daysAway(this.state, this.map, r.place && !r.approach ? this.doorOf(r.place) : r.point, r.approach);
     if (r.name) r.text = `${r.name} \u00b7 ${days === null ? 'no way through yet' : whenThere(days)}`;
     else r.text = days === null ? 'No way through' : `Ride here: ${whenThere(days)}`;
     this.label.show(r.text, r.client[0], r.client[1]);
@@ -703,13 +781,25 @@ export class AdventureController implements Screen {
     return Math.hypot(x - this.drawn.x, y - this.drawn.y) > 0.5;
   }
 
+  /**
+   * Whether yesterday's route still waits at dawn: for the day's card to be put away, and for any
+   * enemy falling on the camp to be dealt with. When he rides on, the view goes with him.
+   */
+  private dawnWaits(): boolean {
+    if (!this.dawnRide) return false;
+    if (this.cards.isOpen || this.state.ambush) return true;
+    this.dawnRide = false;
+    this.follow = true;
+    return false;
+  }
+
   /** Moves the drawn hero towards his cell, and steps the rules on as soon as he gets close. */
   private ride(dt: number) {
     let budget = this.speed * dt;
     for (let guard = 0; guard < 64 && budget > 0; guard++) {
       const [tx, ty] = this.state.hero.at;
       const d = Math.hypot(tx - this.drawn.x, ty - this.drawn.y);
-      if (d < 2.5 && this.route.length > 0) {
+      if (d < 2.5 && this.route.length > 0 && !this.dawnWaits()) {
         const step = stepAlong(this.state, this.map, this.route);
         if (step) {
           this.state = step.state;
@@ -786,7 +876,10 @@ export class AdventureController implements Screen {
     const inside = (b: { x0: number; y0: number; x1: number; y1: number }) => a && a[0] >= b.x0 && a[0] < b.x1 && a[1] >= b.y0 && a[1] < b.y1;
     // What the card is about: the place (or the hero) its anchor is on, or a little space round the point.
     const place = a && this.scene.hitboxes.filter((b) => inside(b)).reduce<Hitbox | null>((front, b) => (!front || b.y1 > front.y1 ? b : front), null);
-    const box = !a ? heroBox : inside(heroBox) ? heroBox : (place ?? { x0: a[0] - 12, y0: a[1] - 12, x1: a[0] + 12, y1: a[1] + 12 });
+    // A place he waits beside, at its door: the card keeps clear of him too.
+    const byHim = place && place.x0 <= heroBox.x1 + 8 && place.x1 >= heroBox.x0 - 8 && place.y0 <= heroBox.y1 && place.y1 >= heroBox.y0;
+    const about = byHim ? { x0: Math.min(place.x0, heroBox.x0), y0: Math.min(place.y0, heroBox.y0), x1: Math.max(place.x1, heroBox.x1), y1: Math.max(place.y1, heroBox.y1) } : place;
+    const box = !a ? heroBox : inside(heroBox) ? heroBox : (about ?? { x0: a[0] - 12, y0: a[1] - 12, x1: a[0] + 12, y1: a[1] + 12 });
     const from = this.display.toPage(VIEW.x + box.x0 - camera.x, VIEW.y + box.y0 - camera.y);
     const to = this.display.toPage(VIEW.x + box.x1 - camera.x, VIEW.y + box.y1 - camera.y);
     const sides = { left: this.display.toPage(VIEW.x, 0).x, right: this.display.toPage(VIEW.x + VIEW.width, 0).x };
@@ -797,8 +890,9 @@ export class AdventureController implements Screen {
 
   /**
    * The place (or the hero) under a map point, front-most first. A place the hero stands in front of
-   * is still the hero; one drawn in front of him (lower on the map) takes the click. So does the
-   * enemy he has ridden up to (`here`), even behind him: a click there brings its fight card back.
+   * is still the hero, unless he hides most of it; one drawn in front of him (lower on the map) takes
+   * the click. So does the enemy he has ridden up to (`here`), even behind him: a click there brings
+   * its fight card back.
    */
   private under([x, y]: Point): { id: string; name: string; box?: Hitbox; fogged?: boolean; here?: boolean } | null {
     const h = this.scene.hero.object;
@@ -814,6 +908,9 @@ export class AdventureController implements Screen {
     const facing = this.moving() ? null : facingEnemy(this.state);
     const behind = onHero && inFront.length === 0 && facing ? hits.find((b) => b.id === facing.id) : undefined;
     if (behind) return { id: behind.id, name: placeNote(this.state, behind.id), box: behind, here: true };
+    // A place he stands in front of and hides (he rode to the ground before it, not to its door) is still there to point at, through him.
+    const hidden = onHero && inFront.length === 0 && !this.moving() ? hits.find((b) => hiddenShare(b, this.heroReach(), [this.drawn.x, this.drawn.y]) >= HIDES) : undefined;
+    if (hidden) return { id: hidden.id, name: placeNote(this.state, hidden.id), box: hidden };
     if (onHero && inFront.length === 0) return { id: 'hero', name: `${BACKGROUNDS[this.state.hero.background].short} \u00b7 ${this.moving() ? 'click (or Esc) to stop here' : 'click (or H) for his gear and army'}` };
     if (hits.length === 0) return null;
     const box = hits.reduce((front, b) => (b.y1 > front.y1 ? b : front));
@@ -893,6 +990,7 @@ export class AdventureController implements Screen {
     this.route = [];
     this.target = null;
     this.visiting = null;
+    this.dawnRide = false;
   }
 
   /** The hero screen: who he is, what he carries, his army. H, a click on him, or the bar's army and mana open it. */
@@ -965,7 +1063,7 @@ export class AdventureController implements Screen {
       const place = thing?.box && !thing.fogged ? locationById(this.state, thing.id) : null;
       const key = place ? `place:${place.id}` : !thing && point ? `cell:${Math.floor(point[1] / 8) * this.map.width + Math.floor(point[0] / 8)}` : null;
       if (!key) this.resting = null;
-      else if (this.resting?.key !== key) this.resting = { key, point: place ? place.at : point!, approach: Boolean(place?.enemy && !place.done), name: thing?.name ?? null, client: [clientX, clientY], still: 0 };
+      else if (this.resting?.key !== key) this.resting = { key, point: place ? place.at : point!, approach: Boolean(place?.enemy && !place.done), place: place?.id, name: thing?.name ?? null, client: [clientX, clientY], still: 0 };
       else this.resting.client = [clientX, clientY];
       const known = this.resting?.text && !again ? this.resting.text : null;
       if (known) this.label.show(known, clientX, clientY);
@@ -974,11 +1072,11 @@ export class AdventureController implements Screen {
     },
     drag: (dx: number, dy: number, x: number, y: number) => {
       if (this.steering) return this.steer(x, y);
-      this.follow = false;
+      this.letGo();
       this.view.scrollTo(this.view.camera.x - dx, this.view.camera.y - dy);
     },
     wheel: (dx: number, dy: number) => {
-      this.follow = false;
+      this.letGo();
       this.view.scrollTo(this.view.camera.x + dx, this.view.camera.y + dy);
       // The ground under the pointer has moved: its label comes back when the pointer does.
       this.resting = null;
@@ -996,14 +1094,16 @@ export class AdventureController implements Screen {
       else if (key === 'h' && !this.state.over && !this.state.ambush) this.openHero();
       else if (key === '?') this.showCard(keysCard(), null);
       else if (this.cards.key(key)) return;
-      // Space with no card up brings the view back to the hero.
-      else if (key === ' ' && !this.cards.isOpen) this.follow = true;
-      else if (key === 'escape') {
+      // Space brings the view back to the hero, whenever a card doesn't want it for its button.
+      else if (key === ' ') {
+        this.focus = null;
+        this.follow = true;
+      } else if (key === 'escape') {
         // Esc puts a card away, or with none up, reins in.
         if (this.cards.isOpen) this.hideCard();
         else this.stop();
       }
-      else if (key.startsWith('arrow') || 'wasd'.includes(key)) this.follow = false;
+      else if (key.startsWith('arrow') || 'wasd'.includes(key)) this.letGo();
     },
   } satisfies ConstructorParameters<typeof Input>[1];
 
@@ -1025,7 +1125,7 @@ export class AdventureController implements Screen {
       },
       hover: () => this.label.text,
       view: (x: number, y: number) => {
-        this.follow = false;
+        this.letGo();
         this.view.centreOn(x, y);
       },
       /** Where the view looks on the map: its top left, in map pixels. */
