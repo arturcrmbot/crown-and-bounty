@@ -1116,6 +1116,61 @@ export function lodge(): Bitmap {
   return shaped;
 }
 
+/** Where the grain cart's wheel and the ox's hooves meet the ground, from the top of its sprite. */
+export const CART_GROUND = 37;
+
+/**
+ * Westmere's grain cart on its way west to Grimsby's stockade: an ox in the shafts, a two-wheeled
+ * cart piled with sacks of grain, and its wheel.
+ */
+export function grainCart(): Bitmap {
+  const sprite = new Bitmap(62, 42);
+  const HIDE = [EARTH[2], EARTH[3], EARTH[4], EARTH[5]];
+  const SACK = [PARCHMENT[1], PARCHMENT[2], PARCHMENT[4], PARCHMENT[5]];
+  // The ox: a heavy body, head down to the road, legs planted.
+  for (let y = 18; y < 30; y++) {
+    for (let x = 6; x < 26; x++) {
+      const u = (x + 0.5 - 16) / 10;
+      const v = (y + 0.5 - 24) / 6;
+      if (u * u + v * v <= 1) sprite.set(x, y, flat(HIDE, clamp01(0.75 - u * 0.2 - v * 0.35), x, y));
+    }
+  }
+  for (let y = 20; y < 29; y++) for (let x = 1; x < 8; x++) if (((x + 0.5 - 4.5) / 3.6) ** 2 + ((y + 0.5 - 24.5) / 4.4) ** 2 <= 1) sprite.set(x, y, flat(HIDE, 0.62 - (y - 20) * 0.05, x, y));
+  for (const [x, y] of [[1, 19], [2, 18], [3, 18], [7, 18], [8, 17], [9, 17]]) sprite.set(x, y, NEUTRAL[6]);
+  sprite.set(2, 24, INK);
+  for (const [lx, lean] of [[9, -1], [12, 1], [19, -1], [22, 1]]) for (let y = 29; y < CART_GROUND; y++) sprite.set(lx + (y > 33 ? lean : 0), y, y >= CART_GROUND - 1 ? INK : EARTH[2]);
+  for (let y = 21; y < 27; y++) sprite.set(26 + (y > 24 ? 1 : 0), y, EARTH[2]);
+  // The shafts and the yoke.
+  for (let x = 12; x < 32; x++) sprite.set(x, 21 + Math.round((x - 12) * 0.15), WOOD[4]);
+  for (let y = 17; y < 22; y++) sprite.set(12, y, WOOD[2]);
+  // The cart's bed, and the sacks piled on it.
+  for (let y = 24; y < 29; y++) for (let x = 28; x < 60; x++) sprite.set(x, y, y === 24 ? WOOD[5] : flat(WOOD4, 0.6 - (y - 24) * 0.1, x, y));
+  for (const [cx, cy, rx, ry] of [[33, 19, 5, 5], [42, 19, 5, 5], [51, 19, 5, 5], [37, 12, 5, 5], [47, 12, 5, 5], [42, 6, 4, 4]] as const) {
+    for (let y = cy - ry; y <= cy + ry; y++) {
+      for (let x = cx - rx; x <= cx + rx; x++) {
+        const u = (x + 0.5 - cx) / rx;
+        const v = (y + 0.5 - cy) / ry;
+        if (u * u + v * v <= 1) sprite.set(x, y, flat(SACK, clamp01(0.7 - u * 0.3 - v * 0.25 + (hash(x, y, 91) - 0.5) * 0.1), x, y));
+      }
+    }
+    sprite.set(cx, cy - ry, WOOD[1]);
+  }
+  // The wheel, side on, with its spokes.
+  const [wx, wy, r] = [44, CART_GROUND - 8, 8];
+  for (let y = wy - r; y <= wy + r; y++) {
+    for (let x = wx - r; x <= wx + r; x++) {
+      const d = Math.hypot(x + 0.5 - wx, y + 0.5 - wy);
+      if (d > r) continue;
+      const spoke = d < r - 1.5 && Math.abs(Math.sin(Math.atan2(y + 0.5 - wy, x + 0.5 - wx) * 3)) < 0.28;
+      if (d > r - 1.6) sprite.set(x, y, flat(WOOD4, 0.55 - (y - wy) * 0.04, x, y));
+      else if (spoke || d < 1.6) sprite.set(x, y, WOOD[1]);
+    }
+  }
+  const shaped = outline(sprite, INK);
+  castShadow(shaped, 5, 2, 26);
+  return shaped;
+}
+
 /** A camp: two canvas tents, a cooking fire, and a pennant on a pole. */
 export function camp(phase = 0): Bitmap {
   const sprite = new Bitmap(62, 40);

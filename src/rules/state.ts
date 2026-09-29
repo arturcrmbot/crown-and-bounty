@@ -74,6 +74,8 @@ export type Enemy = {
    */
   lair?: string;
   patience?: number;
+  /** A convoy on a road, as Pike's grain cart is: see `Convoy`. */
+  convoy?: Convoy;
   lines: string[];
   army: Army;
   reward: number;
@@ -88,6 +90,15 @@ export type Enemy = {
 };
 
 export type FlagValue = boolean | number | string;
+
+/**
+ * A convoy on a road (Pike's grain cart). Every payday, while the enemy it comes from (`from`, by id)
+ * still holds, a share of that enemy's troops sets out with it from the first of `route`'s points, as
+ * its escort, and the payday card says so (`leaves`). It keeps to the road, `pace` pixels a night,
+ * through its own people and stopping short of the hero. At the road's end it's gone, and its escort
+ * goes back to `from`, until next payday. Caught on the road, its escort never goes back.
+ */
+export type Convoy = { from: string; share: number; route: Point[]; pace: number; leaves: string };
 
 /**
  * A villain who rides out of his lair to meet the hero when he's hurt: the night any of the story
@@ -170,6 +181,8 @@ export type Effects = {
   desert?: { troop?: TroopId; share: number };
   /** The hero goes there by a way of his own, a tunnel or a punt, and that is the day's riding done. */
   travel?: Point;
+  /** Weeks of rations into the baggage (or out of it): each feeds the troops one payday instead of their wages. */
+  rations?: number;
   /**
    * Volunteers at a place: this one, or the one `at` names. More of the troop it offers already,
    * or a new offer of `troop` at `price` (free if none), with `restock` more every payday (the usual if none).
@@ -222,7 +235,7 @@ export type Location = {
 
 /** Flavour for a place: before a visit, once it's used up, and on the visit itself. */
 export type PlaceText = { about?: string[]; done?: string[]; visit?: string[] };
-export type PlaceLook = 'abbey' | 'peathut' | 'windmill' | 'stilthut' | 'shrine' | 'camp' | 'cottage' | 'house' | 'stones' | 'range' | 'hall' | 'lodge';
+export type PlaceLook = 'abbey' | 'peathut' | 'windmill' | 'stilthut' | 'shrine' | 'camp' | 'cottage' | 'house' | 'stones' | 'range' | 'hall' | 'lodge' | 'cart';
 
 /** The campaign so far: which commission this is, how the others went, and how this one began. */
 export type Campaign = {
@@ -266,6 +279,8 @@ export type GameState = {
   flags?: Record<string, FlagValue>;
   /** An enemy that fell on the hero's camp at dawn: fight it, or flee, before anything else. */
   ambush?: string;
+  /** Weeks of rations in the baggage (Westmere's grain, caught on the road): each feeds the troops one payday instead of their wages. */
+  rations?: number;
 };
 
 /** Sir Aldric: where he is, who he was, and what he has learned. Derived numbers come from `heroStats`. */

@@ -32,7 +32,7 @@ function hurts(state: GameState, lair: Location): string[] {
 }
 
 /** Two armies as one: stacks of a kind together, and new kinds while there's room. */
-function merge(army: Army, more: Army): Army {
+export function merge(army: Army, more: Army): Army {
   const out = army.map((s) => ({ ...s }));
   for (const s of more) {
     if (s.count <= 0) continue;

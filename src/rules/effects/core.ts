@@ -9,7 +9,7 @@ import { SKILLS } from '../../content/skills';
 import { SPELLS } from '../../content/spells';
 import { foundNote, gainXp, giveArtifact, heroStats } from '../hero';
 import { revealDisc } from '../map/fog';
-import { addTroops, coins, countOf, joinLine, leadershipUsed, listed, locationById, MAX_STACKS, TROOPS, troops, update, VANISHES, type Effects, type GameEvent, type GameState, type Location, type Needs } from '../state';
+import { addTroops, coins, countOf, joinLine, leadershipUsed, listed, locationById, MAX_STACKS, TROOPS, troops, update, VANISHES, type Choice, type ContentChoice, type Effects, type GameEvent, type GameState, type Location, type Needs } from '../state';
 
 const STAT_WORDS = { attack: 'attack', defence: 'defence', spellPower: 'spell power', knowledge: 'knowledge' } as const;
 
@@ -77,6 +77,16 @@ export function lacksLabel(state: GameState, needs: Needs | undefined, hint?: st
   return parts.length ? ` (${parts.join(', ')})` : '';
 }
 
+/** A content choice as a button: greyed out, with what he lacks, when the hero can't take it. */
+export function choiceButton(state: GameState, place: Location, choice: ContentChoice, key: string): Choice {
+  const can = meets(state, choice.needs);
+  return {
+    label: `${choice.label}${can ? needsLabel(choice.needs) : lacksLabel(state, choice.needs, choice.hint)}`,
+    action: { type: 'choose', id: place.id, choice: key },
+    ...(can ? {} : { disabled: true }),
+  };
+}
+
 /** Takes what a choice costs: gold, mana and troops. */
 export function pay(state: GameState, needs: Needs | undefined): GameState {
   if (!needs) return state;
@@ -108,6 +118,10 @@ export function applyEffects(state: GameState, place: Location, effects: Effects
     lines.push(`**+${effects.movement} movement** today.`);
   }
   if (effects.mana) next = { ...next, hero: { ...next.hero, mana: Math.min(heroStats(next).maxMana, next.hero.mana + effects.mana) } };
+  if (effects.rations) {
+    next = { ...next, rations: Math.max(0, (next.rations ?? 0) + effects.rations) };
+    if (effects.rations > 0) lines.push(`**${effects.rations === 1 ? 'A week\u2019s' : `${effects.rations} weeks\u2019`} rations** in your baggage: come payday, your troops eat instead of drawing their wages.`);
+  }
   for (const [stat, amount] of Object.entries(effects.stats ?? {}) as [keyof typeof STAT_WORDS, number][]) {
     next = { ...next, hero: { ...next.hero, [stat]: next.hero[stat] + amount } };
     lines.push(`**+${amount} ${STAT_WORDS[stat]}**, for good.`);

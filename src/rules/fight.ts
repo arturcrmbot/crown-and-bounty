@@ -3,7 +3,7 @@ import { ARTIFACTS, type ArtifactId } from '../content/artifacts';
 import { ABILITIES, crowd, heroTroop, TROOPS, type HeroId, type TroopId } from '../content/troops';
 import type { StatusId } from '../content/spells';
 import { autoResolve } from './battle/ai';
-import { applyEffects } from './effects/core';
+import { applyEffects, choiceButton, meets } from './effects/core';
 import { bountyOf, CAMPAIGN_LENGTH, campaignLines, commissionOf, hasNextCommission, provinceOf } from './campaign';
 import { revealDisc } from './map/fog';
 import { fleeHome, fleesHome } from './map/sortie';
@@ -246,6 +246,13 @@ export function beat(state: GameState, id: string, how: { title: string; lines: 
     events.push(...extra.events);
     spoils.push(...extra.lines);
     if (place.enemy.spoils.artifact) decisions.push(...artifactChoices(next, place.enemy.spoils.artifact));
+    // A victory that asks a question: the page its spoils name, with its choices on the card.
+    const asks = place.enemy.spoils.page ? place.pages?.find((p) => p.id === place.enemy!.spoils!.page) : undefined;
+    if (asks && meets(next, asks.when)) {
+      const after = locationById(next, id);
+      spoils.push(...asks.lines);
+      decisions.push(...asks.choices.filter((c) => meets(next, c.when)).map((c) => choiceButton(next, after, c, `${asks.id}/${c.id}`)));
+    }
   }
   if (how.xp) {
     const grown = gainXp(next, how.xp);

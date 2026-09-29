@@ -379,3 +379,20 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   median for the Knight, the Wizard, the Ranger and the Courtier (12, 8, 12 and 10 before), and its worst runs are a
   little shorter (28 days at most, against 31). Balancing Aldmoor to its budget (#95) counts the bears and the
   huntsmen in.
+- **The grain cart (29 Sep, #78, as sketched in `act1/aldmoor.md`):** every payday from the first (day VIII), while Pike's
+  patrol holds the bridge, a squad of it (a fifth of each of its troops: 10 swordsmen and 6 crossbowmen to begin with)
+  loads Westmere's grain onto an ox cart for the Baron, and the payday card says so. The cart keeps to the road, over the
+  old bridge, past the kennels and through Darkwood to Grimsby's stockade, 360 paces a night: at Westmere on payday, in
+  front of the bridge the next morning, over the river after that, and at the stockade before the next payday, when the
+  squad walks back to the bridge. So the patrol holds the bridge all the while, a fifth weaker while its squad is out. The
+  cart passes through Grimsby's own people (the patrol, Rook's wolves, the Baron's riders) but never ends a night on top of
+  them, and it stops short of Aldric if he stands in its road, which is how to catch it. It's a band: a fair fight, and an
+  easy one for most armies by then. Caught, its squad never goes back, so the patrol stays that much smaller and the next
+  squad is a fifth of what's left. The grain is Aldric's: a week's rations in his baggage, so his troops eat instead of
+  drawing wages on the next payday, or, on the victory card, he can take it home to Westmere, which gives 30 more
+  peasants to recruit and +10 leadership (Westmere won't forget it). Once the patrol is gone (beaten, paid off, sent back
+  with the Baron's orders, or home with Pike), no more carts leave; one already on the road goes on to the stockade. It's
+  data: an enemy's `convoy` (who sends it, their share, its road, its pace, and the payday's words), `rations` in the state
+  and in effects, and a victory's spoils can name a page whose choices the victory card offers (`spoils.page`). The bot
+  wins Aldmoor with every background at the same pace as before (by day 12, 11, 9 and 8 at the median for the Knight,
+  the Wizard, the Ranger and the Courtier, over thirty seeds).
