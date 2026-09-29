@@ -12,6 +12,14 @@ const VOLUME_KEY = 'kings-commission/volumes';
 /** How loud each bus is at its own volume of 1, and the master over them. */
 export const LEVELS = { music: 0.42, sfx: 0.7, ambience: 0.35 };
 export const MASTER = 0.9;
+/**
+ * Where everything is meant to sit in the mix, as a listener hears loudness (LUFS, through its bus
+ * and the master; `npm run listen` measures each against these). A sting stands over the music, and
+ * each effect is `faint` (footfalls), `soft` under the music (clicks, cards, a cry of pain), `firm`
+ * level with it (coins, blows, death cries) or `loud` over it (fanfares). The land's ambience lies
+ * beneath it all.
+ */
+export const MARKS = { music: -19.5, sting: -17, faint: -38, soft: -28, firm: -20, loud: -15, ambience: -31 };
 
 /**
  * The master chain for any context, live or rendered offline to be measured: a master gain into a

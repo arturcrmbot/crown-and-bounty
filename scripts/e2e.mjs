@@ -108,12 +108,15 @@ try {
   check((await screen()) === 'adventure' && !(await kc.state()).opening, 'then he is on the map, his choice made');
   const edge = await kc.state();
   check(edge.hero.at[0] > edge.world.width - 200 && edge.hero.facing === -1, 'he starts at the east edge of Aldmoor, on the King\u2019s road, looking into the land');
+  const heard = () => kc.call(() => window.__kc.sound().effects);
 
   check((await go('chest', 'Open')) === 'Treasure Chest', 'the chest opens on arrival');
   const lead = (await kc.state()).leadership;
   await kc.choose('Hand it out');
   check((await kc.state()).leadership === lead + 25, 'handing out the chest gives leadership');
   await close();
+  await page.waitForTimeout(50);
+  check((await heard()).filter((e) => e === 'unfold').length >= 5 && (await heard()).includes('fold'), 'each card unfolds with a crackle of parchment, and folds away when closed');
 
   const gold = (await kc.state()).gold;
   await go('gold', 'Take');
@@ -171,6 +174,8 @@ try {
   await kc.call(() => window.__kc.battle().auto());
   await page.waitForFunction(() => window.__kc.screen() === 'adventure', null, { timeout: 60_000 });
   check((await kc.title()) === 'Victory!', 'the highwaymen are beaten on the battlefield');
+  const din = await heard();
+  check(din.includes('feet:hooves') && din.some((e) => e === 'blow:lance' || e === 'blow:blade') && din.includes('dies:man'), 'the battle sounds like who fought it: the knights\u2019 hooves and steel, and the highwaymen crying out as they fall');
   await close();
 
   const tower = await go('tower', 'Enter');
