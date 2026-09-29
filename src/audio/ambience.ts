@@ -8,6 +8,7 @@
  * day's riding is spent and night falls, the birds go quiet and the crickets and an owl come out.
  */
 import { audio, whenAwake } from './context';
+import { deepen, duck, type Duck } from './music';
 
 export type AmbienceId = 'heath' | 'fen' | 'fire';
 
@@ -73,6 +74,26 @@ const log = (name: string) => {
   if (recent.length > 40) recent.shift();
 };
 
+/** Every bed goes through this, so a sting can dip the land's sounds a little without touching their levels. */
+let dip: GainNode | null = null;
+let dipping: Duck = { depth: 1, until: 0 };
+function dipBus(a: NonNullable<ReturnType<typeof audio>>): GainNode {
+  if (!dip) {
+    dip = a.ctx.createGain();
+    dip.connect(a.ambience);
+  }
+  return dip;
+}
+
+/** Dips the ambience to `depth` of its level for `seconds`, under a sting, as the score ducks, then brings it back. */
+export function dipAmbience(seconds: number, depth = 0.6) {
+  const a = audio();
+  if (!a) return;
+  const now = a.ctx.currentTime;
+  dipping = deepen(dipping, now, seconds, depth);
+  duck(dipBus(a).gain, now, dipping);
+}
+
 const noiseBuffers = new Map<number, AudioBuffer>();
 function noiseBuffer(ctx: BaseAudioContext, seconds: number): AudioBuffer {
   const known = noiseBuffers.get(seconds);
@@ -126,8 +147,9 @@ function wind(ctx: BaseAudioContext, dest: AudioNode, cold: boolean): () => void
   const source = noiseLoop(ctx);
   const band = filter(ctx, 'bandpass', cold ? 500 : 800, 0.8);
   const swell = ctx.createGain();
-  swell.gain.value = cold ? 0.22 : 0.12;
-  const lfo = wobble(ctx, swell.gain, 0.07, cold ? 0.14 : 0.08);
+  // The fen's colder wind is lower and swells more; the two sit about as loud as each other.
+  swell.gain.value = cold ? 0.22 : 0.145;
+  const lfo = wobble(ctx, swell.gain, 0.07, cold ? 0.14 : 0.097);
   source.connect(band).connect(swell).connect(dest);
   return () => {
     source.stop();
@@ -197,13 +219,13 @@ function shower(ctx: BaseAudioContext, dest: AudioNode): () => void {
   const source = noiseLoop(ctx, 3);
   const hiss = filter(ctx, 'highpass', 2200, 0.5);
   const hissGain = ctx.createGain();
-  hissGain.gain.value = 0.12;
+  hissGain.gain.value = 0.1;
   const body = filter(ctx, 'bandpass', 900, 0.6);
   const bodyGain = ctx.createGain();
-  bodyGain.gain.value = 0.1;
+  bodyGain.gain.value = 0.085;
   source.connect(hiss).connect(hissGain).connect(dest);
   source.connect(body).connect(bodyGain).connect(dest);
-  const lfo = wobble(ctx, hissGain.gain, 0.17, 0.03);
+  const lfo = wobble(ctx, hissGain.gain, 0.17, 0.025);
   return () => {
     source.stop();
     lfo.stop();
@@ -803,7 +825,7 @@ function tick() {
       const gain = a.ctx.createGain();
       gain.gain.value = 0;
       gain.gain.setTargetAtTime(1, a.ctx.currentTime, 0.6);
-      gain.connect(a.ambience);
+      gain.connect(dipBus(a));
       const stops = wanted === 'fire' ? [] : [wind(a.ctx, gain, wanted === 'fen')];
       current = { id: wanted, gain, stops, layers: scape ? startLayers(a.ctx, gain, scape) : null, scape };
       wasNight = false;
@@ -831,8 +853,8 @@ export function setAmbience(id: AmbienceId | null, place: Place | null = null) {
   });
 }
 
-/** What the ambience is doing: its bed, how loud each of the land's layers is, and the last one-off sounds. For scripts. */
-export const heard = () => ({ bed: current?.id ?? null, layers: { ...levels }, recent: [...recent] });
+/** What the ambience is doing: its bed, how loud each of the land's layers is, the last one-off sounds, and how far it's dipped (1: not at all). For scripts. */
+export const heard = () => ({ bed: current?.id ?? null, layers: { ...levels }, recent: [...recent], dip: dip ? Math.round(dip.gain.value * 100) / 100 : 1 });
 
 /** The one-off sounds, by name, for `npm run listen`. */
 export const AMBIENT_CALLS = { songbird, blackbird, cuckoo, woodpecker, skylark, crow, frog, droplet, chatter, anvil, pick, creak, arrow, chapelBell, chant, owl, cockerel, crackle };
@@ -841,3 +863,5 @@ const CALL_NAMES = new Map<OneOff, string>(Object.entries(AMBIENT_CALLS).map(([n
 
 /** And the layers that go on while you're near. */
 export const AMBIENT_LAYERS = { brook, falls, gale, crickets, shower };
+/** And the beds under a whole screen: the wind on the heath, and the fen's colder one. */
+export const AMBIENT_BEDS = { heath: (ctx: BaseAudioContext, dest: AudioNode) => wind(ctx, dest, false), fen: (ctx: BaseAudioContext, dest: AudioNode) => wind(ctx, dest, true) };

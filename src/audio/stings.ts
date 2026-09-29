@@ -6,6 +6,7 @@
  */
 import { audio, isMuted } from './context';
 import { playNote, type InstrumentId } from './instruments';
+import { dipAmbience } from './ambience';
 import { cueMusic, duckMusic } from './music';
 import { midiOf } from './score';
 
@@ -18,9 +19,9 @@ export type StingDef = {
   /** The key it's in, like "E minor": every pitched note belongs to it (see the test). */
   key: string;
   hits: Hit[];
-  /** Scales every note, so each sting sits about as loud as the score's loudest bars (see `npm run listen`). */
+  /** Scales every note, so each sting sits at the stings' mark in the mix, a little over the music (see `npm run listen -- stings`). */
   level: number;
-  /** Seconds the score stays ducked under it. */
+  /** Seconds the score stays ducked under it (and the land's sounds dipped). */
   duck: number;
   /** If it leads into a new screen: seconds before that screen's music may start. */
   next?: number;
@@ -48,7 +49,7 @@ export const STINGS: Record<StingId, StingDef> = {
   // Into battle: a drum roll, a clash of steel, and the brass bark once as the battle music starts.
   battle: {
     key: 'E minor',
-    level: 1.4,
+    level: 1.5,
     hits: [...roll(0, 0.36, 8, 0.12, 0.5), ['steel', 0.4, 'C6', 1, 0.5], ['tabor', 0.4, 'C3', 0.3, 0.8], ['brass', 0.4, 'E3', 0.32, 0.26], ['brass', 0.4, 'B3', 0.32, 0.22], ['brass', 0.4, 'E4', 0.32, 0.18]],
     duck: 0.6,
     next: 0.52,
@@ -56,7 +57,7 @@ export const STINGS: Record<StingId, StingDef> = {
   // To court: two heralds' trumpets in thirds, in F, over a roll on the kettle.
   court: {
     key: 'F major',
-    level: 1.3,
+    level: 1.62,
     hits: [
       ...run('brass', 0, ['C5', 'C5', 'C5'], 0.13, 0.1, 0.24),
       ...run('brass', 0, ['A4', 'A4', 'A4'], 0.13, 0.1, 0.2),
@@ -73,7 +74,7 @@ export const STINGS: Record<StingId, StingDef> = {
   // A fight won: the battle's E minor turns to E major, up the chord and held, on the drum.
   victory: {
     key: 'E major',
-    level: 1.35,
+    level: 1.45,
     hits: [
       ...run('brass', 0, ['B3', 'E4', 'G#4'], 0.11, 0.1, 0.26),
       ['brass', 0.33, 'B4', 1, 0.28],
@@ -89,7 +90,7 @@ export const STINGS: Record<StingId, StingDef> = {
   // A fight lost: a low bell tolls twice over a dark drone, and the lute falls away.
   defeat: {
     key: 'E minor',
-    level: 1.1,
+    level: 1.29,
     hits: [
       ['knell', 0, 'E4', 3, 0.3],
       ['knell', 1.2, 'E4', 3, 0.2],
@@ -102,7 +103,7 @@ export const STINGS: Record<StingId, StingDef> = {
   // A commission done and the bounty paid: the brass climb D major, the bells ring, the harp sparkles.
   bounty: {
     key: 'D major',
-    level: 1.4,
+    level: 1.45,
     hits: [
       ...run('brass', 0, ['D4', 'F#4', 'A4'], 0.1, 0.09, 0.24),
       ['brass', 0.3, 'D5', 1.2, 0.26],
@@ -120,7 +121,7 @@ export const STINGS: Record<StingId, StingDef> = {
   // Payday: the lute strums G, the recorder says ta-da, and a bell rings it in.
   payday: {
     key: 'G major',
-    level: 1,
+    level: 1.25,
     hits: [
       ...run('lute', 0, ['G3', 'B3', 'D4', 'G4'], 0.025, 0.8, 0.2),
       ['recorder', 0.12, 'D5', 0.12, 0.22],
@@ -135,7 +136,7 @@ export const STINGS: Record<StingId, StingDef> = {
   // A level: the harp sweeps up D major, the brass holds it, and the bells ring.
   levelUp: {
     key: 'D major',
-    level: 1.2,
+    level: 1.16,
     hits: [
       ...run('harp', 0, ['D4', 'F#4', 'A4', 'D5', 'F#5', 'A5', 'D6'], 0.045, 1.3, 0.2, 0.2),
       ['brass', 0.32, 'D5', 0.9, 0.2],
@@ -150,7 +151,7 @@ export const STINGS: Record<StingId, StingDef> = {
   // A commission failed: the knell tolls three times, slow, over a drone that won't resolve.
   lost: {
     key: 'D minor',
-    level: 1,
+    level: 2.04,
     hits: [
       ['knell', 0, 'D4', 3.5, 0.32],
       ['knell', 1.6, 'D4', 3.5, 0.26],
@@ -167,7 +168,7 @@ export const STINGS: Record<StingId, StingDef> = {
 
 const DRUMS = new Set<InstrumentId>(['tabor', 'rim']);
 
-/** Plays a sting on the music bus, ducks the score under it, and holds back the next screen's music if it leads into one. */
+/** Plays a sting on the music bus, ducks the score (and dips the land's sounds) under it, and holds back the next screen's music if it leads into one. */
 export function sting(id: StingId) {
   const a = audio();
   if (!a || isMuted()) return;
@@ -179,5 +180,6 @@ export function sting(id: StingId) {
     // A sting that can't be played is not worth stopping the game for.
   }
   duckMusic(def.duck);
+  dipAmbience(def.duck);
   if (def.next !== undefined) cueMusic(def.next);
 }

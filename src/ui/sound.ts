@@ -5,6 +5,7 @@
  */
 import { audio, isMuted } from '../audio/context';
 import { babble, EFFECTS, type EffectDef, type EffectId, type Ground } from '../audio/effects';
+import { duckMusic } from '../audio/music';
 import { sting } from '../audio/stings';
 import { Terrain } from '../rules/map/model';
 
@@ -35,6 +36,8 @@ function sounded(def: EffectDef, pan: number, delay: number) {
       out.connect(side).connect(sfx);
     } else out.connect(sfx);
     def.play(ctx, out, ctx.currentTime + 0.01 + delay);
+    // Music over music clashes: the score steps back a little under a fanfare or a song.
+    if (def.duck) duckMusic(def.duck + delay, 0.5);
     // Let go of it once the longest of them (a troll's groan) has rung out.
     setTimeout(() => (side ?? out).disconnect(), (delay + 4) * 1000);
   } catch {
