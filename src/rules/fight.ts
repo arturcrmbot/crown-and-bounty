@@ -13,6 +13,7 @@ import { addTroops, again, armyPower, close, coins, leadershipUsed, locationById
 export function heroInBattle(state: GameState): BattleHero {
   const s = heroStats(state);
   const own = heroFighter(state);
+  const spirits = spiritsBy(state);
   return {
     name: BACKGROUNDS[state.hero.background].short,
     attack: s.attack,
@@ -27,6 +28,7 @@ export function heroInBattle(state: GameState): BattleHero {
     armour: s.armour,
     luck: s.luck,
     morale: s.morale,
+    ...(spirits.length ? { spirits } : {}),
     manaDiscount: s.manaDiscount,
     troops: s.troops,
     slows: s.slows,
@@ -43,6 +45,13 @@ export function heroInBattle(state: GameState): BattleHero {
     ...(s.bribes ? { bribes: s.bribes } : {}),
     room: Math.max(0, s.leadership - leadershipUsed(state.army)),
   };
+}
+
+/** Where the hero's luck and morale come from, by name, so a stack's card can say why. */
+function spiritsBy(state: GameState): NonNullable<BattleHero['spirits']> {
+  return namedBonuses(state)
+    .filter(({ bonus }) => bonus.luck || bonus.morale)
+    .map(({ name, bonus }) => ({ source: name, ...(bonus.luck ? { luck: bonus.luck } : {}), ...(bonus.morale ? { morale: bonus.morale } : {}) }));
 }
 
 /** The hero as the odds see him: the sergeants never spend his gold, so his purse doesn't change them. */

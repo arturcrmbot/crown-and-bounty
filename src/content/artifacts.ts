@@ -44,7 +44,9 @@ export type ArtifactId =
   | 'surveyorsChain'
   | 'spyglass'
   | 'stewardsLedger'
-  | 'bonesDice';
+  | 'bonesDice'
+  | 'rabbitsFoot'
+  | 'castellansPipes';
 
 /** A set of artifacts that do something more when all of them are worn. */
 export type SetId = 'regalia' | 'finery';
@@ -189,6 +191,22 @@ export const ARTIFACTS: Record<ArtifactId, Artifact> = {
     note: 'Won off a card-sharp who swore they were fair: a 12% chance a blow lands lucky, twice as hard, and a 12% chance a stack\u2019s spirits win it another turn.',
     bonus: { luck: 0.12, morale: 0.12 },
     price: 700,
+  },
+  // Luck and morale, one each: the Aldmoor poachers' charm, and the Fenmarch castellan's pipes.
+  rabbitsFoot: {
+    id: 'rabbitsFoot',
+    name: 'A Rabbit\u2019s Foot',
+    slot: 'trinket',
+    note: 'A 10% chance any blow lands lucky, twice as hard. Lucky for you; less so for the rabbit.',
+    bonus: { luck: 0.1 },
+  },
+  castellansPipes: {
+    id: 'castellansPipes',
+    name: 'The Castellan\u2019s Bagpipes',
+    slot: 'trinket',
+    note: 'A 10% chance a stack\u2019s spirits win it another turn before the round moves on, if only to get further from the noise. The castellan is very glad to see them go.',
+    bonus: { morale: 0.1 },
+    price: 500,
   },
 };
 
