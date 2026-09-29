@@ -3,7 +3,8 @@ import { ALDMOOR } from '../content/aldmoor';
 import { leads, TROOPS } from '../content/troops';
 import { autoResolve } from './battle/ai';
 import { battleAct, battleEnd, createBattle, fighterById, isLeader, options, REAR, statsOf, type BattleState } from './battle/battle';
-import { choose, describe as about, endDay, heroInBattle, locationById, startFight, visit, type GameEvent, type GameState } from './game';
+import { withNewPlaces } from './campaign';
+import { choose, describe as about, endDay, fight, heroInBattle, locationById, startFight, visit, type GameEvent, type GameState } from './game';
 import { hunting } from './map/roaming';
 import { tameOffer } from './places/enemy';
 import { newGame } from './scenario';
@@ -48,6 +49,10 @@ describe('Rook the Huntsman, Grimsby\u2019s captain', () => {
     const done = autoResolve(b);
     expect(done.result).toBe('won');
     expect(battleEnd(done)).toEqual({ army: 'Their army is beaten', leader: 'Rook the Huntsman is taken' });
+    // Taken, as the story remembers it.
+    const won = fight(s, 'wolves')!.state;
+    expect(locationById(won, 'wolves').done).toBe(true);
+    expect(won.flags?.rook).toBe('taken');
   });
 
   it('marks the quarry: whatever his arrows hit loses 3 defence for two rounds, and the pack bites it harder', () => {
@@ -95,7 +100,7 @@ describe('Rook the Huntsman, Grimsby\u2019s captain', () => {
   });
 
   it('can\u2019t keep his pack from a ranger they respect: the wolves go over, and Rook gives himself up', () => {
-    const s = { ...aldmoor([{ troop: 'knights', count: 40 }, { troop: 'archers', count: 60 }]), hero: { ...newGame(5, ALDMOOR, 'ranger').hero }, leadership: 1000 };
+    const s = { ...aldmoor([{ troop: 'knights', count: 40 }, { troop: 'archers', count: 60 }]), hero: { ...newGame(5, ALDMOOR, 'ranger').hero, at: NEAR_KENNELS }, leadership: 1000 };
     const offer = tameOffer(s, locationById(s, 'wolves'))!;
     expect(offer.whole).toBe(true);
     expect(offer.respected).toBe(true);
@@ -104,5 +109,20 @@ describe('Rook the Huntsman, Grimsby\u2019s captain', () => {
     expect(r.state.army.find((x) => x.troop === 'wolves')?.count).toBe(84);
     expect(r.state.army.some((x) => x.troop === 'rook')).toBe(false);
     expect(cardLines(r.events).join(' ')).toContain('gives himself up');
+    // Taken all the same: the pelt stays on the wolves, but Grimsby hears of it, and rides out.
+    expect(r.state.flags?.rook).toBe('taken');
+    expect(r.state.flags?.wolfpelt).toBeUndefined();
+    expect(endDay(r.state).state.locations.find((l) => l.id === 'grimsby')?.done).toBe(false);
+  });
+
+  it('takes over the wolves in a save from before him, even if Aldric has met them, until they\u2019re beaten', () => {
+    const now = aldmoor();
+    const old = JSON.parse(JSON.stringify({ ...now, locations: now.locations.map((l) => (l.id === 'wolves' ? { ...l, seen: true, name: 'Wolf Pack', enemy: { ...l.enemy!, army: [{ troop: 'wolves', count: 70 }], behaviour: undefined, range: undefined, sight: undefined, wakes: undefined } } : l)) })) as GameState;
+    const wolves = locationById(withNewPlaces(old), 'wolves');
+    expect(wolves.name).toBe('Rook\u2019s Wolves');
+    expect(wolves.enemy!.army).toEqual([{ troop: 'wolves', count: 70 }, { troop: 'rook', count: 1 }]);
+    expect(wolves.enemy!.wakes?.day).toBe(8);
+    const beaten = { ...old, locations: old.locations.map((l) => (l.id === 'wolves' ? { ...l, done: true } : l)) };
+    expect(locationById(withNewPlaces(beaten), 'wolves').enemy!.army).toEqual([{ troop: 'wolves', count: 70 }]);
   });
 });

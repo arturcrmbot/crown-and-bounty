@@ -36,6 +36,8 @@ export type Enemy = {
   parleys?: ContentChoice[];
   /** What else beating them brings, however it's done: new recruits, a spell, a place appears. */
   spoils?: Effects;
+  /** Story flags its leader's capture sets, however he's taken: his band beaten, or won over from under him. */
+  taken?: Record<string, FlagValue>;
   /** How hard they are meant to be, for the balance checks: see `rules/difficulty.ts`. */
   tier?: Tier;
   /**

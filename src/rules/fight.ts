@@ -229,8 +229,9 @@ export function bountyPaid(state: GameState, id: string, opening: string[], rewa
 export function beat(state: GameState, id: string, how: { title: string; lines: string[]; reward: number; xp: number; sayGold?: boolean; battleResult?: BattleResultCard; choices?: Choice[]; because?: string }): Result {
   const place = locationById(state, id);
   let next = update({ ...state, gold: state.gold + how.reward }, id, { done: true });
-  // A villain beaten in the open flees home to his walls, without his guard.
+  // A villain beaten in the open flees home to his walls, without his guard; a captain is taken.
   if (place.enemy?.lair) next = fleeHome(next, place);
+  if (place.enemy?.taken) next = { ...next, flags: { ...next.flags, ...place.enemy.taken } };
   const events: GameEvent[] = VANISHES.has(place.kind) ? [{ type: 'removed', id }] : [];
   const spoils: string[] = [];
   const decisions = [...(how.choices ?? [])];

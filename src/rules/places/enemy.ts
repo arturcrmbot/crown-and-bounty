@@ -129,7 +129,9 @@ function tame(state: GameState, place: Location): Result | null {
   const offer = tameOffer(state, place);
   if (!offer?.respected || !offer.joining.length) return null;
   const foe = place.enemy!;
-  const joined = applyEffects(state, place, { troops: offer.joining, ...(offer.whole ? { done: true } : {}) });
+  // The whole pack gone over, its captain has nobody left to lead, and is taken.
+  const taken = offer.whole && foe.taken ? { flags: foe.taken } : {};
+  const joined = applyEffects(state, place, { troops: offer.joining, ...taken, ...(offer.whole ? { done: true } : {}) });
   let next = joined.state;
   const events = [...joined.events];
   const words = foe.tamed ?? offer.beasts.map((s) => TROOPS[s.troop].tamed).find(Boolean) ?? 'They decide you will do, and follow you.';
