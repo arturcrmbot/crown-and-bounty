@@ -1,5 +1,6 @@
 import type { ContentChoice, Enemy, Location, PlaceLook } from '../rules/state';
 import type { ArtifactId } from './artifacts';
+import type { Memory } from './campaign';
 import type { TroopId } from './troops';
 
 /** What a generated province feels like: Aldmoor's heath and woods, or the Fenmarch's meres and reeds. */
@@ -36,6 +37,8 @@ export type VillainTemplate = {
    */
   weakness: { note: string; label: string; lines: string[]; troop: TroopId; share: number; gold?: number };
   parleys?: { guardian?: ContentChoice[]; hideout?: ContentChoice[] };
+  /** What the King remembers at court of this villain's commission, before what every generated province shares. */
+  memories?: Memory[];
 };
 
 export const VILLAINS: VillainTemplate[] = [
@@ -96,6 +99,7 @@ export const VILLAINS: VillainTemplate[] = [
       share: 0.4,
       lines: ['You call over the palisade: back pay, in full, from the Crown, for any man who walks out now. A good many of them walk out, counting.'],
     },
+    memories: [{ when: { weakness: false }, line: '"You paid Grimsby\u2019s men their back pay? Out of *my* purse? Well. It worked."' }],
     parleys: {
       hideout: [
         {
@@ -165,6 +169,7 @@ export const VILLAINS: VillainTemplate[] = [
       share: 0.5,
       lines: ['Brother Anselm was right. At the first clang, half her goblins bolt for the reeds with their fingers in their ears.'],
     },
+    memories: [{ when: { weakness: false }, line: '"A church bell under her window! Of course. I shall have every bell in the land rung on Sundays, twice."' }],
     parleys: {
       hideout: [
         {
@@ -234,6 +239,7 @@ export const VILLAINS: VillainTemplate[] = [
       share: 0.5,
       lines: ['A purse changes hands at the inn. The barrels run dry, and so do half the goblins, off to find the next party.'],
     },
+    memories: [{ when: { weakness: false }, line: '"You bought up all the wedding ale, I hear. The happy couple will never forgive you. Splendid."' }],
     parleys: {
       hideout: [
         {
