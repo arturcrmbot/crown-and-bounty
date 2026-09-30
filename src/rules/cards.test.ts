@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ALDMOOR } from '../content/aldmoor';
 import { apply, bountyCard, describe as fromAfar, endDay, heroStats, joinLine, learnOdds, listed, locationById, lossesLine, oddsFor, oddsKnown, placeOdds, stillWithYou, visit, whenThere, winChance, type Army, type Card, type GameState, type Result } from './game';
 import { ambushCard } from './days';
-import { verdict } from './places/enemy';
+import { likelyLossesLine, verdict } from './places/enemy';
 import { applyEffects } from './effects';
 import { mapOf } from './map/maps';
 import { daysAway } from './map/movement';
@@ -185,17 +185,42 @@ describe('the odds', () => {
     const army = [{ troop: 'swordsmen' as const, count: 12 }, { troop: 'knights' as const, count: 2 }, { troop: 'poachers' as const, count: 2 }, { troop: 'archers' as const, count: 1 }];
     const state = { ...knight(), army };
     const threat = cardOf(visit(state, 'patrol'));
-    expect(threat.lines.some((line) => line.includes('The sergeants expect to lose') || line.includes('bring everyone home'))).toBe(true);
+    const cost = likelyLossesLine(state, 'patrol');
+    expect(cost).toMatch(/sergeants/);
+    expect(threat.lines).toContain(cost);
 
     const ambush = ambushCard({ ...state, ambush: 'patrol' });
-    expect(ambush.lines.some((line) => line.includes('The sergeants expect to lose') || line.includes('bring everyone home'))).toBe(true);
+    expect(ambush.lines).toContain(cost);
     expect(ambush.verdict).toEqual(threat.verdict);
 
-    const ranger = { ...state, hero: { ...state.hero, background: 'ranger' as const } };
+    // An army that wins, so the scouts count what the win costs.
+    const big = army.map((stack) => ({ ...stack, count: stack.count * 6 }));
+    const ranger = { ...state, army: big, hero: { ...state.hero, background: 'ranger' as const } };
     const scouted = cardOf(visit(ranger, 'patrol'));
     expect(scouted.lines.some((line) => line.includes('expect to lose about') && /\d+/.test(line))).toBe(true);
     // Three kinds or more read as a list, with one "and" (#115).
     expect(scouted.lines.find((line) => line.includes('expect to lose about'))).toMatch(/about \d+ [A-Z]\w+(, \d+ [A-Z]\w+)+ and \d+ [A-Z]\w+\.\*$/);
+  });
+});
+
+describe('the likely cost beside the odds (#171)', () => {
+  it('says a likely defeat costs the whole army, and that the cost it names is a win\u2019s', () => {
+    const base = knight();
+    const seen = new Set<string>();
+    for (const n of [20, 57, 58, 59, 60, 61, 62, 80]) {
+      const state = { ...base, army: [{ troop: 'swordsmen' as const, count: n }, { troop: 'archers' as const, count: n }] };
+      const chance = winChance(state, 'hideout');
+      const line = likelyLossesLine(state, 'hideout');
+      const odds = verdict(chance).odds;
+      seen.add(chance === 0 ? 'none' : odds);
+      if (chance === 0) expect(line).toBe('*The sergeants can\u2019t find a way to win this, so you would lose your whole army.*');
+      else if (odds === 'lose') expect(line).toMatch(/^\*Most likely you would lose your whole army\. Even if you win, the sergeants expect to (lose|bring everyone home)/);
+      else if (odds === 'against') expect(line).toMatch(/^\*If you win, the sergeants expect to .+\. If you lose, you lose your whole army\.\*$/);
+      else expect(line).toMatch(/^\*The sergeants expect to /);
+      // It never sounds like a win when the verdict says a loss.
+      if (odds === 'lose') expect(line).toMatch(/whole army/);
+    }
+    expect(seen.size).toBeGreaterThan(1);
   });
 });
 

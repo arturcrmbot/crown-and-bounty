@@ -2,7 +2,7 @@ import { ARTIFACTS, artifactPhrase } from '../../content/artifacts';
 import { isBeast, leads, outweighs, TROOPS } from '../../content/troops';
 import { grumbleLine } from '../army';
 import { applyEffects, choiceButton, meets } from '../effects';
-import { battleXp, beat, fight, likelyLossesLine, startFight, winChance } from '../fight';
+import { battleXp, beat, expectedLosses, fight, startFight, winChance } from '../fight';
 import { artifactChoices, foundNote, gainXp, giveArtifact, heroStats } from '../hero';
 import { asleep } from '../map/roaming';
 import { riddenOut } from '../map/sortie';
@@ -241,6 +241,24 @@ export function oddsLine(chance: number): string {
   if (chance >= FAIR) return 'It will be close.';
   if (chance >= LONG) return 'Your army looks at you. Then at them.';
   return 'Your army looks at you. Then at them. Then at you.';
+}
+
+/**
+ * What the fight would likely cost, beside the verdict. The sergeants count the cost of the fights
+ * they win, so when a defeat is likelier the line says that a defeat costs the whole army, and that
+ * the cost it names is a win's (#171).
+ */
+export function likelyLossesLine(state: GameState, id: string): string {
+  const expected = expectedLosses(state, id);
+  if (!expected) return '';
+  const { cost } = expected;
+  const chance = winChance(state, id);
+  if (chance === 0) return '*The sergeants can\u2019t find a way to win this, so you would lose your whole army.*';
+  const win = cost ? `the sergeants expect to lose ${cost}` : 'the sergeants expect to bring everyone home';
+  const odds = verdict(chance).odds;
+  if (odds === 'lose') return `*Most likely you would lose your whole army. Even if you win, ${win}.*`;
+  if (odds === 'against') return `*If you win, ${win}. If you lose, you lose your whole army.*`;
+  return `*${win[0].toUpperCase()}${win.slice(1)}.*`;
 }
 
 /** The verdict with nobody to fight. */

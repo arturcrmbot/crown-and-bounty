@@ -326,7 +326,7 @@ export type Hero = {
 export type Action =
   | { type: 'go'; id: string }
   /** Records that a first-time map hint has been shown. */
-  | { type: 'hint'; id: 'ride' | 'place' | 'payday' | 'journal' }
+  | { type: 'hint'; id: 'map' | 'ride' | 'place' | 'payday' | 'journal' }
   /** A choice on a place's card: one of its kind's own (`recruit`, `fight`...) or written as content (`page/choice`). */
   | { type: 'choose'; id: string; choice: string }
   | { type: 'endDay' }

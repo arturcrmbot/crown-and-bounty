@@ -101,7 +101,10 @@ try {
   await press('Ride out');
   await page.waitForTimeout(600);
   await look('banner');
-  await page.waitForTimeout(4200);
+  await page.waitForFunction(() => document.querySelector('.kc-card-wrap:not([hidden]) h3')?.textContent === 'Getting about', null, { timeout: 8000 }).catch(() => {});
+  await look('getting-about');
+  await press('Ride on');
+  await page.waitForTimeout(600);
   await look('map');
   const hero = await kc.call(() => window.__kc.state().hero.at);
   await kc.click(hero[0], hero[1] - 6);
