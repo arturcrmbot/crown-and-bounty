@@ -52,6 +52,9 @@ function headingOf(from: number, to: number): Heading {
 /** Played by touch, what the second tap does, under the tag the first one showed. */
 const SECOND_TAP = { move: 'Tap again to go.', melee: 'Tap again to attack.', shoot: 'Tap again to shoot.', spell: 'Tap again to cast.', bard: '' } as const;
 
+/** "1 perishes", "5 perish". */
+const perish = (n: number) => `${n} ${n === 1 ? 'perishes' : 'perish'}`;
+
 const ENEMY_THINK = 0.35;
 /** Floaters start at least this low, so they rise and fade under the message ribbon, never into it. */
 const FLOAT_TOP = LOG_BOTTOM + FLOAT_RISE + 2;
@@ -528,8 +531,8 @@ export class BattleController implements Screen {
     const spell = SPELLS[e.spell];
     const who = this.casterName(e.by);
     if (spell.effect.kind === 'mass') return `${who} casts ${spell.name} on ${stacks === 1 ? this.objectName(e.target) : `all ${stacks} of ${fighterById(this.battle, e.target).side === 'player' ? 'your' : 'their'} stacks`}.`;
-    if (e.healed) return `${who} casts ${spell.name} on ${this.objectName(e.target)}. They get ${e.healed} health back${e.raised ? `, and ${e.raised} get up again` : ''}.`;
-    return `${who} casts ${spell.name} on ${this.objectName(e.target)}${e.damage ? ` for ${e.damage} damage${e.killed ? `, and ${e.killed} perish` : ''}` : ''}.`;
+    if (e.healed) return `${who} casts ${spell.name} on ${this.objectName(e.target)}. They get ${e.healed} health back${e.raised ? `, and ${e.raised} ${e.raised === 1 ? 'gets' : 'get'} up again` : ''}.`;
+    return `${who} casts ${spell.name} on ${this.objectName(e.target)}${e.damage ? ` for ${e.damage} damage${e.killed ? `, and ${perish(e.killed)}` : ''}` : ''}.`;
   }
 
   /** Takes a blow from what is left of a stack (its count, and its top troop's health); true when that was the last of them. */
@@ -620,7 +623,7 @@ export class BattleController implements Screen {
         }
         if (e.lucky) this.float(e.attacker, 'Lucky!', GOLD[5], from);
         this.float(e.target, e.killed ? `-${e.killed}` : `-${e.damage} hp`, e.killed ? RED[5] : RED[6]);
-        const fell = !e.killed ? '.' : `. ${e.killed} perish.`;
+        const fell = !e.killed ? '.' : `. ${perish(e.killed)}.`;
         v.log = `${blow} for ${e.damage}${fell}${e.lucky ? ' A lucky blow!' : ''}${e.status ? ` ${STATUSES[e.status].onHit ?? ''}` : ''}`;
       },
       tick: (t) => {
@@ -1318,7 +1321,7 @@ export class BattleController implements Screen {
       const ours = caught.filter((c) => c.side === 'player').map((c) => TROOPS[c.troop].name.toLowerCase());
       const theirs = caught.length - ours.length;
       const more = [theirs ? `${theirs} more of theirs` : '', ours.length ? `your own ${listed(ours)}!` : ''].filter(Boolean).join(', and ');
-      return `${SPELLS[action.spell].name}: ${damage} damage, ${wound(target, damage).killed} of ${whom} perish.${more ? ` It also hits ${more}` : ''}`;
+      return `${SPELLS[action.spell].name}: ${damage} damage, ${perish(wound(target, damage).killed)} of ${whom}.${more ? ` It also hits ${more}` : ''}`;
     }
     if (action.type !== 'melee' && action.type !== 'shoot') return null;
     // The rules' own reckoning, first strikes and all: the tag by the pointer says the same.
@@ -1330,8 +1333,9 @@ export class BattleController implements Screen {
     const first = forecast.first ? ' They will strike first.' : '';
     const back = forecast.back ? ' They will strike back.' : '';
     // A leader's blow gets no answer: nothing can reach him, and he's back behind the line before they turn.
-    const after = leader && !ranged ? ` ${this.fighterName(f.id)} rides back behind the line, and nobody can strike back.` : charge ? ' No one can strike back at a charge, but it winds them, so they won\u2019t strike back themselves for the rest of this round and the next.' : '';
-    return `${charge ? 'Charge! ' : ''}${ranged ? 'Shoot' : 'Attack'} ${whom}: about ${forecast.target.damage} damage, ${forecast.target.killed} perish.${first}${back}${after}`;
+    // The ribbon has room for one line: the tag by the stack says what a charge costs the chargers.
+    const after = leader && !ranged ? ` ${this.fighterName(f.id)} rides back behind the line, and nobody can strike back.` : charge ? ' Nobody can strike back at a charge.' : '';
+    return `${charge ? 'Charge! ' : ''}${ranged ? 'Shoot' : 'Attack'} ${whom}: about ${forecast.target.damage} damage, ${perish(forecast.target.killed)}.${first}${back}${after}`;
   }
 
   private button(id: (typeof BUTTONS)[number]['id']) {

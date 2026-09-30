@@ -48,9 +48,15 @@
         display: block;
         image-rendering: pixelated;
       }
+      /* What shows while the game loads on a slow phone, until its first frame (main.ts). */
+      #kc-loading {
+        color: #d8b25a;
+        font: italic 18px Georgia, serif;
+      }
     </style>
   </head>
   <body>
+    <p id="kc-loading">Crown &amp; Bounty is loading&hellip;</p>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

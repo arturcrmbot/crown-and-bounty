@@ -173,6 +173,7 @@ requestAnimationFrame(function frame(now) {
   mute.place(display);
   mix.place(display);
   rail.place(display, touch() && !upright() ? game.buttons() : null);
+  if (!window.__ready) document.getElementById('kc-loading')?.remove();
   window.__ready = true;
   requestAnimationFrame(frame);
 });

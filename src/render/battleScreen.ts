@@ -775,7 +775,10 @@ export class BattleScreen {
     }
   }
 
-  /** The last thing that happened, on a dark strip across the top of the field: smaller type if it's too long for it. */
+  /**
+   * The last thing that happened, on a dark strip across the top of the field: smaller type if it's
+   * too long for it, and if it's still too long, its last sentences go, so it's never cut off.
+   */
   private logLine(text: string) {
     if (!text) return;
     const y0 = LOG_TOP;
@@ -783,6 +786,11 @@ export class BattleScreen {
     for (let y = y0; y < LOG_BOTTOM; y++) for (let x = left; x < right; x++) this.screen.set(x, y, SHADOW_LUT[SHADOW_LUT[this.screen.get(x, y)]]);
     let size = 13;
     while (size > 11 && textMask(text, size).width > right - left) size--;
+    while (textMask(text, size).width > right - left) {
+      const end = text.slice(0, -1).search(/[.!?][^.!?]*$/);
+      if (end <= 0) break;
+      text = text.slice(0, end + 1);
+    }
     drawText(this.screen, text, Math.round(MAP_VIEW.x + MAP_VIEW.width / 2 - (text.length * 3.3 * size) / 13), y0 - 1 + Math.floor((13 - size) / 2), PARCHMENT[6], INK, size);
   }
 }
