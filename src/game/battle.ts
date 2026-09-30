@@ -5,17 +5,21 @@ import { chooseAction, finishEstimate, sergeantsAct } from '../rules/battle/ai';
 import { manaInBattle, signedShare, spiritsOf, uneasyWords } from '../rules/heroSheet';
 import { grumbleLine } from '../rules/army';
 import { coins, listed } from '../rules/state';
-import { activeFighter, bardOf, battleAct, battleEnd, bribePrice, canCast, canJoin, casterOf, castsLeft, chargeOf, CHARGE_BONUS, fighterById, isCharge, isLeader, onField, options, ridesOut, spellCost, spellDamage, spellsOf, spellVictims, strike, unitOf, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
+import { activeFighter, bardOf, battleAct, battleEnd, bribePrice, canCast, canJoin, casterOf, castsLeft, chargeOf, fighterById, isCharge, isLeader, onField, options, ridesOut, spellCost, spellDamage, spellsOf, spellVictims, unitOf, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
+import { aimTag, bardTag, forecastOf, type AimTag } from '../rules/battle/forecast';
 import { paintBanner } from '../render/banner';
 import { BattleScreen, BUTTONS, FIRE_FALL, FLOAT_RISE, hexAt, hexCentre, leaderAt, LOG_BOTTOM, spotOf, type BattleView, type Shot } from '../render/battleScreen';
 import { animLength, bodyHeight, hitTime, STAND, type AnimName } from '../render/battleSprites';
+import { cursorIcon, type CursorKind, type Heading } from '../render/cursors';
 import { ART, type Missile } from '../render/units';
 import { MAP_VIEW } from '../render/frame';
 import { BLUE, GOLD, NEUTRAL, RED } from '../render/palette';
 import { paintSpeech } from '../render/speech';
 import { CardView } from '../ui/card';
 import { HoverLabel } from '../ui/label';
+import { bitmapUrl } from '../ui/pixels';
 import { play, speak } from '../ui/sound';
+import { ForecastTag, type PageBox } from '../ui/tag';
 import { touch } from '../ui/touch';
 import type { Display } from './display';
 import type { Screen, SideButton } from './screen';
@@ -23,6 +27,30 @@ import type { Screen, SideButton } from './screen';
 type Step = { duration: number; elapsed: number; started: boolean; start?: () => void; tick?: (t: number) => void; end?: () => void };
 /** What is left of each stack as an action's events play out: its count, and its top troop's health. */
 type Left = Map<number, { count: number; hp: number }>;
+/** What a click on a hex would do, for the stack whose turn it is. */
+type Intent = { action: BattleAction; kind: 'move' | 'melee' | 'shoot' | 'spell' | 'bard' };
+/** What pointing at an intent shows, worked out once for each: the tag by the stack, the stacks lit, and the ribbon's line. */
+type Aim = { battle: BattleState; key: string; tag: AimTag | null; lit: Map<number, 'target' | 'danger'>; line: string | null; charge: boolean };
+
+/** Nothing lit. */
+const UNLIT: ReadonlyMap<number, 'target' | 'danger'> = new Map();
+const cursors = new Map<string, string>();
+/** A pointer from `render/cursors.ts`, twice its size with its hot spot in the middle, as the map's crossed swords are. */
+function cursorCss(kind: CursorKind, heading?: Heading) {
+  const key = `${kind}:${heading ?? ''}`;
+  let css = cursors.get(key);
+  if (!css) cursors.set(key, (css = `url("${bitmapUrl(cursorIcon(kind, heading), 0, 2)}") 16 16, ${kind === 'no' ? 'not-allowed' : 'pointer'}`));
+  return css;
+}
+/** Which way a blow goes in, from the hex it is struck from to the one it lands on. */
+function headingOf(from: number, to: number): Heading {
+  const [fx, fy] = hexCentre(from);
+  const [tx, ty] = hexCentre(to);
+  const across = tx >= fx ? 'e' : 'w';
+  return Math.abs(ty - fy) < 1 ? across : ty < fy ? `n${across}` : `s${across}`;
+}
+/** Played by touch, what the second tap does, under the tag the first one showed. */
+const SECOND_TAP = { move: 'Tap again to go.', melee: 'Tap again to attack.', shoot: 'Tap again to shoot.', spell: 'Tap again to cast.', bard: '' } as const;
 
 const ENEMY_THINK = 0.35;
 /** Floaters start at least this low, so they rise and fade under the message ribbon, never into it. */
@@ -57,6 +85,12 @@ export class BattleController implements Screen {
   private readonly cards: CardView;
   /** Played by touch, what a tap on the field would do, in words big enough to read (the bar's are small on a phone). */
   private readonly label = new HoverLabel();
+  /** What a click would do, beside the stack it would land on. */
+  private readonly tag = new ForecastTag();
+  /** The pointer the canvas has now, and its name, for scripts. */
+  private cursor = '';
+  private pointerName = 'default';
+  private aim: Aim | null = null;
   private readonly display: Display;
   private readonly hooks: { onChange: (b: BattleState) => void; onDone: (b: BattleState) => void };
   private readonly pace: number;
@@ -73,7 +107,7 @@ export class BattleController implements Screen {
    * Played by touch, a finger can't hover: a first tap on a hex shows what a tap there would do (the
    * forecast), and a second tap on the same hex does it, while nothing else has happened.
    */
-  private armed: { hex: number; intent: NonNullable<ReturnType<BattleController['intent']>>; battle: BattleState; targeting: string | null } | null = null;
+  private armed: { hex: number; intent: Intent; battle: BattleState; targeting: string | null } | null = null;
 
   constructor(display: Display, battle: BattleState, hooks: BattleController['hooks'], pace = 1) {
     this.display = display;
@@ -103,6 +137,7 @@ export class BattleController implements Screen {
       looks: new Map(),
       reach: new Set(),
       hover: null,
+      lit: UNLIT,
       floaters: [],
       shots: [],
       log: this.startLine(),
@@ -261,6 +296,8 @@ export class BattleController implements Screen {
   dispose() {
     this.cards.dispose();
     this.label.dispose();
+    this.tag.dispose();
+    this.setCursor('default');
   }
 
   private fighterName(id: number, count?: number) {
@@ -1074,15 +1111,26 @@ export class BattleController implements Screen {
       this.armed = null;
       this.pointer = null;
       this.label.hide();
-      v.hover = null;
+      this.unaim();
       v.inspect = null;
-      v.preview = null;
     }
     if (this.pointer && mine) this.hoverAt(...this.pointer);
-    else if (!mine) {
-      v.hover = null;
-      v.preview = null;
-    }
+    else if (!mine) this.unaim();
+  }
+
+  /** Nothing aimed at: no hex outlined, no stack lit, no tag, and the plain pointer. */
+  private unaim() {
+    this.view.hover = null;
+    this.view.preview = null;
+    this.view.lit = UNLIT;
+    this.tag.hide();
+    this.setCursor('default');
+  }
+
+  private setCursor(css: string) {
+    if (css === this.cursor) return;
+    this.cursor = css;
+    this.display.canvas.style.cursor = css;
   }
 
   render(_tick?: number): Uint8Array {
@@ -1106,7 +1154,7 @@ export class BattleController implements Screen {
   }
 
   /** What clicking a hex would do, for the stack whose turn it is. */
-  private intent(hex: number, x: number, y: number): { action: BattleAction; kind: 'move' | 'melee' | 'shoot' | 'spell' | 'bard' } | null {
+  private intent(hex: number, x: number, y: number): Intent | null {
     const f = activeFighter(this.battle);
     if (!f || f.side !== 'player' || this.auto || this.queue.length > 0) return null;
     const occupant = this.battle.fighters.find((o) => onField(o) && o.at === hex);
@@ -1136,15 +1184,93 @@ export class BattleController implements Screen {
   }
 
   private hoverAt(x: number, y: number) {
+    const v = this.view;
     const hex = hexAt(x, y);
     const intent = hex === null ? null : this.intent(hex, x, y);
-    this.view.hover = intent && hex !== null ? { hex, kind: intent.kind } : null;
+    v.hover = intent && hex !== null ? { hex, kind: intent.kind, ...(intent.action.type === 'melee' ? { from: intent.action.from } : {}) } : null;
     // A stack on its hex, or a leader behind the line: the bar shows who he is.
     const leader = leaderAt(this.battle, x, y);
-    this.view.inspect = leader ? leader.id : hex === null ? null : (this.battle.fighters.find((f) => onField(f) && f.at === hex)?.id ?? null);
-    const under = this.view.inspect === null ? null : fighterById(this.battle, this.view.inspect);
-    this.view.preview = intent ? this.forecast(intent.action) : under?.book ? this.bookLine(under.id) : under ? this.spiritsLine(under.id) : null;
-    this.display.canvas.style.cursor = intent ? 'pointer' : 'default';
+    v.inspect = leader ? leader.id : hex === null ? null : (this.battle.fighters.find((f) => onField(f) && f.at === hex)?.id ?? null);
+    const under = v.inspect === null ? null : fighterById(this.battle, v.inspect);
+    const aim = this.aimAt(intent);
+    v.preview = aim ? aim.line : under?.book ? this.bookLine(under.id) : under ? this.spiritsLine(under.id) : null;
+    v.lit = aim?.lit ?? UNLIT;
+    const pointer = this.pointerFor(intent, aim, hex !== null || leader !== null, x, y);
+    this.pointerName = pointer.name;
+    this.setCursor(pointer.css);
+    this.showTag(intent, aim, hex);
+  }
+
+  /** What pointing at `intent` shows, worked out once for each thing a click could do. */
+  private aimAt(intent: Intent | null): Aim | null {
+    if (!intent) return null;
+    const key = JSON.stringify(intent.action);
+    if (this.aim?.battle === this.battle && this.aim.key === key) return this.aim;
+    const { action } = intent;
+    const f = activeFighter(this.battle)!;
+    // Everyone a spell would catch is lit, and your own it would hurt are lit red.
+    const lit = new Map<number, 'target' | 'danger'>();
+    if (action.type === 'cast' && action.target !== undefined) {
+      const harms = SPELLS[action.spell].on === 'enemy';
+      for (const caught of spellVictims(this.battle, action.spell, fighterById(this.battle, action.target))) lit.set(caught.id, harms && caught.side === f.side ? 'danger' : 'target');
+    } else if (action.type === 'melee' || action.type === 'shoot' || action.type === 'jeer') lit.set(action.target, 'target');
+    const tag = action.type === 'jeer' ? bardTag(this.battle, fighterById(this.battle, action.target)) : action.type === 'move' ? { title: 'Move here', lines: [] } : aimTag(this.battle, action);
+    const charge = action.type === 'melee' && isCharge(this.battle, f, action.from);
+    this.aim = { battle: this.battle, key, tag, lit, line: this.forecast(action), charge };
+    return this.aim;
+  }
+
+  /**
+   * The pointer for what a click would do (#156): a sword or a lance pointing the way the blow goes
+   * in, a bow, boots (a horseshoe for riders, a paw for beasts), the spell's sign, a bard's lute, and
+   * on your turn, "no" wherever on the field a click would do nothing.
+   */
+  private pointerFor(intent: Intent | null, aim: Aim | null, onTheField: boolean, x: number, y: number): { name: string; css: string } {
+    const f = activeFighter(this.battle);
+    const mine = !!f && f.side === 'player' && !this.auto && this.queue.length === 0 && !this.battle.volley;
+    const icon = (kind: CursorKind, heading?: Heading) => ({ name: heading ? `${kind}:${heading}` : kind, css: cursorCss(kind, heading) });
+    if (!intent || !f) {
+      if (BUTTONS.some(({ rect: r }) => x >= r.x && x < r.x + r.width && y >= r.y && y < r.y + r.height)) return { name: 'pointer', css: 'pointer' };
+      return mine && onTheField ? icon('no') : { name: 'default', css: 'default' };
+    }
+    const { action } = intent;
+    if (action.type === 'move') {
+      const feet = TROOP_SOUNDS[f.troop].feet;
+      return icon(feet === 'hooves' ? 'horseshoe' : feet === 'paws' || feet === 'trotters' ? 'paw' : 'boot');
+    }
+    if (action.type === 'melee') return icon(aim?.charge ? 'lance' : 'sword', headingOf(action.from, fighterById(this.battle, action.target).at));
+    if (action.type === 'shoot') return icon('bow');
+    if (action.type === 'cast') {
+      const look = SPELLS[action.spell].look.kind;
+      return icon(look === 'fire' ? 'flame' : look === 'bolt' ? 'lightning' : 'wand');
+    }
+    return icon('lute');
+  }
+
+  /**
+   * The tag beside what a click would land on (#156): the stacks it lights, or played by touch, the
+   * hex a stack would move to, and after a first tap, what the second does. Not over a card.
+   */
+  private showTag(intent: Intent | null, aim: Aim | null, hex: number | null) {
+    const moving = intent?.action.type === 'move';
+    if (!intent || !aim?.tag || hex === null || (moving && !touch()) || this.cards.isOpen) return this.tag.hide();
+    // Round the stacks aimed at, each from its head to its feet, or round the hex it would move to.
+    const boxes = moving
+      ? [[...hexCentre(hex), 26, 26] as const]
+      : [...aim.lit.keys()].map((id) => {
+          const f = fighterById(this.battle, id);
+          const [cx, cy] = hexCentre(f.at);
+          return [cx, cy, bodyHeight(f.troop, 'battle') - 12, 22] as const;
+        });
+    const from = this.display.toPage(Math.min(...boxes.map(([cx]) => cx)) - 30, Math.min(...boxes.map(([, cy, up]) => cy - up)));
+    const to = this.display.toPage(Math.max(...boxes.map(([cx]) => cx)) + 30, Math.max(...boxes.map(([, cy, , down]) => cy + down)));
+    const box: PageBox = { left: from.x, top: from.y, right: to.x, bottom: to.y };
+    const top = this.display.toPage(MAP_VIEW.x, LOG_BOTTOM + 24);
+    const end = this.display.toPage(MAP_VIEW.x + MAP_VIEW.width, MAP_VIEW.y + MAP_VIEW.height);
+    // Clear of a blow's way in: on the far side of the stack from the hex it is struck from.
+    const struck = intent.action.type === 'melee' ? hexCentre(intent.action.from)[0] > hexCentre(hex)[0] : false;
+    const hint = this.armed?.hex === hex ? (aim.charge ? 'Tap again to charge.' : SECOND_TAP[intent.kind]) : '';
+    this.tag.show(aim.tag, hint || null, box, struck ? 'left' : 'right', { left: top.x, top: top.y, right: end.x, bottom: end.y });
   }
 
   /** A stack's luck and morale, and why, for when you look it over: nothing if it has neither. */
@@ -1188,16 +1314,17 @@ export class BattleController implements Screen {
       return `${SPELLS[action.spell].name}: ${damage} damage, ${wound(target, damage).killed} of ${whom} perish.${more ? ` It also hits ${more}` : ''}`;
     }
     if (action.type !== 'melee' && action.type !== 'shoot') return null;
+    // The rules' own reckoning, first strikes and all: the tag by the pointer says the same.
+    const forecast = forecastOf(this.battle, action);
+    if (!forecast) return null;
     const ranged = action.type === 'shoot';
     const leader = isLeader(f);
-    const charge = action.type === 'melee' && isCharge(this.battle, f, action.from);
-    const from = action.type === 'melee' ? { ...f, at: action.from } : f;
-    const damage = strike(this.battle, from, target, ranged, undefined, charge ? CHARGE_BONUS : 1).damage;
-    const left = wound(target, damage);
-    const back = !ranged && !charge && !leader && left.count > 0 && !target.retaliated ? ' They will strike back.' : '';
+    const { charge } = forecast;
+    const first = forecast.first ? ' They will strike first.' : '';
+    const back = forecast.back ? ' They will strike back.' : '';
     // A leader's blow gets no answer: nothing can reach him, and he's back behind the line before they turn.
     const after = leader && !ranged ? ` ${this.fighterName(f.id)} rides back behind the line, and nobody can strike back.` : charge ? ' No one can strike back at a charge, but it winds them, so they won\u2019t strike back themselves for the rest of this round and the next.' : '';
-    return `${charge ? 'Charge! ' : ''}${ranged ? 'Shoot' : 'Attack'} ${whom}: about ${damage} damage, ${left.killed} perish.${back}${after}`;
+    return `${charge ? 'Charge! ' : ''}${ranged ? 'Shoot' : 'Attack'} ${whom}: about ${forecast.target.damage} damage, ${forecast.target.killed} perish.${first}${back}${after}`;
   }
 
   private button(id: (typeof BUTTONS)[number]['id']) {
@@ -1280,20 +1407,23 @@ export class BattleController implements Screen {
     ];
   }
 
-  /** Played by touch: what the tap showed, over the field in words, and whether a second tap goes. */
-  private tell(x: number, y: number, intent: ReturnType<BattleController['intent']>) {
+  /**
+   * Played by touch, a tap on a stack a click wouldn't touch says who it is, over the field in words.
+   * Anything a tap would do, the tag beside it says, and what a second tap does.
+   */
+  private tell(x: number, y: number, intent: Intent | null) {
+    if (intent && this.tag.text) return;
     const v = this.view;
     const under = v.inspect === null ? null : fighterById(this.battle, v.inspect);
     const who = under ? (this.named(under.id) ? TROOPS[under.troop].name : this.fighterName(under.id, under.count)) : null;
-    const go = intent ? { move: 'tap again to move there', melee: 'tap again to attack', shoot: 'tap again to shoot', spell: 'tap again to cast', bard: '' }[intent.kind] : '';
-    const text = [intent?.kind === 'move' ? 'Move here' : v.preview ?? who, go].filter(Boolean).join(' \u00b7 ');
+    const text = v.preview ?? who;
     if (!text) return;
     const at = this.display.toPage(x, y);
     this.label.show(text, at.x, at.y);
   }
 
   /** Does what a click (or a second tap) on a hex means: a bard's turn asks what to do with them first. */
-  private act(intent: NonNullable<ReturnType<BattleController['intent']>>) {
+  private act(intent: Intent) {
     if (intent.kind === 'bard' && intent.action.type === 'jeer') this.bardCard(intent.action.target);
     else this.perform(intent.action);
   }
@@ -1316,11 +1446,12 @@ export class BattleController implements Screen {
         this.label.hide();
         if (armed && armed.hex === hex && armed.battle === this.battle && armed.targeting === this.view.targeting) {
           this.pointer = null;
+          this.unaim();
           return this.act(armed.intent);
         }
         this.pointer = [x, y];
-        this.hoverAt(x, y);
         if (intent && hex !== null) this.armed = { hex, intent, battle: this.battle, targeting: this.view.targeting };
+        this.hoverAt(x, y);
         this.tell(x, y, intent);
         return;
       }
@@ -1336,9 +1467,8 @@ export class BattleController implements Screen {
       if (this.armed) return;
       this.label.hide();
       this.pointer = null;
-      this.view.hover = null;
+      this.unaim();
       this.view.inspect = null;
-      this.view.preview = null;
     },
     key: (key: string) => {
       if (key === 'escape') {
@@ -1375,8 +1505,13 @@ export class BattleController implements Screen {
       },
       /** Where a hex's middle is on the page, for a script to tap it as a finger would. */
       hexOnPage: (hex: number) => this.display.toPage(...hexCentre(hex)),
-      /** What the battle's label says, played by touch. */
-      label: () => this.label.text,
+      /** What the battle says about what's under a finger: the tag beside what a tap would do, or else the label. */
+      label: () => this.tag.text ?? this.label.text,
+      /** The tag beside what a click would land on, while it shows, and the pointer's name ("sword:e", "bow", "no"). */
+      tag: () => this.tag.text,
+      pointer: () => this.pointerName,
+      /** The stacks lit by what the pointer is aimed at: `target` or `danger`. */
+      lit: () => Object.fromEntries(this.view.lit),
     };
   }
 }

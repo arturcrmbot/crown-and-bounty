@@ -1,0 +1,43 @@
+/* What a click would do, beside the stack it would land on: a scrap of the cards' parchment, with hard
+   edges and a hard shadow. It never takes a click. */
+.kc-tag {
+  position: fixed;
+  z-index: 12;
+  transform-origin: 0 0;
+  width: max-content;
+  max-width: 230px;
+  padding: 3px 9px 5px;
+  color: #2a1a08;
+  font: 13px/1.3 'Bounty Serif', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  background: linear-gradient(#ead9b0, #d9c290);
+  border: 2px solid #5a3e14;
+  filter: drop-shadow(2px 2px 0 rgba(12, 8, 3, 0.75));
+  pointer-events: none;
+}
+.kc-tag b {
+  display: block;
+  color: #4a1a08;
+  font-size: 13.5px;
+}
+.kc-tag p {
+  margin: 1px 0 0;
+}
+/* What it costs your own men. */
+.kc-tag p.danger {
+  color: #9a1a0a;
+  font-weight: bold;
+}
+/* Played by touch: what a second tap does. */
+.kc-tag p.hint {
+  margin-top: 2px;
+  color: #6a4a18;
+  font-style: italic;
+}
+/* Played by touch, in type big enough to read at arm's length. */
+.kc-touch .kc-tag {
+  max-width: min(44vw, 250px);
+  font-size: 14px;
+}
+.kc-touch .kc-tag b {
+  font-size: 14.5px;
+}

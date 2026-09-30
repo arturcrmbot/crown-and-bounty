@@ -500,3 +500,13 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   when the pointer rests on it, on the map or the minimap, or when a finger holds it. The army's own words still follow
   the threat ("They look nervous."), and scouts who put a number on the odds say it from afar too. The odds come from
   simulated fights, so a worker works out every band's ahead of time, and a hover or a tap never waits for them.
+- **What a click will do, in battle (30 Sep, #156):** Artur played as the Knight and couldn't see what a click would
+  do. Every action has its own pointer now, drawn in code like the map's crossed swords. A sword (a lance for a charge)
+  points the way the blow goes in, and there's a bow for a shot, boots for a march (a horseshoe for riders, a paw for
+  beasts), the spell's sign while aiming one, a lute for the Courtier's business, and a red "no" wherever on the field a
+  click would do nothing. The stacks a click would reach light up gold, and your own that a spell would catch too light
+  up red. A blow's hex is lit, with an arrow into the stack it lands on. A parchment tag beside them says what happens in
+  short plain sentences. It gives the damage, how many perish, and whether they strike back or first and how many of
+  yours that costs. Its numbers are the rules' own reckoning, from the rules playing the action out without dice, so it
+  never disagrees with what happens. On a phone the first tap shows all of it with "Tap again to attack", and the second
+  tap acts. The ribbon keeps the full line.

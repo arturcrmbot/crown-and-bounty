@@ -7,7 +7,8 @@ import { openPage, kc as hooks } from './lib/browser.mjs';
 import { startServer } from './lib/server.mjs';
 
 // `steps` are card buttons to press on the way in (or `key:h` to press a key, `place:stack:0` to click
-// something on the hero screen); without them, a scene picks the knight and rides out unless `keepCard`.
+// something on the hero screen, `hover:enemy` to point at their first stack in a battle); without them,
+// a scene picks the knight and rides out unless `keepCard`.
 /** A wizard's relics and trinkets, worn and in the pack, for the hero screen. */
 const GEAR = 'twinWand,crystalBall,greenwoodCloak,oldBanner,poachersHorn,brannocsLance,silverSignet,luckyHorseshoe,wizardsButton,goldenFeather,astrolabe,millersLoaf';
 const SCENES = {
@@ -36,6 +37,8 @@ const SCENES = {
   evening: { query: '&hero=knight&movement=40&x=2760&y=960', steps: [] },
   nightfall: { query: '&hero=knight&movement=0&x=2760&y=960', steps: [] },
   battle: { query: '&battle=patrol', keepCard: true },
+  // Aiming a spell at their stack (#156): the stack lit, and the tag saying what a click would do.
+  aim: { query: '&battle=patrol&spells=fireball', steps: ['key:s', 'Cast Fireball', 'hover:enemy'], dom: true },
   court: { query: '&court=1', keepCard: true },
   courtwizard: { query: '&court=1&hero=wizard', keepCard: true },
   courtranger: { query: '&court=1&hero=ranger', keepCard: true },
@@ -74,10 +77,16 @@ try {
         if (label === 'begin') await kc.begin();
         else if (label.startsWith('key:')) await page.keyboard.press(label.slice(4));
         else if (label.startsWith('place:')) await page.locator(`.kc-hero [data-place="${label.slice(6)}"]`).click();
-        else await kc.choose(label);
+        else if (label.startsWith('hover:')) {
+          const at = await page.evaluate((side) => {
+            const b = window.__kc.battle();
+            return b.hexOnPage(b.battle().fighters.find((f) => f.side === side && f.count > 0 && f.at >= 0).at);
+          }, label.slice(6));
+          await page.mouse.move(at.x, at.y);
+        } else await kc.choose(label);
       }
-      // The pointer rests in a corner, so no hover note covers the scene.
-      if (scene.dom) await page.mouse.move(2, 2);
+      // The pointer rests in a corner, so no hover note covers the scene, unless the scene is pointing at something.
+      if (scene.dom && !scene.steps.some((s) => s.startsWith('hover:'))) await page.mouse.move(2, 2);
     } else if (!scene.keepCard) {
       await kc.choose('Knight of the Realm');
       await kc.choose('Ride out');
