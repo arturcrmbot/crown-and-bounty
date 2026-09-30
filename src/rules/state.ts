@@ -380,13 +380,19 @@ export type Heard = { who: string; words: string; done: boolean };
 export type Link = { label: string; href: string; detail?: string };
 
 /**
+ * The sergeants' verdict on a fight, at a glance: how it looks (its colour, from a sure win to a likely
+ * loss) and its words. It leads every card about a fight, and a band's label on the map.
+ */
+export type Verdict = { odds: 'win' | 'close' | 'against' | 'lose'; words: string };
+
+/**
  * A parchment card with a title, lines (with **bold** and *italics*), and choices, with `links` off
  * the game before them. `wide` is for big decisions. `portrait` puts a face at its top left; `poster`
  * makes it a WANTED poster, which a `stamp` slams across ("PAID") and an `inset` finishes with a
  * picture and its line (the goose, home); `tiles` lays the choices side by side, each with its face,
  * for picking a hero. `journal` makes it a page of the journal: the face, stamped or not, is the
  * poster pinned in, and under the lines come the things heard on the road, ticked off once they've
- * paid off.
+ * paid off. `verdict` puts the odds of a fight under the title, in their colour.
  */
 export type Card = {
   title: string;
@@ -401,6 +407,7 @@ export type Card = {
   tiles?: boolean;
   battleResult?: BattleResultCard;
   journal?: { heard: Heard[] };
+  verdict?: Verdict;
 };
 
 /** What happened, for the screens to show. The rules never draw anything themselves. */

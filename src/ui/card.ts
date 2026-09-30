@@ -182,6 +182,8 @@ export class CardView {
     this.card.classList.toggle('journal', Boolean(card.journal));
     const face = card.portrait ? `<img class="portrait" alt="" src="${portraitImage(card.portrait)}">` : '';
     const title = card.title ? `<h3>${escape(card.title)}</h3>` : '';
+    // The odds of a fight come first, under the title, in their colour.
+    const verdict = card.verdict ? `<p class="kc-odds ${card.verdict.odds}">${escape(card.verdict.words)}</p>` : '';
     const battle = card.battleResult ? battleResultMarkup(card.battleResult) : '';
     const lines = card.lines.map((l) => `<p>${format(l)}</p>`);
     // A poster's stamp lands across the face; its inset (what came home) closes it, with its line.
@@ -195,7 +197,7 @@ export class CardView {
       // Two pages: the commission, with its poster pinned in (stamped long since, so it doesn't land again), and what's been heard.
       const pinned = `<div class="pinned"><b>WANTED</b><div class="mugshot">${face}${stamp}</div></div>`;
       this.body.innerHTML = `<div class="page">${title}${pinned}${words}</div>${heardMarkup(card.journal.heard)}`;
-    } else this.body.innerHTML = card.poster ? `${title}<div class="mugshot">${face}${stamp}</div>${words}${inset}` : `${face}${title}${words}${inset}`;
+    } else this.body.innerHTML = card.poster ? `${title}<div class="mugshot">${face}${stamp}</div>${words}${inset}` : `${face}${title}${verdict}${words}${inset}`;
     if (fresh && card.stamp && !card.journal) setTimeout(() => play('stamp'), STAMP_LANDS);
     this.card.querySelector('.choices')?.remove();
     if (card.choices.length || card.links?.length) {

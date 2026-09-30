@@ -492,3 +492,11 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   save, no IDs, no names), and GoatCounter tells a phone from a desktop by the screen's size. Its script loads a second
   after the first frame, pinned to a version by its hash, and only main's build has the site code (the repository
   variable `GOATCOUNTER_CODE`), so nothing else counts.
+- **The odds at a glance (30 Sep, #154):** Artur lost with the Knight, and clicking a band never told him plainly whether
+  he would win. Now the sergeants' verdict leads every card about a fight, in its colour: green for *You should win*
+  (nine chances in ten or better), amber for *The odds are on your side*, red for *The odds are against you* (under 55%)
+  and dark red for *You'd likely lose* (under 30%), the thresholds the cards always used. It is the first thing on a
+  band's card from afar, on its card when he rides up, and on an ambush, and it sits under a band's name in the label
+  when the pointer rests on it, on the map or the minimap, or when a finger holds it. The army's own words still follow
+  the threat ("They look nervous."), and scouts who put a number on the odds say it from afar too. The odds come from
+  simulated fights, so a worker works out every band's ahead of time, and a hover or a tap never waits for them.

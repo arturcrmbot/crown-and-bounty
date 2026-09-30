@@ -8,7 +8,7 @@ import { BLUE, GOLD, NEUTRAL, PARCHMENT, RED } from '../render/palette';
 import { clickable, paintHud, type HudHit } from '../render/hud';
 import { ART, heroArtId } from '../render/units';
 import type { BattleState } from '../rules/battle/battle';
-import { ambushCard, apply, bountyCard, commissionOf, describe, finishFight, heardOf, heroStats, journalCard, levelUpCard, locationById, placeNote, roman, VANISHES, visit, whenThere, type Action, type Card, type GameEvent, type GameState, type Result } from '../rules/game';
+import { ambushCard, apply, bountyCard, commissionOf, describe, finishFight, heardOf, heroStats, journalCard, levelUpCard, locationById, placeNote, placeOdds, roman, VANISHES, visit, whenThere, type Action, type Card, type GameEvent, type GameState, type Result, type Verdict } from '../rules/game';
 import { barNote } from '../rules/heroSheet';
 import type { Point } from '../rules/map/geometry';
 import { CELL, cellCentre, type MapModel, type Terrain } from '../rules/map/model';
@@ -34,6 +34,7 @@ import { countEvents } from './counter';
 import { Walks } from './walks';
 import { tiredResult } from './adventureCards';
 import { doorsOf, hiddenShare, HIDES, reachOf, type Reach } from './doors';
+import { oddsAhead } from './odds';
 
 type HintId = Extract<Action, { type: 'hint' }>['id'];
 
@@ -730,6 +731,8 @@ export class AdventureController implements Screen {
       if (Math.hypot(tx - camera.x, ty - camera.y) < 2) this.focus = null;
     }
     if (Math.floor(this.state.movement) !== this.hudMovement) this.repaintHud();
+    // While he stands, the odds of every band still to fight are worked out ahead, for its label and its card.
+    if (!walking) oddsAhead(this.state);
     this.paintMinimap();
     // A tile of the land further off is painted each frame, nearest the view first, until all of it is.
     this.view.warm();
@@ -772,6 +775,12 @@ export class AdventureController implements Screen {
     this.paintMinimap();
   }
 
+  /** The odds of a fight with the band under the pointer on the minimap, under its name, as on the map. */
+  private minimapOdds(x: number, y: number): Verdict | null {
+    const mark = this.scene.minimap.markAt(x, y);
+    return mark ? placeOdds(this.state, mark.id) : null;
+  }
+
   /** What the pointer is over on the minimap: a place, Aldric, or the land, and what a click does there. */
   private minimapNote(x: number, y: number): string {
     const { minimap } = this.scene;
@@ -795,7 +804,7 @@ export class AdventureController implements Screen {
     const days = daysAway(this.state, this.map, r.place && !r.approach ? this.doorOf(r.place) : r.point, r.approach);
     if (r.name) r.text = `${r.name} \u00b7 ${days === null ? 'no way through yet' : whenThere(days)}`;
     else r.text = days === null ? 'No way through' : `Ride here: ${whenThere(days)}`;
-    this.label.show(r.text, r.client[0], r.client[1]);
+    this.label.show(r.text, r.client[0], r.client[1], r.place ? placeOdds(this.state, r.place) : null);
   }
 
   /** Trotting only while the drawn hero is actually on the move, not while a tired route waits. */
@@ -1123,7 +1132,7 @@ export class AdventureController implements Screen {
       if (minimap.lit || minimap.contains(x, y)) {
         this.resting = null;
         this.display.canvas.style.cursor = 'pointer';
-        this.label.show(minimap.lit ? this.minimapButtonNote() : this.minimapNote(x, y), clientX, clientY);
+        this.label.show(minimap.lit ? this.minimapButtonNote() : this.minimapNote(x, y), clientX, clientY, minimap.lit ? null : this.minimapOdds(x, y));
         return;
       }
       const point = this.view.toMap(x, y);
@@ -1138,9 +1147,11 @@ export class AdventureController implements Screen {
       if (!key) this.resting = null;
       else if (this.resting?.key !== key) this.resting = { key, point: place ? place.at : point!, approach: Boolean(place?.enemy && !place.done), place: place?.id, name: thing?.name ?? null, client: [clientX, clientY], still: 0 };
       else this.resting.client = [clientX, clientY];
+      // Under a band's name, the odds of a fight with it, as its cards give them.
+      const odds = place ? placeOdds(this.state, place.id) : null;
       const known = this.resting?.text && !again ? this.resting.text : null;
-      if (known) this.label.show(known, clientX, clientY);
-      else if (thing) this.label.show(`${thing.name}${again}`, clientX, clientY);
+      if (known) this.label.show(known, clientX, clientY, odds);
+      else if (thing) this.label.show(`${thing.name}${again}`, clientX, clientY, odds);
       else this.label.hide();
     },
     drag: (dx: number, dy: number, x: number, y: number) => {

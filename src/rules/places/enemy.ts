@@ -6,7 +6,7 @@ import { battleXp, beat, fight, likelyLossesLine, startFight, winChance } from '
 import { artifactChoices, foundNote, gainXp, giveArtifact, heroStats } from '../hero';
 import { asleep } from '../map/roaming';
 import { riddenOut } from '../map/sortie';
-import { addTroops, close, coins, leadershipUsed, show, stillWithYou, update, type Army, type Choice, type ContentChoice, type GameState, type Location, type Result } from '../state';
+import { addTroops, close, coins, leadershipUsed, show, stillWithYou, update, type Army, type Choice, type ContentChoice, type GameState, type Location, type Result, type Verdict } from '../state';
 import { countsExactly, faceOf, forceLine, note, option, ride, say, words } from './common';
 import type { PlaceKind } from './kind';
 
@@ -185,13 +185,37 @@ function grumbleLines(state: GameState, place: Location): string[] {
 
 /** Odds the sergeants think are safe: the enemy looks nervous, and a band this weak surrenders to a diplomat. */
 export const SAFE = 0.9;
+/** Odds still on your side, if only just. */
+const FAIR = 0.55;
+/** Odds against you, but not by much. Below them you'd likely lose. */
+const LONG = 0.3;
 
-/** The odds of a fight, in the army's own words and then in plain ones: the same on every card. */
+/** The sergeants' verdict on a fight, in plain words and its colour: the same on every card, and on the map. */
+export function verdict(chance: number): Verdict {
+  if (chance >= SAFE) return { odds: 'win', words: 'You should win.' };
+  if (chance >= FAIR) return { odds: 'close', words: 'The odds are on your side.' };
+  if (chance >= LONG) return { odds: 'against', words: 'The odds are against you.' };
+  return { odds: 'lose', words: 'You\u2019d likely lose.' };
+}
+
+/** How the army takes the odds, in its own words, under the verdict. */
 export function oddsLine(chance: number): string {
-  if (chance >= SAFE) return 'They look nervous. *You should win.*';
-  if (chance >= 0.55) return 'It will be close. *The odds are on your side.*';
-  if (chance >= 0.3) return 'Your army looks at you. Then at them. *The odds are against you.*';
-  return 'Your army looks at you. Then at them. Then at you. *You\u2019d likely lose.*';
+  if (chance >= SAFE) return 'They look nervous.';
+  if (chance >= FAIR) return 'It will be close.';
+  if (chance >= LONG) return 'Your army looks at you. Then at them.';
+  return 'Your army looks at you. Then at them. Then at you.';
+}
+
+/** The verdict with nobody to fight. */
+const UNARMED: Verdict = { odds: 'lose', words: 'You have no troops to fight with.' };
+
+/**
+ * The verdict on fighting this enemy now, for its cards and its label on the map, or null where there
+ * is no fight to be had: beaten already, or his gate barred while he's out.
+ */
+export function oddsOf(state: GameState, place: Location): Verdict | null {
+  if (!place.enemy || place.done || riddenOut(state, place)) return null;
+  return state.army.length ? verdict(winChance(state, place.id)) : UNARMED;
 }
 
 const TENTHS = ['not one', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
@@ -258,19 +282,23 @@ export function enemy(kind: 'patrol' | 'hideout'): PlaceKind {
       const hunt = e.behaviour !== 'hunt' ? [] : asleep(state, place) ? ['*For now, they hold their ground.*'] : [shadowed ? '*They hunt anyone weaker, but your scouts are watching them, so they won\u2019t find your trail.*' : e.trailing ? '*They have your scent. Camp near them tonight and they\u2019ll fall on you at dawn.*' : coming];
       // While a villain is out, his lair's card says so instead of what it usually says.
       const away = riddenOut(state, place) ? [e.sortie!.barred[0]] : e.lines;
-      return { title: place.name, ...faceOf(e.army), lines: [...away, line, ...carriesLine(state, place), ...hunt], choices: [ride(place, 'Approach'), { label: 'Close', action: { type: 'close' } }] };
+      // The verdict leads, so the odds are the first thing read; scouts who put a number on them say it from afar too.
+      const odds = oddsOf(state, place);
+      const scouts = odds && state.army.length && heroStats(state).odds ? [scoutsLine(winChance(state, place.id))] : [];
+      return { title: place.name, ...faceOf(e.army), ...(odds ? { verdict: odds } : {}), lines: [...away, line, ...scouts, ...carriesLine(state, place), ...hunt], choices: [ride(place, 'Approach'), { label: 'Close', action: { type: 'close' } }] };
     },
     arrive(state, place) {
       const foe = place.enemy!;
       if (place.done) return say(state, place, note(place, words(place, 'done')));
       if (riddenOut(state, place)) return say(state, place, note(place, foe.sortie!.barred));
-      if (state.army.length === 0) return say(state, place, { title: place.name, lines: [foe.threat, 'You have no troops to fight with. Recruit some first.'], choices: [...parleys(state, place), retreat] });
+      if (state.army.length === 0) return say(state, place, { title: place.name, verdict: UNARMED, lines: [foe.threat, 'Recruit some troops first.'], choices: [...parleys(state, place), retreat] });
       const chance = winChance(state, place.id);
       const scouts = heroStats(state).odds ? [scoutsLine(chance)] : [];
       const yields = cowed(state, place, chance) ? [option(place, 'Demand their surrender', 'surrender')] : [];
       return say(state, place, {
         title: place.name,
         ...faceOf(foe.army),
+        verdict: verdict(chance),
         lines: [foe.threat, oddsLine(chance), likelyLossesLine(state, place.id), ...scouts, ...carriesLine(state, place), ...tameLine(state, place), ...grumbleLines(state, place)],
         choices: [{ ...option(place, foe.charge ?? 'Fight', 'fight'), detail: FIGHT_NOTE }, { ...option(place, 'Let the sergeants handle it', 'auto'), detail: SERGEANTS_NOTE }, ...yields, ...hireButton(state, place), ...tameButton(state, place), ...parleys(state, place), retreat],
       });

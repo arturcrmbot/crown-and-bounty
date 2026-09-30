@@ -147,7 +147,7 @@ export function lossesLine(before: Army, after: Army): string {
 }
 
 /** The likely cost of a fight, using the same fixed trials as the sergeants' odds. */
-export function likelyLossesLine(state: GameState, id: string, samples = 16): string {
+export function likelyLossesLine(state: GameState, id: string, samples = SAMPLES): string {
   const place = locationById(state, id);
   if (!place.enemy || !state.army.length) return '';
   const estimate = simulateFight(state, place, place.enemy.army, samples);
@@ -391,10 +391,6 @@ export function finishFight(state: GameState): Result {
   };
 }
 
-/**
- * The sergeants' estimate: how often the army wins this fight when both sides play it out by the
- * AI, over a few fixed seeds. Honest about tactics in a way raw troop numbers aren't.
- */
 /** Well-mixed seeds for the sample battles, so the samples cover different fields and dice. */
 const sampleSeed = (i: number) => (Math.imul(i + 1, 0x9e3779b1) ^ 0x85ebca6b) >>> 0;
 
@@ -402,12 +398,22 @@ const sampleSeed = (i: number) => (Math.imul(i + 1, 0x9e3779b1) ^ 0x85ebca6b) >>
 const chances = new Map<string, number>();
 const estimates = new Map<string, { chance: number; losses: Army }>();
 
-/** `army` asks about only part of the enemy: the beasts among a band, say. */
-export function winChance(state: GameState, id: string, samples = 16, army?: Army): number {
+/** How many fights the cards' odds are worked out from. */
+const SAMPLES = 16;
+
+/** What the odds of a fight are kept under: the two armies and the hero as they'd meet, and how many fights they were worked out from. */
+const oddsKey = (state: GameState, place: Location, enemy: Army, samples: number) => JSON.stringify([state.army, oddsHero(state), enemy, place.kind, provinceOf(state).fen ?? false, samples]);
+
+/**
+ * The sergeants' estimate: how often the army wins this fight when both sides play it out by the
+ * AI, over a few fixed seeds. Honest about tactics in a way raw troop numbers aren't. `army` asks
+ * about only part of the enemy: the beasts among a band, say.
+ */
+export function winChance(state: GameState, id: string, samples = SAMPLES, army?: Army): number {
   const place = locationById(state, id);
   if (!place.enemy || state.army.length === 0) return 0;
   const enemy = army ?? place.enemy.army;
-  const key = JSON.stringify([state.army, oddsHero(state), enemy, place.kind, provinceOf(state).fen ?? false, samples]);
+  const key = oddsKey(state, place, enemy, samples);
   const known = chances.get(key);
   if (known !== undefined) return known;
   const estimate = simulateFight(state, place, enemy, samples);
@@ -420,8 +426,36 @@ export function winChance(state: GameState, id: string, samples = 16, army?: Arm
   return estimate.chance;
 }
 
+/** Whether the cards' odds for a fight with this band are worked out already, so asking for them costs nothing. */
+export function oddsKnown(state: GameState, id: string): boolean {
+  const place = locationById(state, id);
+  if (!place.enemy || state.army.length === 0) return true;
+  const key = oddsKey(state, place, place.enemy.army, SAMPLES);
+  return chances.has(key) || estimates.has(key);
+}
+
+/** The cards' odds for a fight with a band, and what they're kept under, as the odds worker sends them back. */
+export type Odds = { key: string; chance: number; losses: Army };
+
+/** Works out the cards' odds for a fight with this band, for the odds worker, off the page's thread. */
+export function oddsFor(state: GameState, id: string): Odds | null {
+  const place = locationById(state, id);
+  if (!place.enemy || state.army.length === 0) return null;
+  return { key: oddsKey(state, place, place.enemy.army, SAMPLES), ...simulateFight(state, place, place.enemy.army, SAMPLES) };
+}
+
+/** Odds the odds worker has worked out, kept as if they had been worked out here. */
+export function learnOdds({ key, chance, losses }: Odds) {
+  if (chances.size > 2000) {
+    chances.clear();
+    estimates.clear();
+  }
+  chances.set(key, chance);
+  estimates.set(key, { chance, losses });
+}
+
 function simulateFight(state: GameState, place: Location, enemy: Army, samples: number): { chance: number; losses: Army } {
-  const key = JSON.stringify([state.army, oddsHero(state), enemy, place.kind, provinceOf(state).fen ?? false, samples]);
+  const key = oddsKey(state, place, enemy, samples);
   const known = estimates.get(key);
   if (known) return known;
   let wins = 0;
