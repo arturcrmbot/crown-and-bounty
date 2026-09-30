@@ -147,6 +147,12 @@ export const COMMISSIONS: Commission[] = [
         done: { flags: { huntKey: true } },
       },
       {
+        who: 'the key from the old King\u2019s lodge',
+        words: 'The old King\u2019s key has a stag on it, the same stag as over the door of his hunt hall by the bridge.',
+        heard: { flags: { huntKey: true } },
+        done: { flags: { huntsmen: true } },
+      },
+      {
         who: 'the old King\u2019s huntsmen',
         words: 'Grimsby gave our job to Rook. We\u2019d like a word with him.',
         heard: { flags: { huntsmen: true } },

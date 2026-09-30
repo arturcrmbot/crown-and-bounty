@@ -666,6 +666,11 @@ export const ALDMOOR: Province = {
         later: [
           { when: { flag: 'watHome' }, about: ['The old King\u2019s hunt hall stands by the bridge.', '*The shutters are open, and a hawk sits on the antlers over the door.*'] },
           { when: { flag: 'huntsmen' }, about: ['The old King\u2019s hunt hall stands by the bridge.', '*The shutters are open again, and there is smoke from the chimney.*'] },
+          {
+            when: { flag: 'huntKey', notFlag: 'huntsmen' },
+            about: ['The old King\u2019s hunt hall stands by the bridge.', '*There is a stag over the door, the same stag as on the old King\u2019s key, so the key should fit its lock.*'],
+            note: 'the old King\u2019s key fits its lock',
+          },
         ],
       },
       pages: [
@@ -772,7 +777,7 @@ export const ALDMOOR: Province = {
               id: 'key',
               label: 'Take the key',
               effects: { flags: { huntKey: true, lodge: 'key' }, treasure: 150 },
-              lines: ['It is heavier than it looks. *The stag on it is the one over the door of the old hunt hall by the bridge.*', 'In a pocket of the coat you find a purse of the old King\u2019s crowns.'],
+              lines: ['It is heavier than it looks. *The old King\u2019s key has a stag on it, the same stag as over the door of his hunt hall by the bridge.*', 'In a pocket of the coat you find a purse of the old King\u2019s crowns.'],
             },
             { id: 'leave', label: 'Leave it on its nail' },
           ],

@@ -8,7 +8,7 @@ import { createBattle, grumbleOf, grumblesAt, luckOf, moraleOf, statsOf, type Ba
 import { rowOf } from './battle/hex';
 import { bountyOf, CAMPAIGN_LENGTH, commissionOf, hasNextCommission, heardOf } from './campaign';
 import { heroFighter, heroInBattle } from './fight';
-import { countsExactly, forceLine } from './places/common';
+import { countsExactly, forceLine, laterNote } from './places/common';
 import { oddsOf } from './places/enemy';
 import { heroStats, LEVELS, type StatId } from './hero';
 import { riddenOut } from './map/sortie';
@@ -158,6 +158,8 @@ export function placeNote(state: GameState, id: string): string {
     const force = forceLine(place.enemy.army, countsExactly(state)).replace(/\*\*/g, '');
     return `${place.name}: ${force}${place.enemy.trailing ? ' \u00b7 on your trail!' : ''}${riddenOut(state, place) ? ' \u00b7 the gate is barred' : ''}`;
   }
+  const later = laterNote(state, place);
+  if (later) return `${place.name}: ${later}`;
   const offer = place.recruits;
   if (offer && !place.done && offer.count > 0) return `${place.name}: ${troops(offer.troop, offer.count)} to recruit`;
   return place.name;
