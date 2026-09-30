@@ -206,6 +206,9 @@ describe('the old King\u2019s hunt hall', () => {
     expect(labels(keyed, 'hall')).toEqual(['Open the hall']);
     const opened = choose(keyed, 'hall', 'door/open')!;
     expect(opened.events.some((e) => e.type === 'changed' && e.id === 'hall')).toBe(true);
+    // From afar, the hall says it's open once it is.
+    expect(fromAfar(keyed, 'hall').lines.join(' ')).toMatch(/nobody has opened/);
+    expect(fromAfar(opened.state, 'hall').lines.join(' ')).toMatch(/smoke from the chimney/);
     expect(cardOf(opened).choices.map((c) => c.label)).toEqual([`Recruit 12 (free)`, 'Close']);
     expect(cardOf(opened).lines.join(' ')).toMatch(/Rook/);
     const hall = locationById(opened.state, 'hall');
@@ -254,6 +257,9 @@ describe('the old King\u2019s falconer on the heath', () => {
     expect(heroStats(meg).sight).toBeGreaterThan(heroStats(start).sight);
     expect(labels(meg, 'falconer')).toEqual(['Close']);
     expect(choose(meg, 'falconer', 'meg/meg')).toBeNull();
+    // From afar, the block outside the bothy is empty once Meg has gone with him.
+    expect(fromAfar(start, 'falconer').lines.join(' ')).toMatch(/a hawk on a block/);
+    expect(fromAfar(meg, 'falconer').lines.join(' ')).toMatch(/an empty block/);
   });
 
   it('comes home to the hunt hall with his lads, once the huntsmen are back there', () => {
@@ -268,6 +274,9 @@ describe('the old King\u2019s falconer on the heath', () => {
     expect(has(home.state, 'oldKingsHawk')).toBe(false);
     expect(cardOf(visit(home.state, 'falconer')).lines.join(' ')).toMatch(/shut up/);
     expect(choose(home.state, 'falconer', 'meg/meg')).toBeNull();
+    // From afar, the bothy is shut up and the hall has its hawk.
+    expect(fromAfar(home.state, 'falconer').lines.join(' ')).toMatch(/gone home to the hunt hall/);
+    expect(fromAfar(home.state, 'hall').lines.join(' ')).toMatch(/a hawk sits on the antlers/);
   });
 });
 
@@ -518,6 +527,11 @@ describe('old saves', () => {
     const opened = { ...loaded, flags: { ...loaded.flags, delving: true } };
     expect(fromAfar(opened, 'delving').lines.join(' ')).toContain('The bricks are down');
     expect(withNewPlaces(loaded)).toBe(loaded);
+    // So do the hunt hall and the falconer's bothy, seen before they could say Old Wat had gone home.
+    const old = { ...s, locations: s.locations.map((l) => (l.id === 'hall' || l.id === 'falconer' ? { ...l, seen: true, text: { about: [l.text!.about![0]] } } : l)) };
+    const home = { ...withNewPlaces(JSON.parse(JSON.stringify(old)) as GameState), flags: { huntsmen: true, falconer: 'home', watHome: true } };
+    expect(fromAfar(home, 'hall').lines.join(' ')).toMatch(/a hawk sits on the antlers/);
+    expect(fromAfar(home, 'falconer').lines.join(' ')).toMatch(/gone home to the hunt hall/);
   });
 
   it('and a save that is up to date comes back as it was', () => {
