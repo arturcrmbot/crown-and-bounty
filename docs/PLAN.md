@@ -1,4 +1,4 @@
-# King's Commission: plan
+# Crown & Bounty: plan
 
 How the game fits together, how the code is structured, how every part gets tested, and the milestones. Read with `BRIEF.md`, and `WORLD.md` for the story, the three acts and their villains: where this plan differs from it (five commissions, Mirrow and Bramble, captains who join you), `WORLD.md` wins.
 

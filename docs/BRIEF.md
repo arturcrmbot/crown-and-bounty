@@ -1,6 +1,6 @@
-# King's Commission: brief
+# Crown & Bounty: brief
 
-Working title. A small browser game, not commercial. The goal is quirky and fun, with the charm of Heroes of Might and Magic 2 and the structure of the original King's Bounty (1990).
+Crown & Bounty, with The Old King's Treasure as the subtitle for Act I (Artur, 30 Sep 2026, #145). Until then it was King's Commission, a working title. A small browser game, not commercial. The goal is quirky and fun, with the charm of Heroes of Might and Magic 2 and the structure of the original King's Bounty (1990).
 
 The story and the world are in [WORLD.md](WORLD.md) (29 Sep 2026). Where the villains and the story below differ from it, WORLD.md wins.
 
@@ -31,7 +31,7 @@ The balance is in [BALANCE.md](BALANCE.md) (29 Sep 2026): a power budget for eac
 
 ## Stack
 
-TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dialogs. Vitest for the game rules and Playwright for screenshots. Hosted on GitHub Pages from the public repo `arturcrmbot/kings-commission`: https://arturcrmbot.github.io/kings-commission/
+TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dialogs. Vitest for the game rules and Playwright for screenshots. Hosted on GitHub Pages from the public repo `arturcrmbot/crown-and-bounty`: https://arturcrmbot.github.io/crown-and-bounty/
 
 ## Status (28 Sep 2026)
 

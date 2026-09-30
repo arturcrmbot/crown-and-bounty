@@ -1,5 +1,5 @@
 import { MAP_VIEW } from '../render/frame';
-import { TitleScreen } from '../render/titleScreen';
+import { titlePainting } from '../render/titleScreen';
 import type { Action, Card, GameState } from '../rules/game';
 import { CardView } from '../ui/card';
 import { touch } from '../ui/touch';
@@ -13,7 +13,7 @@ export class TitleController implements Screen {
   readonly music = 'title' as const;
   readonly ambience = 'heath' as const;
   private readonly display: Display;
-  private readonly screen = new TitleScreen();
+  private readonly screen = titlePainting();
   private readonly cards: CardView;
   private readonly hooks: { onNew: () => void; onContinue: () => void };
   private readonly resume: GameState | null;

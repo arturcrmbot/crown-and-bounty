@@ -1,4 +1,5 @@
-/* Held upright (`turn.ts`): the whole page, dark slate, and a parchment card asking for it sideways. */
+/* Held upright (`turn.ts`): the whole page, from the painting's sky down to the King's red, with the
+   name over the painting, the castle below it, and a parchment card asking for the phone on its side. */
 .kc-turn {
   display: none;
   position: fixed;
@@ -6,23 +7,51 @@
   inset: 0;
   align-items: center;
   justify-content: center;
-  background: #0e1219 radial-gradient(circle at 50% 45%, #2a3442, #0e1219 70%);
+  overflow: hidden;
+  background: #15226a linear-gradient(#0d1546, #3b1a44 55%, #582a2a);
   touch-action: none;
 }
 .kc-upright .kc-turn {
   display: flex;
 }
+.kc-turn-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(100vw, 460px);
+  max-height: 100%;
+}
+/* The name over the sky and the castle under it, in one gold frame. */
+.kc-turn-column img.name,
+.kc-turn-column img.land {
+  display: block;
+  width: 100%;
+  image-rendering: pixelated;
+  border-top: 3px solid #c28a1c;
+}
+/* The castle gives way first when the screen is short. */
+.kc-turn-column img.land {
+  flex: 0 1 auto;
+  min-height: 90px;
+  object-fit: cover;
+  object-position: 50% 60%;
+  border-bottom: 3px solid #c28a1c;
+}
 .kc-card.kc-turn-card {
-  width: min(280px, calc(100vw - 60px));
+  flex: none;
+  width: min(300px, calc(100vw - 48px));
+  margin-top: 18px;
   align-items: center;
   text-align: center;
   overflow: visible;
 }
-.kc-turn-card h3 {
-  margin: 14px 0 8px;
-  font-size: 22px;
+.kc-turn-card p {
+  margin: 4px 0 6px;
+  font-size: 17px;
+  text-wrap: balance;
 }
 .kc-turn-card p.small {
+  margin: 0;
   font-size: 13px;
   font-style: italic;
   color: #5a3e14;
@@ -30,9 +59,9 @@
 /* The phone turns over onto its side, waits, and comes back up to show how. */
 .kc-turn-card img.phone {
   display: block;
-  width: 64px;
-  height: 100px;
-  margin: 8px auto 4px;
+  width: 48px;
+  height: 75px;
+  margin: 2px auto 6px;
   image-rendering: pixelated;
   animation: kc-turn 2.6s ease-in-out infinite;
 }

@@ -1,14 +1,14 @@
 ---
 name: kings-commission-orchestrate
 description: >
-  How to run the work on King's Commission (arturcrmbot/kings-commission): agree the finish line with
+  How to run the work on Crown & Bounty (arturcrmbot/crown-and-bounty): agree the finish line with
   Artur and keep it, one local session per issue, new ideas and balance routed rather than started,
   sessions watched from the start, and short messages. Use when coordinating work on this game,
   planning a day's work, running playtests, or running several sessions at once. Learnt the hard way
   on 29 Sep 2026.
 ---
 
-# Run the work on King's Commission
+# Run the work on Crown & Bounty
 
 Artur wants to play his game. On 29 Sep, "a ridiculously painful day", he waited hours for it: the
 finish line kept moving, the morning went on a cloud factory, every idea became a session at once,
@@ -24,7 +24,7 @@ session builds and ships by `.github/skills/kings-commission-ship/SKILL.md`.
   the content. Anything new goes after it (see Scope).
 - Give honest times, CI included: its PR jobs take about 10 to 15 minutes, and main deploys a few
   minutes after the merge. If a time slips, say so at once, and why.
-- Never block him from playing. Main is live at https://arturcrmbot.github.io/kings-commission/: tell
+- Never block him from playing. Main is live at https://arturcrmbot.github.io/crown-and-bounty/: tell
   him what's live now and what's coming, and let him play while the rest lands.
 
 ## The flow

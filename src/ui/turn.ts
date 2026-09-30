@@ -1,11 +1,13 @@
 /**
- * Held upright, a phone gets a card asking for it to be turned sideways: the game is played in
- * landscape, as the old games were. The card shows itself (`.kc-upright`, set by `touch.ts`), and
- * the game's clock stands still behind it (`main.ts`).
+ * Held upright, a phone gets the game's name over its painting, and a card asking for the phone to
+ * be turned on its side: the game is played in landscape, as the old games were. The screen shows
+ * itself (`.kc-upright`, set by `touch.ts`), and the game's clock stands still behind it (`main.ts`).
  */
 import { Bitmap } from '../render/bitmap';
 import { GOLD, INK, RED, SLATE, STONE, WATER } from '../render/palette';
+import { titlePainting } from '../render/titleScreen';
 import { bitmapUrl } from './pixels';
+import { upright, whenTouchChanges } from './touch';
 import './turn.css';
 
 /** A phone, with the King's crown on its screen. */
@@ -47,13 +49,26 @@ export function turnCard() {
   const screen = document.createElement('div');
   screen.className = 'kc-turn';
   screen.setAttribute('role', 'dialog');
-  screen.setAttribute('aria-label', 'Turn your phone sideways');
-  screen.innerHTML = `<div class="kc-card kc-turn-card">
-    <img class="phone" alt="" src="${bitmapUrl(phone())}">
-    <h3>Turn your phone sideways</h3>
-    <p>Aldmoor is wider than it is tall. So is Baron Grimsby.</p>
-    <p class="small">If it won\u2019t turn, switch off rotation lock.</p>
+  screen.setAttribute('aria-label', 'Turn your phone on its side');
+  screen.innerHTML = `<div class="kc-turn-column">
+    <img class="name" alt="Crown &amp; Bounty. The Old King\u2019s Treasure.">
+    <img class="land" alt="">
+    <div class="kc-card kc-turn-card">
+      <img class="phone" alt="" src="${bitmapUrl(phone())}">
+      <p>The map needs a wider screen than this. Turn your phone on its side to play.</p>
+      <p class="small">If it won\u2019t turn, switch off rotation lock.</p>
+    </div>
   </div>`;
+  // The painting is the title's, cut out the first time the phone is held upright.
+  const paint = () => {
+    if (!upright() || screen.dataset.painted) return;
+    screen.dataset.painted = 'yes';
+    const { name, land } = titlePainting().upright();
+    screen.querySelector<HTMLImageElement>('img.name')!.src = bitmapUrl(name);
+    screen.querySelector<HTMLImageElement>('img.land')!.src = bitmapUrl(land);
+  };
+  whenTouchChanges(paint);
+  paint();
   // Nothing behind it can be touched while it's up.
   for (const type of ['pointerdown', 'pointerup', 'click', 'touchstart'] as const) screen.addEventListener(type, (e) => e.stopPropagation());
   document.body.append(screen);
