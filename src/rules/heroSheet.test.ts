@@ -253,8 +253,8 @@ describe('the hero\u2019s own card', () => {
     const names = me.traits.map((t) => t.name);
     expect(names.slice(0, 5)).toEqual(['Leads', 'Spells', 'Charge', 'Behind the line', 'Rides out']);
     expect(names.filter((n) => n === 'Charge')).toHaveLength(1);
-    expect(me.traits[2].note.startsWith('He and his Knights charge')).toBe(true);
-    expect(me.traits[1].note).toBe('He casts one a round from the 1 in his book, from behind the line. He has 10/10 mana, and none comes back in battle.');
+    expect(me.traits[2].note.startsWith('When he and his Knights charge')).toBe(true);
+    expect(me.traits[1].note).toBe('He casts one spell a round, from the 1 in his book. He has 10/10 mana, and none comes back in battle.');
     expect(me.lines[0]).toBe('In battle Sir Aldric stands behind his men, where no blow, shot or spell can reach him.');
     expect(me.lines[1]).toBe('If his army is beaten, he retreats, and rides home to raise another.');
   });

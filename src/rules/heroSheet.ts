@@ -402,7 +402,7 @@ export function stackSheet(state: GameState, index: number): StackSheet | null {
 function chargeLine(state: GameState): string {
   const list = listed([...new Set(heroStats(state).charge.filter((t) => !TROOPS[t].hero))].map((t) => TROOPS[t].name));
   return list
-    ? `He and his ${list} charge, so they hit a quarter harder and nobody strikes back. He rides in from behind the line, but they need a run-up of 3 hexes, started clear of the enemy, and the charge winds them, so they can\u2019t strike back themselves for the rest of that round and the next.`
+    ? `When he and his ${list} charge, they hit a quarter harder and nobody strikes back. He needs no run-up, but they need 3 hexes, started clear of the enemy, and the charge winds them, so they can\u2019t strike back themselves for the rest of that round and the next.`
     : 'He charges as he rides in from behind the line, so he hits a quarter harder and nobody strikes back.';
 }
 
@@ -434,7 +434,7 @@ export function leaderSheet(state: GameState): LeaderSheet {
     {
       name: 'Spells',
       note: spells
-        ? `He casts ${s.casts === 1 ? 'one' : s.casts} a round from the ${spells} in his book, from behind the line. He has ${state.hero.mana}/${s.maxMana} mana, and none comes back in battle.`
+        ? `He casts ${s.casts === 1 ? 'one spell' : `${s.casts} spells`} a round, from the ${spells} in his book. He has ${state.hero.mana}/${s.maxMana} mana, and none comes back in battle.`
         : 'He has none in his book yet, but a teacher or a shrine could help.',
     },
     ...(me.charges ? [{ name: 'Charge', note: chargeLine(state), trick: true }] : []),
