@@ -1,5 +1,5 @@
 # Every pull request gets typecheck, the build and the fast unit tests, the bot playing whole
-# commissions, and the play-through with a playtest per background: the three checks main's ruleset
+# commissions, and the play-through (by mouse, and by touch on a phone) with a playtest per background: the three checks main's ruleset
 # requires, and the session that opened the PR squash-merges it once they're green. Main, on a push
 # (a merge) or a dispatch, gets typecheck, the build and the fast unit tests, which gate the deploy to
 # GitHub Pages, then the play-through and the balance report. The visual scenes only run by hand
@@ -125,6 +125,10 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Play the first commission through the real UI
         run: npm run e2e 2>&1 | tee e2e.txt
+      - name: Play the first commission by touch, on a phone
+        if: always()
+        # The opening, the rails, a fight by hand and the hero screen, by touch; the whole commission is `npm run phone`, locally.
+        run: QUICK=1 npm run phone 2>&1 | tee phone.txt
       - name: Playtest the opening with each background
         if: always()
         run: |
@@ -141,6 +145,10 @@ jobs:
             echo '```'
             grep -E "^(ok|FAIL)" e2e.txt | tail -60 || true
             echo '```'
+            echo "### Played by touch, on a phone"
+            echo '```'
+            grep -E "^(ok|FAIL)" phone.txt | tail -80 || true
+            echo '```'
             echo "### Playtests"
             for f in playtest-*.txt; do echo "- **${f#playtest-}**: $(tail -1 "$f")"; done
           } >> "$GITHUB_STEP_SUMMARY"
@@ -152,6 +160,7 @@ jobs:
             screenshots/
             playtest-*.txt
             e2e.txt
+            phone.txt
           retention-days: 14
 
   visual:

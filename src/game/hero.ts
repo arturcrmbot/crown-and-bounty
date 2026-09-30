@@ -1,9 +1,9 @@
 import type { MapSpellId } from '../content/spells';
 import type { Action } from '../rules/game';
-import { HeroScreen } from '../ui/heroScreen';
 import type { AdventureController } from './adventure';
 import type { Display } from './display';
-import type { Screen } from './screen';
+import { HeroScreen, SHEET } from '../ui/heroScreen';
+import type { Screen, SideButton } from './screen';
 
 /**
  * The hero screen, open over the map: the map stands still underneath, and every change goes
@@ -56,8 +56,10 @@ export class HeroController implements Screen {
     return this.adventure.render(tick);
   }
 
+  /** Over the map at the canvas's scale; played by touch, across the whole window (see `HeroScreen.place`). */
   placeCards() {
-    this.sheet.place((x, y) => this.display.toPage(x, y), this.display.scale);
+    const { x, y } = this.display.toPage(SHEET.x, SHEET.y);
+    this.sheet.place(x, y, this.display.scale);
   }
 
   close() {
@@ -65,13 +67,19 @@ export class HeroController implements Screen {
   }
 
   /** Shuts the sheet, then does something on the map: casting Far Sight, or ending the day. */
-  private closeThen(action: Action) {
+  private closeThen(action: Action | (() => void)) {
     this.close();
-    this.adventure.choose(action);
+    if (typeof action === 'function') action();
+    else this.adventure.choose(action);
   }
 
   dispose() {
     this.sheet.dispose();
+  }
+
+  /** Played by touch, the sheet takes the whole window, as big as it will go: the rails step aside. */
+  buttons(): SideButton[] | null {
+    return null;
   }
 
   readonly input = {

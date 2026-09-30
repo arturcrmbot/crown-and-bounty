@@ -1,0 +1,74 @@
+/* Played by touch (`touch.ts`): no page zoom or scroll under a finger, no grey flash on a tap, no words
+   picked out by a long press, and no type grown by the browser when the phone is on its side. */
+.kc-touch,
+.kc-touch body {
+  /* No zoom on a double tap. */
+  touch-action: manipulation;
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.kc-touch canvas {
+  touch-action: none;
+}
+.kc-touch img {
+  -webkit-user-drag: none;
+}
+
+/* A card's words scroll under a finger, and each of its buttons is a strip big enough to hit. */
+.kc-touch .kc-card-body {
+  touch-action: pan-y;
+}
+.kc-touch .kc-card .choices:not(.tiles) {
+  gap: 0;
+}
+.kc-touch .kc-card .choices:not(.tiles) button {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: 40px;
+  padding: 3px 0;
+}
+.kc-touch .kc-card .choices:not(.tiles) button + button {
+  border-top: 1px dotted rgba(90, 62, 20, 0.4);
+}
+.kc-touch .kc-card .choices:not(.tiles) button::before {
+  flex: none;
+}
+.kc-touch .kc-card-more span {
+  padding: 6px 14px 4px;
+}
+
+/* The Sound button and its mix are in the right-hand rail instead. */
+.kc-touch .kc-mute,
+.kc-touch .kc-mix,
+.kc-touch .kc-mix-panel {
+  display: none !important;
+}
+
+/* The hero screen's word-buttons get more room to hit, where they stand. */
+.kc-touch .kc-hero .act {
+  padding: 16px 12px;
+  margin: -16px -12px;
+}
+
+/* What a finger holds or taps, in type big enough to read at arm's length. */
+.kc-touch .kc-label {
+  max-width: min(70vw, 460px);
+  padding: 3px 9px 4px;
+  font-size: 14px;
+  white-space: normal;
+}
+
+/* No wider than the room between the rails (`--room`, set as the card is placed), padding and border included. */
+.kc-touch .kc-card {
+  max-width: calc(var(--room, 100vw) - 56px);
+}
+.kc-touch .kc-card.tiled .choices.tiles button.with-portrait img {
+  width: 72px;
+  height: 72px;
+}

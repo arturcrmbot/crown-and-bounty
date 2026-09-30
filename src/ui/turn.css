@@ -1,0 +1,57 @@
+/* Held upright (`turn.ts`): the whole page, dark slate, and a parchment card asking for it sideways. */
+.kc-turn {
+  display: none;
+  position: fixed;
+  z-index: 50;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  background: #0e1219 radial-gradient(circle at 50% 45%, #2a3442, #0e1219 70%);
+  touch-action: none;
+}
+.kc-upright .kc-turn {
+  display: flex;
+}
+.kc-card.kc-turn-card {
+  width: min(280px, calc(100vw - 60px));
+  align-items: center;
+  text-align: center;
+  overflow: visible;
+}
+.kc-turn-card h3 {
+  margin: 14px 0 8px;
+  font-size: 22px;
+}
+.kc-turn-card p.small {
+  font-size: 13px;
+  font-style: italic;
+  color: #5a3e14;
+}
+/* The phone turns over onto its side, waits, and comes back up to show how. */
+.kc-turn-card img.phone {
+  display: block;
+  width: 64px;
+  height: 100px;
+  margin: 8px auto 4px;
+  image-rendering: pixelated;
+  animation: kc-turn 2.6s ease-in-out infinite;
+}
+@keyframes kc-turn {
+  0%,
+  15% {
+    transform: rotate(0deg);
+  }
+  45%,
+  80% {
+    transform: rotate(-90deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kc-turn-card img.phone {
+    animation: none;
+    transform: rotate(-90deg);
+  }
+}

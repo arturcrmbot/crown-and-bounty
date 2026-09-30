@@ -676,3 +676,145 @@
     animation: none;
   }
 }
+
+/* Played by touch (`HeroScreen.fill`): the sheet in one column, drawn as big as the window's width
+   allows, scrolling in a frame the size of the window; bigger squares for a finger. */
+.kc-hero-frame {
+  position: fixed;
+  z-index: 12;
+  inset: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: rgba(8, 10, 16, 0.72);
+}
+.kc-hero-sizer {
+  position: relative;
+  margin: 8px auto;
+}
+.kc-hero-frame .kc-hero {
+  position: absolute;
+  width: 600px;
+  height: auto;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto auto auto;
+  grid-template-areas: 'who' 'gear' 'army' 'foot';
+  gap: 10px;
+  padding: 12px 16px 12px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.kc-hero-frame .who {
+  position: relative;
+}
+.kc-hero-frame .top-close {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+}
+.kc-hero-frame .name {
+  padding-right: 64px;
+}
+.kc-hero-frame .level {
+  flex-wrap: wrap;
+  row-gap: 2px;
+  white-space: normal;
+}
+.kc-hero-frame .learned {
+  overflow: visible;
+}
+.kc-hero-frame .gear {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto 1fr;
+  grid-template-areas: 'h h' 'doll caption' 'doll pack';
+  column-gap: 26px;
+}
+.kc-hero-frame .gear h3 {
+  grid-area: h;
+}
+.kc-hero-frame .doll {
+  grid-area: doll;
+  grid-template-columns: repeat(3, 48px);
+  grid-template-rows: repeat(3, 48px);
+  gap: 4px 12px;
+}
+.kc-hero-frame .caption {
+  grid-area: caption;
+  white-space: normal;
+}
+.kc-hero-frame .pack {
+  grid-area: pack;
+  grid-template-columns: repeat(7, 44px);
+  justify-content: start;
+  align-content: start;
+  overflow: visible;
+}
+.kc-hero-frame .slot {
+  width: 48px;
+  height: 48px;
+}
+.kc-hero-frame .square {
+  width: 44px;
+  height: 44px;
+}
+.kc-hero-frame .strip {
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+.kc-hero-frame .totals {
+  flex: 1 0 100%;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 4px 22px;
+  margin-left: 0;
+}
+.kc-hero-frame .totals b {
+  width: auto;
+  margin-right: 6px;
+}
+.kc-hero-frame .army h3 small {
+  display: block;
+  margin: 2px 0 0;
+}
+/* A stack's card, just above the army, never taller than the window: what it can do comes first,
+   under its name, and the numbers scroll below. */
+.kc-hero-frame .kc-hero-card {
+  bottom: var(--above-army, 142px);
+  max-height: calc(var(--window, 400px) - 24px);
+  grid-template-columns: 96px minmax(0, 1fr);
+  grid-template-rows: auto auto auto auto auto;
+  column-gap: 14px;
+}
+.kc-hero-frame .kc-hero-card .pic {
+  grid-row: 1 / span 3;
+  width: 96px;
+  height: 96px;
+}
+.kc-hero-frame .kc-hero-card .head {
+  grid-column: 2;
+}
+.kc-hero-frame .kc-hero-card .acts {
+  grid-column: 2;
+  grid-row: 2;
+  flex-wrap: wrap;
+  row-gap: 14px;
+  margin: 2px 0 8px;
+  padding: 0 0 8px;
+  border-top: 0;
+  border-bottom: 1px solid #a88652;
+}
+.kc-hero-frame .kc-hero-card dl {
+  grid-column: 2;
+  grid-row: 3;
+}
+.kc-hero-frame .kc-hero-card .traits {
+  grid-column: 1 / -1;
+  grid-row: 4;
+  margin-top: 6px;
+}
+.kc-hero-frame .kc-hero-card .cost {
+  grid-column: 1 / -1;
+  grid-row: 5;
+}

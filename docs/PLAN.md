@@ -92,6 +92,7 @@ flowchart LR
 | Map generation | For 200 seeds: every place reachable, nothing overlaps, the lair reachable, gold and threat within budget | `npm test` |
 | Bot play-throughs | A simple bot plays whole commissions headless in milliseconds, and reports days to win, gold curve, losses and dead ends | `npm run sim` |
 | Browser play-throughs | Scripted clicks through the real UI on every screen (like `scripts/win.mjs` today) | `npm run e2e` |
+| Phone play-through | The same by touch alone, on an emulated phone held sideways: taps, drags and long presses, the rails, and the upright card | `npm run phone` |
 | Visual checks | Seeded scenes screenshotted and compared pixel by pixel with baselines you approved. The indexed renderer is exact, so diffs are clean | `npm run visual` |
 | Your playtest | Each milestone ends with you playing a build. We note what's fun, what's boring and what's confusing | side panel |
 

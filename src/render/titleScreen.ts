@@ -374,7 +374,7 @@ export class TitleScreen {
   }
 
   /** The painting at `time` seconds; with `prompt`, a blinking "Click to begin" under the name. */
-  draw(time: number, prompt = false): Bitmap {
+  draw(time: number, prompt = false, words = 'Click anywhere to begin'): Bitmap {
     const s = this.screen;
     s.data.set(this.base.data);
     // Clouds drift over the sky (never over the land or the name).
@@ -414,7 +414,7 @@ export class TitleScreen {
     const at = roadAt(H - 40);
     blit(s, rider, MAP_VIEW.x + Math.round(at.x) - rider.width / 2, MAP_VIEW.y + H - 40 - rider.height + 8);
     blit(s, this.logo, MAP_VIEW.x + Math.round((W - this.logo.width) / 2), MAP_VIEW.y + 18);
-    if (prompt && Math.floor(time * 1.6) % 2 === 0) drawOutlined(s, 'Click anywhere to begin', MAP_VIEW.x + W / 2, MAP_VIEW.y + 104, PARCHMENT[6], INK, 22);
+    if (prompt && Math.floor(time * 1.6) % 2 === 0) drawOutlined(s, words, MAP_VIEW.x + W / 2, MAP_VIEW.y + 104, PARCHMENT[6], INK, 22);
     blit(s, this.overlay, 0, 0);
     return s;
   }

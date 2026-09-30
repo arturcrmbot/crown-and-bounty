@@ -1,0 +1,75 @@
+/* The rails, played by touch (`rail.ts`): big buttons down each side of the picture, in dark wood with
+   a gilt edge like the Sound button, a pixel picture over a word. */
+.kc-rail {
+  position: fixed;
+  z-index: 11;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  padding: 8px 0 12px;
+  touch-action: none;
+  pointer-events: none;
+}
+.kc-rail[hidden] {
+  display: none;
+}
+.kc-rail .top,
+.kc-rail .main {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.kc-rail-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  box-sizing: border-box;
+  width: var(--width, 52px);
+  min-height: 46px;
+  padding: 4px 1px;
+  color: #f2e4c4;
+  font: bold 10.5px/1.05 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  text-align: center;
+  background: #2a1c10;
+  border: 2px solid #c28a1c;
+  box-shadow: 0 0 0 1px #0b0a10, 2px 2px 0 rgba(12, 8, 3, 0.75);
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.kc-rail-button:active {
+  background: #45301a;
+  border-color: #f2ce50;
+  transform: translateY(1px);
+}
+/* On or open: the minimap out, the hero screen up, the sergeants in command. */
+.kc-rail-button.on {
+  color: #fff3cf;
+  background: #4a3316;
+  border-color: #f2ce50;
+  box-shadow: 0 0 0 1px #0b0a10, 0 0 7px rgba(242, 206, 80, 0.5);
+}
+.kc-rail-button.muted {
+  color: #ec6f48;
+  border-color: #ab291f;
+}
+/* Nothing to do with it just now. */
+.kc-rail-button:disabled {
+  cursor: default;
+  opacity: 0.38;
+}
+.kc-rail-button img {
+  display: block;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+.kc-rail-button span {
+  pointer-events: none;
+}

@@ -10,9 +10,16 @@ import { coins, heroSheet, heroStats, leaderSheet, leadershipUsed, SLOT_NAMES, s
 import './heroScreen.css';
 import { bitmapUrl, PARCHMENT_SHADOW } from './pixels';
 import { play } from './sound';
+import { touch } from './touch';
 
 /** Size of the sheet in screen pixels: it covers the map, and scales with the page as the canvas does. */
 export const SHEET = { x: 24, y: 30, width: 912, height: 446 };
+/**
+ * Played by touch, the sheet is laid out in one column this wide (heroScreen.css), drawn as big as
+ * the window's width allows (up to `TOUCH_MOST` times), and scrolls under a finger.
+ */
+const TOUCH_WIDTH = 600;
+const TOUCH_MOST = 1.4;
 
 /** Somewhere on the sheet a thing can sit: a worn slot, a pack square, an army slot, or the hero himself. */
 type Place = { kind: 'slot'; slot: Slot } | { kind: 'pack'; index: number } | { kind: 'stack'; index: number } | { kind: 'hero' };
@@ -65,6 +72,9 @@ export type HeroScreenHooks = {
  */
 export class HeroScreen {
   readonly root = document.createElement('div');
+  /** Played by touch, the window-sized frame the sheet scrolls in, and the box the size of the drawn sheet inside it. */
+  private readonly frame: HTMLElement | null = touch() ? document.createElement('div') : null;
+  private readonly sizer = document.createElement('div');
   private readonly body = document.createElement('div');
   private readonly tip = document.createElement('div');
   private readonly ghost = document.createElement('img');
@@ -101,7 +111,15 @@ export class HeroScreen {
     this.ghost.alt = '';
     this.ghost.hidden = true;
     this.root.append(this.body, this.tip, this.ghost);
-    document.body.append(this.root);
+    if (this.frame) {
+      this.frame.className = 'kc-hero-frame';
+      this.sizer.className = 'kc-hero-sizer';
+      this.sizer.append(this.root);
+      this.frame.append(this.sizer);
+      // Its presses are its own: they never reach the map underneath.
+      this.frame.addEventListener('pointerdown', (e) => e.stopPropagation());
+      document.body.append(this.frame);
+    } else document.body.append(this.root);
     this.listen();
     this.render();
     play('page');
@@ -121,17 +139,39 @@ export class HeroScreen {
     return heroSheet(this.state).title;
   }
 
-  /** Over the map, at the canvas's scale. */
-  place(toPage: (x: number, y: number) => { x: number; y: number }, scale: number) {
-    const { x, y } = toPage(SHEET.x, SHEET.y);
+  /** Its top left corner at (x, y) on the page, drawn `scale` times its size. */
+  place(x: number, y: number, scale: number) {
+    if (this.frame) return this.fill();
     this.scale = scale;
     this.root.style.left = `${Math.round(x)}px`;
     this.root.style.top = `${Math.round(y)}px`;
     this.root.style.transform = `scale(${scale})`;
   }
 
+  /** Played by touch: across the window, as big as its width allows, scrolling down under a finger. */
+  private fill() {
+    const scale = Math.min(TOUCH_MOST, (window.innerWidth - 16) / TOUCH_WIDTH);
+    const [width, height] = [Math.round(TOUCH_WIDTH * scale), Math.ceil(this.root.offsetHeight * scale)];
+    if (scale !== this.scale) {
+      this.scale = scale;
+      this.root.style.transform = `scale(${scale})`;
+    }
+    Object.assign(this.sizer.style, { width: `${width}px`, height: `${height}px` });
+    // A card over the sheet is never taller than the window, and stands just above the army it's about.
+    const army = this.root.querySelector<HTMLElement>('.army');
+    this.root.style.setProperty('--window', `${Math.floor(window.innerHeight / scale)}px`);
+    if (army) this.root.style.setProperty('--above-army', `${this.root.offsetHeight - army.offsetTop + 6}px`);
+  }
+
+  /** Played by touch, brings the card over the sheet into sight, once it opens. */
+  private showCardWhole() {
+    if (!this.frame) return;
+    this.fill();
+    this.root.querySelector('.kc-hero-card')?.scrollIntoView({ block: 'nearest' });
+  }
+
   dispose() {
-    this.root.remove();
+    (this.frame ?? this.root).remove();
   }
 
   /** Escape puts back what's held, then closes a card; true if it did either. */
@@ -176,7 +216,9 @@ export class HeroScreen {
     const chips = (notes: HeroSheet['skills'], none: string) =>
       notes.length ? notes.map((n) => `<span class="chip${n.trick ? ' trick' : ''}" data-tip="${escape(`**${n.name}**\n${n.note}`)}">${escape(n.name)}</span>`).join('') : `<i class="none">${none}</i>`;
     const { mana, movement, leadership } = sheet;
+    const close = touch() ? '<button class="act top-close" data-act="close">Close</button>' : '';
     return `<section class="who">
+      ${close}
       <div class="top">
         <img class="face" alt="" draggable="false" src="${faceUrl(sheet.background)}">
         <div class="name">
@@ -213,20 +255,23 @@ export class HeroScreen {
       const id = gear[slot];
       const place: Place = { kind: 'slot', slot };
       const spare = pack.find((p) => slotAcceptsArtifact(slot, ARTIFACTS[p].slot));
+      const finger = touch();
       const empty = spare
-        ? `**${SLOT_NAMES[slot]}**: nothing on.\n*Drag the ${ARTIFACTS[spare].name} here from the pack, or double-click it there.*`
+        ? `**${SLOT_NAMES[slot]}**: nothing on.\n*${finger ? `Tap the ${ARTIFACTS[spare].name} in the pack, then this slot.` : `Drag the ${ARTIFACTS[spare].name} here from the pack, or double-click it there.`}*`
         : `**${SLOT_NAMES[slot]}**: nothing yet.\n*Artifacts turn up in chests and old places, as spoils, and in castle armouries.*`;
-      const tip = id ? `**${ARTIFACTS[id].name}** \u00b7 ${SLOT_NAMES[slot]}\n${ARTIFACTS[id].note}\n*Drag it to the pack, or click to pick it up. Double-click takes it off.*` : empty;
+      const how = finger ? 'Tap a square in the pack to take it off, or drag it there.' : 'Drag it to the pack, or click to pick it up. Double-click takes it off.';
+      const tip = id ? `**${ARTIFACTS[id].name}** \u00b7 ${SLOT_NAMES[slot]}\n${ARTIFACTS[id].note}\n*${how}*` : empty;
       const img = id ? `<img alt="" draggable="false" src="${iconUrl(id)}">` : `<img class="ghostly" alt="" draggable="false" src="${ghostUrl(slot)}">`;
       return `<button class="slot ${slot}${classes(place, Boolean(id))}" data-place="${keyOf(place)}" data-tip="${escape(tip)}" aria-label="${escape(id ? `${SLOT_NAMES[slot]}: ${ARTIFACTS[id].name}` : `${SLOT_NAMES[slot]}: empty`)}">${img}</button>`;
     }).join('');
     const squares = Array.from({ length: packSquares(pack.length) }, (_, index) => {
       const id = pack[index];
       const place: Place = { kind: 'pack', index };
-      const tip = id ? `**${ARTIFACTS[id].name}** \u00b7 ${SLOT_NAMES[ARTIFACTS[id].slot]}\n${ARTIFACTS[id].note}\n*Drag it to its slot to wear it, or click to pick it up. Double-click wears it.*` : '';
+      const how = touch() ? 'Tap its slot to wear it, or drag it there.' : 'Drag it to its slot to wear it, or click to pick it up. Double-click wears it.';
+      const tip = id ? `**${ARTIFACTS[id].name}** \u00b7 ${SLOT_NAMES[ARTIFACTS[id].slot]}\n${ARTIFACTS[id].note}\n*${how}*` : '';
       return `<button class="square${classes(place, Boolean(id))}" data-place="${keyOf(place)}"${tip ? ` data-tip="${escape(tip)}"` : ''} aria-label="${escape(id ? `Pack: ${ARTIFACTS[id].name}` : 'Pack: empty square')}">${id ? `<img alt="" draggable="false" src="${iconUrl(id)}">` : ''}</button>`;
     }).join('');
-    const hint = this.held ? this.holdingHint(this.held) : pack.length ? 'drag to wear, or click, then click where' : 'finds go here when their slot is taken';
+    const hint = this.held ? this.holdingHint(this.held) : pack.length ? (touch() ? 'tap one, then tap where it goes' : 'drag to wear, or click, then click where') : 'finds go here when their slot is taken';
     return `<section class="gear">
       <h3>Equipment</h3>
       <div class="doll"><img class="figure" alt="" draggable="false" src="${unitUrl(heroArtId(this.state.hero.background), 2)}">${slots}</div>
@@ -239,6 +284,7 @@ export class HeroScreen {
     const { gear, pack } = this.state.hero;
     const id = held.kind === 'slot' ? gear[held.slot] : held.kind === 'pack' ? pack[held.index] : undefined;
     if (!id) return '';
+    if (touch()) return held.kind === 'pack' ? `${ARTIFACTS[id].name}: tap its slot, or a square` : `${ARTIFACTS[id].name}: tap a square to take it off`;
     return held.kind === 'pack' ? `${ARTIFACTS[id].name}: click its slot, or a square \u00b7 Esc` : `${ARTIFACTS[id].name}: click a square to take it off \u00b7 Esc`;
   }
 
@@ -254,14 +300,14 @@ export class HeroScreen {
       }
       const info = stackSheet(this.state, index)!;
       const open = this.card && keyOf(this.card) === keyOf(place) ? ' open' : '';
-      const tip = `**${info.title}**\n${info.row}\n*Click for their card. Drag them along the line.*`;
+      const tip = `**${info.title}**\n${info.row}\n*${touch() ? 'Tap' : 'Click'} for their card. Drag them along the line.*`;
       return `<button class="tile${open}${this.fresh.has(keyOf(place)) ? ' fresh' : ''}" data-place="${keyOf(place)}" data-tip="${escape(tip)}" aria-label="${escape(info.title)}"><img alt="" draggable="false" src="${unitUrl(stack.troop)}"><span class="count">${stack.count}</span></button>`;
     }).join('');
     const pay = Math.round(wages(army) * (1 + s.wages));
-    const leaderTip = `**${sheet.title}**\nHe leads from behind the line, where nothing can reach him: every stack adds his attack and defence to its own, and he casts from there.\n*Click for his numbers.*`;
+    const leaderTip = `**${sheet.title}**\nHe leads from behind the line, where nothing can reach him: every stack adds his attack and defence to its own, and he casts from there.\n*${touch() ? 'Tap' : 'Click'} for his numbers.*`;
     const open = this.card?.kind === 'hero' ? ' open' : '';
     return `<section class="army">
-      <h3>Army <small>drag to reorder: the first stands in the middle of the battle line, the rest above and below</small></h3>
+      <h3>Army <small>${touch() ? 'tap one for its card, or drag to reorder' : 'drag to reorder'}: the first stands in the middle of the battle line, the rest above and below</small></h3>
       <div class="strip">
         <button class="tile leader${open}" data-place="hero" data-tip="${escape(leaderTip)}" aria-label="${escape(sheet.title)}"><img alt="" draggable="false" src="${unitUrl(heroArtId(this.state.hero.background))}"><span class="count">Leader</span></button>
         <span class="sep"></span>
@@ -279,9 +325,9 @@ export class HeroScreen {
     const spells = sheet.mapSpells.map((m) => `<button class="act" data-act="spell:${m.spell}" data-tip="${escape(m.note)}"${m.disabled ? ' disabled' : ''}>${escape(m.label)}</button>`).join('');
     return `<footer>
       ${spells}
-      <button class="act" data-act="endDay" data-tip="Rest: fresh legs, and a quarter of your mana, at dawn">End the day (E)</button>
+      <button class="act" data-act="endDay" data-tip="Rest: fresh legs, and a quarter of your mana, at dawn">End the day${touch() ? '' : ' (E)'}</button>
       <span class="spacer"></span>
-      <button class="act" data-act="close">Close (H)</button>
+      <button class="act" data-act="close">Close${touch() ? '' : ' (H)'}</button>
     </footer>`;
   }
 
@@ -534,13 +580,15 @@ export class HeroScreen {
       this.held = null;
       if (action && this.perform(action)) return;
       if (!action && keyOf(held) !== keyOf(place) && this.has(place)) this.held = place;
-      return this.render();
-    }
-    if (this.has(place)) {
+      this.render();
+    } else if (this.has(place)) {
       this.held = place;
       play('lift');
       this.render();
     }
+    // A finger can't hover: what it picks up (or an empty slot it taps) says what it is.
+    const el = touch() && (!this.held || keyOf(this.held) === keyOf(place)) && this.root.querySelector<HTMLElement>(`[data-place="${keyOf(place)}"]`);
+    if (el) this.showTip(el);
   }
 
   private clickAct(act: string, button: HTMLButtonElement) {
@@ -585,6 +633,7 @@ export class HeroScreen {
     this.confirming = false;
     play('click');
     this.render();
+    this.showCardWhole();
   }
 
   private closeCard() {
@@ -676,10 +725,11 @@ export class HeroScreen {
     const [x0, y0] = this.toSheet(r.left, r.top);
     const [x1, y1] = this.toSheet(r.right, r.bottom);
     const { offsetWidth: w, offsetHeight: h } = this.tip;
-    const x = Math.max(4, Math.min(SHEET.width - w - 4, (x0 + x1) / 2 - w / 2));
+    const [width, height] = [this.root.offsetWidth, this.root.offsetHeight];
+    const x = Math.max(4, Math.min(width - w - 4, (x0 + x1) / 2 - w / 2));
     const y = y0 - h - 6 >= 2 ? y0 - h - 6 : y1 + 6;
     this.tip.style.left = `${Math.round(x)}px`;
-    this.tip.style.top = `${Math.round(Math.min(SHEET.height - h - 2, y))}px`;
+    this.tip.style.top = `${Math.round(Math.min(height - h - 2, y))}px`;
   }
 
   private hideTip() {

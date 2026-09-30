@@ -14,9 +14,11 @@ import { MAP_VIEW } from '../render/frame';
 import { BLUE, GOLD, NEUTRAL, RED } from '../render/palette';
 import { paintSpeech } from '../render/speech';
 import { CardView } from '../ui/card';
+import { HoverLabel } from '../ui/label';
 import { play, speak } from '../ui/sound';
+import { touch } from '../ui/touch';
 import type { Display } from './display';
-import type { Screen } from './screen';
+import type { Screen, SideButton } from './screen';
 
 type Step = { duration: number; elapsed: number; started: boolean; start?: () => void; tick?: (t: number) => void; end?: () => void };
 /** What is left of each stack as an action's events play out: its count, and its top troop's health. */
@@ -53,6 +55,8 @@ export class BattleController implements Screen {
   private readonly view: BattleView;
   private readonly queue: Step[] = [];
   private readonly cards: CardView;
+  /** Played by touch, what a tap on the field would do, in words big enough to read (the bar's are small on a phone). */
+  private readonly label = new HoverLabel();
   private readonly display: Display;
   private readonly hooks: { onChange: (b: BattleState) => void; onDone: (b: BattleState) => void };
   private readonly pace: number;
@@ -65,6 +69,11 @@ export class BattleController implements Screen {
   /** The stack whose move is playing out: it keeps the gold hex until its blows have landed. */
   private acting: number | null = null;
   private pointer: [number, number] | null = null;
+  /**
+   * Played by touch, a finger can't hover: a first tap on a hex shows what a tap there would do (the
+   * forecast), and a second tap on the same hex does it, while nothing else has happened.
+   */
+  private armed: { hex: number; intent: NonNullable<ReturnType<BattleController['intent']>>; battle: BattleState; targeting: string | null } | null = null;
 
   constructor(display: Display, battle: BattleState, hooks: BattleController['hooks'], pace = 1) {
     this.display = display;
@@ -107,6 +116,7 @@ export class BattleController implements Screen {
       banner: null,
       speech: null,
       finishOffer: false,
+      touch: touch(),
     };
     // What the hero brought to the field is said as the battle opens: "Advanced Archery: the Wolves start slowed."
     const opening = battle.round === 1 && !battle.struck ? (battle.opening ?? []) : [];
@@ -124,14 +134,14 @@ export class BattleController implements Screen {
   /** The first words on the ribbon: what the first of your fighters to act can do. */
   private startLine() {
     const first = activeFighter(this.battle);
-    return (first && this.turnLine(first.id)) ?? 'To battle! Click a hex to move, or an enemy to attack.';
+    return (first && this.turnLine(first.id)) ?? (touch() ? 'To battle! Tap a hex to move, or an enemy to attack, and tap it again to go.' : 'To battle! Click a hex to move, or an enemy to attack.');
   }
 
   /** What one of your leaders can do as his turn comes: he never walks the field. */
   private turnLine(id: number): string | null {
     const f = fighterById(this.battle, id);
     if (f.side !== 'player' || !isLeader(f)) return null;
-    if (bardOf(f)) return `${this.fighterName(id)}: click one of their stacks to pay or jeer it, or press Sing. Or Wait.`;
+    if (bardOf(f)) return `${this.fighterName(id)}: ${touch() ? 'tap' : 'click'} one of their stacks to pay or jeer it, or ${touch() ? '' : 'press '}Sing. Or Wait.`;
     return `${this.fighterName(id)} ${ridesOut(f) ? 'can ride out at any stack in reach, strike, and ride back' : 'can shoot any stack from behind the line'}. Or Wait.`;
   }
 
@@ -250,6 +260,7 @@ export class BattleController implements Screen {
 
   dispose() {
     this.cards.dispose();
+    this.label.dispose();
   }
 
   private fighterName(id: number, count?: number) {
@@ -1058,6 +1069,15 @@ export class BattleController implements Screen {
     v.reach = opts ? new Set([...opts.moves.keys(), ...(opts.rides?.keys() ?? [])]) : new Set();
     // A bard's Defend button sings instead.
     v.bard = mine && !!f && !!bardOf(f);
+    // What a first tap showed goes as soon as anything happens: a second tap there would mean something else now.
+    if (this.armed && (this.armed.battle !== this.battle || this.armed.targeting !== v.targeting)) {
+      this.armed = null;
+      this.pointer = null;
+      this.label.hide();
+      v.hover = null;
+      v.inspect = null;
+      v.preview = null;
+    }
     if (this.pointer && mine) this.hoverAt(...this.pointer);
     else if (!mine) {
       v.hover = null;
@@ -1241,8 +1261,45 @@ export class BattleController implements Screen {
     });
   }
 
+  /**
+   * Played by touch, down the sides: Spells, Wait and Defend (or Sing) on the left, Retreat and Auto
+   * (or Finish) on the right, as on the battle bar. While a spell waits for its target, Spells cancels it.
+   */
+  buttons(): SideButton[] {
+    const f = activeFighter(this.battle);
+    const mine = !!f && f.side === 'player' && this.queue.length === 0 && !this.auto && !this.battle.volley && !this.battle.result;
+    const bard = mine && !!bardOf(f);
+    const aiming = Boolean(this.view.targeting);
+    const castable = Object.values(SPELLS).some((spell) => canCast(this.battle, spell.id));
+    return [
+      { id: 'spells', label: aiming ? 'Cancel' : 'Spells', icon: 'spells', side: 'left', enabled: mine && (aiming || castable), on: aiming, press: () => (aiming ? this.input.key('escape') : this.button('spells')) },
+      { id: 'wait', label: 'Wait', icon: 'wait', side: 'left', enabled: mine, press: () => this.button('wait') },
+      { id: 'defend', label: bard ? 'Sing' : 'Defend', icon: bard ? 'sing' : 'defend', side: 'left', enabled: mine, press: () => this.button('defend') },
+      { id: 'retreat', label: 'Retreat', icon: 'retreat', side: 'right', enabled: mine, press: () => this.button('retreat') },
+      { id: 'auto', label: this.view.finishOffer ? 'Finish' : 'Auto', icon: 'auto', side: 'right', enabled: !this.battle.result, on: this.auto, press: () => this.button('auto') },
+    ];
+  }
+
+  /** Played by touch: what the tap showed, over the field in words, and whether a second tap goes. */
+  private tell(x: number, y: number, intent: ReturnType<BattleController['intent']>) {
+    const v = this.view;
+    const under = v.inspect === null ? null : fighterById(this.battle, v.inspect);
+    const who = under ? (this.named(under.id) ? TROOPS[under.troop].name : this.fighterName(under.id, under.count)) : null;
+    const go = intent ? { move: 'tap again to move there', melee: 'tap again to attack', shoot: 'tap again to shoot', spell: 'tap again to cast', bard: '' }[intent.kind] : '';
+    const text = [intent?.kind === 'move' ? 'Move here' : v.preview ?? who, go].filter(Boolean).join(' \u00b7 ');
+    if (!text) return;
+    const at = this.display.toPage(x, y);
+    this.label.show(text, at.x, at.y);
+  }
+
+  /** Does what a click (or a second tap) on a hex means: a bard's turn asks what to do with them first. */
+  private act(intent: NonNullable<ReturnType<BattleController['intent']>>) {
+    if (intent.kind === 'bard' && intent.action.type === 'jeer') this.bardCard(intent.action.target);
+    else this.perform(intent.action);
+  }
+
   readonly input = {
-    click: (x: number, y: number) => {
+    click: (x: number, y: number, tapped?: boolean) => {
       // A click moves on from a villain's last words.
       if (this.view.speech && this.queue.length) {
         this.queue[0].elapsed = this.queue[0].duration;
@@ -1252,8 +1309,22 @@ export class BattleController implements Screen {
       if (button) return this.button(button.id);
       const hex = hexAt(x, y);
       const intent = hex === null ? null : this.intent(hex, x, y);
-      if (intent?.kind === 'bard' && intent.action.type === 'jeer') this.bardCard(intent.action.target);
-      else if (intent) this.perform(intent.action);
+      if (tapped && intent?.kind !== 'bard') {
+        // The second tap on a hex does what the first showed, if nothing has happened since.
+        const armed = this.armed;
+        this.armed = null;
+        this.label.hide();
+        if (armed && armed.hex === hex && armed.battle === this.battle && armed.targeting === this.view.targeting) {
+          this.pointer = null;
+          return this.act(armed.intent);
+        }
+        this.pointer = [x, y];
+        this.hoverAt(x, y);
+        if (intent && hex !== null) this.armed = { hex, intent, battle: this.battle, targeting: this.view.targeting };
+        this.tell(x, y, intent);
+        return;
+      }
+      if (intent) this.act(intent);
     },
     hover: (x: number, y: number) => {
       this.pointer = [x, y];
@@ -1261,6 +1332,9 @@ export class BattleController implements Screen {
     },
     drag: () => {},
     leave: () => {
+      // What a first tap showed stays up for the second.
+      if (this.armed) return;
+      this.label.hide();
       this.pointer = null;
       this.view.hover = null;
       this.view.inspect = null;
@@ -1299,6 +1373,10 @@ export class BattleController implements Screen {
         const [x, y] = hexCentre(hex);
         return this.intent(hex, x, y)?.action ?? null;
       },
+      /** Where a hex's middle is on the page, for a script to tap it as a finger would. */
+      hexOnPage: (hex: number) => this.display.toPage(...hexCentre(hex)),
+      /** What the battle's label says, played by touch. */
+      label: () => this.label.text,
     };
   }
 }

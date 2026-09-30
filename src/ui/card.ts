@@ -8,7 +8,7 @@ import { unitBitmap } from '../render/wesnoth';
 import { manaLine, type Action, type Army, type Card, type Heard } from '../rules/game';
 import './card.css';
 import { bitmapUrl, PARCHMENT_SHADOW } from './pixels';
-import { uiScale } from './scale';
+import { uiRoom, uiScale } from './scale';
 import { play } from './sound';
 
 type ScreenPoint = { x: number; y: number };
@@ -114,6 +114,7 @@ export class CardView {
   private title: string | null = null;
   private scale = 1;
   private tallest = '';
+  private roomWidth = '';
   private bar = '';
 
   constructor(onChoice: (action: Action) => void) {
@@ -293,6 +294,13 @@ export class CardView {
       this.scale = s;
       this.wrap.style.transform = s === 1 ? '' : `scale(${s})`;
     }
+    // Played by touch, a card keeps between the rails, and no wider than the room there (touch.css).
+    const room = uiRoom();
+    const roomWidth = `${Math.floor((room.right - room.left) / s)}px`;
+    if (roomWidth !== this.roomWidth) {
+      this.roomWidth = roomWidth;
+      this.card.style.setProperty('--room', roomWidth);
+    }
     // A tall card fits the map area, its words scrolling above its buttons. Only if the buttons
     // (and a few lines of words) can't fit there does it take the whole window, over the bar.
     const choices = this.card.querySelector<HTMLElement>('.choices');
@@ -338,7 +346,7 @@ export class CardView {
       // Never outside the window, even when what it's about is out of sight.
       return { x: Math.max(minX, Math.min(maxX - w, x)), y: clampY(y) };
     };
-    const wide = () => spot(8, window.innerWidth - 8);
+    const wide = () => spot(room.left + 8, room.right - 8);
     let at = sides && w + 16 <= sides.right - sides.left ? spot(sides.left + 8, sides.right - 8) : wide();
     if (sides && covers(at.x, at.y)) {
       const across = wide();
