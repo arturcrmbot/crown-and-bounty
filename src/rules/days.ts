@@ -61,7 +61,9 @@ export function endDay(state: GameState): Result {
     const estates = heroPayday(next, stats);
     next = estates.state;
     const paid = fed ? 'Your troops eat the rations in your baggage this week, and draw **no wages**.' : `Your troops take **${coins(pay)} gold** in wages.`;
-    lines.push(`**Payday!** The King sends **${coins(commission)} gold**. ${paid}`, ...estates.rents, 'The mill has flour again, and there are fresh volunteers.', ...estates.lines);
+    // The mill's flour is news only once he has found a mill.
+    const mill = state.locations.some((l) => l.kind === 'mill' && l.seen);
+    lines.push(`**Payday!** The King sends **${coins(commission)} gold**. ${paid}`, ...estates.rents, mill ? 'The mill has flour again, and there are fresh volunteers.' : 'There are fresh volunteers to recruit.', ...estates.lines);
     for (const l of state.locations) if (l.enemy?.grows && !l.done && (l.enemy.grown ?? 0) < MAX_GROWTH) lines.push(`You hear that more men have joined **${l.name}**.`);
   }
   // Bands that wake today start to roam or hunt, and word gets about.

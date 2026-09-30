@@ -94,10 +94,11 @@ export class CourtController implements Screen {
     return this.screen.screen;
   }
 
-  /** Cards hang to the right of the throne, so the King stays in view. */
+  /** Cards hang to the right of the throne, so the King stays in view, and keep inside the picture's frame. */
   placeCard() {
     const bottom = this.display.toPage(0, MAP_VIEW.y + MAP_VIEW.height).y;
-    this.cards.place(this.display.toPage(MAP_VIEW.x + MAP_VIEW.width * 0.8, MAP_VIEW.y + MAP_VIEW.height - 8), this.display.toPage(0, MAP_VIEW.y).y, bottom);
+    const sides = { left: this.display.toPage(MAP_VIEW.x, 0).x, right: this.display.toPage(MAP_VIEW.x + MAP_VIEW.width, 0).x };
+    this.cards.place(this.display.toPage(MAP_VIEW.x + MAP_VIEW.width * 0.8, MAP_VIEW.y + MAP_VIEW.height - 8), this.display.toPage(0, MAP_VIEW.y).y, bottom, undefined, sides);
   }
 
   dispose() {

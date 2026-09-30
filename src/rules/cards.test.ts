@@ -25,6 +25,14 @@ describe('the days', () => {
     expect(cardOf(endDay(s)).lines[0]).toContain('Payday!');
   });
 
+  it('only mentions the mill’s flour on payday once he has found a mill', () => {
+    let s = knight();
+    for (let i = 0; i < 6; i++) s = endDay(s).state;
+    expect(cardOf(endDay(s)).lines).toContain('There are fresh volunteers to recruit.');
+    const found = { ...s, locations: s.locations.map((l) => (l.kind === 'mill' ? { ...l, seen: true } : l)) };
+    expect(cardOf(endDay(found)).lines).toContain('The mill has flour again, and there are fresh volunteers.');
+  });
+
   it('records first-time hints in existing story flags', () => {
     const first = apply(knight(), { type: 'hint', id: 'ride' })!;
     expect(first.state.flags?.['hint:ride']).toBe(true);
@@ -45,6 +53,7 @@ describe('the castle', () => {
     expect(dear.disabled).toBe(true);
     expect(dear.detail).toContain('You\u2019re 450 gold short.');
     expect(poor.choices.find((c) => c.label.startsWith('Buy Lucky Horseshoe'))!.disabled).toBeUndefined();
+    expect(card.choices.map((c) => c.label)).toContain('Buy a Scout\u2019s Spyglass (600 gold)');
   });
 
   it('says where a bought artifact went', () => {

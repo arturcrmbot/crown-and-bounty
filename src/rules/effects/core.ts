@@ -73,6 +73,8 @@ export function lacksLabel(state: GameState, needs: Needs | undefined, hint?: st
     needs.mana && short({ mana: needs.mana }) && `${needs.mana} mana`,
     needs.troop && short({ troop: needs.troop, count: needs.count }) && troops(needs.troop, needs.count ?? 1),
     hint && short({ flag, notFlag, seen, notArtifact, notSpell }) && hint,
+    // A spell he knows already, with no hint to say otherwise.
+    !hint && notSpell && short({ notSpell }) && 'you know it',
   ].filter(Boolean);
   return parts.length ? ` (${parts.join(', ')})` : '';
 }

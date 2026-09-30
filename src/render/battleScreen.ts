@@ -1,5 +1,5 @@
 import { abilitiesOf, TROOPS, type TroopId } from '../content/troops';
-import { SPELLS, STATUSES } from '../content/spells';
+import { SPELLS, STATUSES, type SpellId } from '../content/spells';
 import { canCast, hasTurn, isLeader, lookOf, luckOf, moraleOf, speedOf, statsOf, unitOf, type BattleState, type Fighter } from '../rules/battle/battle';
 import { COLS, colOf, HEXES, hexIndex, ROWS, rowOf } from '../rules/battle/hex';
 import { Bitmap, blit, SHADOW } from './bitmap';
@@ -738,7 +738,7 @@ export class BattleScreen {
     const shownId = view.inspect ?? view.active;
     const countOf = (x: { id: number; count: number }) => view.counts.get(x.id) ?? x.count;
     const f = shownId === null ? null : b.fighters.find((x) => x.id === shownId && countOf(x) > 0);
-    if (view.targeting) drawText(screen, `Cast ${view.targeting}: ${view.touch ? 'tap a target, or Cancel' : 'pick a target (Esc to cancel)'}`, BAR.x + 12, text, GOLD[6], INK);
+    if (view.targeting) drawText(screen, `Cast ${SPELLS[view.targeting as SpellId]?.name ?? view.targeting}: ${view.touch ? 'tap a target, or Cancel' : 'pick a target (Esc to cancel)'}`, BAR.x + 12, text, GOLD[6], INK);
     else if (f) {
       const t = unitOf(f);
       const share = (x: number) => `${x > 0 ? '+' : '\u2212'}${Math.round(Math.abs(x) * 100)}%`;

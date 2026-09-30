@@ -121,7 +121,7 @@ describe('Aldmoor\u2019s finds', () => {
     expect(choose(charm, 'mill', 'miller/loaf')).toBeNull();
     expect(cardOf(visit(charm, 'mill')).choices.map((c) => c.label)).toEqual(['Close']);
     // A wizard knows the charm already, so only the loaf is his to take.
-    expect(labels(fresh('wizard'), 'mill')).toContain('Learn the fair-wind charm [off]');
+    expect(labels(fresh('wizard'), 'mill')).toContain('Learn the fair-wind charm (you know it) [off]');
   });
 
   it('St Aldhelm answers a prayer for the goose at Grimsby\u2019s walls, or lends his crown', () => {
@@ -294,7 +294,7 @@ describe('the Fenmarch\u2019s finds', () => {
   it('Brother Anselm spares his staff, a thunderbolt, or a letter to his big sister, the witch', () => {
     expect(take(fen(), 'abbey', 'anselm/staff').hero.gear.weapon).toBe('abbotsStaff');
     expect(take(fen(), 'abbey', 'anselm/bolt').hero.spells).toContain('bolt');
-    expect(labels(fen('wizard'), 'abbey')).toContain('Learn the thunderbolt prayer [off]');
+    expect(labels(fen('wizard'), 'abbey')).toContain('Learn the thunderbolt prayer (you know it) [off]');
     const letter = take(fen(), 'abbey', 'anselm/letter');
     expect(has(letter, 'abbotsStaff')).toBe(false);
     const before = locationById(letter, 'hideout').enemy!.army;

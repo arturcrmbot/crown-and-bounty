@@ -357,13 +357,20 @@ export function finishFight(state: GameState): Result {
   /** Back at the castle, with nobody: he sees what's about, as he would riding in. */
   const alone = () => seeBands({ ...base, army: [], movement: 0, hero: { ...base.hero, at: home } }, home, heroStats(base).sight);
   const shaken = battle.result === 'fled' && !battle.standoff ? army.map((s) => ({ ...s, count: s.count - Math.ceil(s.count * 0.25) })).filter((s) => s.count > 0) : army;
+  // Those lost on the way back fell too, so the card counts them with the rest.
+  const lost = new Map(battleResult.player.map((s) => [s.troop, s.count]));
+  for (const s of army) {
+    const left = shaken.find((k) => k.troop === s.troop)?.count ?? 0;
+    if (s.count > left) lost.set(s.troop, (lost.get(s.troop) ?? 0) + s.count - left);
+  }
+  const fledResult: BattleResultCard = { ...battleResult, player: [...lost].map(([troop, count]) => ({ troop, count })) };
   if (battle.result === 'fled' && shaken.length === 0 && battle.fighters.some((f) => f.hero)) {
     // Nobody who rode with him is left: Aldric gets away alone, and rides home to raise another army.
     return {
       state: alone(),
       events: [
         { type: 'moved', at: home, facing: base.hero.facing },
-        show({ title: 'Retreat!', lines: [`${who} gets away alone, because nobody who rode with him is left standing.`, `He rides back to ${castle?.name ?? 'safety'} to raise another army.`, ...bribed], choices: [close], wide: true, battleResult }, null),
+        show({ title: 'Retreat!', lines: [`${who} gets away alone, because nobody who rode with him is left standing.`, `He rides back to ${castle?.name ?? 'safety'} to raise another army.`, ...bribed], choices: [close], wide: true, battleResult: fledResult }, null),
       ],
     };
   }
@@ -379,7 +386,7 @@ export function finishFight(state: GameState): Result {
     const next = { ...base, army: shaken, movement: 0 };
     return {
       state: next,
-      events: [show({ title: 'Retreat!', lines: ['Your men fall back in good order, mostly.', ...bribed, stillWithYou(shaken)], choices: [close], wide: true, battleResult }, place.at, place.id)],
+      events: [show({ title: 'Retreat!', lines: ['Your men fall back in good order, mostly.', ...bribed, stillWithYou(shaken)], choices: [close], wide: true, battleResult: fledResult }, place.at, place.id)],
     };
   }
   return {
