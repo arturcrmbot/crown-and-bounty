@@ -19,24 +19,25 @@
   -webkit-user-drag: none;
 }
 
-/* A card's words scroll under a finger, and each of its buttons is a strip big enough to hit. */
+/* A card's words scroll under a finger, and each of its buttons (and links) is a strip big enough to hit. */
 .kc-touch .kc-card-body {
   touch-action: pan-y;
 }
 .kc-touch .kc-card .choices:not(.tiles) {
   gap: 0;
 }
-.kc-touch .kc-card .choices:not(.tiles) button {
+.kc-touch .kc-card .choices:not(.tiles) button,
+.kc-touch .kc-card .choices:not(.tiles) a.link {
   display: flex;
   align-items: center;
   box-sizing: border-box;
   min-height: 40px;
   padding: 3px 0;
 }
-.kc-touch .kc-card .choices:not(.tiles) button + button {
+.kc-touch .kc-card .choices:not(.tiles) :is(button, a.link) + :is(button, a.link) {
   border-top: 1px dotted rgba(90, 62, 20, 0.4);
 }
-.kc-touch .kc-card .choices:not(.tiles) button::before {
+.kc-touch .kc-card .choices:not(.tiles) :is(button, a.link)::before {
   flex: none;
 }
 .kc-touch .kc-card-more span {
