@@ -73,3 +73,17 @@
   width: 72px;
   height: 72px;
 }
+
+/* Many buttons on a phone on its side: two to a row, on a wider card (`layOut` in card.ts), so the
+   title and the odds stay in sight above them. */
+.kc-touch .kc-card.two-up {
+  width: 540px;
+}
+.kc-touch .kc-card.two-up .choices:not(.tiles) {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 18px;
+}
+.kc-touch .kc-card.two-up .choices:not(.tiles) > :is(button, a.link):nth-child(2) {
+  border-top: none;
+}

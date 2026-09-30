@@ -10,6 +10,7 @@ import './card.css';
 import { bitmapUrl, PARCHMENT_SHADOW } from './pixels';
 import { uiRoom, uiScale } from './scale';
 import { play } from './sound';
+import { touch } from './touch';
 
 type ScreenPoint = { x: number; y: number };
 /** A card's padding and border, top and bottom (CSS pixels): `max-height` doesn't count them. */
@@ -18,6 +19,13 @@ const CHROME = 30;
 const CHOICES_GAP = 9;
 /** How much of a card's words should show above its buttons before it may cover the bar. */
 const SOME_WORDS = 72;
+/** Played by touch, how much of a card's words should show above its buttons: its title and the odds of a fight. */
+const WORDS_ON_TOUCH = 96;
+/**
+ * Played by touch, a card with this many buttons or more puts them two to a row when one column
+ * would leave too little of its words in sight: a phone on its side is wide and short.
+ */
+const TWO_UP = 3;
 /** When a poster's stamp lands, after the card has unfolded (the `kc-stamp` animation in card.css), in ms. */
 const STAMP_LANDS = 470;
 /** A box on the page (page pixels) that a card with nowhere in particular to be should keep clear of. */
@@ -116,6 +124,8 @@ export class CardView {
   private tallest = '';
   private roomWidth = '';
   private bar = '';
+  /** The window's height and the scale the buttons were last laid out for, one column or two. */
+  private laidOut = '';
 
   constructor(onChoice: (action: Action) => void) {
     this.onChoice = onChoice;
@@ -236,10 +246,28 @@ export class CardView {
       this.card.append(choices);
     }
     this.wrap.hidden = false;
+    this.laidOut = '';
+    this.layOut();
     // A new card opens at its top. Only a card on the page can be scrolled: a hidden one would come
     // back scrolled as far as the last one was.
     if (fresh) this.body.scrollTop = this.card.scrollTop = 0;
     this.scrolled();
+  }
+
+  /**
+   * Played by touch, a card with many buttons puts them two to a row (a wider card) if in one column
+   * they'd leave less than a title and the odds of its words in sight, even with the whole window.
+   */
+  private layOut() {
+    const s = uiScale();
+    const key = `${window.innerHeight}|${s}`;
+    if (key === this.laidOut) return;
+    this.laidOut = key;
+    this.card.classList.remove('two-up');
+    const choices = this.card.querySelector<HTMLElement>('.choices:not(.tiles)');
+    if (!touch() || !choices || choices.querySelectorAll('button, a.link').length < TWO_UP) return;
+    const needs = CHROME + choices.offsetHeight + CHOICES_GAP + Math.min(this.body.scrollHeight, WORDS_ON_TOUCH);
+    this.card.classList.toggle('two-up', needs * s > window.innerHeight - 16);
   }
 
   hide() {
@@ -303,6 +331,7 @@ export class CardView {
       this.roomWidth = roomWidth;
       this.card.style.setProperty('--room', roomWidth);
     }
+    this.layOut();
     // A tall card fits the map area, its words scrolling above its buttons. Only if the buttons
     // (and a few lines of words) can't fit there does it take the whole window, over the bar.
     const choices = this.card.querySelector<HTMLElement>('.choices');
