@@ -65,7 +65,7 @@ const DESERTERS: Location = {
   at: [1578, 1560],
   done: false,
   recruits: { troop: 'swordsmen', count: 12, price: 60 },
-  text: { about: ['Grimsby\u2019s former men, sharpening their swords and their excuses.', 'Swordsmen, for hire.'] },
+  text: { about: ['Grimsby\u2019s former men are sharpening their swords and their excuses.', 'You can hire swordsmen here.'] },
 };
 
 /** The same camp when Sergeant Pike brings the whole patrol home to Westmere: more of them, and in a better mood. */
@@ -74,7 +74,7 @@ const PIKES_CAMP: Location = {
   name: 'Pike\u2019s Camp',
   at: [2036, 1512],
   recruits: { troop: 'swordsmen', count: 20, price: 60 },
-  text: { about: ['The Baron\u2019s old patrol, camped on Westmere green, where their mothers can keep an eye on them.', 'Swordsmen, for hire.'] },
+  text: { about: ['The Baron\u2019s old patrol has camped on Westmere green, where their mothers can keep an eye on them.', 'You can hire swordsmen here.'] },
 };
 
 /**
@@ -96,13 +96,13 @@ const GRIMSBY_RIDES: Location = {
     sight: 1800,
     pace: 80,
     patience: 7,
-    lines: ['Baron Grimsby on his best pony, the goose under one arm and his guard at his back. He has come out to teach the King\u2019s man a lesson.'],
+    lines: ['Baron Grimsby is out on his best pony, with the goose under one arm and his guard at his back. He means to teach the King\u2019s man a lesson.'],
     army: [],
     reward: 400,
     threat: '*"There he is!"* shouts the Baron, pointing with the goose. *"Get him!"*',
     lastWords: 'A strategic retreat! Hold on tight, goose!',
     flees: 'The Baron gallops home to his stockade, the goose under his arm, and his guard limps after him.',
-    loot: 'In the mud where he turned his pony: {gold}, the guard\u2019s pay.',
+    loot: 'In the mud where he turned his pony you find {gold}, the guard\u2019s pay.',
   },
 };
 
@@ -343,7 +343,7 @@ export const ALDMOOR: Province = {
       done: false,
       recruits: { troop: 'knights', count: 5, price: 100 },
       wares: ['swordOfAldmoor', 'breastplate', 'helmOfFarSight', 'luckyHorseshoe', 'spyglass', 'silverSignet', 'bonesDice'],
-      text: { about: ['Your castle, flying the King\u2019s banner.', 'The steward is pretending to count spoons.', 'Knights to recruit, and an armoury.'] },
+      text: { about: ['Your castle flies the King\u2019s banner.', 'The steward is pretending to count spoons.', 'You can recruit knights here, and there is an armoury.'] },
     },
     {
       id: 'tower',
@@ -352,15 +352,15 @@ export const ALDMOOR: Province = {
       at: at.tower,
       done: false,
       text: {
-        about: ['Abandoned for nearly a century.', '*Something has disturbed the crows recently.*'],
-        done: ['Empty now, apart from some very offended crows.'],
+        about: ['Nobody has kept watch here for nearly a century.', '*Something has disturbed the crows recently.*'],
+        done: ['The tower is empty now, apart from some very offended crows.'],
       },
       pages: [
         {
           id: 'top',
           when: { notFlag: 'tower' },
           lines: [
-            'At the top of the stairs, the crows are guarding an old soldier\u2019s things: his **banner**, moth-eaten and much loved, that archers rally to, and his **journal**, which is all about Grimsby and somebody called Pike.',
+            'At the top of the stairs, the crows are guarding an old soldier\u2019s things. One is his **banner**, moth-eaten and much loved, that archers rally to. The other is his **journal**, which is all about Grimsby and somebody called Pike.',
             '*The crows will let you take one. They are very clear about this.*',
           ],
           choices: [
@@ -375,8 +375,8 @@ export const ALDMOOR: Province = {
               label: 'Take the journal',
               effects: { reveal: { at: at.hideout, radius: 90 }, flags: { tower: 'journal', pike: true }, done: true },
               lines: [
-                '*"Grimsby rides south-west, into Darkwood. He sleeps with the goose."*',
-                'And on the last page: *"My boy is a sergeant in the Baron\u2019s patrol now, God help him. If you see him, tell Pike his mother wants him home."*',
+                'The journal says, *"Grimsby rides south-west, into Darkwood. He sleeps with the goose."*',
+                'On the last page he has written, *"My boy is a sergeant in the Baron\u2019s patrol now, God help him. If you see him, tell Pike his mother wants him home."*',
               ],
             },
             { id: 'leave', label: 'Leave them to the crows', lines: ['The crows watch you all the way down the stairs.'] },
@@ -399,7 +399,7 @@ export const ALDMOOR: Province = {
           id: 'cart',
           when: { notFlag: 'dwarf' },
           lines: [
-            'A forgotten ore cart, still full: a good **400 gold** of it. The humming is a dwarf, pushing it the wrong way up the rails.',
+            'You find a forgotten ore cart, still full of ore worth a good **400 gold**. The humming is a dwarf, pushing it the wrong way up the rails.',
             '*"Mine,"* he says. *"Well. Nobody\u2019s. But mine."* He looks like someone who would remember a favour.',
           ],
           choices: [
@@ -415,7 +415,7 @@ export const ALDMOOR: Province = {
               effects: { artifact: 'dwarvenHelm', flags: { dwarf: 'friend', delving: true }, reveal: { at: at.delving, radius: 70 } },
               lines: [
                 'It takes all afternoon. At the bottom, the dwarf gives you his spare helmet and a long look.',
-                '*"A King\u2019s man with manners. Here: the old delving runs south under the heath, and comes up in Darkwood, behind them wolves. Mind your head."*',
+                '*"A King\u2019s man with manners. Now then. The old delving runs south under the heath, and comes up in Darkwood, behind them wolves. Mind your head."*',
               ],
             },
           ],
@@ -443,14 +443,14 @@ export const ALDMOOR: Province = {
       at: at.delving,
       done: false,
       text: {
-        about: ['An old mine mouth, in the middle of Darkwood.', '*Somebody has bricked it up from the inside.*'],
-        later: [{ when: { flag: 'delving' }, about: ['An old mine mouth, in the middle of Darkwood.', '*The bricks are down, in a neat dwarfish pile. The rails run north into the dark.*'] }],
+        about: ['An old mine mouth opens in the middle of Darkwood.', '*Somebody has bricked it up from the inside.*'],
+        later: [{ when: { flag: 'delving' }, about: ['An old mine mouth opens in the middle of Darkwood.', '*The bricks are down, in a neat dwarfish pile. The rails run north into the dark.*'] }],
       },
       pages: [
         {
           id: 'shut',
           when: { notFlag: 'delving' },
-          lines: ['An old mine mouth, bricked up from the inside. Somewhere behind the bricks, very faintly, somebody is humming.'],
+          lines: ['The old mine mouth is bricked up from the inside. Somewhere behind the bricks, very faintly, somebody is humming.'],
           choices: [],
         },
         {
@@ -462,14 +462,14 @@ export const ALDMOOR: Province = {
               id: 'north',
               label: 'Ride the old delving north',
               effects: { travel: DELVING_NORTH },
-              lines: ['A long day in the dark. You come up at the Old Mine at dusk, where the dwarf pretends he hasn\u2019t been waiting.'],
+              lines: ['You spend a long day in the dark, and come up at the Old Mine at dusk, where the dwarf pretends he hasn\u2019t been waiting.'],
             },
             { id: 'stay', label: 'Not today' },
           ],
         },
       ],
     },
-    { id: 'village', kind: 'village', name: 'Westmere', at: at.village, done: false, recruits: { troop: 'peasants', count: 20, price: 10 }, text: { about: ['Population 340. Friendly, if nosy.'] } },
+    { id: 'village', kind: 'village', name: 'Westmere', at: at.village, done: false, recruits: { troop: 'peasants', count: 20, price: 10 }, text: { about: ['The 340 people of Westmere are friendly, if nosy.'] } },
     {
       id: 'mrsPike',
       kind: 'event',
@@ -477,14 +477,14 @@ export const ALDMOOR: Province = {
       name: 'Mrs Pike\u2019s Cottage',
       at: at.mrsPike,
       done: false,
-      text: { about: ['A neat cottage on Westmere green, with a sergeant\u2019s coat on the washing line.', '*It hasn\u2019t been worn in a while.*'] },
+      text: { about: ['A neat cottage on Westmere green has a sergeant\u2019s coat on the washing line.', '*It hasn\u2019t been worn in a while.*'] },
       pages: [
         {
           id: 'home',
           when: { flag: 'pikeHome', notFlag: 'mrsPike' },
           lines: [
             'Mrs Pike opens the door before you knock. Her boy is at the table behind her, on his third breakfast.',
-            '*"You brought him home. With his father\u2019s journal, of all things."* She\u2019d like to thank you properly: with her late husband\u2019s **lucky horseshoe**, off the door, or with a **word** in the right ears round Westmere.',
+            '*"You brought him home. With his father\u2019s journal, of all things."* She\u2019d like to thank you properly, with her late husband\u2019s **lucky horseshoe** off the door, or with a **word** in the right ears round Westmere.',
           ],
           choices: [
             {
@@ -498,7 +498,7 @@ export const ALDMOOR: Province = {
               id: 'word',
               label: 'Let her tell Westmere',
               effects: { leadership: 20, xp: 100, flags: { mrsPike: 'word' } },
-              lines: ['By teatime every mother in Westmere knows who brought Mrs Pike\u2019s boy home, and her sons are asking where to sign. **+20 leadership.**'],
+              lines: ['By teatime every mother in Westmere knows who brought Mrs Pike\u2019s boy home, and her sons are asking where to sign.'],
             },
           ],
         },
@@ -535,8 +535,8 @@ export const ALDMOOR: Province = {
           id: 'miller',
           when: { notFlag: 'miller' },
           lines: [
-            '*"And for the King\u2019s officer, something special. One thing, mind: times are hard."*',
-            'He holds up a **loaf** that has not gone stale in living memory (*nobody marches on an empty stomach*), and his old mum\u2019s **charm for a fair wind** (*blows the chaff off the grain, and your lads along with it*).',
+            '*"And for the King\u2019s officer, something special. Just the one thing, mind. Times are hard."*',
+            'He holds up a **loaf** that has not gone stale in living memory, because nobody marches on an empty stomach. Or you could have his old mum\u2019s **charm for a fair wind**, which blows the chaff off the grain, and your lads along with it.',
           ],
           choices: [
             {
@@ -577,13 +577,13 @@ export const ALDMOOR: Province = {
       name: 'Shrine of St Aldhelm',
       at: at.shrine,
       done: false,
-      text: { about: ['A mossy wayside shrine to St Aldhelm, patron saint of lost geese.'] },
+      text: { about: ['This is a mossy wayside shrine to St Aldhelm, the patron saint of lost geese.'] },
       pages: [
         {
           id: 'start',
           when: { notFlag: 'aldhelm' },
           lines: [
-            'A mossy wayside shrine to St Aldhelm, patron saint of lost geese. Somebody has left a single white feather on the step.',
+            'You come upon a mossy wayside shrine to St Aldhelm, the patron saint of lost geese. Somebody has left a single white feather on the step.',
             'The saint wears a **crown of hawthorn**, still in flower. With it on, they say, any beast in the greenwood would follow you, as they follow a ranger. And he still listens to anyone who **prays for a goose**.',
             'On a peg by the door hangs a **pilgrim\u2019s hat** with a scallop shell. Whoever wears it on the road finds their strength again as they walk.',
             '*A saint can only spare so much. Choose one.*',
@@ -620,7 +620,7 @@ export const ALDMOOR: Province = {
       name: 'Old Nan\u2019s Cottage',
       at: at.nan,
       done: false,
-      text: { about: ['A crooked cottage with a crooked chimney, at the edge of the wood.', '*The smoke is purple.*'] },
+      text: { about: ['A crooked cottage with a crooked chimney leans at the edge of the wood.', '*The smoke is purple.*'] },
       pages: [
         {
           id: 'hearth',
@@ -661,14 +661,14 @@ export const ALDMOOR: Province = {
       at: at.hall,
       done: false,
       text: {
-        about: ['The old King\u2019s hunt hall, by the bridge.', '*Antlers over the door, and shutters nobody has opened since he died.*'],
+        about: ['The old King\u2019s hunt hall stands by the bridge.', '*There are antlers over the door, and shutters nobody has opened since he died.*'],
         done: ['The fires are lit, and every one of the old King\u2019s huntsmen has gone with you.'],
       },
       pages: [
         {
           id: 'locked',
           when: { notFlag: 'huntKey' },
-          lines: ['The old King\u2019s hunt hall, shut up since he died.', '*The lock is the size of a loaf. Somebody still oils it.*'],
+          lines: ['The old King\u2019s hunt hall has been shut up since he died.', '*The lock is the size of a loaf. Somebody still oils it.*'],
           choices: [],
         },
         {
@@ -681,7 +681,7 @@ export const ALDMOOR: Province = {
               label: 'Open the hall',
               effects: { flags: { huntsmen: true }, recruits: { troop: 'huntsmen', count: HUNTSMEN, restock: 0 }, xp: 100 },
               lines: [
-                'Dust, antlers, and the old King\u2019s chair by the cold hearth. By evening the fires are lit, and grey, lean men are at the door: *the old King\u2019s huntsmen, come home.*',
+                'Inside there is dust, antlers, and the old King\u2019s chair by the cold hearth. By evening the fires are lit, and grey, lean men are at the door. *The old King\u2019s huntsmen have come home.*',
                 '*"Grimsby gave our job to Rook,"* says the eldest. *"We\u2019d like a word with him. We\u2019ll come with you for nothing, sir, if you\u2019re going his way."*',
               ],
             },
@@ -698,7 +698,7 @@ export const ALDMOOR: Province = {
       name: 'The Falconer\u2019s Bothy',
       at: at.falconer,
       done: false,
-      text: { about: ['A low stone bothy out on the heath, and a hawk on a block outside it.', '*She watches you all the way in.*'] },
+      text: { about: ['A low stone bothy sits out on the heath, with a hawk on a block outside it.', '*She watches you all the way in.*'] },
       pages: [
         {
           id: 'gone',
@@ -726,7 +726,7 @@ export const ALDMOOR: Province = {
               when: { flag: 'huntsmen' },
               effects: { flags: { falconer: 'home', watHome: true }, recruits: { at: 'hall', troop: 'huntsmen', count: 4 }, xp: 100 },
               lines: [
-                '*"The lads are back at the hall?"* Old Wat whistles, and three lean lads come up out of the heather: his apprentices. *"Then so are we, all four of us, and Meg."*',
+                '*"The lads are back at the hall?"* Old Wat whistles, and three lean lads come up out of the heather. They are his apprentices. *"Then so are we, all four of us, and Meg."*',
                 '*"And if we meet that Rook on the way, he\u2019ll get a clip round the ear. I taught him everything he knows."*',
               ],
             },
@@ -748,13 +748,13 @@ export const ALDMOOR: Province = {
       name: 'The Old King\u2019s Lodge',
       at: at.lodge,
       done: false,
-      text: { about: ['The old King\u2019s hunting lodge, deep in the chase.', '*Nobody has lit a fire here in years.*'] },
+      text: { about: ['The old King\u2019s hunting lodge lies deep in the chase.', '*Nobody has lit a fire here in years.*'] },
       pages: [
         {
           id: 'nail',
           when: { notFlag: 'huntKey' },
           lines: [
-            'Antlers, cobwebs, and the old King\u2019s chair by the cold hearth, as if he had only just stepped out.',
+            'Inside you find antlers, cobwebs, and the old King\u2019s chair by the cold hearth, as if he had only just stepped out.',
             'On a nail by the door hangs a big iron **key** with a stag on its bow, beside his old hunting coat.',
           ],
           choices: [
@@ -762,7 +762,7 @@ export const ALDMOOR: Province = {
               id: 'key',
               label: 'Take the key',
               effects: { flags: { huntKey: true, lodge: 'key' }, treasure: 150 },
-              lines: ['It is heavier than it looks. *The stag on it is the one over the door of the old hunt hall by the bridge.*', 'In a pocket of the coat: a purse of the old King\u2019s crowns.'],
+              lines: ['It is heavier than it looks. *The stag on it is the one over the door of the old hunt hall by the bridge.*', 'In a pocket of the coat you find a purse of the old King\u2019s crowns.'],
             },
             { id: 'leave', label: 'Leave it on its nail' },
           ],
@@ -778,7 +778,7 @@ export const ALDMOOR: Province = {
       at: at.butts,
       done: false,
       recruits: { troop: 'archers', count: 12, price: 30 },
-      text: { about: ['The village archery butts. Straw targets, and a sign: *"MIND THE GOOSE"*.', 'Archers, for hire.'] },
+      text: { about: ['These are the village archery butts, with straw targets and a sign that says *"MIND THE GOOSE"*.', 'You can hire archers here.'] },
     },
     { id: 'chest', kind: 'chest', name: 'Treasure Chest', at: at.chest, done: false, gold: 500, artifact: 'surveyorsChain' },
     {
@@ -788,7 +788,7 @@ export const ALDMOOR: Province = {
       at: at.well,
       done: false,
       text: {
-        about: ['A holy well with a tin cup on a chain. The pilgrims say its water clears the head.'],
+        about: ['A tin cup hangs on a chain by this holy well. The pilgrims say its water clears the head.'],
         visit: ['You drink. The water is cold enough to hurt, and your head is suddenly very clear.'],
       },
     },
@@ -803,7 +803,7 @@ export const ALDMOOR: Province = {
       enemy: {
         look: 'soldiers',
         tier: 'gate',
-        lines: ['Grimsby\u2019s men, with goose feathers in their helmets. They hold the old bridge, and they are not in a hurry.'],
+        lines: ['Grimsby\u2019s men wear goose feathers in their helmets. They hold the old bridge, and they are not in a hurry.'],
         army: [{ troop: 'swordsmen', count: PATROL.swordsmen }, { troop: 'crossbowmen', count: PATROL.crossbowmen }],
         reward: 500,
         threat: 'They level their spears.',
@@ -838,7 +838,7 @@ export const ALDMOOR: Province = {
         ],
         spoils: { place: DESERTERS, flags: { patrolGone: true } },
         flees: 'Grimsby\u2019s patrol breaks and runs for Darkwood.',
-        loot: 'You find {gold} on the road. And a dozen of them would rather fight for the Crown: they make camp by the crossroads, where **swordsmen** can now be hired.',
+        loot: 'You find {gold} on the road. A dozen of them would rather fight for the Crown, so they make camp by the crossroads, and you can hire **swordsmen** there now.',
       },
     },
     {
@@ -859,13 +859,13 @@ export const ALDMOOR: Province = {
           pace: 360,
           leaves: 'In Westmere, a squad of Pike\u2019s lads is loading the village\u2019s grain onto a cart, for the Baron\u2019s stockade.',
         },
-        lines: ['Westmere\u2019s grain, on its way to Grimsby\u2019s stockade, and a squad of Pike\u2019s lads from the bridge to see it gets there.', '*The carter doesn\u2019t look happy about it. Nor does the ox.*'],
+        lines: ['Westmere\u2019s grain is on its way to Grimsby\u2019s stockade, with a squad of Pike\u2019s lads from the bridge to see that it gets there.', '*The carter doesn\u2019t look happy about it. Nor does the ox.*'],
         army: [{ troop: 'swordsmen', count: 10 }, { troop: 'crossbowmen', count: 6 }],
         reward: 100,
         threat: 'The carter whips up the ox. Pike\u2019s lads put themselves between you and the grain, rather apologetically.',
         spoils: { flags: { grain: true }, rations: 1, page: 'grain' },
         flees: 'Pike\u2019s lads leave the cart in the road and run for the bridge.',
-        loot: 'In the carter\u2019s box: {gold}, and a note from the Baron about the price of oats.',
+        loot: 'In the carter\u2019s box you find {gold}, and a note from the Baron about the price of oats.',
       },
       pages: [
         {
@@ -903,19 +903,19 @@ export const ALDMOOR: Province = {
         // He recruits 3% a payday, five times: enough that waiting costs something, not so much that he runs away from a hero beaten once at his walls.
         grows: 0.03,
         charge: 'Storm the stockade',
-        lines: ['A muddy stockade deep in Darkwood. Someone inside is honking.'],
+        lines: ['A muddy stockade stands deep in Darkwood. Someone inside is honking.'],
         // Sized to the power budget: a hard fight for a careful player on day 21 (docs/BALANCE.md).
         army: [{ troop: 'swordsmen', count: 69 }, { troop: 'crossbowmen', count: 36 }, { troop: 'baron', count: 1 }],
         reward: 2000,
-        threat: 'The Baron shouts from the palisade: *"I have the goose AND the walls!"*',
+        threat: 'The Baron shouts from the palisade, *"I have the goose AND the walls!"*',
         // Raid his dig, take his patrol off the bridge or his huntsman from his wolves, and he rides out with a fifth of his men to meet you.
         sortie: {
           when: [{ flag: 'dig', is: 'raided' }, { flag: 'patrolGone' }, { flag: 'pikeHome' }, { flag: 'rook' }],
           guard: 0.2,
           band: GRIMSBY_RIDES,
           barred: ['The gate is barred, and for once nobody inside is honking.', '*"The Baron\u2019s out!"* shouts a sentry over the palisade. *"Looking for you, as it happens. He took the goose."*'],
-          out: 'Word on the road: **Baron Grimsby** has ridden out of his stockade with his guard, looking for you.',
-          home: 'Word on the road: **Baron Grimsby** has given up looking for you, and gone home to his stockade.',
+          out: 'Word reaches you that **Baron Grimsby** has ridden out of his stockade with his guard, looking for you.',
+          home: 'You hear that **Baron Grimsby** has given up looking for you, and gone home to his stockade.',
         },
         parleys: [
           {
@@ -934,7 +934,7 @@ export const ALDMOOR: Province = {
             effects: { win: true, gold: 1000, xp: 450, flags: { lullaby: false } },
             lines: [
               'You tune your lute under the palisade and sing *Hush-a-bye, Baron*, all four verses, the way Old Nan sings it. By the second, his men are humming along. By the third, the Baron is sobbing into the goose.',
-              '*"Nobody\u2019s sung me that since I was six,"* he sniffs, and comes down to you, on one condition: half his bounty goes to his old nanny.',
+              '*"Nobody\u2019s sung me that since I was six,"* he sniffs, and comes down to you, on one condition. Half his bounty must go to his old nanny.',
             ],
             because: 'the other half went to the Baron\u2019s old nanny',
           },
@@ -942,7 +942,7 @@ export const ALDMOOR: Province = {
         flees: 'The stockade gate falls open.',
         loot: 'The Crown pays {gold}.',
       },
-      text: { done: ['Nobody here but a few goose feathers.'] },
+      text: { done: ['There is nobody here now but a few goose feathers.'] },
     },
     {
       id: 'poachers',
@@ -956,7 +956,7 @@ export const ALDMOOR: Province = {
         tier: 'pest',
         behaviour: 'roam',
         range: 60,
-        lines: ['Poachers, with the King\u2019s deer over their shoulders.', '*Their leader keeps touching a rabbit\u2019s foot on a string, for luck.*'],
+        lines: ['A band of poachers is carrying off the King\u2019s deer.', '*Their leader keeps touching a rabbit\u2019s foot on a string, for luck.*'],
         army: [{ troop: 'poachers', count: 16 }],
         reward: 150,
         threat: 'They nock their arrows, a little guiltily.',
@@ -978,7 +978,7 @@ export const ALDMOOR: Province = {
               place: { id: 'cache', kind: 'chest', name: 'The Poachers\u2019 Cache', at: at.cache, done: false, gold: 300, artifact: 'poachersHorn' },
               reveal: { at: at.cache, radius: 80 },
             },
-            lines: ['They swear on the deer, which seems fair. As they go, the youngest whispers: *"Hollow oak, south of the old bridge. Take the horn, my lord. We won\u2019t be needing it."*'],
+            lines: ['They swear on the deer, which seems fair. As they go, the youngest whispers, *"Hollow oak, south of the old bridge. Take the horn, my lord. We won\u2019t be needing it."*'],
           },
         ],
         spoils: { flags: { venison: true } },
@@ -992,17 +992,17 @@ export const ALDMOOR: Province = {
       name: 'Grimsby\u2019s Dig',
       at: at.diggings,
       done: false,
-      text: { done: ['Forty holes in the heather, and not one of them the right one.'] },
+      text: { done: ['There are forty holes in the heather, and not one of them is the right one.'] },
       enemy: {
         look: 'soldiers',
         tier: 'band',
-        lines: ['Grimsby\u2019s men, digging on the heath for the old King\u2019s treasure, and a good many more of them standing guard. They have dug forty holes so far.', '*None of them is the right one.*'],
+        lines: ['Grimsby\u2019s men are digging on the heath for the old King\u2019s treasure, and a good many more of them are standing guard. They have dug forty holes so far.', '*None of them is the right one.*'],
         army: [{ troop: 'swordsmen', count: 32 }, { troop: 'crossbowmen', count: 14 }, { troop: 'peasants', count: 30 }],
         reward: 400,
         threat: 'The foreman waves his spade at you. *"Dig your own hole!"*',
         spoils: { flags: { dig: 'raided' } },
         flees: 'The diggers drop their spades and run for Darkwood.',
-        loot: 'In the biggest hole: {gold} of the Baron\u2019s wages, and his orders, pinned to a spade. *"Keep digging. It isn\u2019t gold, so don\u2019t pocket it: you\u2019ll know it when you see it. G."*',
+        loot: 'In the biggest hole you find {gold} of the Baron\u2019s wages, and his orders, pinned to a spade. *"Keep digging. It isn\u2019t gold, so don\u2019t pocket it. You\u2019ll know it when you see it. G."*',
       },
     },
     {
@@ -1015,7 +1015,7 @@ export const ALDMOOR: Province = {
       enemy: {
         look: 'soldiers',
         tier: 'pest',
-        lines: ['Highwaymen, in a line across the road to the watchtower, under a black banner with a skull on it.'],
+        lines: ['Highwaymen stand in a line across the road to the watchtower, under a black banner with a skull on it.'],
         army: [{ troop: 'bandits', count: 14 }],
         reward: 200,
         threat: '*"Stand and deliver!"* They stand. Somebody has to deliver.',
@@ -1030,7 +1030,7 @@ export const ALDMOOR: Province = {
         ],
         spoils: { flags: { orders: true } },
         flees: 'The highwaymen scatter into the heather.',
-        loot: 'Their takings: {gold}, and a letter with the Baron\u2019s seal: *"All patrols back to the stockade if the King\u2019s man comes. G."*',
+        loot: 'Their takings come to {gold}, and among them is a letter with the Baron\u2019s seal. *"All patrols back to the stockade if the King\u2019s man comes. G."*',
       },
     },
     {
@@ -1044,13 +1044,13 @@ export const ALDMOOR: Province = {
         tier: 'pest',
         behaviour: 'roam',
         range: 60,
-        lines: ['Wild boars, rooting at the edge of the King\u2019s chase.'],
+        lines: ['Wild boars are rooting at the edge of the King\u2019s chase.'],
         army: [{ troop: 'boars', count: 9 }],
         reward: 80,
         threat: 'The biggest one lowers its tusks and scrapes the ground.',
         tamed: 'You lay a trail of acorns, and the boars follow it like a procession, all the way into your baggage train. They seem to think it was their idea.',
         flees: 'The boars crash off into the woods.',
-        loot: 'Truffles where they were rooting! Worth {gold} at market.',
+        loot: 'Where they were rooting you find truffles, worth {gold} at market.',
       },
     },
     {
@@ -1062,13 +1062,13 @@ export const ALDMOOR: Province = {
       enemy: {
         look: 'wolves',
         tier: 'band',
-        lines: ['Bears, asleep across the track to the old King\u2019s lodge.', '*The biggest one is snoring. The trees shake a little.*'],
+        lines: ['Bears are asleep across the track to the old King\u2019s lodge.', '*The biggest one is snoring. The trees shake a little.*'],
         army: [{ troop: 'bears', count: 7 }],
         reward: 150,
         threat: 'The biggest bear gets up. It goes on getting up for quite a long time.',
         tamed: 'You sit down in the track, and wait. At dusk the biggest bear comes and sits beside you, and leans. *The others decide that makes you family.*',
         flees: 'The bears lumber off into the chase, grumbling.',
-        loot: 'In the hollow oak they were sleeping under: {gold} in old coins, and a great deal of honey.',
+        loot: 'In the hollow oak they were sleeping under you find {gold} in old coins, and a great deal of honey.',
       },
     },
     {
@@ -1086,8 +1086,8 @@ export const ALDMOOR: Province = {
         behaviour: 'hunt',
         range: 340,
         sight: 380,
-        wakes: { day: 8, news: 'Word on the road: the Baron has told **Rook the Huntsman** to bring you in, and let his wolves off the leash.' },
-        lines: ['Rook the Huntsman, the Baron\u2019s man, and the Baron\u2019s wolves, sitting on the path like they own it.', '*The best poacher Aldmoor ever had, until the Baron gave him the old King\u2019s huntsmen\u2019s job.*'],
+        wakes: { day: 8, news: 'Word reaches you that the Baron has told **Rook the Huntsman** to bring you in, and Rook has let his wolves off the leash.' },
+        lines: ['Rook the Huntsman and the Baron\u2019s wolves are sitting on the path as if they own it.', '*Rook was the best poacher Aldmoor ever had, until the Baron gave him the old King\u2019s huntsmen\u2019s job.*'],
         army: [{ troop: 'wolves', count: 100 }, { troop: 'rook', count: 1 }],
         reward: 300,
         threat: 'Rook puts two fingers in his mouth and whistles, once. Every wolf in the pack looks at you.',
@@ -1105,7 +1105,7 @@ export const ALDMOOR: Province = {
         spoils: { flags: { wolfpelt: true } },
         taken: { rook: 'taken' },
         flees: 'The pack scatters into Darkwood without him.',
-        loot: 'In Rook\u2019s hut by the kennels: {gold}, a fine grey pelt, and an old ranger\u2019s cloak his wolves had been sleeping on. *Old Nan would like that pelt.*',
+        loot: 'In Rook\u2019s hut by the kennels you find {gold}, a fine grey pelt, and an old ranger\u2019s cloak his wolves had been sleeping on. *Old Nan would like that pelt.*',
       },
     },
     ...FINDS,

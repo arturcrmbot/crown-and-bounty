@@ -21,7 +21,7 @@ export function ambushCard(state: GameState, before: string[] = []): Card {
     { label: 'Let the sergeants handle it', detail: SERGEANTS_NOTE, action: { type: 'choose', id: foe.id, choice: 'auto' } },
     { label: 'Run for it (lose a fifth of the army)', action: { type: 'choose', id: foe.id, choice: 'flee' } },
   ];
-  return { title: `Day ${roman(state.day)}: ambush!`, ...faceOf(foe.enemy!.army), lines: [...before, `At first light, **${foe.name}** fall on your camp!`, foe.enemy!.threat, oddsLine(winChance(state, foe.id)), likelyLossesLine(state, foe.id)], choices };
+  return { title: `An ambush on day ${roman(state.day)}!`, ...faceOf(foe.enemy!.army), lines: [...before, `At first light, **${foe.name}** fall on your camp!`, foe.enemy!.threat, oddsLine(winChance(state, foe.id)), likelyLossesLine(state, foe.id)], choices };
 }
 
 /** A villain recruits on payday; the villain himself stays one. */
@@ -58,9 +58,9 @@ export function endDay(state: GameState): Result {
     };
     const estates = heroPayday(next, stats);
     next = estates.state;
-    const paid = fed ? 'Your troops eat the rations in your baggage this week, and draw **no wages**.' : `Your troops take **${coins(pay)}** in wages.`;
+    const paid = fed ? 'Your troops eat the rations in your baggage this week, and draw **no wages**.' : `Your troops take **${coins(pay)} gold** in wages.`;
     lines.push(`**Payday!** The King sends **${coins(commission)} gold**. ${paid}`, ...estates.rents, 'The mill has flour again, and there are fresh volunteers.', ...estates.lines);
-    for (const l of state.locations) if (l.enemy?.grows && !l.done && (l.enemy.grown ?? 0) < MAX_GROWTH) lines.push(`Word on the road: **${l.name}** has taken on more men.`);
+    for (const l of state.locations) if (l.enemy?.grows && !l.done && (l.enemy.grown ?? 0) < MAX_GROWTH) lines.push(`You hear that more men have joined **${l.name}**.`);
   }
   // Bands that wake today start to roam or hunt, and word gets about.
   for (const l of next.locations) if (l.enemy?.wakes?.day === day && !l.done) lines.push(l.enemy.wakes.news);
@@ -88,7 +88,7 @@ export function endDay(state: GameState): Result {
   events.push(...out.events, ...hauled.events, ...night.events, ...home.events, ...convoys.events, ...morning.events);
   lines.push(...out.lines, ...home.lines, ...convoys.lines);
   const trailing = next.locations.filter((l) => l.enemy?.trailing && !l.done);
-  for (const l of trailing) lines.push(`**${l.name}** are on your trail. Camp near them tonight and they’ll fall on you at dawn: ride clear, shelter in a town, or turn and fight.`);
+  for (const l of trailing) lines.push(`**${l.name}** are on your trail. Camp near them tonight and they’ll fall on you at dawn, so ride clear, shelter in a town, or turn and fight.`);
   if (night.ambush) {
     next = { ...next, ambush: night.ambush };
     const foe = locationById(next, night.ambush);

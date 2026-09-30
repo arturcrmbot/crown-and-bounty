@@ -37,7 +37,7 @@ describe('the castle', () => {
     expect(card.lines).toEqual(['The armourer polishes something that was already clean.']);
     const sword = card.choices.find((c) => c.label.startsWith('Buy Sword of Aldmoor'))!;
     expect(sword.label).toBe('Buy Sword of Aldmoor (900 gold)');
-    expect(sword.detail).toBe('+2 attack. Came with the castle, like the damp.');
+    expect(sword.detail).toBe('It gives +2 attack. It came with the castle, like the damp.');
     expect(sword.disabled).toBeUndefined();
     const poor = cardOf(apply({ ...knight(), gold: 450 }, { type: 'choose', id: 'castle', choice: 'armoury' }));
     const dear = poor.choices.find((c) => c.label.startsWith('Buy Sword of Aldmoor'))!;
@@ -49,7 +49,7 @@ describe('the castle', () => {
   it('says where a bought artifact went', () => {
     const rich = { ...knight(), gold: 5000 };
     const bought = apply(rich, { type: 'choose', id: 'castle', choice: 'buy:swordOfAldmoor' })!;
-    expect(cardOf(bought).lines[0]).toBe('**Sword of Aldmoor** is yours: you put it on straight away.');
+    expect(cardOf(bought).lines[0]).toBe('The **Sword of Aldmoor** is yours, and you put it on straight away.');
     const second = apply({ ...bought.state, locations: rich.locations }, { type: 'choose', id: 'castle', choice: 'buy:breastplate' })!;
     expect(cardOf(second).lines[0]).toContain('you put it on');
     const armed = { ...rich, hero: { ...rich.hero, gear: { helm: 'crystalBall' as const } } };
@@ -78,17 +78,17 @@ describe('the castle', () => {
   it('says why fewer can be recruited than are on offer', () => {
     const poor = { ...knight(), gold: 35 };
     const village = cardOf(visit(poor, 'village'));
-    expect(village.lines).toContain('Your purse runs to 3.');
+    expect(village.lines).toContain('You can only afford 3.');
     expect(village.choices[0].label).toBe('Recruit 3 (30 gold)');
     const broke = cardOf(visit({ ...knight(), gold: 0 }, 'village'));
-    expect(broke.lines).toContain('You can\u2019t pay for even one.');
+    expect(broke.lines).toContain('You can\u2019t afford even one.');
     expect(broke.choices[0]).toMatchObject({ label: 'Recruit', disabled: true });
     const full: GameState = { ...knight(), leadership: 5000, army: (['knights', 'archers', 'swordsmen', 'crossbowmen', 'bandits'] as const).map((troop) => ({ troop, count: 1 })) };
-    expect(cardOf(visit(full, 'village')).lines).toContain('Five companies are all one officer can lead. Dismiss one (H) to make room.');
+    expect(cardOf(visit(full, 'village')).lines).toContain('Five companies are all one officer can lead. Dismiss one on the hero screen to make room.');
   });
 
   it('warns before recruits join companies they won\u2019t march happily beside', () => {
-    const grumble = '*Your Wolves and Wild Boars won\u2019t march happily beside Knights: \u221210% morale for all of them.*';
+    const grumble = '*Your Wolves and Wild Boars won\u2019t march happily beside Knights, and all of them lose 10% morale.*';
     const wild = { ...knight(), army: [{ troop: 'wolves' as const, count: 10 }, { troop: 'boars' as const, count: 5 }] };
     expect(cardOf(visit(wild, 'castle')).lines).toContain(grumble);
     expect(cardOf(visit(knight(), 'castle')).lines.some((line) => line.includes('march happily'))).toBe(false);
@@ -101,7 +101,7 @@ describe('the castle', () => {
     const ranger: GameState = { ...newGame(1066, ALDMOOR, 'ranger'), opening: undefined };
     const card = cardOf(visit(ranger, 'boars'));
     expect(card.choices.map((c) => c.label)).toContain('Tame as many as you can lead (3 of 9)');
-    expect(card.lines).toContain('*Your Knights and Archers won\u2019t march happily beside Wild Boars: \u221210% morale for all of them.*');
+    expect(card.lines).toContain('*Your Knights and Archers won\u2019t march happily beside Wild Boars, and all of them lose 10% morale.*');
   });
 });
 
@@ -120,10 +120,10 @@ describe('the odds', () => {
     const army = [{ troop: 'swordsmen' as const, count: 12 }, { troop: 'knights' as const, count: 2 }, { troop: 'poachers' as const, count: 2 }, { troop: 'archers' as const, count: 1 }];
     const state = { ...knight(), army };
     const threat = cardOf(visit(state, 'patrol'));
-    expect(threat.lines.some((line) => line.includes('You\u2019d likely lose') || line.includes('bring everyone home'))).toBe(true);
+    expect(threat.lines.some((line) => line.includes('The sergeants expect to lose') || line.includes('bring everyone home'))).toBe(true);
 
     const ambush = ambushCard({ ...state, ambush: 'patrol' });
-    expect(ambush.lines.some((line) => line.includes('You\u2019d likely lose') || line.includes('bring everyone home'))).toBe(true);
+    expect(ambush.lines.some((line) => line.includes('The sergeants expect to lose') || line.includes('bring everyone home'))).toBe(true);
 
     const ranger = { ...state, hero: { ...state.hero, background: 'ranger' as const } };
     const scouted = cardOf(visit(ranger, 'patrol'));
@@ -195,7 +195,7 @@ describe('what cards say about troops', () => {
   it('counts them in words that agree', () => {
     expect(joinLine('knights', 1)).toBe('**1 Knight** joins your army.');
     expect(joinLine('peasants', 10)).toBe('**10 Peasants** join your army.');
-    expect(stillWithYou([{ troop: 'archers', count: 1 }])).toBe('*Still with you: 1 Archer.*');
+    expect(stillWithYou([{ troop: 'archers', count: 1 }])).toBe('*You still have 1 Archer.*');
     expect(stillWithYou([])).toBe('*Nobody is left with you.*');
   });
 });

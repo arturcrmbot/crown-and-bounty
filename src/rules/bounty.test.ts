@@ -37,7 +37,7 @@ describe('the bounty paid, with a scene', () => {
     // The fallen come once he's taken, near the top, not at the foot of a long card (#114).
     expect(card.battleResult?.after).toBe(3);
     expect(card.lines.some((l) => l.includes('The Crown pays'))).toBe(false);
-    expect(card.lines).toContain(`Among Baron Grimsby\u2019s things: a torn piece of an old map (**1 of ${CAMPAIGN_LENGTH}**).`);
+    expect(card.lines).toContain(`Among Baron Grimsby\u2019s things you find a torn piece of an old map. You now have **1 of ${CAMPAIGN_LENGTH}** pieces.`);
     expect(card.choices.at(-1)).toEqual({ label: 'Claim the bounty', action: { type: 'poster' } });
     // The poster's price, paid in full.
     expect(result.state.paid).toEqual({ gold: 2000 });

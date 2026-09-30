@@ -458,11 +458,11 @@ export const countOf = (army: Army, troop: TroopId) => army.find((s) => s.troop 
 
 export function armyLine(army: Army): string {
   const parts = army.filter((s) => s.count > 0).map((s) => troops(s.troop, s.count));
-  return parts.length ? parts.join(' · ') : 'No army at all';
+  return parts.length ? listed(parts) : 'no army at all';
 }
 
 /** Who is still with the hero after a retreat, a flight or a stand-off. */
-export const stillWithYou = (army: Army) => (army.some((s) => s.count > 0) ? `*Still with you: ${armyLine(army)}.*` : '*Nobody is left with you.*');
+export const stillWithYou = (army: Army) => (army.some((s) => s.count > 0) ? `*You still have ${armyLine(army)}.*` : '*Nobody is left with you.*');
 
 /** "**10 Peasants** join your army.", or "**1 Knight** joins" it. */
 export const joinLine = (troop: TroopId, count: number) => `**${troops(troop, count)}** ${count === 1 ? 'joins' : 'join'} your army.`;

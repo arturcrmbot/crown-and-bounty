@@ -16,7 +16,7 @@ export function grumbleLine(army: Army, newcomers: readonly TroopId[]): string |
   if (!old.length) return null;
   const names = (ids: TroopId[]) => listed(ids.map((id) => TROOPS[id].name));
   const quarrel = fresh.filter((t) => old.some((o) => feuding(o, t)));
-  return `*Your ${names(old)} won\u2019t march happily beside ${names(quarrel)}: \u2212${Math.round(GRUMBLE * 100)}% morale for all of them.*`;
+  return `*Your ${names(old)} won\u2019t march happily beside ${names(quarrel)}, and all of them lose ${Math.round(GRUMBLE * 100)}% morale.*`;
 }
 
 /** Moves a stack along the army line: onto another, the two swap. Its place sets its row in battle. */

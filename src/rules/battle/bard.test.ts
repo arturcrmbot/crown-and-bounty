@@ -156,7 +156,7 @@ describe('the Courtier, a bard', () => {
     // Bought, not beaten: half what the fight would have taught.
     const full = battleXp(state.locations.find((l) => l.id === 'highwaymen')!.enemy!.army);
     expect(done.state.hero.xp - state.hero.xp).toBe(full - Math.round(battleXp([{ troop: 'bandits', count: bandits.count }]) / 2));
-    expect(card?.type === 'card' && card.card.lines).toContain(`**+${full - Math.round(full / 2)} experience.**`);
+    expect(card?.type === 'card' && card.card.lines).toContain(`You gain **${(full - Math.round(full / 2)).toLocaleString('en-GB')} experience**.`);
     // Troops who walked off didn't fall: the card counts no highwaymen among their dead.
     expect(card?.type === 'card' && card.card.battleResult?.enemy).toEqual([]);
   });

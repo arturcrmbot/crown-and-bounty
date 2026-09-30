@@ -96,7 +96,7 @@ describe('a boon carries someone forward', () => {
     const court = act(wonAldmoor({ pike: false }), { type: 'court' });
     const card = courtCard(court);
     expect(card.title).toBe('The King\u2019s Thanks');
-    expect(card.lines).toEqual(['Commission I took **14 days**. The King adds **1,500 gold**, and a boon of your choice:']);
+    expect(card.lines).toEqual(['Commission I took **14 days**. The King adds **1,500 gold** to your purse, and offers you a boon of your choice.']);
     const pike = card.choices.find((c) => c.action.type === 'boon' && c.action.id === 'pike')!;
     expect(pike).toMatchObject({ label: 'Sergeant Pike', portrait: 'sergeant' });
     expect(pike.detail).toContain('**20 swordsmen**');

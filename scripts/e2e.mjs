@@ -29,7 +29,7 @@ const learned = [];
 
 /** Closes the card, then deals with any level-up it was hiding. An enemy that falls on the camp at dawn is left to the sergeants. */
 async function close() {
-  if ((await kc.title())?.endsWith('ambush!')) {
+  if ((await kc.title())?.startsWith('An ambush')) {
     const who = (await kc.lines()).match(/At first light, (.+?) fall on your camp/)?.[1];
     const id = (await kc.state()).ambush;
     await kc.choose('Let the sergeants');
@@ -183,7 +183,7 @@ try {
   // The journal: J, the book on the bar, or the bounty's name on it.
   await page.keyboard.press('j');
   const journal = () => kc.call(() => document.querySelector('.kc-card-wrap:not([hidden]) .kc-card.journal .heard')?.textContent ?? null);
-  check((await kc.title()) === 'Journal' && (await kc.lines()).includes('Baron Grimsby, wanted for three years') && (await journal())?.includes('Nothing yet'), 'J opens the journal: the poster pinned in, and a page for things heard');
+  check((await kc.title()) === 'Journal' && (await kc.lines()).includes('Baron Grimsby, wanted for three years') && (await journal())?.includes('heard nothing yet'), 'J opens the journal: the poster pinned in, and a page for things heard');
   await page.keyboard.press('j');
   check((await kc.title()) === null, 'and J puts it away');
   await page.mouse.click(901, 512);

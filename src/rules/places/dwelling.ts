@@ -1,4 +1,4 @@
-import { ARTIFACTS, type ArtifactId } from '../../content/artifacts';
+import { ARTIFACTS, artifactPhrase, type ArtifactId } from '../../content/artifacts';
 import { troopPower } from '../../content/troops';
 import { dismiss, grumbleLine } from '../army';
 import { artifactChoices, giveArtifact, heroStats, salePrice, sell, slotTaken, wantedAt } from '../hero';
@@ -18,7 +18,7 @@ function restAt(state: GameState, place: Location): { state: GameState; lines: s
   const gained = missingMana(state, place);
   if (!gained) return { state, lines: [] };
   const max = heroStats(state).maxMana;
-  return { state: { ...state, hero: { ...state.hero, mana: max } }, lines: [`An hour in the castle chapel, and your head is clear again: **+${gained} mana**, ${max} of ${max}.`] };
+  return { state: { ...state, hero: { ...state.hero, mana: max } }, lines: [`You spend an hour in the castle chapel, and your head is clear again. You gain **${gained} mana**, which fills you up to ${max} of ${max}.`] };
 }
 
 /** How many of a recruiter's troops the hero can take now: capped by the offer, leadership and gold. */
@@ -74,12 +74,12 @@ function recruitCard(state: GameState, place: Location, before: string[] = []): 
   if (grumble) lines.push(grumble);
   // Gear that puts honest recruits off (the Black Banner) says so, or the price is a mystery.
   const shunned = each && Object.values(state.hero.gear).find((id) => id && (ARTIFACTS[id].bonus.recruitPrice ?? 0) > 0);
-  if (shunned) lines.push(`*They don\u2019t like the look of your ${ARTIFACTS[shunned].name.replace(/^The /, '')}: that\u2019s ${Math.round((ARTIFACTS[shunned].bonus.recruitPrice ?? 0) * 100)}% dearer.*`);
+  if (shunned) lines.push(`*They don\u2019t like the look of your ${ARTIFACTS[shunned].name.replace(/^The /, '')}, so they charge ${Math.round((ARTIFACTS[shunned].bonus.recruitPrice ?? 0) * 100)}% more.*`);
   // Say why fewer than are on offer can come: no room in the line, not enough leadership, or not enough gold.
   const slot = Boolean(addTroops(state.army, offer.troop, 1));
-  if (!slot) lines.push('Five companies are all one officer can lead. Dismiss one (H) to make room.');
+  if (!slot) lines.push('Five companies are all one officer can lead. Dismiss one on the hero screen to make room.');
   else if (room < offer.count) lines.push(room > 0 ? `You can only lead ${room} more.` : 'You can\u2019t lead any more troops. Find some leadership first.');
-  if (slot && room > 0 && purse < Math.min(offer.count, room)) lines.push(purse > 0 ? `Your purse runs to ${purse}.` : `You can\u2019t pay for even one.`);
+  if (slot && room > 0 && purse < Math.min(offer.count, room)) lines.push(purse > 0 ? `You can only afford ${purse}.` : `You can\u2019t afford even one.`);
   const free = count > 0 ? thrownIn(state, place, count) : 0;
   const price = each ? `${coins(count * each)} gold` : 'free';
   const hire = count > 0 ? option(place, `Recruit ${count}${free ? ` + ${free} free` : ''} (${price})`, 'recruit') : option(place, 'Recruit', 'recruit', true);
@@ -99,9 +99,9 @@ const HAGGLE = 'He eyes your pack. "Half what it cost new, officer. Four hundred
 function armouryCard(state: GameState, place: Location, before: string[] = [], decisions: Choice[] = []): Card {
   const wares = (place.wares ?? []).filter((w) => !owns(state, w));
   return {
-    title: `${place.name}: the armoury`,
+    title: `The armoury at ${place.name}`,
     wide: true,
-    lines: [...before, wares.length ? 'The armourer polishes something that was already clean.' : 'Nothing left but a very tired whetstone.'],
+    lines: [...before, wares.length ? 'The armourer polishes something that was already clean.' : 'There is nothing left but a very tired whetstone.'],
     choices: [
       ...decisions,
       ...wares.map((w) => {
@@ -122,7 +122,7 @@ function armouryCard(state: GameState, place: Location, before: string[] = [], d
 function sparesCard(state: GameState, place: Location, before: string[] = []): Card {
   const spares = state.hero.pack;
   return {
-    title: `${place.name}: the armoury`,
+    title: `The armoury at ${place.name}`,
     wide: true,
     lines: [...before, spares.length ? HAGGLE : 'Your pack is empty. He looks almost disappointed.'],
     choices: [...spares.map((id) => sellButton(state, place, id)), option(place, 'Back to his wares', 'armoury'), close],
@@ -132,7 +132,7 @@ function sparesCard(state: GameState, place: Location, before: string[] = []): C
 function sellButton(state: GameState, place: Location, id: ArtifactId): Choice {
   const wanted = wantedAt(state, id);
   const button = option(place, `Sell ${ARTIFACTS[id].name} (${coins(salePrice(id))} gold)`, `sell:${id}`, Boolean(wanted));
-  return wanted ? { ...button, detail: `Not for sale: you\u2019ll need it at ${wanted.name}.` } : button;
+  return wanted ? { ...button, detail: `You can\u2019t sell it, because you\u2019ll need it at ${wanted.name}.` } : button;
 }
 
 /** The armourer buys a spare. Gear with a price goes back on his wall at full price; the rest he keeps. */
@@ -142,7 +142,7 @@ function sellTo(state: GameState, place: Location, id: ArtifactId): Result | nul
   const priced = Boolean(ARTIFACTS[id].price);
   const wares = place.wares ?? [];
   const next = priced && !wares.includes(id) ? update(sold.state, place.id, { wares: [...wares, id] }) : sold.state;
-  const line = `**${ARTIFACTS[id].name}** is his, for **${coins(salePrice(id))} gold**. ${priced ? 'He hangs it back on the wall, at full price.' : 'He wraps it in sacking and asks no questions.'}`;
+  const line = `${artifactPhrase(id, true)} is his, for **${coins(salePrice(id))} gold**. ${priced ? 'He hangs it back on the wall, at full price.' : 'He wraps it in sacking and asks no questions.'}`;
   return say(next, place, sparesCard(next, locationById(next, place.id), [line]));
 }
 
@@ -151,8 +151,8 @@ function buy(state: GameState, place: Location, artifact: ArtifactId): Result | 
   if (!place.wares?.includes(artifact) || owns(state, artifact) || state.gold < price) return null;
   const next = giveArtifact(update({ ...state, gold: state.gold - price }, place.id, { wares: place.wares.filter((w) => w !== artifact) }), artifact);
   const worn = Object.values(next.hero.gear).includes(artifact);
-  const where = ARTIFACTS[artifact].drawback ? 'you keep it in your pack until you choose whether to wear it' : worn ? 'you put it on straight away' : `it goes in your pack, since ${slotTaken(artifact)} (H to swap)`;
-  return say(next, place, armouryCard(next, locationById(next, place.id), [`**${ARTIFACTS[artifact].name}** is yours: ${where}.`], artifactChoices(next, artifact)));
+  const where = ARTIFACTS[artifact].drawback ? 'you keep it in your pack until you choose whether to wear it.' : worn ? 'you put it on straight away.' : `it goes in your pack, since ${slotTaken(artifact)}. Press **H** to swap.`;
+  return say(next, place, armouryCard(next, locationById(next, place.id), [`${artifactPhrase(artifact, true)} is yours, and ${where}`], artifactChoices(next, artifact)));
 }
 
 /**

@@ -77,7 +77,7 @@ describe('selling spares at the castle armoury', () => {
     expect(sold.state.gold).toBe(start.gold + 700);
     expect(sold.state.hero.pack).toEqual(['oldBanner']);
     const card = cardOf(sold);
-    expect(card.lines[0]).toBe('**Brass Astrolabe** is his, for **700 gold**. He hangs it back on the wall, at full price.');
+    expect(card.lines[0]).toBe('The **Brass Astrolabe** is his, for **700 gold**. He hangs it back on the wall, at full price.');
     expect(labels(card)).toEqual(['Sell The Old Tower Banner (400 gold)', 'Back to his wares', 'Close']);
     expect(locationById(sold.state, 'castle').wares).toContain('astrolabe');
     expect(labels(cardOf(atCastle(sold.state, 'armoury')))).toContain('Buy Brass Astrolabe (1,400 gold)');
@@ -85,7 +85,7 @@ describe('selling spares at the castle armoury', () => {
     const banner = atCastle(sold.state, 'sell:oldBanner')!;
     expect(banner.state.gold).toBe(start.gold + 1100);
     expect(banner.state.hero.pack).toEqual([]);
-    expect(cardOf(banner).lines).toEqual(['**The Old Tower Banner** is his, for **400 gold**. He wraps it in sacking and asks no questions.', 'Your pack is empty. He looks almost disappointed.']);
+    expect(cardOf(banner).lines).toEqual(['The **Old Tower Banner** is his, for **400 gold**. He wraps it in sacking and asks no questions.', 'Your pack is empty. He looks almost disappointed.']);
     expect(locationById(banner.state, 'castle').wares).not.toContain('oldBanner');
     expect(atCastle(banner.state, 'sell:oldBanner')).toBeNull();
   });
@@ -107,7 +107,7 @@ describe('selling spares at the castle armoury', () => {
     expect(wantedAt(state, 'oldBanner')?.name).toBe('The Old Smithy');
     expect(wantedAt(state, 'astrolabe')).toBeUndefined();
     const spares = cardOf(atCastle(state, 'spares'));
-    expect(button(spares, 'Sell The Old Tower Banner (400 gold)')).toMatchObject({ disabled: true, detail: 'Not for sale: you\u2019ll need it at The Old Smithy.' });
+    expect(button(spares, 'Sell The Old Tower Banner (400 gold)')).toMatchObject({ disabled: true, detail: 'You can\u2019t sell it, because you\u2019ll need it at The Old Smithy.' });
     const astrolabe = button(spares, 'Sell Brass Astrolabe (700 gold)')!;
     expect(astrolabe.action).toEqual({ type: 'choose', id: 'castle', choice: 'sell:astrolabe' });
     expect(astrolabe.disabled).toBeUndefined();
@@ -142,7 +142,7 @@ describe('selling spares at the castle armoury', () => {
     const carrying = packing(['oldBanner'], soldOut);
     expect(labels(cardOf(visit(carrying, 'castle')))).toContain('Visit the armoury');
     const armoury = cardOf(atCastle(carrying, 'armoury'));
-    expect(armoury.lines).toEqual(['Nothing left but a very tired whetstone.']);
+    expect(armoury.lines).toEqual(['There is nothing left but a very tired whetstone.']);
     expect(labels(armoury)).toEqual(['Sell him your spares', 'Close']);
     // A village has no armoury, and buys nothing.
     expect(labels(cardOf(visit(carrying, 'village')))).not.toContain('Visit the armoury');

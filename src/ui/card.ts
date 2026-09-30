@@ -72,7 +72,7 @@ function battleResultMarkup(card: NonNullable<Card['battleResult']>): string {
   const side = (name: string, army: Army, team: 'blue' | 'red') => `
     <section class="battle-result-side">
       <h4>${name}</h4>
-      ${army.length ? army.map((stack) => `<div class="battle-result-unit"><img alt="" src="${fallenImage(stack.troop, team)}"><span>${escape(troops(stack.troop, stack.count))}</span></div>`).join('') : '<p class="battle-result-none">None fallen.</p>'}
+      ${army.length ? army.map((stack) => `<div class="battle-result-unit"><img alt="" src="${fallenImage(stack.troop, team)}"><span>${escape(troops(stack.troop, stack.count))}</span></div>`).join('') : '<p class="battle-result-none">Nobody fell.</p>'}
     </section>`;
   return `<div class="battle-result">${side('Your fallen', card.player, 'blue')}${side('Their fallen', card.enemy, 'red')}</div><p class="battle-result-mana">${escape(manaLine(card))}</p>`;
 }
@@ -80,7 +80,7 @@ function battleResultMarkup(card: NonNullable<Card['battleResult']>): string {
 /** The journal's right-hand page: each thing heard in its own words, who said it, and a tick once it has paid off. */
 function heardMarkup(heard: Heard[]): string {
   const items = heard.map((h) => `<li${h.done ? ' class="done"' : ''}><span class="words">\u201c${format(h.words)}\u201d</span><small>${escape(h.who)}</small></li>`).join('');
-  const list = heard.length ? `<ul>${items}</ul>` : '<p class="none">Nothing yet. What you hear on the road goes down here.</p>';
+  const list = heard.length ? `<ul>${items}</ul>` : '<p class="none">You have heard nothing yet. What you hear on the road goes down here.</p>';
   return `<section class="heard"><h4>Things heard</h4>${list}</section>`;
 }
 

@@ -112,7 +112,7 @@ suite('fights', () => {
 
   it('says who spent the mana: you, casting by hand, or your sergeants', () => {
     const card = (manaSpent: number, sergeantsSpent?: number) => manaLine({ manaSpent, manaAvailable: 10, ...(sergeantsSpent ? { sergeantsSpent } : {}) });
-    expect(card(0)).toBe('No mana spent.');
+    expect(card(0)).toBe('You spent no mana.');
     expect(card(5)).toBe('You used 5 of your mana.');
     expect(card(10)).toBe('You used all 10 of your mana.');
     expect(card(5, 5)).toBe('The sergeants used 5 of your mana.');

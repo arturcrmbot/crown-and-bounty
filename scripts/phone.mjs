@@ -145,7 +145,7 @@ async function settle() {
 const ambushes = [];
 /** Closes the card, then deals with any level-up it was hiding. An enemy falling on the camp at dawn is left to the sergeants. */
 async function close() {
-  if ((await title())?.endsWith('ambush!')) {
+  if ((await title())?.startsWith('An ambush')) {
     const who = (await lines()).match(/At first light, (.+?) fall on your camp/)?.[1];
     const id = (await state()).ambush;
     await press('Let the sergeants');

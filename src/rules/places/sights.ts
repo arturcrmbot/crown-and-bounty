@@ -65,7 +65,7 @@ export const mill: PlaceKind = {
   arrive(state, place) {
     if (place.done) return offer(state, place, words(place, 'done')) ?? say(state, place, note(place, words(place, 'done')));
     const fed = update({ ...state, movement: state.movement + FLOUR }, place.id, { done: true });
-    const lines = [...words(place, 'visit'), `**+${FLOUR} movement** today.`];
+    const lines = [...words(place, 'visit'), `You gain **${FLOUR} movement** today.`];
     return offer(fed, place, lines) ?? found(fed, place, note(place, lines));
   },
   payday: (place) => ({ ...place, done: false }),

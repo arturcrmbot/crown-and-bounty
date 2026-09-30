@@ -1,5 +1,5 @@
 import { BACKGROUNDS } from '../content/backgrounds';
-import { ARTIFACTS, type ArtifactId } from '../content/artifacts';
+import { artifactPhrase, type ArtifactId } from '../content/artifacts';
 import { ABILITIES, crowd, heroTroop, TROOPS, type HeroId, type TroopId } from '../content/troops';
 import type { StatusId } from '../content/spells';
 import { autoResolve } from './battle/ai';
@@ -159,11 +159,11 @@ export function likelyLossesLine(state: GameState, id: string, samples = 16): st
   const lost = losses.reduce((sum, stack) => sum + stack.count, 0);
   const army = state.army.reduce((sum, stack) => sum + stack.count, 0);
   const share = lost / army;
-  if (share < 0.1) return `*You\u2019d likely lose ${listed(losses.map((stack) => crowd(stack.troop, stack.count)))}.*`;
+  if (share < 0.1) return `*The sergeants expect to lose ${listed(losses.map((stack) => crowd(stack.troop, stack.count)))}.*`;
   const amount = share < 0.3 ? 'about a fifth' : share < 0.45 ? 'about a third' : share < 0.65 ? 'about half' : share < 0.9 ? 'most' : 'nearly all';
   const first = losses.slice(0, 2).map((stack) => TROOPS[stack.troop].name);
-  const order = first.length === 1 ? `${first[0]} first` : `${first[0]}, then ${first[1]}`;
-  return `*You\u2019d likely lose ${amount} of your army, ${order}.*`;
+  const order = first.length === 1 ? `the ${first[0]} first` : `the ${first[0]} first and then the ${first[1]}`;
+  return `*The sergeants expect to lose ${amount} of your army, ${order}.*`;
 }
 
 function fallen(battle: BattleState, side: Side): Army {
@@ -183,7 +183,7 @@ function fallen(battle: BattleState, side: Side): Army {
  */
 export function manaLine(card: Pick<BattleResultCard, 'manaSpent' | 'manaAvailable' | 'sergeantsSpent'>): string {
   const spent = card.manaSpent;
-  if (spent <= 0) return 'No mana spent.';
+  if (spent <= 0) return 'You spent no mana.';
   const theirs = Math.min(spent, card.sergeantsSpent ?? 0);
   const all = spent >= card.manaAvailable;
   if (theirs === spent) return `The sergeants used ${all ? 'all ' : ''}${spent} of your mana.`;
@@ -228,7 +228,7 @@ export function bountyPaid(state: GameState, id: string, opening: string[], rewa
     const next = look({ ...state, bounty: 'paid', paid, locations: [...state.locations, x] }, sceptre, 110).state;
     const card = {
       title: 'The last piece of the map!',
-      lines: [...lines, `Among ${c.villain}\u2019s things: the last torn piece of an old map. Laid together, the ${piece} pieces show an **X**, right here in ${provinceOf(state).name}.`],
+      lines: [...lines, `Among ${c.villain}\u2019s things you find the last torn piece of an old map. Laid together, the ${piece} pieces show an **X**, right here in ${provinceOf(state).name}.`],
       choices: [...decisions, claim],
       ...looks,
     };
@@ -238,7 +238,7 @@ export function bountyPaid(state: GameState, id: string, opening: string[], rewa
   const more = hasNextCommission(next);
   const card = {
     title: takenTitle(c.villain),
-    lines: [...lines, `Among ${c.villain}\u2019s things: a torn piece of an old map (**${piece} of ${CAMPAIGN_LENGTH}**).`, `*Commission complete on day ${roman(next.day)}.*`, ...(more ? [] : campaignLines(next))],
+    lines: [...lines, `Among ${c.villain}\u2019s things you find a torn piece of an old map. You now have **${piece} of ${CAMPAIGN_LENGTH}** pieces.`, `*You complete the commission on day ${roman(next.day)}.*`, ...(more ? [] : campaignLines(next))],
     choices: [...decisions, ...(more ? [claim] : [again, close])],
     ...looks,
   };
@@ -260,7 +260,7 @@ export function beat(state: GameState, id: string, how: { title: string; lines: 
   const decisions = [...(how.choices ?? [])];
   if (place.artifact) {
     next = giveArtifact(next, place.artifact as ArtifactId);
-    spoils.push(`Among the spoils: **${ARTIFACTS[place.artifact as ArtifactId].name}**. ${foundNote(next, place.artifact as ArtifactId)}`);
+    spoils.push(`Among the spoils is ${artifactPhrase(place.artifact as ArtifactId)}. ${foundNote(next, place.artifact as ArtifactId)}`);
     decisions.push(...artifactChoices(next, place.artifact as ArtifactId));
   }
   if (place.enemy?.spoils) {
@@ -281,13 +281,13 @@ export function beat(state: GameState, id: string, how: { title: string; lines: 
     const grown = gainXp(next, how.xp);
     next = grown.state;
     events.push(...grown.events);
-    spoils.push(`**+${how.xp} experience.**`);
+    spoils.push(`You gain **${coins(how.xp)} experience**.`);
   }
   if (place.kind === 'hideout') {
     const paid = bountyPaid(next, id, how.lines, how.reward, spoils, how.battleResult, decisions, how.because);
     return { state: paid.state, events: [...events, ...paid.events] };
   }
-  const gold = how.sayGold && how.reward ? [`**+${coins(how.reward)} gold.**`] : [];
+  const gold = how.sayGold && how.reward ? [`You get **${coins(how.reward)} gold**.`] : [];
   events.push(show({ title: how.title, lines: [...how.lines, ...spoils, ...gold], choices: decisions.length ? decisions : [close], ...(how.battleResult ? { wide: true, battleResult: how.battleResult } : {}) }, place.at, place.id));
   return { state: next, events };
 }
@@ -363,7 +363,7 @@ export function finishFight(state: GameState): Result {
       state: alone(),
       events: [
         { type: 'moved', at: home, facing: base.hero.facing },
-        show({ title: 'Retreat!', lines: [`${who} gets away alone: nobody who rode with him is left standing.`, `He rides back to ${castle?.name ?? 'safety'} to raise another army.`, ...bribed], choices: [close], wide: true, battleResult }, null),
+        show({ title: 'Retreat!', lines: [`${who} gets away alone, because nobody who rode with him is left standing.`, `He rides back to ${castle?.name ?? 'safety'} to raise another army.`, ...bribed], choices: [close], wide: true, battleResult }, null),
       ],
     };
   }

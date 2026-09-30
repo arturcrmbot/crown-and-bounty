@@ -307,7 +307,7 @@ export class AdventureController implements Screen {
     const before = this.state;
     // The first thing heard on the road says where it has gone.
     const heard = heardOf(result.state).length > heardOf(before).length;
-    const told = heard ? this.teach(result, 'journal', touch() ? '**Hint.** What you hear on the road goes in your journal: tap **Journal**, at the side.' : '**Hint.** What you hear on the road goes in your journal: press **J**, or click the book on the bar.') : result;
+    const told = heard ? this.teach(result, 'journal', touch() ? '**Hint.** What you hear on the road goes in your journal. Tap **Journal**, at the side.' : '**Hint.** What you hear on the road goes in your journal. Press **J**, or click the book on the bar.') : result;
     this.state = told.state;
     if (this.state.gold > before.gold) play('coins');
     this.handle(told.events);
@@ -521,7 +521,7 @@ export class AdventureController implements Screen {
         this.showCard(
           {
             title: 'Start over?',
-            lines: ['A new campaign begins with the King, and **this one is gone for good**: the hero, his gear, his army and every commission so far.'],
+            lines: ['A new campaign begins with the King, and **this one is gone for good**, with the hero, his gear, his army and every commission so far.'],
             choices: [
               { label: 'No, carry on', action: { type: 'close' } },
               { label: 'Yes, start a new campaign', action: { type: 'restart' } },
@@ -555,7 +555,7 @@ export class AdventureController implements Screen {
         this.hideCard();
         const result = apply(this.state, action);
         const payday = action.type === 'endDay' && result?.events.some((event) => event.type === 'day' && event.payday);
-        this.run(result && payday ? this.teach(result, 'payday', '**Hint.** Payday returns every seven days: the King pays first, then the army takes its wages.') : result);
+        this.run(result && payday ? this.teach(result, 'payday', '**Hint.** Payday comes round every seven days. The King pays you first, and then the army takes its wages.') : result);
       }
     }
   }
@@ -581,7 +581,7 @@ export class AdventureController implements Screen {
       const taught = this.teach(
         { state: this.state, events: [] },
         'ride',
-        touch() ? 'Tap Aldric to stop. Touch and hold anywhere to see what it is, and how many days\u2019 ride.' : 'Hold **Shift** to gallop. Click Aldric or press **Esc** to stop; **M** mutes sound, and **?** lists every key.',
+        touch() ? 'Tap Aldric to stop. Touch and hold anywhere to see what is there, and how many days\u2019 ride away it is.' : 'Hold **Shift** to gallop. Click Aldric or press **Esc** to stop. **M** mutes the sound, and **?** lists every key.',
         { title: 'On the road', choices: [{ label: 'Ride on', action: { type: 'close' } }] },
       );
       if (taught.events.length) this.run(taught);
@@ -605,7 +605,7 @@ export class AdventureController implements Screen {
     const id = this.visiting!;
     this.visiting = null;
     this.target = null;
-    this.run(this.teach(visit(this.state, id), 'place', touch() ? '**Hint.** Tap Aldric, or **Hero** at the side, whenever you want his gear and army.' : '**Hint.** Click Aldric, or press **H**, whenever you want his gear and army.'));
+    this.run(this.teach(visit(this.state, id), 'place', touch() ? '**Hint.** Tap Aldric, or **Hero** at the side, whenever you want to see his gear and his army.' : '**Hint.** Click Aldric, or press **H**, whenever you want to see his gear and his army.'));
   }
 
   /** How far the hero's figure reaches from his feet, as he looks now. */
@@ -1049,7 +1049,7 @@ export class AdventureController implements Screen {
     this.showCard(
       {
         title: 'End the day?',
-        lines: [`Aldric could ride on a good while yet: **${left}** of today\u2019s ${full} movement is left.`],
+        lines: [`Aldric could ride on a good while yet. He still has **${left}** of today\u2019s ${full} movement left.`],
         choices: [
           { label: 'End the day', action: { type: 'endDay' } },
           { label: 'Ride on', action: { type: 'close' } },

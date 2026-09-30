@@ -76,7 +76,7 @@ describe('levels', () => {
     const levelled = gainXp(knight(), LEVELS[5]).state;
     expect(heroStats(levelled).leadership - heroStats(knight()).leadership).toBe(4 * RENOWN);
     expect(RENOWN).toBe(5);
-    expect(levelUpCard(levelled)!.lines[0]).toContain(`leadership +${RENOWN}`);
+    expect(levelUpCard(levelled)!.lines[0]).toContain(`your leadership by **${RENOWN}**`);
   });
 
   it('pays experience for beating an enemy and for finding places', () => {

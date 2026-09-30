@@ -113,18 +113,18 @@ export type AbilityDef = {
 export const ABILITIES: Record<Ability, AbilityDef> = {
   regenerates: { name: 'Regenerates', note: 'At the start of each turn, the top troll heals half its health.', healsTopOnTurn: 0.5 },
   hexes: { name: 'Hexes', note: 'Her shots slow whatever they hit.', shotStatus: 'slowed' },
-  leads: { name: 'Behind the line', note: 'Leads from behind his men, where no blow, shot or spell can reach him, so nobody strikes back at him. When his army is beaten, so is he.', leads: true },
-  rides: { name: 'Rides out', note: 'Rides out from behind the line, strikes, and rides back, all in one move.', rides: true },
+  leads: { name: 'Behind the line', note: 'He leads from behind his men, where no blow, shot or spell can reach him, so nobody strikes back at him. When his army is beaten, so is he.', leads: true },
+  rides: { name: 'Rides out', note: 'He rides out from behind the line, strikes, and rides back, all in one move.', rides: true },
   bard: {
     name: 'Bard',
-    note: 'Fights with coin and words instead of a blade. Each turn he pays a stack to leave the field (or, with room under his banner, to fight for him), jeers one until it loses heart, or sings his own men on.',
+    note: 'He fights with coin and words instead of a blade. Each turn he can pay a stack to leave the field, or to fight for him if it fits under his banner. He can also jeer one until it loses heart, or sing his own men on.',
     bard: { jeer: 'jeered', songs: ['heartened', 'charmed'], weeks: { leave: 4, join: 12 } },
   },
-  firstStrike: { name: 'First Strike', note: 'Pitchforks first: it strikes before whatever attacks it, unless that also strikes first.', firstStrike: true },
-  stings: { name: 'Stinging Bite', note: 'Whatever it hits up close is poisoned: a little health lost each turn, though it never falls past a sliver.', stingStatus: 'poisoned' },
-  pierce: { name: 'Piercing Bolts', note: 'Its bolts punch through armour: -1 defence against them.', pierce: 1 },
-  marks: { name: 'Marks the Quarry', note: 'Whatever his arrows hit is marked for the pack: \u22123 defence for two rounds.', shotStatus: 'marked' },
-  hunter: { name: 'Hunter', note: 'Knows its quarry: its shots and blows land half as hard again on wolves, boars, bears and every other beast.', hunts: 0.5 },
+  firstStrike: { name: 'First Strike', note: 'Pitchforks go first, so it strikes before whatever attacks it, unless that also strikes first.', firstStrike: true },
+  stings: { name: 'Stinging Bite', note: 'Whatever it hits up close is poisoned, and loses a little health each turn, though never past a sliver.', stingStatus: 'poisoned' },
+  pierce: { name: 'Piercing Bolts', note: 'Its bolts punch through armour, so whatever they hit has 1 less defence against them.', pierce: 1 },
+  marks: { name: 'Marks the Quarry', note: 'Whatever his arrows hit is marked for the pack, and has \u22123 defence for two rounds.', shotStatus: 'marked' },
+  hunter: { name: 'Hunter', note: 'It knows its quarry, so its shots and blows land half as hard again on wolves, boars, bears and every other beast.', hunts: 0.5 },
 };
 
 /** The abilities of a kind of troop, with their rules. */
@@ -134,75 +134,75 @@ export const abilitiesOf = (id: TroopId): AbilityDef[] => (TROOPS[id].abilities 
 export const leads = (id: TroopId) => abilitiesOf(id).some((a) => a.leads);
 
 export const TROOPS: Record<TroopId, TroopDef> = {
-  peasants: { id: 'peasants', name: 'Peasants', one: 'Peasant', hp: 3, attack: 1, defence: 1, damage: [1, 1], speed: 3, leadership: 1, wage: 1, people: 'loyal', note: 'Pitchforks, enthusiasm, not much else.', abilities: ['firstStrike'] },
-  archers: { id: 'archers', name: 'Archers', one: 'Archer', hp: 14, attack: 5, defence: 3, damage: [2, 3], speed: 4, shots: 12, leadership: 2, wage: 3, people: 'loyal', note: 'Shoot from anywhere, unless something is chewing on them.' },
-  knights: { id: 'knights', name: 'Knights', one: 'Knight', hp: 42, attack: 8, defence: 8, damage: [5, 8], speed: 5, leadership: 5, wage: 8, people: 'loyal', note: 'Heavy, loyal and very pleased with their armour.' },
-  swordsmen: { id: 'swordsmen', name: 'Swordsmen', one: 'Swordsman', hp: 24, attack: 6, defence: 6, damage: [3, 5], speed: 4, leadership: 3, wage: 4, people: 'outlaw', note: 'Grimsby\u2019s men. Goose feathers in every helmet.' },
-  crossbowmen: { id: 'crossbowmen', name: 'Crossbowmen', one: 'Crossbowman', hp: 14, attack: 5, defence: 4, damage: [2, 4], speed: 3, shots: 8, leadership: 2, wage: 3, people: 'outlaw', note: 'Slow to reload, slower to smile. Their bolts punch through armour.', abilities: ['pierce'] },
-  wolves: { id: 'wolves', name: 'Wolves', one: 'Wolf', hp: 12, attack: 7, defence: 3, damage: [3, 5], speed: 7, leadership: 2, wage: 0, people: 'wild', note: 'Fast, hungry, and not interested in your commission.', tamed: 'The pack leader sniffs your boots, decides you\u2019ll do, and the whole pack falls in behind you, tongues out.' },
+  peasants: { id: 'peasants', name: 'Peasants', one: 'Peasant', hp: 3, attack: 1, defence: 1, damage: [1, 1], speed: 3, leadership: 1, wage: 1, people: 'loyal', note: 'They bring pitchforks, enthusiasm and not much else.', abilities: ['firstStrike'] },
+  archers: { id: 'archers', name: 'Archers', one: 'Archer', hp: 14, attack: 5, defence: 3, damage: [2, 3], speed: 4, shots: 12, leadership: 2, wage: 3, people: 'loyal', note: 'They shoot from anywhere, unless something is chewing on them.' },
+  knights: { id: 'knights', name: 'Knights', one: 'Knight', hp: 42, attack: 8, defence: 8, damage: [5, 8], speed: 5, leadership: 5, wage: 8, people: 'loyal', note: 'They are heavy, loyal and very pleased with their armour.' },
+  swordsmen: { id: 'swordsmen', name: 'Swordsmen', one: 'Swordsman', hp: 24, attack: 6, defence: 6, damage: [3, 5], speed: 4, leadership: 3, wage: 4, people: 'outlaw', note: 'They are Grimsby\u2019s men, with a goose feather in every helmet.' },
+  crossbowmen: { id: 'crossbowmen', name: 'Crossbowmen', one: 'Crossbowman', hp: 14, attack: 5, defence: 4, damage: [2, 4], speed: 3, shots: 8, leadership: 2, wage: 3, people: 'outlaw', note: 'They are slow to reload and slower to smile. Their bolts punch through armour.', abilities: ['pierce'] },
+  wolves: { id: 'wolves', name: 'Wolves', one: 'Wolf', hp: 12, attack: 7, defence: 3, damage: [3, 5], speed: 7, leadership: 2, wage: 0, people: 'wild', note: 'They are fast, hungry, and not interested in your commission.', tamed: 'The pack leader sniffs your boots, decides you\u2019ll do, and the whole pack falls in behind you, tongues out.' },
   baron: {
     id: 'baron', name: 'Baron Grimsby', one: 'Baron Grimsby', hp: 160, attack: 11, defence: 10, damage: [9, 14], speed: 4, leadership: 99, wage: 0,
-    note: 'Carries the royal goose under one arm, and gives the orders with the other.', abilities: ['leads'],
+    note: 'He carries the royal goose under one arm, and gives the orders with the other.', abilities: ['leads'],
     caster: { spellPower: 2, mana: 15, spells: ['haste', 'slow'], charges: [{ spell: 'shieldwall', uses: 1 }, { spell: 'crossbows', uses: 2 }, { spell: 'guard', uses: 1 }] },
     voice: 104,
     face: 'grimsby',
   },
-  goblins: { id: 'goblins', name: 'Bog Goblins', one: 'Bog Goblin', hp: 5, attack: 4, defence: 2, damage: [1, 3], speed: 6, leadership: 1, wage: 1, people: 'wild', note: 'Small, green, in a tremendous hurry, and their bite poisons.', abilities: ['stings'] },
-  trolls: { id: 'trolls', name: 'Trolls', one: 'Troll', hp: 70, attack: 9, defence: 7, damage: [8, 12], speed: 3, leadership: 12, wage: 20, people: 'wild', note: 'Big, slow, and very attached to their bridge.', abilities: ['regenerates'] },
+  goblins: { id: 'goblins', name: 'Bog Goblins', one: 'Bog Goblin', hp: 5, attack: 4, defence: 2, damage: [1, 3], speed: 6, leadership: 1, wage: 1, people: 'wild', note: 'They are small, green and in a tremendous hurry, and their bite poisons.', abilities: ['stings'] },
+  trolls: { id: 'trolls', name: 'Trolls', one: 'Troll', hp: 70, attack: 9, defence: 7, damage: [8, 12], speed: 3, leadership: 12, wage: 20, people: 'wild', note: 'They are big, slow, and very attached to their bridge.', abilities: ['regenerates'] },
   witch: {
     id: 'witch', name: 'Mother Mirrow', one: 'Mother Mirrow', hp: 140, attack: 8, defence: 8, damage: [6, 10], speed: 4, shots: 8, leadership: 99, wage: 0,
-    note: 'Throws hexes, and the occasional ladle.', abilities: ['leads', 'hexes'],
+    note: 'She throws hexes, and the occasional ladle.', abilities: ['leads', 'hexes'],
     caster: { spellPower: 2, mana: 14, spells: ['newts', 'slow', 'brew'] },
     voice: 330,
     face: 'mirrow',
   },
   bramble: {
     id: 'bramble', name: 'Aunt Bramble', one: 'Aunt Bramble', hp: 170, attack: 9, defence: 9, damage: [7, 11], speed: 4, shots: 10, leadership: 99, wage: 0,
-    note: 'Mother Mirrow\u2019s big sister. Bigger hat, worse temper.', abilities: ['leads', 'hexes'],
+    note: 'She is Mother Mirrow\u2019s big sister, with a bigger hat and a worse temper.', abilities: ['leads', 'hexes'],
     caster: { spellPower: 3, mana: 14, spells: ['frogs', 'bolt', 'brew'] },
     voice: 262,
     face: 'bramble',
   },
-  poachers: { id: 'poachers', name: 'Poachers', one: 'Poacher', hp: 7, attack: 3, defence: 2, damage: [1, 3], speed: 4, shots: 6, leadership: 1, wage: 1, people: 'outlaw', note: 'Other people\u2019s deer, other people\u2019s rabbits, and now, other people\u2019s officers.' },
-  bandits: { id: 'bandits', name: 'Highwaymen', one: 'Highwayman', hp: 11, attack: 4, defence: 3, damage: [2, 3], speed: 5, leadership: 2, wage: 2, people: 'outlaw', note: 'Stand and deliver. Mostly they stand.' },
-  boars: { id: 'boars', name: 'Wild Boars', one: 'Wild Boar', hp: 18, attack: 5, defence: 4, damage: [2, 4], speed: 5, leadership: 2, wage: 0, people: 'wild', note: 'Bristles, tusks and a very short temper.', tamed: 'The boars decide you are the biggest boar they have ever met, and trot after you, grunting happily.' },
+  poachers: { id: 'poachers', name: 'Poachers', one: 'Poacher', hp: 7, attack: 3, defence: 2, damage: [1, 3], speed: 4, shots: 6, leadership: 1, wage: 1, people: 'outlaw', note: 'They hunt other people\u2019s deer, other people\u2019s rabbits, and now other people\u2019s officers.' },
+  bandits: { id: 'bandits', name: 'Highwaymen', one: 'Highwayman', hp: 11, attack: 4, defence: 3, damage: [2, 3], speed: 5, leadership: 2, wage: 2, people: 'outlaw', note: '\u201cStand and deliver,\u201d they say. Mostly they stand.' },
+  boars: { id: 'boars', name: 'Wild Boars', one: 'Wild Boar', hp: 18, attack: 5, defence: 4, damage: [2, 4], speed: 5, leadership: 2, wage: 0, people: 'wild', note: 'They are all bristles, tusks and a very short temper.', tamed: 'The boars decide you are the biggest boar they have ever met, and trot after you, grunting happily.' },
   bears: {
     id: 'bears', name: 'Bears', one: 'Bear', hp: 80, attack: 9, defence: 7, damage: [10, 16], speed: 5, leadership: 12, wage: 0, people: 'wild',
-    note: 'Big, brown, and not at all sorry about it.',
+    note: 'They are big and brown, and not at all sorry about it.',
     tamed: 'The biggest bear sniffs your hand, sneezes, and leans on you. *The others decide that makes you family.*',
   },
   // The old King's huntsmen: they draw no wages, but they aren't beasts. They serve the King still.
   huntsmen: {
     id: 'huntsmen', name: 'Huntsmen', one: 'Huntsman', hp: 18, attack: 7, defence: 4, damage: [3, 5], speed: 5, shots: 16, leadership: 3, wage: 0, people: 'loyal', abilities: ['hunter'],
-    note: 'The old King\u2019s huntsmen: grey, lean, and never known to miss.',
+    note: 'The old King\u2019s huntsmen are grey and lean, and nobody has ever known them to miss.',
     unpaid: 'They serve the old King still, and they have a score to settle with Rook.',
   },
   // Grimsby's captain (#15): he leads the Baron's wolves from behind them, shoots, and marks their quarry.
   rook: {
     id: 'rook', name: 'Rook the Huntsman', one: 'Rook the Huntsman', hp: 60, attack: 6, defence: 4, damage: [6, 10], speed: 5, shots: 12, leadership: 99, wage: 0,
-    note: 'The Baron\u2019s huntsman. He shoots from behind his wolves, and whatever his arrows find, the pack goes for.', abilities: ['leads', 'marks'],
+    note: 'He is the Baron\u2019s huntsman. He shoots from behind his wolves, and whatever his arrows find, the pack goes for.', abilities: ['leads', 'marks'],
     voice: 175,
     face: 'rook',
   },
   // Aldric in battle, as each background fights from behind the line. His numbers grow with him: see `hero`.
   heroKnight: {
     id: 'heroKnight', name: 'Sir Aldric', one: 'Sir Aldric', hp: 80, attack: 5, defence: 5, damage: [12, 18], speed: 6, leadership: 99, wage: 0, abilities: ['leads', 'rides'],
-    note: 'The King\u2019s colours on his lance. He rides out from behind his men, charges, and is back before anyone can answer.',
+    note: 'He carries the King\u2019s colours on his lance. He rides out from behind his men, charges, and is back before anyone can answer.',
     hero: { background: 'knight', perLevel: { damage: 2 } },
   },
   heroWizard: {
     id: 'heroWizard', name: 'Aldric', one: 'Aldric', hp: 50, attack: 2, defence: 3, damage: [3, 5], speed: 4, shots: 10, leadership: 99, wage: 0, abilities: ['leads'],
-    note: 'Bolts from his staff, as hard as his spell power, thrown over his men\u2019s heads.',
+    note: 'He throws bolts from his staff over his men\u2019s heads, as hard as his spell power.',
     hero: { background: 'wizard', perLevel: { damage: 1 }, perPower: 3 },
   },
   heroRanger: {
     id: 'heroRanger', name: 'Aldric', one: 'Aldric', hp: 60, attack: 5, defence: 3, damage: [8, 12], speed: 5, shots: 12, leadership: 99, wage: 0, abilities: ['leads'],
-    note: 'A longbow, and the patience to use it, from behind his men.',
+    note: 'He has a longbow, and the patience to use it from behind his men.',
     hero: { background: 'ranger', perLevel: { damage: 2 } },
   },
   heroCourtier: {
     id: 'heroCourtier', name: 'Lord Aldric', one: 'Lord Aldric', hp: 55, attack: 4, defence: 4, damage: [6, 10], speed: 6, leadership: 99, wage: 0, abilities: ['leads', 'bard'],
-    note: 'A lute, a purse and a sharp tongue: he pays, jeers and sings, and leaves the fighting to his men.',
+    note: 'He has a lute, a purse and a sharp tongue. He pays, jeers and sings, and leaves the fighting to his men.',
     hero: { background: 'courtier', perLevel: { damage: 1 } },
   },
 };

@@ -35,7 +35,7 @@ describe('mana you can see', () => {
     const r = visit(low, 'castle');
     expect(r.state.hero.mana).toBe(30);
     const card = r.events.find((e) => e.type === 'card');
-    expect(card?.type === 'card' && card.card.lines[0]).toBe('An hour in the castle chapel, and your head is clear again: **+26 mana**, 30 of 30.');
+    expect(card?.type === 'card' && card.card.lines[0]).toBe('You spend an hour in the castle chapel, and your head is clear again. You gain **26 mana**, which fills you up to 30 of 30.');
     // Full already: nothing to say.
     const again = visit(r.state, 'castle');
     const plain = again.events.find((e) => e.type === 'card');
@@ -48,7 +48,7 @@ describe('mana you can see', () => {
   it('goes into battle with its maximum, for the spellbook', () => {
     const w = wizard();
     expect(heroInBattle(w).maxMana).toBe(30);
-    expect(manaInBattle(12, 30)).toBe('Mana **12/30**: none comes back in battle, and only a quarter at dawn.');
+    expect(manaInBattle(12, 30)).toBe('You have **12/30** mana. None comes back in battle, and only a quarter at dawn.');
     expect(manaInBattle(12)).toContain('none comes back');
   });
 });
@@ -162,19 +162,19 @@ describe('the hero screen', () => {
     const sheet = heroSheet(wizard());
     expect(sheet.title).toBe('Aldric the Hedge Wizard');
     expect(sheet.level).toBe('Level I');
-    expect(sheet.xp).toEqual({ share: 0, line: '0 / 150 experience: 150 more for level II. Fights and new places bring it.' });
+    expect(sheet.xp).toEqual({ share: 0, line: '0 of 150 experience. He needs 150 more for level II, from fights and new places.' });
     expect(sheet.stats.map((s) => s.value)).toEqual([0, 1, 3, 3]);
     expect(sheet.stats[2].note).toContain('a Lightning Bolt does 60 damage');
     expect(sheet.mana).toEqual({ left: 30, max: 30, line: 'Mana 30/30 · full; a quarter back every dawn, and a holy well or your castle fills it', back: 'full' });
     expect(sheet.leadership.used).toBe(84);
     expect(sheet.signature.name).toBe('Hedge Magic');
     expect(sheet.spells.map((s) => s.name)).toEqual(['Lightning Bolt', 'Bless', 'Slow', 'Haste']);
-    expect(sheet.spells[0].note.startsWith('5 mana')).toBe(true);
+    expect(sheet.spells[0].note.startsWith('It costs 5 mana.')).toBe(true);
     expect(sheet.mapSpells).toEqual([{ spell: 'farsight', label: 'Cast Far Sight (10 mana)', note: expect.any(String), disabled: false }]);
     const skilled = { ...wizard(), hero: { ...wizard().hero, attack: 1, skills: { sorcery: 2 } } };
     const again = heroSheet(giveArtifact(skilled, 'swordOfAldmoor'));
     expect(again.skills).toEqual([{ name: 'Advanced Sorcery', note: expect.any(String) }]);
-    expect(again.stats[0].note).toBe('Attack 3 (1 his own, +2 from skills and gear): added to his own attack in battle, and to every stack\u2019s.');
+    expect(again.stats[0].note).toBe('Attack 3 (1 his own, +2 from skills and gear). It is added to his own attack in battle, and to every stack\u2019s.');
   });
 
   it('shows what a stack fights with, and what the hero adds', () => {
@@ -221,10 +221,10 @@ describe('the hero screen', () => {
     // Wild things in the King's army: both sides grumble.
     const wild = { ...knight(), army: [...knight().army, { troop: 'wolves' as const, count: 10 }] };
     expect(stackSheet(wild, 0)!.stats.at(-1)).toEqual({ name: 'Morale', value: '\u221210%', note: 'chance they lose heart, and their turn' });
-    expect(stackSheet(wild, 0)!.traits).toContainEqual({ name: 'Uneasy company', note: 'They won\u2019t march happily beside the Wolves: \u221210% morale.' });
-    expect(stackSheet(wild, 2)!.traits).toContainEqual({ name: 'Uneasy company', note: 'They won\u2019t march happily beside the Knights and Archers: \u221210% morale.' });
+    expect(stackSheet(wild, 0)!.traits).toContainEqual({ name: 'Uneasy company', note: 'They won\u2019t march happily beside the Wolves, and it costs them 10% morale.' });
+    expect(stackSheet(wild, 2)!.traits).toContainEqual({ name: 'Uneasy company', note: 'They won\u2019t march happily beside the Knights and Archers, and it costs them 10% morale.' });
     const evened = stackSheet({ ...wild, hero: favoured.hero }, 0)!;
-    expect(evened.stats.at(-1)).toEqual({ name: 'Morale', value: '0', note: 'steady: it evens out' });
+    expect(evened.stats.at(-1)).toEqual({ name: 'Morale', value: '0', note: 'steady, as it evens out' });
     expect(evened.traits.map((t) => t.name)).toEqual(expect.arrayContaining(['Fortune\u2019s Favour', 'Uneasy company']));
   });
 
@@ -253,8 +253,8 @@ describe('the hero\u2019s own card', () => {
     const names = me.traits.map((t) => t.name);
     expect(names.slice(0, 5)).toEqual(['Leads', 'Spells', 'Charge', 'Behind the line', 'Rides out']);
     expect(names.filter((n) => n === 'Charge')).toHaveLength(1);
-    expect(me.traits[2].note.startsWith('He and his Knights charge')).toBe(true);
-    expect(me.traits[1].note).toBe('One a round from the 1 in his book, cast from behind the line. Mana 10/10: none comes back in battle.');
+    expect(me.traits[2].note.startsWith('When he and his Knights charge')).toBe(true);
+    expect(me.traits[1].note).toBe('He casts one spell a round, from the 1 in his book. He has 10/10 mana, and none comes back in battle.');
     expect(me.lines[0]).toBe('In battle Sir Aldric stands behind his men, where no blow, shot or spell can reach him.');
     expect(me.lines[1]).toBe('If his army is beaten, he retreats, and rides home to raise another.');
   });
@@ -264,7 +264,7 @@ describe('the hero\u2019s own card', () => {
     expect(w.stats.find((s) => s.name === 'Damage')).toEqual({ name: 'Damage', value: '12\u201314', note: 'each blow: +1 a level, +3 per spell power' });
     expect(w.traits[0]).toEqual({ name: 'Leads', note: 'Every stack fights with +1 defence.' });
     expect(w.stats.find((s) => s.name === 'Shots')).toEqual({ name: 'Shots', value: '10', note: 'a battle' });
-    expect(w.traits.find((t) => t.name === 'Shooter')?.note).toBe('Shoots from behind the line, at any stack on the field.');
+    expect(w.traits.find((t) => t.name === 'Shooter')?.note).toBe('He shoots from behind the line, at any stack on the field.');
     expect(w.traits.map((t) => t.name)).not.toContain('2 spells a round');
     const courtier = { ...newGame(1066, ALDMOOR, 'courtier'), opening: undefined };
     const lord = leaderSheet(courtier);

@@ -1,4 +1,4 @@
-import { ARTIFACTS } from '../../content/artifacts';
+import { ARTIFACTS, artifactPhrase } from '../../content/artifacts';
 import { isBeast, leads, TROOPS } from '../../content/troops';
 import { grumbleLine } from '../army';
 import { applyEffects, choiceButton, meets } from '../effects';
@@ -72,7 +72,7 @@ function hire(state: GameState, place: Location): Result | null {
   const done = applyEffects({ ...state, gold: state.gold - offer.price }, place, { troops: offer.joining, done: true });
   const lines = [
     'They count your gold twice, bite a coin, and fall in behind your banner.',
-    `**\u2212${coins(offer.price)} gold.**`,
+    `You pay **${coins(offer.price)} gold**.`,
     ...done.lines,
     ...(offer.all ? [] : ['The rest, for whom you have no room, wander off home.']),
   ];
@@ -145,12 +145,12 @@ function tame(state: GameState, place: Location): Result | null {
     lines.push(`**${place.name}** will have to manage without them.`);
   } else if (place.artifact) {
     next = giveArtifact(next, place.artifact);
-    lines.push(`They lead you to their den, where you find **${ARTIFACTS[place.artifact].name}**. ${foundNote(next, place.artifact)}`);
+    lines.push(`They lead you to their den, where you find ${artifactPhrase(place.artifact)}. ${foundNote(next, place.artifact)}`);
   }
   // Half what beating them would teach: there was no fight, but it took some nerve.
   const xp = Math.round(battleXp(offer.beasts) / 2);
   const grown = gainXp(next, xp);
-  lines.push(`**+${xp} experience.**`);
+  lines.push(`You gain **${coins(xp)} experience**.`);
   const choices = place.artifact && offer.whole ? artifactChoices(grown.state, place.artifact) : [];
   return { state: grown.state, events: [...events, ...grown.events, show({ title: place.name, lines, choices: choices.length ? choices : [close] }, place.at, place.id)] };
 }
@@ -200,7 +200,7 @@ const TENTHS = ['not one', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'
 export function scoutsLine(chance: number): string {
   const tenths = Math.round(chance * 10);
   if (tenths === 0) return '*Your scouts don\u2019t give you one chance in ten.*';
-  if (tenths === 10) return '*Your scouts would bet their boots on you: ten chances in ten.*';
+  if (tenths === 10) return '*Your scouts would bet their boots on you. They give you ten chances in ten.*';
   return `*Your scouts give you ${TENTHS[tenths]} ${tenths === 1 ? 'chance' : 'chances'} in ten.*`;
 }
 
@@ -208,7 +208,7 @@ export function scoutsLine(chance: number): string {
 function carriesLine(state: GameState, place: Location): string[] {
   if (!place.artifact || !heroStats(state).odds || place.done) return [];
   const a = ARTIFACTS[place.artifact];
-  return [`*Your scouts have seen what they carry:* **${a.name}**. ${a.note}`];
+  return [`*Your scouts have seen that they carry* ${artifactPhrase(place.artifact)}. ${a.note}`];
 }
 
 /** A band of people (no beasts, no villain) far weaker than him lays down its arms to a diplomat. */
@@ -250,12 +250,12 @@ export function enemy(kind: 'patrol' | 'hideout'): PlaceKind {
     about: (state, place) => {
       const exact = countsExactly(state);
       const force = forceLine(place.enemy!.army, exact);
-      const line = exact ? `Your scouts count ${force}.` : `${force.replace(/^\*\*(.)/, (_, c: string) => `**${c.toUpperCase()}`)}.`;
+      const line = exact ? `Your scouts count ${force}.` : `You see ${force}.`;
       const e = place.enemy!;
       // Hunters say so, and say when they have your scent, so an ambush is never a surprise.
       const shadowed = heroStats(state).shadow;
       const coming = e.bold ? '*They are looking for you, and will fall on you wherever you camp near them, though never in a town.*' : '*They hunt anyone weaker who camps near their ground, though never in a town.*';
-      const hunt = e.behaviour !== 'hunt' ? [] : asleep(state, place) ? ['*For now, they hold their ground.*'] : [shadowed ? '*They hunt anyone weaker, but your scouts are watching them: they won\u2019t find your trail.*' : e.trailing ? '*They have your scent. Camp near them tonight and they\u2019ll fall on you at dawn.*' : coming];
+      const hunt = e.behaviour !== 'hunt' ? [] : asleep(state, place) ? ['*For now, they hold their ground.*'] : [shadowed ? '*They hunt anyone weaker, but your scouts are watching them, so they won\u2019t find your trail.*' : e.trailing ? '*They have your scent. Camp near them tonight and they\u2019ll fall on you at dawn.*' : coming];
       // While a villain is out, his lair's card says so instead of what it usually says.
       const away = riddenOut(state, place) ? [e.sortie!.barred[0]] : e.lines;
       return { title: place.name, ...faceOf(e.army), lines: [...away, line, ...carriesLine(state, place), ...hunt], choices: [ride(place, 'Approach'), { label: 'Close', action: { type: 'close' } }] };

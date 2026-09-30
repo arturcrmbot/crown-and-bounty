@@ -24,7 +24,7 @@ export function heroPayday(state: GameState, paid = heroStats(state)): { state: 
   if (extra > 0) {
     // Only where volunteers come on payday at all: nobody new turns up at the old King's hunt hall.
     next = { ...next, locations: next.locations.map((l) => (l.recruits && dwelling(l.kind) && l.recruits.restock !== 0 ? { ...l, recruits: { ...l.recruits, count: l.recruits.count + extra } } : l)) };
-    lines.push(`Your stewards have been busy: every castle and village has **${extra} more volunteers** than usual.`);
+    lines.push(`Your stewards have been busy, and every castle and village has **${extra} more volunteers** than usual.`);
   }
   if (s.volunteers > 0) {
     // Your name draws men to your biggest company. Beasts don't read proclamations.

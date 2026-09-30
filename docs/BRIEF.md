@@ -15,7 +15,7 @@ The balance is in [BALANCE.md](BALANCE.md) (29 Sep 2026): a power budget for eac
 - **Characters vs troops:** your hero is the character, levelling up and learning skills, and maybe a second hero later. Troops are just numbers: 400 peasants are 400 peasants.
 - **Captains** (changed 29 Sep): the enemy's only. Aldric is the only hero you ever have, and every villain has named captains who lead his bands and fight as heroes do. See `WORLD.md` and #15.
 - **Villains have gimmicks and personality,** for example Baron Grimsby, who stole the royal goose.
-- **Tone:** warm, funny, storybook. The flavour text in `sketches/2d-map-mockup/` shows the voice.
+- **Tone:** warm, funny, storybook. The flavour text in `sketches/2d-map-mockup/` shows the voice. Since 30 Sep 2026 (#149) the words are plain, full sentences that speak to the player, as HoMM2's messages are, with no colons, dashes or clipped phrases in the narration. [VOICE.md](VOICE.md) sets out the rules.
 - **One hero across a campaign** (25 Sep, after the first playtest): levels, skills and gear carry over, and each commission is a new province. RPG depth goes into build choices first (a background, then skills and perks), then story choices.
 - **Battles are HoMM2-style:** a hex battlefield where stacks take turns, and the hero casts spells and uses skills. Auto-resolve uses the same engine.
 - **Adventure map is turn-based by day:** each day the hero gets a movement allowance. (Artur asked whether real time would suit a browser better. Turn-based days are assumed for now.)
