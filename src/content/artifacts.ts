@@ -119,7 +119,7 @@ export const ARTIFACTS: Record<ArtifactId, Artifact> = {
     id: 'hawthornCrown',
     name: 'The Hawthorn Crown',
     slot: 'helm',
-    note: 'Beasts that couldn\u2019t beat you follow you instead, as a ranger\u2019s do, and draw no wages. The King must never see you in it.',
+    note: 'Beasts follow you instead of fighting, as they follow a ranger, the more of them the stronger your army is than theirs. They draw no wages. The King must never see you in it.',
     bonus: { tames: true },
   },
   // What the villains leave behind.

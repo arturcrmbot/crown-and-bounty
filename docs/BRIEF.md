@@ -126,9 +126,10 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   sing etc." He keeps his name and his Master at Arms in a plumed hat (Wesnoth has no bard to give him; Artur can
   rename him later), and his line at the start says he "pays, jeers and sings instead of fighting". From behind the
   line he takes a turn like any leader with something to do, and makes one move with it:
-  - **Pay:** a stack of theirs goes home for 4 weeks of its wages, or, if it fits under his banner (leadership for
-    all of it, and a place in his line), comes over for 12, fights for him and rides on with him after. His Silver
-    Tongue halves both, and Diplomacy takes its share off too. Beasts take no gold, and villains and captains can't
+  - **Pay:** a stack of theirs goes home for 2 gold for every point of its power, or, if it fits under his banner
+    (leadership for all of it, and a place in his line), comes over for 6, fights for him and rides on with him
+    after. Only as much of it takes his gold as his army outweighs it, none while his army is no stronger (30 Sep,
+    `outweighs`). His Silver Tongue halves both, and no bribe is ever more than half off. Beasts take no gold, and villains and captains can't
     be bought: nothing reaches them. The gold comes out of his purse, and the card says what his bribes cost.
   - **Jeer:** a stack of theirs loses heart: −30% morale for two rounds, so three times in ten it loses its turn.
   - **Sing:** a marching song (+25% morale: a chance each stack goes again) or a lucky song (+20% luck: a chance a
@@ -510,3 +511,10 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   yours that costs. Its numbers are the rules' own reckoning, from the rules playing the action out without dice, so it
   never disagrees with what happens. On a phone the first tap shows all of it with "Tap again to attack", and the second
   tap acts. The ribbon keeps the full line.
+- **Power decides, and leadership you can grow (30 Sep, #167):** the Courtier bought his way past Grimsby, and the
+  Ranger and the Wizard hit a wall at the stockade (#171), the Ranger held back by leadership. Artur: one number, the
+  army's power, decides who comes over, as in Heroes. Beasts follow, bands take coin and stacks take a bard's gold only
+  as far as his army outweighs theirs, none at all while it's no stronger and all of them once it's twice as strong,
+  and whoever doesn't come attacks at once. Bribes are priced by power, and never more than half off. Beasts and the
+  old King's huntsmen draw no wages and need no leadership. Every level-up offers +25 leadership in place of a skill,
+  and the steward at the castle raises 20 more for 500 gold, as often as he can pay.

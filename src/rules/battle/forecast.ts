@@ -1,7 +1,7 @@
 import { SPELLS, STATUSES } from '../../content/spells';
 import { TROOPS } from '../../content/troops';
 import { coins, listed } from '../state';
-import { activeFighter, battleAct, bribePrice, canJoin, fighterById, isLeader, type BattleAction, type BattleState, type Fighter, type Side } from './battle';
+import { activeFighter, battleAct, bribeOffer, canJoin, fighterById, isLeader, type BattleAction, type BattleState, type Fighter, type Side } from './battle';
 
 /** One stack's share of what an action would do: the damage it takes, and how many of it perish. */
 export type Blow = { fighter: number; damage: number; killed: number };
@@ -126,15 +126,17 @@ export function aimTag(b: BattleState, action: BattleAction): AimTag | null {
 export function bardTag(b: BattleState, target: Fighter): AimTag | null {
   const f = activeFighter(b);
   if (!f) return null;
-  const leave = bribePrice(b, f, target);
-  const join = bribePrice(b, f, target, true);
+  const leave = bribeOffer(b, f, target);
+  const join = bribeOffer(b, f, target, true);
   const title = `Pay or jeer ${whose(target)}`;
-  if (leave === null) return { title, lines: [{ text: 'They take no gold, but you can jeer them.' }] };
+  if (!leave) return { title, lines: [{ text: 'They take no gold, but you can jeer them.' }] };
+  if (!leave.count) return { title, lines: [{ text: 'They take no gold from an army no stronger than theirs, but you can jeer them.' }] };
+  const them = leave.count < target.count ? `${leave.count} of them` : 'them';
   return {
     title,
     lines: [
-      { text: `${coins(leave)} gold sends them home.` },
-      ...(join !== null && canJoin(b, target) ? [{ text: `${coins(join)} gold wins them over to your side.` }] : []),
+      { text: `${coins(leave.price)} gold sends ${them} home.` },
+      ...(join?.count && canJoin(b, target, join.count) ? [{ text: `${coins(join.price)} gold wins ${them} over to your side.` }] : []),
       { text: 'Or you can jeer them, and they lose heart.' },
     ],
   };

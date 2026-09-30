@@ -52,7 +52,7 @@ export type Bonus = {
   bribes?: number;
   /** Small bands will take his coin and join him. */
   hires?: boolean;
-  /** Beasts that couldn't beat him follow him instead of fighting. */
+  /** Beasts follow him instead of fighting, as many as his army outweighs them (`tameOffer`), and the rest attack. */
   tames?: boolean;
   /** Defence for every artifact he wears. */
   gearDefence?: number;
@@ -168,7 +168,7 @@ export const BACKGROUNDS: Record<BackgroundId, Background> = {
     spells: ['slow'],
     signature: {
       name: 'Pathfinder',
-      note: 'He rides through the woods, where nothing on the map can follow him. He gets +30 movement a day and sees further, and his scouts count every enemy exactly. His archers get +1 attack and +4 shots, and loose a free volley before every battle. Beasts that couldn\u2019t beat him follow him instead, and draw no wages.',
+      note: 'He rides through the woods, where nothing on the map can follow him. He gets +30 movement a day and sees further, and his scouts count every enemy exactly. His archers get +1 attack and +4 shots, and loose a free volley before every battle. Beasts follow him instead of fighting, the more of them the stronger his army is than theirs, and the rest attack. Beasts draw no wages and need no leadership.',
       bonus: { movement: 30, sight: 50, counts: true, troops: { archers: { attack: 1, shots: 4 } }, volley: true, forestWalk: true, tames: true },
     },
     growth: { attack: 3, defence: 2, spellPower: 1, knowledge: 1 },

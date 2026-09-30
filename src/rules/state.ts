@@ -5,7 +5,7 @@ import type { FriendId } from '../content/friends';
 import type { PortraitId } from '../content/portraits';
 import type { PerkId, SkillId } from '../content/skills';
 import type { MapSpellId, SpellId, StatusId } from '../content/spells';
-import { TROOPS, troopPower, troops, type TroopId } from '../content/troops';
+import { leads, TROOPS, troopPower, troops, type TroopId } from '../content/troops';
 import type { BattleState } from './battle/battle';
 import type { Offer } from './hero';
 import type { Explored } from './map/fog';
@@ -290,6 +290,8 @@ export type GameState = {
   flags?: Record<string, FlagValue>;
   /** An enemy that fell on the hero's camp at dawn: fight it, or flee, before anything else. */
   ambush?: string;
+  /** The ambush is the rest of a band that came over only in part, falling on him where he stands, not at dawn. */
+  ambushRest?: true;
   /** Weeks of rations in the baggage (Westmere's grain, caught on the road): each feeds the troops one payday instead of their wages. */
   rations?: number;
 };
@@ -460,6 +462,10 @@ export function roman(n: number): string {
 
 export const armyPower = (army: Army) => army.reduce((sum, s) => sum + s.count * troopPower(s.troop), 0);
 export const leadershipUsed = (army: Army) => army.reduce((sum, s) => sum + s.count * TROOPS[s.troop].leadership, 0);
+/** How many of a troop this much leadership has room for: any number of those who need none. */
+export const fits = (room: number, troop: TroopId) => (TROOPS[troop].leadership > 0 ? Math.floor(room / TROOPS[troop].leadership) : Infinity);
+/** An army's power, the one number for who comes over to whom (`outweighs`): the fighting worth of its troops, whoever leads them left out. */
+export const fightingPower = (army: Army) => armyPower(army.filter((s) => !leads(s.troop)));
 export const wages = (army: Army) => army.reduce((sum, s) => sum + s.count * TROOPS[s.troop].wage, 0);
 export const countOf = (army: Army, troop: TroopId) => army.find((s) => s.troop === troop)?.count ?? 0;
 

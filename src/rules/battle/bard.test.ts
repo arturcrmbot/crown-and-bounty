@@ -4,7 +4,7 @@ import type { TroopId } from '../../content/troops';
 import { battleXp, finishFight, heroInBattle, startFight, type GameState } from '../game';
 import { newGame } from '../scenario';
 import { chooseAction, stackActions } from './ai';
-import { bardOf, battleAct, bribePrice, canJoin, createBattle, hasTurn, luckOf, moraleOf, onField, options, strike, survivors, type BattleHero, type BattleState } from './battle';
+import { bardOf, battleAct, bribeOffer, bribePrice, canJoin, createBattle, hasTurn, luckOf, moraleOf, onField, options, strike, survivors, type BattleHero, type BattleState } from './battle';
 
 const courtier = (): GameState => ({ ...newGame(1066, undefined, 'courtier'), opening: undefined });
 const army = (...stacks: [TroopId, number][]) => stacks.map(([troop, count]) => ({ troop, count }));
@@ -21,30 +21,60 @@ describe('the Courtier, a bard', () => {
   it('strikes no blow, but takes his turn to pay, jeer or sing', () => {
     const b = fight([['swordsmen', 50]]);
     const lord = lordOf(b);
-    expect(bardOf(lord)).toEqual({ jeer: 'jeered', songs: ['heartened', 'charmed'], weeks: { leave: 4, join: 12 } });
+    expect(bardOf(lord)).toEqual({ jeer: 'jeered', songs: ['heartened', 'charmed'], price: { leave: 2, join: 6 } });
     expect(hasTurn(lord)).toBe(true);
     const opts = options(b);
     expect([...opts.melee, ...opts.shoot, ...opts.moves.keys()]).toEqual([]);
   });
 
-  it('pays a stack a few weeks of its wages to go home, and his silver tongue halves the price', () => {
-    const b = fight([['swordsmen', 50], ['wolves', 10]]);
+  it('pays a stack two gold for every point of its power to go home, and his silver tongue halves the price', () => {
+    const b = fight([['swordsmen', 10], ['wolves', 10]]);
     const lord = lordOf(b);
     const swordsmen = of(b, 'swordsmen');
-    // 50 swordsmen, 4 gold a week each, for 4 weeks, at half price.
+    // His 10 knights and 20 archers are more than twice as strong as 10 swordsmen, so all of them take it:
+    // 10 swordsmen at about 16 power each, 2 gold a point, at half price.
     expect(b.hero.gold).toBe(2400);
     expect(b.hero.bribes).toBe(0.5);
-    expect(bribePrice(b, lord, swordsmen)).toBe(400);
+    expect(bribeOffer(b, lord, swordsmen)).toEqual({ count: 10, price: 160 });
+    expect(bribePrice(b, lord, swordsmen)).toBe(160);
     const { battle, events } = battleAct(b, { type: 'bribe', target: swordsmen.id });
-    expect(events[0]).toEqual({ type: 'bribe', fighter: lord.id, target: swordsmen.id, gold: 400, count: 50 });
-    expect(battle.hero.gold).toBe(2000);
-    expect(of(battle, 'swordsmen')).toMatchObject({ count: 0, left: 50 });
+    expect(events[0]).toEqual({ type: 'bribe', fighter: lord.id, target: swordsmen.id, gold: 160, count: 10 });
+    expect(battle.hero.gold).toBe(2240);
+    expect(of(battle, 'swordsmen')).toMatchObject({ count: 0, left: 10 });
     expect(onField(of(battle, 'swordsmen'))).toBe(false);
     expect(battle.result).toBeUndefined();
     // Wolves take no gold; and nobody sells for more than he carries.
     expect(bribePrice(b, lord, of(b, 'wolves'))).toBeNull();
     expect(battleAct(b, { type: 'bribe', target: of(b, 'wolves').id }).events).toEqual([]);
-    expect(battleAct({ ...b, hero: { ...b.hero, gold: 399 } }, { type: 'bribe', target: swordsmen.id }).events).toEqual([]);
+    expect(battleAct({ ...b, hero: { ...b.hero, gold: 159 } }, { type: 'bribe', target: swordsmen.id }).events).toEqual([]);
+  });
+
+  it('buys only as much of a stack as his army outweighs, and none of one as strong as his army (Artur, 30 Sep)', () => {
+    // 50 swordsmen are stronger than his whole army: no gold of his buys any of them.
+    const strong = fight([['swordsmen', 50]]);
+    expect(bribeOffer(strong, lordOf(strong), of(strong, 'swordsmen'))).toEqual({ count: 0, price: 0 });
+    expect(bribePrice(strong, lordOf(strong), of(strong, 'swordsmen'))).toBeNull();
+    expect(battleAct(strong, { type: 'bribe', target: of(strong, 'swordsmen').id }).events).toEqual([]);
+    // 20 are two thirds as strong as his army: 13 of them go home, and 7 fight on.
+    const b = fight([['swordsmen', 20]], { room: 100 });
+    const lord = lordOf(b);
+    const swordsmen = of(b, 'swordsmen');
+    expect(bribeOffer(b, lord, swordsmen)).toEqual({ count: 13, price: 200 });
+    const { battle, events } = battleAct(b, { type: 'bribe', target: swordsmen.id });
+    expect(events[0]).toEqual({ type: 'bribe', fighter: lord.id, target: swordsmen.id, gold: 200, count: 13 });
+    expect(of(battle, 'swordsmen')).toMatchObject({ count: 7, left: 13, at: swordsmen.at });
+    expect(onField(of(battle, 'swordsmen'))).toBe(true);
+    // Bought over, the 13 come in from his edge of the field, and the 7 stand where they were.
+    const over = battleAct(b, { type: 'bribe', target: swordsmen.id, join: true });
+    const joined = over.events[0].type === 'bribe' ? over.events[0].joined! : -1;
+    expect(over.battle.fighters[joined]).toMatchObject({ side: 'player', troop: 'swordsmen', count: 13 });
+    expect(over.battle.fighters[joined].at).not.toBe(swordsmen.at);
+    expect(of(over.battle, 'swordsmen')).toMatchObject({ count: 7 });
+  });
+
+  it('never gets more than half off a bribe, whatever he knows', () => {
+    const diplomat: GameState = { ...courtier(), hero: { ...courtier().hero, skills: { diplomacy: 3 } } };
+    expect(heroInBattle(diplomat).bribes).toBe(0.5);
   });
 
   it('can\u2019t buy a villain or a captain', () => {
@@ -60,12 +90,12 @@ describe('the Courtier, a bard', () => {
     const b = fight([['bandits', 15], ['swordsmen', 30]]);
     const bandits = of(b, 'bandits');
     expect(b.hero.room).toBe(35);
-    expect(bribePrice(b, lordOf(b), bandits, true)).toBe(180);
+    expect(bribePrice(b, lordOf(b), bandits, true)).toBe(320);
     expect(canJoin(b, bandits)).toBe(true);
     const { battle, events } = battleAct(b, { type: 'bribe', target: bandits.id, join: true });
     const joined = events[0].type === 'bribe' ? events[0].joined! : -1;
     expect(battle.fighters[joined]).toMatchObject({ side: 'player', troop: 'bandits', count: 15, startCount: 15, at: bandits.at });
-    expect(battle.hero).toMatchObject({ gold: 2220, room: 5 });
+    expect(battle.hero).toMatchObject({ gold: 2080, room: 5 });
     expect(survivors(battle, 'player')).toEqual(army(['knights', 10], ['archers', 20], ['bandits', 15]));
     // Swordsmen need more room than he has.
     expect(canJoin(battle, of(battle, 'swordsmen'))).toBe(false);

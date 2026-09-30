@@ -204,7 +204,7 @@ export const PERKS: Record<PerkId, Perk> = {
   beastFriend: {
     id: 'beastFriend',
     name: 'Beast Friend',
-    note: 'Beasts that couldn\u2019t beat you follow you instead of fighting, as many as you can lead, and they draw no wages.',
+    note: 'Beasts follow you instead of fighting, the more of them the stronger your army is than theirs, and the rest attack. They draw no wages and need no leadership.',
     bonus: { tames: true },
     trick: true,
   },

@@ -1,12 +1,12 @@
 import { ARTIFACTS, artifactPhrase } from '../../content/artifacts';
-import { isBeast, leads, TROOPS } from '../../content/troops';
+import { isBeast, leads, outweighs, TROOPS } from '../../content/troops';
 import { grumbleLine } from '../army';
 import { applyEffects, choiceButton, meets } from '../effects';
 import { battleXp, beat, fight, likelyLossesLine, startFight, winChance } from '../fight';
 import { artifactChoices, foundNote, gainXp, giveArtifact, heroStats } from '../hero';
 import { asleep } from '../map/roaming';
 import { riddenOut } from '../map/sortie';
-import { addTroops, close, coins, leadershipUsed, show, stillWithYou, update, type Army, type Choice, type ContentChoice, type GameState, type Location, type Result, type Verdict } from '../state';
+import { addTroops, close, coins, fightingPower, fits, leadershipUsed, locationById, roman, show, stillWithYou, update, type Army, type Card, type Choice, type ContentChoice, type GameEvent, type GameState, type Location, type Result, type Verdict } from '../state';
 import { countsExactly, faceOf, forceLine, note, option, ride, say, words } from './common';
 import type { PlaceKind } from './kind';
 
@@ -32,7 +32,7 @@ function joiners(state: GameState, band: Army): Army {
   let army = state.army;
   const joining: Army = [];
   for (const stack of band) {
-    const count = Math.min(stack.count, Math.floor(room / TROOPS[stack.troop].leadership));
+    const count = Math.min(stack.count, fits(room, stack.troop));
     const next = count > 0 ? addTroops(army, stack.troop, count) : null;
     if (!next) continue;
     army = next;
@@ -42,11 +42,51 @@ function joiners(state: GameState, band: Army): Army {
   return joining;
 }
 
+/** How much of a band his army outweighs, so that it would come over (`outweighs`): power is the one number. */
+const shareOf = (state: GameState, place: Location) => outweighs(fightingPower(state.army), fightingPower(place.enemy!.army));
+
+/** That share of every stack, rounded down: those who would come. */
+const sharing = (army: Army, share: number): Army => army.map((s) => ({ ...s, count: Math.floor(s.count * share) }));
+
+/** Whoever of a band didn't come over: the rest of it, still standing there. */
+const whoIsLeft = (army: Army, gone: Army): Army => army.map((s) => ({ ...s, count: s.count - (gone.find((g) => g.troop === s.troop)?.count ?? 0) })).filter((s) => s.count > 0);
+
+/** Nobody left in a band but whoever led it. */
+const nobodyLeft = (army: Army) => !army.some((s) => !leads(s.troop));
+
 /**
- * What a band asks to change sides, and who of it would fit: only troops that draw wages will
- * (no beasts, no villains), and only small fry. He pays only for the ones he can lead.
+ * The card while an enemy has fallen on him: fight, or run. It stays until answered, and it leads with
+ * the odds, as every card about a fight does. It's a band that found his camp at dawn, or the rest of
+ * one that came over to him only in part, falling on him where he stands (`ambushRest`).
  */
-export function hireOffer(state: GameState, place: Location): { price: number; joining: Army; all: boolean } | null {
+export function ambushCard(state: GameState, before: string[] = []): Card {
+  const foe = locationById(state, state.ambush!);
+  const choices: Choice[] = [
+    { label: 'To arms!', detail: FIGHT_NOTE, action: { type: 'choose', id: foe.id, choice: 'fight' } },
+    { label: 'Let the sergeants handle it', detail: SERGEANTS_NOTE, action: { type: 'choose', id: foe.id, choice: 'auto' } },
+    { label: 'Run for it (lose a fifth of the army)', action: { type: 'choose', id: foe.id, choice: 'flee' } },
+  ];
+  const odds = oddsOf(state, foe);
+  const says = state.army.length ? [oddsLine(winChance(state, foe.id)), likelyLossesLine(state, foe.id)] : [];
+  const how = state.ambushRest ? `${forceLine(foe.enemy!.army, countsExactly(state))} come at you!` : `At first light, **${foe.name}** fall on your camp!`;
+  return { title: state.ambushRest ? foe.name : `An ambush on day ${roman(state.day)}!`, ...faceOf(foe.enemy!.army), ...(odds ? { verdict: odds } : {}), lines: [...before, how, foe.enemy!.threat, ...says], choices };
+}
+
+/** The rest of a band that came over only in part fall on him where he stands: fight them, or run. */
+function theRestAttack(state: GameState, place: Location, rest: Army, lines: string[], events: GameEvent[]): Result {
+  const next: GameState = { ...update(state, place.id, { enemy: { ...place.enemy!, army: rest } }), ambush: place.id, ambushRest: true };
+  return { state: next, events: [...events, show(ambushCard(next, lines), place.at, place.id)] };
+}
+
+/** What a band asks to change sides, and who of it would come: see `hireOffer`. */
+export type HireOffer = { price: number; joining: Army; all: boolean; share: number };
+
+/**
+ * What a band asks to change sides, and who of it would come: only troops that draw wages will (no
+ * beasts, no villains), and only small fry. As many come as his army outweighs them (`outweighs`), and
+ * as many of those as he can lead; he pays for each of them by its power, and the rest attack.
+ */
+export function hireOffer(state: GameState, place: Location): HireOffer | null {
   const foe = place.enemy;
   const s = heroStats(state);
   if (!foe || place.done || place.kind === 'hideout' || !s.hires) return null;
@@ -56,54 +96,52 @@ export function hireOffer(state: GameState, place: Location): { price: number; j
   if (foe.army.some((t) => !TROOPS[t.troop].wage)) return null;
   // Content with its own offer for this sort of hero knows better.
   if (foe.parleys?.some((p) => p.needs?.background === state.hero.background)) return null;
-  const joining = joiners(state, foe.army);
-  const price = joining.reduce((sum, t) => sum + t.count * TROOPS[t.troop].wage * HIRE_PRICE, 0) * (small ? 1 : GATE_PRICE);
+  const share = shareOf(state, place);
+  const joining = joiners(state, sharing(foe.army, share));
+  const price = Math.round((fightingPower(joining) * HIRE_PRICE * (small ? 1 : GATE_PRICE)) / 10) * 10;
   const all = foe.army.every((t) => joining.find((j) => j.troop === t.troop)?.count === t.count);
-  return { price, joining, all };
+  return { price, joining, all, share };
 }
-/** Gold per point of a troop's weekly wage, to buy him off his old employer. */
-const HIRE_PRICE = 12;
+/** Gold for every point of a band's power, to buy it off its old employer: about what recruiting as much would cost. */
+const HIRE_PRICE = 3;
 /** Gatekeepers cost this many times as much to buy. */
 const GATE_PRICE = 2;
 
 function hire(state: GameState, place: Location): Result | null {
   const offer = hireOffer(state, place);
   if (!offer || !offer.joining.length || state.gold < offer.price) return null;
-  const done = applyEffects({ ...state, gold: state.gold - offer.price }, place, { troops: offer.joining, done: true });
+  const rest = whoIsLeft(place.enemy!.army, offer.joining);
+  const gone = nobodyLeft(rest);
+  const done = applyEffects({ ...state, gold: state.gold - offer.price }, place, { troops: offer.joining, ...(gone ? { done: true } : {}) });
   const lines = [
-    'They count your gold twice, bite a coin, and fall in behind your banner.',
+    offer.all ? 'They count your gold twice, bite a coin, and fall in behind your banner.' : 'Some of them count your gold twice, bite a coin, and fall in behind your banner.',
     `You pay **${coins(offer.price)} gold**.`,
     ...done.lines,
-    ...(offer.all ? [] : ['The rest, for whom you have no room, wander off home.']),
   ];
+  if (!gone) return theRestAttack(done.state, place, rest, lines, done.events);
   return { state: done.state, events: [...done.events, show({ title: place.name, lines, choices: [close] }, place.at, place.id)] };
 }
 
-/** The courtier's offer, as a button: greyed out when his purse is too light. */
+/** The courtier's offer, as a button: greyed out when his purse is too light, or his army too weak. */
 function hireButton(state: GameState, place: Location): Choice[] {
   const offer = hireOffer(state, place);
   if (!offer) return [];
+  if (!offer.share) return [option(place, 'Hire them (your army isn\u2019t strong enough yet)', 'hire', true)];
   if (!offer.joining.length) return [option(place, 'Hire them (no room to lead them)', 'hire', true)];
-  const label = offer.all ? 'Hire them' : 'Hire as many as you can lead';
+  const label = offer.all ? 'Hire them' : `Hire ${headcount(offer.joining)} of them, and fight the rest`;
   return [option(place, `${label} (${coins(offer.price)} gold)`, 'hire', state.gold < offer.price)];
 }
 
-/**
- * A pack follows only whoever would clearly beat it: taming needs the odds the card calls "You should
- * win" (`SAFE`), not merely close, so beasts are a reward for being strong, not a way round it.
- */
-export const TAME_RESPECT = 0.9;
-
 export type TameOffer = {
-  /** The beasts among them, and those of them who'd fit under the hero's banner. */
+  /** The beasts among them, and those of them who'd follow him. */
   beasts: Army;
   joining: Army;
   /** Every one of the beasts would come. */
   all: boolean;
   /** They are nothing but beasts, so the whole band goes with them. */
   whole: boolean;
-  /** Whether they respect him: he could beat them. */
-  respected: boolean;
+  /** How much of the band his army outweighs (`outweighs`): none follow at 0, all of them at 1. */
+  share: number;
 };
 
 const beastsOf = (place: Location) => (place.enemy?.army ?? []).filter((s) => s.count > 0 && isBeast(s.troop));
@@ -113,46 +151,43 @@ const allBeasts = (place: Location) => beastsOf(place).length === place.enemy!.a
 
 /**
  * What a hero with a way with beasts could win over here: a band's beasts (never at a villain's
- * walls), as many as his leadership and stacks allow, if they respect him. A band of nothing but
- * beasts is gone from the road, its captain too, with nobody left to lead; a mixed one loses its
- * beasts and fights on without them.
+ * walls), as many as his army outweighs the band (`outweighs`), in as many companies as he has room
+ * for. Beasts need no leadership. Whoever doesn't follow him attacks, the rest of a mixed band too;
+ * a band of nothing but beasts that all follow him is gone from the road, its captain too.
  */
-export function tameOffer(state: GameState, place: Location, samples = 16): TameOffer | null {
+export function tameOffer(state: GameState, place: Location): TameOffer | null {
   const beasts = beastsOf(place);
   if (!beasts.length || place.done || place.kind === 'hideout' || !heroStats(state).tames) return null;
-  const whole = allBeasts(place);
-  const joining = joiners(state, beasts);
+  const share = shareOf(state, place);
+  const joining = joiners(state, sharing(beasts, share));
   const all = beasts.every((s) => joining.find((j) => j.troop === s.troop)?.count === s.count);
-  const respected = winChance(state, place.id, samples, whole ? undefined : beasts) >= TAME_RESPECT;
-  return { beasts, joining, all, whole, respected };
+  return { beasts, joining, all, whole: allBeasts(place), share };
 }
 
-/** The beasts join: in their own words, as many as fit, and whatever they kept in their den. */
+/** The beasts join: in their own words, as many as follow him, and whatever they kept in their den. The rest attack. */
 function tame(state: GameState, place: Location): Result | null {
   const offer = tameOffer(state, place);
-  if (!offer?.respected || !offer.joining.length) return null;
+  if (!offer?.joining.length) return null;
   const foe = place.enemy!;
+  const rest = whoIsLeft(foe.army, offer.joining);
+  const gone = nobodyLeft(rest);
   // The whole pack gone over, its captain has nobody left to lead, and is taken.
-  const taken = offer.whole && foe.taken ? { flags: foe.taken } : {};
-  const joined = applyEffects(state, place, { troops: offer.joining, ...taken, ...(offer.whole ? { done: true } : {}) });
+  const taken = gone && foe.taken ? { flags: foe.taken } : {};
+  const joined = applyEffects(state, place, { troops: offer.joining, ...taken, ...(gone ? { done: true } : {}) });
   let next = joined.state;
-  const events = [...joined.events];
-  const words = foe.tamed ?? offer.beasts.map((s) => TROOPS[s.troop].tamed).find(Boolean) ?? 'They decide you will do, and follow you.';
+  const words = offer.all ? (foe.tamed ?? offer.beasts.map((s) => TROOPS[s.troop].tamed).find(Boolean) ?? 'They decide you will do, and follow you.') : 'The biggest of them decide you will do, and follow you. The rest don\u2019t think much of your army.';
   const lines = [words, ...joined.lines];
-  if (!offer.all) lines.push('The rest, for whom you have no room, wander off into the wild, looking back now and then.');
-  if (!offer.whole) {
-    next = update(next, place.id, { enemy: { ...foe, army: foe.army.filter((s) => !isBeast(s.troop)) } });
-    lines.push(`**${place.name}** will have to manage without them.`);
-  } else if (place.artifact) {
+  if (gone && place.artifact) {
     next = giveArtifact(next, place.artifact);
     lines.push(`They lead you to their den, where you find ${artifactPhrase(place.artifact)}. ${foundNote(next, place.artifact)}`);
   }
   // Half what beating them would teach: there was no fight, but it took some nerve.
-  const xp = Math.round(battleXp(offer.beasts) / 2);
+  const xp = Math.round(battleXp(offer.joining) / 2);
   const grown = gainXp(next, xp);
   lines.push(`You gain **${coins(xp)} experience**.`);
-  const choices = place.artifact && offer.whole ? artifactChoices(grown.state, place.artifact) : [];
-  return { state: grown.state, events: [...events, ...grown.events, show({ title: place.name, lines, choices: choices.length ? choices : [close] }, place.at, place.id)] };
+  if (!gone) return theRestAttack(grown.state, place, rest, lines, [...joined.events, ...grown.events]);
+  const choices = place.artifact ? artifactChoices(grown.state, place.artifact) : [];
+  return { state: grown.state, events: [...joined.events, ...grown.events, show({ title: place.name, lines, choices: choices.length ? choices : [close] }, place.at, place.id)] };
 }
 
 /** Taming, as a button: greyed out, with the reason, when it can't be done. Other heroes see it as a hint. */
@@ -160,25 +195,27 @@ function tameButton(state: GameState, place: Location): Choice[] {
   const beasts = beastsOf(place);
   if (!beasts.length || place.done || place.kind === 'hideout') return [];
   const offer = tameOffer(state, place);
-  const whole = allBeasts(place);
-  const them = whole ? 'them' : `their ${TROOPS[beasts[0].troop].name}`;
+  const them = allBeasts(place) ? 'them' : `their ${TROOPS[beasts[0].troop].name}`;
   if (!offer) return [option(place, `Tame ${them} (a way with beasts)`, 'tame', true)];
-  if (!offer.respected) return [option(place, `Tame ${them} (they don\u2019t respect you yet)`, 'tame', true)];
-  if (!offer.joining.length) return [option(place, `Tame ${them} (no room to lead them)`, 'tame', true)];
-  return [option(place, offer.all ? `Tame ${them}` : `Tame as many as you can lead (${headcount(offer.joining)} of ${headcount(offer.beasts)})`, 'tame')];
+  if (!offer.share) return [option(place, `Tame ${them} (your army isn\u2019t strong enough yet)`, 'tame', true)];
+  if (!offer.joining.length) return [option(place, `Tame ${them} (no room in your line)`, 'tame', true)];
+  const fight = !nobodyLeft(whoIsLeft(place.enemy!.army, offer.joining));
+  const which = offer.all ? `Tame ${them}` : `Tame ${headcount(offer.joining)} of the ${headcount(offer.beasts)}`;
+  return [option(place, fight ? `${which}, and fight the rest` : which, 'tame')];
 }
 
 /** What a hero with a way with beasts reads in their eyes. */
 function tameLine(state: GameState, place: Location): string[] {
   const offer = tameOffer(state, place);
   if (!offer) return [];
-  return [offer.respected ? '*The beasts watch you the way a pack watches its leader.*' : '*Beasts follow only someone who would clearly beat them, and these don\u2019t think you would. Not yet.*'];
+  if (!offer.share) return ['*Beasts follow only an army stronger than theirs, and they don\u2019t think yours is. Not yet.*'];
+  return [offer.all ? '*The beasts watch you the way a pack watches its leader.*' : '*Some of the beasts watch you the way a pack watches its leader. The rest are spoiling for a fight.*'];
 }
 
 /** Before a band is hired or tamed: who in the army won't march happily beside them. */
 function grumbleLines(state: GameState, place: Location): string[] {
   const tamed = tameOffer(state, place);
-  const joining = [...(hireOffer(state, place)?.joining ?? []), ...(tamed?.respected ? tamed.joining : [])].map((s) => s.troop);
+  const joining = [...(hireOffer(state, place)?.joining ?? []), ...(tamed?.joining ?? [])].map((s) => s.troop);
   const line = joining.length ? grumbleLine(state.army, joining) : null;
   return line ? [line] : [];
 }
@@ -306,7 +343,7 @@ export function enemy(kind: 'patrol' | 'hideout'): PlaceKind {
     choose(state, place, choice) {
       // Nobody opens a villain's gate while he's out.
       if (riddenOut(state, place)) return null;
-      const calm: GameState = state.ambush === place.id ? { ...state, ambush: undefined } : state;
+      const calm: GameState = state.ambush === place.id ? { ...state, ambush: undefined, ambushRest: undefined } : state;
       if (choice === 'fight') return startFight(calm, place.id);
       if (choice === 'hire') return hire(calm, place);
       if (choice === 'surrender') return surrender(calm, place);
@@ -322,9 +359,9 @@ export function enemy(kind: 'patrol' | 'hideout'): PlaceKind {
       if (place.done) return null;
       if (worthAFight(state, place)) return kind === 'patrol' ? place.enemy!.reward + 200 : 5000;
       if (kind !== 'patrol') return null;
-      // A pack that would follow him is worth the ride, even when a fight would be a gamble.
+      // A pack that would follow him, all of it, is worth the ride, even when a fight would be a gamble.
       const offer = tameOffer(state, place);
-      return offer?.whole && offer.respected && offer.joining.length ? place.enemy!.reward + 200 : null;
+      return offer?.whole && offer.all ? place.enemy!.reward + 200 : null;
     },
   };
 }

@@ -70,8 +70,8 @@ export function playCommission(start: GameState, map: MapModel, maxSteps = 20000
   const carefulWorth = (l: Location): number | null => {
     if (l.done) return null;
     if (comfortable(state, l)) return l.kind === 'hideout' ? 5000 : l.enemy!.reward + 200;
-    const offer = tameOffer(state, l, 8);
-    return l.kind === 'patrol' && offer?.whole && offer.respected && offer.joining.length ? l.enemy!.reward + 200 : null;
+    const offer = tameOffer(state, l);
+    return l.kind === 'patrol' && offer?.whole && offer.all ? l.enemy!.reward + 200 : null;
   };
   /** The night passes; if something falls on the camp at dawn, the sergeants fight it, or the army runs if they'd lose. */
   const nextDay = () => {
@@ -80,7 +80,7 @@ export function playCommission(start: GameState, map: MapModel, maxSteps = 20000
       fights++;
       const id = state.ambush;
       const odds = winChance(state, id, 8);
-      state = choose(state, id, odds >= 0.5 ? 'auto' : 'flee')?.state ?? { ...state, ambush: undefined };
+      state = choose(state, id, odds >= 0.5 ? 'auto' : 'flee')?.state ?? { ...state, ambush: undefined, ambushRest: undefined };
       if (!locationById(state, id).done) retreats++;
       log.push(`day ${state.day}: ambushed by ${locationById(state, id).name}${odds >= 0.5 ? '' : ', ran'}`);
     }
@@ -138,9 +138,9 @@ export function playCommission(start: GameState, map: MapModel, maxSteps = 20000
       log.push(`day ${state.day}: hired ${place.name}`);
       continue;
     }
-    // A ranger (or anyone with a way with beasts) takes a pack that would follow him, when they'd all come or a fight would be a gamble.
+    // A ranger (or anyone with a way with beasts) takes a pack that would follow him, all of it, so there's nobody left to fight.
     const pack = place.enemy && !place.done ? tameOffer(state, place) : null;
-    const tamed = pack?.whole && pack.respected && pack.joining.length && (careful || pack.all || !fightable(place)) ? choose(state, place.id, 'tame') : null;
+    const tamed = pack?.whole && pack.all ? choose(state, place.id, 'tame') : null;
     if (tamed) {
       state = tamed.state;
       log.push(`day ${state.day}: tamed ${place.name}`);

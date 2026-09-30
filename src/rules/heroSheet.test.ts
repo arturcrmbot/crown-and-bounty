@@ -271,7 +271,7 @@ describe('the hero\u2019s own card', () => {
     expect(lord.stats).toEqual([]);
     expect(lord.traits.map((t) => t.name)).toEqual(['Leads', 'Spells', 'Behind the line', 'Bard', 'Bribes']);
     // What a bribe costs him, with his silver tongue's half off.
-    expect(lord.traits[4].note.startsWith('He pays 4 weeks of a stack\u2019s wages to send it home, or 12 to bring it over if it fits under his banner, less 50%.')).toBe(true);
+    expect(lord.traits[4].note.startsWith('He pays 2 gold for every point of a stack\u2019s power to send it home, or 6 to bring it over if it fits under his banner, with 50% off. Only an army stronger than theirs can buy them')).toBe(true);
     const knights = stackSheet(courtier, 0)!;
     expect(knights.stats[0]).toEqual({ name: 'Attack', value: '9', note: '8 their own, +1 from Lord Aldric' });
     expect(knights.traits.map((t) => t.name)).not.toContain('Rallied');

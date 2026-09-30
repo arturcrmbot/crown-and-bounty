@@ -21,7 +21,7 @@ export type TroopDef = {
   speed: number;
   /** Arrows or bolts; ranged troops shoot unless an enemy stands next to them. */
   shots?: number;
-  /** Leadership each troop needs, and gold each troop takes on payday. */
+  /** Leadership each troop needs (none for troops who draw no wages: beasts, and the old King's huntsmen), and gold each troop takes on payday. */
   leadership: number;
   wage: number;
   /** A one-line description for cards. */
@@ -98,10 +98,11 @@ export type AbilityDef = {
   rides?: boolean;
   /**
    * A leader who fights with coin and words instead of blows, one move a turn: he pays a stack
-   * `weeks.leave` weeks of its wages to leave the field, or `weeks.join` to fight for him if it fits
-   * under his banner; he jeers a stack (`jeer`); or he sings one of his `songs` over his own.
+   * `price.leave` gold for every point of its power to leave the field, or `price.join` to fight for
+   * him if it fits under his banner, as many of it as his army outweighs (`outweighs`); he jeers a
+   * stack (`jeer`); or he sings one of his `songs` over his own.
    */
-  bard?: { jeer: StatusId; songs: StatusId[]; weeks: { leave: number; join: number } };
+  bard?: { jeer: StatusId; songs: StatusId[]; price: { leave: number; join: number } };
   /** It strikes first when it defends against a melee blow, unless the attacker has this too. */
   firstStrike?: boolean;
   /** Its blows cut this much off the target's defence, armour and all. */
@@ -117,8 +118,8 @@ export const ABILITIES: Record<Ability, AbilityDef> = {
   rides: { name: 'Rides out', note: 'He rides out from behind the line, strikes, and rides back, all in one move.', rides: true },
   bard: {
     name: 'Bard',
-    note: 'He fights with coin and words instead of a blade. Each turn he can pay a stack to leave the field, or to fight for him if it fits under his banner. He can also jeer one until it loses heart, or sing his own men on.',
-    bard: { jeer: 'jeered', songs: ['heartened', 'charmed'], weeks: { leave: 4, join: 12 } },
+    note: 'He fights with coin and words instead of a blade. Each turn he can pay a stack to leave the field, or to fight for him if it fits under his banner. Only an army stronger than theirs can buy them, and the stronger it is, the more of them take the gold. He can also jeer one until it loses heart, or sing his own men on.',
+    bard: { jeer: 'jeered', songs: ['heartened', 'charmed'], price: { leave: 2, join: 6 } },
   },
   firstStrike: { name: 'First Strike', note: 'Pitchforks go first, so it strikes before whatever attacks it, unless that also strikes first.', firstStrike: true },
   stings: { name: 'Stinging Bite', note: 'Whatever it hits up close is poisoned, and loses a little health each turn, though never past a sliver.', stingStatus: 'poisoned' },
@@ -139,7 +140,7 @@ export const TROOPS: Record<TroopId, TroopDef> = {
   knights: { id: 'knights', name: 'Knights', one: 'Knight', hp: 42, attack: 8, defence: 8, damage: [5, 8], speed: 5, leadership: 5, wage: 8, people: 'loyal', note: 'They are heavy, loyal and very pleased with their armour.' },
   swordsmen: { id: 'swordsmen', name: 'Swordsmen', one: 'Swordsman', hp: 24, attack: 6, defence: 6, damage: [3, 5], speed: 4, leadership: 3, wage: 4, people: 'outlaw', note: 'They are Grimsby\u2019s men, with a goose feather in every helmet.' },
   crossbowmen: { id: 'crossbowmen', name: 'Crossbowmen', one: 'Crossbowman', hp: 14, attack: 5, defence: 4, damage: [2, 4], speed: 3, shots: 8, leadership: 2, wage: 3, people: 'outlaw', note: 'They are slow to reload and slower to smile. Their bolts punch through armour.', abilities: ['pierce'] },
-  wolves: { id: 'wolves', name: 'Wolves', one: 'Wolf', hp: 12, attack: 7, defence: 3, damage: [3, 5], speed: 7, leadership: 2, wage: 0, people: 'wild', note: 'They are fast, hungry, and not interested in your commission.', tamed: 'The pack leader sniffs your boots, decides you\u2019ll do, and the whole pack falls in behind you, tongues out.' },
+  wolves: { id: 'wolves', name: 'Wolves', one: 'Wolf', hp: 12, attack: 7, defence: 3, damage: [3, 5], speed: 7, leadership: 0, wage: 0, people: 'wild', note: 'They are fast, hungry, and not interested in your commission.', tamed: 'The pack leader sniffs your boots, decides you\u2019ll do, and the whole pack falls in behind you, tongues out.' },
   baron: {
     id: 'baron', name: 'Baron Grimsby', one: 'Baron Grimsby', hp: 160, attack: 11, defence: 10, damage: [9, 14], speed: 4, leadership: 99, wage: 0,
     note: 'He carries the royal goose under one arm, and gives the orders with the other.', abilities: ['leads'],
@@ -165,15 +166,15 @@ export const TROOPS: Record<TroopId, TroopDef> = {
   },
   poachers: { id: 'poachers', name: 'Poachers', one: 'Poacher', hp: 7, attack: 3, defence: 2, damage: [1, 3], speed: 4, shots: 6, leadership: 1, wage: 1, people: 'outlaw', note: 'They hunt other people\u2019s deer, other people\u2019s rabbits, and now other people\u2019s officers.' },
   bandits: { id: 'bandits', name: 'Highwaymen', one: 'Highwayman', hp: 11, attack: 4, defence: 3, damage: [2, 3], speed: 5, leadership: 2, wage: 2, people: 'outlaw', note: '\u201cStand and deliver,\u201d they say. Mostly they stand.' },
-  boars: { id: 'boars', name: 'Wild Boars', one: 'Wild Boar', hp: 18, attack: 5, defence: 4, damage: [2, 4], speed: 5, leadership: 2, wage: 0, people: 'wild', note: 'They are all bristles, tusks and a very short temper.', tamed: 'The boars decide you are the biggest boar they have ever met, and trot after you, grunting happily.' },
+  boars: { id: 'boars', name: 'Wild Boars', one: 'Wild Boar', hp: 18, attack: 5, defence: 4, damage: [2, 4], speed: 5, leadership: 0, wage: 0, people: 'wild', note: 'They are all bristles, tusks and a very short temper.', tamed: 'The boars decide you are the biggest boar they have ever met, and trot after you, grunting happily.' },
   bears: {
-    id: 'bears', name: 'Bears', one: 'Bear', hp: 80, attack: 9, defence: 7, damage: [10, 16], speed: 5, leadership: 12, wage: 0, people: 'wild',
+    id: 'bears', name: 'Bears', one: 'Bear', hp: 80, attack: 9, defence: 7, damage: [10, 16], speed: 5, leadership: 0, wage: 0, people: 'wild',
     note: 'They are big and brown, and not at all sorry about it.',
     tamed: 'The biggest bear sniffs your hand, sneezes, and leans on you. *The others decide that makes you family.*',
   },
   // The old King's huntsmen: they draw no wages, but they aren't beasts. They serve the King still.
   huntsmen: {
-    id: 'huntsmen', name: 'Huntsmen', one: 'Huntsman', hp: 18, attack: 7, defence: 4, damage: [3, 5], speed: 5, shots: 16, leadership: 3, wage: 0, people: 'loyal', abilities: ['hunter'],
+    id: 'huntsmen', name: 'Huntsmen', one: 'Huntsman', hp: 18, attack: 7, defence: 4, damage: [3, 5], speed: 5, shots: 16, leadership: 0, wage: 0, people: 'loyal', abilities: ['hunter'],
     note: 'The old King\u2019s huntsmen are grey and lean, and nobody has ever known them to miss.',
     unpaid: 'They serve the old King still, and they have a score to settle with Rook.',
   },
@@ -220,6 +221,15 @@ export const heroTroop = (background: BackgroundId): HeroId => HEROES[background
  */
 export function troopPower(id: TroopId): number {
   return unitPower(TROOPS[id]);
+}
+
+/**
+ * How much of a band comes over to an army, to follow it, take its gold or its side (Artur, 30 Sep):
+ * the one number is power, and nobody comes while the army is no stronger than they are, all of them
+ * once it's twice as strong, and in between, as much as it outweighs them. Whoever doesn't come fights.
+ */
+export function outweighs(ours: number, theirs: number): number {
+  return theirs > 0 ? Math.max(0, Math.min(1, ours / theirs - 1)) : 1;
 }
 
 /** The same worth for any numbers: a troop's, or the hero's as they stand. */

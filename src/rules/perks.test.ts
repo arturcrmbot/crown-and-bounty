@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ALDMOOR } from '../content/aldmoor';
 import { PERKS, type PerkId } from '../content/skills';
 import { apply, endDay, heroStats, levelUpCard, locationById, visit, type Card, type GameState, type Result } from './game';
-import { gainXp, LEVELS, MAX_INTEREST } from './hero';
+import { gainXp, LEVELS, MAX_INTEREST, RALLY } from './hero';
 import { newGame } from './scenario';
 
 const fresh = (): GameState => ({ ...newGame(1066, ALDMOOR, 'knight'), opening: undefined });
@@ -61,11 +61,12 @@ describe('perks bend rules', () => {
     expect(heroStats({ ...banker, gold: -50 }).interest).toBe(0);
   });
 
-  it('Scholar: four choices at every level-up', () => {
+  it('Scholar: four choices at every level-up, and more leadership besides', () => {
     const scholar = gainXp(perked(['scholar']), LEVELS[2]).state;
-    expect(scholar.hero.offers[0].options).toHaveLength(4);
-    expect(levelUpCard(scholar)!.choices).toHaveLength(4);
-    expect(gainXp(fresh(), LEVELS[2]).state.hero.offers[0].options).toHaveLength(3);
+    expect(scholar.hero.offers[0].options).toHaveLength(5);
+    expect(scholar.hero.offers[0].options.at(-1)).toBe(RALLY);
+    expect(levelUpCard(scholar)!.choices).toHaveLength(5);
+    expect(gainXp(fresh(), LEVELS[2]).state.hero.offers[0].options).toHaveLength(4);
   });
 
   it('The King\u2019s Favourite: four boons at court', () => {

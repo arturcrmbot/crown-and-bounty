@@ -139,6 +139,24 @@ to 10 (the careful player), and the bot took him on day 9 to 12, at level 3 by t
   at the castle may do better, and it never sits out the commission.
 - **What's left is Artur's playtest.** Measure again with `npm run sim:curve` if he finds it too easy or too hard.
 
+## Power decides, and leadership you can grow (30 Sep, afternoon)
+
+Artur, after the Courtier found Aldmoor easy and the Ranger hit a wall (#167, #171): *"In Heroes of Might and Magic
+it's a single number... the total strength of the army... and that should decide things like bribing."* And the
+Ranger: *"There is no real good way to increase leadership, and without leadership you cannot increase the size of
+your army."*
+
+- **Who comes over is one number, power** (`outweighs` in `content/troops.ts`): the fighting worth of an army. Nobody
+  comes while your army is no stronger than theirs, all of them once it's twice as strong, and in between, as much as
+  it outweighs them. Whoever doesn't come attacks at once. That's the same for beasts tamed, bands hired and a stack
+  paid off in battle. A stack paid to go home costs 2 gold for every point of its power, or 6 to come over, and no
+  bribe is ever more than half off. So a day-one Courtier can't buy Grimsby's swordsmen (they're twice his army) until
+  his army outweighs them, and a Ranger's day-one army wins 4 of the 7 bears and fights the other 3.
+- **Troops who draw no wages need no leadership:** beasts, and the old King's huntsmen. They still need one of the five
+  companies.
+- **Leadership he can always grow:** +25 in place of a skill at any level-up (`RALLY`), and 20 for 500 gold from the
+  steward at his castle, as often as he can pay (`MUSTER`), on top of the 5 a level, the chests, banners and skill.
+
 ## The approach
 
 1. **A power budget for each commission.** Each commission has a target day for its villain and a reference hero:
@@ -185,10 +203,10 @@ sets how many.
   how he wins.
 - **Wizard.** His mana stops coming back in full every dawn. A quarter comes back, and a mana well or a castle fills
   it. His spells stay strong, but he has to choose where to spend them.
-- **Ranger.** Beasts follow him only when he'd clearly win, at the odds the card calls *"You should win"*, not when
-  it's merely close.
+- **Ranger.** Beasts follow him as far as his army outweighs them, and the rest attack (30 Sep, below). They need no
+  leadership.
 - **Courtier.** Talking the villain round and bribing a gate cost gold, and the budget sets how much (#79 gives the
-  lair its parley). Gold is his mana.
+  lair its parley). Gold is his mana, and his army's power decides how much of a stack his gold can buy.
 
 ## The budget and its levers
 
@@ -197,7 +215,7 @@ moved with these levers:
 
 | Lever | Where it lives | What limits it |
 | --- | --- | --- |
-| Army | leadership (`heroStats`), recruits and prices (`places/dwelling.ts`), the King's pay (`COMMISSION`), hires and taming (`places/enemy.ts`), veterans (`campaign.ts`) | leadership: 10 a level (`RENOWN`), chests, banners, the Leadership skill |
+| Army | leadership (`heroStats`), recruits and prices (`places/dwelling.ts`), the King's pay (`COMMISSION`), hires and taming (`places/enemy.ts`), veterans (`campaign.ts`) | leadership: 5 a level (`RENOWN`), or 25 in place of a skill (`RALLY`), 20 for 500 gold at the castle (`MUSTER`), chests, banners, the Leadership skill; troops who draw no wages need none. Who comes over is power (`outweighs`) |
 | Stats | level-ups (`LEVELS`, each background's `growth`), the court's boons | 10% more damage per point of attack over defence, 5% less per point of defence (`skillFactor`) |
 | Gear | `content/artifacts.ts`, sets | seven slots |
 | Spells | `content/spells.ts`, mana (ten a point of knowledge) | two casts a round (`MAX_CASTS`), mana at dawn (`endDay`) |

@@ -187,12 +187,12 @@ describe('the old King\u2019s hunt hall', () => {
     expect(planRoute(knight, map, lodge)).toBeNull();
     expect(planRoute(update(knight, 'bears', { done: true }), map, lodge)).not.toBeNull();
     expect(planRoute(at(fresh('ranger'), 'nan'), map, lodge)).not.toBeNull();
-    // They're Wesnoth's bears: beasts a ranger can win over, when he has room to lead them.
+    // They're Wesnoth's bears: beasts a ranger can win over, all of them once his army is twice as strong as theirs.
     const bears = locationById(fresh(), 'bears').enemy!;
     expect(bears.army.every((s) => isBeast(s.troop))).toBe(true);
     expect(labels(fresh(), 'bears').some((l) => l.startsWith('Tame them'))).toBe(true);
-    const roomy = { ...fresh('ranger'), leadership: 400 };
-    const tamed = choose(roomy, 'bears', 'tame')!;
+    const strong = { ...fresh('ranger'), army: [{ troop: 'knights' as const, count: 40 }, { troop: 'archers' as const, count: 60 }] };
+    const tamed = choose(strong, 'bears', 'tame')!;
     expect(count(tamed.state.army, 'bears')).toBe(count(bears.army, 'bears'));
     expect(locationById(tamed.state, 'bears').done).toBe(true);
   });
@@ -223,15 +223,14 @@ describe('the old King\u2019s hunt hall', () => {
     expect(cardOf(visit(joined, 'hall')).lines.join(' ')).toMatch(/every one of the old King\u2019s huntsmen has gone with you/);
   });
 
-  it('keeps the huntsmen waiting at the hall for a hero with no room to lead them yet', () => {
+  it('lets the huntsmen join a hero with no leadership to spare: they draw no wages, and need none', () => {
     const keyed = take(fresh(), 'lodge', 'nail/key');
-    const full = { ...keyed, leadership: leadershipUsed(keyed.army) + 9 };
+    const full = { ...keyed, leadership: leadershipUsed(keyed.army) };
     const opened = take(full, 'hall', 'door/open');
-    const some = choose(opened, 'hall', 'recruit')!.state;
-    expect(count(some.army, 'huntsmen')).toBe(3);
-    expect(locationById(some, 'hall').recruits!.count).toBe(9);
-    const grown = choose({ ...some, leadership: some.leadership + 30 }, 'hall', 'recruit')!.state;
-    expect(count(grown.army, 'huntsmen')).toBe(12);
+    const all = choose(opened, 'hall', 'recruit')!.state;
+    expect(count(all.army, 'huntsmen')).toBe(12);
+    expect(locationById(all, 'hall').recruits!.count).toBe(0);
+    expect(leadershipUsed(all.army)).toBe(leadershipUsed(keyed.army));
   });
 });
 

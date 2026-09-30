@@ -9,7 +9,7 @@ import { SKILLS } from '../../content/skills';
 import { SPELLS } from '../../content/spells';
 import { foundNote, gainXp, giveArtifact, heroStats } from '../hero';
 import { look } from '../map/sight';
-import { addTroops, coins, countOf, joinLine, leadershipUsed, listed, locationById, MAX_STACKS, TROOPS, troops, update, VANISHES, type Choice, type ContentChoice, type Effects, type GameEvent, type GameState, type Location, type Needs } from '../state';
+import { addTroops, coins, countOf, fits, joinLine, leadershipUsed, listed, locationById, MAX_STACKS, TROOPS, troops, update, VANISHES, type Choice, type ContentChoice, type Effects, type GameEvent, type GameState, type Location, type Needs } from '../state';
 
 const STAT_WORDS = { attack: 'attack', defence: 'defence', spellPower: 'spell power', knowledge: 'knowledge' } as const;
 
@@ -136,7 +136,7 @@ export function applyEffects(state: GameState, place: Location, effects: Effects
     lines.push(known ? `You know **${SPELLS[effects.spell].name}** already.` : `You learn **${SPELLS[effects.spell].name}**. ${SPELLS[effects.spell].note}`);
   }
   for (const stack of effects.troops ?? []) {
-    const room = Math.floor((heroStats(next).leadership - leadershipUsed(next.army)) / TROOPS[stack.troop].leadership);
+    const room = fits(heroStats(next).leadership - leadershipUsed(next.army), stack.troop);
     const count = Math.min(stack.count, room);
     const army = count > 0 ? addTroops(next.army, stack.troop, count) : null;
     if (army) next = { ...next, army };

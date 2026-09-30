@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ALDMOOR } from '../content/aldmoor';
-import { apply, bountyCard, describe as fromAfar, endDay, joinLine, learnOdds, listed, locationById, lossesLine, oddsFor, oddsKnown, placeOdds, stillWithYou, visit, whenThere, winChance, type Army, type Card, type GameState, type Result } from './game';
+import { apply, bountyCard, describe as fromAfar, endDay, heroStats, joinLine, learnOdds, listed, locationById, lossesLine, oddsFor, oddsKnown, placeOdds, stillWithYou, visit, whenThere, winChance, type Army, type Card, type GameState, type Result } from './game';
 import { ambushCard } from './days';
 import { verdict } from './places/enemy';
 import { applyEffects } from './effects';
@@ -101,7 +101,7 @@ describe('the castle', () => {
   it('warns before tamed beasts fall in with the King\u2019s folk', () => {
     const ranger: GameState = { ...newGame(1066, ALDMOOR, 'ranger'), opening: undefined };
     const card = cardOf(visit(ranger, 'boars'));
-    expect(card.choices.map((c) => c.label)).toContain('Tame as many as you can lead (3 of 9)');
+    expect(card.choices.map((c) => c.label)).toContain('Tame them');
     expect(card.lines).toContain('*Your Knights and Archers won\u2019t march happily beside Wild Boars, and all of them lose 10% morale.*');
   });
 });
@@ -211,11 +211,30 @@ describe('lists in words', () => {
 });
 
 describe('recruiting', () => {
+  it('lets the steward at the castle raise more men for gold, as often as he can pay (Artur, 30 Sep)', () => {
+    const k = knight();
+    const lead = heroStats(k).leadership;
+    const card = cardOf(apply(k, { type: 'choose', id: 'castle', choice: 'muster' }));
+    expect(card.lines[0]).toBe('The steward sends criers round the villages, and more men come to your banner. You gain **20 leadership**.');
+    const once = apply(k, { type: 'choose', id: 'castle', choice: 'muster' })!.state;
+    expect(heroStats(once).leadership).toBe(lead + 20);
+    expect(once.gold).toBe(k.gold - 500);
+    const twice = apply(once, { type: 'choose', id: 'castle', choice: 'muster' })!.state;
+    expect(heroStats(twice).leadership).toBe(lead + 40);
+    // Short of gold, the button is greyed, and nothing happens.
+    const poor = { ...k, gold: 499 };
+    expect(cardOf(visit(poor, 'castle')).choices.find((c) => c.label.startsWith('Raise more men'))?.disabled).toBe(true);
+    expect(apply(poor, { type: 'choose', id: 'castle', choice: 'muster' })).toBeNull();
+    // Only at a castle.
+    expect(apply(k, { type: 'choose', id: 'village', choice: 'muster' })).toBeNull();
+    expect(cardOf(visit(k, 'village')).choices.some((c) => c.label.startsWith('Raise more men'))).toBe(false);
+  });
+
   it('shows the place again afterwards, with who joined and the armoury still there', () => {
     const card = cardOf(apply(knight(), { type: 'choose', id: 'castle', choice: 'recruit' }));
     expect(card.lines[0]).toBe('**5 Knights** join your army.');
     expect(card.lines[1]).toBe('"All out of volunteers, officer. Come back after payday."');
-    expect(card.choices.map((c) => c.label)).toEqual(['Visit the armoury', 'Close']);
+    expect(card.choices.map((c) => c.label)).toEqual(['Raise more men (500 gold for +20 leadership)', 'Visit the armoury', 'Close']);
     const village = cardOf(apply({ ...knight(), gold: 55 }, { type: 'choose', id: 'village', choice: 'recruit' }));
     expect(village.lines.slice(0, 2)).toEqual(['**5 Peasants** join your army.', '**15 Peasants** will join you for **10 gold** each.']);
     expect(village.choices.map((c) => c.label)).toEqual(['Recruit', 'Close']);

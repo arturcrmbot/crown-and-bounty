@@ -4,7 +4,7 @@ import type { BackgroundId } from '../content/backgrounds';
 import { FENMARCH } from '../content/fenmarch';
 import { RANKS, SKILLS, type SkillId } from '../content/skills';
 import { createBattle, statsOf } from './battle/battle';
-import { apply, battleXp, describe as about, endDay, heroInBattle, heroStats, levelUpCard, locationById, nextArmy, visit, winChance, type Card, type GameState, type Result } from './game';
+import { apply, battleXp, describe as about, endDay, fightingPower, heroInBattle, heroStats, levelUpCard, locationById, nextArmy, visit, winChance, type Card, type GameState, type Result } from './game';
 import { gainXp, giveArtifact, LEVELS } from './hero';
 import { mapOf } from './map/maps';
 import { Terrain } from './map/model';
@@ -261,15 +261,18 @@ describe('Diplomacy', () => {
   });
 
   it('Advanced: small bands take his coin; Expert: gatekeepers too, at twice the price', () => {
-    const rich = (s: GameState) => ({ ...s, gold: 20000, leadership: 900 });
+    // An army more than twice as strong as the patrol, so that every one of them would come over.
+    const rich = (s: GameState) => ({ ...s, gold: 20000, leadership: 900, army: [{ troop: 'knights' as const, count: 80 }, { troop: 'archers' as const, count: 100 }] });
     expect(hireOffer(rich(skilled({ diplomacy: 1 })), locationById(fresh(), 'highwaymen'))).toBeNull();
     const advanced = rich(skilled({ diplomacy: 2 }));
-    expect(hireOffer(advanced, locationById(advanced, 'highwaymen'))?.price).toBe(14 * 2 * 12);
+    // Three gold for every point of their power.
+    const worth = (id: string) => fightingPower(locationById(fresh(), id).enemy!.army);
+    expect(hireOffer(advanced, locationById(advanced, 'highwaymen'))?.price).toBe(Math.round((worth('highwaymen') * 3) / 10) * 10);
     expect(hireOffer(advanced, locationById(advanced, 'patrol'))).toBeNull();
     const expert = rich(skilled({ diplomacy: 3 }));
     const patrol = hireOffer(expert, locationById(expert, 'patrol'))!;
     expect(patrol.all).toBe(true);
-    expect(patrol.price).toBe((inContent('patrol', 'swordsmen') * 4 + inContent('patrol', 'crossbowmen') * 3) * 12 * 2);
+    expect(patrol.price).toBe(Math.round((worth('patrol') * 3 * 2) / 10) * 10);
     const hired = apply(expert, { type: 'choose', id: 'patrol', choice: 'hire' })!.state;
     expect(hired.army.find((s) => s.troop === 'swordsmen')?.count).toBe(inContent('patrol', 'swordsmen'));
     expect(locationById(hired, 'patrol').done).toBe(true);
