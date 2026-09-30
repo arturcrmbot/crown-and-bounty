@@ -236,13 +236,14 @@ async function go(id, action) {
     }, null, { timeout: 60_000 });
     const s = await status();
     if (!(s.riding && s.tired)) break;
-    await press('End the day');
+    // The card that offers to end the day comes once a day: if it's gone, the rail ends it.
+    if (!(await press('End the day'))) await endDay();
     await close();
   }
   return title();
 }
 
-/** Takes on an enemy as a patient player would: if the sergeants don't like the odds yet, wait for payday, recruit, and come back. */
+/** Takes on an enemy as a patient player would: if the sergeants don't like the odds yet, wait for payday, recruit (archers at the Butts first), and come back. */
 async function beatWhenReady(id, tries = 6) {
   for (let attempt = 1; attempt <= tries; attempt++) {
     const now = await state();
@@ -250,8 +251,9 @@ async function beatWhenReady(id, tries = 6) {
     if (now.locations.find((l) => l.id === id)?.done) return ambushes.some((a) => a.id === id && a.title === 'Victory!') ? 'Victory!' : 'done';
     await go(id, 'Approach');
     const then = await state();
-    console.log(`     ${id}, try ${attempt} on day ${then.day} with ${then.army.map((s) => `${s.count} ${s.troop}`).join(', ')}: ${(await lines()).split(' / ').find((l) => /nervous|look|win|lose|odds|chance/i.test(l)) ?? ''}`);
-    if ((await lines()).includes('nervous') || attempt === tries) {
+    console.log(`     ${id}, try ${attempt} on day ${then.day} at level ${then.hero.level}, ${then.gold} gold, with ${then.army.map((s) => `${s.count} ${s.troop}`).join(', ')}: ${(await lines()).split(' / ').find((l) => /nervous|look|win|lose|odds|chance/i.test(l)) ?? ''}`);
+    // "They look nervous", or "It will be close" with the odds on his side: waiting only lets them grow.
+    if (/nervous|It will be close/.test(await lines()) || attempt === tries) {
       await press('Let the sergeants');
       const t = await title();
       if (t === 'Victory!' || t?.endsWith('is taken!')) return t;
@@ -262,7 +264,7 @@ async function beatWhenReady(id, tries = 6) {
       await endDay();
       await close();
     } while ((await state()).day % 7 !== 1);
-    for (const [place, verb] of [['castle', 'Visit'], ['village', 'Visit'], ['deserters', 'Visit']]) {
+    for (const [place, verb] of [['butts', 'Visit'], ['castle', 'Visit'], ['village', 'Visit'], ['deserters', 'Visit']]) {
       if (!(await state()).locations.some((l) => l.id === place)) continue;
       await go(place, verb);
       await press('Recruit');
@@ -523,6 +525,12 @@ try {
     await look('castle');
     check(await press('Recruit'), 'the castle recruits knights');
     await look('recruit');
+    // The armourer buys the spare he carries (the highwaymen's Black Banner), as the play-through does: gold for the weeks ahead.
+    const [spare] = (await state()).hero.pack;
+    if (spare) {
+      const purse = (await state()).gold;
+      check((await press('Visit the armoury')) && (await press('Sell him your spares')) && (await press('Sell ')) && (await state()).gold > purse, `the armourer buys his spare (${spare})`);
+    }
     await close();
     await go('poachers', 'Approach');
     await press('Let the sergeants');
@@ -567,8 +575,30 @@ try {
     await look('boons');
     const boon = await call(() => document.querySelector('.kc-card-wrap:not([hidden]) button').textContent);
     await press(boon);
-    check((await title())?.startsWith('Commission II'), `after ${boon}, the next commission is read out`);
-    await look('next-commission');
+    // The public game stops after Commission I (#146): more are coming, and Artur's LinkedIn.
+    await page.waitForFunction(() => document.querySelector('.kc-card-wrap:not([hidden]) h3')?.textContent === 'Commission I is complete', null, { timeout: 5000 }).catch(() => {});
+    check((await title()) === 'Commission I is complete' && (await lines()).includes('More commissions are coming'), `after ${boon}, the court says Commission I is complete, and more are coming`);
+    await look('closing');
+    const linkedIn = 'https://www.linkedin.com/in/arturzielinski/';
+    const links = await call(() =>
+      [...document.querySelectorAll('.kc-card-wrap:not([hidden]) .kc-card .choices a')].map((a) => {
+        const r = a.getBoundingClientRect();
+        return { label: a.querySelector('.words').firstChild.textContent, href: a.href, target: a.target, rel: a.rel, box: { x: r.x, y: r.y, width: r.width, height: r.height } };
+      }),
+    );
+    check(links.map((l) => l.label).join(' / ') === 'Follow me on LinkedIn / Tell me what you thought' && links.every((l) => l.href === linkedIn && l.target === '_blank' && l.rel === 'noopener'), 'with Artur\u2019s LinkedIn, to follow him and to tell him what you thought');
+    // LinkedIn answers here, not over the network.
+    await context.route('https://www.linkedin.com/**', (route) => route.fulfill({ status: 200, contentType: 'text/html', body: 'LinkedIn' }));
+    if (links[0]) {
+      const [tab] = await Promise.all([context.waitForEvent('page', { timeout: 5000 }).catch(() => null), tapBox(links[0].box, 'card: Follow me on LinkedIn')]);
+      await tab?.waitForLoadState();
+      check(tab?.url() === linkedIn && (await screen()) === 'court', 'a tap on it opens LinkedIn in a new tab, and the game waits at court');
+      await tab?.close();
+    }
+    check(await press('Return to the title screen'), 'the way on is back to the title');
+    await page.waitForFunction(() => window.__kc.screen() === 'title', null, { timeout: 10_000 }).catch(() => {});
+    check((await screen()) === 'title', 'and the title comes back');
+    await look('title-after');
   }
 
   const cards = pressed.filter((p) => p.what.startsWith('card') || p.what.startsWith('rail'));
