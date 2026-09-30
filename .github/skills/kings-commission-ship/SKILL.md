@@ -18,9 +18,11 @@ work; GitHub Actions does the long checks. Fix what a player would hate.
 
 1. **Change** something small and visible.
 2. **Check** it locally, in your worktree, with the cheap checks: `npm run typecheck`,
-   `npm run test:fast` and the tests for what you touched (`npx vitest run <files>`); for a visible
-   change, `npm run e2e` and the playtest too (step 3), and `npm run visual` when it changes a frozen
-   scene. Look at the screenshots. Simulations and the bot's runs (`npm run sim`, `sim:battles`,
+   `npm run test:fast` and the tests for what you touched (`npx vitest run <files>`). For a visible
+   change, look at a few screenshots of it (`npm run shots`, or Playwright on a phone size), and run
+   `npm run visual -- --approve` only when you changed a frozen scene on purpose. Don't run
+   `npm run e2e`, `npm run phone` or the playtest locally: CI runs them on every PR, and running them
+   here too doubled the time of every change (Artur, 30 Sep). If CI fails, fix it and push again. Simulations and the bot's runs (`npm run sim`, `sim:battles`,
    `sim:boss`, `difficulty`, `test:bot`) are only for a change that moves balance, with at most 10
    seeds a background (`npm run sim -- 10`; the default is 30). A UI, content or bug change skips
    them. CI checks the pull request again: the unit tests, the build, the bot's whole commissions
