@@ -1,6 +1,6 @@
 import { BACKGROUNDS } from '../content/backgrounds';
 import { artifactPhrase, type ArtifactId } from '../content/artifacts';
-import { ABILITIES, crowd, heroTroop, TROOPS, type HeroId, type TroopId } from '../content/troops';
+import { ABILITIES, crowd, heroTroop, leads, TROOPS, type HeroId, type TroopId } from '../content/troops';
 import type { StatusId } from '../content/spells';
 import { autoResolve } from './battle/ai';
 import { applyEffects, choiceButton, meets } from './effects/core';
@@ -9,7 +9,7 @@ import { look, seeBands } from './map/sight';
 import { fleeHome, fleesHome } from './map/sortie';
 import { battleEnd, createBattle, isLeader, SHOOTER_MELEE, survivors, type BattleHero, type BattleState, type Side } from './battle/battle';
 import { artifactChoices, foundNote, gainXp, giveArtifact, heroStats, namedBonuses } from './hero';
-import { addTroops, again, armyPower, close, coins, leadershipUsed, listed, locationById, roll, roman, show, stillWithYou, troops, update, VANISHES, type Army, type BattleResultCard, type Choice, type GameEvent, type GameState, type Location, type Result } from './state';
+import { addTroops, again, armyLine, armyPower, close, coins, countOf, leadershipUsed, listed, locationById, roll, roman, show, stillWithYou, troops, update, VANISHES, type Army, type BattleResultCard, type Choice, type GameEvent, type GameState, type Location, type Result } from './state';
 
 export function heroInBattle(state: GameState): BattleHero {
   const s = heroStats(state);
@@ -178,6 +178,29 @@ function fallen(battle: BattleState, side: Side): Army {
     if (count > 0) losses.set(fighter.troop, (losses.get(fighter.troop) ?? 0) + count);
   }
   return [...losses].map(([troop, count]) => ({ troop, count }));
+}
+
+/**
+ * What an enemy that held the field has left once the battle is over: whoever of it still stands,
+ * its leader too. Whatever it lost stays lost, as in HoMM2: the fallen, and those paid to go home or
+ * to change sides. The guard a villain called to the field makes up his losses of its kind, and never
+ * leaves him more of them than he brought; where he brought none of its kind, it stays as it stands.
+ */
+function holding(battle: BattleState, brought: Army): Army {
+  const standing = new Map<TroopId, number>();
+  for (const f of battle.fighters) if (f.side === 'enemy' && f.count > 0) standing.set(f.troop, (standing.get(f.troop) ?? 0) + f.count);
+  const kept = brought.map((s) => ({ troop: s.troop, count: Math.min(s.count, standing.get(s.troop) ?? 0) }));
+  const more = [...standing].filter(([troop]) => !countOf(brought, troop)).map(([troop, count]) => ({ troop, count }));
+  return [...kept, ...more].filter((s) => s.count > 0);
+}
+
+const headcount = (army: Army) => army.reduce((n, s) => n + s.count, 0);
+
+/** "*They have 4 Swordsmen left.*", or "*Baron Grimsby has 4 Swordsmen left.*": what an enemy that held the field has left. */
+function leftLine(army: Army): string {
+  const leaders = army.filter((s) => leads(s.troop)).map((s) => TROOPS[s.troop].name);
+  const who = leaders.length ? `${listed(leaders)} ${leaders.length > 1 ? 'have' : 'has'}` : 'They have';
+  return `*${who} ${armyLine(army.filter((s) => !leads(s.troop)))} left.*`;
 }
 
 /**
@@ -357,8 +380,15 @@ export function finishFight(state: GameState): Result {
   }
   const castle = state.locations.find((l) => l.kind === 'castle');
   const home = castle ? ([castle.at[0], castle.at[1] + 14] as const) : state.hero.at;
+  // They hold the field, and whatever they lost stays lost, as in HoMM2: the next fight with them is
+  // with whoever is left of them, the cards say how many that is, and the map draws them as they are.
+  const theirs = holding(battle, enemy.army);
+  const thinned = headcount(theirs) < headcount(enemy.army);
+  const held: GameState = thinned ? update(base, place.id, { enemy: { ...enemy, army: theirs } }) : base;
+  const theyHave = thinned ? [leftLine(theirs)] : [];
+  const redrawn: GameEvent[] = thinned ? [{ type: 'changed', id: place.id }] : [];
   /** Back at the castle, with nobody: he sees what's about, as he would riding in. */
-  const alone = () => seeBands({ ...base, army: [], movement: 0, hero: { ...base.hero, at: home } }, home, heroStats(base).sight);
+  const alone = () => seeBands({ ...held, army: [], movement: 0, hero: { ...held.hero, at: home } }, home, heroStats(held).sight);
   const shaken = battle.result === 'fled' && !battle.standoff ? army.map((s) => ({ ...s, count: s.count - Math.ceil(s.count * 0.25) })).filter((s) => s.count > 0) : army;
   // Those lost on the way back fell too, so the card counts them with the rest.
   const lost = new Map(battleResult.player.map((s) => [s.troop, s.count]));
@@ -372,31 +402,33 @@ export function finishFight(state: GameState): Result {
     return {
       state: alone(),
       events: [
+        ...redrawn,
         { type: 'moved', at: home, facing: base.hero.facing },
-        show({ title: 'Retreat!', lines: [`${who} gets away alone, because nobody who rode with him is left standing.`, `He rides back to ${castle?.name ?? 'safety'} to raise another army.`, ...bribed], choices: [close], wide: true, battleResult: fledResult }, null),
+        show({ title: 'Retreat!', lines: [`${who} gets away alone, because nobody who rode with him is left standing.`, `He rides back to ${castle?.name ?? 'safety'} to raise another army.`, ...bribed, ...theyHave], choices: [close], wide: true, battleResult: fledResult }, null),
       ],
     };
   }
   if (battle.result === 'fled' && battle.standoff) {
     // They had no way through to you, and you didn't go to them: both sides draw off, nobody cut down.
-    const next = { ...base, movement: 0 };
+    const next = { ...held, movement: 0 };
     return {
       state: next,
-      events: [show({ title: 'A stand-off', lines: ['Neither side can get at the other. As the light goes, both draw off.', ...bribed, stillWithYou(army)], choices: [close], wide: true, battleResult }, place.at, place.id)],
+      events: [...redrawn, show({ title: 'A stand-off', lines: ['Neither side can get at the other. As the light goes, both draw off.', ...bribed, stillWithYou(army), ...theyHave], choices: [close], wide: true, battleResult }, place.at, place.id)],
     };
   }
   if (battle.result === 'fled') {
-    const next = { ...base, army: shaken, movement: 0 };
+    const next = { ...held, army: shaken, movement: 0 };
     return {
       state: next,
-      events: [show({ title: 'Retreat!', lines: ['Your men fall back in good order, mostly.', ...bribed, stillWithYou(shaken)], choices: [close], wide: true, battleResult: fledResult }, place.at, place.id)],
+      events: [...redrawn, show({ title: 'Retreat!', lines: ['Your men fall back in good order, mostly.', ...bribed, stillWithYou(shaken), ...theyHave], choices: [close], wide: true, battleResult: fledResult }, place.at, place.id)],
     };
   }
   return {
     state: alone(),
     events: [
+      ...redrawn,
       { type: 'moved', at: home, facing: base.hero.facing },
-      show({ title: 'Defeat', lines: [...(ended.length ? ended : ['Your army is scattered to the four winds.']), `${ended.length ? 'He rides' : 'You limp'} back to ${castle?.name ?? 'safety'} to raise another.`, ...bribed], choices: [close], wide: true, battleResult }, null),
+      show({ title: 'Defeat', lines: [...(ended.length ? ended : ['Your army is scattered to the four winds.']), `${ended.length ? 'He rides' : 'You limp'} back to ${castle?.name ?? 'safety'} to raise another.`, ...bribed, ...theyHave], choices: [close], wide: true, battleResult }, null),
     ],
   };
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ALDMOOR } from '../../content/aldmoor';
-import { apply, choose, endDay, fight, heroStats, locationById, wages, type Card, type GameState, type Result } from '../game';
+import { apply, choose, endDay, fight, finishFight, heroStats, locationById, startFight, wages, type Card, type GameState, type Result } from '../game';
 import { newGame } from '../scenario';
 import { pointAlong } from './convoys';
 import { nearest, smooth, type Point } from './geometry';
@@ -112,6 +112,26 @@ describe('the grain cart', () => {
     const kept = choose(caught, 'cart', 'grain/keep')!.state;
     expect(kept.rations).toBe(1);
     expect(choose(kept, 'cart', 'grain/westmere')).toBeNull();
+  });
+
+  it('keeps what its squad loses when the hero falls back from it, and whoever is left goes back to the bridge', () => {
+    const start = fresh();
+    const { state } = until(start, 8);
+    const squad = cart(state).enemy!.army;
+    const started = startFight({ ...state, army: [{ troop: 'knights', count: 5 }] }, 'cart')!.state;
+    const b = started.battle!;
+    const fled = { ...b, result: 'fled' as const, fighters: b.fighters.map((f) => (f.side === 'enemy' && f.troop === 'swordsmen' ? { ...f, count: 4 } : f)) };
+    const r = finishFight({ ...started, battle: fled });
+    expect(cart(r.state).enemy!.army).toEqual(squad.map((x) => (x.troop === 'swordsmen' ? { ...x, count: 4 } : x)));
+    // The hero keeps out of its way, and it goes on to the stockade.
+    const aside = locationById(start, 'castle').at;
+    let s: GameState = { ...r.state, hero: { ...r.state.hero, at: aside } };
+    for (let day = 9; !cart(s).done; day++) {
+      expect(day, 'it reaches the stockade before the next payday').toBeLessThan(15);
+      s = until(s, day, aside).state;
+    }
+    // The bridge is short the swordsmen who fell, and no more.
+    expect(patrol(s)).toEqual(PATROL.map((x) => (x.troop === 'swordsmen' ? { ...x, count: x.count - Math.round(x.count * SHARE) + 4 } : x)));
   });
 
   it('passes through Grimsby\u2019s own people on the road, but not the hero, and never ends a night on them', () => {

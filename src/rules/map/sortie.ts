@@ -95,8 +95,9 @@ export function rideHome(state: GameState): Night {
 }
 
 /**
- * His band beaten in the open, the villain flees home, and his guard straggles in after him: his walls
- * are as strong as ever. Beating him in the field wins its own spoils, not his stockade.
+ * His band beaten in the open, the villain flees home, and his guard straggles in after him, as many
+ * as rode into that fight: his walls are as strong as before it. Beating him in the field wins its own
+ * spoils, not his stockade.
  */
 export function fleeHome(state: GameState, band: Location): GameState {
   const lair = state.locations.find((l) => l.id === band.enemy?.lair && !l.done);

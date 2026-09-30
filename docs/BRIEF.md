@@ -518,3 +518,11 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   and whoever doesn't come attacks at once. Bribes are priced by power, and never more than half off. Beasts and the
   old King's huntsmen draw no wages and need no leadership. Every level-up offers +25 leadership in place of a skill,
   and the steward at the castle raises 20 more for 500 gold, as often as he can pay.
+- **The enemy keeps its losses (30 Sep, #167, #171):** the Wizard and the Ranger hit a wall at Grimsby's stockade,
+  because it was whole again after every fight they lost there. The Wizard's defeat killed 69 of its 73 swordsmen and
+  every crossbowman, and his next try met all of them again. Artur: a retreat or a defeat leaves the enemy's losses
+  standing, as in HoMM2. A band, a convoy or a lair that holds the field keeps whoever of it still stands, and those paid
+  to go home or to come over are gone for good. The guard the Baron calls to the field can make up his losses, but never
+  leaves him more men than he had. The cards say how many are left, and the map, the hover label and the odds show the
+  enemy as it is now. A lair recruits from what's left, a sortie's band and a convoy's squad go home with whoever is
+  left of them, and the goose's hymn isn't offered once no crossbowmen are left to run after her.

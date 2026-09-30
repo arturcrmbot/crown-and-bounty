@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ALDMOOR } from '../../content/aldmoor';
-import { battleEnd, createBattle } from '../battle/battle';
-import { apply, choose, describe as about, endDay, heroInBattle, locationById, placeOdds, visit, type GameEvent, type GameState } from '../game';
+import { battleEnd, createBattle, type BattleState } from '../battle/battle';
+import { apply, choose, describe as about, endDay, finishFight, heroInBattle, locationById, placeOdds, startFight, visit, type GameEvent, type GameState } from '../game';
 import { withNewPlaces } from '../campaign';
 import { newGame } from '../scenario';
 import { riddenOut } from './sortie';
@@ -107,6 +107,26 @@ describe('Grimsby riding out', () => {
     expect(count(loaded, 'hideout', 'crossbowmen')).toBe(25);
     expect(count(loaded, 'hideout', 'baron')).toBe(1);
     expect(locationById(loaded, 'hideout').enemy!.humbled).toBeUndefined();
+  });
+
+  it('keeps what his band loses when the hero falls back from it, and rides home with whoever is left', () => {
+    const out = endDay(raided()).state;
+    const started = startFight(out, 'grimsby')!.state;
+    const b = started.battle!;
+    // The hero cuts his guard's swordsmen down to 3, and falls back.
+    const fled: BattleState = { ...b, result: 'fled', fighters: b.fighters.map((f) => (f.side === 'enemy' && f.troop === 'swordsmen' ? { ...f, count: 3 } : f)) };
+    const r = finishFight({ ...started, battle: fled });
+    expect(count(r.state, 'grimsby', 'swordsmen')).toBe(3);
+    expect(count(r.state, 'grimsby', 'crossbowmen')).toBe(Math.round(MEN('crossbowmen') * GUARD));
+    expect(count(r.state, 'grimsby', 'baron')).toBe(1);
+    expect(cardLines(r).at(-1)).toBe(`*Baron Grimsby has 3 Swordsmen and ${Math.round(MEN('crossbowmen') * GUARD)} Crossbowmen left.*`);
+    // He can't find the hero, so he goes home, and the 3 go in with him.
+    let s: GameState = { ...r.state, hero: { ...r.state.hero, at: [CASTLE[0], CASTLE[1] + 14] } };
+    for (let i = 0; i < 12 && !band(s)!.done; i++) s = endDay(s).state;
+    expect(band(s)!.done).toBe(true);
+    expect(count(s, 'hideout', 'swordsmen')).toBe(MEN('swordsmen') - Math.round(MEN('swordsmen') * GUARD) + 3);
+    expect(count(s, 'hideout', 'crossbowmen')).toBe(MEN('crossbowmen'));
+    expect(count(s, 'hideout', 'baron')).toBe(1);
   });
 
   it('gives up and goes home, guard and all, when the hero rides off where he can\u2019t follow', () => {
