@@ -157,6 +157,32 @@ your army."*
 - **Leadership he can always grow:** +25 in place of a skill at any level-up (`RALLY`), and 20 for 500 gold from the
   steward at his castle, as often as he can pay (`MUSTER`), on top of the 5 a level, the chests, banners and skill.
 
+## The enemy keeps its losses (30 Sep, evening)
+
+Artur ticked it in #167 and #171. Until now a band, a convoy or a lair was whole again after every fight it held, so each
+try at Grimsby's stockade started from scratch. The Wizard's defeat there killed 69 of its 73 swordsmen and every
+crossbowman, and his next try met all of them again. Now a retreat or a defeat leaves the enemy's losses standing, as in
+HoMM2 (`holding` in `rules/fight.ts`).
+
+- The enemy keeps whoever of it still stands. Those paid to go home or to come over are gone for good.
+- The guard the Baron calls to the field can make up his losses, but never leaves him more men than he had, so a fight
+  never makes him stronger.
+- The lair recruits its 3% a payday from what's left. A sortie's band and a convoy's squad go home with whoever is left
+  of them. A band beaten in the open still straggles home as many as rode into that fight (#131).
+- It softens the wall for a player who loses there, and takes nothing from one who wins. A veteran could wear a lair down
+  with throwaway attacks, but each one costs him his whole army (a defeat) or a quarter of every company (a retreat).
+
+`npm run sim -- 10`, the careful player, before and after. Every run is won both times.
+
+| Days to take Grimsby: median, 90th percentile | Knight | Wizard | Ranger | Courtier |
+| --- | --- | --- | --- | --- |
+| Before | 17, 21 | 12, 16 | 11, 44 | 12, 33 |
+| After | 17, 21 | 12, 16 | 11, 14 | 12, 25 |
+
+The careful player rarely loses a fight, so only the 3 runs of 40 that lost at Grimsby's walls changed. The Ranger's seed
+10 lost there on day VIII with the stockade nearly beaten, and his next army took the 10 men left on day XIV, where
+before it waited until day XLIV. The Courtier's seed 3 took him on day XX, not XXXIII, and seed 9 on day XVIII, not XIX.
+
 ## The approach
 
 1. **A power budget for each commission.** Each commission has a target day for its villain and a reference hero:
