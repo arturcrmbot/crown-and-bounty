@@ -1,4 +1,4 @@
-# King's Commission: the world
+# Crown & Bounty: the world
 
 Broad strokes (29 Sep 2026). The details get settled as each act is built, and they'll change.
 

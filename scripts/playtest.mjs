@@ -1,7 +1,7 @@
 // Plays the opening of a commission through the real UI, like a player, and saves what it sees:
 // numbered screenshots and the text of every card, in screenshots/playtest/. Look at them all.
 //   node scripts/playtest.mjs                      (its own server)
-//   URL=https://arturcrmbot.github.io/kings-commission/ node scripts/playtest.mjs
+//   URL=https://arturcrmbot.github.io/crown-and-bounty/ node scripts/playtest.mjs
 //   BG="Hedge Wizard" SEED=7 node scripts/playtest.mjs
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { openPage, kc as hooks } from './lib/browser.mjs';

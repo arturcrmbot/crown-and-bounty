@@ -3,7 +3,7 @@
 console.log(
   [
     'Deploys run in GitHub Actions now: merge a pull request once CI is green (gh pr merge N --squash) and it is live about three minutes later.',
-    'Watch it with `gh run watch`, or at https://github.com/arturcrmbot/kings-commission/actions',
-    'Live at https://arturcrmbot.github.io/kings-commission/',
+    'Watch it with `gh run watch`, or at https://github.com/arturcrmbot/crown-and-bounty/actions',
+    'Live at https://arturcrmbot.github.io/crown-and-bounty/',
   ].join('\n'),
 );

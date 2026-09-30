@@ -1,4 +1,4 @@
-# King's Commission: balance
+# Crown & Bounty: balance
 
 How every commission becomes a proper challenge. Agreed with Artur on 29 Sep 2026, after he played Aldmoor end to
 end as the Knight. Read with `BRIEF.md` and `PLAN.md`. The numbers were measured on main on 29 Sep, after #82 and #83,

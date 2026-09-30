@@ -1,5 +1,5 @@
 import { Bitmap, blit, SHADOW } from './bitmap';
-import { BAR, MAP_VIEW, paintFrame, SCREEN } from './frame';
+import { BAR, MAP_VIEW, paintFrame, SCREEN, type Rect } from './frame';
 import { fbm, hash, noise, shade } from './noise';
 import { BLUE, DIRT, GOLD, GRASS, INK, LEAF, PARCHMENT, PINE, PLUM, RED, REED, STONE, WOOD } from './palette';
 import { castle, hero, oak, pine } from './sprites';
@@ -10,6 +10,8 @@ const H = MAP_VIEW.height;
 /** Where the far land meets the sky, and the setting sun just above it, in painting pixels. */
 const HORIZON = 262;
 const SUN = { x: 176, y: 226, r: 19 };
+/** How far down the painting the name starts, in painting pixels. */
+const NAME_TOP = 18;
 
 /** Sunset, from the deep blue overhead down to the gold at the horizon. */
 const SKY = [BLUE[0], BLUE[1], BLUE[2], PLUM[2], PLUM[3], PLUM[4], RED[5], RED[6], GOLD[5], GOLD[6]];
@@ -87,6 +89,25 @@ function clouds(top: number, bottom: number, seed: number, cover: number, speed:
     }
   }
   return { top, rows, speed, lit };
+}
+
+/** Sprites one under another, centred, each `overlap` pixels up into the one above, shadows and all. */
+function stack(sprites: Bitmap[], overlap: number): Bitmap {
+  const out = new Bitmap(Math.max(...sprites.map((s) => s.width)), sprites.reduce((h, s) => h + s.height, 0) - overlap * (sprites.length - 1));
+  let y = 0;
+  for (const s of sprites) {
+    const x = Math.round((out.width - s.width) / 2);
+    for (let j = 0; j < s.height; j++) for (let i = 0; i < s.width; i++) if (s.data[j * s.width + i]) out.set(x + i, y + j, s.data[j * s.width + i]);
+    y += s.height - overlap;
+  }
+  return out;
+}
+
+/** A rectangle cut out of a bitmap. */
+function crop(b: Bitmap, { x, y, width, height }: Rect): Bitmap {
+  const out = new Bitmap(width, height);
+  for (let j = 0; j < height; j++) out.data.set(b.data.subarray((y + j) * b.width + x, (y + j) * b.width + x + width), j * width);
+  return out;
 }
 
 /** One row of hills or mountains across the painting: the height of its crest at every column. */
@@ -344,7 +365,8 @@ export class TitleScreen {
     bigTree(set, 26, H + 4, 150, 230, 5);
     bigTree(set, 918, H + 4, 132, 250, 8);
 
-    this.logo = this.paintLogo(textMask('KING\u2019S COMMISSION', 58, 3));
+    // The name, with the first act's title under it in smaller letters.
+    this.logo = stack([this.paintLogo(textMask('CROWN & BOUNTY', 72, 3)), this.paintLogo(textMask('THE OLD KING\u2019S TREASURE', 26, 4))], 4);
     drawText(b, 'A tribute to King\u2019s Bounty (1990) and Heroes of Might and Magic II \u00b7 units from Battle for Wesnoth (GPL, CC BY-SA)', BAR.x + 12, BAR.y + 5, PARCHMENT[6], INK);
     this.base = b;
   }
@@ -375,7 +397,23 @@ export class TitleScreen {
 
   /** The painting at `time` seconds; with `prompt`, a blinking "Click to begin" under the name. */
   draw(time: number, prompt = false, words = 'Click anywhere to begin'): Bitmap {
-    const s = this.screen;
+    return this.paint(this.screen, time, prompt, words);
+  }
+
+  /**
+   * The painting as a phone held upright shows it (`ui/turn.ts`), in two pieces to stack: the name
+   * across the sky, and the castle with the rider on the road below it, both clear of the torn edge.
+   */
+  upright(): { name: Bitmap; land: Bitmap } {
+    const still = this.paint(new Bitmap(SCREEN.width, SCREEN.height), 0, false, '');
+    const left = MAP_VIEW.x + Math.round((W - this.logo.width) / 2);
+    return {
+      name: crop(still, { x: left - 12, y: MAP_VIEW.y + 8, width: this.logo.width + 24, height: NAME_TOP - 8 + this.logo.height + 4 }),
+      land: crop(still, { x: MAP_VIEW.x + 440, y: MAP_VIEW.y + 180, width: 340, height: H - 188 }),
+    };
+  }
+
+  private paint(s: Bitmap, time: number, prompt: boolean, words: string): Bitmap {
     s.data.set(this.base.data);
     // Clouds drift over the sky (never over the land or the name).
     for (const layer of this.layers) {
@@ -413,9 +451,13 @@ export class TitleScreen {
     const rider = this.heroes[Math.floor(time * 3) % 8];
     const at = roadAt(H - 40);
     blit(s, rider, MAP_VIEW.x + Math.round(at.x) - rider.width / 2, MAP_VIEW.y + H - 40 - rider.height + 8);
-    blit(s, this.logo, MAP_VIEW.x + Math.round((W - this.logo.width) / 2), MAP_VIEW.y + 18);
-    if (prompt && Math.floor(time * 1.6) % 2 === 0) drawOutlined(s, words, MAP_VIEW.x + W / 2, MAP_VIEW.y + 104, PARCHMENT[6], INK, 22);
+    blit(s, this.logo, MAP_VIEW.x + Math.round((W - this.logo.width) / 2), MAP_VIEW.y + NAME_TOP);
+    if (prompt && Math.floor(time * 1.6) % 2 === 0) drawOutlined(s, words, MAP_VIEW.x + W / 2, MAP_VIEW.y + NAME_TOP + this.logo.height + 11, PARCHMENT[6], INK, 22);
     blit(s, this.overlay, 0, 0);
     return s;
   }
 }
+
+let painting: TitleScreen | undefined;
+/** The title painting, painted once: the title screen shows it, and so does a phone held upright (`ui/turn.ts`). */
+export const titlePainting = () => (painting ??= new TitleScreen());

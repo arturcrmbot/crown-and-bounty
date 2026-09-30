@@ -12,7 +12,7 @@ file below names the artists its history records.
   [GNU GPL v2 or later](https://www.gnu.org/licenses/old-licenses/gpl-2.0.html). What was added to
   Wesnoth after 30 July 2017 is under [Creative Commons BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)
   (see [Wesnoth:Copyrights](https://wiki.wesnoth.org/Wesnoth:Copyrights)). Each file's licence is
-  listed below. King's Commission itself is GPL-2.0-or-later (`LICENSE`).
+  listed below. Crown & Bounty itself is GPL-2.0-or-later (`LICENSE`).
 - **Unchanged files.** The PNGs are kept exactly as Wesnoth has them, in
   `public/assets/wesnoth/units/`: they are the preferred form for modification. `npm run wesnoth`
   downloads them again from the tag.

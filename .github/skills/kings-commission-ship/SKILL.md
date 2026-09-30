@@ -1,14 +1,14 @@
 ---
 name: kings-commission-ship
 description: >
-  How to improve, playtest and ship King's Commission (the HoMM2-style browser game in this repo).
+  How to improve, playtest and ship Crown & Bounty (the HoMM2-style browser game in this repo).
   Use after ANY change to the game, before telling Artur something is done, and whenever asked to
   playtest, polish, balance or deploy. Covers the playtest-as-an-experienced-gamer method, the
   quality bar Artur set, the test layers, and deploying to GitHub Pages
-  (https://arturcrmbot.github.io/kings-commission/).
+  (https://arturcrmbot.github.io/crown-and-bounty/).
 ---
 
-# Ship King's Commission
+# Ship Crown & Bounty
 
 Artur's rules: **every improvement gets deployed** (27 Sep 2026), and **fast** (28 Sep: "I want to
 just play this, and I'll tell you if something is not working"). Ship small slices as soon as they
