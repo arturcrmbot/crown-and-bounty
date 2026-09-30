@@ -19,7 +19,7 @@ import { CardView } from '../ui/card';
 import { HoverLabel } from '../ui/label';
 import { bitmapUrl } from '../ui/pixels';
 import { play, speak } from '../ui/sound';
-import { ForecastTag, type PageBox } from '../ui/tag';
+import { ForecastTag, type PageBox, type TagSide } from '../ui/tag';
 import { touch } from '../ui/touch';
 import type { Display } from './display';
 import type { Screen, SideButton } from './screen';
@@ -1267,10 +1267,15 @@ export class BattleController implements Screen {
     const box: PageBox = { left: from.x, top: from.y, right: to.x, bottom: to.y };
     const top = this.display.toPage(MAP_VIEW.x, LOG_BOTTOM + 24);
     const end = this.display.toPage(MAP_VIEW.x + MAP_VIEW.width, MAP_VIEW.y + MAP_VIEW.height);
-    // Clear of a blow's way in: on the far side of the stack from the hex it is struck from.
-    const struck = intent.action.type === 'melee' ? hexCentre(intent.action.from)[0] > hexCentre(hex)[0] : false;
+    // Clear of a blow's way in: across the stack from the hex it is struck from, first to the side, then above or below.
+    const sides: TagSide[] = ['right', 'left', 'above', 'below'];
+    if (intent.action.type === 'melee') {
+      const [[fx, fy], [tx, ty]] = [hexCentre(intent.action.from), hexCentre(hex)];
+      const [away, toward] = fx > tx ? (['left', 'right'] as const) : (['right', 'left'] as const);
+      sides.splice(0, 4, away, ...(fy < ty ? (['below', 'above'] as const) : (['above', 'below'] as const)), toward);
+    }
     const hint = this.armed?.hex === hex ? (aim.charge ? 'Tap again to charge.' : SECOND_TAP[intent.kind]) : '';
-    this.tag.show(aim.tag, hint || null, box, struck ? 'left' : 'right', { left: top.x, top: top.y, right: end.x, bottom: end.y });
+    this.tag.show(aim.tag, hint || null, box, sides, { left: top.x, top: top.y, right: end.x, bottom: end.y });
   }
 
   /** A stack's luck and morale, and why, for when you look it over: nothing if it has neither. */
