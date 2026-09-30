@@ -27,6 +27,19 @@ export function loadLettering(patience = 8000): Promise<boolean> {
   return Promise.race([loaded, new Promise<boolean>((resolve) => setTimeout(() => resolve(false), patience))]);
 }
 
+/**
+ * How much bigger the words on the canvas's bars and ribbon are drawn: 1 at a desk, and more by touch, where the
+ * picture shrinks to fit a phone and 13 pixels of type come out at about 9 CSS pixels (#155). `main.ts` sets it.
+ */
+let lettering = 1;
+export function setLettering(scale: number) {
+  lettering = scale;
+}
+/** A size of type as it's drawn now: `size` itself at a desk. */
+export const lettered = (size: number) => (lettering === 1 ? size : Math.round(size * lettering));
+/** Whether the words are drawn bigger, for a phone. */
+export const bigLettering = () => lettering !== 1;
+
 /** Which pixels a line of text covers: the browser renders it once, and every pixel more than half covered counts. */
 export function textMask(text: string, size: number, spacing = 0) {
   const font = `bold ${size}px ${FACE}`;

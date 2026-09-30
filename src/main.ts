@@ -9,14 +9,14 @@ import { loadGame, saveGame, stopSaving } from './game/save';
 import { startCounter } from './game/counter';
 import { SCREEN } from './render/frame';
 import { paletteWords } from './render/palette';
-import { loadLettering } from './render/text';
+import { loadLettering, setLettering } from './render/text';
 import { loadUnitArt } from './render/wesnoth';
 import { toggleMute, wakeAudio } from './audio/context';
 import { MuteButton } from './ui/mute';
 import { MixPanel } from './ui/mix';
 import { Rail } from './ui/rail';
 import { setUiRoom, setUiScale } from './ui/scale';
-import { touch, upright } from './ui/touch';
+import { touch, upright, whenTouchChanges } from './ui/touch';
 import { turnCard } from './ui/turn';
 import { ARTIFACTS, slotsForArtifact, type ArtifactId } from './content/artifacts';
 import { beginCommission, commissionAt, equip, giveArtifact, hasNextCommission, newGame, startFight, CAMPAIGN_LENGTH, type GameState } from './rules/game';
@@ -93,6 +93,10 @@ function debugStart(): GameState {
 const unitArt = loadUnitArt();
 // The lettering comes with the game (#148), and nothing paints a word before it's here.
 await loadLettering();
+// By touch the picture shrinks to fit a phone, so the words on its bars and ribbon are drawn bigger (#155).
+const letter = () => setLettering(touch() ? 1.3 : 1);
+letter();
+whenTouchChanges(letter);
 const display = new Display(SCREEN.width, SCREEN.height);
 // Screens change with a transition, except when frozen (so screenshots catch them settled); ?transitions=1 keeps them.
 const game = new Game(display, Math.max(1, Number(query.get('speed') ?? 1)), !frozen || query.get('transitions') === '1');

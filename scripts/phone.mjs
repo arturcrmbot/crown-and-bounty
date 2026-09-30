@@ -326,6 +326,9 @@ try {
   await look('story');
   await press('Ride out');
   check((await screen()) === 'adventure' && !(await state()).opening, 'then he is on the map');
+  const told = await page.waitForFunction(() => document.querySelector('.kc-card-wrap:not([hidden]) h3')?.textContent === 'Getting about', null, { timeout: 8000 }).then(() => true, () => false);
+  await look('getting-about');
+  check(told && (await lines()).includes('Tap anything to see what it is, and tap it again to ride there.') && (await press('Ride on')), 'the first time the map opens, a card says how to get about by touch');
   await wait(300);
   await look('map');
 

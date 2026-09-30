@@ -13,7 +13,7 @@ import { BAR, MAP_VIEW, paintBarBackground, paintFrame, SCREEN, type Rect } from
 import { bayer, hash, noise, shade } from './noise';
 import { BLUE, CYCLE_BOG, DANGER_LUT, EARTH, GOLD, GRASS, INK, LEAF, LIGHT_LUT, NEUTRAL, PARCHMENT, PLUM, RED, REED, SHADOW_LUT, STONE, WOOD } from './palette';
 import { boulder, oak, pine, willow } from './sprites';
-import { drawText, textMask } from './text';
+import { bigLettering, drawText, lettered, textMask } from './text';
 
 /** The King's blue with his gold star, over Aldric's side. */
 const ROYAL: Standard = { cloth: [BLUE[1], BLUE[2], BLUE[3], BLUE[4]], emblem: 'star' };
@@ -513,16 +513,19 @@ export class BattleScreen {
   /** A stack's count on its hex. */
   private badge(cx: number, y: number, count: number, player: boolean) {
     const text = String(count);
-    const w = text.length * 7 + 7;
+    // By touch the count is bigger, and its badge with it, from the same top.
+    const size = lettered(11);
+    const w = bigLettering() ? textMask(text, size).width + 6 : text.length * 7 + 7;
+    const h = size + 2;
     const x = cx - Math.floor(w / 2);
     const fill = player ? BLUE[2] : RED[2];
-    for (let j = 0; j < 13; j++) {
+    for (let j = 0; j < h; j++) {
       for (let i = 0; i < w; i++) {
-        const edge = i === 0 || j === 0 || i === w - 1 || j === 12;
+        const edge = i === 0 || j === 0 || i === w - 1 || j === h - 1;
         this.screen.set(x + i, y + j, edge ? GOLD[3] : fill);
       }
     }
-    drawText(this.screen, text, x + 3, y - 2, NEUTRAL[7], INK, 11);
+    drawText(this.screen, text, x + 3, y - 2, NEUTRAL[7], INK, size);
   }
 
   /** The next turns, as small versions of the figures on the field. */
@@ -530,10 +533,13 @@ export class BattleScreen {
     const next = b.result ? [] : upcomingFighters(b);
     if (!next.length) return;
     const { screen } = this;
-    const labelWidth = 34;
-    const cellWidth = 38;
+    const big = bigLettering();
+    const size = lettered(9);
+    const labelWidth = big ? 46 : 34;
+    const cellWidth = big ? 48 : 38;
     const width = labelWidth + next.length * cellWidth + 6;
-    const height = 20;
+    const height = big ? 24 : 20;
+    const words = big ? 4 : 5;
     const x0 = MAP_VIEW.x + Math.floor((MAP_VIEW.width - width) / 2);
     const y0 = LOG_BOTTOM + 2;
     screen.fill(x0, y0, width, height, WOOD[1]);
@@ -545,7 +551,7 @@ export class BattleScreen {
       screen.set(x0, y, GOLD[4]);
       screen.set(x0 + width - 1, y, INK);
     }
-    drawText(screen, 'NEXT', x0 + 4, y0 + 5, GOLD[6], INK, 9);
+    drawText(screen, 'NEXT', x0 + 4, y0 + words, GOLD[6], INK, size);
 
     next.forEach((fighter, i) => {
       const x = x0 + labelWidth + i * cellWidth;
@@ -565,7 +571,7 @@ export class BattleScreen {
       if (leader) this.smallRing(iconX + Math.floor(icon.width / 2), y0 + height / 2, fighter.side === 'player');
       blit(screen, icon, iconX, iconY);
       if (!leader) {
-        drawText(screen, String(fighter.count), x + 20, y0 + 5, PARCHMENT[6], INK, 9);
+        drawText(screen, String(fighter.count), x + 20, y0 + words, PARCHMENT[6], INK, size);
       }
     });
   }
@@ -734,33 +740,46 @@ export class BattleScreen {
   private bar(b: BattleState, view: BattleView) {
     const { screen } = this;
     paintBarBackground(screen);
-    const text = BAR.y + 5;
+    const big = bigLettering();
+    const text = BAR.y + 5 - Math.floor((lettered(13) - 13) / 2);
     const shownId = view.inspect ?? view.active;
     const countOf = (x: { id: number; count: number }) => view.counts.get(x.id) ?? x.count;
     const f = shownId === null ? null : b.fighters.find((x) => x.id === shownId && countOf(x) > 0);
-    if (view.targeting) drawText(screen, `Cast ${SPELLS[view.targeting as SpellId]?.name ?? view.targeting}: ${view.touch ? 'tap a target, or Cancel' : 'pick a target (Esc to cancel)'}`, BAR.x + 12, text, GOLD[6], INK);
+    if (view.targeting) drawText(screen, `Cast ${SPELLS[view.targeting as SpellId]?.name ?? view.targeting}: ${view.touch ? 'tap a target, or Cancel' : 'pick a target (Esc to cancel)'}`, BAR.x + 12, text, GOLD[6], INK, lettered(13));
     else if (f) {
       const t = unitOf(f);
       const share = (x: number) => `${x > 0 ? '+' : '\u2212'}${Math.round(Math.abs(x) * 100)}%`;
       const [luck, morale] = [luckOf(b, f), moraleOf(b, f)];
-      const spirits = `${Math.round(luck * 100) ? ` Luck ${share(luck)}` : ''}${Math.round(morale * 100) ? ` Morale ${share(morale)}` : ''}`;
-      const tags = [spirits, ...abilitiesOf(f.troop).map((a) => ` ${a.name}`), ...f.status.filter((s) => s !== 'hasted').map((s) => ` ${STATUSES[s].name}`), f.defending ? ' Defending' : ''].join('');
+      const spirits = [Math.round(luck * 100) ? `Luck ${share(luck)}` : '', Math.round(morale * 100) ? `Morale ${share(morale)}` : ''];
+      const named = [...spirits, ...abilitiesOf(f.troop).map((a) => a.name), ...f.status.filter((s) => s !== 'hasted').map((s) => STATUSES[s].name), f.defending ? 'Defending' : ''].filter(Boolean);
+      const tagged = (list: string[]) => list.map((tag) => ` ${tag}`).join('');
+      const tags = tagged(named);
       const { attack, defence } = statsOf(b, f);
       const count = countOf(f);
       // A named foe is one of a kind: "Baron Grimsby", not "1 Baron Grimsby".
       const who = t.name === t.one ? t.name : `${count} ${count === 1 ? t.one : t.name}`;
       // Nothing reaches a leader, so he has no defence or health to speak of, only his own blows, if he strikes at all.
       const blows = isLeader(f) && !f.shots && !abilitiesOf(f.troop).some((a) => a.rides) ? '' : ` Att ${attack}${isLeader(f) ? '' : ` Def ${defence}`} Dmg ${t.damage[0]}-${t.damage[1]}`;
-      const info = `${who}  ·${blows}${isLeader(f) ? '' : ` HP ${view.health.get(f.id) ?? f.hp}/${t.hp}`}${hasTurn(f) ? ` Spd ${speedOf(f)}` : ''}${f.shots ? ` Shots ${f.shots}` : ''}${tags}`;
+      const numbers = `${who}  ·${blows}${isLeader(f) ? '' : ` HP ${view.health.get(f.id) ?? f.hp}/${t.hp}`}${hasTurn(f) ? ` Spd ${speedOf(f)}` : ''}${f.shots ? ` Shots ${f.shots}` : ''}`;
+      let info = `${numbers}${tags}`;
       // A long line gets smaller type rather than running into the mana.
-      const room = BUTTONS[0].rect.x - 70 - 8 - (BAR.x + 12);
-      let size = 13;
-      while (size > 10 && textMask(info, size).width > room) size--;
-      drawText(screen, info, BAR.x + 12, text + Math.floor((13 - size) / 2), f.side === 'player' ? PARCHMENT[6] : RED[6], INK, size);
+      const room = BUTTONS[0].rect.x - lettered(70) - 8 - (BAR.x + 12);
+      const top = lettered(13);
+      let size = top;
+      while (size > lettered(big ? 12 : 10) && textMask(info, size).width > room) size--;
+      // By touch the type stays big enough to read, so the line's last tags go instead: the stack's card has them all.
+      if (big) {
+        const kept = [...named];
+        while (kept.length && textMask(info, size).width > room) {
+          kept.pop();
+          info = `${numbers}${tagged(kept)}`;
+        }
+      }
+      drawText(screen, info, BAR.x + 12, text + Math.floor((top - size) / 2), f.side === 'player' ? PARCHMENT[6] : RED[6], INK, size);
     }
     // A villain's mana while you look at him; your own otherwise.
     const mana = f?.book ? `Mana ${f.book.mana}` : `Mana ${b.hero.mana}`;
-    drawText(screen, mana, BUTTONS[0].rect.x - 70, text, f?.book ? RED[6] : BLUE[6], INK);
+    drawText(screen, mana, BUTTONS[0].rect.x - lettered(70), text, f?.book ? RED[6] : BLUE[6], INK, lettered(13));
     for (const button of BUTTONS) {
       const { x, y, width, height } = button.rect;
       const disabled = button.id === 'spells' && !Object.values(SPELLS).some((s) => canCast(b, s.id));
@@ -771,7 +790,9 @@ export class BattleScreen {
           screen.set(x + i, y + j, edge >= 0 ? edge : shade(STONE, 0.42 - j * 0.01 + (noise((x + i) / 4, (y + j) / 4, 41) - 0.5) * 0.2, x + i, y + j));
         }
       }
-      drawText(screen, label, x + Math.round(width / 2 - label.length * 3.4), y + 1, disabled ? STONE[4] : PARCHMENT[6], INK, 12);
+      const size = lettered(12);
+      const left = big ? Math.round(width / 2 - textMask(label, size).width / 2) : Math.round(width / 2 - label.length * 3.4);
+      drawText(screen, label, x + left, y + 1 - Math.floor((size - 12) / 2), disabled ? STONE[4] : PARCHMENT[6], INK, size);
     }
   }
 
@@ -782,16 +803,20 @@ export class BattleScreen {
   private logLine(text: string) {
     if (!text) return;
     const y0 = LOG_TOP;
-    const [left, right] = [MAP_VIEW.x + 150, MAP_VIEW.x + MAP_VIEW.width - 150];
-    for (let y = y0; y < LOG_BOTTOM; y++) for (let x = left; x < right; x++) this.screen.set(x, y, SHADOW_LUT[SHADOW_LUT[this.screen.get(x, y)]]);
-    let size = 13;
-    while (size > 11 && textMask(text, size).width > right - left) size--;
+    const big = bigLettering();
+    // By touch the type is bigger, so the strip is wider and a little deeper.
+    const [left, right] = big ? [MAP_VIEW.x + 60, MAP_VIEW.x + MAP_VIEW.width - 60] : [MAP_VIEW.x + 150, MAP_VIEW.x + MAP_VIEW.width - 150];
+    for (let y = y0 - (big ? 3 : 0); y < LOG_BOTTOM + (big ? 2 : 0); y++) for (let x = left; x < right; x++) this.screen.set(x, y, SHADOW_LUT[SHADOW_LUT[this.screen.get(x, y)]]);
+    const top = lettered(13);
+    let size = top;
+    while (size > lettered(big ? 12 : 11) && textMask(text, size).width > right - left) size--;
     while (textMask(text, size).width > right - left) {
       const end = text.slice(0, -1).search(/[.!?][^.!?]*$/);
       if (end <= 0) break;
       text = text.slice(0, end + 1);
     }
-    drawText(this.screen, text, Math.round(MAP_VIEW.x + MAP_VIEW.width / 2 - (text.length * 3.3 * size) / 13), y0 - 1 + Math.floor((13 - size) / 2), PARCHMENT[6], INK, size);
+    const across = big ? textMask(text, size).width / 2 : (text.length * 3.3 * size) / 13;
+    drawText(this.screen, text, Math.round(MAP_VIEW.x + MAP_VIEW.width / 2 - across), y0 - 1 + Math.floor((13 - size) / 2), PARCHMENT[6], INK, size);
   }
 }
 

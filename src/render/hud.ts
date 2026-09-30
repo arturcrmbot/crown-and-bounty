@@ -3,7 +3,7 @@ import type { BarItem } from '../rules/heroSheet';
 import { Bitmap, blit } from './bitmap';
 import { BAR, paintBarBackground } from './frame';
 import { BLUE, GOLD, INK, NEUTRAL, PARCHMENT, RED, STONE, WOOD } from './palette';
-import { drawText, textMask } from './text';
+import { drawText, lettered, textMask } from './text';
 
 function icon(rows: string[], colours: Record<string, number>): Bitmap {
   const sprite = new Bitmap(rows[0].length, rows.length);
@@ -108,7 +108,8 @@ const button = (item: BarItem) => item.kind === 'hourglass' || item.kind === 'jo
 export function paintHud(frame: Bitmap, state: GameState, hover: BarItem | null = null): HudHit[] {
   paintBarBackground(frame, HUD_DIVIDERS);
   const hits: HudHit[] = [];
-  const text = BAR.y + 5;
+  const size = lettered(13);
+  const text = BAR.y + 5 - Math.floor((size - 13) / 2);
   const mid = BAR.y + BAR.height / 2;
   /** Draws an icon and its number in a column `width` wide from `x`. */
   const item = (what: BarItem, x: number, width: number, sprite: Bitmap | null, label: string, color = PARCHMENT[6]) => {
@@ -117,7 +118,7 @@ export function paintHud(frame: Bitmap, state: GameState, hover: BarItem | null 
       blit(frame, sprite, at, Math.round(mid - sprite.height / 2));
       at += sprite.width + 5;
     }
-    at += drawText(frame, label, at, text, color, INK);
+    at += drawText(frame, label, at, text, color, INK, size);
     hits.push({ item: what, x0: x - 5, x1: Math.max(at, x + width - 12) + 5 });
   };
   const left = BAR.x + 14;
@@ -126,7 +127,7 @@ export function paintHud(frame: Bitmap, state: GameState, hover: BarItem | null 
   // The villain's name, without "Bounty:" when a long one needs the room.
   const villain = commissionOf(state).villain.toUpperCase();
   const room = HUD_DIVIDERS[1] - HUD_DIVIDERS[0] - 28;
-  const bounty = state.bounty === 'paid' ? 'BOUNTY PAID' : textMask(`BOUNTY:  ${villain}`, 13).width <= room ? `BOUNTY:  ${villain}` : villain;
+  const bounty = state.bounty === 'paid' ? 'BOUNTY PAID' : textMask(`BOUNTY:  ${villain}`, size).width <= room ? `BOUNTY:  ${villain}` : villain;
   item({ kind: 'bounty' }, BAR.x + HUD_DIVIDERS[0] + 16, 0, null, bounty, state.bounty === 'paid' ? GOLD[6] : GOLD[5]);
   const right = BAR.x + HUD_DIVIDERS[1] + 14;
   item({ kind: 'movement' }, right, 50, HORSESHOE, String(Math.floor(state.movement)), state.movement < 2 ? RED[5] : PARCHMENT[6]);

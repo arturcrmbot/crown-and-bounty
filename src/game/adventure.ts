@@ -360,6 +360,13 @@ export class AdventureController implements Screen {
     this.handle(events);
   }
 
+  /** The first time the map opens, how to get about on it (#155). It waits for the province's name to cross the sky. */
+  welcome() {
+    const line = touch() ? 'Tap anything to see what it is, and tap it again to ride there.' : 'Click anything to see what it is, and click it again to ride there.';
+    const taught = this.teach({ state: this.state, events: [] }, 'map', line, { title: 'Getting about', choices: [{ label: 'Ride on', action: { type: 'close' } }] });
+    if (taught.events.length) this.run(taught);
+  }
+
   /** Back from a save: a hero who stood at an enemy (its fight card up, as like as not) faces it again. */
   resumeFacing() {
     if (this.state.over || this.state.opening || this.state.ambush || this.state.battle) return;

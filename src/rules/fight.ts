@@ -146,24 +146,27 @@ export function lossesLine(before: Army, after: Army): string {
   return lost.length ? `You lost ${listed(lost)}.` : 'Nobody on your side so much as stubbed a toe.';
 }
 
-/** The likely cost of a fight, using the same fixed trials as the sergeants' odds. */
-export function likelyLossesLine(state: GameState, id: string, samples = SAMPLES): string {
+/**
+ * The likely cost of a fight, using the same fixed trials as the sergeants' odds: what the fights
+ * they win cost ("about 19 Swordsmen and 6 Archers", "about a third of your army, the
+ * Swordsmen first"), or null when they bring everyone home. With no win among the trials, `cost` is
+ * what the lost ones cost, which is everyone. `places/enemy.ts` puts it in words beside the verdict.
+ */
+export function expectedLosses(state: GameState, id: string, samples = SAMPLES): { cost: string | null } | null {
   const place = locationById(state, id);
-  if (!place.enemy || !state.army.length) return '';
+  if (!place.enemy || !state.army.length) return null;
   const estimate = simulateFight(state, place, place.enemy.army, samples);
   const losses = estimate.losses.filter((stack) => stack.count > 0).sort((a, b) => b.count - a.count);
-  if (!losses.length) return '*The sergeants expect to bring everyone home.*';
-  if (heroStats(state).counts) {
-    return `*The sergeants expect to lose about ${listed(losses.map((stack) => troops(stack.troop, stack.count)))}.*`;
-  }
+  if (!losses.length) return { cost: null };
+  if (heroStats(state).counts) return { cost: `about ${listed(losses.map((stack) => troops(stack.troop, stack.count)))}` };
   const lost = losses.reduce((sum, stack) => sum + stack.count, 0);
   const army = state.army.reduce((sum, stack) => sum + stack.count, 0);
   const share = lost / army;
-  if (share < 0.1) return `*The sergeants expect to lose ${listed(losses.map((stack) => crowd(stack.troop, stack.count)))}.*`;
+  if (share < 0.1) return { cost: listed(losses.map((stack) => crowd(stack.troop, stack.count))) };
   const amount = share < 0.3 ? 'about a fifth' : share < 0.45 ? 'about a third' : share < 0.65 ? 'about half' : share < 0.9 ? 'most' : 'nearly all';
   const first = losses.slice(0, 2).map((stack) => TROOPS[stack.troop].name);
   const order = first.length === 1 ? `the ${first[0]} first` : `the ${first[0]} first and then the ${first[1]}`;
-  return `*The sergeants expect to lose ${amount} of your army, ${order}.*`;
+  return { cost: `${amount} of your army, ${order}` };
 }
 
 function fallen(battle: BattleState, side: Side): Army {

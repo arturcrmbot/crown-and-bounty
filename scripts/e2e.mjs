@@ -147,6 +147,8 @@ try {
   check(start.hero.background === 'knight' && start.army[0].troop === 'knights', 'the knight rides out with his knights');
   await kc.choose('Ride out');
   check((await screen()) === 'adventure' && !(await kc.state()).opening, 'then he is on the map, his choice made');
+  const told = await page.waitForFunction(() => document.querySelector('.kc-card-wrap:not([hidden]) h3')?.textContent === 'Getting about', null, { timeout: 8000 }).then(() => true, () => false);
+  check(told && (await kc.lines()).includes('click it again to ride there') && (await kc.choose('Ride on')), 'the first time the map opens, a card says how to get about');
   const edge = await kc.state();
   check(edge.hero.at[0] > edge.world.width - 200 && edge.hero.facing === -1, 'he starts at the east edge of Aldmoor, on the King\u2019s road, looking into the land');
 

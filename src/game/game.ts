@@ -243,6 +243,7 @@ export class Game {
       if (this.stack[0] !== adventure) return;
       adventure.announce();
       adventure.play(rest);
+      if (!rest.some((event) => event.type === 'card')) adventure.welcome();
     });
   }
 
