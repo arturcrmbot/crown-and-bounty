@@ -30,6 +30,7 @@ import type { Screen, SideButton } from './screen';
 import { touch } from '../ui/touch';
 import { backgroundCard, endCard, keysCard, storyCard } from './intro';
 import { clearSave, keepMinimap, minimapWanted, saveGame } from './save';
+import { countEvents } from './counter';
 import { Walks } from './walks';
 import { tiredResult } from './adventureCards';
 import { doorsOf, hiddenShare, HIDES, reachOf, type Reach } from './doors';
@@ -366,6 +367,7 @@ export class AdventureController implements Screen {
   }
 
   private handle(events: GameEvent[]) {
+    countEvents(this.state, events);
     for (const [i, e] of events.entries()) {
       switch (e.type) {
         case 'court':

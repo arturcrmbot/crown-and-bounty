@@ -486,3 +486,9 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   picture cropped from the title painting by `npm run linkpreview` (`public/link-preview.png`). The name is in the
   page's title and the preview's (`index.html`), and on the painting, and the site's address only in `og:image`, so a
   rename or a move (#147) changes those and re-runs `npm run linkpreview`.
+- **A visitor counter (30 Sep, #157):** to see how many people come from LinkedIn and how far they get, the live site
+  counts with GoatCounter, which sets no cookies: the page view, then a new campaign, the hero chosen, the first battle
+  won and lost, days 5, 10 and 20, Grimsby taken and the closing card, each once a visit. Nothing personal is sent (no
+  save, no IDs, no names), and GoatCounter tells a phone from a desktop by the screen's size. Its script loads a second
+  after the first frame, pinned to a version by its hash, and only main's build has the site code (the repository
+  variable `GOATCOUNTER_CODE`), so nothing else counts.
