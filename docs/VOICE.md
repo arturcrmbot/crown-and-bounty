@@ -11,7 +11,7 @@ before writing a card. Take their rhythm and plainness rather than their words.
 1. **Speak to the player.** The narrator says "you", in the present tense. "You come upon a crooked cottage." "You find
    **500 gold**."
 2. **Say what you see, then what happens, then what you get.** The reward comes last, plainly, in bold: "Among the
-   spoils you find **Grimsby’s Carving Knife**."
+   spoils is **Grimsby’s Carving Knife**."
 3. **Write full sentences.** Every sentence has someone doing something. No captions ("An old tower, long empty."), no
    tags ("+20 leadership."), and no clipped phrases ("Moth-eaten, much loved.").
 4. **No colons, dashes or semicolons in the narration.** Join the thought with "and", "so", "but", "because" or

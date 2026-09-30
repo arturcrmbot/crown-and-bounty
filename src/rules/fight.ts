@@ -260,7 +260,7 @@ export function beat(state: GameState, id: string, how: { title: string; lines: 
   const decisions = [...(how.choices ?? [])];
   if (place.artifact) {
     next = giveArtifact(next, place.artifact as ArtifactId);
-    spoils.push(`Among the spoils you find ${artifactPhrase(place.artifact as ArtifactId)}. ${foundNote(next, place.artifact as ArtifactId)}`);
+    spoils.push(`Among the spoils is ${artifactPhrase(place.artifact as ArtifactId)}. ${foundNote(next, place.artifact as ArtifactId)}`);
     decisions.push(...artifactChoices(next, place.artifact as ArtifactId));
   }
   if (place.enemy?.spoils) {

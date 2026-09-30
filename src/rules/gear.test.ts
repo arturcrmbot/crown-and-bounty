@@ -52,7 +52,8 @@ describe('sets', () => {
   it('say how far along a set is, and when it is complete', () => {
     const one = wearing(['carvingKnife']);
     expect(setLine(one, 'carvingKnife')).toBe('*You are wearing 1 of the 3.*');
-    expect(ARTIFACTS.carvingKnife.note).toContain('Grimsby\u2019s Regalia');
+    // Each piece says what the set does, and the set gives its name once it is complete.
+    expect(ARTIFACTS.carvingKnife.note).toContain('Wear it with his feather and hat, and his men start every battle slowed.');
     expect(setLine(wearing(['carvingKnife', 'goldenFeather', 'grimsbysHat']), 'grimsbysHat')).toContain('Grimsby\u2019s Regalia is complete!');
     expect(setLine(one, 'swordOfAldmoor')).toBe('');
     for (const set of Object.values(SETS)) expect(piecesOf(set.id).length).toBeGreaterThanOrEqual(3);
