@@ -26,7 +26,7 @@ work; GitHub Actions does the long checks. Fix what a player would hate.
    `sim:boss`, `difficulty`, `test:bot`) are only for a change that moves balance, with at most 10
    seeds a background (`npm run sim -- 10`; the default is 30). A UI, content or bug change skips
    them. CI checks the pull request again: the unit tests, the build, the bot's whole commissions
-   (which catch a regression), and the play-through with a playtest per background.
+   (which catch a regression, and run only when the rules or the content change), and the play-through, by mouse and by touch. The playtest per background runs on main.
 3. **Playtest** only what a test can't judge (how a new screen looks, how a fight feels), quickly.
    Artur playtests and reports; his findings become GitHub Issues.
 4. **Ship** through a pull request, never a push to main. Commit with the Co-authored-by trailer, and

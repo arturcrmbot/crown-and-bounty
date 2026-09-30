@@ -1,5 +1,6 @@
 # Every pull request gets typecheck, the build and the fast unit tests, the bot playing whole
-# commissions, and the play-through (by mouse, and by touch on a phone) with a playtest per background: the three checks main's ruleset
+# commissions (only when it changes src/rules or src/content), and the play-through (by mouse, and by
+# touch on a phone); the playtest per background runs on main only. These are the three checks main's ruleset
 # requires, and the session that opened the PR squash-merges it once they're green. Main, on a push
 # (a merge) or a dispatch, gets typecheck, the build and the fast unit tests, which gate the deploy to
 # GitHub Pages, then the play-through and the balance report. The visual scenes only run by hand
@@ -98,12 +99,28 @@ jobs:
       cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # Only a change to the rules or the content can change how the bot plays: a UI, art, sound or
+      # docs change skips the run (8 minutes), and the check still passes (Artur, 30 Sep).
+      - name: Does this change touch the rules or the content?
+        id: touches
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ] || git diff --name-only "origin/${{ github.base_ref }}...HEAD" | grep -qE '^(src/rules/|src/content/|package-lock\.json)'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "No change to src/rules or src/content: the bot's whole commissions are skipped." >> "$GITHUB_STEP_SUMMARY"
+          fi
       - uses: actions/setup-node@v4
+        if: steps.touches.outputs.run == 'true'
         with:
           node-version: 20
           cache: npm
       - run: npm ci
+        if: steps.touches.outputs.run == 'true'
       - run: npm run test:bot
+        if: steps.touches.outputs.run == 'true'
 
   play:
     name: Play-through and playtests
@@ -134,7 +151,8 @@ jobs:
         # The opening, the rails, a fight by hand and the hero screen, by touch; the whole commission is `npm run phone`, locally.
         run: QUICK=1 npm run phone 2>&1 | tee phone.txt
       - name: Playtest the opening with each background
-        if: always()
+        # A report, never a failure: on main only, so a pull request's check takes minutes less.
+        if: always() && github.event_name != 'pull_request'
         run: |
           for bg in "Knight of the Realm" "Hedge Wizard" "Ranger of the Greenwood" "Courtier"; do
             slug=$(echo "$bg" | cut -d' ' -f1 | tr 'A-Z' 'a-z')
@@ -154,7 +172,7 @@ jobs:
             grep -E "^(ok|FAIL)" phone.txt | tail -80 || true
             echo '```'
             echo "### Playtests"
-            for f in playtest-*.txt; do echo "- **${f#playtest-}**: $(tail -1 "$f")"; done
+            for f in playtest-*.txt; do [ -e "$f" ] || continue; echo "- **${f#playtest-}**: $(tail -1 "$f")"; done
           } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         if: always()

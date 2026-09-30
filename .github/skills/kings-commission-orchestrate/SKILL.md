@@ -30,10 +30,12 @@ session builds and ships by `.github/skills/kings-commission-ship/SKILL.md`.
 ## The flow
 
 1. **An issue** says what and why, with a "Done when" (the Feature form has one; give a bug one too).
-2. **One local session per issue**, each in its own worktree, on Claude Opus 5.5 at max reasoning with
-   long context: `create_session` with `base_branch` unset, and a kickoff (see Kickoff prompts) with
-   `model: "claude-opus-5.5"`, `reasoning_effort: "max"`, `context_tier: "long_context"` and
-   `mode: "autopilot"`.
+2. **One local session per issue**, each in its own worktree, on Claude Opus 5.5 with long context:
+   `create_session` with `base_branch` unset, and a kickoff (see Kickoff prompts) with
+   `model: "claude-opus-5.5"`, `context_tier: "long_context"` and `mode: "autopilot"`. Set
+   `reasoning_effort: "max"` for big features, new systems and balance, and `"high"` for small fixes
+   (a cursor, a font, words, a bug, a CI tweak). On 30 Sep small fixes at max took 40 minutes, where
+   10 would have done.
 3. **Cheap local checks**: the ship skill's Check step.
 4. **A PR** with `Fixes #N` (or `Part of #N`).
 5. **CI's three jobs green** ("Typecheck, unit tests, build", "The bot plays whole commissions",
