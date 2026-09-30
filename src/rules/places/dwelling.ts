@@ -107,7 +107,9 @@ function armouryCard(state: GameState, place: Location, before: string[] = [], d
       ...wares.map((w) => {
         const price = ARTIFACTS[w].price ?? 0;
         const short = price - state.gold;
-        return { ...option(place, `Buy ${ARTIFACTS[w].name} (${coins(price)} gold)`, `buy:${w}`, short > 0), detail: `${ARTIFACTS[w].note}${short > 0 ? ` You\u2019re ${coins(short)} gold short.` : ''}` };
+        // "Buy a Scout's Spyglass", not "Buy A Scout's Spyglass".
+        const name = ARTIFACTS[w].name.replace(/^A /, 'a ');
+        return { ...option(place, `Buy ${name} (${coins(price)} gold)`, `buy:${w}`, short > 0), detail: `${ARTIFACTS[w].note}${short > 0 ? ` You\u2019re ${coins(short)} gold short.` : ''}` };
       }),
       ...(state.hero.pack.length ? [option(place, 'Sell him your spares', 'spares')] : []),
       ...(decisions.length ? [] : [close]),

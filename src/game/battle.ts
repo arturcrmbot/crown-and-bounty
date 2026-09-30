@@ -1321,7 +1321,9 @@ export class BattleController implements Screen {
       const ours = caught.filter((c) => c.side === 'player').map((c) => TROOPS[c.troop].name.toLowerCase());
       const theirs = caught.length - ours.length;
       const more = [theirs ? `${theirs} more of theirs` : '', ours.length ? `your own ${listed(ours)}!` : ''].filter(Boolean).join(', and ');
-      return `${SPELLS[action.spell].name}: ${damage} damage, ${perish(wound(target, damage).killed)} of ${whom}.${more ? ` It also hits ${more}` : ''}`;
+      const killed = wound(target, damage).killed;
+      const fell = killed ? `${killed} of ${whom} ${killed === 1 ? 'perishes' : 'perish'}` : `none of ${whom} perish`;
+      return `${SPELLS[action.spell].name}: ${damage} damage, and ${fell}.${more ? ` It also hits ${more}` : ''}`;
     }
     if (action.type !== 'melee' && action.type !== 'shoot') return null;
     // The rules' own reckoning, first strikes and all: the tag by the pointer says the same.
@@ -1361,7 +1363,7 @@ export class BattleController implements Screen {
       this.finishState = this.battle;
       const acting = activeFighter(this.battle);
       const estimate = acting?.side === 'player' && !this.battle.volley ? finishEstimate(this.battle) : null;
-      const costs = estimate?.losses.map(({ troop, count }) => `~${count} ${TROOPS[troop].name}`);
+      const costs = estimate?.losses.map(({ troop, count }) => `~${troops(troop, count)}`);
       this.finishLine = estimate
         ? `Finish it? The sergeants take over, and you\u2019d likely lose ${costs!.length ? listed(costs!) : 'nobody'}.`
         : null;

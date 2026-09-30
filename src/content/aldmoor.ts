@@ -690,7 +690,7 @@ export const ALDMOOR: Province = {
               label: 'Open the hall',
               effects: { flags: { huntsmen: true }, recruits: { troop: 'huntsmen', count: HUNTSMEN, restock: 0 }, xp: 100 },
               lines: [
-                'Inside there is dust, antlers, and the old King\u2019s chair by the cold hearth. By evening the fires are lit, and grey, lean men are at the door. *The old King\u2019s huntsmen have come home.*',
+                'Inside there is dust, and the long table where his huntsmen used to eat. By evening the fires are lit, and grey, lean men are at the door. *The old King\u2019s huntsmen have come home.*',
                 '*"Grimsby gave our job to Rook,"* says the eldest. *"We\u2019d like a word with him. We\u2019ll come with you for nothing, sir, if you\u2019re going his way."*',
               ],
             },
@@ -821,7 +821,7 @@ export const ALDMOOR: Province = {
         lines: ['Grimsby\u2019s men wear goose feathers in their helmets. They hold the old bridge, and they are not in a hurry.'],
         army: [{ troop: 'swordsmen', count: PATROL.swordsmen }, { troop: 'crossbowmen', count: PATROL.crossbowmen }],
         reward: 500,
-        threat: 'They level their spears.',
+        threat: 'They draw their swords.',
         parleys: [
           {
             id: 'bribe',

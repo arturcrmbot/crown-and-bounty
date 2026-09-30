@@ -124,6 +124,16 @@ describe('Aldric behind the line', () => {
     expect(canCast(court, 'bless')).toBe(true);
   });
 
+  it('counts the quarter lost on the way back from a retreat among the fallen', () => {
+    const state = hero('knight');
+    const b = battleOf(state, 'patrol');
+    const fled = finishFight({ ...state, battle: { ...b, result: 'fled' } }).events.find((e) => e.type === 'card');
+    const card = fled?.type === 'card' ? fled.card : null;
+    expect(card?.title).toBe('Retreat!');
+    // Nobody fell on the field, but a quarter of each company, rounded up, is lost on the way.
+    expect(card?.battleResult?.player).toEqual(state.army.map((s) => ({ troop: s.troop, count: Math.ceil(s.count * 0.25) })));
+  });
+
   it('ends when a side\u2019s troops are gone: Aldric retreats, and a villain is taken, on the field and the card alike', () => {
     // His last stack falls while he still stands behind the line: the battle is lost, and he retreats.
     const state = hero('knight');
