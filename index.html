@@ -10,6 +10,15 @@
     <meta name="apple-mobile-web-app-title" content="Crown &amp; Bounty" />
     <meta name="theme-color" content="#000000" />
     <link rel="manifest" href="manifest.webmanifest" />
+    <!-- The crown, drawn in code (src/render/icon.ts, npm run icons): the tab's icon and the home screen's. -->
+    <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="icon-16.png" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <!-- The lettering, the same on every device (src/render/text.ts): it loads with the page, and the game waits for it. -->
+    <link rel="preload" href="assets/fonts/bounty-serif-regular.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="assets/fonts/bounty-serif-bold.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="assets/fonts/bounty-serif-italic.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="assets/fonts/bounty-serif-bold-italic.woff2" as="font" type="font/woff2" crossorigin />
     <title>Crown &amp; Bounty</title>
     <meta name="description" content="Baron Grimsby has stolen the King&apos;s goose, and the King wants it back. Hire an army, find the Baron&apos;s hideout and beat his men in battle. It plays like a 90s classic you never got to play, and it&apos;s free in your browser." />
     <!-- The link preview, on LinkedIn and elsewhere. Its picture is the title painting, made by npm run linkpreview. -->
@@ -24,7 +33,6 @@
     <meta property="og:image:alt" content="Crown &amp; Bounty, The Old King&apos;s Treasure. A knight rides out at sunset towards the King&apos;s castle." />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:description" content="Baron Grimsby has stolen the King&apos;s goose, and the King wants it back. Hire an army, find the Baron&apos;s hideout and beat his men in battle. It plays like a 90s classic you never got to play, and it&apos;s free in your browser." />
-    <link rel="icon" href="data:," />
     <style>
       html,
       body {

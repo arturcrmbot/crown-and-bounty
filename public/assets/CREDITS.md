@@ -26,10 +26,26 @@ file below names the artists its history records.
   the artist the commit message names ("by …"). Commits that only recompress or move files are left
   out.
 
+## The lettering: TeX Gyre Pagella
+
+The game's words, on the canvas and on the cards, are set in Bounty Serif, a changed version of
+[TeX Gyre Pagella](https://ctan.org/pkg/tex-gyre-pagella) 2.501, a free Palatino by the GUST
+e-foundry (Bogusław Jackowski, Janusz M. Nowacki, Piotr Pianowski and Piotr Strzelczyk), based on
+URW Palladio L. Thank you to them. It comes with the game, so the words look the same on every
+device, Android phones included, which have no Palatino of their own.
+
+- **Licence.** The [GUST Font License](https://www.gust.org.pl/projects/e-foundry/licenses), which is
+  the [LaTeX Project Public License](https://www.latex-project.org/lppl.txt) 1.3c or later. The fonts
+  are separate files that the game loads, next to it rather than part of it.
+- **Changes** (`scripts/fonts.py`, `npm run fonts`): renamed, as the licence asks; cut down to the
+  letters the game uses; a few signs fitted to Palatino's widths; two shapes added (◆ and ▾); Palatino's
+  line spacing; saved as WOFF2. `public/assets/fonts/README-bounty-serif.txt` lists every change and
+  where to get the original, and `GUST-FONT-LICENSE.txt` is beside it.
+
 ## Everything else
 
-The terrain, buildings, portraits, title painting, interface, music and sound are all made in code
-(`src/render/`, `src/audio/`). No image-generation models are used.
+The terrain, buildings, portraits, title painting, interface, icon, music and sound are all made in
+code (`src/render/`, `src/audio/`). No image-generation models are used.
 
 ## Wesnoth files
 

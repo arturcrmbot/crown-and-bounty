@@ -8,6 +8,7 @@ import { botRideCard, chapterStartCard, failedCard, welcomeBackCard } from './ga
 import { loadGame, saveGame, stopSaving } from './game/save';
 import { SCREEN } from './render/frame';
 import { paletteWords } from './render/palette';
+import { loadLettering } from './render/text';
 import { loadUnitArt } from './render/wesnoth';
 import { toggleMute, wakeAudio } from './audio/context';
 import { MuteButton } from './ui/mute';
@@ -89,6 +90,8 @@ function debugStart(): GameState {
 // The troops are Battle for Wesnoth's units: their images load while the title shows, and a
 // debug start (straight onto the map or into a fight) waits for them.
 const unitArt = loadUnitArt();
+// The lettering comes with the game (#148), and nothing paints a word before it's here.
+await loadLettering();
 const display = new Display(SCREEN.width, SCREEN.height);
 // Screens change with a transition, except when frozen (so screenshots catch them settled); ?transitions=1 keeps them.
 const game = new Game(display, Math.max(1, Number(query.get('speed') ?? 1)), !frozen || query.get('transitions') === '1');

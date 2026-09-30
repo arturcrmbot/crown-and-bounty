@@ -11,7 +11,7 @@
   width: 250px;
   padding: 14px 18px 12px;
   color: #2a1a08;
-  font: 15px/1.38 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  font: 15px/1.38 'Bounty Serif', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
   background-color: #e4d0a2;
   background-image:
     radial-gradient(circle at 20% 30%, rgba(122, 92, 44, 0.16) 0 1px, transparent 1.5px),
@@ -253,7 +253,7 @@
   transform-origin: 0 0;
   padding: 1px 7px 2px;
   color: #f2e4c4;
-  font: bold 13px/1.3 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  font: bold 13px/1.3 'Bounty Serif', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
   background: #2a1c10;
   border: 1px solid #c28a1c;
   pointer-events: none;

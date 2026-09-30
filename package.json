@@ -25,6 +25,8 @@
     "wesnoth": "node scripts/wesnoth.mjs",
     "listen": "node scripts/listen.mjs",
     "linkpreview": "node scripts/linkpreview.mjs",
+    "icons": "node scripts/icons.mjs",
+    "fonts": "python3 scripts/fonts.py",
     "phone": "node scripts/phone.mjs"
   },
   "devDependencies": {
