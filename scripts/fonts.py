@@ -16,6 +16,7 @@ import tempfile
 import urllib.request
 
 from fontTools import subset
+from fontTools.misc.psCharStrings import T2WidthExtractor
 from fontTools.pens.boundsPen import BoundsPen
 from fontTools.pens.t2CharStringPen import T2CharStringPen
 from fontTools.pens.transformPen import TransformPen
@@ -160,10 +161,20 @@ def space_as_palatino(font):
     os2.fsSelection |= 1 << 7  # USE_TYPO_METRICS: every system spaces lines the same way.
 
 
+def charstring(font, advance, draw):
+    """A glyph's outline as `draw` makes it with a pen, `advance` wide. CFF keeps a width in each outline
+    as well as in hmtx, counted from the font's nominal width (FreeType, and so Android, reads it there)."""
+    cff = font['CFF '].cff
+    private = cff.topDictIndex[0].Private
+    default, nominal = getattr(private, 'defaultWidthX', 0), getattr(private, 'nominalWidthX', 0)
+    pen = T2CharStringPen(None if advance == default else advance - nominal, font.getGlyphSet())
+    draw(pen)
+    return pen.getCharString(private=private, globalSubrs=cff.GlobalSubrs)
+
+
 def fit_to_palatino(font, style):
     """Scales and moves each PALATINO sign into Palatino's box, and gives it Palatino's advance."""
-    cff = font['CFF '].cff
-    top = cff.topDictIndex[0]
+    top = font['CFF '].cff.topDictIndex[0]
     glyphs = font.getGlyphSet()
     cmap = font.getBestCmap()
     fitted = set()
@@ -178,27 +189,26 @@ def fit_to_palatino(font, style):
         scale = min((x1 - x0) / (gx1 - gx0), (y1 - y0) / (gy1 - gy0))
         dx = (x0 + x1 - scale * (gx0 + gx1)) / 2
         dy = (y0 + y1 - scale * (gy0 + gy1)) / 2
-        pen = T2CharStringPen(advance, glyphs)
-        glyphs[name].draw(TransformPen(pen, (scale, 0, 0, scale, dx, dy)))
-        top.CharStrings[name] = pen.getCharString(private=top.Private, globalSubrs=cff.GlobalSubrs)
+        outline = glyphs[name]
+        top.CharStrings[name] = charstring(font, advance, lambda pen: outline.draw(TransformPen(pen, (scale, 0, 0, scale, dx, dy))))
         font['hmtx'][name] = (advance, round(scale * gx0 + dx))
 
 
 def add_shapes(font):
     """Draws SHAPES into the font, leaning with its italic."""
     lean = math.tan(math.radians(-font['post'].italicAngle))
-    cff = font['CFF '].cff
-    top = cff.topDictIndex[0]
+    top = font['CFF '].cff.topDictIndex[0]
     strings = top.CharStrings
-    glyphs = font.getGlyphSet()
     for code, name, advance, outline in SHAPES:
-        pen = T2CharStringPen(advance, glyphs)
         points = [(round(x + y * lean), y) for x, y in outline]
-        pen.moveTo(points[0])
-        for point in points[1:]:
-            pen.lineTo(point)
-        pen.closePath()
-        strings.charStringsIndex.append(pen.getCharString(private=top.Private, globalSubrs=cff.GlobalSubrs))
+
+        def draw(pen, points=points):
+            pen.moveTo(points[0])
+            for point in points[1:]:
+                pen.lineTo(point)
+            pen.closePath()
+
+        strings.charStringsIndex.append(charstring(font, advance, draw))
         strings.charStrings[name] = len(strings.charStringsIndex) - 1
         top.charset.append(name)
         font['hmtx'][name] = (advance, min(x for x, _ in points))
@@ -207,9 +217,19 @@ def add_shapes(font):
                 table.cmap[code] = name
     # The charset is the glyph order: the font's copy of it must say the same.
     font.setGlyphOrder(list(top.charset))
-    bounds = BoundsPen(font.getGlyphSet())
-    font.getGlyphSet()[SHAPES[0][1]].draw(bounds)
-    assert bounds.bounds, 'the shapes did not draw'
+
+
+def check(path):
+    """Every glyph's two widths, its outline's and hmtx's, must agree: Macs read one, FreeType the other."""
+    font = TTFont(path)
+    cff = font['CFF '].cff
+    private = cff.topDictIndex[0].Private
+    for name in font.getGlyphOrder():
+        glyph = cff.topDictIndex[0].CharStrings[name]
+        width = T2WidthExtractor([], cff.GlobalSubrs, private.nominalWidthX, private.defaultWidthX)
+        width.execute(glyph)
+        if width.width != font['hmtx'][name][0]:
+            sys.exit(f'{path}: {name} is {width.width} wide in its outline but {font["hmtx"][name][0]} in hmtx')
 
 
 def build(source, ours, style):
@@ -236,6 +256,7 @@ def build(source, ours, style):
     os.makedirs(OUT, exist_ok=True)
     path = os.path.join(OUT, f'bounty-serif-{ours}.woff2')
     subset.save_font(font, path, options)
+    check(path)
     print(f'saved {os.path.relpath(path)}: {os.path.getsize(path)} bytes, {len(font.getGlyphOrder())} glyphs')
 
 
