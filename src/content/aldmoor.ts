@@ -663,6 +663,10 @@ export const ALDMOOR: Province = {
       text: {
         about: ['The old King\u2019s hunt hall stands by the bridge.', '*There are antlers over the door, and shutters nobody has opened since he died.*'],
         done: ['The fires are lit, and every one of the old King\u2019s huntsmen has gone with you.'],
+        later: [
+          { when: { flag: 'watHome' }, about: ['The old King\u2019s hunt hall stands by the bridge.', '*The shutters are open, and a hawk sits on the antlers over the door.*'] },
+          { when: { flag: 'huntsmen' }, about: ['The old King\u2019s hunt hall stands by the bridge.', '*The shutters are open again, and there is smoke from the chimney.*'] },
+        ],
       },
       pages: [
         {
@@ -698,7 +702,13 @@ export const ALDMOOR: Province = {
       name: 'The Falconer\u2019s Bothy',
       at: at.falconer,
       done: false,
-      text: { about: ['A low stone bothy sits out on the heath, with a hawk on a block outside it.', '*She watches you all the way in.*'] },
+      text: {
+        about: ['A low stone bothy sits out on the heath, with a hawk on a block outside it.', '*She watches you all the way in.*'],
+        later: [
+          { when: { flag: 'watHome' }, about: ['A low stone bothy sits out on the heath, shut up and quiet.', '*Old Wat has gone home to the hunt hall, and taken his lads with him.*'] },
+          { when: { flag: 'falconer' }, about: ['A low stone bothy sits out on the heath, with an empty block outside it.', '*Old Wat sits by the door and watches the sky.*'] },
+        ],
+      },
       pages: [
         {
           id: 'gone',
