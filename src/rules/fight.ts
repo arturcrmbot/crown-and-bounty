@@ -6,7 +6,7 @@ import { autoResolve } from './battle/ai';
 import { applyEffects, choiceButton, meets } from './effects/core';
 import { bountyOf, CAMPAIGN_LENGTH, campaignLines, commissionOf, hasNextCommission, provinceOf } from './campaign';
 import { look, seeBands } from './map/sight';
-import { fleeHome, fleesHome } from './map/sortie';
+import { fleeHome, fleesHome, merge } from './map/sortie';
 import { battleEnd, createBattle, isLeader, SHOOTER_MELEE, survivors, type BattleHero, type BattleState, type Side } from './battle/battle';
 import { artifactChoices, foundNote, gainXp, giveArtifact, heroStats, namedBonuses } from './hero';
 import { addTroops, again, armyLine, armyPower, close, coins, leadershipUsed, listed, locationById, roll, roman, show, stillWithYou, troops, update, VANISHES, type Army, type BattleResultCard, type Choice, type GameEvent, type GameState, type Location, type Result } from './state';
@@ -184,17 +184,21 @@ function fallen(battle: BattleState, side: Side): Army {
  * What a side has left of its army once a battle is over: each of its stacks as it stands, and
  * whoever leads it, but not Aldric, who is no part of his. Whatever it lost stays lost, as in HoMM2:
  * the fallen, and those paid to go home or to change sides. Troops a spell called to the field (the
- * Baron's guard) go back where they came from.
+ * Baron's guard) go back where they came from, unless nobody else is left to hold it.
  */
 function standing(battle: BattleState, side: Side): Army {
-  const army: Army = [];
-  for (const f of battle.fighters) {
-    if (f.side !== side || f.hero || f.called || f.count <= 0) continue;
-    const same = army.find((s) => s.troop === f.troop);
-    if (same) same.count += f.count;
-    else army.push({ troop: f.troop, count: f.count });
-  }
-  return army;
+  const of = (called: boolean) => {
+    const army: Army = [];
+    for (const f of battle.fighters) {
+      if (f.side !== side || f.hero || f.count <= 0 || Boolean(f.called) !== called) continue;
+      const same = army.find((s) => s.troop === f.troop);
+      if (same) same.count += f.count;
+      else army.push({ troop: f.troop, count: f.count });
+    }
+    return army;
+  };
+  const own = of(false);
+  return own.some((s) => !leads(s.troop)) ? own : merge(of(true), own);
 }
 
 const headcount = (army: Army) => army.reduce((n, s) => n + s.count, 0);

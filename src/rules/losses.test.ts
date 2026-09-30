@@ -67,6 +67,17 @@ describe('the enemy keeps its losses', () => {
     expect(winChance(back, 'hideout', 8)).toBeGreaterThan(winChance(s, 'hideout', 8));
   });
 
+  it('leaves the guard holding the stockade when nobody else of Grimsby\u2019s is left, so it is never empty', () => {
+    const s = fresh('ranger');
+    const guard = (b: BattleState): Fighter[] => {
+      const swordsmen = b.fighters.find((f) => f.side === 'enemy' && f.troop === 'swordsmen')!;
+      return [{ ...swordsmen, id: b.fighters.length, count: 15, startCount: 21, called: true }];
+    };
+    const r = finishFight(ended(s, 'hideout', 'fled', { swordsmen: 0, crossbowmen: 0 }, guard));
+    expect(armyOf(r.state, 'hideout')).toEqual([{ troop: 'swordsmen', count: 15 }, { troop: 'baron', count: 1 }]);
+    expect(cardOf(r).lines.at(-1)).toBe('*Baron Grimsby has 15 Swordsmen left.*');
+  });
+
   it('keeps those paid to go home gone, and those bought over with you', () => {
     const s = fresh('courtier');
     const bribed = (b: BattleState): Fighter[] => {
