@@ -94,7 +94,7 @@ export function aimTag(b: BattleState, action: BattleAction): AimTag | null {
     }
     if (effect.kind === 'heal') {
       const { healed = 0, raised = 0 } = forecast.target;
-      return { title, lines: [{ text: healed ? `They get ${healed} health back${raised ? `, and ${raised} get up again` : ''}.` : 'They have all their health already.' }] };
+      return { title, lines: [{ text: healed ? `They get ${healed} health back${raised ? `, and ${raised} ${raised === 1 ? 'gets' : 'get'} up again` : ''}.` : 'They have all their health already.' }] };
     }
     const lines: TagLine[] = [{ text: `${damage} damage ${kills(killed, count)}.` }];
     const theirs = forecast.caught.filter((c) => c.side !== f.side);

@@ -93,7 +93,10 @@ describe('the forecast by the pointer', () => {
     const slowed = { ...b, fighters: b.fighters.map((f) => (f.id === 1 ? { ...f, status: ['slowed' as const] } : f)) };
     expect(texts(aimTag(slowed, { type: 'cast', spell: 'slow', target: 1 }))).toEqual(['They are already slowed.']);
     const hurt = { ...b, fighters: b.fighters.map((f) => (f.id === 0 ? { ...f, count: 7 } : f)) };
-    expect(texts(aimTag(hurt, { type: 'cast', spell: 'brew', target: 0 }))).toEqual(['They get 30 health back, and 1 get up again.']);
+    expect(texts(aimTag(hurt, { type: 'cast', spell: 'brew', target: 0 }))).toEqual(['They get 30 health back, and 1 gets up again.']);
+    const peasants = field([['peasants', 40]], [['wolves', 12]], {}, [0, 1]);
+    const thinned = { ...peasants, fighters: peasants.fighters.map((f) => (f.id === 0 ? { ...f, count: 30 } : f)) };
+    expect(texts(aimTag(thinned, { type: 'cast', spell: 'brew', target: 0 }))).toEqual(['They get 30 health back, and 10 get up again.']);
     expect(texts(aimTag(b, { type: 'cast', spell: 'brew', target: 0 }))).toEqual(['They have all their health already.']);
   });
 
