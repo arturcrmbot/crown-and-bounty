@@ -17,7 +17,7 @@ function dig(state: GameState, place: Location): Result | null {
         {
           title: 'The Sceptre of Order!',
           lines: [
-            'Three feet down, the shovel rings on iron. Inside the box, wrapped for some reason in a goose-feather quilt: the Sceptre of Order, lost since the old King\u2019s day.',
+            'Three feet down, the shovel rings on iron. Inside the box, wrapped for some reason in a goose-feather quilt, lies the Sceptre of Order, lost since the old King\u2019s day.',
             `King Osric weeps openly. *"Five commissions, and the Sceptre besides! ${hero}, you shall have a castle of your own."*`,
             ...campaignLines(next),
           ],
@@ -34,7 +34,7 @@ function dig(state: GameState, place: Location): Result | null {
 /** The X on the map, once all its pieces are found. */
 export const x: PlaceKind = {
   about: (state, place) => ({ title: place.name, lines: aboutWords(state, place), choices: [ride(place, 'Ride there'), close] }),
-  arrive: (state, place) => say(state, place, { title: place.name, lines: ['Five torn pieces of map, and one very large X.', 'Your men look at the shovel, then at you.'], choices: [option(place, 'Dig here', 'dig'), close] }),
+  arrive: (state, place) => say(state, place, { title: place.name, lines: ['You have five torn pieces of map, and one very large X.', 'Your men look at the shovel, then at you.'], choices: [option(place, 'Dig here', 'dig'), close] }),
   choose: (state, place, choice) => (choice === 'dig' ? dig(state, place) : null),
   worth: () => 100000,
   bot: (state, place) => dig(state, place)?.state ?? state,

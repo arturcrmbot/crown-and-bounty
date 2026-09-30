@@ -31,7 +31,7 @@ export class CourtController implements Screen {
     this.state = state;
     this.hooks = hooks;
     this.screen = new CourtScreen(state.hero.background);
-    this.screen.caption = `The King\u2019s Court \u00b7 Commission ${roman(state.campaign.chapter + 1)} complete`;
+    this.screen.caption = `Commission ${roman(state.campaign.chapter + 1)} is complete, and the King receives you.`;
     this.cards = new CardView((action) => this.choose(action));
     this.showNext();
   }

@@ -3,7 +3,7 @@
  * and everything a choice or a victory can bring (`Effects`). Nothing here knows about places'
  * kinds or fights, so the fight rules can use it too.
  */
-import { ARTIFACTS, type ArtifactId } from '../../content/artifacts';
+import { ARTIFACTS, artifactPhrase, type ArtifactId } from '../../content/artifacts';
 import { BACKGROUNDS } from '../../content/backgrounds';
 import { SKILLS } from '../../content/skills';
 import { SPELLS } from '../../content/spells';
@@ -102,38 +102,38 @@ export function applyEffects(state: GameState, place: Location, effects: Effects
   const lines: string[] = [];
   if (effects.gold) {
     next = { ...next, gold: next.gold + effects.gold };
-    lines.push(`**${effects.gold > 0 ? '+' : ''}${coins(effects.gold)} gold.**`);
+    lines.push(effects.gold > 0 ? `You get **${coins(effects.gold)} gold**.` : `You pay **${coins(-effects.gold)} gold**.`);
   }
   if (effects.treasure) {
     const gold = Math.round(effects.treasure * (1 + heroStats(next).loot));
     next = { ...next, gold: next.gold + gold };
-    lines.push(`**+${coins(gold)} gold.**`);
+    lines.push(`You get **${coins(gold)} gold**.`);
   }
   if (effects.leadership) {
     next = { ...next, leadership: next.leadership + effects.leadership };
-    lines.push(`**+${effects.leadership} leadership.**`);
+    lines.push(`You gain **${effects.leadership} leadership**.`);
   }
   if (effects.movement) {
     next = { ...next, movement: next.movement + effects.movement };
-    lines.push(`**+${effects.movement} movement** today.`);
+    lines.push(`You gain **${effects.movement} movement** today.`);
   }
   if (effects.mana) next = { ...next, hero: { ...next.hero, mana: Math.min(heroStats(next).maxMana, next.hero.mana + effects.mana) } };
   if (effects.rations) {
     next = { ...next, rations: Math.max(0, (next.rations ?? 0) + effects.rations) };
-    if (effects.rations > 0) lines.push(`**${effects.rations === 1 ? 'A week\u2019s' : `${effects.rations} weeks\u2019`} rations** in your baggage: come payday, your troops eat instead of drawing their wages.`);
+    if (effects.rations > 0) lines.push(`**${effects.rations === 1 ? 'A week\u2019s' : `${effects.rations} weeks\u2019`} rations** go in your baggage, so come payday your troops eat instead of drawing their wages.`);
   }
   for (const [stat, amount] of Object.entries(effects.stats ?? {}) as [keyof typeof STAT_WORDS, number][]) {
     next = { ...next, hero: { ...next.hero, [stat]: next.hero[stat] + amount } };
-    lines.push(`**+${amount} ${STAT_WORDS[stat]}**, for good.`);
+    lines.push(`Your ${STAT_WORDS[stat]} rises by **${amount}** for good.`);
   }
   if (effects.artifact) {
     next = giveArtifact(next, effects.artifact);
-    lines.push(`You get **${ARTIFACTS[effects.artifact].name}**. ${foundNote(next, effects.artifact)}`);
+    lines.push(`You get ${artifactPhrase(effects.artifact)}. ${foundNote(next, effects.artifact)}`);
   }
   if (effects.spell) {
     const known = next.hero.spells.includes(effects.spell);
     if (!known) next = { ...next, hero: { ...next.hero, spells: [...next.hero.spells, effects.spell] } };
-    lines.push(known ? `You know **${SPELLS[effects.spell].name}** already.` : `You learn **${SPELLS[effects.spell].name}**: ${SPELLS[effects.spell].note}`);
+    lines.push(known ? `You know **${SPELLS[effects.spell].name}** already.` : `You learn **${SPELLS[effects.spell].name}**. ${SPELLS[effects.spell].note}`);
   }
   for (const stack of effects.troops ?? []) {
     const room = Math.floor((heroStats(next).leadership - leadershipUsed(next.army)) / TROOPS[stack.troop].leadership);
@@ -190,7 +190,7 @@ export function applyEffects(state: GameState, place: Location, effects: Effects
     const grown = gainXp(next, effects.xp);
     next = grown.state;
     events.push(...grown.events);
-    lines.push(`**+${effects.xp} experience.**`);
+    lines.push(`You gain **${coins(effects.xp)} experience**.`);
   }
   if (effects.recruits) {
     const { at = place.id, troop, count, price = 0, restock } = effects.recruits;

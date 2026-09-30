@@ -115,36 +115,36 @@ export type SpellDef = {
 export const needsTarget = (spell: SpellId) => !['mass', 'volley', 'summon'].includes(SPELLS[spell].effect.kind);
 
 export const SPELLS: Record<SpellId, SpellDef> = {
-  bolt: { id: 'bolt', name: 'Lightning Bolt', mana: 7, on: 'enemy', note: 'Twenty damage for every point of spell power.', effect: { kind: 'damage', perPower: 20 }, look: { kind: 'bolt', colour: 'gold' } },
+  bolt: { id: 'bolt', name: 'Lightning Bolt', mana: 7, on: 'enemy', note: 'It does twenty damage for every point of spell power.', effect: { kind: 'damage', perPower: 20 }, look: { kind: 'bolt', colour: 'gold' } },
   bless: { id: 'bless', name: 'Bless', mana: 5, on: 'friend', note: 'The stack always rolls its best damage, for the rest of the battle.', effect: { kind: 'status', status: 'blessed' }, look: { kind: 'sparkle', colour: 'gold' } },
-  slow: { id: 'slow', name: 'Slow', mana: 5, on: 'enemy', note: 'Halves the stack\u2019s speed, for the rest of the battle.', effect: { kind: 'status', status: 'slowed' }, look: { kind: 'sparkle', colour: 'blue' } },
-  haste: { id: 'haste', name: 'Haste', mana: 5, on: 'friend', note: '+2 speed for the stack, for the rest of the battle.', effect: { kind: 'status', status: 'hasted' }, look: { kind: 'sparkle', colour: 'gold' } },
+  slow: { id: 'slow', name: 'Slow', mana: 5, on: 'enemy', note: 'It halves the stack\u2019s speed for the rest of the battle.', effect: { kind: 'status', status: 'slowed' }, look: { kind: 'sparkle', colour: 'blue' } },
+  haste: { id: 'haste', name: 'Haste', mana: 5, on: 'friend', note: 'It gives the stack +2 speed for the rest of the battle.', effect: { kind: 'status', status: 'hasted' }, look: { kind: 'sparkle', colour: 'gold' } },
   fireball: {
     id: 'fireball',
     name: 'Fireball',
     mana: 9,
     on: 'enemy',
-    note: 'Twelve damage for every point of spell power, to the stack and to everyone next to it. Mind your own men.',
+    note: 'It does twelve damage for every point of spell power, to the stack and to everyone next to it. Mind your own men.',
     effect: { kind: 'burst', perPower: 12 },
     look: { kind: 'fire', colour: 'red' },
   },
-  stoneskin: { id: 'stoneskin', name: 'Stone Skin', mana: 5, on: 'friend', note: '+3 defence for the stack, for the rest of the battle.', effect: { kind: 'status', status: 'stoneskin' }, look: { kind: 'sparkle', colour: 'blue' } },
+  stoneskin: { id: 'stoneskin', name: 'Stone Skin', mana: 5, on: 'friend', note: 'It gives the stack +3 defence for the rest of the battle.', effect: { kind: 'status', status: 'stoneskin' }, look: { kind: 'sparkle', colour: 'blue' } },
   // Villains' spells and orders. Heroes could learn them too.
   newts: {
     id: 'newts', name: 'Newts', mana: 6, on: 'enemy', effect: { kind: 'status', status: 'newts' }, look: { kind: 'sparkle', colour: 'gold' },
-    note: 'Turns a stack into newts: it loses its next turn, and can\u2019t strike back till then.',
+    note: 'It turns a stack into newts, so it loses its next turn and can\u2019t strike back till then.',
   },
   frogs: {
     id: 'frogs', name: 'Frogs', mana: 6, on: 'enemy', effect: { kind: 'status', status: 'frogs' }, look: { kind: 'sparkle', colour: 'gold' },
-    note: 'Turns a stack into frogs: it loses its next turn, and can\u2019t strike back till then.',
+    note: 'It turns a stack into frogs, so it loses its next turn and can\u2019t strike back till then.',
   },
   brew: {
     id: 'brew', name: 'Witch\u2019s Brew', mana: 6, on: 'friend', effect: { kind: 'heal', perPower: 15 }, look: { kind: 'sparkle', colour: 'gold' },
-    note: 'Fifteen health back for every point of spell power: the fallen get up again, as many as the stack began with.',
+    note: 'It gives back fifteen health for every point of spell power, and the fallen get up again, as many as the stack began with.',
   },
   shieldwall: {
     id: 'shieldwall', name: 'Shield Wall', mana: 0, on: 'friend', effect: { kind: 'mass', status: 'shieldwall' }, look: { kind: 'sparkle', colour: 'blue' },
-    shout: { verb: 'bellows', words: 'Shield wall!' }, note: 'Every stack of his locks shields: +3 defence for two rounds.',
+    shout: { verb: 'bellows', words: 'Shield wall!' }, note: 'Every stack of his locks shields and gets +3 defence for two rounds.',
   },
   crossbows: {
     id: 'crossbows', name: 'Crossbows, Fire!', mana: 0, on: 'enemy', effect: { kind: 'volley' }, look: { kind: 'sparkle', colour: 'red' },
@@ -152,6 +152,6 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   },
   guard: {
     id: 'guard', name: 'Call the Guard', mana: 0, on: 'friend', effect: { kind: 'summon', troop: 'swordsmen', share: 0.3 }, look: { kind: 'sparkle', colour: 'red' },
-    shout: { verb: 'roars', words: 'Call the guard!' }, hurt: 0.6, note: 'Once his men are hurt: fresh swordsmen march in from his edge of the field, near a third as many as he began with.',
+    shout: { verb: 'roars', words: 'Call the guard!' }, hurt: 0.6, note: 'Once his men are hurt, fresh swordsmen march in from his edge of the field, nearly a third as many as he began with.',
   },
 };

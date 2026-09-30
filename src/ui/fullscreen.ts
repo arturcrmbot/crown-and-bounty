@@ -41,8 +41,8 @@ export async function toggleFullscreen(): Promise<boolean> {
 export const homeScreenCard = () => ({
   title: 'Full screen',
   lines: [
-    'This browser won\u2019t hide its bars for a game: Safari on an iPhone only does it for videos.',
-    'To play on the whole screen, add the game to your **Home Screen**: in Safari, tap **Share** (the square with an arrow), then **Add to Home Screen**, and open it from there. Reading this inside another app? Its menu has **Open in Safari** first.',
+    'This browser won\u2019t hide its bars for a game, because Safari on an iPhone only does that for videos.',
+    'To play on the whole screen, add the game to your **Home Screen**. In Safari, tap **Share**, which is the square with an arrow, then tap **Add to Home Screen**, and open the game from there. If you are reading this inside another app, its menu has **Open in Safari** first.',
     'The game on your Home Screen keeps a save of its own.',
   ],
   choices: [{ label: 'Close', action: { type: 'close' as const } }],

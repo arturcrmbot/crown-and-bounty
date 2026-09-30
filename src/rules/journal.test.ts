@@ -22,10 +22,10 @@ describe('the journal', () => {
     expect(card.portrait).toBe('grimsby');
     expect(card.stamp).toBeUndefined();
     expect(card.lines).toEqual([
-      '**Commission I**, Aldmoor: day V of 100, and **95 days** left.',
+      'You are in Aldmoor on **Commission I**. It is day V of 100, and you have **95 days** left.',
       `**Baron Grimsby**, wanted ${COMMISSIONS[0].wanted}`,
       `Reward: **${bountyOf(fresh()).toLocaleString('en-GB')} gold**.`,
-      '*Pieces of the old map: 0 of 5.*',
+      '*You have 0 of the 5 pieces of the old map.*',
     ]);
     // Nothing heard yet, but the page is there for it.
     expect(card.journal).toEqual({ heard: [] });
@@ -38,9 +38,9 @@ describe('the journal', () => {
     expect(won.bounty).toBe('paid');
     const card = journalCard(won);
     expect(card.stamp).toBe('PAID');
-    expect(card.lines[0]).toBe('**Commission I**, Aldmoor: day I of 100.');
+    expect(card.lines[0]).toBe('You are in Aldmoor on **Commission I**. It is day I of 100.');
     expect(card.lines[2]).toContain('paid in full');
-    expect(card.lines[3]).toBe('*Pieces of the old map: 1 of 5.*');
+    expect(card.lines[3]).toBe('*You have 1 of the 5 pieces of the old map.*');
   });
 
   it('writes down what is heard on the road, and ticks it off once it pays off, below what is still open', () => {

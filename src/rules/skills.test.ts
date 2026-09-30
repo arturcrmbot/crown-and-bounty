@@ -127,7 +127,7 @@ describe('Scouting', () => {
     const scout = skilled({ scouting: 2 });
     const lines = cardOf(visit(scout, 'patrol')).lines;
     expect(lines.some((l) => /chances? in ten/.test(l))).toBe(true);
-    expect(lines).toContain('*Your scouts have seen what they carry:* **Grimsby\u2019s Carving Knife**. +1 attack, +5% melee damage. The goose flinches when it sees it. *Grimsby\u2019s Regalia: wear his knife, his feather and his hat together, and his men start every battle slowed.*');
+    expect(lines).toContain('*Your scouts have seen that they carry* **Grimsby\u2019s Carving Knife**. It gives +1 attack and +5% melee damage. The goose flinches when she sees it. *His knife, his feather and his hat make up Grimsby\u2019s Regalia. Wear all three, and his men start every battle slowed.*');
     expect(about(scout, 'wolves').lines.some((l) => l.includes('Greenwood Cloak'))).toBe(true);
     expect(cardOf(visit(skilled({ scouting: 1 }), 'patrol')).lines.some((l) => /in ten/.test(l))).toBe(false);
   });

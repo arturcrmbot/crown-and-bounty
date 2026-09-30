@@ -24,7 +24,7 @@ export const SKILLS: Record<SkillId, Skill> = {
     name: 'Archery',
     ranks: [
       { note: 'Every shot hits 15% harder.', bonus: { ranged: 0.15 } },
-      { note: 'Every shot hits 30% harder, and your archers plant stakes: wolves, boars and goblins start every battle slowed.', bonus: { ranged: 0.3, slows: RUSHERS } },
+      { note: 'Every shot hits 30% harder, and your archers plant stakes, so wolves, boars and goblins start every battle slowed.', bonus: { ranged: 0.3, slows: RUSHERS } },
       {
         note: 'Every shot hits 45% harder, your archers get +1 attack, the stakes slow wolves, boars and goblins, and your shooters loose a free volley before every battle.',
         bonus: { ranged: 0.45, slows: RUSHERS, volley: true, troops: { archers: { attack: 1 } } },
@@ -37,11 +37,11 @@ export const SKILLS: Record<SkillId, Skill> = {
     ranks: [
       { note: 'Blows in melee land 10% harder.', bonus: { melee: 0.1 } },
       {
-        note: 'Blows in melee land 20% harder, and your knights and swordsmen charge: after a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder, and nobody strikes back, but it winds them: they can\u2019t strike back themselves for the rest of that round and the next.',
+        note: 'Blows in melee land 20% harder, and your knights and swordsmen charge. After a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder and nobody strikes back. The charge winds them, though, so they can\u2019t strike back themselves for the rest of that round and the next.',
         bonus: { melee: 0.2, charge: ['knights', 'swordsmen'] },
       },
       {
-        note: 'Blows in melee land 30% harder, and everyone who fights hand to hand charges: after a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder, and nobody strikes back, but it winds them: they can\u2019t strike back themselves for the rest of that round and the next.',
+        note: 'Blows in melee land 30% harder, and everyone who fights hand to hand charges. After a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder and nobody strikes back. The charge winds them, though, so they can\u2019t strike back themselves for the rest of that round and the next.',
         bonus: { melee: 0.3, charge: FIGHTERS },
       },
     ],
@@ -51,9 +51,9 @@ export const SKILLS: Record<SkillId, Skill> = {
     name: 'Armourer',
     ranks: [
       { note: 'Your troops take 7% less damage.', bonus: { armour: 0.07 } },
-      { note: 'Your troops take 14% less damage, and your shooters wear mail: +2 defence for archers, crossbowmen, poachers and huntsmen.', bonus: { armour: 0.14, troops: MAIL } },
+      { note: 'Your troops take 14% less damage, and your shooters wear mail, which gives archers, crossbowmen, poachers and huntsmen +2 defence.', bonus: { armour: 0.14, troops: MAIL } },
       {
-        note: 'Your troops take 21% less damage, your shooters wear mail, and you keep your gear like new: +1 defence for every piece you wear.',
+        note: 'Your troops take 21% less damage, your shooters wear mail, and you keep your gear like new, so every piece you wear gives +1 defence.',
         bonus: { armour: 0.21, troops: MAIL, gearDefence: 1 },
       },
     ],
@@ -62,19 +62,19 @@ export const SKILLS: Record<SkillId, Skill> = {
     id: 'logistics',
     name: 'Logistics',
     ranks: [
-      { note: '+20 movement a day.', bonus: { movement: 20 } },
-      { note: '+40 movement a day, and riding off the road costs a quarter less (in the woods too, if you can ride them).', bonus: { movement: 40, offRoad: 0.25 } },
-      { note: '+60 movement a day, and off the road you ride as fast as on it (the woods cost half, if you can ride them).', bonus: { movement: 60, offRoad: 0.5 } },
+      { note: 'You get +20 movement a day.', bonus: { movement: 20 } },
+      { note: 'You get +40 movement a day, and riding off the road costs a quarter less, in the woods too if you can ride them.', bonus: { movement: 40, offRoad: 0.25 } },
+      { note: 'You get +60 movement a day, and off the road you ride as fast as on it. The woods cost half, if you can ride them.', bonus: { movement: 60, offRoad: 0.5 } },
     ],
   },
   scouting: {
     id: 'scouting',
     name: 'Scouting',
     ranks: [
-      { note: 'See 40 paces further, and count every enemy exactly.', bonus: { sight: 40, counts: true } },
-      { note: 'See 80 paces further, count every enemy, and your scouts put a number on your chances and say what the enemy carries.', bonus: { sight: 80, counts: true, odds: true } },
+      { note: 'You see 40 paces further, and count every enemy exactly.', bonus: { sight: 40, counts: true } },
+      { note: 'You see 80 paces further and count every enemy, and your scouts put a number on your chances and say what the enemy carries.', bonus: { sight: 80, counts: true, odds: true } },
       {
-        note: 'See 120 paces further, with counts, chances and what they carry, and your scouts shadow every band in the province: you see them all through the mist, and nothing can hunt you.',
+        note: 'You see 120 paces further, with counts, chances and what they carry. Your scouts shadow every band in the province, so you see them all through the mist, and nothing can hunt you.',
         bonus: { sight: 120, counts: true, odds: true, shadow: true },
       },
     ],
@@ -83,10 +83,10 @@ export const SKILLS: Record<SkillId, Skill> = {
     id: 'leadership',
     name: 'Leadership',
     ranks: [
-      { note: '+25 leadership.', bonus: { leadership: 25 } },
-      { note: '+50 leadership, and a third of every company stays on with you between commissions, not a quarter.', bonus: { leadership: 50, veterans: 1 / 12 } },
+      { note: 'You get +25 leadership.', bonus: { leadership: 25 } },
+      { note: 'You get +50 leadership, and a third of every company stays on with you between commissions, not a quarter.', bonus: { leadership: 50, veterans: 1 / 12 } },
       {
-        note: '+75 leadership, a third of every company stays on between commissions, and every payday volunteers join your biggest company, for your name alone.',
+        note: 'You get +75 leadership, a third of every company stays on between commissions, and every payday volunteers join your biggest company, for your name alone.',
         bonus: { leadership: 75, veterans: 1 / 12, volunteers: 20 },
       },
     ],
@@ -95,10 +95,10 @@ export const SKILLS: Record<SkillId, Skill> = {
     id: 'estates',
     name: 'Estates',
     ranks: [
-      { note: '+150 gold every payday.', bonus: { payday: 150 } },
-      { note: '+300 gold every payday, and every castle and village finds half as many volunteers again.', bonus: { payday: 300, restock: 0.5 } },
+      { note: 'You get +150 gold every payday.', bonus: { payday: 150 } },
+      { note: 'You get +300 gold every payday, and every castle and village finds half as many volunteers again.', bonus: { payday: 300, restock: 0.5 } },
       {
-        note: '+450 gold every payday, fuller castles and villages, and rents: every castle and village you have visited pays you 100 gold on payday.',
+        note: 'You get +450 gold every payday, and castles and villages are fuller. Every castle and village you have visited also pays you 100 gold of rent on payday.',
         bonus: { payday: 450, restock: 0.5, rents: 100 },
       },
     ],
@@ -107,28 +107,28 @@ export const SKILLS: Record<SkillId, Skill> = {
     id: 'sorcery',
     name: 'Sorcery',
     ranks: [
-      { note: '+1 spell power.', bonus: { spellPower: 1 } },
-      { note: '+2 spell power, and every spell costs 1 mana less.', bonus: { spellPower: 2, manaDiscount: 1 } },
-      { note: '+3 spell power, every spell costs 1 mana less, and you cast a second spell every round of battle (nobody casts more than two).', bonus: { spellPower: 3, manaDiscount: 1, casts: 1 } },
+      { note: 'You get +1 spell power.', bonus: { spellPower: 1 } },
+      { note: 'You get +2 spell power, and every spell costs 1 mana less.', bonus: { spellPower: 2, manaDiscount: 1 } },
+      { note: 'You get +3 spell power, every spell costs 1 mana less, and you cast a second spell every round of battle, though nobody casts more than two.', bonus: { spellPower: 3, manaDiscount: 1, casts: 1 } },
     ],
   },
   mysticism: {
     id: 'mysticism',
     name: 'Mysticism',
     ranks: [
-      { note: '+1 knowledge: 10 more mana.', bonus: { knowledge: 1 } },
-      { note: '+2 knowledge (20 more mana), and your mana comes back as you ride: a point for every 15 movement.', bonus: { knowledge: 2, manaRide: 15 } },
-      { note: '+3 knowledge (30 more mana), and your mana comes back twice as fast as you ride: a point for every 7 movement.', bonus: { knowledge: 3, manaRide: 7 } },
+      { note: 'You get +1 knowledge, which is 10 more mana.', bonus: { knowledge: 1 } },
+      { note: 'You get +2 knowledge, which is 20 more mana, and your mana comes back as you ride, a point for every 15 movement.', bonus: { knowledge: 2, manaRide: 15 } },
+      { note: 'You get +3 knowledge, which is 30 more mana, and your mana comes back twice as fast as you ride, a point for every 7 movement.', bonus: { knowledge: 3, manaRide: 7 } },
     ],
   },
   diplomacy: {
     id: 'diplomacy',
     name: 'Diplomacy',
     ranks: [
-      { note: 'Bribes cost 15% less, and bands far weaker than you surrender when you ride up: their gold and half the experience, without a fight.', bonus: { bribes: 0.15, cows: true } },
+      { note: 'Bribes cost 15% less, and bands far weaker than you surrender when you ride up. You get their gold and half the experience without a fight.', bonus: { bribes: 0.15, cows: true } },
       { note: 'Bribes cost 30% less, weak bands surrender, and small bands will take your coin and join you.', bonus: { bribes: 0.3, cows: true, hires: true } },
       {
-        note: 'Bribes cost 45% less, weak bands surrender, and any band that draws wages will take your coin and join you: gatekeepers too, at twice the price.',
+        note: 'Bribes cost 45% less, weak bands surrender, and any band that draws wages will take your coin and join you, even gatekeepers, at twice the price.',
         bonus: { bribes: 0.45, cows: true, hires: true, hiresGates: true },
       },
     ],
@@ -169,17 +169,17 @@ export const PERKS: Record<PerkId, Perk> = {
   nightRider: {
     id: 'nightRider',
     name: 'Night Rider',
-    note: 'You ride on after dark: movement you leave unused today carries over to tomorrow, up to half a day\u2019s ride. The horse has opinions about this.',
+    note: 'You ride on after dark, so movement you leave unused today carries over to tomorrow, up to half a day\u2019s ride. The horse has opinions about this.',
     bonus: { carry: 0.5 },
   },
   gooseWhisperer: { id: 'gooseWhisperer', name: 'Goose Whisperer', note: 'The royal goose likes you, and word gets round. Every villain starts a battle slowed, looking over their shoulder.', bonus: { slows: ['baron', 'witch', 'bramble'] } },
   treasureHunter: {
     id: 'treasureHunter',
     name: 'Treasure Hunter',
-    note: 'Chests, piles and old mines give half as much again, and you can smell them: every dawn the mist lifts over any treasure within 300 paces.',
+    note: 'Chests, piles and old mines give half as much again, and you can smell them, so every dawn the mist lifts over any treasure within 300 paces.',
     bonus: { loot: 0.5, smells: 300 },
   },
-  drillSergeant: { id: 'drillSergeant', name: 'Drill Sergeant', note: 'Peasants fight like militia: +3 attack, +2 defence.', bonus: { troops: { peasants: { attack: 3, defence: 2 } } } },
+  drillSergeant: { id: 'drillSergeant', name: 'Drill Sergeant', note: 'Peasants fight like militia, with +3 attack and +2 defence.', bonus: { troops: { peasants: { attack: 3, defence: 2 } } } },
   warchest: {
     id: 'warchest',
     name: 'War Chest',
@@ -192,26 +192,26 @@ export const PERKS: Record<PerkId, Perk> = {
   cavalryCharge: {
     id: 'cavalryCharge',
     name: 'Cavalry Charge',
-    note: 'Your knights charge: after a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder, and nobody strikes back, but it winds them: they can\u2019t strike back themselves for the rest of that round and the next.',
+    note: 'Your knights charge. After a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder and nobody strikes back. The charge winds them, though, so they can\u2019t strike back themselves for the rest of that round and the next.',
     bonus: { charge: ['knights'] },
     trick: true,
   },
   firstVolley: { id: 'firstVolley', name: 'First Volley', note: 'Your archers loose a free volley before every battle.', bonus: { volley: true }, trick: true },
   woodsman: { id: 'woodsman', name: 'Woodsman', note: 'You ride through the woods, where nothing on the map can follow or hunt you.', bonus: { forestWalk: true }, trick: true },
-  battleMage: { id: 'battleMage', name: 'Battle Mage', note: 'Cast a second spell every round of battle.', bonus: { casts: 1 }, trick: true },
+  battleMage: { id: 'battleMage', name: 'Battle Mage', note: 'You cast a second spell every round of battle.', bonus: { casts: 1 }, trick: true },
   silverTongue: { id: 'silverTongue', name: 'Silver Tongue', note: 'Bribes cost a third less, and small bands will take your coin and join you.', bonus: { bribes: 0.33, hires: true }, trick: true },
-  farSight: { id: 'farSight', name: 'Far Sight', note: 'Cast Far Sight from the map: the mist rolls back for a long way around you.', bonus: { mapSpells: ['farsight'] }, trick: true },
+  farSight: { id: 'farSight', name: 'Far Sight', note: 'You can cast Far Sight from the map, and the mist rolls back for a long way around you.', bonus: { mapSpells: ['farsight'] }, trick: true },
   beastFriend: {
     id: 'beastFriend',
     name: 'Beast Friend',
-    note: 'Beasts that couldn\u2019t beat you follow you instead of fighting: as many as you can lead, and they draw no wages.',
+    note: 'Beasts that couldn\u2019t beat you follow you instead of fighting, as many as you can lead, and they draw no wages.',
     bonus: { tames: true },
     trick: true,
   },
   fortunesFavour: {
     id: 'fortunesFavour',
     name: 'Fortune\u2019s Favour',
-    note: 'A 10% chance every blow lands lucky, twice as hard, and a 10% chance a stack\u2019s spirits win it another turn before the round moves on.',
+    note: 'Every blow has a 10% chance to land lucky, twice as hard, and every stack has a 10% chance that its spirits win it another turn before the round moves on.',
     bonus: { luck: 0.1, morale: 0.1 },
   },
 };

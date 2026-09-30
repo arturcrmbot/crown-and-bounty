@@ -223,7 +223,7 @@ export function courtCard(state: GameState): Card {
   return {
     title: 'The King\u2019s Thanks',
     wide: true,
-    lines: [`Commission ${roman(state.campaign.chapter + 1)} took **${done.days} ${done.days === 1 ? 'day' : 'days'}**. The King adds **${coins(c.reward)} gold**, and a boon of your choice:`],
+    lines: [`Commission ${roman(state.campaign.chapter + 1)} took **${done.days} ${done.days === 1 ? 'day' : 'days'}**. The King adds **${coins(c.reward)} gold** to your purse, and offers you a boon of your choice.`],
     choices: court.boons.map(boonChoice),
   };
 }
@@ -297,9 +297,9 @@ export function closingCard(state: GameState): Card {
     title: `Commission ${n} is complete`,
     portrait: 'king',
     wide: true,
-    lines: [LAUNCH.next, '*Thank you for playing! I am Artur Zielinski, and I made this game. More commissions are coming, and I would love to hear what you thought of this one.*'],
+    lines: [LAUNCH.next, '*Thank you for playing! I\u2019m Artur Zielinski, and I made this game. More commissions are coming, and I\u2019d love to hear what you thought of this one.*'],
     links: [
-      { label: 'Follow me on LinkedIn', detail: 'I will post there when the next commission is ready.', href: LAUNCH.follow },
+      { label: 'Follow me on LinkedIn', detail: 'I\u2019ll post there when the next commission is ready.', href: LAUNCH.follow },
       { label: 'Tell me what you thought', detail: 'Comment on my LinkedIn post or send me a message.', href: LAUNCH.follow },
     ],
     choices: [{ label: 'Return to the title screen', action: { type: 'title' } }],
@@ -330,7 +330,7 @@ function arrivalCard(state: GameState, greeting: string[] = []): Card {
   const c = commissionOf(state);
   return {
     title: `Commission ${roman(state.campaign.chapter + 1)}: ${c.province.name.replace(/^the /, 'The ')}`,
-    lines: [...c.arrival, ...greeting, `Day ${roman(state.day)}. ${c.villain} is somewhere out there.`],
+    lines: [...c.arrival, ...greeting, `It is day ${roman(state.day)}, and ${c.villain} is somewhere out there.`],
     choices: [close],
   };
 }

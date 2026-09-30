@@ -31,7 +31,7 @@ export function manaNote(state: GameState): string {
 
 /** The spellbook's mana line: none comes back in battle. `max` is missing from a battle saved before it was kept. */
 export function manaInBattle(mana: number, max?: number): string {
-  return max === undefined ? `**${mana}** mana: none comes back in battle.` : `Mana **${mana}/${max}**: none comes back in battle, and only a quarter at dawn.`;
+  return max === undefined ? `You have **${mana}** mana, and none comes back in battle.` : `You have **${mana}/${max}** mana. None comes back in battle, and only a quarter at dawn.`;
 }
 
 /** The next payday: once a week, from day VIII (VIII, XV, XXII...). */
@@ -140,10 +140,10 @@ export function journalCard(state: GameState): Card {
     ...(c.face ? { portrait: c.face } : {}),
     ...(paid ? { stamp: 'PAID' } : {}),
     lines: [
-      `**Commission ${roman(state.campaign.chapter + 1)}**, ${c.province.name}: day ${roman(state.day)} of ${LAST_DAY}${paid ? '.' : `, and **${left} day${left === 1 ? '' : 's'}** left.`}`,
+      `You are in ${c.province.name} on **Commission ${roman(state.campaign.chapter + 1)}**. It is day ${roman(state.day)} of ${LAST_DAY}${paid ? '.' : `, and you have **${left} day${left === 1 ? '' : 's'}** left.`}`,
       c.wanted ? `**${c.villain}**, wanted ${c.wanted}` : `**${c.villain}**. ${c.brief.join(' ')}`,
       paid ? paidLine(state) : `Reward: **${coins(bountyOf(state))} gold**.`,
-      `*Pieces of the old map: ${mapPieces(state)} of ${CAMPAIGN_LENGTH}.*`,
+      `*You have ${mapPieces(state)} of the ${CAMPAIGN_LENGTH} pieces of the old map.*`,
     ],
     journal: { heard: heardOf(state) },
     choices: [close],
@@ -203,7 +203,7 @@ export function heroSheet(state: GameState): HeroSheet {
   const stat = (id: StatId, name: string, what: string) => {
     const extra = s[id] - h[id];
     const own = extra ? ` (${h[id]} his own, ${extra > 0 ? '+' : '\u2212'}${Math.abs(extra)} from skills and gear)` : '';
-    return { id, name, value: s[id], note: `${name} ${s[id]}${own}: ${what}` };
+    return { id, name, value: s[id], note: `${name} ${s[id]}${own}. ${what}` };
   };
   const used = leadershipUsed(state.army);
   const discount = s.manaDiscount;
@@ -212,13 +212,13 @@ export function heroSheet(state: GameState): HeroSheet {
     background: h.background,
     level: `Level ${roman(h.level)}`,
     xp: to
-      ? { share: Math.max(0, Math.min(1, (h.xp - from) / (to - from))), line: `${coins(h.xp)} / ${coins(to)} experience: ${coins(to - h.xp)} more for level ${roman(h.level + 1)}. Fights and new places bring it.` }
-      : { share: 1, line: `${coins(h.xp)} experience: as seasoned as they come` },
+      ? { share: Math.max(0, Math.min(1, (h.xp - from) / (to - from))), line: `${coins(h.xp)} of ${coins(to)} experience. He needs ${coins(to - h.xp)} more for level ${roman(h.level + 1)}, from fights and new places.` }
+      : { share: 1, line: `${coins(h.xp)} experience. He is as seasoned as they come.` },
     stats: [
-      stat('attack', 'Attack', 'added to his own attack in battle, and to every stack\u2019s.'),
-      stat('defence', 'Defence', 'added to his own defence in battle, and to every stack\u2019s.'),
-      stat('spellPower', 'Spell power', `the harder his spells hit: a Lightning Bolt does ${bolt} damage.`),
-      stat('knowledge', 'Knowledge', `10 mana a point, ${s.maxMana} in all. A quarter comes back every dawn, and a holy well or your castle fills it.`),
+      stat('attack', 'Attack', 'It is added to his own attack in battle, and to every stack\u2019s.'),
+      stat('defence', 'Defence', 'It is added to his own defence in battle, and to every stack\u2019s.'),
+      stat('spellPower', 'Spell power', `The higher it is, the harder his spells hit, and a Lightning Bolt does ${bolt} damage.`),
+      stat('knowledge', 'Knowledge', `Each point holds 10 mana, ${s.maxMana} in all. A quarter comes back every dawn, and a holy well or your castle fills it.`),
     ],
     mana: { left: h.mana, max: s.maxMana, line: manaNote(state), back: s.manaRate > 0 ? 'back as you ride' : h.mana < s.maxMana ? 'a quarter at dawn' : 'full' },
     movement: { left: Math.floor(state.movement), max: s.movement, line: `${Math.floor(state.movement)} of ${s.movement} movement left today \u00b7 E ends the day` },
@@ -227,14 +227,14 @@ export function heroSheet(state: GameState): HeroSheet {
       max: s.leadership,
       line:
         used > s.leadership
-          ? `Leadership ${used}/${s.leadership}: more than he can lead, so nobody new will join until there's room`
-          : `Leadership ${used}/${s.leadership}: every troop needs some, and no more will join past it`,
+          ? `Leadership ${used}/${s.leadership}. That is more than he can lead, so nobody new will join until there\u2019s room.`
+          : `Leadership ${used}/${s.leadership}. Every troop needs some, and no more will join past it.`,
     },
     signature: { name: b.signature.name, note: b.signature.note, trick: true },
     skills: (Object.entries(h.skills) as [SkillId, number][]).filter(([, rank]) => rank > 0).map(([id, rank]) => ({ name: `${RANKS[Math.min(rank, RANKS.length) - 1]} ${SKILLS[id].name}`, note: skillNote(id, rank) })),
     perks: h.perks.map((id) => ({ name: PERKS[id].name, note: PERKS[id].note, ...(PERKS[id].trick ? { trick: true } : {}) })),
     company: (h.friends ?? []).map((id) => ({ name: FRIENDS[id].name, note: FRIENDS[id].note })),
-    spells: h.spells.map((id) => ({ name: SPELLS[id].name, note: `${Math.max(1, SPELLS[id].mana - discount)} mana: ${SPELLS[id].note}` })),
+    spells: h.spells.map((id) => ({ name: SPELLS[id].name, note: `It costs ${Math.max(1, SPELLS[id].mana - discount)} mana. ${SPELLS[id].note}` })),
     mapSpells: s.mapSpells.map((id) => ({ spell: id, label: `Cast ${MAP_SPELLS[id].name} (${MAP_SPELLS[id].mana} mana)`, note: MAP_SPELLS[id].note, disabled: h.mana < MAP_SPELLS[id].mana })),
     pieces: `Pieces of the old map: ${mapPieces(state)} of ${CAMPAIGN_LENGTH}`,
     piecesNote: 'Every bounty brings a torn piece of an old map. With the last one, an X shows where the Sceptre of Order lies.',
@@ -251,13 +251,13 @@ export function leaderTraits(state: GameState): Note[] {
   if (s.casts > 1) out.push({ name: `${s.casts} spells a round`, note: 'He casts again before the round is out.', trick: true });
   if (s.manaDiscount) out.push({ name: 'Hedge magic', note: `Every spell costs ${s.manaDiscount} less mana.` });
   const chargers = s.charge.filter((t) => !TROOPS[t].hero);
-  if (chargers.length) out.push({ name: 'Charge', note: `His ${names(chargers)} charge: after a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder, and nobody strikes back, but it winds them: they can\u2019t strike back themselves for the rest of that round and the next.`, trick: true });
+  if (chargers.length) out.push({ name: 'Charge', note: `His ${names(chargers)} charge. After a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder and nobody strikes back. The charge winds them, though, so they can\u2019t strike back themselves for the rest of that round and the next.`, trick: true });
   if (s.volley) out.push({ name: 'First volley', note: 'His shooters loose a free volley before every battle, except at a villain\u2019s walls.', trick: true });
-  if (s.melee) out.push({ name: 'Offence', note: `+${pct(s.melee)} damage in melee, for every stack.` });
-  if (s.ranged) out.push({ name: 'Archery', note: `+${pct(s.ranged)} damage with every shot.` });
+  if (s.melee) out.push({ name: 'Offence', note: `Every stack does +${pct(s.melee)} damage in melee.` });
+  if (s.ranged) out.push({ name: 'Archery', note: `Every shot does +${pct(s.ranged)} damage.` });
   if (s.armour) out.push({ name: 'Armour', note: `His troops take ${pct(s.armour)} less damage.` });
-  if (s.luck) out.push({ name: 'Luck', note: `${pct(s.luck)} chance a blow lands lucky: twice as hard.` });
-  if (s.morale) out.push({ name: 'Morale', note: `${pct(s.morale)} chance a stack's spirits win it another turn before the round moves on.` });
+  if (s.luck) out.push({ name: 'Luck', note: `Every blow has a ${pct(s.luck)} chance to land lucky, twice as hard.` });
+  if (s.morale) out.push({ name: 'Morale', note: `Every stack has a ${pct(s.morale)} chance that its spirits win it another turn before the round moves on.` });
   if (s.slows.length) out.push({ name: 'Slowed from the start', note: `${names(s.slows)} start every battle slowed.` });
   return out;
 }
@@ -330,7 +330,7 @@ function spiritRows(s: Spirits | null): StackSheet['stats'] {
   const [luck, morale] = [s?.luck ?? 0, s?.morale ?? 0];
   return [
     { name: 'Luck', value: signedShare(luck), note: luck ? 'chance a blow lands twice as hard' : 'none to speak of' },
-    { name: 'Morale', value: signedShare(morale), note: morale > 0 ? 'chance they go again, each round' : morale < 0 ? 'chance they lose heart, and their turn' : s?.uneasy.length ? 'steady: it evens out' : 'steady' },
+    { name: 'Morale', value: signedShare(morale), note: morale > 0 ? 'chance they go again, each round' : morale < 0 ? 'chance they lose heart, and their turn' : s?.uneasy.length ? 'steady, as it evens out' : 'steady' },
   ];
 }
 
@@ -338,7 +338,7 @@ function spiritRows(s: Spirits | null): StackSheet['stats'] {
 function spiritTraits(s: Spirits | null): Note[] {
   if (!s) return [];
   const named = [...s.gifts, ...s.moods].map((g) => ({ name: g.source, note: `${[g.luck ? `${signedShare(g.luck)} luck` : '', g.morale ? `${signedShare(g.morale)} morale` : ''].filter(Boolean).join(', ')}.` }));
-  const uneasy = s.uneasy.length ? [{ name: 'Uneasy company', note: `They won\u2019t march happily beside the ${listed(s.uneasy)}: ${signedShare(s.grumble)} morale.` }] : [];
+  const uneasy = s.uneasy.length ? [{ name: 'Uneasy company', note: `They won\u2019t march happily beside the ${listed(s.uneasy)}, and it costs them ${Math.abs(Math.round(s.grumble * 100))}% morale.` }] : [];
   return [...named, ...uneasy];
 }
 
@@ -359,20 +359,20 @@ export function stackSheet(state: GameState, index: number): StackSheet | null {
   const traits: Note[] = abilitiesOf(stack.troop).map((a) => ({ name: a.name, note: a.note }));
   const chargedBy: string[] = [];
   const volleyBy: string[] = [];
-  if (t.shots) traits.push({ name: 'Shooter', note: 'Shoots from anywhere, unless an enemy stands beside it. In melee it hits at half strength.' });
+  if (t.shots) traits.push({ name: 'Shooter', note: 'It shoots from anywhere, unless an enemy stands beside it. In melee it hits at half strength.' });
   for (const { name, bonus } of namedBonuses(state)) {
     const own = bonus.troops?.[stack.troop];
     const parts = [own?.attack && `+${own.attack} attack`, own?.defence && `+${own.defence} defence`, own?.shots && t.shots && `+${own.shots} shots`].filter(Boolean);
-    if (parts.length) traits.push({ name, note: `${parts.join(', ')}.` });
+    if (parts.length) traits.push({ name, note: `They get ${listed(parts as string[])}.` });
     if (bonus.charge?.includes(stack.troop)) chargedBy.push(name);
     if (bonus.volley && t.shots) volleyBy.push(name);
-    if (bonus.melee) traits.push({ name, note: `+${pct(bonus.melee)} damage in melee.` });
-    if (bonus.ranged && t.shots) traits.push({ name, note: `+${pct(bonus.ranged)} damage with their shots.` });
+    if (bonus.melee) traits.push({ name, note: `They do +${pct(bonus.melee)} damage in melee.` });
+    if (bonus.ranged && t.shots) traits.push({ name, note: `Their shots do +${pct(bonus.ranged)} damage.` });
     if (bonus.armour) traits.push({ name, note: `They take ${pct(bonus.armour)} less damage.` });
   }
   // One charge, however many things teach it.
-  if (chargedBy.length) traits.push({ name: `Charge (${chargedBy.join(', ')})`, note: 'After a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder, and nobody strikes back, but it winds them: they can\u2019t strike back themselves for the rest of that round and the next.', trick: true });
-  if (volleyBy.length) traits.push({ name: `First volley (${volleyBy.join(', ')})`, note: 'A free volley before every battle, except at a villain\u2019s walls.', trick: true });
+  if (chargedBy.length) traits.push({ name: `Charge (${chargedBy.join(', ')})`, note: 'After a run-up of 3 hexes, started clear of the enemy, they hit a quarter harder and nobody strikes back. The charge winds them, though, so they can\u2019t strike back themselves for the rest of that round and the next.', trick: true });
+  if (volleyBy.length) traits.push({ name: `First volley (${volleyBy.join(', ')})`, note: 'They loose a free volley before every battle, except at a villain\u2019s walls.', trick: true });
   const spirits = f ? spiritsOf(b, f) : null;
   traits.push(...spiritTraits(spirits));
   const wage = Math.round(stack.count * t.wage * (1 + s.wages));
@@ -402,8 +402,8 @@ export function stackSheet(state: GameState, index: number): StackSheet | null {
 function chargeLine(state: GameState): string {
   const list = listed([...new Set(heroStats(state).charge.filter((t) => !TROOPS[t].hero))].map((t) => TROOPS[t].name));
   return list
-    ? `He and his ${list} charge: a quarter harder, and nobody strikes back. He rides in from behind the line; they need a run-up of 3 hexes, started clear of the enemy, and it winds them: they can\u2019t strike back themselves for the rest of that round and the next.`
-    : 'He charges as he rides in from behind the line: a quarter harder, and nobody strikes back.';
+    ? `He and his ${list} charge, so they hit a quarter harder and nobody strikes back. He rides in from behind the line, but they need a run-up of 3 hexes, started clear of the enemy, and the charge winds them, so they can\u2019t strike back themselves for the rest of that round and the next.`
+    : 'He charges as he rides in from behind the line, so he hits a quarter harder and nobody strikes back.';
 }
 
 /** What a bard pays to send a stack home, or bring it over, in weeks of its wages: after his share off every bribe. */
@@ -427,18 +427,18 @@ export function leaderSheet(state: GameState): LeaderSheet {
   const signed = (n: number) => `${n < 0 ? '\u2212' : '+'}${Math.abs(n)}`;
   const from = (total: number, own: number, what: string) => (total === own ? 'as a fighter' : `${own} as a fighter, ${signed(total - own)} from his ${what}`);
   const growth = [grow && `+${grow.perLevel.damage} a level`, grow?.perPower && `+${grow.perPower} per spell power`].filter(Boolean).join(', ');
-  const lends = [s.attack && `${signed(s.attack)} attack`, s.defence && `${signed(s.defence)} defence`].filter(Boolean).join(', ');
+  const lends = listed([s.attack && `${signed(s.attack)} attack`, s.defence && `${signed(s.defence)} defence`].filter((part): part is string => Boolean(part)));
   const spells = state.hero.spells.length;
   const traits: Note[] = [
     { name: 'Leads', note: lends ? `Every stack fights with ${lends}.` : 'His stacks fight on their own numbers, for now.' },
     {
       name: 'Spells',
       note: spells
-        ? `${s.casts === 1 ? 'One' : s.casts} a round from the ${spells} in his book, cast from behind the line. Mana ${state.hero.mana}/${s.maxMana}: none comes back in battle.`
-        : 'None in his book yet: a teacher or a shrine could help.',
+        ? `He casts ${s.casts === 1 ? 'one' : s.casts} a round from the ${spells} in his book, from behind the line. He has ${state.hero.mana}/${s.maxMana} mana, and none comes back in battle.`
+        : 'He has none in his book yet, but a teacher or a shrine could help.',
     },
     ...(me.charges ? [{ name: 'Charge', note: chargeLine(state), trick: true }] : []),
-    ...(me.shots ? [{ name: 'Shooter', note: 'Shoots from behind the line, at any stack on the field.' }] : []),
+    ...(me.shots ? [{ name: 'Shooter', note: 'He shoots from behind the line, at any stack on the field.' }] : []),
     ...me.abilities.map((a) => ({ name: a.name, note: a.note })),
     ...bribes(state),
     // How many spells a round is said above, and who charges too.

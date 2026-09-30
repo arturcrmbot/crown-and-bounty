@@ -1,4 +1,4 @@
-import { ARTIFACTS } from '../../content/artifacts';
+import { artifactPhrase } from '../../content/artifacts';
 import { artifactChoices, foundNote, giveArtifact, heroStats } from '../hero';
 import { close, coins, leadershipUsed, update, type Choice, type GameState, type Location, type Result } from '../state';
 import { aboutWords, loot, note, option, ride, say, words } from './common';
@@ -14,16 +14,16 @@ function openChest(state: GameState, place: Location, take: 'keep' | 'give'): Re
   let choices: Choice[] = [];
   if (place.artifact) {
     opened = giveArtifact(opened, place.artifact);
-    found.push(`And under the coins: **${ARTIFACTS[place.artifact].name}**. ${foundNote(opened, place.artifact)}`);
+    found.push(`Under the coins you find ${artifactPhrase(place.artifact)}. ${foundNote(opened, place.artifact)}`);
     choices = artifactChoices(opened, place.artifact);
   }
   if (take === 'keep') {
-    const card = note(place, [`**+${coins(gold)} gold.** The villagers will never know.`, ...found]);
+    const card = note(place, [`You keep **${coins(gold)} gold**. The villagers will never know.`, ...found]);
     if (choices.length) card.choices = choices;
     return say({ ...opened, gold: state.gold + gold }, place, card, removed);
   }
   const leadership = Math.round(gold / 20);
-  const card = note(place, [`The villagers cheer. **+${leadership} leadership.**`, 'Somebody starts a song about you. It rhymes \u201cAldric\u201d with \u201cbald trick\u201d.', ...found]);
+  const card = note(place, [`The villagers cheer, and you gain **${leadership} leadership**.`, 'Somebody starts a song about you. It rhymes \u201cAldric\u201d with \u201cbald trick\u201d.', ...found]);
   if (choices.length) card.choices = choices;
   return say({ ...opened, leadership: state.leadership + leadership }, place, card, removed);
 }
@@ -32,11 +32,11 @@ function openChest(state: GameState, place: Location, take: 'keep' | 'give'): Re
 export const chest: PlaceKind = {
   about: (state, place) => ({ title: place.name, lines: aboutWords(state, place), choices: [ride(place, 'Open'), close] }),
   arrive(state, place) {
-    if (place.done) return say(state, place, note(place, ['Empty. You check twice anyway.']));
+    if (place.done) return say(state, place, note(place, ['The chest is empty. You check twice anyway.']));
     const gold = loot(state, place.gold ?? 0);
     return say(state, place, {
       title: place.name,
-      lines: [`You pry the lid off. Inside: **${coins(gold)} gold**.`, 'Keep it, or hand it out so the villagers sing your praises across the province?'],
+      lines: [`You pry the lid off and find **${coins(gold)} gold** inside.`, 'Will you keep it, or hand it out so the villagers sing your praises across the province?'],
       choices: [option(place, 'Keep the gold', 'keep'), option(place, `Hand it out (+${Math.round(gold / 20)} leadership)`, 'give')],
     });
   },
@@ -56,7 +56,7 @@ export const chest: PlaceKind = {
 export const pile: PlaceKind = {
   about: (state, place) => ({ title: place.name, lines: aboutWords(state, place), choices: [ride(place, 'Take'), close] }),
   arrive(state, place) {
-    if (place.done) return say(state, place, note(place, ['Nothing left but footprints.']));
+    if (place.done) return say(state, place, note(place, ['There is nothing left but footprints.']));
     const gold = loot(state, place.gold ?? 0);
     const taken = update({ ...state, gold: state.gold + gold }, place.id, { done: true });
     const removed = { type: 'removed', id: place.id } as const;

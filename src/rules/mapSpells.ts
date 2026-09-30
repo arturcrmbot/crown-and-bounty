@@ -12,6 +12,6 @@ export function castMapSpell(state: GameState, id: MapSpellId): Result | null {
   const mana = state.hero.mana - spell.mana;
   return {
     state: { ...seen, hero: { ...seen.hero, mana } },
-    events: [{ type: 'reveal', at: state.hero.at, radius: spell.radius }, show({ title: spell.name, lines: [spell.note, `*${spell.mana} mana spent: ${mana} left for today\u2019s battles.*`], choices: [close] }, state.hero.at)],
+    events: [{ type: 'reveal', at: state.hero.at, radius: spell.radius }, show({ title: spell.name, lines: [spell.note, `*You spend ${spell.mana} mana, and have ${mana} left for today\u2019s battles.*`], choices: [close] }, state.hero.at)],
   };
 }

@@ -76,15 +76,15 @@ export const COMMISSIONS: Commission[] = [
     returned: 'goose',
     timeout: 'The King\u2019s patience has run out. So has the goose\u2019s.',
     praise: '"Grimsby in irons, and my goose home!" King Osric beams. "Splendid. Simply splendid."',
-    arrival: ['The heather of Aldmoor, and somewhere in Darkwood, a goose.'],
+    arrival: ['The heather of Aldmoor stretches away, and somewhere in Darkwood there is a goose.'],
     reward: 1500,
     memories: [
       { when: { lullaby: false }, line: '"Grimsby came quietly to a lullaby, I hear, and half his bounty went to his old nanny. Well. She did bring him up."' },
-      { when: { pike: false }, line: '"Sergeant Pike is home with his mother, I hear. She has written to thank me: four pages, mostly about you."' },
+      { when: { pike: false }, line: '"Sergeant Pike is home with his mother, I hear. She has written to thank me. It runs to four pages, mostly about you."' },
       { when: { goose: false }, line: '"And the goose tells me somebody whistled St Aldhelm\u2019s hymn under the Baron\u2019s walls. She has honked it at me all through breakfast."' },
       { when: { wolfpelt: false }, line: '"Old Nan sends her thanks for the wolf pelt. She says she hasn\u2019t been so warm since my father\u2019s day."' },
       { when: { dig: 'raided' }, line: '"Grimsby had his men digging holes in my heath, I hear. Forty of them." The King is quiet for a moment. "Well. He won\u2019t find it there."' },
-      { when: { dwarf: 'friend' }, line: '"A dwarf came to the gate this morning with a message for my officer: *\u2018The kettle\u2019s on.\u2019* Nobody here knows what it means."' },
+      { when: { dwarf: 'friend' }, line: '"A dwarf came to the gate this morning with a message for my officer. It said, *\u2018The kettle\u2019s on.\u2019* Nobody here knows what it means."' },
       { when: { dwarf: 'robbed' }, line: '"A dwarf has written to complain about an ore cart. In runes. On a rock. Through my window."' },
       { when: { poachers: 'spared' }, line: '"The poachers of Aldmoor have sworn off my deer, I\u2019m told. They\u2019ve taken up rabbits instead. It\u2019s a start."' },
       { when: { orders: false }, line: '"Grimsby\u2019s own orders, turned on his own patrol! I shall have them framed."' },
@@ -125,7 +125,7 @@ export const COMMISSIONS: Commission[] = [
       },
       {
         who: 'the Baron\u2019s orders, pinned to a spade',
-        words: 'Keep digging. It isn\u2019t gold, so don\u2019t pocket it: you\u2019ll know it when you see it. G.',
+        words: 'Keep digging. It isn\u2019t gold, so don\u2019t pocket it. You\u2019ll know it when you see it. G.',
         heard: { flags: { dig: 'raided' } },
       },
       {
@@ -178,7 +178,7 @@ export const COMMISSIONS: Commission[] = [
     ],
     surrender: 'She throws down her ladle. "Fine! Take your newt." The newt looks relieved.',
     homecoming: 'The tax collector is un-newted by teatime, and only slightly damp.',
-    timeout: 'Word comes from court: the tax collector has settled into newt life. The King is not pleased.',
+    timeout: 'Word comes from court that the tax collector has settled into newt life. The King is not pleased.',
     praise: '"The fen is quiet, and my tax collector is dry," says King Osric. "Well done, well done."',
     arrival: ['Reeds to the horizon, and the smell of eels.', 'Your boots find something that squelches, and your men give you a look.'],
     reward: 2500,
@@ -208,12 +208,12 @@ export const COMMISSIONS: Commission[] = [
 
 /** What the King himself can give at court, besides gold. */
 export const BOONS: Record<KingsBoonId, { name: string; note: string }> = {
-  fencing: { name: 'The fencing master', note: 'Lessons with the fencing master: **+1 attack**.' },
-  armourer: { name: 'The royal armourer', note: 'Your armour refitted by the King\u2019s smith: **+1 defence**.' },
-  library: { name: 'The royal library', note: 'Evenings among the grimoires: **+1 spell power**.' },
-  astronomer: { name: 'The court astronomer', note: 'Late nights with the stars: **+1 knowledge**.' },
-  warrant: { name: 'A royal warrant', note: 'Troops follow the King\u2019s seal: **+40 leadership**.' },
-  purse: { name: 'A heavy purse', note: '**+1,500 gold**, and the treasurer\u2019s disapproval.' },
+  fencing: { name: 'The fencing master', note: 'Lessons with the fencing master give you **+1 attack**.' },
+  armourer: { name: 'The royal armourer', note: 'The King\u2019s smith refits your armour, for **+1 defence**.' },
+  library: { name: 'The royal library', note: 'Evenings among the grimoires give you **+1 spell power**.' },
+  astronomer: { name: 'The court astronomer', note: 'Late nights with the stars give you **+1 knowledge**.' },
+  warrant: { name: 'A royal warrant', note: 'Troops follow the King\u2019s seal, which gives you **+40 leadership**.' },
+  purse: { name: 'A heavy purse', note: 'You get **1,500 gold**, and the treasurer\u2019s disapproval.' },
 };
 
 export const BOON_IDS = Object.keys(BOONS) as KingsBoonId[];

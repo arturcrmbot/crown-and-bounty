@@ -17,7 +17,7 @@ export const FINDS: Location[] = [
     text: {
       about: [
         '**NORTH:** the heath, the old watchtower, and the crags.',
-        '**WEST:** the kennels, and Darkwood. *Mind the dogs.* Somebody has scratched underneath: *THEY ARE NOT DOGS.*',
+        '**WEST:** the kennels, and Darkwood. *Mind the dogs.* Somebody has scratched *THEY ARE NOT DOGS* underneath.',
         '**EAST:** the old bridge, Westmere, and a hot dinner.',
       ],
     },
@@ -42,12 +42,12 @@ export const FINDS: Location[] = [
     name: 'The Diggers\u2019 Fire',
     at: [1120, 512],
     done: false,
-    text: { about: ['A ring of cold ashes by the road, and the marks of a great many spades.', '*Somebody has left a letter under a stone.*'] },
+    text: { about: ['A ring of cold ashes lies by the road, among the marks of a great many spades.', '*Somebody has left a letter under a stone.*'] },
     pages: [
       {
         id: 'orders',
         lines: [
-          'Grimsby\u2019s diggers camped here on their way to the heath. Under the stone, in the Baron\u2019s hand:',
+          'Grimsby\u2019s diggers camped here on their way to the heath. Under the stone is a letter in the Baron\u2019s hand.',
           '*"RATIONS FOR THE DIG. Forty men: one sausage each. Forty spades. The goose is NOT a ration, and the next man who says so is digging the latrines. G."*',
         ],
         choices: [],
@@ -61,12 +61,12 @@ export const FINDS: Location[] = [
     name: 'An Eagle\u2019s Nest',
     at: [1450, 472],
     done: false,
-    text: { about: ['An eagle\u2019s nest on a crag by the road, and something in it catching the sun.'] },
+    text: { about: ['An eagle\u2019s nest sits on a crag by the road, and something in it is catching the sun.'] },
     pages: [
       {
         id: 'ledge',
         when: { notFlag: 'nest' },
-        lines: ['The nest is lined with the things eagles like: a spoon, three buttons, somebody\u2019s spectacles, and a scatter of old coins. *The eagle is out.*'],
+        lines: ['The nest is lined with all the things eagles like, such as a spoon, three buttons, somebody\u2019s spectacles and a scatter of old coins. *The eagle is out.*'],
         choices: [
           {
             id: 'climb',
@@ -87,13 +87,13 @@ export const FINDS: Location[] = [
     name: 'The Pickets\u2019 Fire',
     at: [292, 1880],
     done: false,
-    text: { about: ['A pickets\u2019 fire by the Baron\u2019s road, still warm, and nobody minding it.', '*A note is nailed to the nearest pine.*'] },
+    text: { about: ['Somebody has left a pickets\u2019 fire burning by the Baron\u2019s road, and nobody is minding it.', '*A note is nailed to the nearest pine.*'] },
     pages: [
       {
         id: 'note',
         lines: [
           '*"PICKETS. If the King\u2019s man comes, shout. If he doesn\u2019t come, shout anyway, every hour, so I know you\u2019re awake. G."*',
-          'Underneath, in another hand: *"Gone after rabbits. Back soon. Shout if you need us."*',
+          'Underneath, somebody else has written, *"Gone after rabbits. Back soon. Shout if you need us."*',
         ],
         choices: [],
       },
@@ -108,8 +108,8 @@ export const FINDS: Location[] = [
     done: false,
     gold: 100,
     text: {
-      about: ['A wicker hamper in the ditch by the Baron\u2019s road, with **B.G.** on the lid in gold.', '*It fell off somebody\u2019s pony.*'],
-      visit: ['The Baron\u2019s lunch: a pork pie, a pot of goose grease (for her feathers), and {gold} in a silk purse. There\u2019s a note in with the pie: *"More pie. G."*'],
+      about: ['A wicker hamper lies in the ditch by the Baron\u2019s road, with **B.G.** on the lid in gold.', '*It fell off somebody\u2019s pony.*'],
+      visit: ['It is the Baron\u2019s lunch. Inside you find a pork pie, a pot of goose grease for her feathers, and {gold} in a silk purse. The note in with the pie says, *"More pie. G."*'],
     },
   },
   {
@@ -121,8 +121,8 @@ export const FINDS: Location[] = [
     done: false,
     gold: 80,
     text: {
-      about: ['A pedlar\u2019s pack, washed up against the stepping stones of the ford.'],
-      visit: ['Ribbons, buttons, a tin whistle, and {gold} in a sock. *Somewhere downstream, a pedlar is having a very bad week.*'],
+      about: ['A pedlar\u2019s pack has washed up against the stepping stones of the ford.'],
+      visit: ['It holds ribbons, buttons, a tin whistle, and {gold} in a sock. *Somewhere downstream, a pedlar is having a very bad week.*'],
     },
   },
 
@@ -134,7 +134,7 @@ export const FINDS: Location[] = [
     name: 'Old Tam\u2019s Fold',
     at: [2236, 572],
     done: false,
-    text: { about: ['A drystone fold on the downs, half full of sheep, and an old shepherd leaning on his crook.', '*The other half of the fold is very empty.*'] },
+    text: { about: ['A drystone fold on the downs is half full of sheep, and an old shepherd is leaning on his crook beside it.', '*The other half of the fold is very empty.*'] },
     pages: [
       {
         id: 'home',
@@ -171,7 +171,7 @@ export const FINDS: Location[] = [
       tier: 'pest',
       behaviour: 'roam',
       range: 80,
-      lines: ['Rustlers, lying low in a hollow of the downs with a flock that isn\u2019t theirs, waiting for dark.', '*The sheep have a look of Old Tam\u2019s about them.*'],
+      lines: ['Rustlers are lying low in a hollow of the downs with a flock that isn\u2019t theirs, waiting for dark.', '*The sheep have a look of Old Tam\u2019s about them.*'],
       army: [{ troop: 'bandits', count: 9 }],
       reward: 90,
       threat: '*"These are our sheep,"* says the biggest. *"We\u2019ve had them for hours."*',
@@ -193,7 +193,7 @@ export const FINDS: Location[] = [
       ],
       spoils: { flags: { ewes: true } },
       flees: 'The rustlers scatter over the downs. The sheep stay where they are, chewing.',
-      loot: 'In their pockets: {gold}. And forty ewes, who set off home to Old Tam\u2019s fold without being asked.',
+      loot: 'Their pockets hold {gold}. The forty ewes set off home to Old Tam\u2019s fold without being asked.',
     },
   },
   {
@@ -203,7 +203,7 @@ export const FINDS: Location[] = [
     name: 'The Eel-catcher',
     at: [1792, 770],
     done: false,
-    text: { about: ['A boat pulled up on the bank, eel traps drying beside it, and an eel-catcher mending a net.'] },
+    text: { about: ['An eel-catcher is mending a net beside his boat, with his eel traps drying on the bank.'] },
     pages: [
       {
         id: 'net',
@@ -239,7 +239,7 @@ export const FINDS: Location[] = [
       tier: 'pest',
       behaviour: 'roam',
       range: 90,
-      lines: ['The Baron\u2019s tax collectors, going from farm to farm with a very large ledger.', '*They are collecting the taxes the Baron owes the King, from the King\u2019s own farmers.*'],
+      lines: ['The Baron\u2019s tax collectors are going from farm to farm with a very large ledger.', '*They are collecting the taxes the Baron owes the King, from the King\u2019s own farmers.*'],
       army: [{ troop: 'swordsmen', count: 5 }, { troop: 'crossbowmen', count: 3 }],
       reward: 120,
       threat: 'The one with the ledger licks his pencil. *"Name? Farm? Arrears?"*',
@@ -260,7 +260,7 @@ export const FINDS: Location[] = [
         },
       ],
       flees: 'The tax collectors run for the bridge, dropping receipts.',
-      loot: 'In their strongbox: {gold}, and the Baron\u2019s ledger. *"Owed to the King: three years\u2019 taxes. Pay later. One goose. NEVER. G."*',
+      loot: 'Their strongbox holds {gold}, and the Baron\u2019s ledger. *"Owed to the King: three years\u2019 taxes. Pay later. One goose. NEVER. G."*',
     },
   },
   {
@@ -270,7 +270,7 @@ export const FINDS: Location[] = [
     name: 'The Hayrick',
     at: [2690, 1290],
     done: false,
-    text: { about: ['A hayrick in the stubble, with a pitchfork stuck in it and a pair of boots sticking out of the top.'] },
+    text: { about: ['A hayrick stands in the stubble, with a pitchfork stuck in it and a pair of boots sticking out of the top.'] },
     pages: [
       {
         id: 'boots',
@@ -289,7 +289,7 @@ export const FINDS: Location[] = [
     name: 'The Goose Pond',
     at: [2460, 1590],
     done: false,
-    text: { about: ['A pond at the bottom of Westmere green, and a great many geese, every one of them looking at you.'] },
+    text: { about: ['There is a pond at the bottom of Westmere green, and a great many geese on it, every one of them looking at you.'] },
     pages: [
       {
         id: 'geese',
@@ -310,7 +310,7 @@ export const FINDS: Location[] = [
     name: 'Widow Hesketh\u2019s Bees',
     at: [1400, 760],
     done: false,
-    text: { about: ['Straw beehives in a row on the heather, humming, and a widow in a veil.'] },
+    text: { about: ['Straw beehives hum in a row on the heather, and a widow in a veil is tending them.'] },
     pages: [
       {
         id: 'honey',
@@ -339,7 +339,7 @@ export const FINDS: Location[] = [
     name: 'The Grey Wethers',
     at: [980, 1100],
     done: false,
-    text: { about: ['A ring of old standing stones on the heath: older than the King, older than the old King, older than the heath.'] },
+    text: { about: ['There is a ring of old standing stones on the heath. They are older than the King, older than the old King, and older than the heath.'] },
     pages: [
       {
         id: 'ring',
@@ -350,7 +350,7 @@ export const FINDS: Location[] = [
             id: 'climb',
             label: 'Climb the tallest stone',
             effects: { reveal: { at: [980, 1100], radius: 420 }, flags: { wethers: true } },
-            lines: ['From the top you can see half the heath: the old watchtower, smoke over the kennels, and a very great deal of heather.'],
+            lines: ['From the top you can see half the heath, with the old watchtower, smoke over the kennels, and a very great deal of heather.'],
           },
           { id: 'leave', label: 'Leave them be' },
         ],
@@ -367,8 +367,8 @@ export const FINDS: Location[] = [
     done: false,
     gold: 60,
     text: {
-      about: ['A tinker\u2019s pack, dropped in the heather in a hurry.', '*Something made him run. Something with a great many feet, by the tracks.*'],
-      visit: ['Pots, pans, a kettle with no bottom, and {gold} that fell out of it.'],
+      about: ['Somebody has dropped a tinker\u2019s pack in the heather in a hurry.', '*Something made him run, and by the tracks it had a great many feet.*'],
+      visit: ['You find pots, pans, a kettle with no bottom, and {gold} that fell out of it.'],
     },
   },
 
@@ -380,7 +380,7 @@ export const FINDS: Location[] = [
     name: 'The Charcoal Burners',
     at: [2040, 1920],
     done: false,
-    text: { about: ['A charcoal clamp smoking at the edge of the King\u2019s chase, and two burners as black as their charcoal, watching it.'] },
+    text: { about: ['A charcoal clamp is smoking at the edge of the King\u2019s chase, and two burners as black as their charcoal are watching it.'] },
     pages: [
       {
         id: 'clamp',
@@ -399,7 +399,7 @@ export const FINDS: Location[] = [
     name: 'St Hubert\u2019s Shrine',
     at: [1800, 1940],
     done: false,
-    text: { about: ['A little shrine to St Hubert, patron saint of hunters, with a stag\u2019s antlers nailed over it.'] },
+    text: { about: ['This is a little shrine to St Hubert, the patron saint of hunters, with a stag\u2019s antlers nailed over it.'] },
     pages: [
       {
         id: 'apple',
@@ -415,7 +415,7 @@ export const FINDS: Location[] = [
           { id: 'leave', label: 'Ride on' },
         ],
       },
-      { id: 'after', when: { flag: 'hubert' }, lines: ['Two apples on the step now. Something has had a bite out of one.'], choices: [] },
+      { id: 'after', when: { flag: 'hubert' }, lines: ['There are two apples on the step now. Something has had a bite out of one.'], choices: [] },
     ],
   },
 ];

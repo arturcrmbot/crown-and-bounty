@@ -60,7 +60,7 @@ export function setLine(state: GameState, id: ArtifactId): string {
   const pieces = piecesOf(set);
   const worn = pieces.filter((p) => Object.values(state.hero.gear).includes(p)).length;
   if (worn === pieces.length) return `**${SETS[set].name} is complete!** ${SETS[set].note}`;
-  return `*${worn} of ${pieces.length} worn.*`;
+  return `*You are wearing ${worn} of the ${pieces.length}.*`;
 }
 
 export type HeroStats = {
@@ -365,7 +365,7 @@ export function describeOption(option: string, state: GameState): { label: strin
   const rank = Math.min(state.hero.skills[id as SkillId] ?? 0, RANKS.length - 1);
   const next = SKILLS[id as SkillId].ranks[rank];
   // A second cast is nothing new to a hero who casts two already: say so, rather than let him think it's a third.
-  const capped = next.bonus.casts && heroStats(state).casts >= MAX_CASTS ? ' *You cast two spells a round already, and nobody casts more: that part changes nothing for you.*' : '';
+  const capped = next.bonus.casts && heroStats(state).casts >= MAX_CASTS ? ' *You cast two spells a round already, and nobody casts more, so that part changes nothing for you.*' : '';
   return { label: `${RANKS[rank]} ${SKILLS[id as SkillId].name}`, note: `${next.note}${capped}` };
 }
 
@@ -376,7 +376,7 @@ export function levelUpCard(state: GameState): Card | null {
   const options = offer.options.map((o) => ({ o, ...describeOption(o, state) }));
   return {
     title: `Level ${roman(offer.level)}!`,
-    lines: [`**${STAT_NAMES[offer.stat]} +1, leadership +${RENOWN}.** Choose something to learn:`],
+    lines: [`Your ${STAT_NAMES[offer.stat].toLowerCase()} rises by **1**, and your leadership by **${RENOWN}**. Choose something to learn.`],
     choices: options.map((x) => ({ label: x.label, detail: x.note, action: { type: 'learn', option: x.o } })),
   };
 }
@@ -450,7 +450,7 @@ export function foundNote(state: GameState, id: ArtifactId): string {
   const set = setLine(state, id);
   const note = Object.values(state.hero.gear).includes(id) ? `You put it on. ${a.note}` : a.drawback
     ? `${a.note} It goes in your pack until you choose whether to wear it.`
-    : `${a.note} It goes in your pack, since ${slotTaken(id)}: **H** to swap.`;
+    : `${a.note} It goes in your pack, since ${slotTaken(id)}. Press **H** to swap.`;
   return set ? `${note} ${set}` : note;
 }
 

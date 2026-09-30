@@ -12,13 +12,13 @@ export function titleCard(resume: GameState | null): Card {
   const n = resume && roman(resume.campaign.chapter + 1);
   const onward = resume && {
     label: 'Continue',
-    detail: resume.over === 'won' ? `Commission ${n} is complete, and the King is waiting for you at court.` : `Day ${roman(resume.day)} of Commission ${n}${resume.over === 'lost' ? ', lost' : ''}`,
+    detail: resume.over === 'won' ? `Commission ${n} is complete, and the King is waiting for you at court.` : resume.over === 'lost' ? `Commission ${n} was lost on day ${roman(resume.day)}.` : `You are on day ${roman(resume.day)} of Commission ${n}.`,
     action: { type: 'close' as const },
   };
   return {
     title: '',
-    lines: ['*Five villains, one lost sceptre, and a stolen goose.*'],
-    choices: [...(onward ? [onward] : []), { label: 'New campaign', detail: resume ? 'Replaces your save once you ride out.' : 'The King is waiting.', action: { type: 'restart' } }],
+    lines: ['*The King has lost five provinces, his sceptre and his goose, and he wants them all back.*'],
+    choices: [...(onward ? [onward] : []), { label: 'New campaign', detail: resume ? 'This replaces your save once you ride out.' : 'The King is waiting.', action: { type: 'restart' } }],
   };
 }
 
@@ -28,7 +28,7 @@ export const kingCard = (): Card => ({
   portrait: 'king',
   lines: [
     '"Aldric! Come in, come in. The realm is in a shocking state."',
-    '"Five villains have carved up my provinces. The Sceptre of Order has been lost since my father\u2019s day. And my goose has been stolen."',
+    '"Five villains have carved up my provinces. The Sceptre of Order has been lost since my father\u2019s day. And somebody has stolen my goose."',
     '"I need an officer who can raise an army, pay it, and point it at people. You\u2019ll do."',
   ],
   choices: [{ label: 'At your service, Majesty.', action: { type: 'close' } }],
@@ -50,7 +50,7 @@ export const wantedCard = (): Card => {
 export function backgroundCard(): Card {
   return {
     title: 'Who were you, before the King found you?',
-    lines: ['Each plays differently. Choose how you like to win.'],
+    lines: ['Each one plays differently, so choose the way you like to win.'],
     choices: Object.values(BACKGROUNDS).map((b) => ({ label: b.name, detail: b.playstyle, portrait: b.id, action: { type: 'background', id: b.id } })),
     tiles: true,
   };
@@ -63,7 +63,7 @@ export function storyCard(background: BackgroundId, briefed = false): Card {
     title: briefed ? b.title : 'The King\u2019s Commission',
     portrait: background,
     lines: [
-      ...(briefed ? [] : [`${b.title}: ${COMMISSIONS[0].brief.join(' ')}`]),
+      ...(briefed ? [] : [`${b.title}, the King has a commission for you. ${COMMISSIONS[0].brief.join(' ')}`]),
       `You ride out with ${listed(b.army.map((s) => troops(s.troop, s.count)))}${b.spells.length ? `, and ${listed(b.spells.map((s) => SPELLS[s].name))} in your spellbook` : ''}.`,
       `**${b.signature.name}.** ${b.signature.note}`,
     ],
@@ -108,7 +108,7 @@ export function chapterStartCard(state: GameState): Card {
 
 export const welcomeBackCard = (state: GameState): Card => ({
   title: 'Welcome back',
-  lines: [`Day ${roman(state.day)} of Commission ${roman(state.campaign.chapter + 1)}. ${state.bounty === 'paid' ? 'The map is whole, and the X is waiting.' : `${commissionOf(state).villain} is still at large.`}`],
+  lines: [`It is day ${roman(state.day)} of Commission ${roman(state.campaign.chapter + 1)}. ${state.bounty === 'paid' ? 'The map is whole, and the X is waiting.' : `${commissionOf(state).villain} is still at large.`}`],
   choices: [{ label: 'Ride on', action: { type: 'close' } }, { label: 'Start a new campaign', action: { type: 'restart' } }],
 });
 
@@ -133,7 +133,7 @@ export function keysCard(): Card {
     wide: true,
     lines: [
       '**On cards.** **Enter** or **Space** presses a card\u2019s only button, the number keys press the first, second or third, and **Esc** puts it away.',
-      '**On the map.** Click to ride: rest the pointer on the ground first to see how many days it is. Hold **Shift** to gallop, and **Esc** (or a click on him) stops. Click anything to look at it, and click it again to go there; a right-click only looks. Drag, scroll, the arrows or **WASD** look around, and so does a click or a drag on the little map at the top right, which **Tab** folds away and brings back; **Space** brings the view back to him. **E** ends the day, **H** opens the hero and his army, **J** the journal (the bounty, and what you\u2019ve heard), and **M** turns the sound off.',
+      '**On the map.** Click to ride, and rest the pointer on the ground first to see how many days\u2019 ride it is. Hold **Shift** to gallop, and press **Esc** or click on him to stop. Click anything to look at it, and click it again to go there. A right-click only looks. Drag, scroll, the arrows or **WASD** look around, and so does a click or a drag on the little map at the top right, which **Tab** folds away and brings back. **Space** brings the view back to him. **E** ends the day, **H** opens the hero and his army, **J** opens the journal with the bounty and what you\u2019ve heard, and **M** turns the sound off.',
       '**In battle.** Click a hex to move, or an enemy to attack. **S** opens the spellbook, **W** waits, **D** defends, **A** hands over to the sergeants, and **R** retreats.',
       '**On the hero screen.** Drag an artifact or a stack where you want it, or click it, then click where it goes. A double-click wears an artifact or takes it off. The arrows move between squares, **Enter** picks up and puts down, **Shift** and an arrow moves what\u2019s there, and **Delete** dismisses a stack. **H** or **Esc** closes it.',
     ],

@@ -1,4 +1,4 @@
-import { ARTIFACTS } from '../../content/artifacts';
+import { artifactPhrase } from '../../content/artifacts';
 import type { PortraitId } from '../../content/portraits';
 import { crowd } from '../../content/troops';
 import { artifactChoices, foundNote, gainXp, giveArtifact, heroStats } from '../hero';
@@ -15,19 +15,19 @@ export const priceOf = (state: GameState, base: number) => (base > 0 ? Math.max(
 
 /** The usual words for each kind of place, for provinces that don't give their own. */
 const USUAL: Record<Location['kind'], Omit<PlaceText, 'later'>> = {
-  castle: { about: ['A royal castle.', 'Troops to recruit, and an armoury.'] },
-  tower: { about: ['An old tower, long empty.'], done: ['Empty now.'], visit: ['Someone left a note here, long ago.'] },
-  mine: { about: ['Something down there is humming.'], done: ['Nothing left but echoes.'], visit: ['A forgotten stash: **{gold} gold**.'] },
-  village: { about: ['Friendly, if nosy.'] },
+  castle: { about: ['This is a royal castle.', 'You can recruit troops here, and there is an armoury.'] },
+  tower: { about: ['This old tower has been empty for a long time.'], done: ['The tower is empty now.'], visit: ['Someone left a note here, long ago.'] },
+  mine: { about: ['Something down there is humming.'], done: ['There is nothing left but echoes.'], visit: ['You find a forgotten stash of **{gold} gold**.'] },
+  village: { about: ['The villagers are friendly, if nosy.'] },
   mill: { about: ['The miller waves.'], done: ['"Next week, officer."'], visit: ['Your troops eat well and march on.'] },
-  chest: { about: ['Heavy, and locked with a lock that isn\u2019t.'] },
-  gold: { about: ['Someone left in a hurry.'] },
-  patrol: { done: ['Nobody here now.'] },
-  hideout: { done: ['Nobody here now.'] },
+  chest: { about: ['It is heavy, and locked with a lock that isn\u2019t.'] },
+  gold: { about: ['Someone left this in a hurry.'] },
+  patrol: { done: ['There is nobody here now.'] },
+  hideout: { done: ['There is nobody here now.'] },
   signpost: { about: ['The arms point every way at once.'] },
-  dig: { about: ['The map says here. Your sergeant is not convinced.'] },
-  event: { about: ['Something worth a look.'], done: ['Nothing more to see here.'] },
-  well: { about: ['A holy well with a tin cup on a chain.'], visit: ['You drink. The water is cold and very good.'] },
+  dig: { about: ['The map says it is here. Your sergeant is not convinced.'] },
+  event: { about: ['There is something here worth a look.'], done: ['There is nothing more to see here.'] },
+  well: { about: ['A tin cup hangs on a chain by this holy well.'], visit: ['You drink. The water is cold and very good.'] },
 };
 
 /** A place's words: the province's own if it has them, else the usual ones for its kind. */
@@ -78,7 +78,7 @@ function discover(state: GameState, id: string): { state: GameState; events: Gam
   let choices: Choice[] = [];
   if (place.artifact) {
     next = giveArtifact(next, place.artifact);
-    lines.push(`You find **${ARTIFACTS[place.artifact].name}**. ${foundNote(next, place.artifact)}`);
+    lines.push(`You find ${artifactPhrase(place.artifact)}. ${foundNote(next, place.artifact)}`);
     choices = artifactChoices(next, place.artifact);
   }
   const xp = gainXp(next, DISCOVERY_XP);

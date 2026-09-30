@@ -141,7 +141,7 @@ export class BattleController implements Screen {
   private turnLine(id: number): string | null {
     const f = fighterById(this.battle, id);
     if (f.side !== 'player' || !isLeader(f)) return null;
-    if (bardOf(f)) return `${this.fighterName(id)}: ${touch() ? 'tap' : 'click'} one of their stacks to pay or jeer it, or ${touch() ? '' : 'press '}Sing. Or Wait.`;
+    if (bardOf(f)) return `${this.fighterName(id)} can pay or jeer any of their stacks. ${touch() ? 'Tap' : 'Click'} one, or ${touch() ? '' : 'press '}Sing. Or Wait.`;
     return `${this.fighterName(id)} ${ridesOut(f) ? 'can ride out at any stack in reach, strike, and ride back' : 'can shoot any stack from behind the line'}. Or Wait.`;
   }
 
@@ -190,8 +190,8 @@ export class BattleController implements Screen {
     const leave = bribePrice(this.battle, f, target);
     const join = bribePrice(this.battle, f, target, true);
     const jeer = `or jeer them (${spirits(STATUSES[bardOf(f)!.jeer])})`;
-    if (leave === null) return `${this.fighterName(id)} take no gold: ${jeer.slice(3)}.`;
-    return `${this.fighterName(id)}: ${coins(leave)} gold to go home${join !== null && canJoin(this.battle, target) ? `, ${coins(join)} to join you` : ''}; ${jeer}.`;
+    if (leave === null) return `${this.fighterName(id)} take no gold, but you can ${jeer.slice(3)}.`;
+    return `${this.fighterName(id)}: ${coins(leave)} gold to go home${join !== null && canJoin(this.battle, target) ? `, ${coins(join)} to join you` : ''}, ${jeer}.`;
   }
 
   /** A bard's moves on one of their stacks, each with its price or what it does, before he makes it. */
@@ -212,13 +212,13 @@ export class BattleController implements Screen {
       leave === null || join === null
         ? [`*${TROOPS[target.troop].name} take no gold.*`]
         : [
-            `Pay them **${coins(leave)} gold** (${art.weeks.leave} weeks\u2019 wages${off}), and they go home.`,
-            room ? `Pay them **${coins(join)} gold** (${art.weeks.join} weeks\u2019 wages${off}), and they fight for you, and ride on with you after.` : '*You have no room under your banner for them to come over.*',
+            `Pay them **${coins(leave)} gold**, ${art.weeks.leave} weeks\u2019 wages${off}, and they go home.`,
+            room ? `Pay them **${coins(join)} gold**, ${art.weeks.join} weeks\u2019 wages${off}, and they fight for you, and ride on with you after.` : '*You have no room under your banner for them to come over.*',
             ...(quarrel ? [quarrel] : []),
             '*Bought, not beaten, they teach you half what beating them would.*',
             `You carry **${coins(gold)} gold**.`,
           ];
-    lines.push(`Jeer them, and they lose heart: ${spirits(jeer)} for ${jeer.rounds} rounds, a chance they lose their turn.`);
+    lines.push(`Jeer them, and they lose heart, with ${spirits(jeer)} for ${jeer.rounds} rounds and a chance they lose their turn.`);
     this.cards.show({
       title: this.fighterName(id, target.count),
       lines,
@@ -238,8 +238,8 @@ export class BattleController implements Screen {
       title: 'Sing',
       lines: art.songs.map((id) => {
         const s = STATUSES[id];
-        const what = s.luck ? 'a chance each blow lands twice as hard' : 'a chance each stack goes again before the round moves on';
-        return `**${s.song![0].toUpperCase()}${s.song!.slice(1)}**: ${spirits(s)} for every stack of yours, for ${s.rounds} rounds: ${what}.`;
+        const what = s.luck ? 'which gives each blow a chance to land twice as hard' : 'which gives each stack a chance to go again before the round moves on';
+        return `**${s.song![0].toUpperCase()}${s.song!.slice(1)}** gives every stack of yours ${spirits(s)} for ${s.rounds} rounds, ${what}.`;
       }),
       choices: [...art.songs.map((id) => ({ label: `Sing ${STATUSES[id].song}`, action: { type: 'sing' as const, song: id } })), { label: 'Close', action: { type: 'close' } }],
     });
@@ -255,7 +255,7 @@ export class BattleController implements Screen {
     const status = STATUSES[o.status].name;
     const one = o.fighters.length === 1 && this.named(o.fighters[0]);
     // "start slowed", but "start with Stone Skin".
-    return `${o.source}: ${who} ${one ? 'starts' : 'start'} ${/ed$/.test(status) ? status.toLowerCase() : `with ${status}`}.`;
+    return `Thanks to ${o.source}, ${who} ${one ? 'starts' : 'start'} ${/ed$/.test(status) ? status.toLowerCase() : `with ${status}`}.`;
   }
 
   dispose() {
@@ -403,7 +403,7 @@ export class BattleController implements Screen {
       start: () => {
         if (!shout) v.shots.push(glow);
         if (shout) {
-          v.log = `${this.casterName(by)} ${shout.verb}: ${shout.words}`;
+          v.log = `${this.casterName(by)} ${shout.verb}, \u201c${shout.words}\u201d`;
           this.float(caster.id, shout.words, GOLD[6]);
           play('charge');
         } else v.log = by === undefined ? `${this.casterName(by)} raises his hands...` : `${this.casterName(by)} mutters a spell...`;
@@ -491,8 +491,8 @@ export class BattleController implements Screen {
     const spell = SPELLS[e.spell];
     const who = this.casterName(e.by);
     if (spell.effect.kind === 'mass') return `${who} casts ${spell.name} on ${stacks === 1 ? this.objectName(e.target) : `all ${stacks} of ${fighterById(this.battle, e.target).side === 'player' ? 'your' : 'their'} stacks`}.`;
-    if (e.healed) return `${who} casts ${spell.name} on ${this.objectName(e.target)}: ${e.healed} health back${e.raised ? `, and ${e.raised} get up again` : ''}.`;
-    return `${who} casts ${spell.name} on ${this.objectName(e.target)}${e.damage ? `: ${e.damage} damage${e.killed ? `, ${e.killed} perish` : ''}` : ''}.`;
+    if (e.healed) return `${who} casts ${spell.name} on ${this.objectName(e.target)}. They get ${e.healed} health back${e.raised ? `, and ${e.raised} get up again` : ''}.`;
+    return `${who} casts ${spell.name} on ${this.objectName(e.target)}${e.damage ? ` for ${e.damage} damage${e.killed ? `, and ${e.killed} perish` : ''}` : ''}.`;
   }
 
   /** Takes a blow from what is left of a stack (its count, and its top troop's health); true when that was the last of them. */
@@ -696,7 +696,7 @@ export class BattleController implements Screen {
             start: () => {
               v.health.set(e.fighter, healed.hp + e.healed);
               this.float(e.fighter, `+${e.healed}`, GOLD[6]);
-              v.log = `${this.fighterName(e.fighter)} ${this.verb(e.fighter, 'regenerate')}: the wounds close up.`;
+              v.log = `${this.fighterName(e.fighter)} ${this.verb(e.fighter, 'regenerate')}, and the wounds close up.`;
             },
           });
           break;
@@ -722,7 +722,7 @@ export class BattleController implements Screen {
               v.health.set(e.fighter, hurt.hp - e.hurt);
               this.float(e.fighter, `-${e.hurt}`, RED[6]);
               play(`hurt:${TROOP_SOUNDS[fighterById(this.battle, e.fighter).troop].cry}`, this.panAt(this.spot(e.fighter)[0]));
-              v.log = `${this.fighterName(e.fighter)} ${this.verb(e.fighter, 'wince')}: the poison bites deep.`;
+              v.log = `${this.fighterName(e.fighter)} ${this.verb(e.fighter, 'wince')} as the poison bites deep.`;
             },
           });
           break;
@@ -847,7 +847,7 @@ export class BattleController implements Screen {
           this.flourish(e.fighter, 'idle', () => {
             play('coins');
             this.float(e.fighter, `\u2212${coins(e.gold)} gold`, GOLD[6]);
-            v.log = `${this.fighterName(e.fighter)} pays ${this.objectName(e.target)} ${coins(e.gold)} gold: ${joined === undefined ? 'they shoulder their weapons and go home.' : 'they turn their coats, and fight for you!'}`;
+            v.log = `${this.fighterName(e.fighter)} pays ${this.objectName(e.target)} ${coins(e.gold)} gold, ${joined === undefined ? 'and they shoulder their weapons and go home.' : 'and they turn their coats and fight for you!'}`;
           });
           if (joined === undefined) {
             const edge = target.side === 'player' ? MAP_VIEW.x - 40 : MAP_VIEW.x + MAP_VIEW.width + 40;
@@ -886,7 +886,7 @@ export class BattleController implements Screen {
           this.flourish(e.fighter, 'cast', () => {
             play('jeer');
             this.float(e.fighter, jeer, NEUTRAL[7]);
-            v.log = `${this.fighterName(e.fighter)} jeers at ${this.objectName(e.target)}: \u201c${jeer}\u201d They lose heart.`;
+            v.log = `${this.fighterName(e.fighter)} jeers at ${this.objectName(e.target)}, \u201c${jeer}\u201d They lose heart.`;
           });
           this.step(0.5, {
             start: () => {
@@ -906,7 +906,7 @@ export class BattleController implements Screen {
           });
           this.flourish(e.fighter, 'idle', () => {
             play(status.luck ? 'luckySong' : 'song');
-            v.log = `${this.fighterName(e.fighter)} strikes up ${status.song}: ${status.luck ? 'your stacks feel lucky' : 'your stacks take heart'}.`;
+            v.log = `${this.fighterName(e.fighter)} strikes up ${status.song}, and ${status.luck ? 'your stacks feel lucky' : 'your stacks take heart'}.`;
           });
           this.step(0.9, {
             start: () => {
@@ -937,7 +937,7 @@ export class BattleController implements Screen {
           this.step(0.8, {
             start: () => {
               this.float(e.fighter, status.name, GOLD[6]);
-              v.log = `${this.fighterName(e.fighter)} ${this.named(e.fighter) ? 'loses a turn' : 'lose their turn'}: ${status.name.toLowerCase()} can't do much. Then the spell wears off.`;
+              v.log = `${this.fighterName(e.fighter)} ${this.named(e.fighter) ? 'loses a turn' : 'lose their turn'}, because ${status.name.toLowerCase()} can\u2019t do much. Then the spell wears off.`;
             },
             end: () => {
               if (!status.look) return;
@@ -1196,7 +1196,7 @@ export class BattleController implements Screen {
     const left = wound(target, damage);
     const back = !ranged && !charge && !leader && left.count > 0 && !target.retaliated ? ' They will strike back.' : '';
     // A leader's blow gets no answer: nothing can reach him, and he's back behind the line before they turn.
-    const after = leader && !ranged ? ` ${this.fighterName(f.id)} rides back behind the line, and nobody can strike back.` : charge ? ' No one can strike back at a charge, but it winds them: they won\u2019t strike back themselves for the rest of this round and the next.' : '';
+    const after = leader && !ranged ? ` ${this.fighterName(f.id)} rides back behind the line, and nobody can strike back.` : charge ? ' No one can strike back at a charge, but it winds them, so they won\u2019t strike back themselves for the rest of this round and the next.' : '';
     return `${charge ? 'Charge! ' : ''}${ranged ? 'Shoot' : 'Attack'} ${whom}: about ${damage} damage, ${left.killed} perish.${back}${after}`;
   }
 
@@ -1225,7 +1225,7 @@ export class BattleController implements Screen {
       const estimate = acting?.side === 'player' && !this.battle.volley ? finishEstimate(this.battle) : null;
       const costs = estimate?.losses.map(({ troop, count }) => `~${count} ${TROOPS[troop].name}`);
       this.finishLine = estimate
-        ? `Finish it: sergeants take over; likely lose ${costs!.length ? costs!.join(', ') : 'no troops'}.`
+        ? `Finish it? The sergeants take over, and you\u2019d likely lose ${costs!.length ? listed(costs!) : 'nobody'}.`
         : null;
     }
     this.view.finishOffer = !this.auto && this.finishLine !== null;
@@ -1249,11 +1249,11 @@ export class BattleController implements Screen {
     // A charge (a wand's bolt) costs no mana: the book says how many are left instead.
     const cost = (id: SpellId) => {
       const charge = chargeOf(this.battle, id);
-      return charge ? `${charge.uses} left` : `${spellCost(this.battle, id)}`;
+      return charge ? `has ${charge.uses} ${charge.uses === 1 ? 'charge' : 'charges'} left` : `costs ${spellCost(this.battle, id)} mana`;
     };
     this.cards.show({
       title: 'Spellbook',
-      lines: [manaInBattle(hero.mana, hero.maxMana), `${(hero.casts ?? 1) > 1 ? `Two spells a round: ${castsLeft(this.battle)} left this round.` : 'One spell a round.'}`, ...spells.map((s) => `**${s.name}** (${cost(s.id)}): ${s.note}`)],
+      lines: [manaInBattle(hero.mana, hero.maxMana), `${(hero.casts ?? 1) > 1 ? `You can cast two spells a round, and have ${castsLeft(this.battle)} left this round.` : 'You can cast one spell a round.'}`, ...spells.map((s) => `**${s.name}** ${cost(s.id)}. ${s.note}`)],
       choices: [
         ...spells.filter((s) => canCast(this.battle, s.id)).map((s) => ({ label: `Cast ${s.name}`, action: { type: 'spell' as const, spell: s.id } })),
         { label: 'Close', action: { type: 'close' } },

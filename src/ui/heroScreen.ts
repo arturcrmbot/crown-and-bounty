@@ -236,9 +236,9 @@ export class HeroScreen {
       </div>
       <div class="learned">
         <div class="row"><h4>Signature</h4>${chips([sheet.signature], '')}</div>
-        <div class="row"><h4>Skills</h4>${chips(sheet.skills, 'none yet: a level brings a choice')}</div>
+        <div class="row"><h4>Skills</h4>${chips(sheet.skills, 'none yet, but a level brings a choice')}</div>
         <div class="row"><h4>Perks</h4>${chips(sheet.perks, 'none yet')}</div>
-        <div class="row"><h4>Spells</h4>${chips(sheet.spells, 'none: a teacher or a shrine could help')}</div>
+        <div class="row"><h4>Spells</h4>${chips(sheet.spells, 'none yet, but a teacher or a shrine could help')}</div>
       </div>
     </section>`;
   }
@@ -295,7 +295,7 @@ export class HeroScreen {
       const stack = army[index];
       const place: Place = { kind: 'stack', index };
       if (!stack) {
-        const tip = '**An empty place in the line.**\n*Recruit at castles and villages, or win a band over: up to five companies.*';
+        const tip = '**An empty place in the line.**\n*Recruit at castles and villages, or win a band over. You can lead up to five companies.*';
         return `<button class="tile empty" data-place="${keyOf(place)}" data-tip="${escape(tip)}" aria-label="An empty place in the line" tabindex="-1"></button>`;
       }
       const info = stackSheet(this.state, index)!;
@@ -304,10 +304,10 @@ export class HeroScreen {
       return `<button class="tile${open}${this.fresh.has(keyOf(place)) ? ' fresh' : ''}" data-place="${keyOf(place)}" data-tip="${escape(tip)}" aria-label="${escape(info.title)}"><img alt="" draggable="false" src="${unitUrl(stack.troop)}"><span class="count">${stack.count}</span></button>`;
     }).join('');
     const pay = Math.round(wages(army) * (1 + s.wages));
-    const leaderTip = `**${sheet.title}**\nHe leads from behind the line, where nothing can reach him: every stack adds his attack and defence to its own, and he casts from there.\n*${touch() ? 'Tap' : 'Click'} for his numbers.*`;
+    const leaderTip = `**${sheet.title}**\nHe leads from behind the line, where nothing can reach him. Every stack adds his attack and defence to its own, and he casts from there.\n*${touch() ? 'Tap' : 'Click'} for his numbers.*`;
     const open = this.card?.kind === 'hero' ? ' open' : '';
     return `<section class="army">
-      <h3>Army <small>${touch() ? 'tap one for its card, or drag to reorder' : 'drag to reorder'}: the first stands in the middle of the battle line, the rest above and below</small></h3>
+      <h3>Army <small>${touch() ? 'tap one for its card, or drag to reorder' : 'drag to reorder'}. The first stands in the middle of the battle line, and the rest above and below.</small></h3>
       <div class="strip">
         <button class="tile leader${open}" data-place="hero" data-tip="${escape(leaderTip)}" aria-label="${escape(sheet.title)}"><img alt="" draggable="false" src="${unitUrl(heroArtId(this.state.hero.background))}"><span class="count">Leader</span></button>
         <span class="sep"></span>
@@ -325,7 +325,7 @@ export class HeroScreen {
     const spells = sheet.mapSpells.map((m) => `<button class="act" data-act="spell:${m.spell}" data-tip="${escape(m.note)}"${m.disabled ? ' disabled' : ''}>${escape(m.label)}</button>`).join('');
     return `<footer>
       ${spells}
-      <button class="act" data-act="endDay" data-tip="Rest: fresh legs, and a quarter of your mana, at dawn">End the day${touch() ? '' : ' (E)'}</button>
+      <button class="act" data-act="endDay" data-tip="Rest, and at dawn you get fresh legs and a quarter of your mana back">End the day${touch() ? '' : ' (E)'}</button>
       <span class="spacer"></span>
       <button class="act" data-act="close">Close${touch() ? '' : ' (H)'}</button>
     </footer>`;

@@ -14,17 +14,17 @@ const drankToday = (state: GameState, place: Location) => state.flags?.[drankKey
 export const well: PlaceKind = {
   about: (state, place) => ({
     title: place.name,
-    lines: [...aboutWords(state, place), drankToday(state, place) ? '*You drank here today. Tomorrow.*' : '*Drink, and your mana is full again: once a day.*'],
+    lines: [...aboutWords(state, place), drankToday(state, place) ? '*You drank here today. Come back tomorrow.*' : '*Drink, and your mana is full again. The well gives once a day.*'],
     choices: [ride(place, 'Drink'), close],
   }),
   arrive(state, place) {
     const max = heroStats(state).maxMana;
-    if (drankToday(state, place)) return found(state, place, note(place, ['The water tastes of nothing much. *The well has given what it can today: come back tomorrow.*']));
-    if (max <= 0) return found(state, place, note(place, ['Cold, clear and very good water. It does nothing for you, since you have no mana to fill.']));
-    if (state.hero.mana >= max) return found(state, place, note(place, ['Cold and clear. Your mana is full already: save it for a day you need it.']));
+    if (drankToday(state, place)) return found(state, place, note(place, ['The water tastes of nothing much. *The well has given what it can today, so come back tomorrow.*']));
+    if (max <= 0) return found(state, place, note(place, ['The water is cold, clear and very good. It does nothing for you, since you have no mana to fill.']));
+    if (state.hero.mana >= max) return found(state, place, note(place, ['The water is cold and clear. Your mana is full already, so save the well for a day you need it.']));
     const gained = max - state.hero.mana;
     const drunk = update({ ...state, hero: { ...state.hero, mana: max }, flags: { ...state.flags, [drankKey(place)]: state.day } }, place.id, { seen: true });
-    return found(drunk, place, note(place, [...words(place, 'visit'), `**+${gained} mana.** Full again: ${max} of ${max}.`]));
+    return found(drunk, place, note(place, [...words(place, 'visit'), `You gain **${gained} mana**, which fills you up to ${max} of ${max}.`]));
   },
   worth(state, place) {
     const missing = heroStats(state).maxMana - state.hero.mana;

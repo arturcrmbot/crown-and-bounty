@@ -51,7 +51,7 @@ describe('sets', () => {
 
   it('say how far along a set is, and when it is complete', () => {
     const one = wearing(['carvingKnife']);
-    expect(setLine(one, 'carvingKnife')).toBe('*1 of 3 worn.*');
+    expect(setLine(one, 'carvingKnife')).toBe('*You are wearing 1 of the 3.*');
     expect(ARTIFACTS.carvingKnife.note).toContain('Grimsby\u2019s Regalia');
     expect(setLine(wearing(['carvingKnife', 'goldenFeather', 'grimsbysHat']), 'grimsbysHat')).toContain('Grimsby\u2019s Regalia is complete!');
     expect(setLine(one, 'swordOfAldmoor')).toBe('');
@@ -82,8 +82,8 @@ describe('gear with a price', () => {
     const flagged = wearing(['blackBanner']);
     expect(heroStats(flagged).cows).toBe(true);
     expect(priceOf(flagged, 100)).toBe(110);
-    expect(cardOf(visit(flagged, 'castle')).lines).toContain('*They don\u2019t like the look of your Black Banner: that\u2019s 10% dearer.*');
-    expect(cardOf(visit(fresh(), 'castle')).lines.some((l) => l.includes('dearer'))).toBe(false);
+    expect(cardOf(visit(flagged, 'castle')).lines).toContain('*They don\u2019t like the look of your Black Banner, so they charge 10% more.*');
+    expect(cardOf(visit(fresh(), 'castle')).lines.some((l) => l.includes('charge 10% more'))).toBe(false);
   });
 
   it('heavy plate slows today\u2019s ride as soon as it goes on, and taking it off gives nothing back', () => {
