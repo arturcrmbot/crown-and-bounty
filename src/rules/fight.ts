@@ -6,10 +6,10 @@ import { autoResolve } from './battle/ai';
 import { applyEffects, choiceButton, meets } from './effects/core';
 import { bountyOf, CAMPAIGN_LENGTH, campaignLines, commissionOf, hasNextCommission, provinceOf } from './campaign';
 import { look, seeBands } from './map/sight';
-import { fleeHome, fleesHome, merge } from './map/sortie';
+import { fleeHome, fleesHome } from './map/sortie';
 import { battleEnd, createBattle, isLeader, SHOOTER_MELEE, survivors, type BattleHero, type BattleState, type Side } from './battle/battle';
 import { artifactChoices, foundNote, gainXp, giveArtifact, heroStats, namedBonuses } from './hero';
-import { addTroops, again, armyLine, armyPower, close, coins, leadershipUsed, listed, locationById, roll, roman, show, stillWithYou, troops, update, VANISHES, type Army, type BattleResultCard, type Choice, type GameEvent, type GameState, type Location, type Result } from './state';
+import { addTroops, again, armyLine, armyPower, close, coins, countOf, leadershipUsed, listed, locationById, roll, roman, show, stillWithYou, troops, update, VANISHES, type Army, type BattleResultCard, type Choice, type GameEvent, type GameState, type Location, type Result } from './state';
 
 export function heroInBattle(state: GameState): BattleHero {
   const s = heroStats(state);
@@ -181,24 +181,17 @@ function fallen(battle: BattleState, side: Side): Army {
 }
 
 /**
- * What a side has left of its army once a battle is over: each of its stacks as it stands, and
- * whoever leads it, but not Aldric, who is no part of his. Whatever it lost stays lost, as in HoMM2:
- * the fallen, and those paid to go home or to change sides. Troops a spell called to the field (the
- * Baron's guard) go back where they came from, unless nobody else is left to hold it.
+ * What an enemy that held the field has left once the battle is over: whoever of it still stands,
+ * its leader too. Whatever it lost stays lost, as in HoMM2: the fallen, and those paid to go home or
+ * to change sides. The guard a villain called to the field makes up his losses of its kind, and never
+ * leaves him more of them than he brought; where he brought none of its kind, it stays as it stands.
  */
-function standing(battle: BattleState, side: Side): Army {
-  const of = (called: boolean) => {
-    const army: Army = [];
-    for (const f of battle.fighters) {
-      if (f.side !== side || f.hero || f.count <= 0 || Boolean(f.called) !== called) continue;
-      const same = army.find((s) => s.troop === f.troop);
-      if (same) same.count += f.count;
-      else army.push({ troop: f.troop, count: f.count });
-    }
-    return army;
-  };
-  const own = of(false);
-  return own.some((s) => !leads(s.troop)) ? own : merge(of(true), own);
+function holding(battle: BattleState, brought: Army): Army {
+  const standing = new Map<TroopId, number>();
+  for (const f of battle.fighters) if (f.side === 'enemy' && f.count > 0) standing.set(f.troop, (standing.get(f.troop) ?? 0) + f.count);
+  const kept = brought.map((s) => ({ troop: s.troop, count: Math.min(s.count, standing.get(s.troop) ?? 0) }));
+  const more = [...standing].filter(([troop]) => !countOf(brought, troop)).map(([troop, count]) => ({ troop, count }));
+  return [...kept, ...more].filter((s) => s.count > 0);
 }
 
 const headcount = (army: Army) => army.reduce((n, s) => n + s.count, 0);
@@ -389,7 +382,7 @@ export function finishFight(state: GameState): Result {
   const home = castle ? ([castle.at[0], castle.at[1] + 14] as const) : state.hero.at;
   // They hold the field, and whatever they lost stays lost, as in HoMM2: the next fight with them is
   // with whoever is left of them, the cards say how many that is, and the map draws them as they are.
-  const theirs = standing(battle, 'enemy');
+  const theirs = holding(battle, enemy.army);
   const thinned = headcount(theirs) < headcount(enemy.army);
   const held: GameState = thinned ? update(base, place.id, { enemy: { ...enemy, army: theirs } }) : base;
   const theyHave = thinned ? [leftLine(theirs)] : [];

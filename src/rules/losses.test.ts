@@ -29,6 +29,12 @@ function ended(state: GameState, id: string, result: 'fled' | 'lost', counts: Pa
   return { ...started, battle: { ...b, result, fighters: [...fighters, ...more(b)] } };
 }
 
+/** The guard Grimsby called to the field, `count` of them still standing, as the Baron's "Call the guard!" brings it in. */
+const guard = (b: BattleState, count: number): Fighter => {
+  const swordsmen = b.fighters.find((f) => f.side === 'enemy' && f.troop === 'swordsmen')!;
+  return { ...swordsmen, id: b.fighters.length, count, startCount: 21 };
+};
+
 describe('the enemy keeps its losses', () => {
   it('after a retreat: whoever of them fell stays fallen, the card says who is left, and the next fight is with them', () => {
     const s = fresh();
@@ -46,36 +52,34 @@ describe('the enemy keeps its losses', () => {
     expect(again.fighters.filter((f) => f.side === 'enemy').map((f) => [f.troop, f.count])).toEqual([['swordsmen', 28]]);
   });
 
-  it('after a defeat at the stockade: Grimsby has who is left, and the guard he called goes back where it came from', () => {
-    // The Wizard's day XVI: his bolts cut the swordsmen down to 4 and every crossbowman, and the Baron called his guard.
+  it('after a defeat at the stockade: Grimsby has whoever of his still stands, his guard included', () => {
+    // The Wizard's day XVI: his bolts cut the swordsmen down to 4 and every crossbowman, and 9 of the guard the Baron called still stand.
     const s = fresh('wizard');
-    const guard = (b: BattleState): Fighter[] => {
-      const swordsmen = b.fighters.find((f) => f.side === 'enemy' && f.troop === 'swordsmen')!;
-      return [{ ...swordsmen, id: b.fighters.length, count: 9, startCount: 21, called: true }];
-    };
-    const r = finishFight(ended(s, 'hideout', 'lost', { swordsmen: 4, crossbowmen: 0 }, guard));
-    expect(armyOf(r.state, 'hideout')).toEqual([{ troop: 'swordsmen', count: 4 }, { troop: 'baron', count: 1 }]);
+    const r = finishFight(ended(s, 'hideout', 'lost', { swordsmen: 4, crossbowmen: 0 }, (b) => [guard(b, 9)]));
+    expect(armyOf(r.state, 'hideout')).toEqual([{ troop: 'swordsmen', count: 13 }, { troop: 'baron', count: 1 }]);
     const card = cardOf(r);
     expect(card.title).toBe('Defeat');
     // Every one of his that fell is counted, his guard's too.
     expect(card.battleResult!.enemy).toEqual([{ troop: 'swordsmen', count: 65 + 12 }, { troop: 'crossbowmen', count: 36 }]);
-    expect(card.lines.at(-1)).toBe('*Baron Grimsby has 4 Swordsmen left.*');
-    // He rode home to raise another army; storming the stockade again is against the 4 and the Baron.
+    expect(card.lines.at(-1)).toBe('*Baron Grimsby has 13 Swordsmen left.*');
+    // He rode home to raise another army; storming the stockade again is against the 13 and the Baron.
     const back = { ...r.state, army: s.army };
     const again = startFight(back, 'hideout')!.state.battle!;
-    expect(again.fighters.filter((f) => f.side === 'enemy').map((f) => [f.troop, f.count])).toEqual([['swordsmen', 4], ['baron', 1]]);
+    expect(again.fighters.filter((f) => f.side === 'enemy').map((f) => [f.troop, f.count])).toEqual([['swordsmen', 13], ['baron', 1]]);
     expect(winChance(back, 'hideout', 8)).toBeGreaterThan(winChance(s, 'hideout', 8));
   });
 
-  it('leaves the guard holding the stockade when nobody else of Grimsby\u2019s is left, so it is never empty', () => {
+  it('lets the guard make up Grimsby\u2019s losses, but never leaves him more than he had', () => {
     const s = fresh('ranger');
-    const guard = (b: BattleState): Fighter[] => {
-      const swordsmen = b.fighters.find((f) => f.side === 'enemy' && f.troop === 'swordsmen')!;
-      return [{ ...swordsmen, id: b.fighters.length, count: 15, startCount: 21, called: true }];
-    };
-    const r = finishFight(ended(s, 'hideout', 'fled', { swordsmen: 0, crossbowmen: 0 }, guard));
-    expect(armyOf(r.state, 'hideout')).toEqual([{ troop: 'swordsmen', count: 15 }, { troop: 'baron', count: 1 }]);
-    expect(cardOf(r).lines.at(-1)).toBe('*Baron Grimsby has 15 Swordsmen left.*');
+    // Nobody of his own is left, and the guard holds the stockade for him.
+    const held = finishFight(ended(s, 'hideout', 'fled', { swordsmen: 0, crossbowmen: 0 }, (b) => [guard(b, 15)]));
+    expect(armyOf(held.state, 'hideout')).toEqual([{ troop: 'swordsmen', count: 15 }, { troop: 'baron', count: 1 }]);
+    expect(cardOf(held).lines.at(-1)).toBe('*Baron Grimsby has 15 Swordsmen left.*');
+    // Five of his fell, and the guard came in fresh: he has all 69 again, and not one more.
+    const whole = finishFight(ended(s, 'hideout', 'fled', { swordsmen: 64 }, (b) => [guard(b, 21)]));
+    expect(locationById(whole.state, 'hideout').enemy).toBe(locationById(s, 'hideout').enemy);
+    expect(cardOf(whole).battleResult!.enemy).toEqual([{ troop: 'swordsmen', count: 5 }]);
+    expect(cardOf(whole).lines.join(' ')).not.toContain('left.*');
   });
 
   it('keeps those paid to go home gone, and those bought over with you', () => {

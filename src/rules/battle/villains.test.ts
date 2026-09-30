@@ -75,7 +75,7 @@ describe('villains who cast and give orders', () => {
     const summon = events.find((e) => e.type === 'summon')!;
     expect(summon).toMatchObject({ spell: 'guard', by: baron.id });
     const fresh = fighterById(battle, (summon as { fighter: number }).fighter);
-    expect(fresh).toMatchObject({ side: 'enemy', troop: 'swordsmen', count: 6, startCount: 6, called: true });
+    expect(fresh).toMatchObject({ side: 'enemy', troop: 'swordsmen', count: 6, startCount: 6 });
     expect(fresh.at % COLS).toBe(COLS - 1);
     expect(battle.order).not.toContain(fresh.id);
     expect(canCast(battle, 'guard', baron.id)).toBe(false);
