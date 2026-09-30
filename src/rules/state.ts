@@ -358,7 +358,9 @@ export type Action =
   | { type: 'boon'; id: BoonId }
   | { type: 'nextCommission' }
   /** After a lost commission: the same one again, from its start. */
-  | { type: 'retry' };
+  | { type: 'retry' }
+  /** Back to the title, with the campaign saved as it stands: from the closing card. */
+  | { type: 'title' };
 
 /** A button on a card. A `disabled` one shows what the player could do with another hero, or more gold. */
 /** A button on a card. `detail` is a smaller line under the label (with **bold** and *italics*); `portrait` puts a face beside it. */
@@ -374,18 +376,23 @@ export type BattleResultCard = { player: Army; enemy: Army; manaSpent: number; m
 /** Something heard on the road, as the journal lists it: the words as they were said, who said them, and whether it has paid off. */
 export type Heard = { who: string; words: string; done: boolean };
 
+/** A link off the game, opened in a new tab: following the game's maker, say. */
+export type Link = { label: string; href: string; detail?: string };
+
 /**
- * A parchment card with a title, lines (with **bold** and *italics*), and choices. `wide` is for big
- * decisions. `portrait` puts a face at its top left; `poster` makes it a WANTED poster, which a
- * `stamp` slams across ("PAID") and an `inset` finishes with a picture and its line (the goose, home);
- * `tiles` lays the choices side by side, each with its face, for picking a hero. `journal` makes it a
- * page of the journal: the face, stamped or not, is the poster pinned in, and under the lines come the
- * things heard on the road, ticked off once they've paid off.
+ * A parchment card with a title, lines (with **bold** and *italics*), and choices, with `links` off
+ * the game before them. `wide` is for big decisions. `portrait` puts a face at its top left; `poster`
+ * makes it a WANTED poster, which a `stamp` slams across ("PAID") and an `inset` finishes with a
+ * picture and its line (the goose, home); `tiles` lays the choices side by side, each with its face,
+ * for picking a hero. `journal` makes it a page of the journal: the face, stamped or not, is the
+ * poster pinned in, and under the lines come the things heard on the road, ticked off once they've
+ * paid off.
  */
 export type Card = {
   title: string;
   lines: string[];
   choices: Choice[];
+  links?: Link[];
   wide?: boolean;
   portrait?: PortraitId;
   poster?: boolean;

@@ -26,6 +26,26 @@ export type Keepout = { x0: number; y0: number; x1: number; y1: number };
 const escape = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const format = (text: string) => escape(text).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\*(.+?)\*/g, '<i>$1</i>');
 
+/** A button's or a link's words: its label (with an arrow, for a link that opens a new tab), and the smaller line under it. */
+function wordsOf(label: string, detail?: string, out = false): HTMLSpanElement {
+  const words = document.createElement('span');
+  words.className = 'words';
+  words.textContent = label;
+  if (out) {
+    const arrow = document.createElement('span');
+    arrow.className = 'out';
+    arrow.setAttribute('aria-hidden', 'true');
+    arrow.textContent = '\u2197';
+    words.append(arrow);
+  }
+  if (detail) {
+    const small = document.createElement('small');
+    small.innerHTML = format(detail);
+    words.append(small);
+  }
+  return words;
+}
+
 /** A portrait as an image for the page, drawn once through the game's palette. */
 const images = new Map<PortraitId, string>();
 function portraitImage(id: PortraitId): string {
@@ -177,21 +197,24 @@ export class CardView {
     } else this.body.innerHTML = card.poster ? `${title}<div class="mugshot">${face}${stamp}</div>${words}${inset}` : `${face}${title}${words}${inset}`;
     if (fresh && card.stamp && !card.journal) setTimeout(() => play('stamp'), STAMP_LANDS);
     this.card.querySelector('.choices')?.remove();
-    if (card.choices.length) {
+    if (card.choices.length || card.links?.length) {
       const choices = document.createElement('div');
       choices.className = card.tiles ? 'choices tiles' : 'choices';
+      // Links off the game come first, and open in a new tab, so the game stays where it was.
+      for (const link of card.links ?? []) {
+        const a = document.createElement('a');
+        a.className = 'link';
+        a.href = link.href;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.append(wordsOf(link.label, link.detail, true));
+        a.addEventListener('click', () => play('click'));
+        choices.append(a);
+      }
       for (const choice of card.choices) {
         const button = document.createElement('button');
         // The label and the line under it go together, beside a face if there is one.
-        const words = document.createElement('span');
-        words.className = 'words';
-        words.textContent = choice.label;
-        if (choice.detail) {
-          const detail = document.createElement('small');
-          detail.innerHTML = format(choice.detail);
-          words.append(detail);
-        }
-        button.append(words);
+        button.append(wordsOf(choice.label, choice.detail));
         if (choice.portrait) {
           button.classList.add('with-portrait');
           const face = document.createElement('img');
@@ -228,22 +251,23 @@ export class CardView {
     return false;
   }
 
-  /** A number key presses that button of the card, counting from 1, if it can be pressed. */
+  /** A number key presses that button (or opens that link) of the card, counting from 1, if it can be pressed. */
   pressNumber(n: number): boolean {
     if (this.wrap.hidden) return false;
-    const button = this.card.querySelectorAll<HTMLButtonElement>('.choices button')[n - 1];
-    if (!button || button.disabled) return false;
+    const button = this.card.querySelectorAll<HTMLButtonElement | HTMLAnchorElement>('.choices button, .choices a.link')[n - 1];
+    if (!button || (button instanceof HTMLButtonElement && button.disabled)) return false;
     button.click();
     return true;
   }
 
   /**
    * Enter or Space on a card with one thing to do ("Close", "Ride out") does it; a card with a real
-   * choice waits for one. A focused button answers the key itself. True if a button was pressed.
+   * choice (a link to follow counts) waits for one. A focused button answers the key itself. True if
+   * a button was pressed.
    */
   pressOnly(): boolean {
     if (this.wrap.hidden || this.card.contains(document.activeElement)) return false;
-    const buttons = [...this.card.querySelectorAll<HTMLButtonElement>('.choices button:not(:disabled)')];
+    const buttons = [...this.card.querySelectorAll<HTMLElement>('.choices button:not(:disabled), .choices a.link')];
     if (buttons.length !== 1) return false;
     buttons[0].click();
     return true;

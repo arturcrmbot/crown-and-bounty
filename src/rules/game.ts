@@ -13,13 +13,13 @@ export { choose, describe, DISCOVERY_XP, forceLine, payday, PLACE_KINDS, priceOf
 export { barNote, bountyCard, heroSheet, journalCard, leaderSheet, leaderTraits, manaNote, mapPieces, placeNote, SLOT_NAMES, stackSheet, whenThere, type BarItem, type HeroSheet, type LeaderSheet, type Note, type StackSheet } from './heroSheet';
 export { meets, needsLabel } from './effects';
 export { ambushCard, endDay } from './days';
-export { bountyOf, briefingCard, CAMPAIGN_LENGTH, campaignLines, chooseBoon, commissionAt, commissionOf, companyLine, courtCard, friendsOf, happened, hasNextCommission, heardOf, memoriesOf, nextArmy, nextCommission, provinceOf, retry, speechCard, toCourt, veterans, VETERANS } from './campaign';
+export { bountyOf, briefingCard, CAMPAIGN_LENGTH, campaignLines, chooseBoon, closingCard, commissionAt, commissionOf, companyLine, courtCard, endsHere, friendsOf, happened, hasNextCommission, heardOf, memoriesOf, nextArmy, nextCommission, provinceOf, retry, speechCard, toCourt, veterans, VETERANS } from './campaign';
 export { beginCommission, chooseBackground, newGame } from './scenario';
 export { battleXp, fight, finishFight, heroFighter, heroInBattle, lossesLine, manaLine, startFight, winChance, type HeroFighter } from './fight';
 export { equip, gainXp, giveArtifact, heroStats, learn, levelFor, levelUpCard, LEVELS, movePack, unequip, wear } from './hero';
 export { dismiss, moveStack } from './army';
 
-/** Applies a card choice. `go`, `close`, `restart`, `spell` and `retreat` are for the screens, so they return null here. */
+/** Applies a card choice. `go`, `close`, `restart`, `title`, `spell` and `retreat` are for the screens, so they return null here. */
 export function apply(state: GameState, action: Action): Result | null {
   switch (action.type) {
     case 'choose':

@@ -93,14 +93,34 @@ describe('the campaign', () => {
     expect(act(court, { type: 'court' })).toEqual(court);
   });
 
-  it('grants one boon, then reads out the next commission', () => {
+  it('grants one boon, then says more commissions are coming: the public game stops after Aldmoor (#146)', () => {
     const court = act(wonAldmoor(), { type: 'court' });
     const boon = court.campaign.court!.boons[0];
-    const granted = act(court, { type: 'boon', id: boon });
+    const result = apply(court, { type: 'boon', id: boon })!;
+    const granted = result.state;
     expect(granted.campaign.court!.chosen).toBe(boon);
     expect(apply(granted, { type: 'boon', id: court.campaign.court!.boons[1] })).toBeNull();
+    const closing = courtCard(granted);
+    expect(result.events).toEqual([{ type: 'card', card: closing, at: null, place: undefined }]);
+    expect(closing.title).toBe('To be continued');
+    expect(closing.lines[0]).toBe('**Commission I is complete**, and more commissions are coming. Thank you for playing!');
+    expect(closing.lines[1]).toContain('Black Hollis');
+    expect(closing.links?.map((l) => [l.label, l.href])).toEqual([
+      ['Follow for the next commissions', 'https://www.linkedin.com/in/arturzielinski/'],
+      ['Tell me what you thought', 'https://www.linkedin.com/in/arturzielinski/'],
+    ]);
+    expect(closing.choices).toEqual([{ label: 'Back to the title', action: { type: 'title' } }]);
+    // The bot and the debug routes still ride on into the Fenmarch.
+    expect(briefingCard(granted).title).toBe('Commission II: The Fenmarch');
+    expect(apply(granted, { type: 'nextCommission' })?.state.campaign.chapter).toBe(1);
+  });
+
+  it('reads out the next commission at a court further on, as the debug routes reach', () => {
+    const won = { ...beginCommission(FENMARCH, 3, newGame().campaign.start, 1, [{ chapter: 0, days: 9, level: 3 }]), over: 'won' as const, bounty: 'paid' as const };
+    const court = act(won, { type: 'court' });
+    const granted = act(court, { type: 'boon', id: court.campaign.court!.boons[0] });
     const brief = briefingCard(granted);
-    expect(brief.title).toBe('Commission II: The Fenmarch');
+    expect(brief.title).toBe(`Commission III: ${commissionAt(granted.campaign, 2).province.name.replace(/^the /, 'The ')}`);
     expect(brief.choices[0].action).toEqual({ type: 'nextCommission' });
     expect(courtCard(granted)).toEqual(brief);
   });

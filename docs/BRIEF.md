@@ -474,3 +474,13 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   bands can buy the rustlers or the collectors, at the usual price; a Courtier talks them round instead). Each has a look drawn
   in code, and the land round them is as it was, but for the odd tree or rock that stood where a find does. The bot wins
   Aldmoor with every background at much the same pace.
+- **Commission I, shared (30 Sep, #146):** Artur is sharing the game on LinkedIn once Commission I is ready, to get
+  feedback before building the other four. So the public game stops after it: at the court after Aldmoor, once the boon
+  is taken, a closing card says Commission I is complete and more are coming, and the King lets slip who's next (Black
+  Hollis, the Bandit King, in the Fenmarch: #87). Two links open Artur's LinkedIn in a new tab, to follow him for the
+  next commissions and to tell him what you thought (in the comments on his post, or a message), and the way on is back
+  to the title, whose Continue returns to that card. How far the public game goes, and the tease, are one place
+  (`LAUNCH` in `src/content/launch.ts`); the bot and the debug routes (`?commission=`, `?chapter=`, and `?court=` after
+  a later commission) ride on past it. The page has a link preview: Open Graph tags in `index.html`, and a 1200×630
+  picture cropped from the title painting by `npm run linkpreview` (`public/link-preview.png`). The name is in the
+  page's title and the preview's (`index.html`), and on the painting: a rename (#145) changes those and re-runs it.

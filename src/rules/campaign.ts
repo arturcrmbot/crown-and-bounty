@@ -1,6 +1,7 @@
 import { BACKGROUNDS } from '../content/backgrounds';
 import { BOON_IDS, BOONS, COMMISSIONS, type Clue, type Commission, type Happened } from '../content/campaign';
 import { FRIENDS, type FriendId } from '../content/friends';
+import { LAUNCH } from '../content/launch';
 import { leads } from '../content/troops';
 import { VILLAINS } from '../content/villains';
 import { generateCommission } from './generate';
@@ -213,10 +214,10 @@ export function speechCard(state: GameState): Card {
   };
 }
 
-/** What the court offers now: the King's gold and boons, then the next commission once a boon is taken. */
+/** What the court offers now: the King's gold and boons, then the next commission once a boon is taken (or word that more are coming). */
 export function courtCard(state: GameState): Card {
   const court = state.campaign.court!;
-  if (court.chosen) return briefingCard(state);
+  if (court.chosen) return endsHere(state) ? closingCard(state) : briefingCard(state);
   const c = commissionOf(state);
   const done = state.campaign.record[state.campaign.record.length - 1];
   return {
@@ -232,7 +233,7 @@ export function chooseBoon(state: GameState, id: BoonId): Result | null {
   if (!court || court.chosen || !court.boons.includes(id)) return null;
   const granted = grant(state, id);
   const next: GameState = { ...granted, campaign: { ...granted.campaign, court: { ...court, chosen: id } } };
-  return { state: next, events: [show(briefingCard(next))] };
+  return { state: next, events: [show(courtCard(next))] };
 }
 
 function grant(state: GameState, id: BoonId): GameState {
@@ -274,6 +275,32 @@ export function briefingCard(state: GameState): Card {
       `Your troops go home to their farms${kept.length ? ', apart from a few veterans' : ''}. You ride out with **${armyLine(army)}**, and **${coins(state.gold)} gold**.`,
     ],
     choices: [{ label: 'Ride out', action: { type: 'nextCommission' } }],
+  };
+}
+
+/**
+ * Whether the court after this commission is the end of the road, for now: the next commission isn't
+ * open to play yet (`LAUNCH.open`). Only the court after the last open one is: the debug routes, which
+ * start further on, ride on as before, and so does the bot.
+ */
+export const endsHere = (state: GameState) => state.campaign.chapter + 1 === LAUNCH.open;
+
+/**
+ * After the last open commission, instead of the next one's briefing: the commission is complete and
+ * more are coming, and the King lets slip who's next. Artur's LinkedIn is there twice: to follow him
+ * for the rest, and to tell him what you thought. Then back to the title, the campaign saved at court.
+ */
+export function closingCard(state: GameState): Card {
+  return {
+    title: 'To be continued',
+    portrait: 'king',
+    wide: true,
+    lines: [`**Commission ${roman(state.campaign.chapter + 1)} is complete**, and more commissions are coming. Thank you for playing!`, LAUNCH.next],
+    links: [
+      { label: 'Follow for the next commissions', detail: 'Artur Zielinski, who made this, on LinkedIn', href: LAUNCH.follow },
+      { label: 'Tell me what you thought', detail: 'In the comments on my LinkedIn post, or in a message', href: LAUNCH.follow },
+    ],
+    choices: [{ label: 'Back to the title', action: { type: 'title' } }],
   };
 }
 

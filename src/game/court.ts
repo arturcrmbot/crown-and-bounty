@@ -8,7 +8,8 @@ import { NO_INPUT, type Screen } from './screen';
 /**
  * The King's court between commissions: the throne room, with the cards on top. Any level-ups
  * still waiting come first, then the King's welcome (what he has heard you did), his gold and
- * boons, then the next commission's briefing.
+ * boons, then the next commission's briefing: or, after the last commission open to play, word that
+ * more are coming, and the way back to the title.
  */
 export class CourtController implements Screen {
   readonly name = 'court';
@@ -20,7 +21,7 @@ export class CourtController implements Screen {
   private readonly display: Display;
   private readonly screen: CourtScreen;
   private readonly cards: CardView;
-  private readonly hooks: { onChange: (state: GameState) => void; onDone: (state: GameState, rest: GameEvent[]) => void };
+  private readonly hooks: { onChange: (state: GameState) => void; onDone: (state: GameState, rest: GameEvent[]) => void; onTitle: (state: GameState) => void };
   private time = 0;
   /** Whether the King has had his say yet, this visit: then his boons. */
   private heard = false;
@@ -45,6 +46,11 @@ export class CourtController implements Screen {
     if (action.type === 'close') {
       this.heard = true;
       this.showNext();
+      return;
+    }
+    // After the last open commission: back to the title, the campaign saved here at court.
+    if (action.type === 'title') {
+      this.hooks.onTitle(this.state);
       return;
     }
     const result = apply(this.state, action);

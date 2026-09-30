@@ -273,6 +273,37 @@
   color: inherit;
 }
 
+/* A link off the game (the maker's LinkedIn), among the buttons and looking like one, with an arrow
+   for the new tab it opens. */
+.kc-card .choices a.link {
+  cursor: pointer;
+  font-weight: bold;
+  color: #4a1a08;
+  text-decoration: none;
+}
+.kc-card .choices a.link::before {
+  content: '\25C6\00a0';
+  color: #9a7a3a;
+}
+.kc-card .choices a.link:hover,
+.kc-card .choices a.link:focus-visible {
+  color: #a42a10;
+  text-decoration: underline;
+  outline: none;
+}
+.kc-card .choices a.link .out {
+  margin-left: 4px;
+  font-weight: normal;
+}
+.kc-card .choices a.link small {
+  display: block;
+  font-size: 12.5px;
+  font-weight: normal;
+  font-style: italic;
+  line-height: 1.25;
+  color: #5a3e14;
+}
+
 /* A WANTED poster: everything centred, a big black title, and the face in the middle. */
 .kc-card.poster {
   width: 300px;

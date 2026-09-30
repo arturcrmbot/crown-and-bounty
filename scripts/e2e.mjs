@@ -425,7 +425,7 @@ try {
   check(final.over === 'won' && final.bounty === 'paid', `the commission is won on day ${final.day}`);
   check(final.hero.level >= 3, `Sir Aldric grew to level ${final.hero.level} (${learned.join(', ')})`);
 
-  // To court: level-ups from the last battle, the King's thanks and a boon, then the next commission.
+  // To court: level-ups from the last battle, the King's thanks and a boon, then word that more commissions are coming.
   const first = () => kc.call(() => document.querySelector('.kc-card-wrap:not([hidden]) button')?.textContent ?? null);
   check((await kc.title()) === 'Baron Grimsby is taken!' && (await kc.lines()).includes('Flemish'), 'Grimsby is taken, and has the last word');
   const taken = await kc.call(() => {
@@ -458,22 +458,49 @@ try {
   check((await kc.choose('Your Majesty')) && (await kc.title()) === 'The King\u2019s Thanks', 'after his welcome, the King offers his boons');
   const boon = await first();
   await kc.choose(boon);
-  check((await kc.title())?.startsWith('Commission II'), `after ${boon}, the next commission is read out`);
-  await kc.choose('Ride out');
-  // The province's name takes the sky first; its greeting follows.
-  await page.waitForFunction(() => document.querySelector('.kc-card-wrap:not([hidden]) h3')?.textContent?.startsWith('Commission II'), null, { timeout: 10_000 });
+
+  // The public game stops after Commission I (#146): more are coming, and Artur's LinkedIn, to follow for them and to say what you thought.
+  const linkedIn = 'https://www.linkedin.com/in/arturzielinski/';
+  const closing = await kc.call(() => {
+    const card = document.querySelector('.kc-card-wrap:not([hidden]) .kc-card');
+    return {
+      links: [...card.querySelectorAll('.choices a')].map((a) => ({ label: a.querySelector('.words').firstChild.textContent, href: a.href, target: a.target, rel: a.rel })),
+      buttons: [...card.querySelectorAll('.choices button')].map((b) => b.textContent),
+    };
+  });
+  check((await kc.title()) === 'To be continued' && (await kc.lines()).includes('Commission I is complete, and more commissions are coming'), `after ${boon}, the court says Commission I is complete, and more are coming`);
+  check(closing.links.map((l) => l.label).join(' / ') === 'Follow for the next commissions / Tell me what you thought' && closing.links.every((l) => l.href === linkedIn && l.target === '_blank' && l.rel === 'noopener'), 'with Artur\u2019s LinkedIn, to follow him for the next ones and to tell him what you thought');
+  // LinkedIn answers here, not over the network.
+  await page.context().route('https://www.linkedin.com/**', (route) => route.fulfill({ status: 200, contentType: 'text/html', body: 'LinkedIn' }));
+  const [tab] = await Promise.all([page.context().waitForEvent('page'), page.locator('.kc-card-wrap:not([hidden]) .choices a').first().click()]);
+  await tab.waitForLoadState();
+  check(tab.url() === linkedIn && (await tab.evaluate(() => window.opener === null)) && (await screen()) === 'court', 'following him opens LinkedIn in a new tab, and the game waits at court');
+  await tab.close();
+  check(closing.buttons.join(' / ') === 'Back to the title' && (await kc.choose('Back to the title')), 'the way on is back to the title');
+  await page.waitForFunction(() => window.__kc.screen() === 'title' && document.querySelector('.kc-card-wrap:not([hidden]) button'), null, { timeout: 10_000 }).catch(() => {});
+  const menu = await kc.call(() => [...document.querySelectorAll('.kc-card-wrap:not([hidden]) button')].map((b) => b.textContent).join(' / '));
+  check((await screen()) === 'title' && menu.includes('Commission I complete'), `where the menu is open, and carries on at court (${menu})`);
+  await kc.choose('Continue');
+  await page.waitForFunction(() => window.__kc.screen() === 'court' && document.querySelector('.kc-card-wrap:not([hidden]) h3')?.textContent === 'To be continued', null, { timeout: 15_000 }).catch(() => {});
+  check((await screen()) === 'court' && (await kc.title()) === 'To be continued', 'Continue goes back to court, and the same last card');
+
+  // The debug routes still ride on past it: ?chapter=2 has the bot ride Commission I and its court, and hands over the Fenmarch.
+  await page.goto(`${server.url}?chapter=2&fresh=1&speed=8&seed=1066`);
+  await kc.ready();
+  await page.waitForFunction(() => window.__kc.screen() === 'adventure', null, { timeout: 180_000 }).catch(() => {});
   const fen = await kc.state();
-  check((await screen()) === 'adventure' && fen.campaign.chapter === 1 && fen.day === 1, 'Sir Aldric rides into the Fenmarch on day I');
-  check(fen.hero.level === atCourt.hero.level && JSON.stringify(fen.hero.gear) === JSON.stringify(atCourt.hero.gear), 'he keeps his level and his gear');
-  check((await kc.title())?.startsWith('Commission II'), 'the Fenmarch greets him');
-  await close();
+  check((await screen()) === 'adventure' && fen?.campaign.chapter === 1 && fen.day === 1 && fen.campaign.record.length === 1, '?chapter=2: the bot rides Commission I and its court, and Sir Aldric rides into the Fenmarch on day I');
+  check((await kc.title()) === 'Commission II: your turn' && (await kc.choose('Ride out')), 'with a card saying what he carries');
+  await settle();
 
   await go('village', 'Visit');
   check(await kc.choose('Recruit'), 'Eelby offers archers');
   await close();
   await go('goblins', 'Approach');
-  await kc.choose('Let the sergeants');
-  check((await kc.title()) === 'Victory!', 'the sergeants beat the bog goblins');
+  // A hero this strong may talk them into surrendering before any fight.
+  if ((await kc.title()) !== 'They surrender!') await kc.choose('Let the sergeants');
+  const goblins = await kc.title();
+  check(goblins === 'Victory!' || goblins === 'They surrender!', `the bog goblins are seen off (${goblins})`);
   await close();
   const midFen = await kc.state();
 
