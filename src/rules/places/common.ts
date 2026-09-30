@@ -35,6 +35,8 @@ export const words = (place: Location, part: Exclude<keyof PlaceText, 'later'>):
 
 /** What a place says from afar: what it says once something has happened there, if something has (`later`), else its words `about` it. */
 export const aboutWords = (state: GameState, place: Location): string[] => place.text?.later?.find((l) => meets(state, l.when))?.about ?? words(place, 'about');
+/** What a place's hover label says after its name, once something has happened (`later`), if anything. */
+export const laterNote = (state: GameState, place: Location): string | undefined => place.text?.later?.find((l) => meets(state, l.when))?.note;
 
 /**
  * What an enemy has, for its card: "**lots of Swordsmen** and **a pack of Crossbowmen**", or with

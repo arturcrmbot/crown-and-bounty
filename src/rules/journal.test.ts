@@ -63,8 +63,13 @@ describe('the journal', () => {
     state = take(state, 'lodge', 'nail/key');
     expect(state.flags?.lodge).toBe('key');
     expect(heard(state)).toContain('[x] Old Nan, of the hunt hall');
+    // The key itself says what it opens (#172), until the hall is open.
+    expect(heard(state)).toContain('[ ] the key from the old King\u2019s lodge');
+    expect(heardOf(state).find((h) => h.who.includes('key'))!.words).toMatch(/hunt hall by the bridge/);
+    state = take(state, 'hall', 'door/open');
+    expect(heard(state)).toContain('[x] the key from the old King\u2019s lodge');
     // A flag spent still counts as heard: the lullaby, sung at his walls, is ticked, not forgotten.
-    expect(heard(flagged(state, { lullaby: false }))).toEqual(['[x] Old Nan', '[x] Old Nan, of the Baron', '[x] Old Nan, of the hunt hall']);
+    expect(heard(flagged(state, { lullaby: false }))).toEqual(['[ ] the old King\u2019s huntsmen', '[x] Old Nan', '[x] Old Nan, of the Baron', '[x] Old Nan, of the hunt hall', '[x] the key from the old King\u2019s lodge']);
   });
 
   it('ticks off a place found, and leaves a question hanging open', () => {

@@ -241,9 +241,10 @@ export type Location = {
 /**
  * Flavour for a place: before a visit, once it's used up, and on the visit itself. `later` is what
  * it says from afar once something has happened there, instead of `about`: the first whose `when`
- * holds (the old delving, once the dwarf has opened it).
+ * holds (the old delving, once the dwarf has opened it). Its `note`, if it has one, goes after the
+ * place's name in its hover label (the hunt hall, once the hero has its key).
  */
-export type PlaceText = { about?: string[]; done?: string[]; visit?: string[]; later?: { when: Needs; about: string[] }[] };
+export type PlaceText = { about?: string[]; done?: string[]; visit?: string[]; later?: { when: Needs; about: string[]; note?: string }[] };
 export type PlaceLook =
   | 'abbey' | 'peathut' | 'windmill' | 'stilthut' | 'shrine' | 'camp' | 'cottage' | 'house' | 'stones' | 'range' | 'hall' | 'lodge' | 'cart' | 'mews'
   | 'pack' | 'hamper' | 'campfire' | 'fold' | 'boat' | 'skeps' | 'hayrick' | 'pond' | 'kiln' | 'nest';

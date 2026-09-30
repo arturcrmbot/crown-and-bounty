@@ -6,7 +6,7 @@ import { isBeast } from '../content/troops';
 import { FENMARCH } from '../content/fenmarch';
 import type { Province } from '../content/types';
 import { withNewPlaces } from './campaign';
-import { apply, commissionAt, describe as fromAfar, heroStats, leadershipUsed, locationById, payday, update, visit, wages, type Card, type GameState, type Location, type Result } from './game';
+import { apply, commissionAt, describe as fromAfar, heroStats, leadershipUsed, locationById, payday, placeNote, update, visit, wages, type Card, type GameState, type Location, type Result } from './game';
 import { beat } from './fight';
 import { CELL } from './map/model';
 import { gridSize, isExplored as seenBit } from './map/fog';
@@ -206,9 +206,19 @@ describe('the old King\u2019s hunt hall', () => {
     expect(labels(keyed, 'hall')).toEqual(['Open the hall']);
     const opened = choose(keyed, 'hall', 'door/open')!;
     expect(opened.events.some((e) => e.type === 'changed' && e.id === 'hall')).toBe(true);
-    // From afar, the hall says it's open once it is.
-    expect(fromAfar(keyed, 'hall').lines.join(' ')).toMatch(/nobody has opened/);
+    // From afar, and in its hover label, the hall says the key fits it once he has it (#172), and it's open once it is.
+    expect(fromAfar(start, 'hall').lines.join(' ')).toMatch(/nobody has opened/);
+    expect(placeNote(start, 'hall')).toBe('The King\u2019s Hunt Hall');
+    expect(fromAfar(keyed, 'hall').lines.join(' ')).toMatch(/the key should fit its lock/);
+    expect(placeNote(keyed, 'hall')).toBe('The King\u2019s Hunt Hall: the old King\u2019s key fits its lock');
     expect(fromAfar(opened.state, 'hall').lines.join(' ')).toMatch(/smoke from the chimney/);
+    expect(placeNote(opened.state, 'hall')).toBe('The King\u2019s Hunt Hall: 12 Huntsmen to recruit');
+    // A save from before #172, its hall seen or not, picks up the new words without a bump.
+    for (const seen of [true, false]) {
+      const old = { ...keyed, locations: keyed.locations.map((l) => (l.id === 'hall' ? { ...l, seen, text: { ...l.text, later: l.text!.later!.filter((x) => !x.note) } } : l)) };
+      expect(placeNote(old, 'hall')).toBe('The King\u2019s Hunt Hall');
+      expect(placeNote(withNewPlaces(old), 'hall')).toMatch(/key fits its lock/);
+    }
     expect(cardOf(opened).choices.map((c) => c.label)).toEqual([`Recruit 12 (free)`, 'Close']);
     expect(cardOf(opened).lines.join(' ')).toMatch(/Rook/);
     const hall = locationById(opened.state, 'hall');
