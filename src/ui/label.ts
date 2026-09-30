@@ -1,10 +1,18 @@
+import type { Verdict } from '../rules/state';
 import { uiScale } from './scale';
 import { touch } from './touch';
 
-/** The name of whatever is under the pointer, like HoMM2's status line; played by touch, what a finger holds or taps. */
+/**
+ * The name of whatever is under the pointer, like HoMM2's status line; played by touch, what a finger
+ * holds or taps. Under a band's name go the odds of a fight with it, in their colour.
+ */
 export class HoverLabel {
   private readonly el = document.createElement('div');
   private scale = 1;
+  /** What it says, the odds included, in one line. */
+  private said = '';
+  /** What's on show now: its words, and its odds. */
+  private shown = '';
 
   constructor() {
     this.el.className = 'kc-label';
@@ -13,8 +21,19 @@ export class HoverLabel {
   }
 
   /** Below and right of the pointer, or above and left of it where the window runs out; above a finger, clear of it. */
-  show(text: string, clientX: number, clientY: number) {
-    this.el.textContent = text;
+  show(text: string, clientX: number, clientY: number, odds: Verdict | null = null) {
+    const shown = `${text}\n${odds?.odds ?? ''}\n${odds?.words ?? ''}`;
+    if (shown !== this.shown) {
+      this.shown = shown;
+      this.said = odds ? `${text} \u00b7 ${odds.words}` : text;
+      this.el.textContent = text;
+      if (odds) {
+        const tag = document.createElement('span');
+        tag.className = `kc-odds ${odds.odds}`;
+        tag.textContent = odds.words;
+        this.el.append(tag);
+      }
+    }
     this.el.hidden = false;
     const s = uiScale();
     if (s !== this.scale) {
@@ -37,7 +56,8 @@ export class HoverLabel {
     this.el.remove();
   }
 
+  /** What it says, with the odds after the name. */
   get text() {
-    return this.el.hidden ? null : this.el.textContent;
+    return this.el.hidden ? null : this.said;
   }
 }

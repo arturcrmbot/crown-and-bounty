@@ -9,9 +9,10 @@ import { rowOf } from './battle/hex';
 import { bountyOf, CAMPAIGN_LENGTH, commissionOf, hasNextCommission, heardOf } from './campaign';
 import { heroFighter, heroInBattle } from './fight';
 import { countsExactly, forceLine } from './places/common';
+import { oddsOf } from './places/enemy';
 import { heroStats, LEVELS, type StatId } from './hero';
 import { riddenOut } from './map/sortie';
-import { close, COMMISSION, coins, LAST_DAY, leadershipUsed, listed, locationById, PAYDAY_EVERY, roman, wages, type Card, type GameState } from './state';
+import { close, COMMISSION, coins, LAST_DAY, leadershipUsed, listed, locationById, PAYDAY_EVERY, roman, wages, type Card, type GameState, type Verdict } from './state';
 
 /** How mana comes back, in a few words: a quarter at dawn, for some heroes as they ride, and in full at a well or his castle. */
 export function manaBack(state: GameState): string {
@@ -161,6 +162,9 @@ export function placeNote(state: GameState, id: string): string {
   if (offer && !place.done && offer.count > 0) return `${place.name}: ${troops(offer.troop, offer.count)} to recruit`;
   return place.name;
 }
+
+/** The odds of a fight with a band, under its name in the map's hover label, as its cards give them: null for anything else. */
+export const placeOdds = (state: GameState, id: string): Verdict | null => oddsOf(state, locationById(state, id));
 
 // --- The hero screen ---------------------------------------------------------------------
 

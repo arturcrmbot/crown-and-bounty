@@ -313,7 +313,7 @@ describe('parleys, carefully', () => {
     expect(apply(none, { type: 'choose', id: 'goblins', choice: 'auto' })).toBeNull();
     expect(apply(none, { type: 'choose', id: 'goblins', choice: 'fight' })).toBeNull();
     const card = visit(none, 'goblins').events.find((e) => e.type === 'card');
-    expect(card?.type === 'card' && card.card.lines.some((l) => l.includes('no troops'))).toBe(true);
+    expect(card?.type === 'card' && card.card.verdict).toEqual({ odds: 'lose', words: 'You have no troops to fight with.' });
   });
 });
 

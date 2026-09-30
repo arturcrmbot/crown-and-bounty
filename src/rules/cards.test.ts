@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { ALDMOOR } from '../content/aldmoor';
-import { apply, bountyCard, endDay, joinLine, listed, locationById, lossesLine, stillWithYou, visit, whenThere, type Army, type Card, type GameState, type Result } from './game';
+import { apply, bountyCard, describe as fromAfar, endDay, joinLine, learnOdds, listed, locationById, lossesLine, oddsFor, oddsKnown, placeOdds, stillWithYou, visit, whenThere, winChance, type Army, type Card, type GameState, type Result } from './game';
 import { ambushCard } from './days';
+import { verdict } from './places/enemy';
 import { applyEffects } from './effects';
 import { mapOf } from './map/maps';
 import { daysAway } from './map/movement';
@@ -106,14 +107,69 @@ describe('the castle', () => {
 });
 
 describe('the odds', () => {
-  it('say in plain words how a fight would go, and what each way to fight means', () => {
+  it('lead the card with a verdict in plain words, and the army says what it thinks after the threat', () => {
     const card = cardOf(visit(knight(), 'patrol'));
-    expect(card.lines).toContain('Your army looks at you. Then at them. Then at you. *You\u2019d likely lose.*');
+    expect(card.verdict).toEqual({ odds: 'lose', words: 'You\u2019d likely lose.' });
+    expect(card.lines[1]).toBe('Your army looks at you. Then at them. Then at you.');
     const [fight, sergeants] = card.choices;
     expect(fight).toMatchObject({ label: 'Fight', detail: 'You command every stack yourself.' });
     expect(sergeants).toMatchObject({ label: 'Let the sergeants handle it', detail: 'They fight it out for you, by the same rules, in a moment.' });
     const strong = { ...knight(), leadership: 5000, army: [{ troop: 'knights' as const, count: 200 }] };
-    expect(cardOf(visit(strong, 'patrol')).lines).toContain('They look nervous. *You should win.*');
+    const sure = cardOf(visit(strong, 'patrol'));
+    expect(sure.verdict).toEqual({ odds: 'win', words: 'You should win.' });
+    expect(sure.lines).toContain('They look nervous.');
+  });
+
+  it('come in four colours, at the sergeants\u2019 old thresholds', () => {
+    expect(verdict(1)).toEqual({ odds: 'win', words: 'You should win.' });
+    expect(verdict(0.9).odds).toBe('win');
+    expect(verdict(0.89)).toEqual({ odds: 'close', words: 'The odds are on your side.' });
+    expect(verdict(0.55).odds).toBe('close');
+    expect(verdict(0.54)).toEqual({ odds: 'against', words: 'The odds are against you.' });
+    expect(verdict(0.3).odds).toBe('against');
+    expect(verdict(0.29)).toEqual({ odds: 'lose', words: 'You\u2019d likely lose.' });
+    expect(verdict(0).odds).toBe('lose');
+  });
+
+  it('are the same from afar, under the pointer and on arrival (#154)', () => {
+    const armies: Army[] = [knight().army, [{ troop: 'knights', count: 17 }, { troop: 'archers', count: 33 }], [{ troop: 'knights', count: 200 }]];
+    for (const army of armies) {
+      const s = { ...knight(), leadership: 5000, army };
+      for (const id of ['patrol', 'wolves', 'hideout']) {
+        const arrival = cardOf(visit(s, id)).verdict;
+        expect(arrival).toBeDefined();
+        expect(fromAfar(s, id).verdict).toEqual(arrival);
+        expect(placeOdds(s, id)).toEqual(arrival);
+      }
+    }
+    // Only a fight has odds.
+    expect(placeOdds(knight(), 'castle')).toBeNull();
+    expect(fromAfar(knight(), 'castle').verdict).toBeUndefined();
+  });
+
+  it('put a number on the chances from afar too, for a hero whose scouts give one', () => {
+    expect(fromAfar(knight(), 'patrol').lines.some((line) => line.includes('chance'))).toBe(false);
+    const scout = { ...knight(), hero: { ...knight().hero, skills: { scouting: 2 } } };
+    expect(fromAfar(scout, 'patrol').lines).toContain('*Your scouts don\u2019t give you one chance in ten.*');
+  });
+
+  it('say so plainly with no troops to fight with', () => {
+    const alone = { ...knight(), army: [] };
+    const card = cardOf(visit(alone, 'patrol'));
+    expect(card.verdict).toEqual({ odds: 'lose', words: 'You have no troops to fight with.' });
+    expect(card.lines).toContain('Recruit some troops first.');
+    expect(placeOdds(alone, 'patrol')).toEqual(card.verdict);
+  });
+
+  it('can be worked out elsewhere and learned, as the odds worker does', () => {
+    const s: GameState = { ...knight(), army: [{ troop: 'knights', count: 11 }, { troop: 'archers', count: 23 }] };
+    expect(oddsKnown(s, 'bears')).toBe(false);
+    const odds = oddsFor(s, 'bears')!;
+    expect(odds.chance).toBe(winChance(s, 'bears'));
+    expect(oddsKnown(s, 'bears')).toBe(true);
+    learnOdds({ ...odds, chance: 0.5 });
+    expect(placeOdds(s, 'bears')).toEqual(verdict(0.5));
+    learnOdds(odds);
   });
 
   it('forecasts likely losses on threat and ambush cards, with exact counts for Rangers', () => {
@@ -124,6 +180,7 @@ describe('the odds', () => {
 
     const ambush = ambushCard({ ...state, ambush: 'patrol' });
     expect(ambush.lines.some((line) => line.includes('The sergeants expect to lose') || line.includes('bring everyone home'))).toBe(true);
+    expect(ambush.verdict).toEqual(threat.verdict);
 
     const ranger = { ...state, hero: { ...state.hero, background: 'ranger' as const } };
     const scouted = cardOf(visit(ranger, 'patrol'));

@@ -274,9 +274,10 @@ try {
   check(after.gold === before.gold && after.day === before.day, 'the save keeps gold and day');
   check(after.locations.find((l) => l.id === 'chest').done && String(after.hero.at) === String(before.hero.at), 'the save keeps the opened chest and where the hero stands');
 
-  // The patrol is a gate: too strong for a fresh army.
+  // The patrol is a gate: too strong for a fresh army, and its card says so before anything else (#154).
   await go('patrol', 'Approach');
-  check((await kc.lines()).includes('looks at you'), 'the patrol is too strong at first');
+  const gate = await kc.lines();
+  check(gate.includes('looks at you') && /^(The odds are against you|You\u2019d likely lose)\./.test(gate), `the patrol is too strong at first, and its card leads with the odds (${gate.split(' / ')[0]})`);
   await kc.choose('Retreat');
 
   // The patrol holds the bridge, so the highwaymen on the heath's tower road are the long way round, by the ford.

@@ -260,6 +260,39 @@
   white-space: nowrap;
 }
 
+/* The odds of a fight at a glance, in their colour, from a sure win in green to a likely loss in
+   dark red: under the title of every card about a fight, and under a band's name in the label. */
+.kc-odds {
+  display: table;
+  padding: 1px 8px 2px;
+  font-weight: bold;
+  color: #f2e4c4;
+  border: 1px solid #1a1206;
+  box-shadow: 2px 2px 0 rgba(12, 8, 3, 0.45);
+}
+.kc-odds.win {
+  background: #2a6d26;
+}
+.kc-odds.close {
+  color: #fbea96;
+  background: #986612;
+}
+.kc-odds.against {
+  background: #ab291f;
+}
+.kc-odds.lose {
+  color: #f8a276;
+  background: #581010;
+}
+.kc-card .kc-odds {
+  margin: 0 0 7px;
+}
+.kc-label .kc-odds {
+  margin: 3px 0 2px;
+  padding: 0 6px 1px;
+  box-shadow: none;
+}
+
 /* A smaller line under a button's label. */
 .kc-card button small {
   display: block;

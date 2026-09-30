@@ -10,12 +10,12 @@ import type { Action, GameState, Result } from './state';
 
 export * from './state';
 export { choose, describe, DISCOVERY_XP, forceLine, payday, PLACE_KINDS, priceOf, recruitable, visit, type PlaceKind } from './places';
-export { barNote, bountyCard, heroSheet, journalCard, leaderSheet, leaderTraits, manaNote, mapPieces, placeNote, SLOT_NAMES, stackSheet, whenThere, type BarItem, type HeroSheet, type LeaderSheet, type Note, type StackSheet } from './heroSheet';
+export { barNote, bountyCard, heroSheet, journalCard, leaderSheet, leaderTraits, manaNote, mapPieces, placeNote, placeOdds, SLOT_NAMES, stackSheet, whenThere, type BarItem, type HeroSheet, type LeaderSheet, type Note, type StackSheet } from './heroSheet';
 export { meets, needsLabel } from './effects';
 export { ambushCard, endDay } from './days';
 export { bountyOf, briefingCard, CAMPAIGN_LENGTH, campaignLines, chooseBoon, closingCard, commissionAt, commissionOf, companyLine, courtCard, endsHere, friendsOf, happened, hasNextCommission, heardOf, memoriesOf, nextArmy, nextCommission, provinceOf, retry, speechCard, toCourt, veterans, VETERANS } from './campaign';
 export { beginCommission, chooseBackground, newGame } from './scenario';
-export { battleXp, fight, finishFight, heroFighter, heroInBattle, lossesLine, manaLine, startFight, winChance, type HeroFighter } from './fight';
+export { battleXp, fight, finishFight, heroFighter, heroInBattle, learnOdds, lossesLine, manaLine, oddsFor, oddsKnown, startFight, winChance, type HeroFighter, type Odds } from './fight';
 export { equip, gainXp, giveArtifact, heroStats, learn, levelFor, levelUpCard, LEVELS, movePack, unequip, wear } from './hero';
 export { dismiss, moveStack } from './army';
 

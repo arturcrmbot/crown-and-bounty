@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ALDMOOR } from '../../content/aldmoor';
 import { battleEnd, createBattle } from '../battle/battle';
-import { apply, choose, endDay, heroInBattle, locationById, visit, type GameEvent, type GameState } from '../game';
+import { apply, choose, describe as about, endDay, heroInBattle, locationById, placeOdds, visit, type GameEvent, type GameState } from '../game';
 import { withNewPlaces } from '../campaign';
 import { newGame } from '../scenario';
 import { riddenOut } from './sortie';
@@ -61,6 +61,11 @@ describe('Grimsby riding out', () => {
     expect(cardLines(visit(s, 'hideout')).join(' ')).toContain('The gate is barred');
     expect(choose(s, 'hideout', 'fight')).toBeNull();
     expect(choose(s, 'hideout', 'parley/goose')).toBeNull();
+    // No fight, so no odds at his gate: they go with him, on his band out on the road.
+    expect(placeOdds(s, 'hideout')).toBeNull();
+    expect(about(s, 'hideout').verdict).toBeUndefined();
+    expect(placeOdds(s, 'grimsby')).toEqual(about(s, 'grimsby').verdict);
+    expect(placeOdds(s, 'grimsby')).not.toBeNull();
   });
 
   it('waits for a hero out of his reach, and rides out once he comes back', () => {
