@@ -544,6 +544,9 @@ function paint(rows: string[]): Bitmap {
   return b;
 }
 
+/** Any 16-pixel picture drawn in these letters, inked round, as the icons are: the battle's pointers use it too. */
+export const picture = (rows: string[]): Bitmap => outline(paint(rows), INK);
+
 /** An artifact's picture, inked round. */
 export function artifactIcon(id: ArtifactId): Bitmap {
   let icon = drawn.get(id);

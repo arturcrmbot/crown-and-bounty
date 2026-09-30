@@ -2,7 +2,7 @@ import { abilitiesOf, TROOPS, type TroopId } from '../content/troops';
 import { SPELLS, STATUSES } from '../content/spells';
 import { canCast, hasTurn, isLeader, lookOf, luckOf, moraleOf, speedOf, statsOf, unitOf, type BattleState, type Fighter } from '../rules/battle/battle';
 import { COLS, colOf, HEXES, hexIndex, ROWS, rowOf } from '../rules/battle/hex';
-import { Bitmap, blit } from './bitmap';
+import { Bitmap, blit, SHADOW } from './bitmap';
 import { critters, critterSprite, type Critter } from './critters';
 import { animLength, bodyHeight, corpseSprite, hurtSprite, standard, STAND, troopFigure, type Pose, type Standard } from './battleSprites';
 import { upcomingFighters } from './battleOrder';
@@ -11,7 +11,7 @@ import { drawBanner } from './banner';
 import { TIP } from './speech';
 import { BAR, MAP_VIEW, paintBarBackground, paintFrame, SCREEN, type Rect } from './frame';
 import { bayer, hash, noise, shade } from './noise';
-import { BLUE, CYCLE_BOG, EARTH, GOLD, GRASS, INK, LEAF, LIGHT_LUT, NEUTRAL, PARCHMENT, PLUM, RED, REED, SHADOW_LUT, STONE, WOOD } from './palette';
+import { BLUE, CYCLE_BOG, DANGER_LUT, EARTH, GOLD, GRASS, INK, LEAF, LIGHT_LUT, NEUTRAL, PARCHMENT, PLUM, RED, REED, SHADOW_LUT, STONE, WOOD } from './palette';
 import { boulder, oak, pine, willow } from './sprites';
 import { drawText, textMask } from './text';
 
@@ -140,7 +140,10 @@ export type BattleView = {
   /** What a stack looks like while a change plays out (newts, or null for itself), instead of what its statuses say. */
   looks: Map<number, Critter | null>;
   reach: Set<number>;
-  hover: { hex: number; kind: 'move' | 'melee' | 'shoot' | 'spell' | 'bard' } | null;
+  /** What a click on the hex under the pointer would do, and for a blow, the hex it is struck from. */
+  hover: { hex: number; kind: 'move' | 'melee' | 'shoot' | 'spell' | 'bard'; from?: number } | null;
+  /** The stacks that click would reach, lit: `target` for those it's aimed at, `danger` for your own it would hurt too. */
+  lit: ReadonlyMap<number, 'target' | 'danger'>;
   floaters: Floater[];
   shots: Shot[];
   log: string;
@@ -259,6 +262,37 @@ function bogHole(field: Bitmap, cx: number, cy: number) {
   }
 }
 
+const glows = new WeakMap<Bitmap, Map<string, Bitmap>>();
+
+/**
+ * A figure's shape grown by three pixels, as a ring in `colour` two pixels thick with a darker `edge`
+ * outside it: drawn just before the figure, it lights it up. The figure's shadow on the ground isn't
+ * part of its shape.
+ */
+function glowOf(sprite: Bitmap, colour: number, edge: number): Bitmap {
+  let made = glows.get(sprite);
+  if (!made) glows.set(sprite, (made = new Map()));
+  const key = `${colour}/${edge}`;
+  let glow = made.get(key);
+  if (!glow) {
+    glow = new Bitmap(sprite.width + 6, sprite.height + 6);
+    const solid = (x: number, y: number) => {
+      const v = sprite.get(x, y);
+      return v !== 0 && v !== SHADOW;
+    };
+    for (let y = -3; y < sprite.height + 3; y++) {
+      for (let x = -3; x < sprite.width + 3; x++) {
+        if (solid(x, y)) continue;
+        let near = 4;
+        for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) if (Math.abs(dx) + Math.abs(dy) < near && solid(x + dx, y + dy)) near = Math.abs(dx) + Math.abs(dy);
+        if (near < 4) glow.set(x + 3, y + 3, near < 3 ? colour : edge);
+      }
+    }
+    made.set(key, glow);
+  }
+  return glow;
+}
+
 function fillHex(screen: Bitmap, i: number, lut: Uint8Array, every: number) {
   const [cx, cy] = hexCentre(i);
   for (let y = Math.floor(cy - HALF_H + 2); y <= cy + HALF_H - 2; y++) {
@@ -310,11 +344,25 @@ export class BattleScreen {
     }
     for (const i of view.reach) fillHex(screen, i, LIGHT_LUT, 2);
     const active = view.active === null ? null : b.fighters.find((f) => f.id === view.active);
-    if (active && active.count > 0) {
+    // The stack whose turn it is stands on a lit hex; a leader has his ring behind the line instead.
+    if (active && active.count > 0 && !isLeader(active)) {
       fillHex(screen, active.at, LIGHT_LUT, 1);
       outlineHex(screen, active.at, GOLD[5]);
     }
-    if (view.hover) outlineHex(screen, view.hover.hex, view.hover.kind === 'move' || view.hover.kind === 'bard' ? GOLD[6] : view.hover.kind === 'spell' ? BLUE[6] : RED[5]);
+    // Where a click would take the stack: the hex it would move to, or the one it would strike from.
+    const going = view.hover?.kind === 'move' ? view.hover.hex : view.hover?.from !== undefined && view.hover.from !== active?.at ? view.hover.from : null;
+    if (going !== null) {
+      fillHex(screen, going, LIGHT_LUT, 1);
+      outlineHex(screen, going, GOLD[6]);
+    }
+    // What it would land on, lit gold, and your own it would hurt too, in red.
+    for (const [id, how] of view.lit) {
+      const f = b.fighters.find((x) => x.id === id);
+      if (!f || f.count <= 0 || isLeader(f)) continue;
+      fillHex(screen, f.at, how === 'danger' ? DANGER_LUT : LIGHT_LUT, how === 'danger' ? 2 : 1);
+      outlineHex(screen, f.at, how === 'danger' ? RED[5] : GOLD[6]);
+    }
+    if (view.hover && !view.lit.size && view.hover.kind !== 'move') outlineHex(screen, view.hover.hex, view.hover.kind === 'bard' ? GOLD[6] : view.hover.kind === 'spell' ? BLUE[6] : RED[5]);
 
     // The fallen stay where they fell, under everyone still standing. Those paid off walked away.
     for (const f of b.fighters) {
@@ -352,7 +400,9 @@ export class BattleScreen {
         for (const c of critters(look, !oneOfAKind(f), view.time, f.id)) {
           const sprite = critterSprite(look, facing, c.phase);
           const shown = view.flashing.has(f.id) ? hurtSprite(sprite) : sprite;
-          blit(screen, shown, Math.round(px + ox + c.dx - sprite.width / 2), Math.round(py + oy + 12 + c.dy - sprite.height), MAP_VIEW);
+          const [x, y] = [Math.round(px + ox + c.dx - sprite.width / 2), Math.round(py + oy + 12 + c.dy - sprite.height)];
+          if (view.lit.has(f.id)) this.glow(sprite, x, y, view.lit.get(f.id)!, view.time);
+          blit(screen, shown, x, y, MAP_VIEW);
         }
         continue;
       }
@@ -361,8 +411,12 @@ export class BattleScreen {
       const sprite = view.flashing.has(f.id) ? hurtSprite(figure.sprite) : figure.sprite;
       // Standing about, everyone breathes: a pixel up and down, each stack in its own time.
       const breath = pose.anim === 'stand' && !view.positions.has(f.id) && !view.offsets.has(f.id) && Math.sin(view.time * 2.4 + f.id * 1.9) > 0.35 ? 1 : 0;
-      blit(screen, sprite, Math.round(px + ox + figure.x), Math.round(py + oy + 12 + figure.y) - breath, MAP_VIEW);
+      const [x, y] = [Math.round(px + ox + figure.x), Math.round(py + oy + 12 + figure.y) - breath];
+      if (view.lit.has(f.id)) this.glow(figure.sprite, x, y, view.lit.get(f.id)!, view.time);
+      blit(screen, sprite, x, y, MAP_VIEW);
     }
+    // A blow's way in: an arrow on the edge from the hex it is struck from into the stack it lands on.
+    if (view.hover?.kind === 'melee' && view.hover.from !== undefined) this.arrow(hexCentre(view.hover.from), hexCentre(view.hover.hex));
     // Counts go on last, so a troll never hides the goblins behind him. A leader has none: he's one
     // of a kind, and nothing can hurt him.
     for (const f of shown) {
@@ -419,6 +473,39 @@ export class BattleScreen {
         const x = Math.round(cx + Math.cos(a) * (rx + grow));
         const y = Math.round(cy + Math.sin(a) * (ry + grow * 0.6));
         if (y >= MAP_VIEW.y && y < MAP_VIEW.y + MAP_VIEW.height) this.screen.set(x, y, colour);
+      }
+    }
+  }
+
+  /**
+   * A figure lit up, drawn just before the figure itself: a ring round its shape, gold for a stack a
+   * click would land on and red for your own it would hurt, shimmering between two shades.
+   */
+  private glow(sprite: Bitmap, x: number, y: number, how: 'target' | 'danger', time: number) {
+    const bright = Math.sin(time * 7) > -0.3;
+    const colour = how === 'danger' ? (bright ? RED[5] : RED[4]) : bright ? GOLD[6] : GOLD[5];
+    blit(this.screen, glowOf(sprite, colour, how === 'danger' ? RED[1] : GOLD[2]), x - 3, y - 3, MAP_VIEW);
+  }
+
+  /** A gold arrowhead on the edge between two hexes, pointing the way a blow goes in. */
+  private arrow([ax, ay]: [number, number], [bx, by]: [number, number]) {
+    const length = Math.hypot(bx - ax, by - ay) || 1;
+    const [ux, uy] = [(bx - ax) / length, (by - ay) / length];
+    const [mx, my] = [(ax + bx) / 2, (ay + by) / 2];
+    const corners: [number, number][] = [
+      [mx + ux * 8, my + uy * 8],
+      [mx - ux * 6 - uy * 8, my - uy * 6 + ux * 8],
+      [mx - ux * 6 + uy * 8, my - uy * 6 - ux * 8],
+    ];
+    const side = (p: [number, number], q: [number, number], x: number, y: number) => (q[0] - p[0]) * (y - p[1]) - (q[1] - p[1]) * (x - p[0]);
+    const turn = Math.sign(side(corners[0], corners[1], corners[2][0], corners[2][1]));
+    const inside = (x: number, y: number) => [0, 1, 2].every((k) => side(corners[k], corners[(k + 1) % 3], x, y) * turn >= 0);
+    for (let y = Math.floor(my - 10); y <= my + 10; y++) {
+      for (let x = Math.floor(mx - 10); x <= mx + 10; x++) {
+        if (!inside(x, y)) continue;
+        const rim = !inside(x + 1, y) || !inside(x - 1, y) || !inside(x, y + 1) || !inside(x, y - 1);
+        // Lit from the top left, as everything is: the far half of the head a shade darker.
+        this.screen.set(x, y, rim ? INK : (x - mx) * uy - (y - my) * ux > 0 ? GOLD[5] : GOLD[6]);
       }
     }
   }

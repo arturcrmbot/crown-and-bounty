@@ -441,7 +441,7 @@ try {
   });
   await tap(plan.at.x, plan.at.y);
   const first = await call(() => ({ label: window.__kc.battle().label(), battle: window.__kc.battle().battle() }));
-  check(first.battle.fighters.find((f) => f.id === plan.id).at !== plan.target && /tap again/.test(first.label ?? ''), `a first tap on a hex shows what a second would do (${first.label})`);
+  check(first.battle.fighters.find((f) => f.id === plan.id).at !== plan.target && /tap again/i.test(first.label ?? ''), `a first tap on a hex shows what a second would do (${first.label})`);
   await look('battle-first-tap');
   await tap(plan.at.x, plan.at.y);
   await page.waitForFunction(() => !window.__kc.battle().busy(), null, { timeout: 10_000 }).catch(() => {});

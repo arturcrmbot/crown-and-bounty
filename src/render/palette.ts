@@ -165,6 +165,8 @@ const toDeep = (i: number) => (CYCLE_SHALLOW.includes(i) ? CYCLE_DEEP[CYCLE_SHAL
 
 /** Early morning: a touch brighter and cooler, the dew still on everything. */
 export const MORNING_LUT = tint((r, g, b) => [r * 1.04 + 10, g * 1.1 + 14, b * 1.22 + 26]);
+/** Danger: the same colour gone red, under your own stacks a spell would catch. */
+export const DANGER_LUT = tint((r, g, b) => [r * 0.6 + 110, g * 0.4, b * 0.35]);
 /** Evening: warm and golden, the light low. */
 export const EVENING_LUT = tint((r, g, b) => [r * 1.12 + 22, g * 0.9 + 2, b * 0.52]);
 /** Night: dark and blue, still readable. */
