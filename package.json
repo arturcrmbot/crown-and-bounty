@@ -24,7 +24,8 @@
     "difficulty": "node scripts/difficulty.mjs",
     "wesnoth": "node scripts/wesnoth.mjs",
     "listen": "node scripts/listen.mjs",
-    "linkpreview": "node scripts/linkpreview.mjs"
+    "linkpreview": "node scripts/linkpreview.mjs",
+    "phone": "node scripts/phone.mjs"
   },
   "devDependencies": {
     "playwright": "^1.63.0",

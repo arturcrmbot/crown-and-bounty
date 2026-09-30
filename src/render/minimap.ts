@@ -333,6 +333,11 @@ export class Minimap {
     return x >= x0 - BUTTON_SLACK && x < x0 + BUTTON + BUTTON_SLACK && y >= y0 - BUTTON_SLACK && y < y0 + BUTTON + BUTTON_SLACK;
   }
 
+  /** The screen point over a map point: where on the minimap to press to look there. */
+  toScreen([x, y]: Point): Point {
+    return [this.left + x * this.scale - 0.5, this.top + y * this.scale - 0.5];
+  }
+
   /** The map point under a screen point, kept on the map: a drag that runs off the minimap still steers. */
   toMap(x: number, y: number): Point {
     const mx = Math.max(0, Math.min(this.width - 0.5, x - this.left + 0.5));

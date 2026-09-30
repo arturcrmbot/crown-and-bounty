@@ -1,3 +1,5 @@
+import { SIDE, touch, whenTouchChanges } from '../ui/touch';
+
 /** The canvas: an indexed frame goes in, whole-pixel-scaled RGB comes out. */
 export class Display {
   readonly canvas = document.createElement('canvas');
@@ -14,12 +16,17 @@ export class Display {
     this.image = this.context.createImageData(width, height);
     this.pixels = new Uint32Array(this.image.data.buffer);
     window.addEventListener('resize', () => this.fit());
+    whenTouchChanges(() => this.fit());
     this.fit();
   }
 
-  /** Whole-pixel scaling when the window allows it, so every art pixel stays square. */
+  /**
+   * Whole-pixel scaling when the window allows it, so every art pixel stays square. Played by touch,
+   * on its side, it leaves a strip down each side for the rails' buttons.
+   */
   private fit() {
-    const ratio = Math.min(window.innerWidth / this.canvas.width, window.innerHeight / this.canvas.height);
+    const sides = touch() && window.innerWidth > window.innerHeight ? 2 * SIDE : 0;
+    const ratio = Math.min((window.innerWidth - sides) / this.canvas.width, window.innerHeight / this.canvas.height);
     this.scale = ratio >= 1 ? Math.floor(ratio) : ratio;
     this.canvas.style.width = `${this.canvas.width * this.scale}px`;
     this.canvas.style.height = `${this.canvas.height * this.scale}px`;

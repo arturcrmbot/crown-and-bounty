@@ -2,7 +2,14 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <!-- On a phone's home screen, it opens as a game: no browser bars, landscape, black round the edges. -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="apple-mobile-web-app-title" content="King&apos;s Commission" />
+    <meta name="theme-color" content="#000000" />
+    <link rel="manifest" href="manifest.webmanifest" />
     <title>King&apos;s Commission</title>
     <meta name="description" content="Raise an army, pay its wages and bring Baron Grimsby to the King, along with the royal goose he stole. It is a free strategy game that you play in your browser, in the spirit of King&apos;s Bounty and Heroes of Might and Magic II." />
     <!-- The link preview, on LinkedIn and elsewhere. Its picture is the title painting, made by npm run linkpreview. -->

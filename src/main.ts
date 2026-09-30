@@ -12,7 +12,10 @@ import { loadUnitArt } from './render/wesnoth';
 import { toggleMute, wakeAudio } from './audio/context';
 import { MuteButton } from './ui/mute';
 import { MixPanel } from './ui/mix';
-import { setUiScale } from './ui/scale';
+import { Rail } from './ui/rail';
+import { setUiRoom, setUiScale } from './ui/scale';
+import { touch, upright } from './ui/touch';
+import { turnCard } from './ui/turn';
 import { ARTIFACTS, slotsForArtifact, type ArtifactId } from './content/artifacts';
 import { beginCommission, commissionAt, equip, giveArtifact, hasNextCommission, newGame, startFight, CAMPAIGN_LENGTH, type GameState } from './rules/game';
 import { playCampaignStarts } from './rules/bot';
@@ -140,6 +143,9 @@ window.addEventListener('keydown', (e) => {
 });
 const mute = new MuteButton();
 const mix = new MixPanel();
+// Played by touch: buttons down the sides for what keys do, and a card asking for the phone sideways.
+const rail = new Rail((button) => game.pressButton(button));
+turnCard();
 window.addEventListener('pagehide', () => {
   const state = game.saveable;
   if (state) saveGame(state);
@@ -148,15 +154,21 @@ window.addEventListener('pagehide', () => {
 let last = performance.now();
 requestAnimationFrame(function frame(now) {
   // The first frame can be stamped a moment before the page started counting: never run the clock backwards.
-  const dt = frozen ? 0 : Math.max(0, Math.min(0.05, (now - last) / 1000));
+  // Held upright, the game waits for the phone to be turned sideways.
+  const dt = frozen || upright() ? 0 : Math.max(0, Math.min(0.05, (now - last) / 1000));
   last = now;
   game.update(dt, input.held);
   const tick = frozen ? 0 : Math.floor(now / TICK_MS);
   display.present(game.frame(tick), paletteWords(tick));
   setUiScale(display.scale);
+  // Played by touch on its side, cards keep between the rails; otherwise they have the whole window.
+  const picture = display.canvas.getBoundingClientRect();
+  if (touch() && !upright()) setUiRoom(picture.left, picture.right);
+  else setUiRoom(0, window.innerWidth);
   game.placeCards();
   mute.place(display);
   mix.place(display);
+  rail.place(display, touch() && !upright() ? game.buttons() : null);
   window.__ready = true;
   requestAnimationFrame(frame);
 });

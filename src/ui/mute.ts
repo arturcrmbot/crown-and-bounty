@@ -7,7 +7,7 @@ import './mute.css';
 import { bitmapUrl } from './pixels';
 
 /** A little speaker, with its sound waves or a red cross over them. */
-function speaker(on: boolean): Bitmap {
+export function speaker(on: boolean): Bitmap {
   const rows = [
     '.....g.......',
     '....gg...w...',

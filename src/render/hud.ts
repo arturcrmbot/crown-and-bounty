@@ -81,7 +81,7 @@ const BOOK = [
   '.ooooooRoooooo.',
   '.......R.......',
 ];
-const JOURNAL = icon(BOOK, { o: INK, P: PARCHMENT[6], l: PARCHMENT[1], B: WOOD[4], R: RED[4] });
+export const JOURNAL = icon(BOOK, { o: INK, P: PARCHMENT[6], l: PARCHMENT[1], B: WOOD[4], R: RED[4] });
 const JOURNAL_LIT = icon(BOOK, { o: INK, P: NEUTRAL[7], l: PARCHMENT[2], B: GOLD[5], R: RED[5] });
 const JOURNAL_AT = { x: HOURGLASS_AT.x - 30, y: BAR.y + 8 };
 

@@ -163,6 +163,8 @@ export type BattleView = {
   speech: { fighter: number; bubble: Bitmap; age: number; life: number } | null;
   /** The safe-finish offer replaces Auto in the bar while the player can accept it. */
   finishOffer: boolean;
+  /** Played by touch: there's no Esc to cancel a spell, but the rail's Cancel. */
+  touch?: boolean;
 };
 
 export const BUTTONS: { id: 'spells' | 'wait' | 'defend' | 'auto' | 'retreat'; label: string; rect: Rect }[] = ['spells', 'wait', 'defend', 'auto', 'retreat'].map((id, i) => ({
@@ -649,7 +651,7 @@ export class BattleScreen {
     const shownId = view.inspect ?? view.active;
     const countOf = (x: { id: number; count: number }) => view.counts.get(x.id) ?? x.count;
     const f = shownId === null ? null : b.fighters.find((x) => x.id === shownId && countOf(x) > 0);
-    if (view.targeting) drawText(screen, `Cast ${view.targeting}: pick a target (Esc to cancel)`, BAR.x + 12, text, GOLD[6], INK);
+    if (view.targeting) drawText(screen, `Cast ${view.targeting}: ${view.touch ? 'tap a target, or Cancel' : 'pick a target (Esc to cancel)'}`, BAR.x + 12, text, GOLD[6], INK);
     else if (f) {
       const t = unitOf(f);
       const share = (x: number) => `${x > 0 ? '+' : '\u2212'}${Math.round(Math.abs(x) * 100)}%`;

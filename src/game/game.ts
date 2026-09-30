@@ -18,7 +18,7 @@ import type { Display } from './display';
 import type { InputHandlers } from './input';
 import { saveGame } from './save';
 import { whenUnitArt } from '../render/wesnoth';
-import type { Screen } from './screen';
+import type { Screen, SideButton } from './screen';
 
 const hashOf = (data: Uint8Array) => {
   let h = 0x811c9dc5;
@@ -270,10 +270,21 @@ export class Game {
     this.top.placeCards();
   }
 
+  /** The buttons down the sides for the screen on top, played by touch; null if it takes the whole window. */
+  buttons(): SideButton[] | null {
+    return this.top.buttons ? this.top.buttons() : [];
+  }
+
+  /** A button down the side, pressed: like its key, it skips a change of screen under way and still counts. */
+  pressButton(button: SideButton) {
+    this.skip();
+    button.press();
+  }
+
   readonly input: InputHandlers = {
     // A press waits for the screen to change; a click while it changes only skips the change; a key skips it and still counts.
     press: (x, y) => this.transition || this.top.input.press?.(x, y),
-    click: (x, y) => this.skip() || this.top.input.click(x, y),
+    click: (x, y, touch) => this.skip() || this.top.input.click(x, y, touch),
     look: (x, y) => this.skip() || this.top.input.look?.(x, y),
     wheel: (dx, dy) => this.top.input.wheel?.(dx, dy),
     hover: (x, y, cx, cy) => this.top.input.hover(x, y, cx, cy),
@@ -304,6 +315,10 @@ export class Game {
       view: (x: number, y: number) => adventure()?.view(x, y),
       /** Where the map's view looks: its top left, in map pixels. */
       camera: () => adventure()?.camera() ?? null,
+      /** Where a map point is on the page, on the view and on the minimap, for a script to tap it. */
+      onPage: (x: number, y: number) => adventure()?.onPage(x, y) ?? null,
+      /** Where a thing on the map's bottom bar is on the page. */
+      barOnPage: (kind: string) => adventure()?.barOnPage(kind) ?? null,
       hover: () => adventure()?.hover() ?? null,
       /** Whether the map's minimap is out (true), folded away (false), or there's no map (null). */
       minimap: () => adventure()?.minimap() ?? null,

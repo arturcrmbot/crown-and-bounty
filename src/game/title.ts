@@ -2,6 +2,7 @@ import { MAP_VIEW } from '../render/frame';
 import { TitleScreen } from '../render/titleScreen';
 import type { Action, Card, GameState } from '../rules/game';
 import { CardView } from '../ui/card';
+import { touch } from '../ui/touch';
 import type { Display } from './display';
 import { titleCard } from './intro';
 import { NO_INPUT, type Screen } from './screen';
@@ -65,7 +66,7 @@ export class TitleController implements Screen {
   }
 
   render(): Uint8Array {
-    return this.screen.draw(this.time, this.waiting).data;
+    return this.screen.draw(this.time, this.waiting, touch() ? 'Tap anywhere to begin' : undefined).data;
   }
 
   get bitmap() {

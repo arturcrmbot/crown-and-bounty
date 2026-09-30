@@ -1,0 +1,11 @@
+{
+  "name": "King's Commission",
+  "short_name": "King's Commission",
+  "description": "King's Bounty (1990) rebuilt with the charm of Heroes of Might and Magic II.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#000000",
+  "theme_color": "#000000"
+}

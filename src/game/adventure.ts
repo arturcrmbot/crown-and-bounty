@@ -26,7 +26,8 @@ import type { TrackId } from '../audio/score';
 import { HoverLabel } from '../ui/label';
 import type { Display } from './display';
 import type { Input } from './input';
-import type { Screen } from './screen';
+import type { Screen, SideButton } from './screen';
+import { touch } from '../ui/touch';
 import { backgroundCard, endCard, keysCard, storyCard } from './intro';
 import { clearSave, keepMinimap, minimapWanted, saveGame } from './save';
 import { Walks } from './walks';
@@ -306,7 +307,7 @@ export class AdventureController implements Screen {
     const before = this.state;
     // The first thing heard on the road says where it has gone.
     const heard = heardOf(result.state).length > heardOf(before).length;
-    const told = heard ? this.teach(result, 'journal', '**Hint.** What you hear on the road goes in your journal: press **J**, or click the book on the bar.') : result;
+    const told = heard ? this.teach(result, 'journal', touch() ? '**Hint.** What you hear on the road goes in your journal: tap **Journal**, at the side.' : '**Hint.** What you hear on the road goes in your journal: press **J**, or click the book on the bar.') : result;
     this.state = told.state;
     if (this.state.gold > before.gold) play('coins');
     this.handle(told.events);
@@ -473,7 +474,8 @@ export class AdventureController implements Screen {
 
   /** What the minimap's button says under the pointer. */
   private minimapButtonNote() {
-    return this.scene.minimap.shown ? 'Fold the map away (Tab)' : `Unfold the map of ${this.map.province.name} (Tab)`;
+    const key = touch() ? '' : ' (Tab)';
+    return this.scene.minimap.shown ? `Fold the map away${key}` : `Unfold the map of ${this.map.province.name}${key}`;
   }
 
   /** Underlines what a click on the bar would work, as the pointer moves over it. */
@@ -579,7 +581,7 @@ export class AdventureController implements Screen {
       const taught = this.teach(
         { state: this.state, events: [] },
         'ride',
-        'Hold **Shift** to gallop. Click Aldric or press **Esc** to stop; **M** mutes sound, and **?** lists every key.',
+        touch() ? 'Tap Aldric to stop. Touch and hold anywhere to see what it is, and how many days\u2019 ride.' : 'Hold **Shift** to gallop. Click Aldric or press **Esc** to stop; **M** mutes sound, and **?** lists every key.',
         { title: 'On the road', choices: [{ label: 'Ride on', action: { type: 'close' } }] },
       );
       if (taught.events.length) this.run(taught);
@@ -603,7 +605,7 @@ export class AdventureController implements Screen {
     const id = this.visiting!;
     this.visiting = null;
     this.target = null;
-    this.run(this.teach(visit(this.state, id), 'place', '**Hint.** Click Aldric, or press **H**, whenever you want his gear and army.'));
+    this.run(this.teach(visit(this.state, id), 'place', touch() ? '**Hint.** Tap Aldric, or **Hero** at the side, whenever you want his gear and army.' : '**Hint.** Click Aldric, or press **H**, whenever you want his gear and army.'));
   }
 
   /** How far the hero's figure reaches from his feet, as he looks now. */
@@ -773,8 +775,8 @@ export class AdventureController implements Screen {
     const { minimap } = this.scene;
     const mark = minimap.markAt(x, y);
     if (mark) return placeNote(this.state, mark.id);
-    if (minimap.near(x, y, [this.drawn.x, this.drawn.y])) return `${BACKGROUNDS[this.state.hero.background].short} \u00b7 Space brings the view back to him`;
-    return `${minimap.foggedAt(x, y) ? 'Unexplored' : this.map.province.name} \u00b7 click or drag to look there`;
+    if (minimap.near(x, y, [this.drawn.x, this.drawn.y])) return `${BACKGROUNDS[this.state.hero.background].short} \u00b7 ${touch() ? 'tap here to look at him' : 'Space brings the view back to him'}`;
+    return `${minimap.foggedAt(x, y) ? 'Unexplored' : this.map.province.name} \u00b7 ${touch() ? 'tap' : 'click'} or drag to look there`;
   }
 
   /** Once the pointer has rested on open ground a moment, how many days' ride away it is. */
@@ -833,6 +835,7 @@ export class AdventureController implements Screen {
             this.state,
             Boolean(ART[heroArtId(this.state.hero.background)].rides),
             [this.drawn.x, this.drawn.y - this.scene.hero.foot],
+            touch(),
           ));
         }
       }
@@ -931,7 +934,8 @@ export class AdventureController implements Screen {
     // A place he stands in front of and hides (he rode to the ground before it, not to its door) is still there to point at, through him.
     const hidden = onHero && inFront.length === 0 && !this.moving() ? hits.find((b) => hiddenShare(b, this.heroReach(), [this.drawn.x, this.drawn.y]) >= HIDES) : undefined;
     if (hidden) return { id: hidden.id, name: placeNote(this.state, hidden.id), box: hidden };
-    if (onHero && inFront.length === 0) return { id: 'hero', name: `${BACKGROUNDS[this.state.hero.background].short} \u00b7 ${this.moving() ? 'click (or Esc) to stop here' : 'click (or H) for his gear and army'}` };
+    const does = touch() ? (this.moving() ? 'tap to stop here' : 'tap for his gear and army') : this.moving() ? 'click (or Esc) to stop here' : 'click (or H) for his gear and army';
+    if (onHero && inFront.length === 0) return { id: 'hero', name: `${BACKGROUNDS[this.state.hero.background].short} \u00b7 ${does}` };
     if (hits.length === 0) return null;
     const box = hits.reduce((front, b) => (b.y1 > front.y1 ? b : front));
     const fogged = this.view.isFogged((box.x0 + box.x1) / 2, box.y1 - 4);
@@ -992,11 +996,16 @@ export class AdventureController implements Screen {
     return clickable(item);
   }
 
-  /** The hourglass ends the day; the army and the mana open the hero; the book and the bounty open the journal. */
-  private clickBar(hit: HudHit) {
+  /**
+   * The hourglass ends the day (a finger's tap asks first, as End day does); the army and the mana
+   * open the hero; the book and the bounty open the journal.
+   */
+  private clickBar(hit: HudHit, tapped = false) {
     if (!this.barClickable(hit)) return;
-    if (hit.item.kind === 'hourglass') this.choose({ type: 'endDay' });
-    else if (hit.item.kind === 'journal' || hit.item.kind === 'bounty') this.openJournal();
+    if (hit.item.kind === 'hourglass') {
+      if (tapped) this.endDayAsked();
+      else this.choose({ type: 'endDay' });
+    } else if (hit.item.kind === 'journal' || hit.item.kind === 'bounty') this.openJournal();
     else this.openHero(hit.item.kind === 'stack' ? hit.item.index : null);
   }
 
@@ -1011,6 +1020,43 @@ export class AdventureController implements Screen {
     this.target = null;
     this.visiting = null;
     this.dawnRide = false;
+  }
+
+  /**
+   * Played by touch, down the sides: the minimap, the journal and the hero on the left, the end of the
+   * day on the right. They do what Tab, J, H and E do.
+   */
+  buttons(): SideButton[] {
+    const { opening, over, ambush } = this.state;
+    const free = !opening && !over && !ambush;
+    return [
+      { id: 'map', label: 'Map', icon: 'map', side: 'left', enabled: true, on: this.scene.minimap.shown, press: () => this.input.key('tab') },
+      { id: 'journal', label: 'Journal', icon: 'journal', side: 'left', enabled: free, on: this.reading && this.cards.isOpen, press: () => this.input.key('j') },
+      { id: 'hero', label: 'Hero', icon: 'hero', side: 'left', enabled: free, press: () => this.input.key('h') },
+      { id: 'day', label: 'End day', icon: 'day', side: 'right', enabled: free, press: () => this.endDayAsked() },
+    ];
+  }
+
+  /**
+   * The End day button, pressed: a finger at the screen's edge can press it by mistake, so while he
+   * could still ride a good way today, it asks first.
+   */
+  endDayAsked() {
+    if (this.state.opening || this.state.over || this.state.ambush) return;
+    const full = heroStats(this.state).movement;
+    const left = Math.floor(this.state.movement);
+    if (left < full / 4) return this.choose({ type: 'endDay' });
+    this.showCard(
+      {
+        title: 'End the day?',
+        lines: [`Aldric could ride on a good while yet: **${left}** of today\u2019s ${full} movement is left.`],
+        choices: [
+          { label: 'End the day', action: { type: 'endDay' } },
+          { label: 'Ride on', action: { type: 'close' } },
+        ],
+      },
+      null,
+    );
   }
 
   /** The hero screen: who he is, what he carries, his army. H, a click on him, or the bar's army and mana open it. */
@@ -1041,13 +1087,18 @@ export class AdventureController implements Screen {
       this.steering = this.scene.minimap.contains(x, y);
       if (this.steering) this.steer(x, y);
     },
-    click: (x: number, y: number) => {
+    click: (x: number, y: number, tapped?: boolean) => {
       const { minimap } = this.scene;
       if (minimap.onButton(x, y)) return this.toggleMinimap();
       // The press on the minimap has moved the view already.
       if (minimap.contains(x, y)) return;
       const bar = this.onBar(x, y);
-      if (bar) return this.clickBar(bar);
+      // A finger can't hover: a tap on what the bar only tells about (the gold, the day) says it.
+      if (bar && tapped && !this.barClickable(bar)) {
+        const at = this.display.toPage(x, y);
+        return this.label.show(barNote(this.state, bar.item), at.x, at.y);
+      }
+      if (bar) return this.clickBar(bar, tapped);
       const point = this.view.toMap(x, y);
       if (point) this.clickMap(point);
     },
@@ -1078,7 +1129,7 @@ export class AdventureController implements Screen {
       // Crossed swords over an enemy, as in HoMM2: a click there is the start of a fight.
       const foe = thing?.box && !thing.fogged && this.state.locations.some((l) => l.id === thing.id && l.enemy && !l.done);
       this.display.canvas.style.cursor = foe ? swordsCursor() : thing ? 'pointer' : 'default';
-      const again = thing && this.looking?.id === thing.id && this.cards.isOpen ? ` \u00b7 click again: ${this.looking.label}` : '';
+      const again = thing && this.looking?.id === thing.id && this.cards.isOpen ? ` \u00b7 ${touch() ? 'tap' : 'click'} again: ${this.looking.label}` : '';
       // On open ground, or a place seen clearly, the ride's length comes up once the pointer rests.
       const place = thing?.box && !thing.fogged ? locationById(this.state, thing.id) : null;
       const key = place ? `place:${place.id}` : !thing && point ? `cell:${Math.floor(point[1] / 8) * this.map.width + Math.floor(point[0] / 8)}` : null;
@@ -1161,6 +1212,22 @@ export class AdventureController implements Screen {
       },
       /** Where the view looks on the map: its top left, in map pixels. */
       camera: () => ({ ...this.view.camera }),
+      /**
+       * Where a map point is on the page, for a script to tap it as a finger would: on the view if
+       * it's in sight (`inView`), and on the minimap, while it's out.
+       */
+      onPage: (x: number, y: number) => {
+        const { camera } = this.view;
+        const [sx, sy] = [VIEW.x + x - camera.x, VIEW.y + y - camera.y];
+        const inView = sx >= VIEW.x && sx < VIEW.x + VIEW.width && sy >= VIEW.y && sy < VIEW.y + VIEW.height;
+        const { minimap } = this.scene;
+        return { view: this.display.toPage(sx, sy), inView, minimap: minimap.shown ? this.display.toPage(...minimap.toScreen([x, y])) : null };
+      },
+      /** Where a thing on the bottom bar is on the page ('hourglass', 'journal', 'bounty', 'stack'...). */
+      barOnPage: (kind: string) => {
+        const hit = this.hud.find((h) => h.item.kind === kind);
+        return hit ? this.display.toPage((hit.x0 + hit.x1) / 2, BAR.y + BAR.height / 2) : null;
+      },
       frameHash: () => {
         let h = 0x811c9dc5;
         for (const v of this.view.screen.data) h = Math.imul(h ^ v, 0x01000193);
