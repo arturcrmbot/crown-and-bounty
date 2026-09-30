@@ -1127,7 +1127,9 @@ export class BattleController implements Screen {
     this.setCursor('default');
   }
 
-  private setCursor(css: string) {
+  /** Sets the canvas's pointer, and its name for scripts. */
+  private setCursor(css: string, name = css) {
+    this.pointerName = name;
     if (css === this.cursor) return;
     this.cursor = css;
     this.display.canvas.style.cursor = css;
@@ -1196,8 +1198,7 @@ export class BattleController implements Screen {
     v.preview = aim ? aim.line : under?.book ? this.bookLine(under.id) : under ? this.spiritsLine(under.id) : null;
     v.lit = aim?.lit ?? UNLIT;
     const pointer = this.pointerFor(intent, aim, hex !== null || leader !== null, x, y);
-    this.pointerName = pointer.name;
-    this.setCursor(pointer.css);
+    this.setCursor(pointer.css, pointer.name);
     this.showTag(intent, aim, hex);
   }
 
@@ -1253,7 +1254,8 @@ export class BattleController implements Screen {
    */
   private showTag(intent: Intent | null, aim: Aim | null, hex: number | null) {
     const moving = intent?.action.type === 'move';
-    if (!intent || !aim?.tag || hex === null || (moving && !touch()) || this.cards.isOpen) return this.tag.hide();
+    // A move gets only its pointer from a mouse; a finger's first tap (on any screen) gets the tag too.
+    if (!intent || !aim?.tag || hex === null || (moving && !touch() && this.armed?.hex !== hex) || this.cards.isOpen) return this.tag.hide();
     // Round the stacks aimed at, each from its head to its feet, or round the hex it would move to.
     const boxes = moving
       ? [[...hexCentre(hex), 26, 26] as const]
@@ -1421,7 +1423,8 @@ export class BattleController implements Screen {
     const v = this.view;
     const under = v.inspect === null ? null : fighterById(this.battle, v.inspect);
     const who = under ? (this.named(under.id) ? TROOPS[under.troop].name : this.fighterName(under.id, under.count)) : null;
-    const text = v.preview ?? who;
+    // Without the tag, the label says it all, and what a second tap does.
+    const text = [intent?.kind === 'move' ? 'Move here.' : (v.preview ?? who), intent ? SECOND_TAP[intent.kind] : ''].filter(Boolean).join(' ');
     if (!text) return;
     const at = this.display.toPage(x, y);
     this.label.show(text, at.x, at.y);
