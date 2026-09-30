@@ -468,21 +468,21 @@ try {
       buttons: [...card.querySelectorAll('.choices button')].map((b) => b.textContent),
     };
   });
-  check((await kc.title()) === 'To be continued' && (await kc.lines()).includes('Commission I is complete, and more commissions are coming'), `after ${boon}, the court says Commission I is complete, and more are coming`);
-  check(closing.links.map((l) => l.label).join(' / ') === 'Follow for the next commissions / Tell me what you thought' && closing.links.every((l) => l.href === linkedIn && l.target === '_blank' && l.rel === 'noopener'), 'with Artur\u2019s LinkedIn, to follow him for the next ones and to tell him what you thought');
+  check((await kc.title()) === 'Commission I is complete' && (await kc.lines()).includes('More commissions are coming'), `after ${boon}, the court says Commission I is complete, and more are coming`);
+  check(closing.links.map((l) => l.label).join(' / ') === 'Follow me on LinkedIn / Tell me what you thought' && closing.links.every((l) => l.href === linkedIn && l.target === '_blank' && l.rel === 'noopener'), 'with Artur\u2019s LinkedIn, to follow him for the next ones and to tell him what you thought');
   // LinkedIn answers here, not over the network.
   await page.context().route('https://www.linkedin.com/**', (route) => route.fulfill({ status: 200, contentType: 'text/html', body: 'LinkedIn' }));
   const [tab] = await Promise.all([page.context().waitForEvent('page'), page.locator('.kc-card-wrap:not([hidden]) .choices a').first().click()]);
   await tab.waitForLoadState();
   check(tab.url() === linkedIn && (await tab.evaluate(() => window.opener === null)) && (await screen()) === 'court', 'following him opens LinkedIn in a new tab, and the game waits at court');
   await tab.close();
-  check(closing.buttons.join(' / ') === 'Back to the title' && (await kc.choose('Back to the title')), 'the way on is back to the title');
+  check(closing.buttons.join(' / ') === 'Return to the title screen' && (await kc.choose('Return to the title screen')), 'the way on is back to the title');
   await page.waitForFunction(() => window.__kc.screen() === 'title' && document.querySelector('.kc-card-wrap:not([hidden]) button'), null, { timeout: 10_000 }).catch(() => {});
   const menu = await kc.call(() => [...document.querySelectorAll('.kc-card-wrap:not([hidden]) button')].map((b) => b.textContent).join(' / '));
-  check((await screen()) === 'title' && menu.includes('Commission I complete'), `where the menu is open, and carries on at court (${menu})`);
+  check((await screen()) === 'title' && menu.includes('Commission I is complete'), `where the menu is open, and carries on at court (${menu})`);
   await kc.choose('Continue');
-  await page.waitForFunction(() => window.__kc.screen() === 'court' && document.querySelector('.kc-card-wrap:not([hidden]) h3')?.textContent === 'To be continued', null, { timeout: 15_000 }).catch(() => {});
-  check((await screen()) === 'court' && (await kc.title()) === 'To be continued', 'Continue goes back to court, and the same last card');
+  await page.waitForFunction(() => window.__kc.screen() === 'court' && document.querySelector('.kc-card-wrap:not([hidden]) h3')?.textContent === 'Commission I is complete', null, { timeout: 15_000 }).catch(() => {});
+  check((await screen()) === 'court' && (await kc.title()) === 'Commission I is complete', 'Continue goes back to court, and the same last card');
 
   // The debug routes still ride on past it: ?chapter=2 has the bot ride Commission I and its court, and hands over the Fenmarch.
   await page.goto(`${server.url}?chapter=2&fresh=1&speed=8&seed=1066`);

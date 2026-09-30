@@ -12,7 +12,7 @@ export function titleCard(resume: GameState | null): Card {
   const n = resume && roman(resume.campaign.chapter + 1);
   const onward = resume && {
     label: 'Continue',
-    detail: resume.over === 'won' ? `Commission ${n} complete, at the King\u2019s court` : `Day ${roman(resume.day)} of Commission ${n}${resume.over === 'lost' ? ', lost' : ''}`,
+    detail: resume.over === 'won' ? `Commission ${n} is complete, and the King is waiting for you at court.` : `Day ${roman(resume.day)} of Commission ${n}${resume.over === 'lost' ? ', lost' : ''}`,
     action: { type: 'close' as const },
   };
   return {

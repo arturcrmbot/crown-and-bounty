@@ -102,14 +102,17 @@ describe('the campaign', () => {
     expect(apply(granted, { type: 'boon', id: court.campaign.court!.boons[1] })).toBeNull();
     const closing = courtCard(granted);
     expect(result.events).toEqual([{ type: 'card', card: closing, at: null, place: undefined }]);
-    expect(closing.title).toBe('To be continued');
-    expect(closing.lines[0]).toBe('**Commission I is complete**, and more commissions are coming. Thank you for playing!');
-    expect(closing.lines[1]).toContain('Black Hollis');
+    expect(closing.title).toBe('Commission I is complete');
+    expect(closing.lines[0]).toContain('Black Hollis');
+    expect(closing.lines[1]).toContain('More commissions are coming');
+    // Plain, full sentences (#145): no colons or dashes in anything the player reads.
+    const words = [closing.title, ...closing.lines, ...closing.links!.flatMap((l) => [l.label, l.detail ?? '']), ...closing.choices.map((c) => c.label)];
+    for (const w of words) expect(w).not.toMatch(/[:\u2013\u2014]/);
     expect(closing.links?.map((l) => [l.label, l.href])).toEqual([
-      ['Follow for the next commissions', 'https://www.linkedin.com/in/arturzielinski/'],
+      ['Follow me on LinkedIn', 'https://www.linkedin.com/in/arturzielinski/'],
       ['Tell me what you thought', 'https://www.linkedin.com/in/arturzielinski/'],
     ]);
-    expect(closing.choices).toEqual([{ label: 'Back to the title', action: { type: 'title' } }]);
+    expect(closing.choices).toEqual([{ label: 'Return to the title screen', action: { type: 'title' } }]);
     // The bot and the debug routes still ride on into the Fenmarch.
     expect(briefingCard(granted).title).toBe('Commission II: The Fenmarch');
     expect(apply(granted, { type: 'nextCommission' })?.state.campaign.chapter).toBe(1);

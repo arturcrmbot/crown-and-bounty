@@ -8,7 +8,7 @@
  */
 export const LAUNCH = {
   open: 1,
-  next: '\u201cOne more thing, Aldric,\u201d says the King. \u201cThere\u2019s a Black Hollis on my roads in the Fenmarch, calling himself the Bandit King. He has burnt Tuttle Mill, and held my tax collector to ransom. Twice. My clerks are writing up your commission: I shall send for you.\u201d',
+  next: '\u201cThere is one more thing, Aldric,\u201d says the King. \u201cA bandit called Black Hollis is robbing my roads in the Fenmarch, and he calls himself the Bandit King. He burnt down Tuttle Mill, and he has held my tax collector to ransom twice. I will send for you when your next commission is ready.\u201d',
   /** Artur's LinkedIn: follow him for the next commissions, and tell him what you thought. */
   follow: 'https://www.linkedin.com/in/arturzielinski/',
 };

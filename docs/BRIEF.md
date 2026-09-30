@@ -479,8 +479,10 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   is taken, a closing card says Commission I is complete and more are coming, and the King lets slip who's next (Black
   Hollis, the Bandit King, in the Fenmarch: #87). Two links open Artur's LinkedIn in a new tab, to follow him for the
   next commissions and to tell him what you thought (in the comments on his post, or a message), and the way on is back
-  to the title, whose Continue returns to that card. How far the public game goes, and the tease, are one place
+  to the title, whose Continue returns to that card. Its words are plain, full sentences, as Artur asked for everything
+  a player reads (#145): no colons, dashes or clipped phrases. How far the public game goes, and the tease, are one place
   (`LAUNCH` in `src/content/launch.ts`); the bot and the debug routes (`?commission=`, `?chapter=`, and `?court=` after
   a later commission) ride on past it. The page has a link preview: Open Graph tags in `index.html`, and a 1200×630
   picture cropped from the title painting by `npm run linkpreview` (`public/link-preview.png`). The name is in the
-  page's title and the preview's (`index.html`), and on the painting: a rename (#145) changes those and re-runs it.
+  page's title and the preview's (`index.html`), and on the painting, and the site's address only in `og:image`, so a
+  rename or a move (#147) changes those and re-runs `npm run linkpreview`.

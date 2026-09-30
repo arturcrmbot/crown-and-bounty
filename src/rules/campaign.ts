@@ -286,21 +286,23 @@ export function briefingCard(state: GameState): Card {
 export const endsHere = (state: GameState) => state.campaign.chapter + 1 === LAUNCH.open;
 
 /**
- * After the last open commission, instead of the next one's briefing: the commission is complete and
- * more are coming, and the King lets slip who's next. Artur's LinkedIn is there twice: to follow him
- * for the rest, and to tell him what you thought. Then back to the title, the campaign saved at court.
+ * After the last open commission, instead of the next one's briefing: the commission is complete, the
+ * King tells Aldric who's next, and Artur thanks the player. His LinkedIn is there twice: to follow
+ * him for the next commissions, and to tell him what you thought. Then back to the title, the
+ * campaign saved at court. The words are plain, full sentences, as everything a player reads is.
  */
 export function closingCard(state: GameState): Card {
+  const n = roman(state.campaign.chapter + 1);
   return {
-    title: 'To be continued',
+    title: `Commission ${n} is complete`,
     portrait: 'king',
     wide: true,
-    lines: [`**Commission ${roman(state.campaign.chapter + 1)} is complete**, and more commissions are coming. Thank you for playing!`, LAUNCH.next],
+    lines: [LAUNCH.next, '*Thank you for playing! I am Artur Zielinski, and I made this game. More commissions are coming, and I would love to hear what you thought of this one.*'],
     links: [
-      { label: 'Follow for the next commissions', detail: 'Artur Zielinski, who made this, on LinkedIn', href: LAUNCH.follow },
-      { label: 'Tell me what you thought', detail: 'In the comments on my LinkedIn post, or in a message', href: LAUNCH.follow },
+      { label: 'Follow me on LinkedIn', detail: 'I will post there when the next commission is ready.', href: LAUNCH.follow },
+      { label: 'Tell me what you thought', detail: 'Comment on my LinkedIn post or send me a message.', href: LAUNCH.follow },
     ],
-    choices: [{ label: 'Back to the title', action: { type: 'title' } }],
+    choices: [{ label: 'Return to the title screen', action: { type: 'title' } }],
   };
 }
 

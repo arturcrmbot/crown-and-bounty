@@ -6,7 +6,7 @@ import { keysCard, storyCard, titleCard } from './intro';
 describe('the title', () => {
   it('carries on from where the save left off: on the road, or at court once a commission is won (#146)', () => {
     expect(titleCard(newGame()).choices[0]).toMatchObject({ label: 'Continue', detail: 'Day I of Commission I' });
-    expect(titleCard({ ...newGame(), over: 'won' }).choices[0]).toMatchObject({ label: 'Continue', detail: 'Commission I complete, at the King\u2019s court' });
+    expect(titleCard({ ...newGame(), over: 'won' }).choices[0]).toMatchObject({ label: 'Continue', detail: 'Commission I is complete, and the King is waiting for you at court.' });
     expect(titleCard(null).choices.map((c) => c.label)).toEqual(['New campaign']);
   });
 });
