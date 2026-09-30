@@ -7,7 +7,7 @@ import { Transition, type TransitionStyle } from '../render/transition';
 import { setVeil } from '../ui/veil';
 import { effectsHeard } from '../ui/sound';
 import { mapOf } from '../rules/map/maps';
-import { hasNextCommission, toCourt, type Card, type GameEvent, type GameState } from '../rules/game';
+import { hasNextCommission, newGame, toCourt, type Card, type GameEvent, type GameState } from '../rules/game';
 import { AdventureController } from './adventure';
 import { BattleController } from './battle';
 import { CourtController } from './court';
@@ -45,6 +45,8 @@ export class Game {
   private readonly mixed = new Uint8Array(SCREEN.width * SCREEN.height);
   /** What waits for the new screen's picture to be in: a province's name across the sky, its first card. */
   private revealed: (() => void)[] = [];
+  /** How the title's menu begins a new campaign: `main.ts` says, with the page's seed; a debug start that never showed the title gets a plain one. */
+  private fresh: () => GameState = () => newGame();
 
   constructor(display: Display, speed = 1, transitions = true) {
     this.display = display;
@@ -87,25 +89,34 @@ export class Game {
     return true;
   }
 
-  /** The title, with its menu: carry on with `resume`, or hear the King out and begin `fresh`. */
-  showTitle(resume: GameState | null, fresh: () => GameState) {
+  /**
+   * The title, with its menu: carry on with `resume`, or hear the King out and begin `fresh`. With
+   * `menu` the menu is open at once, for a player coming back to it who has already clicked.
+   */
+  showTitle(resume: GameState | null, fresh: () => GameState = this.fresh, menu = false) {
+    this.fresh = fresh;
     this.clear();
     this.push(
-      new TitleController(this.display, resume, {
-        onNew: () =>
-          // The painting gives way to the throne room, and a harp sweeps up into the court's tune.
-          this.change('fade', 'curtain', () => {
-            this.clear();
-            this.push(new PrologueController(this.display, fresh(), (state) => whenUnitArt(() => this.change('dissolve', null, () => this.beginCommission(state, [])))));
-          }),
-        onContinue: () =>
-          whenUnitArt(() =>
-            this.change('fade', null, () => {
-              this.resume(resume!);
-              if (this.top === this.stack[0]) this.adventure.resumeFacing();
+      new TitleController(
+        this.display,
+        resume,
+        {
+          onNew: () =>
+            // The painting gives way to the throne room, and a harp sweeps up into the court's tune.
+            this.change('fade', 'curtain', () => {
+              this.clear();
+              this.push(new PrologueController(this.display, fresh(), (state) => whenUnitArt(() => this.change('dissolve', null, () => this.beginCommission(state, [])))));
             }),
-          ),
-      }),
+          onContinue: () =>
+            whenUnitArt(() =>
+              this.change('fade', null, () => {
+                this.resume(resume!);
+                if (this.top === this.stack[0]) this.adventure.resumeFacing();
+              }),
+            ),
+        },
+        menu,
+      ),
     );
   }
 
@@ -210,6 +221,8 @@ export class Game {
             this.pop();
             this.beginCommission(next, rest);
           }),
+        // After the last open commission: the throne room sinks into the dark, and the title rises with its menu open.
+        onTitle: (next) => this.change('fade', null, () => this.showTitle(next, this.fresh, true)),
       }),
     );
   }

@@ -40,6 +40,8 @@ const SCENES = {
   courtwizard: { query: '&court=1&hero=wizard', keepCard: true },
   courtranger: { query: '&court=1&hero=ranger', keepCard: true },
   courtcourtier: { query: '&court=1&hero=courtier', keepCard: true },
+  // After the last open commission, the court's closing card (#146): its links and the way back to the title.
+  closing: { query: '&court=1', steps: ['Your Majesty', 'key:1'], dom: true },
   fenmarch: { query: '&commission=2', keepCard: true },
   fen: { query: '&commission=2&reveal=1&x=640&y=700', keepCard: true },
   fenbattle: { query: '&commission=2&battle=troll', keepCard: true },

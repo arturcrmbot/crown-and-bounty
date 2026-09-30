@@ -22,11 +22,13 @@ export class TitleController implements Screen {
   private waiting = true;
   private progressing = false;
 
-  constructor(display: Display, resume: GameState | null, hooks: TitleController['hooks']) {
+  /** `open` opens the menu at once, for a player who has already clicked: back from court, say. */
+  constructor(display: Display, resume: GameState | null, hooks: TitleController['hooks'], open = false) {
     this.display = display;
     this.resume = resume;
     this.hooks = hooks;
     this.cards = new CardView((action) => this.choose(action));
+    if (open) this.begin();
   }
 
   private begin() {

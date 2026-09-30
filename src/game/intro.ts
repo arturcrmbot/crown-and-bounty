@@ -7,9 +7,14 @@ import { FRIENDS } from '../content/friends';
 import { PERKS, RANKS, SKILLS } from '../content/skills';
 import { bountyCard, bountyOf, campaignLines, commissionOf, hasNextCommission, listed, roman, type Card, type GameState } from '../rules/game';
 
-/** The title screen's menu: carry on with a save, or begin again. */
+/** The title screen's menu: carry on with a save (a won commission waits at court), or begin again. */
 export function titleCard(resume: GameState | null): Card {
-  const onward = resume && { label: 'Continue', detail: `Day ${roman(resume.day)} of Commission ${roman(resume.campaign.chapter + 1)}${resume.over === 'lost' ? ', lost' : ''}`, action: { type: 'close' as const } };
+  const n = resume && roman(resume.campaign.chapter + 1);
+  const onward = resume && {
+    label: 'Continue',
+    detail: resume.over === 'won' ? `Commission ${n} is complete, and the King is waiting for you at court.` : `Day ${roman(resume.day)} of Commission ${n}${resume.over === 'lost' ? ', lost' : ''}`,
+    action: { type: 'close' as const },
+  };
   return {
     title: '',
     lines: ['*Five villains, one lost sceptre, and a stolen goose.*'],
