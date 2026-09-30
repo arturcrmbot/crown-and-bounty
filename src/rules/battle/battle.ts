@@ -37,6 +37,8 @@ export type Fighter = {
   hero?: boolean;
   /** How many walked off the field without a blow: paid to go home, or gone over to the other side. */
   left?: number;
+  /** Called to the field by a spell (the Baron's guard): once the battle is over, they go back where they came from. */
+  called?: boolean;
   /** A villain who leads his side as Aldric does his: his own spellbook, cast from behind his men. */
   book?: Spellbook;
 };
@@ -852,7 +854,7 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
           const count = summoned(next, side, effect.troop, effect.share);
           if (at === null || count <= 0) return { battle: b, events: [] };
           const t = TROOPS[effect.troop];
-          fighters.push({ id: fighters.length, side, troop: effect.troop, count, startCount: count, hp: t.hp, at, shots: t.shots ?? 0, retaliated: false, defending: false, waited: false, status: [] });
+          fighters.push({ id: fighters.length, side, troop: effect.troop, count, startCount: count, hp: t.hp, at, shots: t.shots ?? 0, retaliated: false, defending: false, waited: false, status: [], called: true });
           markFeuds(fighters);
           events.push({ type: 'summon', ...cast, fighter: fighters.length - 1 });
           break;

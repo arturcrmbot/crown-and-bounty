@@ -100,8 +100,8 @@ export type FlagValue = boolean | number | string;
  * A convoy on a road (Pike's grain cart). Every payday, while the enemy it comes from (`from`, by id)
  * still holds, a share of that enemy's troops sets out with it from the first of `route`'s points, as
  * its escort, and the payday card says so (`leaves`). It keeps to the road, `pace` pixels a night,
- * through its own people and stopping short of the hero. At the road's end it's gone, and its escort
- * goes back to `from`, until next payday. Caught on the road, its escort never goes back.
+ * through its own people and stopping short of the hero. At the road's end it's gone, and whoever is
+ * left of its escort goes back to `from`, until next payday. Beaten on the road, its escort never goes back.
  */
 export type Convoy = { from: string; share: number; route: Point[]; pace: number; leaves: string };
 
@@ -110,8 +110,9 @@ export type Convoy = { from: string; share: number; route: Point[]; pace: number
  * flags in `when` is set (to `is`, if it says), once the hero is where his band would come for him.
  * A share of each of his troops (`guard`) rides with him, and the rest hold the walls, which open to
  * nobody while he's out (`barred`). His band (`band`) sets out from its place at the lair's gate and
- * comes for the hero, whatever the odds. Beat it, and he flees home without it, and stays there;
- * lose him, and he rides home with it, until he's hurt again.
+ * comes for the hero, whatever the odds. Beat it, and he flees home, his guard straggling in after
+ * him; lose to it, and it keeps its losses, and rides home with whoever is left of it once it can't
+ * find the hero, until he's hurt again.
  */
 export type Sortie = {
   when: { flag: string; is?: FlagValue }[];

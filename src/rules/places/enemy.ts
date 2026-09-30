@@ -21,10 +21,17 @@ export function haggled(state: GameState, parley: ContentChoice): ContentChoice 
 
 /**
  * The other ways past them, as buttons: greyed out, with what they need, when the hero can't take
- * them. One whose story flag has been spent (the goose already called) is gone.
+ * them. One whose story flag has been spent (the goose already called) is gone, and so is one that
+ * sends some of a troop away (half the crossbowmen after the goose) once none of that troop is left.
  */
 const parleys = (state: GameState, place: Location) =>
-  (place.enemy?.parleys ?? []).filter((p) => meets(state, p.when) && !(p.needs?.flag && state.flags?.[p.needs.flag] === false)).map((p) => choiceButton(state, place, haggled(state, p), `parley/${p.id}`));
+  (place.enemy?.parleys ?? []).filter((p) => meets(state, p.when) && !(p.needs?.flag && state.flags?.[p.needs.flag] === false) && !nobodyToSend(place, p)).map((p) => choiceButton(state, place, haggled(state, p), `parley/${p.id}`));
+
+/** Whether a parley would send away some of a troop the enemy no longer has. */
+const nobodyToSend = (place: Location, parley: ContentChoice) => {
+  const troop = parley.effects?.desert?.troop;
+  return Boolean(troop) && !place.enemy!.army.some((s) => s.troop === troop && s.count > 0);
+};
 
 /** Who of a band would fit under the hero's banner: as many as his leadership and his stacks allow. */
 function joiners(state: GameState, band: Army): Army {

@@ -245,12 +245,15 @@ function ringed(sprite: Bitmap, foot: number, ramp: readonly number[] = GOLD, wi
   return out;
 }
 
-/** Draws a place anew where it stands, as the state has it now: the hunt hall, opened. */
+/** Draws a place anew where it stands, as the state has it now: the hunt hall, opened, or a band with fewer men. */
 export function refreshPlace(scene: AdventureScene, l: Location) {
-  const o = scene.sights.get(l.id);
+  const o = scene.sights.get(l.id) ?? scene.pickups.get(l.id);
   const look = landmark(l);
   if (!o || !look) return;
   Object.assign(o, place(look.frames[0], l.at, look.foot), { frames: look.frames.length > 1 ? look.frames : undefined });
+  // A band may stand for itself as another of its troops now, so it's clicked where the new figure stands.
+  const box = scene.pickups.has(l.id) ? scene.hitboxes.find((b) => b.id === l.id) : undefined;
+  if (box) Object.assign(box, { x0: o.x, y0: o.y, x1: o.x + o.sprite.width, y1: o.y + o.sprite.height });
 }
 
 /** Puts a place on the map after the scene was built, like the X once the map is whole, or a villain riding out again. */
