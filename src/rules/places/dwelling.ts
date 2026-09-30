@@ -3,12 +3,29 @@ import { troopPower } from '../../content/troops';
 import { dismiss, grumbleLine } from '../army';
 import { artifactChoices, giveArtifact, heroStats, salePrice, sell, slotTaken, wantedAt } from '../hero';
 import { bestChoice, firstPage, pageCard, takeChoice } from '../effects';
-import { addTroops, close, coins, joinLine, leadershipUsed, locationById, TROOPS, troops, update, type Card, type Choice, type GameState, type Location, type Result } from '../state';
+import { addTroops, close, coins, fits, joinLine, leadershipUsed, locationById, troops, update, type Card, type Choice, type GameState, type Location, type Result } from '../state';
 import { aboutWords, found, option, priceOf, ride, say } from './common';
 import type { PlaceKind } from './kind';
 
 /** Volunteers every castle and village finds on payday. */
 export const RESTOCK = 10;
+
+/**
+ * At his castle the steward raises more men for gold, as often as he can pay (Artur, 30 Sep): leadership
+ * is never out of reach for long, and gold left over has something to buy.
+ */
+export const MUSTER = { gold: 500, leadership: 20 };
+
+/** The steward's offer, as a button on the castle's card: greyed out when the purse is too light. */
+const musterButton = (state: GameState, place: Location): Choice[] =>
+  place.kind === 'castle' ? [option(place, `Raise more men (${coins(MUSTER.gold)} gold for +${MUSTER.leadership} leadership)`, 'muster', state.gold < MUSTER.gold)] : [];
+
+/** The steward sends criers round the villages: the gold goes, and the leadership comes. */
+function muster(state: GameState, place: Location): Result | null {
+  if (place.kind !== 'castle' || state.gold < MUSTER.gold) return null;
+  const next = { ...state, gold: state.gold - MUSTER.gold, leadership: state.leadership + MUSTER.leadership };
+  return say(next, place, recruitCard(next, locationById(next, place.id), [`The steward sends criers round the villages, and more men come to your banner. You gain **${MUSTER.leadership} leadership**.`]));
+}
 
 /** Mana his castle would fill: what he's missing of the most he holds. */
 const missingMana = (state: GameState, place: Location) => (place.kind === 'castle' ? Math.max(0, heroStats(state).maxMana - state.hero.mana) : 0);
@@ -26,7 +43,7 @@ export function recruitable(state: GameState, id: string): number {
   const offer = locationById(state, id).recruits;
   if (!offer) return 0;
   if (!addTroops(state.army, offer.troop, 1)) return 0;
-  const room = Math.floor((heroStats(state).leadership - leadershipUsed(state.army)) / TROOPS[offer.troop].leadership);
+  const room = fits(heroStats(state).leadership - leadershipUsed(state.army), offer.troop);
   const each = priceOf(state, offer.price);
   return Math.max(0, Math.min(offer.count, room, each ? Math.floor(state.gold / each) : offer.count));
 }
@@ -34,7 +51,7 @@ export function recruitable(state: GameState, id: string): number {
 /** Recruits a quartermaster talks them into throwing in with `count`, on top of the offer: as many as he can lead. */
 function thrownIn(state: GameState, place: Location, count: number): number {
   const offer = place.recruits!;
-  const room = Math.floor((heroStats(state).leadership - leadershipUsed(state.army)) / TROOPS[offer.troop].leadership) - count;
+  const room = fits(heroStats(state).leadership - leadershipUsed(state.army), offer.troop) - count;
   return Math.max(0, Math.min(Math.floor(count * heroStats(state).freeRecruits), room));
 }
 
@@ -62,10 +79,10 @@ function recruitCard(state: GameState, place: Location, before: string[] = []): 
   const leave = before.length ? close : { label: 'Not today', action: { type: 'close' as const } };
   if (!offer || place.done || offer.count === 0) {
     // A place with its own words for when everyone has gone says so; the rest restock on payday.
-    return { title: place.name, lines: [...before, ...(place.text?.done ?? ['"All out of volunteers, officer. Come back after payday."'])], choices: [...armoury, close] };
+    return { title: place.name, lines: [...before, ...(place.text?.done ?? ['"All out of volunteers, officer. Come back after payday."'])], choices: [...musterButton(state, place), ...armoury, close] };
   }
   const count = recruitable(state, place.id);
-  const room = Math.floor((heroStats(state).leadership - leadershipUsed(state.army)) / TROOPS[offer.troop].leadership);
+  const room = fits(heroStats(state).leadership - leadershipUsed(state.army), offer.troop);
   const each = priceOf(state, offer.price);
   const purse = each ? Math.floor(state.gold / each) : offer.count;
   const lines = [...before, each ? `**${troops(offer.troop, offer.count)}** will join you for **${coins(each)} gold** each.` : `**${troops(offer.troop, offer.count)}** will join you, and ask for nothing.`];
@@ -78,12 +95,12 @@ function recruitCard(state: GameState, place: Location, before: string[] = []): 
   // Say why fewer than are on offer can come: no room in the line, not enough leadership, or not enough gold.
   const slot = Boolean(addTroops(state.army, offer.troop, 1));
   if (!slot) lines.push('Five companies are all one officer can lead. Dismiss one on the hero screen to make room.');
-  else if (room < offer.count) lines.push(room > 0 ? `You can only lead ${room} more.` : 'You can\u2019t lead any more troops. Find some leadership first.');
+  else if (room < offer.count) lines.push(room > 0 ? `You can only lead ${room} more.` : 'You can\u2019t lead any more troops. The steward at your castle can raise more men, for gold.');
   if (slot && room > 0 && purse < Math.min(offer.count, room)) lines.push(purse > 0 ? `You can only afford ${purse}.` : `You can\u2019t afford even one.`);
   const free = count > 0 ? thrownIn(state, place, count) : 0;
   const price = each ? `${coins(count * each)} gold` : 'free';
   const hire = count > 0 ? option(place, `Recruit ${count}${free ? ` + ${free} free` : ''} (${price})`, 'recruit') : option(place, 'Recruit', 'recruit', true);
-  return { title: place.name, lines, choices: [hire, ...armoury, leave] };
+  return { title: place.name, lines, choices: [hire, ...musterButton(state, place), ...armoury, leave] };
 }
 
 /** Whether the hero wears or carries an artifact already. */
@@ -187,6 +204,7 @@ export const dwelling: PlaceKind = {
   card: (state, place, before) => recruitCard(state, place, before),
   choose(state, place, choice) {
     if (choice === 'recruit') return recruit(state, place);
+    if (choice === 'muster') return muster(state, place);
     if (choice === 'armoury') return say(state, place, armouryCard(state, place));
     if (choice === 'spares') return place.wares ? say(state, place, sparesCard(state, place)) : null;
     if (choice.startsWith('buy:')) return buy(state, place, choice.slice(4) as ArtifactId);

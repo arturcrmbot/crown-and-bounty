@@ -13,7 +13,7 @@ const hermit: Location = {
     {
       id: 'start', when: { notFlag: 'metHermit' }, lines: ['An old man in a barrel.'],
       choices: [
-        { id: 'wolves', label: 'Ask about the wolves', effects: { flags: { metHermit: true }, troops: [{ troop: 'wolves', count: 500 }], page: 'friends' }, lines: ['"Take my dogs," he says. They are wolves.'] },
+        { id: 'wolves', label: 'Ask about the wolves', effects: { flags: { metHermit: true }, troops: [{ troop: 'archers', count: 500 }, { troop: 'wolves', count: 500 }], page: 'friends' }, lines: ['"Take my dogs," he says. They are wolves, and they bring their archers.'] },
         { id: 'learn', label: 'Ask to be taught', needs: { level: 3 }, effects: { spell: 'haste', flags: { metHermit: true } } },
         { id: 'buy', label: 'Buy his barrel', needs: { gold: 200, troop: 'archers', count: 5 }, effects: { gold: 50, flags: { metHermit: true } } },
       ],
@@ -39,8 +39,9 @@ describe('choices written as content', () => {
     const result = apply(state, { type: 'choose', id: 'hermit', choice: 'start/wolves' })!;
     const s = result.state;
     expect(s.flags?.metHermit).toBe(true);
-    const wolves = s.army.find((a) => a.troop === 'wolves')!.count;
-    expect(wolves).toBe(Math.floor((heroStats(state).leadership - 90) / 2));
+    // As many archers as he can lead, and every wolf: beasts need no leadership.
+    expect(s.army.find((a) => a.troop === 'archers')!.count).toBe(20 + Math.floor((heroStats(state).leadership - 90) / 2));
+    expect(s.army.find((a) => a.troop === 'wolves')!.count).toBe(500);
     const card = cardOf(result)!.card;
     expect(card.lines).toContain('The wolves wag their tails.');
     expect(cardOf(visit(s, 'hermit'))!.card.lines).toEqual(['The barrel is empty.']);

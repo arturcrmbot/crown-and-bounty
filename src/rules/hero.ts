@@ -141,6 +141,16 @@ export const MAX_INTEREST = 500;
  */
 export const RENOWN = 5;
 
+/**
+ * At every level-up he can rally more men in place of learning something (Artur, 30 Sep): a way to
+ * grow his leadership he can always choose, as the steward's muster at his castle is one he can buy.
+ */
+export const RALLY = 'rally';
+export const RALLY_LEADERSHIP = 25;
+
+/** No bribe is ever more than half off, whatever he wears and knows: power decides who takes gold (`outweighs`), not a pile of discounts. */
+export const MAX_BRIBES = 0.5;
+
 /** The share of every company that stays on between commissions, before skills. */
 export const VETERANS = 0.25;
 
@@ -280,7 +290,7 @@ export function heroStats(state: GameState): HeroStats {
   s.payday += s.rents + s.interest;
   s.offRoad = Math.min(0.5, s.offRoad);
   s.veterans = Math.min(0.5, s.veterans);
-  s.bribes = Math.min(0.8, s.bribes);
+  s.bribes = Math.min(MAX_BRIBES, s.bribes);
   s.casts = Math.min(MAX_CASTS, s.casts);
   s.manaBack = Math.min(1, s.manaBack);
   s.mend = Math.min(0.5, s.mend);
@@ -346,7 +356,7 @@ function drawOptions(state: GameState, seed: number, skip?: string): { options: 
   if (tricks.length) take(tricks);
   const wanted = 3 + heroStats(state).choices;
   while (options.length < wanted && pool.length > 0) take(pool);
-  return { options, seed };
+  return { options: [...options, RALLY], seed };
 }
 
 function growStat(state: GameState, seed: number): { stat: StatId; seed: number } {
@@ -360,13 +370,15 @@ function growStat(state: GameState, seed: number): { stat: StatId; seed: number 
 const STAT_NAMES: Record<StatId, string> = { attack: 'Attack', defence: 'Defence', spellPower: 'Spell power', knowledge: 'Knowledge' };
 
 export function describeOption(option: string, state: GameState): { label: string; note: string } {
+  if (option === RALLY) return { label: `Rally more men (+${RALLY_LEADERSHIP} leadership)`, note: `You get +${RALLY_LEADERSHIP} leadership, in place of learning something new.` };
   const [kind, id] = option.split(':');
   if (kind === 'perk') return { label: `${PERKS[id as PerkId].name} (${PERKS[id as PerkId].trick ? 'new trick' : 'perk'})`, note: PERKS[id as PerkId].note };
   const rank = Math.min(state.hero.skills[id as SkillId] ?? 0, RANKS.length - 1);
   const next = SKILLS[id as SkillId].ranks[rank];
   // A second cast is nothing new to a hero who casts two already: say so, rather than let him think it's a third.
   const capped = next.bonus.casts && heroStats(state).casts >= MAX_CASTS ? ' *You cast two spells a round already, and nobody casts more, so that part changes nothing for you.*' : '';
-  return { label: `${RANKS[rank]} ${SKILLS[id as SkillId].name}`, note: `${next.note}${capped}` };
+  const halved = next.bonus.bribes && heroStats(state).bribes >= MAX_BRIBES ? ' *No bribe is ever more than half off, and yours are already, so that part changes nothing for you.*' : '';
+  return { label: `${RANKS[rank]} ${SKILLS[id as SkillId].name}`, note: `${next.note}${capped}${halved}` };
 }
 
 /** The card for the first level-up still waiting, or null. */
@@ -376,7 +388,7 @@ export function levelUpCard(state: GameState): Card | null {
   const options = offer.options.map((o) => ({ o, ...describeOption(o, state) }));
   return {
     title: `Level ${roman(offer.level)}!`,
-    lines: [`Your ${STAT_NAMES[offer.stat].toLowerCase()} rises by **1**, and your leadership by **${RENOWN}**. Choose something to learn.`],
+    lines: [`Your ${STAT_NAMES[offer.stat].toLowerCase()} rises by **1**, and your leadership by **${RENOWN}**. Choose something to learn, or rally more men.`],
     choices: options.map((x) => ({ label: x.label, detail: x.note, action: { type: 'learn', option: x.o } })),
   };
 }
@@ -402,12 +414,12 @@ export function gainXp(state: GameState, amount: number): Result {
 /** Takes one of the offered options. */
 export function learn(state: GameState, option: string): Result | null {
   const offer = state.hero.offers[0];
-  if (!offer || !offer.options.includes(option) || !candidates(state).includes(option)) return null;
+  if (!offer || !offer.options.includes(option) || (option !== RALLY && !candidates(state).includes(option))) return null;
   const [kind, id] = option.split(':');
   const hero = { ...state.hero, offers: state.hero.offers.slice(1) };
   if (kind === 'perk') hero.perks = [...hero.perks, id as PerkId];
-  else hero.skills = { ...hero.skills, [id]: (hero.skills[id as SkillId] ?? 0) + 1 };
-  let next: GameState = { ...state, hero };
+  else if (kind === 'skill') hero.skills = { ...hero.skills, [id]: (hero.skills[id as SkillId] ?? 0) + 1 };
+  let next: GameState = { ...state, hero, leadership: state.leadership + (option === RALLY ? RALLY_LEADERSHIP : 0) };
   // Offers still waiting were drawn before this choice: draw them again, so none offers what he now has,
   // nor the next rank of what he has just learned.
   let seed = next.seed;

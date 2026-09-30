@@ -1,5 +1,5 @@
 import { needsTarget, SPELLS, STATUSES, type SpellId, type StatusId } from '../../content/spells';
-import { ABILITIES, abilitiesOf, feuding, isBeast, TROOPS, unitPower, type TroopDef, type TroopId } from '../../content/troops';
+import { ABILITIES, abilitiesOf, feuding, isBeast, outweighs, TROOPS, unitPower, type TroopDef, type TroopId } from '../../content/troops';
 import { listed, MAX_STACKS, roll, type Army } from '../state';
 import { COLS, HEXES, hexIndex, NEIGHBOURS, neighbours, reachable, ROWS } from './hex';
 
@@ -675,24 +675,35 @@ function summoned(b: BattleState, side: Side, troop: TroopId, share: number): nu
   return Math.max(1, Math.round((worth * share) / unitPower(TROOPS[troop])));
 }
 
+/** A side's power on the field now: the fighting worth of its stacks still standing. */
+const powerOnField = (b: BattleState, side: Side) => b.fighters.filter((f) => f.side === side && onField(f)).reduce((sum, f) => sum + f.count * powerOf(f), 0);
+
 /**
- * What a bard pays a stack of the other side to leave the field, or with `join` to fight for him: so
- * many weeks of its wages, less the hero's share off every bribe, to the nearest ten. Null for
- * troops who take no gold (beasts), for a leader (nothing can reach him), and for a bard who isn't
- * yours: the gold is your purse.
+ * What a bard's gold buys of a stack of the other side: how many of it would leave the field, or with
+ * `join` fight for him, and for how much. Power decides it (Artur, 30 Sep): only as many as his army
+ * outweighs them take any gold (`outweighs`, none at all from an army no stronger than they are), and
+ * each asks the bard's price for every point of its power, less the hero's share off every bribe, to
+ * the nearest ten. Null for troops who take no gold (beasts), for a leader (nothing can reach him),
+ * and for a bard who isn't yours: the gold is your purse.
  */
-export function bribePrice(b: BattleState, bard: Fighter, target: Fighter, join = false): number | null {
+export function bribeOffer(b: BattleState, bard: Fighter, target: Fighter, join = false): { count: number; price: number } | null {
   const art = bardOf(bard);
-  const wage = TROOPS[target.troop].wage;
-  if (!art || bard.side !== 'player' || target.side === bard.side || !onField(target) || !wage) return null;
-  const weeks = join ? art.weeks.join : art.weeks.leave;
-  return Math.max(10, Math.round((target.count * wage * weeks * (1 - (b.hero.bribes ?? 0))) / 10) * 10);
+  if (!art || bard.side !== 'player' || target.side === bard.side || !onField(target) || !TROOPS[target.troop].wage) return null;
+  const count = Math.floor(target.count * outweighs(powerOnField(b, bard.side), target.count * powerOf(target)));
+  const rate = join ? art.price.join : art.price.leave;
+  return { count, price: count ? Math.max(10, Math.round((count * powerOf(target) * rate * (1 - (b.hero.bribes ?? 0))) / 10) * 10) : 0 };
 }
 
-/** Whether a stack paid to change sides would fit under the hero's banner: leadership for all of it, and a place in his line. */
-export function canJoin(b: BattleState, target: Fighter): boolean {
+/** What the bard's offer to a stack costs, or null if no gold buys any of it. */
+export function bribePrice(b: BattleState, bard: Fighter, target: Fighter, join = false): number | null {
+  const offer = bribeOffer(b, bard, target, join);
+  return offer?.count ? offer.price : null;
+}
+
+/** Whether `count` of a stack paid to change sides would fit under the hero's banner: leadership for all of them, and a place in his line. */
+export function canJoin(b: BattleState, target: Fighter, count = target.count): boolean {
   const line = new Set(b.fighters.filter((f) => f.side === 'player' && onField(f)).map((f) => f.troop));
-  return target.count * TROOPS[target.troop].leadership <= (b.hero.room ?? 0) && (line.has(target.troop) || line.size < MAX_STACKS);
+  return count * TROOPS[target.troop].leadership <= (b.hero.room ?? 0) && (line.has(target.troop) || line.size < MAX_STACKS);
 }
 
 /**
@@ -871,18 +882,22 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
       events.push({ type: 'end', result: 'fled' });
       return { battle: next, events };
     case 'bribe': {
-      // The gold goes, and so do they: home, or over to his side as a stack of his own, next round.
+      // The gold goes, and so do as many of them as it bought: home, or over to his side as a stack of his own, next round.
       const target = fighters.find((x) => x.id === action.target);
-      const price = target ? bribePrice(b, f, target, action.join) : null;
-      if (!target || price === null || price > (b.hero.gold ?? 0) || (action.join && !canJoin(b, target))) return { battle: b, events: [] };
-      const count = target.count;
+      const offer = target ? bribeOffer(b, f, target, action.join) : null;
+      if (!target || !offer?.count || offer.price > (b.hero.gold ?? 0) || (action.join && !canJoin(b, target, offer.count))) return { battle: b, events: [] };
+      const { count, price } = offer;
+      // All of them come over where they stood; a few of them, from his edge of the field.
+      const whole = count === target.count;
+      const at = whole ? target.at : action.join ? edgeHex(next, f.side) : null;
+      if (action.join && at === null) return { battle: b, events: [] };
       next.hero.gold = (b.hero.gold ?? 0) - price;
       target.left = (target.left ?? 0) + count;
-      target.count = 0;
+      target.count -= count;
       let joined: number | undefined;
       if (action.join) {
         joined = fighters.length;
-        fighters.push({ id: joined, side: f.side, troop: target.troop, count, startCount: count, hp: target.hp, at: target.at, shots: target.shots, retaliated: false, defending: false, waited: false, status: [] });
+        fighters.push({ id: joined, side: f.side, troop: target.troop, count, startCount: count, hp: whole ? target.hp : unitOf(target).hp, at: at!, shots: target.shots, retaliated: false, defending: false, waited: false, status: [] });
         next.hero.room = (b.hero.room ?? 0) - count * TROOPS[target.troop].leadership;
         // Turncoats of a people his army won't march beside are still grumbled at.
         markFeuds(fighters);

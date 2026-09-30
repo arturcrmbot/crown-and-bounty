@@ -5,7 +5,7 @@ import { chooseAction, finishEstimate, sergeantsAct } from '../rules/battle/ai';
 import { manaInBattle, signedShare, spiritsOf, uneasyWords } from '../rules/heroSheet';
 import { grumbleLine } from '../rules/army';
 import { coins, listed } from '../rules/state';
-import { activeFighter, bardOf, battleAct, battleEnd, bribePrice, canCast, canJoin, casterOf, castsLeft, chargeOf, fighterById, isCharge, isLeader, onField, options, ridesOut, spellCost, spellDamage, spellsOf, spellVictims, unitOf, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
+import { activeFighter, bardOf, battleAct, battleEnd, bribeOffer, canCast, canJoin, casterOf, castsLeft, chargeOf, fighterById, isCharge, isLeader, onField, options, ridesOut, spellCost, spellDamage, spellsOf, spellVictims, unitOf, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
 import { aimTag, bardTag, forecastOf, type AimTag } from '../rules/battle/forecast';
 import { paintBanner } from '../render/banner';
 import { BattleScreen, BUTTONS, FIRE_FALL, FLOAT_RISE, hexAt, hexCentre, leaderAt, LOG_BOTTOM, spotOf, type BattleView, type Shot } from '../render/battleScreen';
@@ -225,11 +225,13 @@ export class BattleController implements Screen {
   private bardLine(id: number) {
     const f = activeFighter(this.battle)!;
     const target = fighterById(this.battle, id);
-    const leave = bribePrice(this.battle, f, target);
-    const join = bribePrice(this.battle, f, target, true);
+    const leave = bribeOffer(this.battle, f, target);
+    const join = bribeOffer(this.battle, f, target, true);
     const jeer = `or jeer them (${spirits(STATUSES[bardOf(f)!.jeer])})`;
-    if (leave === null) return `${this.fighterName(id)} take no gold, but you can ${jeer.slice(3)}.`;
-    return `${this.fighterName(id)}: ${coins(leave)} gold to go home${join !== null && canJoin(this.battle, target) ? `, ${coins(join)} to join you` : ''}, ${jeer}.`;
+    if (!leave) return `${this.fighterName(id)} take no gold, but you can ${jeer.slice(3)}.`;
+    if (!leave.count) return `${this.fighterName(id)} take no gold from an army no stronger than theirs, but you can ${jeer.slice(3)}.`;
+    const some = leave.count < target.count ? ` for ${leave.count} of them` : '';
+    return `${this.fighterName(id)}: ${coins(leave.price)} gold to go home${some}${join?.count && canJoin(this.battle, target, join.count) ? `, ${coins(join.price)} to join you` : ''}, ${jeer}.`;
   }
 
   /** A bard's moves on one of their stacks, each with its price or what it does, before he makes it. */
@@ -238,20 +240,24 @@ export class BattleController implements Screen {
     const art = bardOf(f)!;
     const target = fighterById(this.battle, id);
     const gold = this.battle.hero.gold ?? 0;
-    const leave = bribePrice(this.battle, f, target);
-    const join = bribePrice(this.battle, f, target, true);
-    const room = canJoin(this.battle, target);
-    const off = this.battle.hero.bribes ? `, less ${pct(this.battle.hero.bribes)}` : '';
+    const leave = bribeOffer(this.battle, f, target);
+    const join = bribeOffer(this.battle, f, target, true);
+    const room = Boolean(join?.count) && canJoin(this.battle, target, join!.count);
+    const off = this.battle.hero.bribes ? `, with ${pct(this.battle.hero.bribes)} off` : '';
+    const them = leave && leave.count < target.count ? `${leave.count} of them` : 'them';
     const jeer = STATUSES[art.jeer];
     // Turncoats of a people his army won't march beside would be grumbled at: the card says so first.
     const ours = this.battle.fighters.filter((x) => x.side === 'player' && onField(x)).map((x) => ({ troop: x.troop, count: x.count }));
     const quarrel = room ? grumbleLine(ours, [target.troop]) : null;
     const lines =
-      leave === null || join === null
+      !leave || !join
         ? [`*${TROOPS[target.troop].name} take no gold.*`]
-        : [
-            `Pay them **${coins(leave)} gold**, ${art.weeks.leave} weeks\u2019 wages${off}, and they go home.`,
-            room ? `Pay them **${coins(join)} gold**, ${art.weeks.join} weeks\u2019 wages${off}, and they fight for you, and ride on with you after.` : '*You have no room under your banner for them to come over.*',
+        : !leave.count
+          ? [`*${TROOPS[target.troop].name} take no gold from an army no stronger than theirs. Make yours stronger, or theirs weaker, and ask again.*`]
+          : [
+            `Pay ${them} **${coins(leave.price)} gold**${off}, and they go home.`,
+            room ? `Pay ${them} **${coins(join.price)} gold**${off}, and they fight for you, and ride on with you after.` : '*You have no room under your banner for them to come over.*',
+            ...(leave.count < target.count ? [`*Only ${leave.count} of the ${target.count} will take your gold. The stronger your army is than theirs, the more of them would.*`] : []),
             ...(quarrel ? [quarrel] : []),
             '*Bought, not beaten, they teach you half what beating them would.*',
             `You carry **${coins(gold)} gold**.`,
@@ -261,8 +267,8 @@ export class BattleController implements Screen {
       title: this.fighterName(id, target.count),
       lines,
       choices: [
-        ...(leave === null ? [] : [{ label: `Pay them to go (${coins(leave)} gold)`, action: { type: 'bard' as const, move: 'bribe' as const, target: id }, disabled: leave > gold }]),
-        ...(join === null || !room ? [] : [{ label: `Pay them to join you (${coins(join)} gold)`, action: { type: 'bard' as const, move: 'buy' as const, target: id }, disabled: join > gold }]),
+        ...(!leave?.count ? [] : [{ label: `Pay ${them} to go (${coins(leave.price)} gold)`, action: { type: 'bard' as const, move: 'bribe' as const, target: id }, disabled: leave.price > gold }]),
+        ...(!join?.count || !room ? [] : [{ label: `Pay ${them} to join you (${coins(join.price)} gold)`, action: { type: 'bard' as const, move: 'buy' as const, target: id }, disabled: join.price > gold }]),
         { label: 'Jeer them', action: { type: 'bard', move: 'jeer', target: id } },
         { label: 'Close', action: { type: 'close' } },
       ],
@@ -881,6 +887,27 @@ export class BattleController implements Screen {
           const target = fighterById(this.battle, e.target);
           const [tx, ty] = hexCentre(target.at);
           const joined = e.joined;
+          if (target.count > 0) {
+            // Only some of them took the gold: they slip away, or over to his edge of the field, and the rest stand.
+            v.counts.set(e.target, target.count + e.count);
+            if (joined !== undefined) v.hidden.add(joined);
+            this.flourish(e.fighter, 'idle', () => {
+              play('coins');
+              this.float(e.fighter, `\u2212${coins(e.gold)} gold`, GOLD[6]);
+              v.log = `${this.fighterName(e.fighter)} pays ${e.count} of ${this.objectName(e.target)} ${coins(e.gold)} gold, ${joined === undefined ? 'and they shoulder their weapons and go home.' : 'and they turn their coats and fight for you!'}`;
+            });
+            this.step(0.35, {
+              start: () => {
+                v.counts.delete(e.target);
+                this.float(e.target, `\u2212${e.count}`, GOLD[6]);
+                if (joined === undefined) return;
+                v.hidden.delete(joined);
+                this.puff(joined);
+                this.float(joined, `+${e.count}`, GOLD[6]);
+              },
+            });
+            break;
+          }
           v.dying.add(e.target);
           v.counts.set(e.target, e.count);
           if (joined !== undefined) v.hidden.add(joined);

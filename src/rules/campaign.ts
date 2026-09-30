@@ -8,7 +8,7 @@ import { generateCommission } from './generate';
 import { unhumbled } from './map/sortie';
 import { heroStats, VETERANS } from './hero';
 import { beginCommission } from './scenario';
-import { addTroops, armyLine, close, coins, leadershipUsed, listed, roll, roman, show, TROOPS, type Army, type BoonId, type Campaign, type Card, type Choice, type GameState, type Heard, type Location, type Result } from './state';
+import { addTroops, armyLine, close, coins, fits, leadershipUsed, listed, roll, roman, show, TROOPS, type Army, type BoonId, type Campaign, type Card, type Choice, type GameState, type Heard, type Location, type Result } from './state';
 
 /** Commissions in a campaign: the hand-made ones, then provinces generated for this campaign. */
 export const CAMPAIGN_LENGTH = 5;
@@ -114,7 +114,7 @@ function musterFor(state: GameState): { army: Army; kept: Army } {
   const join = (stacks: Army) => {
     const joined: Army = [];
     for (const s of stacks) {
-      const count = Math.min(s.count, Math.floor((leadership - leadershipUsed(army)) / TROOPS[s.troop].leadership));
+      const count = Math.min(s.count, fits(leadership - leadershipUsed(army), s.troop));
       const next = count > 0 ? addTroops(army, s.troop, count) : null;
       if (!next) continue;
       army = next;

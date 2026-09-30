@@ -234,7 +234,7 @@ export function heroSheet(state: GameState): HeroSheet {
       line:
         used > s.leadership
           ? `Leadership ${used}/${s.leadership}. That is more than he can lead, so nobody new will join until there\u2019s room.`
-          : `Leadership ${used}/${s.leadership}. Every troop needs some, and no more will join past it.`,
+          : `Leadership ${used}/${s.leadership}. Every troop who draws wages needs some, and no more will join past it. Beasts and the old King\u2019s huntsmen need none.`,
     },
     signature: { name: b.signature.name, note: b.signature.note, trick: true },
     skills: (Object.entries(h.skills) as [SkillId, number][]).filter(([, rank]) => rank > 0).map(([id, rank]) => ({ name: `${RANKS[Math.min(rank, RANKS.length) - 1]} ${SKILLS[id].name}`, note: skillNote(id, rank) })),
@@ -397,7 +397,7 @@ export function stackSheet(state: GameState, index: number): StackSheet | null {
       ...spiritRows(spirits),
     ],
     traits,
-    leadership: `Leadership: ${t.leadership} each, ${coins(stack.count * t.leadership)} in all (${leadershipUsed(state.army)} of ${s.leadership} in use)`,
+    leadership: t.leadership ? `Leadership: ${t.leadership} each, ${coins(stack.count * t.leadership)} in all (${leadershipUsed(state.army)} of ${s.leadership} in use)` : `Leadership: none, because they draw no wages (${leadershipUsed(state.army)} of ${s.leadership} in use)`,
     wages: t.wage ? `Wages: ${coins(wage)} gold every payday` : `Wages: none. ${t.unpaid ?? 'They work for the fun of it.'}`,
     row: `In battle they stand ${row}.`,
     canDismiss: state.army.length > 1,
@@ -412,13 +412,13 @@ function chargeLine(state: GameState): string {
     : 'He charges as he rides in from behind the line, so he hits a quarter harder and nobody strikes back.';
 }
 
-/** What a bard pays to send a stack home, or bring it over, in weeks of its wages: after his share off every bribe. */
+/** What a bard pays to send a stack home, or bring it over, for its power: after his share off every bribe. */
 function bribes(state: GameState): Note[] {
   const art = (TROOPS[heroFighter(state).troop].abilities ?? []).map((a) => ABILITIES[a].bard).find(Boolean);
   if (!art) return [];
   const off = heroStats(state).bribes;
-  const less = off ? `, less ${Math.round(off * 100)}%` : '';
-  return [{ name: 'Bribes', note: `He pays ${art.weeks.leave} weeks of a stack\u2019s wages to send it home, or ${art.weeks.join} to bring it over if it fits under his banner${less}. Bought, not beaten, they teach him half what beating them would. Beasts take no gold, and villains and captains can\u2019t be bought. His sergeants never spend his gold.` }];
+  const less = off ? `, with ${Math.round(off * 100)}% off` : '';
+  return [{ name: 'Bribes', note: `He pays ${art.price.leave} gold for every point of a stack\u2019s power to send it home, or ${art.price.join} to bring it over if it fits under his banner${less}. Only an army stronger than theirs can buy them, and the stronger it is, the more of them take the gold. Bought, not beaten, they teach him half what beating them would. Beasts take no gold, and villains and captains can\u2019t be bought. His sergeants never spend his gold.` }];
 }
 
 /** The hero's own card, laid out like a stack's: how he fights from behind the line, and what he brings the army. */

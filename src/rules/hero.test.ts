@@ -5,7 +5,7 @@ import { BACKGROUNDS } from '../content/backgrounds';
 import { autoResolve } from './battle/ai';
 import { createBattle, strike } from './battle/battle';
 import { apply, heroInBattle, heroStats, levelUpCard, visit, winChance, type GameState } from './game';
-import { artifactChoices, equip, foundNote, gainXp, giveArtifact, learn, LEVELS, RENOWN } from './hero';
+import { artifactChoices, equip, foundNote, gainXp, giveArtifact, learn, LEVELS, RALLY, RALLY_LEADERSHIP, RENOWN } from './hero';
 import { newGame } from './scenario';
 
 const knight = () => newGame(1, ALDMOOR, 'knight');
@@ -37,15 +37,31 @@ describe('backgrounds', () => {
 });
 
 describe('levels', () => {
-  it('raises a stat and offers three different things to learn', () => {
+  it('raises a stat and offers three different things to learn, and more leadership', () => {
     const { state, events } = gainXp(knight(), LEVELS[3]);
     expect(state.hero.level).toBe(3);
     expect(events.filter((e) => e.type === 'levelUp')).toHaveLength(2);
     expect(state.hero.offers).toHaveLength(2);
-    for (const offer of state.hero.offers) expect(new Set(offer.options).size).toBe(3);
+    for (const offer of state.hero.offers) {
+      expect(new Set(offer.options).size).toBe(4);
+      expect(offer.options.at(-1)).toBe(RALLY);
+    }
     const stats = state.hero.attack + state.hero.defence + state.hero.spellPower + state.hero.knowledge;
     const before = knight().hero;
     expect(stats).toBe(before.attack + before.defence + before.spellPower + before.knowledge + 2);
+  });
+
+  it('rallies more men in place of learning something, at any level-up (Artur, 30 Sep)', () => {
+    const levelled = gainXp(knight(), LEVELS[3]).state;
+    const before = heroStats(levelled).leadership;
+    const card = levelUpCard(levelled)!;
+    expect(card.choices.at(-1)).toMatchObject({ label: `Rally more men (+${RALLY_LEADERSHIP} leadership)`, action: { type: 'learn', option: RALLY } });
+    const after = learn(levelled, RALLY)!.state;
+    expect(heroStats(after).leadership).toBe(before + RALLY_LEADERSHIP);
+    expect(after.hero.skills).toEqual(levelled.hero.skills);
+    expect(after.hero.perks).toEqual(levelled.hero.perks);
+    // And again at the next one.
+    expect(heroStats(learn(after, RALLY)!.state).leadership).toBe(before + 2 * RALLY_LEADERSHIP);
   });
 
   it('learns a skill rank or a perk, then offers the next level', () => {
@@ -56,7 +72,7 @@ describe('levels', () => {
     const [kind, id] = first.split(':');
     if (kind === 'skill') expect(after.hero.skills[id as keyof typeof after.hero.skills]).toBe(1);
     else expect(after.hero.perks).toContain(id);
-    expect(levelUpCard(after)!.choices).toHaveLength(3);
+    expect(levelUpCard(after)!.choices).toHaveLength(4);
     expect(learn(after, 'skill:not-offered')).toBeNull();
   });
 

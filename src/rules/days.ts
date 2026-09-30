@@ -8,23 +8,10 @@ import { moveEnemies } from './map/roaming';
 import { loseSight } from './map/sight';
 import { rideHome, rideOut } from './map/sortie';
 import { payday as reopen } from './places';
-import { faceOf } from './places/common';
-import { FIGHT_NOTE, oddsLine, oddsOf, SERGEANTS_NOTE } from './places/enemy';
-import { likelyLossesLine, winChance } from './fight';
-import { again, close, COMMISSION, coins, LAST_DAY, locationById, PAYDAY_EVERY, roman, show, wages, type Card, type Choice, type GameEvent, type GameState, type Location, type Result } from './state';
+import { ambushCard } from './places/enemy';
+import { again, close, COMMISSION, coins, LAST_DAY, locationById, PAYDAY_EVERY, roman, show, wages, type GameEvent, type GameState, type Location, type Result } from './state';
 
-/** The card while an enemy has fallen on the camp: fight, or run. It stays until answered. It leads with the odds, as every card about a fight does. */
-export function ambushCard(state: GameState, before: string[] = []): Card {
-  const foe = locationById(state, state.ambush!);
-  const choices: Choice[] = [
-    { label: 'To arms!', detail: FIGHT_NOTE, action: { type: 'choose', id: foe.id, choice: 'fight' } },
-    { label: 'Let the sergeants handle it', detail: SERGEANTS_NOTE, action: { type: 'choose', id: foe.id, choice: 'auto' } },
-    { label: 'Run for it (lose a fifth of the army)', action: { type: 'choose', id: foe.id, choice: 'flee' } },
-  ];
-  const verdict = oddsOf(state, foe);
-  const odds = state.army.length ? [oddsLine(winChance(state, foe.id)), likelyLossesLine(state, foe.id)] : [];
-  return { title: `An ambush on day ${roman(state.day)}!`, ...faceOf(foe.enemy!.army), ...(verdict ? { verdict } : {}), lines: [...before, `At first light, **${foe.name}** fall on your camp!`, foe.enemy!.threat, ...odds], choices };
-}
+export { ambushCard };
 
 /** A villain recruits on payday; the villain himself stays one. */
 function grow(l: Location): Location {
@@ -94,7 +81,7 @@ export function endDay(state: GameState): Result {
   const trailing = next.locations.filter((l) => l.enemy?.trailing && !l.done);
   for (const l of trailing) lines.push(`**${l.name}** are on your trail. Camp near them tonight and they’ll fall on you at dawn, so ride clear, shelter in a town, or turn and fight.`);
   if (night.ambush) {
-    next = { ...next, ambush: night.ambush };
+    next = { ...next, ambush: night.ambush, ambushRest: undefined };
     const foe = locationById(next, night.ambush);
     events.push(show(ambushCard(next, lines), foe.at, foe.id));
     return { state: next, events };

@@ -7,7 +7,7 @@ import { ARTIFACTS } from '../../content/artifacts';
 import { troopPower } from '../../content/troops';
 import { beat } from '../fight';
 import { artifactChoices, heroStats, knowsTrick } from '../hero';
-import { close, leadershipUsed, locationById, show, TROOPS, type Card, type ContentChoice, type GameState, type Location, type Page, type Result } from '../state';
+import { close, fits, leadershipUsed, locationById, show, TROOPS, type Card, type ContentChoice, type GameState, type Location, type Page, type Result } from '../state';
 import { applyEffects, choiceButton, meets, owns, pay } from './core';
 
 export { applyEffects, choiceButton, lacksLabel, meets, needsLabel, owns } from './core';
@@ -71,13 +71,13 @@ export function choiceWorth(state: GameState, choice: ContentChoice): number {
   if (e.spell && !state.hero.spells.includes(e.spell)) worth += 400;
   let room = s.leadership - leadershipUsed(state.army);
   for (const stack of e.troops ?? []) {
-    const count = Math.max(0, Math.min(stack.count, Math.floor(room / TROOPS[stack.troop].leadership)));
+    const count = Math.max(0, Math.min(stack.count, fits(room, stack.troop)));
     room -= count * TROOPS[stack.troop].leadership;
     worth += count * troopPower(stack.troop) * 3;
   }
   // Troops waiting at a place are worth nearly what troops who join are: it's only a ride.
   if (e.recruits?.troop && !e.recruits.at) {
-    const count = Math.max(0, Math.min(e.recruits.count, Math.floor(room / TROOPS[e.recruits.troop].leadership)));
+    const count = Math.max(0, Math.min(e.recruits.count, fits(room, e.recruits.troop)));
     worth += count * troopPower(e.recruits.troop) * (e.recruits.price ? 1 : 3);
   }
   if (e.reveal) worth += 20;

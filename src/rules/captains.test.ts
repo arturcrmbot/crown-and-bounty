@@ -99,11 +99,11 @@ describe('Rook the Huntsman, Grimsby\u2019s captain', () => {
     expect(endDay(taken).state.locations.find((l) => l.id === 'grimsby')?.done).toBe(false);
   });
 
-  it('can\u2019t keep his pack from a ranger they respect: the wolves go over, and Rook gives himself up', () => {
-    const s = { ...aldmoor([{ troop: 'knights', count: 40 }, { troop: 'archers', count: 60 }]), hero: { ...newGame(5, ALDMOOR, 'ranger').hero, at: NEAR_KENNELS }, leadership: 1000 };
+  it('can\u2019t keep his pack from a ranger twice as strong: the wolves go over, and Rook gives himself up', () => {
+    const s = { ...aldmoor([{ troop: 'knights', count: 60 }, { troop: 'archers', count: 90 }]), hero: { ...newGame(5, ALDMOOR, 'ranger').hero, at: NEAR_KENNELS }, leadership: 1000 };
     const offer = tameOffer(s, locationById(s, 'wolves'))!;
     expect(offer.whole).toBe(true);
-    expect(offer.respected).toBe(true);
+    expect(offer.all).toBe(true);
     const r = choose(s, 'wolves', 'tame')!;
     expect(locationById(r.state, 'wolves').done).toBe(true);
     expect(r.state.army.find((x) => x.troop === 'wolves')?.count).toBe(ALDMOOR.locations.find((l) => l.id === 'wolves')!.enemy!.army.find((x) => x.troop === 'wolves')!.count);

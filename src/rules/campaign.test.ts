@@ -201,7 +201,8 @@ describe('level-ups and gear', () => {
     expect(after.hero.perks).toEqual(['treasureHunter']);
     expect(after.hero.offers[0].options).not.toContain('perk:treasureHunter');
     expect(learn({ ...after, hero: { ...after.hero, offers: [{ level: 3, stat: 'attack', options: ['perk:treasureHunter'] }] } }, 'perk:treasureHunter')).toBeNull();
-    expect(levelUpCard(after)!.choices).toHaveLength(3);
+    // Three things to learn, and more leadership.
+    expect(levelUpCard(after)!.choices).toHaveLength(4);
   });
 
   it('never raise a skill past Expert', () => {

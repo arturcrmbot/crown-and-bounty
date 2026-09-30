@@ -108,12 +108,17 @@ describe('the forecast by the pointer', () => {
   });
 
   it('prices a bard\u2019s moves on one of their stacks', () => {
-    const b = createBattle({ place: 'x', seed: 1, player: [{ troop: 'knights', count: 10 }], enemy: [{ troop: 'swordsmen', count: 50 }], hero: heroInBattle({ ...newGame(1066, undefined, 'courtier'), opening: undefined }), obstacles: 0 });
-    const lord = b.fighters.find((f) => f.hero)!;
-    const turn = { ...b, order: [lord.id, ...b.order.filter((x) => x !== lord.id)] };
-    const tag = bardTag(turn, turn.fighters.find((f) => f.troop === 'swordsmen')!)!;
-    expect(tag.title).toBe('Pay or jeer their swordsmen');
-    expect(texts(tag)[0]).toBe('400 gold sends them home.');
+    const tagFor = (swordsmen: number) => {
+      const b = createBattle({ place: 'x', seed: 1, player: [{ troop: 'knights', count: 10 }], enemy: [{ troop: 'swordsmen', count: swordsmen }], hero: heroInBattle({ ...newGame(1066, undefined, 'courtier'), opening: undefined }), obstacles: 0 });
+      const lord = b.fighters.find((f) => f.hero)!;
+      const turn = { ...b, order: [lord.id, ...b.order.filter((x) => x !== lord.id)] };
+      return bardTag(turn, turn.fighters.find((f) => f.troop === 'swordsmen')!)!;
+    };
+    expect(tagFor(5).title).toBe('Pay or jeer their swordsmen');
+    expect(texts(tagFor(5))[0]).toBe('80 gold sends them home.');
+    // Only as many as his army outweighs take his gold, and none of a stack as strong as his army.
+    expect(texts(tagFor(10))[0]).toBe('130 gold sends 8 of them home.');
+    expect(texts(tagFor(50))[0]).toBe('They take no gold from an army no stronger than theirs, but you can jeer them.');
   });
 
   it('keeps the game\u2019s voice: short full sentences, with no colons or dashes', () => {
