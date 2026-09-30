@@ -6,6 +6,7 @@ import { Display } from './game/display';
 import { Input } from './game/input';
 import { botRideCard, chapterStartCard, failedCard, welcomeBackCard } from './game/intro';
 import { loadGame, saveGame, stopSaving } from './game/save';
+import { startCounter } from './game/counter';
 import { SCREEN } from './render/frame';
 import { paletteWords } from './render/palette';
 import { loadUnitArt } from './render/wesnoth';
@@ -172,3 +173,5 @@ requestAnimationFrame(function frame(now) {
   window.__ready = true;
   requestAnimationFrame(frame);
 });
+// The visitor counter (#157) loads after the first frame, so it never slows the first paint. Without a site code it never loads.
+startCounter();

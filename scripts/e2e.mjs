@@ -5,6 +5,9 @@ import { startServer } from './lib/server.mjs';
 const server = await startServer();
 const { browser, page, errors } = await openPage();
 const kc = hooks(page);
+// With no site code, the visitor counter (#157) loads nothing and sends nothing.
+const counted = [];
+page.on('request', (request) => /goatcounter\.com|zgo\.at/.test(request.url()) && counted.push(request.url()));
 const screen = () => kc.call(() => window.__kc.screen());
 let failed = false;
 const check = (ok, message) => {
@@ -518,6 +521,7 @@ try {
   await kc.choose('New campaign');
   check((await kc.title()) === 'King Osric' && (await kc.state()).campaign.chapter === 0, 'a new campaign starts over with the King');
   if (ambushes.length) console.log(`     ambushed: ${ambushes.map((a) => `${a.who} on day ${a.day} (${a.title})`).join(', ')}`);
+  check(counted.length === 0, `the visitor counter sends nothing without a site code${counted.length ? `: ${counted.join(' | ')}` : ''}`);
   check(errors.length === 0, `no page errors${errors.length ? `: ${errors.join(' | ')}` : ''}`);
 } catch (error) {
   check(false, String(error));

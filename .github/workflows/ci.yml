@@ -47,7 +47,11 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
+      # Main's build is the live site: only it gets the visitor counter's site code (#157), from the
+      # repository variable GOATCOUNTER_CODE. Every other build, and every play-through, counts nothing.
       - run: npx vite build
+        env:
+          VITE_GOATCOUNTER_CODE: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.GOATCOUNTER_CODE || '' }}
       - run: npm run test:fast -- --maxWorkers=2
       - name: Size of the build
         run: |

@@ -2,6 +2,7 @@ import { CourtScreen } from '../render/courtScreen';
 import { MAP_VIEW } from '../render/frame';
 import { apply, type Action, type GameState } from '../rules/game';
 import { CardView } from '../ui/card';
+import { count, heroChosen } from './counter';
 import type { Display } from './display';
 import { backgroundCard, kingCard, storyCard, wantedCard } from './intro';
 import { NO_INPUT, type Screen } from './screen';
@@ -40,6 +41,7 @@ export class PrologueController implements Screen {
       const result = apply(this.state, action);
       if (!result) return;
       this.state = result.state;
+      count(heroChosen(action.id));
       // He kneels before the King as who he was.
       this.screen.kneel(action.id);
       this.cards.show(storyCard(action.id, true));

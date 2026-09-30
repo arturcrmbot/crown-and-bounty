@@ -1,7 +1,8 @@
 import { CourtScreen } from '../render/courtScreen';
 import { MAP_VIEW } from '../render/frame';
-import { apply, courtCard, levelUpCard, roman, speechCard, type Action, type GameEvent, type GameState } from '../rules/game';
+import { apply, closingCard, courtCard, levelUpCard, roman, speechCard, type Action, type Card, type GameEvent, type GameState } from '../rules/game';
 import { CardView } from '../ui/card';
+import { CLOSING_CARD, count } from './counter';
 import type { Display } from './display';
 import { NO_INPUT, type Screen } from './screen';
 
@@ -38,7 +39,13 @@ export class CourtController implements Screen {
 
   private showNext() {
     const waiting = levelUpCard(this.state);
-    this.cards.show(waiting ?? (this.heard || this.state.campaign.court?.chosen ? courtCard(this.state) : speechCard(this.state)));
+    this.show(waiting ?? (this.heard || this.state.campaign.court?.chosen ? courtCard(this.state) : speechCard(this.state)));
+  }
+
+  /** The closing card, after the last commission open to play, is the visitor counter's last milestone. */
+  private show(card: Card) {
+    this.cards.show(card);
+    if (card.title === closingCard(this.state).title) count(CLOSING_CARD);
   }
 
   choose(action: Action) {
@@ -63,7 +70,7 @@ export class CourtController implements Screen {
       return;
     }
     const card = result.events.find((e) => e.type === 'card');
-    if (card?.type === 'card') this.cards.show(card.card);
+    if (card?.type === 'card') this.show(card.card);
     else this.showNext();
   }
 

@@ -17,6 +17,7 @@ import { TitleController } from './title';
 import type { Display } from './display';
 import type { InputHandlers } from './input';
 import { saveGame } from './save';
+import { count, NEW_CAMPAIGN } from './counter';
 import { whenUnitArt } from '../render/wesnoth';
 import type { Screen, SideButton } from './screen';
 
@@ -101,12 +102,14 @@ export class Game {
         this.display,
         resume,
         {
-          onNew: () =>
+          onNew: () => {
+            count(NEW_CAMPAIGN);
             // The painting gives way to the throne room, and a harp sweeps up into the court's tune.
             this.change('fade', 'curtain', () => {
               this.clear();
               this.push(new PrologueController(this.display, fresh(), (state) => whenUnitArt(() => this.change('dissolve', null, () => this.beginCommission(state, [])))));
-            }),
+            });
+          },
           onContinue: () =>
             whenUnitArt(() =>
               this.change('fade', null, () => {
