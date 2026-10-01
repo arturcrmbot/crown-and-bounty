@@ -1,9 +1,10 @@
 import { ARTIFACTS, type ArtifactId } from '../content/artifacts';
 import { SPELLS } from '../content/spells';
 import { troops } from '../content/troops';
+import { geeseHome, lostGeese } from '../rules/game';
 import { roman, type GameState } from '../rules/state';
 
-export type GainKind = 'gold' | 'troops' | 'leadership' | 'movement' | 'mana' | 'spell' | 'gear' | 'level' | 'experience';
+export type GainKind = 'goose' | 'gold' | 'troops' | 'leadership' | 'movement' | 'mana' | 'spell' | 'gear' | 'level' | 'experience';
 /** Something the hero just gained (or gold he spent), in the words that rise off him on the map. */
 export type Gain = { kind: GainKind; amount: number; text: string; artifact?: ArtifactId };
 
@@ -11,12 +12,15 @@ const sign = (n: number) => (n > 0 ? '+' : '\u2212');
 const owned = (state: GameState): ArtifactId[] => [...Object.values(state.hero.gear), ...state.hero.pack].filter((id): id is ArtifactId => Boolean(id));
 
 /**
- * What changed for the hero between two states, in the order it rises off him: gold, troops,
- * leadership, movement, mana, spells, gear, then his level or his experience. Movement and mana
- * count only within a day, so a new day's riding and the mana that comes back at dawn say nothing.
+ * What changed for the hero between two states, in the order it rises off him: a lost goose sent
+ * home, gold, troops, leadership, movement, mana, spells, gear, then his level or his experience.
+ * Movement and mana count only within a day, so a new day's riding and the mana that comes back at
+ * dawn say nothing.
  */
 export function gainsOf(before: GameState, after: GameState): Gain[] {
   const gains: Gain[] = [];
+  const home = geeseHome(after);
+  if (home > geeseHome(before)) gains.push({ kind: 'goose', amount: home - geeseHome(before), text: `Goose ${home} of ${lostGeese(after).length}` });
   const gold = after.gold - before.gold;
   if (gold) gains.push({ kind: 'gold', amount: gold, text: `${sign(gold)}${Math.abs(gold).toLocaleString('en-GB')} gold` });
   if (!before.battle) {

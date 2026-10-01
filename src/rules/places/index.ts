@@ -11,6 +11,7 @@ import { x } from './ending';
 import { enemy, haggled } from './enemy';
 import { event } from './event';
 import type { PlaceKind } from './kind';
+import { goose } from './goose';
 import { pickup } from './pickup';
 import { mill, mine, signpost, tower } from './sights';
 import { chest, pile } from './treasure';
@@ -31,6 +32,7 @@ export const PLACE_KINDS: Record<LocationKind, PlaceKind> = {
   event,
   well,
   pickup,
+  goose,
 };
 
 /** The card for a place before the hero rides there. */
@@ -69,5 +71,6 @@ export function choose(state: GameState, id: string, choice: string): Result | n
 export const payday = (place: Location): Location => PLACE_KINDS[place.kind].payday?.(place) ?? place;
 
 export { DISCOVERY_XP, forceLine, priceOf } from './common';
+export { geeseHome, lostGeese } from './goose';
 export { recruitable } from './dwelling';
 export type { PlaceKind } from './kind';

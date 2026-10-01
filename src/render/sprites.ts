@@ -512,6 +512,55 @@ export function wayside(look: 'purse' | 'oats' | 'crystals' | 'letter'): Bitmap 
   return shaped;
 }
 
+/** A lost goose (#192), white with an orange beak and feet, standing with her neck up, looking left. */
+export function lostGoose(): Bitmap {
+  const sprite = new Bitmap(18, 16);
+  for (let y = 7; y < 13; y++) {
+    for (let x = 4; x < 16; x++) {
+      const d = Math.hypot((x - 10) / 6, (y - 10) / 3);
+      if (d > 1) continue;
+      sprite.set(x, y, d > 0.7 && (y > 10 || x > 12) ? NEUTRAL[5] : NEUTRAL[7]);
+    }
+  }
+  sprite.set(16, 8, NEUTRAL[6]);
+  for (let y = 3; y < 9; y++) for (const x of [5, 6]) sprite.set(x, y, NEUTRAL[7]);
+  for (const [x, y] of [[4, 1], [5, 1], [6, 1], [4, 2], [5, 2], [6, 2], [7, 2]]) sprite.set(x, y, NEUTRAL[7]);
+  sprite.set(5, 2, INK);
+  for (const [x, y] of [[2, 2], [3, 2], [3, 3]]) sprite.set(x, y, GOLD[5]);
+  for (const x of [9, 11]) for (const y of [13, 14]) sprite.set(x, y, GOLD[4]);
+  const shaped = outline(sprite, INK);
+  shadowOval(shaped, 11, 14.5, 6, 1.6);
+  return shaped;
+}
+
+/**
+ * A goose swimming, the size of those on the painted pond and outlined as they are, drawn onto `onto`
+ * with its top left at `x`, `y`, facing right if `right`.
+ */
+export function swimmingGoose(onto: Bitmap, x: number, y: number, right: boolean) {
+  const rows = ['.oWo....', 'GWWo....', '.oWo.oo.', '.oWWWWWo', '.oWWWmWo', '..ooooo.'];
+  const colour: Record<string, number> = { o: INK, W: NEUTRAL[7], m: NEUTRAL[5], G: GOLD[5] };
+  rows.forEach((row, dy) => [...row].forEach((c, dx) => c !== '.' && onto.set(right ? x + 7 - dx : x + dx, y + dy, colour[c])));
+}
+
+/** An old cairn: grey stones heaped up to a point, the biggest at the bottom, lit from the left. */
+export function cairn(): Bitmap {
+  const sprite = new Bitmap(26, 30);
+  const stones: [number, number, number][] = [[7, 23, 5], [13, 24, 5.5], [19, 23, 5], [10, 17, 4.5], [16, 17, 4.5], [13, 11, 4], [13, 6, 3]];
+  for (const [cx, cy, r] of stones) {
+    for (let y = Math.floor(cy - r); y <= cy + r; y++) {
+      for (let x = Math.floor(cx - r); x <= cx + r; x++) {
+        const light = sphere(x, y, cx, cy, r);
+        if (light === OUTSIDE) continue;
+        sprite.set(x, y, flat(STONE, clamp01(0.2 + light * 0.7), x, y));
+      }
+    }
+  }
+  const shaped = outline(sprite, INK);
+  shadowOval(shaped, 15, 28.5, 11, 2);
+  return shaped;
+}
+
 /** A heap of gold coins, a little wider than a chest. */
 export function goldPile(): Bitmap {
   const sprite = new Bitmap(30, 18);

@@ -13,7 +13,7 @@ type Mote = { x: number; y: number; vx: number; vy: number; age: number; life: n
  */
 type Floater = { x: number; y: number; sprite: Bitmap; age: number; above: number; lift: number };
 /** A burst at a point: dust where a foe went down, glitter where treasure was, a golden ring for a level, a twinkle on treasure still lying there. */
-type Puff = { x: number; y: number; age: number; life: number; kind: 'dust' | 'sparkle' | 'glow' | 'twinkle' };
+type Puff = { x: number; y: number; age: number; life: number; kind: 'dust' | 'sparkle' | 'glow' | 'twinkle' | 'glint' | 'feathers' };
 /**
  * A coin flying from where gold was found to the gold on the bar, in screen pixels, on a curve
  * through `via`. It pays its share of the gold into the bar's count as it lands.
@@ -71,7 +71,8 @@ export class Effects {
   }
 
   puff(x: number, y: number, kind: Puff['kind']) {
-    this.puffs.push({ x, y, age: 0, life: kind === 'glow' ? 1.2 : kind === 'sparkle' ? 0.8 : kind === 'twinkle' ? 0.5 : 0.6, kind });
+    const life = { glow: 1.2, sparkle: 0.8, twinkle: 0.5, glint: 0.6, feathers: 1.4, dust: 0.6 }[kind];
+    this.puffs.push({ x, y, age: 0, life, kind });
   }
 
   /**
@@ -224,6 +225,22 @@ export class Effects {
         if ((k + Math.floor(p.age * 20)) % 3 === 0) continue;
         put(x, y, k % 2 ? GOLD[6] : NEUTRAL[7]);
         if (t < 0.5) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) put(x + dx, y + dy, GOLD[4]);
+      }
+    } else if (p.kind === 'glint') {
+      // Through the edge of the mist: a smaller star, in gold alone, so it reads as something far off (#192).
+      const arm = Math.round(Math.sin(t * Math.PI) * 2);
+      put(Math.round(cx), Math.round(cy), GOLD[6]);
+      for (let k = 1; k <= arm; k++) for (const [dx, dy] of [[k, 0], [-k, 0], [0, k], [0, -k]]) put(Math.round(cx) + dx, Math.round(cy) + dy, GOLD[4]);
+    } else if (p.kind === 'feathers') {
+      // A lost goose going home (#192): white feathers thrown up, drifting down and swaying as they fall.
+      for (let k = 0; k < 9; k++) {
+        const a = -Math.PI / 2 + (k - 4) * 0.32;
+        const up = Math.min(t * 3, 1);
+        const x = Math.round(cx + Math.cos(a) * (6 + k * 1.5) * up + Math.sin(p.age * 6 + k) * 2 * t);
+        const y = Math.round(cy - 8 + Math.sin(a) * 16 * up + t * t * 22);
+        if (bayer(x, y) < t * 0.7) continue;
+        put(x, y, NEUTRAL[7]);
+        put(x + (k % 2 ? 1 : -1), y, NEUTRAL[5]);
       }
     } else if (p.kind === 'twinkle') {
       // A little four-pointed star that opens and closes again, white at its heart so it shows on gold.

@@ -574,3 +574,13 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   minimap doesn't mark them, and `npm run rides` doesn't count them as stops. The bot picks them up as it rides, and
   the careful player still wins every run, taking Grimsby on the same days or a little sooner, with every tier inside
   its targets.
+- **The lost geese, and lookouts with glints (1 Oct, #192):** the last slice. Seven of the royal goose's cousins have
+  wandered off across Aldmoor, tucked away by things a curious rider looks at, such as the Grey Wethers, the
+  falconer's cabbages and the mouth of the old delving. Found, each goes home to the goose pond with a honk and a
+  flurry of feathers, "Goose 3 of 7" rises off Aldric, and she swims on the pond with the others. Once all seven are
+  home the goose-girl gives him her lucky feather, and the King hears of it at court. Four lookouts stand in the lands
+  that had none (the beacon on the downs, the lone pine in Darkwood, the old King's hunting stand in the chase and a
+  cairn on the crags), and each lifts the mist round it as the Grey Wethers do, with a gust of wind. Treasure glints
+  once as it comes into sight, and now and then through the edge of the mist, and the journal counts the geese sent
+  home and the lookouts climbed. Idea 7, luck or heart for the next fight, waits in #206 for the battle's luck and
+  morale to settle.

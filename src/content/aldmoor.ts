@@ -2,6 +2,7 @@ import { nearest, smooth, type Point } from '../rules/map/geometry';
 import { hash, rng } from '../rules/noise';
 import type { ContentChoice, Location } from '../rules/state';
 import { FINDS } from './aldmoorFinds';
+import { GEESE } from './aldmoorGeese';
 import { PICKUPS } from './aldmoorPickups';
 import type { Province, Region } from './types';
 
@@ -1126,5 +1127,6 @@ export const ALDMOOR: Province = {
     },
     ...FINDS,
     ...PICKUPS,
+    ...GEESE,
   ],
 };
