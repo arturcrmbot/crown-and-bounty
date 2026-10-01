@@ -98,8 +98,9 @@ describe('the journal', () => {
 describe('the journal\u2019s tally of things found', () => {
   it('counts the chests he has opened, of all the province has', () => {
     const start = fresh();
-    expect(journalCard(start).journal?.found).toEqual([{ what: 'Chests opened', got: 0, of: 9 }]);
+    const chests = (state: GameState) => journalCard(state).journal?.found?.find((f) => f.what === 'Chests opened');
+    expect(chests(start)).toEqual({ what: 'Chests opened', got: 0, of: 9 });
     const opened = take(start, 'hedgeChest', 'keep');
-    expect(journalCard(opened).journal?.found).toEqual([{ what: 'Chests opened', got: 1, of: 9 }]);
+    expect(chests(opened)).toEqual({ what: 'Chests opened', got: 1, of: 9 });
   });
 });

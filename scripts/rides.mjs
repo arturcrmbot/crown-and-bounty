@@ -13,11 +13,11 @@ try {
   const { ALDMOOR, LANDS, landOf } = await server.ssrLoadModule('/src/content/aldmoor.ts');
   const { FINDS } = await server.ssrLoadModule('/src/content/aldmoorFinds.ts');
   const { buildMap, Terrain, CELL } = await server.ssrLoadModule('/src/rules/map/model.ts');
-  const { measureRides } = await server.ssrLoadModule('/src/rules/map/rides.ts');
+  const { measureRides, worthStopping } = await server.ssrLoadModule('/src/rules/map/rides.ts');
   const { MOVEMENT_PER_DAY } = await server.ssrLoadModule('/src/rules/state.ts');
   const map = buildMap(ALDMOOR);
   const finds = new Set(FINDS.map((f) => f.id));
-  const things = ALDMOOR.locations.filter((l) => !l.done && !(before && finds.has(l.id)));
+  const things = ALDMOOR.locations.filter((l) => worthStopping(l) && !(before && finds.has(l.id)));
   const t = performance.now();
   const rides = measureRides(map, things);
   const name = Object.fromEntries(ALDMOOR.locations.map((l) => [l.id, l.name]));

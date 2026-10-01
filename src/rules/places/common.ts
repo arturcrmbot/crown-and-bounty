@@ -28,6 +28,7 @@ const USUAL: Record<Location['kind'], Omit<PlaceText, 'later'>> = {
   dig: { about: ['The map says it is here. Your sergeant is not convinced.'] },
   event: { about: ['There is something here worth a look.'], done: ['There is nothing more to see here.'] },
   well: { about: ['A tin cup hangs on a chain by this holy well.'], visit: ['You drink. The water is cold and very good.'] },
+  pickup: { about: ['Something is lying by the way. Ride by, and you can pick it up without stopping.'] },
 };
 
 /** A place's words: the province's own if it has them, else the usual ones for its kind. */

@@ -2,6 +2,7 @@ import { nearest, smooth, type Point } from '../rules/map/geometry';
 import { hash, rng } from '../rules/noise';
 import type { ContentChoice, Location } from '../rules/state';
 import { FINDS } from './aldmoorFinds';
+import { PICKUPS } from './aldmoorPickups';
 import type { Province, Region } from './types';
 
 /** Aldmoor is 100 by 75 tiles of 32 pixels: a day's ride on a road crosses about a third of it. */
@@ -1124,5 +1125,6 @@ export const ALDMOOR: Province = {
       },
     },
     ...FINDS,
+    ...PICKUPS,
   ],
 };

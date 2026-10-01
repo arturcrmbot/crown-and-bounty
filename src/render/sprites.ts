@@ -468,6 +468,50 @@ export function chest(open = false): Bitmap {
   return shaped;
 }
 
+/**
+ * Small things lying by the road, each half a tile across (#192): a purse with a coin beside it, a
+ * sheaf of oats tied round its middle, a few blue crystals, and a folded letter with a red seal.
+ */
+export function wayside(look: 'purse' | 'oats' | 'crystals' | 'letter'): Bitmap {
+  const sprite = new Bitmap(18, 15);
+  if (look === 'letter') {
+    for (let y = 5; y < 12; y++) for (let x = 3; x < 15; x++) sprite.set(x, y, flat(PARCHMENT, 0.92 - (y - 5) * 0.035 - (x - 3) * 0.012, x, y));
+    // The flap folds down to the seal.
+    for (let i = 0; i < 6; i++) {
+      sprite.set(3 + i, 5 + Math.floor(i * 0.55), PARCHMENT[2]);
+      sprite.set(14 - i, 5 + Math.floor(i * 0.55), PARCHMENT[2]);
+    }
+    for (const [x, y, c] of [[8, 8, RED[4]], [9, 8, RED[3]], [8, 9, RED[3]], [9, 9, RED[2]]] as const) sprite.set(x, y, c);
+  } else if (look === 'purse') {
+    for (let y = 4; y < 13; y++) {
+      for (let x = 3; x < 13; x++) {
+        const light = sphere(x, y, 8, 9, 5);
+        if (light === OUTSIDE) continue;
+        sprite.set(x, y, flat(WOOD, clamp01(0.25 + light * 0.6), x, y));
+      }
+    }
+    for (let x = 6; x < 10; x++) sprite.set(x, 4, WOOD[1]);
+    for (const [x, y] of [[7, 2], [8, 3], [6, 3]]) sprite.set(x, y, WOOD[3]);
+    for (const [x, y, c] of [[13, 11, GOLD[5]], [14, 11, GOLD[4]], [13, 12, GOLD[3]], [14, 12, GOLD[6]]] as const) sprite.set(x, y, c);
+  } else if (look === 'oats') {
+    for (let x = 4; x < 14; x++) {
+      const top = 2 + Math.round(Math.abs(x - 8.5) * 0.6);
+      for (let y = top; y < 13; y++) sprite.set(x, y, flat(GOLD, clamp01(0.75 - (x - 4) * 0.04 + (y < top + 2 ? 0.15 : 0) - (x % 2 ? 0.08 : 0)), x, y));
+    }
+    for (let x = 4; x < 14; x++) sprite.set(x, 8, WOOD[2]);
+  } else {
+    for (const [cx, h, w] of [[6, 9, 2], [9, 12, 3], [12, 8, 2]] as const) {
+      for (let y = 13 - h; y < 13; y++) {
+        const half = Math.min(w, Math.round(((y - (13 - h)) / 3) * w));
+        for (let x = cx - half; x <= cx + half; x++) sprite.set(x, y, WATER[x < cx ? 8 : x === cx ? 9 : 5]);
+      }
+    }
+  }
+  const shaped = outline(sprite, INK);
+  shadowOval(shaped, 10, 13.5, 7, 1.6);
+  return shaped;
+}
+
 /** A heap of gold coins, a little wider than a chest. */
 export function goldPile(): Bitmap {
   const sprite = new Bitmap(30, 18);

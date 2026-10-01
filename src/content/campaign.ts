@@ -170,6 +170,40 @@ export const COMMISSIONS: Commission[] = [
         heard: { flags: { poachers: 'spared' } },
         done: { used: 'cache' },
       },
+      // Lost letters, picked up by the roads (#192, `content/aldmoorPickups.ts`).
+      {
+        who: 'a letter lost on the bridge road, from young Pike to his mother',
+        words: 'Dear Mum, I am a sergeant now, with my own crossbow. We hold the old bridge for the Baron, and nobody gets over it. Don\u2019t worry about me.',
+        heard: { used: 'letterPike' },
+        done: { flags: { pikeHome: true } },
+      },
+      {
+        who: 'a letter in the Baron\u2019s hand, never sent',
+        words: 'To His Majesty the King. The taxes are on their way, and so is the goose. The goose is being difficult. Your loyal servant, G.',
+        heard: { used: 'letterBaron' },
+      },
+      {
+        who: 'a note under a stone on the downs, for Old Tam',
+        words: 'Tam, I counted them twice. Half your ewes are gone, and the tracks go off east over the downs. Don\u2019t do anything daft. Jack.',
+        heard: { used: 'letterTam' },
+        done: { flags: { ewes: true } },
+      },
+      {
+        who: 'a notice torn off a tree at the edge of Darkwood',
+        words: 'By order of Baron Grimsby, Rook keeps the old King\u2019s chase now. Anybody found in it will be fed to his wolves.',
+        heard: { used: 'letterRook' },
+        done: { flags: { rook: true } },
+      },
+      {
+        who: 'a page torn from the old King\u2019s game book',
+        words: 'A stag of nine points, taken by the river. A boar, taken by the lodge. The goose, not taken. The goose won.',
+        heard: { used: 'letterGameBook' },
+      },
+      {
+        who: 'a list in the Baron\u2019s hand, blown off his cart',
+        words: 'Goose fat. A bigger hat. Forty more swordsmen. Find out what the King\u2019s man is afraid of.',
+        heard: { used: 'letterList' },
+      },
     ],
   },
   {

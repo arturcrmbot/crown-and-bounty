@@ -100,7 +100,9 @@ const GAIN_LOOKS: Record<GainKind, { colour: number; sound?: Sound }> = {
 const BOOK_LIT = 2.5;
 /** Treasure still lying on the map twinkles now and then: one twinkle every this many seconds, on one of what's in view. */
 const TWINKLE_EVERY = 0.8;
-const TWINKLES: ReadonlySet<string> = new Set(['chest', 'gold']);
+const TWINKLES: ReadonlySet<string> = new Set(['chest', 'gold', 'pickup']);
+/** Each thing picked up by the way the same day chimes a step higher up the scale than the last (#192). */
+const PICK_NOTES = ['pick0', 'pick1', 'pick2', 'pick3', 'pick4', 'pick5'] as const;
 
 export class AdventureController implements Screen {
   readonly name = 'adventure';
@@ -165,6 +167,8 @@ export class AdventureController implements Screen {
   /** Seconds since untaken treasure last twinkled, and how many times it has. */
   private sinceTwinkle = 0;
   private twinkles = 0;
+  /** How many things he has picked up by the way today, for the chime's next note. */
+  private pickedToday = 0;
   /** Seconds left of gains rising: the level-up card waits for them. */
   private celebrating = 0;
   /** Seconds into the night that falls between two days, while it does. */
@@ -390,6 +394,31 @@ export class AdventureController implements Screen {
     this.gains = [];
   }
 
+  /**
+   * Things picked up by the way (#192): each chimes a step higher than the last one today, what it
+   * gave rises off him, and a letter's words go in the journal, which lights up. If he was riding to
+   * it, or it's a letter to read, he stops where he picked it up.
+   */
+  private pickedUp(before: GameState, events: GameEvent[]) {
+    // A letter to read stops him where he found it.
+    const reading = events.some((e) => e.type === 'card');
+    for (const e of events) {
+      if (e.type !== 'picked') continue;
+      play(PICK_NOTES[Math.min(this.pickedToday, PICK_NOTES.length - 1)]);
+      this.pickedToday++;
+      if (e.id === this.visiting || reading) {
+        this.route = [];
+        this.visiting = null;
+        this.target = null;
+      }
+    }
+    if (heardOf(this.state).length > heardOf(before).length) {
+      play('page', 0, 0.3);
+      this.bookLit = BOOK_LIT;
+    }
+    this.floatGains(before, this.state);
+  }
+
   /** A coin lands in the purse on the bar: a clink, and the count goes up by its share. */
   private landGold(gold: number) {
     this.goldOwed = Math.max(0, this.goldOwed - gold);
@@ -487,6 +516,7 @@ export class AdventureController implements Screen {
         case 'day':
           this.tiredShown = false;
           this.sinceDawn = 0;
+          this.pickedToday = 0;
           // Yesterday's route still ahead: he rides on (see `ride`).
           this.dawnRide = this.route.length > 0;
           play('day');
@@ -936,8 +966,10 @@ export class AdventureController implements Screen {
       if (d < 2.5 && this.route.length > 0 && !this.dawnWaits()) {
         const step = stepAlong(this.state, this.map, this.route);
         if (step) {
+          const before = this.state;
           this.state = step.state;
           this.route = this.route.slice(1);
+          if (step.events.some((e) => e.type === 'picked')) this.pickedUp(before, step.events);
           this.handle(step.events.filter((e) => e.type !== 'moved'));
           continue;
         }

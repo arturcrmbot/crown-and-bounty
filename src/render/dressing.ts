@@ -77,8 +77,11 @@ export function dress(map: MapModel, locations: readonly Location[], scenery: Pl
   const road = far((t) => t === Terrain.Road || t === Terrain.Bridge || t === Terrain.Ford || t === Terrain.Building);
   const water = far((t) => t === Terrain.Water);
 
-  const places: Point[] = [...locations.map((l) => l.at), ...province.decor.map((d) => d.at), province.hero];
-  const nearPlace = (x: number, y: number, r: number) => places.some(([px, py]) => Math.abs(px - x) < r && Math.abs(py - y) < r * 0.8);
+  const places: Point[] = [...locations.filter((l) => l.kind !== 'pickup').map((l) => l.at), ...province.decor.map((d) => d.at), province.hero];
+  // Something small lying by the road (#192) keeps only a little room round it, so the land round it stays dressed.
+  const lying: Point[] = locations.filter((l) => l.kind === 'pickup').map((l) => l.at);
+  const nearPlace = (x: number, y: number, r: number) =>
+    places.some(([px, py]) => Math.abs(px - x) < r && Math.abs(py - y) < r * 0.8) || lying.some(([px, py]) => Math.abs(px - x) < 16 && Math.abs(py - y) < 12);
 
   // What's been put where, a cell of 16 px at a time, so dressing never piles up on itself.
   const TAKEN = 16;
@@ -145,8 +148,10 @@ export function dress(map: MapModel, locations: readonly Location[], scenery: Pl
       take(x, y, p.sprite.width);
     }
   };
+  // Small things lying by the road have no scene round them, and keep only their own spot clear.
+  for (const [x, y] of lying) take(x, y, 20);
   for (const l of locations) {
-    if (l.enemy && l.kind !== 'hideout') continue;
+    if (l.kind === 'pickup' || (l.enemy && l.kind !== 'hideout')) continue;
     scene(l.look ?? l.kind, l.at, 440);
     take(l.at[0], l.at[1], 60);
     take(l.at[0], l.at[1] - 16, 60);

@@ -128,7 +128,9 @@ describe('the minimap', () => {
     const marks = marksOf(state.locations, fog);
     expect(marks.length).toBeGreaterThan(0);
     for (const m of marks) expect(fog.isFogged(m.at[0], m.at[1] - 2), m.id).toBe(false);
-    for (const l of state.locations) if (!fog.isFogged(l.at[0], l.at[1] - 2)) expect(marks.map((m) => m.id), l.id).toContain(l.id);
+    for (const l of state.locations) if (l.kind !== 'pickup' && !fog.isFogged(l.at[0], l.at[1] - 2)) expect(marks.map((m) => m.id), l.id).toContain(l.id);
+    // The small things lying by the roads aren't places, and never marked.
+    expect(marksOf(state.locations, CLEAR).some((m) => state.locations.find((l) => l.id === m.id)?.kind === 'pickup')).toBe(false);
     expect(marks.map((m) => m.id)).not.toContain('hideout');
     // With the mist lifted: the King's castle, the villain's lair, the bands on the roads, and the treasure.
     const kinds = Object.fromEntries(marksOf(state.locations, CLEAR).map((m) => [m.id, m.kind]));

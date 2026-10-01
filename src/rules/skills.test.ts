@@ -217,7 +217,8 @@ describe('Sorcery and Mysticism', () => {
 
   it('Mysticism: mana comes back as he rides, up to what he can hold', () => {
     const mystic = skilled({ mysticism: 2 }, 'wizard');
-    const tired = { ...mystic, hero: { ...mystic.hero, mana: 0 } };
+    // Nothing lying by the way to pick up, so all the mana is what came back on the ride.
+    const tired = { ...mystic, hero: { ...mystic.hero, mana: 0 }, locations: mystic.locations.filter((l) => l.kind !== 'pickup') };
     const map = mapOf(tired);
     const village = locationById(tired, 'village');
     let s = tired;
