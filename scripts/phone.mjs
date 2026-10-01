@@ -413,7 +413,13 @@ try {
   await look('fight-card');
   const DIAG = async (tag) => console.log(`DIAG ${tag}`, JSON.stringify(await call(() => ({ screen: window.__kc.screen(), title: document.querySelector('.kc-card-wrap:not([hidden]) h3')?.textContent ?? null, buttons: [...document.querySelectorAll('.kc-card-wrap:not([hidden]) .kc-card button')].map((b) => { const r = b.getBoundingClientRect(); return `${b.textContent.slice(0, 20)}@${Math.round(r.x)},${Math.round(r.y)},${Math.round(r.width)}x${Math.round(r.height)}`; }), battle: Boolean(window.__kc.state().battle), hw: window.__kc.state().locations.find((l) => l.id === 'highwaymen')?.done, card: document.querySelector('.kc-card-wrap:not([hidden]) .kc-card')?.getAnimations().map((a) => a.playState).join(), gold: window.__kc.state().gold, at: window.__kc.state().hero.at }))));
   await DIAG('before');
+  console.log('DIAG army', JSON.stringify(await call(() => ({ army: window.__kc.state().army, ambush: window.__kc.state().ambush ?? null, over: window.__kc.state().over ?? null }))));
+  await call(() => {
+    window.__diag = [];
+    for (const t of ['touchstart', 'touchend', 'pointerdown', 'pointerup', 'click']) document.addEventListener(t, (e) => window.__diag.push(`${t}:${e.target?.tagName}.${String(e.target?.className).slice(0, 30)}:${(e.target?.textContent ?? '').slice(0, 12)}:${e.defaultPrevented}`), true);
+  });
   await press('Fight');
+  console.log('DIAG events', JSON.stringify(await call(() => window.__diag)));
   console.log('DIAG tapped', JSON.stringify(pressed.at(-1)));
   await DIAG('after');
   await wait(1500);
