@@ -56,8 +56,8 @@ describe('the court remembers', () => {
 
   it('remembers what another hero did differently, and has a plain word for one who did none of it', () => {
     const robber = memoriesOf(wonAldmoor({ dwarf: 'robbed', tower: 'banner', miller: 'loaf' }));
-    expect(robber).toEqual([expect.stringContaining('ore cart'), expect.stringContaining('old Pike\u2019s banner'), expect.stringContaining('miller\u2019s loaf')]);
-    expect(memoriesOf(wonAldmoor())).toEqual(['"You went straight at him, and no nonsense. I like that in an officer."']);
+    expect(robber).toEqual([expect.stringContaining('ore cart'), expect.stringContaining('old Pike\u2019s banner'), expect.stringContaining('the miller gave you a loaf')]);
+    expect(memoriesOf(wonAldmoor())).toEqual(['"You went straight at him without any nonsense, and I like that in an officer."']);
     // Hints the rules record for themselves are no memories.
     expect(memoriesOf(wonAldmoor({ 'hint:ride': true, 'hint:place': true }))).toHaveLength(1);
   });

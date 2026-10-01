@@ -17,7 +17,7 @@ export function titleCard(resume: GameState | null): Card {
   };
   return {
     title: '',
-    lines: ['*The King has lost five provinces, his sceptre and his goose, and he wants them all back.*'],
+    lines: ['*The King wants his provinces back, and most of all his goose.*'],
     choices: [...(onward ? [onward] : []), { label: 'New campaign', detail: resume ? 'This replaces your save once you ride out.' : 'The King is waiting.', action: { type: 'restart' } }],
   };
 }
@@ -28,7 +28,8 @@ export const kingCard = (): Card => ({
   portrait: 'king',
   lines: [
     '"Aldric! Come in, come in. The realm is in a shocking state."',
-    '"Five villains have carved up my provinces. The Sceptre of Order has been lost since my father\u2019s day. And somebody has stolen my goose."',
+    '"Five villains have carved up my provinces, and they\u2019re all digging for the treasure my father buried."',
+    '"And somebody has stolen my goose."',
     '"I need an officer who can raise an army, pay it, and point it at people. You\u2019ll do."',
   ],
   choices: [{ label: 'At your service, Majesty.', action: { type: 'close' } }],

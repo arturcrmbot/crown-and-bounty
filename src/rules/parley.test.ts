@@ -66,6 +66,6 @@ describe('Grimsby\u2019s parley has a price, and a song to learn first', () => {
   it('has the King remember a song heard and never sung, and the Baron\u2019s dig', () => {
     const won = { ...fresh('knight', { lullaby: true, dig: 'raided' }), over: 'won' as const, bounty: 'paid' as const };
     const memories = memoriesOf(apply(won, { type: 'court' })!.state);
-    expect(memories).toEqual([expect.stringContaining('He won\u2019t find it there'), expect.stringContaining('He\u2019d cry for a week')]);
+    expect(memories).toEqual([expect.stringContaining('He was never going to find it there'), expect.stringContaining('he\u2019ll cry for a week')]);
   });
 });
