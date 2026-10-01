@@ -169,6 +169,11 @@ const EVERYDAY = {
     tone(ctx, dest, t, 2637, 0.07, 0.25, 'triangle');
     tone(ctx, dest, t + 0.01, 3520, 0.05, 0.1);
   }, 2),
+  // Good luck shining on a stack (#190): a bright run up the chord of E, with a shimmer over it, as the rainbow comes down.
+  luck: effect('firm', (ctx, dest, t) => {
+    [1319, 1661, 1976, 2637, 3322].forEach((f, i) => tone(ctx, dest, t + i * 0.045, f, 0.45 - i * 0.04, 0.22, 'triangle'));
+    burst(ctx, dest, t + 0.05, 0.4, 'highpass', 6500, 0.08, 1.2);
+  }, 1.2),
   bolt: effect('firm', (ctx, dest, t) => {
     burst(ctx, dest, t, 0.35, 'highpass', 1800, 0.8, 0.5);
     tone(ctx, dest, t, 880, 0.3, 0.25, 'sawtooth', 0.25);

@@ -12,6 +12,7 @@ import { TIP } from './speech';
 import { BAR, MAP_VIEW, paintBarBackground, paintFrame, SCREEN, type Rect } from './frame';
 import { bayer, fbm, hash, noise, shade } from './noise';
 import { FRAME, rolled } from './juice';
+import { rotateAbout } from './rotate';
 import { drawPops, type Pop } from './pops';
 import { ground, piece } from './mapArt';
 import type { PieceName } from './mapPieces';
@@ -109,7 +110,17 @@ export const LOG_BOTTOM = LOG_TOP + 18;
  * the blow went, for the chips it flings; dust's `size` is how wide it spreads along the ground. An
  * arrow's `arc` is how high it flies. A burst that runs by itself goes `rate` of its life a second.
  */
-export type Shot = { from: [number, number]; to: [number, number]; t: number; kind: 'arrow' | 'quarrel' | 'hex' | 'magic' | 'gather' | 'bolt' | 'fire' | 'sparkle' | 'spark' | 'blood' | 'poof' | 'dust'; color?: number; size?: number; heading?: number; arc?: number; rate?: number };
+export type Shot = {
+  from: [number, number];
+  to: [number, number];
+  t: number;
+  kind: 'arrow' | 'quarrel' | 'hex' | 'magic' | 'gather' | 'bolt' | 'fire' | 'sparkle' | 'spark' | 'blood' | 'poof' | 'dust' | 'rainbow' | 'ring' | 'cloud' | 'motes';
+  color?: number;
+  size?: number;
+  heading?: number;
+  arc?: number;
+  rate?: number;
+};
 /** How much of a fireball's flight is the fall from the sky; it bursts after that. */
 export const FIRE_FALL = 0.35;
 
@@ -155,6 +166,14 @@ export type BattleView = {
   fallen: Map<number, 1 | -1>;
   /** Leaders lifted off the ground (a hop for joy) or sunk into it (they sag), in pixels, as a stack falls (#190). */
   lifts: Map<number, number>;
+  /** A stack drawn just in front of another while a blow lands on it (#190): the one it's in front of, so a rider never hides his target. */
+  front: Map<number, number>;
+  /**
+   * The standards at the end (#190): the King's star flapping `fast` at a victory, or dipped
+   * `dip` degrees in a defeat, and the enemy's tipped over `fall` degrees. `dusk` darkens the
+   * field a shade (0 to 1) as a defeat sinks in.
+   */
+  ending: { fast: boolean; dip: number; fall: number; dusk: number };
   /** Stacks the rules have on the field that haven't got there yet: a summoned stack, till it marches in. */
   hidden: Set<number>;
   /** What a stack looks like while a change plays out (newts, or null for itself), instead of what its statuses say. */
@@ -489,12 +508,14 @@ export class BattleScreen {
       const { sprite, x, y } = corpseSprite(f.troop, f.side === 'player' ? 'blue' : 'red', view.fallen.get(f.id) ?? (f.side === 'player' ? 1 : -1));
       blit(screen, sprite, Math.round(cx + x), Math.round(cy + 12 + y), MAP_VIEW);
     }
-    const flap = Math.floor(view.time * 5) % 8;
+    const { ending } = view;
+    const flap = Math.floor(view.time * (ending.fast ? 12 : 5)) % 8;
     const star = this.ours[flap];
-    blit(screen, star, MAP_VIEW.x + 18, Y0 + 100 - star.height, MAP_VIEW);
+    this.flag(star, MAP_VIEW.x + 18, Y0 + 100 - star.height, 7, -ending.dip);
     if (this.standard) {
       const flag = this.standard[flap];
-      blit(screen, flag, MAP_VIEW.x + MAP_VIEW.width - flag.width - 18, Y0 + 100 - flag.height, MAP_VIEW);
+      // It falls in towards the field, so it stays in sight.
+      this.flag(flag, MAP_VIEW.x + MAP_VIEW.width - flag.width - 18, Y0 + 100 - flag.height, flag.width - 7, ending.fall);
     }
 
     const shown = b.fighters.filter((f) => (f.count > 0 || view.dying.has(f.id)) && !view.hidden.has(f.id));
@@ -507,7 +528,13 @@ export class BattleScreen {
       const [px, py] = spotOf(b, f);
       this.ring(Math.round(px), Math.round(py + 12), f.side === 'player');
     }
-    shown.sort((x, y) => place(x)[1] - place(y)[1]);
+    // Each in front of what stands behind it; a stack taking a blow just in front of whoever strikes it (#190).
+    const depth = (f: Fighter) => {
+      const by = view.front.get(f.id);
+      const attacker = by === undefined ? null : shown.find((o) => o.id === by);
+      return attacker ? Math.max(place(f)[1], place(attacker)[1]) + 0.5 : place(f)[1];
+    };
+    shown.sort((x, y) => depth(x) - depth(y));
     for (const f of shown) {
       const [px, py] = place(f);
       const [ox, oy] = view.offsets.get(f.id) ?? [0, 0];
@@ -556,6 +583,12 @@ export class BattleScreen {
     for (const s of view.shots) this.shot(s);
     this.pops(b, view);
     for (const t of view.floaters) this.words(t.text, Math.round(t.x), Math.round(t.y - t.age * FLOAT_RISE), t.color, (FLOAT_LIFE - t.age) / FLOAT_FADE);
+    // A defeat sinks in: the field darkens a shade (#190).
+    if (ending.dusk > 0) {
+      for (let y = MAP_VIEW.y; y < MAP_VIEW.y + MAP_VIEW.height; y++) {
+        for (let x = MAP_VIEW.x; x < MAP_VIEW.x + MAP_VIEW.width; x++) if (bayer(x, y) < ending.dusk * 0.3) screen.set(x, y, SHADOW_LUT[screen.get(x, y)]);
+      }
+    }
     if (view.speech) this.speech(b, view.speech);
     if (view.banner) drawBanner(screen, view.banner.sprite, MAP_VIEW.x + MAP_VIEW.width / 2, MAP_VIEW.y + 150, view.banner.age, view.banner.life);
     // The field jolts: kicked the way the last blow went, and shaken every way for the biggest moments.
@@ -620,6 +653,14 @@ export class BattleScreen {
         screen.data[y * SCREEN.width + x] = copy[sy * SCREEN.width + sx];
       }
     }
+  }
+
+  /** A standard at (x, y), turned `degrees` about the foot of its pole, `pole` pixels in from its left edge (#190). */
+  private flag(sprite: Bitmap, x: number, y: number, pole: number, degrees: number) {
+    if (!degrees) return blit(this.screen, sprite, x, y, MAP_VIEW);
+    const foot: [number, number] = [pole, sprite.height - 4];
+    const turned = rotateAbout(sprite, degrees, foot);
+    blit(this.screen, turned.sprite, x + foot[0] + turned.x, y + foot[1] + turned.y, MAP_VIEW);
   }
 
   /** The kills and wounds popping out of each stack's badge (#190), over the stack's own hex wherever it fell. */
@@ -914,6 +955,73 @@ export class BattleScreen {
       if (s.t > 0.6) {
         const flare = (s.t - 0.6) / 0.4;
         for (let j = -7; j <= 7; j++) for (let i = -7; i <= 7; i++) if (Math.abs(i) + Math.abs(j) <= 2 + flare * 5) this.screen.set(Math.round(bx + i), Math.round(by + j), Math.abs(i) + Math.abs(j) <= 1 + flare * 2 ? NEUTRAL[7] : colour);
+      }
+    } else if (s.kind === 'rainbow') {
+      // Good luck, as HoMM2 shows it: a rainbow arcs down out of the sky onto the lucky stack (#190),
+      // drawn from the sky end as it comes, then thinning away.
+      const [sx, sy] = s.from;
+      const [ex, ey] = s.to;
+      const [cx, cy] = [(sx * 0.35 + ex * 0.65), Math.min(sy, ey) - 50];
+      const grow = Math.min(1, s.t / 0.45);
+      const shown = s.t < 0.7 ? 1 : (1 - s.t) / 0.3;
+      const bands = [RED[5], GOLD[6], LEAF[6], BLUE[5], PLUM[4]];
+      const steps = Math.ceil(Math.hypot(ex - sx, ey - sy) * 1.4);
+      for (let i = 0; i <= steps * grow; i++) {
+        const u = i / steps;
+        const x = (1 - u) ** 2 * sx + 2 * (1 - u) * u * cx + u * u * ex;
+        const y = (1 - u) ** 2 * sy + 2 * (1 - u) * u * cy + u * u * ey;
+        const [tx, ty] = [2 * (1 - u) * (cx - sx) + 2 * u * (ex - cx), 2 * (1 - u) * (cy - sy) + 2 * u * (ey - cy)];
+        const n = Math.hypot(tx, ty) || 1;
+        const [nx, ny] = [-ty / n, tx / n];
+        for (let b = 0; b < 10; b++) {
+          const [px, py] = [Math.round(x + nx * (b - 5)), Math.round(y + ny * (b - 5))];
+          if (shown < 1 && bayer(px, py) >= shown) continue;
+          if (py >= MAP_VIEW.y && py < MAP_VIEW.y + MAP_VIEW.height) this.screen.set(px, py, bands[b >> 1]);
+        }
+      }
+    } else if (s.kind === 'ring') {
+      // Good spirits: a gold ring swelling out from the stack's feet, and rays going up, as a level-up glows on the map (#190).
+      const t = s.t;
+      const r = 6 + t * 40;
+      for (let a = 0; a < Math.PI * 2; a += 0.015) {
+        for (const grow of [0, 1]) {
+          const x = Math.round(bx + Math.cos(a) * (r + grow));
+          const y = Math.round(by + Math.sin(a) * (r + grow) * 0.4);
+          if (bayer(x, y) >= t) this.screen.set(x, y, grow ? GOLD[4] : t < 0.5 ? GOLD[6] : GOLD[5]);
+        }
+      }
+      for (let k = 0; k < 8; k++) {
+        const x = Math.round(bx + (k - 3.5) * 7);
+        const top = by - 18 - t * 56 - (k % 3) * 7;
+        for (let y = Math.floor(top); y < top + 9 * (1 - t); y++) if (bayer(x, y) >= t * 0.8) this.screen.set(x, y, k % 2 ? GOLD[6] : NEUTRAL[7]);
+      }
+    } else if (s.kind === 'cloud') {
+      // Low spirits: a little grey cloud over the stack, drizzling on it (#190).
+      const shown = Math.min(1, s.t / 0.15, (1 - s.t) / 0.3);
+      const cx = bx + Math.sin(s.t * 3) * 3;
+      for (const [dx, dy, r] of [[-12, 2, 8], [0, -3, 10], [12, 1, 8], [5, 5, 8], [-5, 5, 8]] as const) {
+        for (let y = Math.floor(by + dy - r); y <= by + dy + r; y++) {
+          for (let x = Math.floor(cx + dx - r); x <= cx + dx + r; x++) {
+            const d = Math.hypot(x - cx - dx, (y - by - dy) * 1.3) / r;
+            if (d > 1 || bayer(x, y) >= shown) continue;
+            this.screen.set(x, y, d > 0.8 ? STONE[2] : y < by + dy - r * 0.3 ? STONE[5] : STONE[4]);
+          }
+        }
+      }
+      for (let k = 0; k < 9; k++) {
+        const x = Math.round(cx - 14 + k * 3.5);
+        const y = Math.round(by + 11 + ((s.t * 60 + k * 5) % 16));
+        if (bayer(x, y) < shown) for (const dy of [0, 1]) this.screen.set(x, y + dy, BLUE[4]);
+      }
+    } else if (s.kind === 'motes') {
+      // A victory: gold motes drifting up over the whole field (#190).
+      const shown = Math.min(1, s.t / 0.15, (1 - s.t) / 0.3);
+      for (let k = 0; k < 56; k++) {
+        const x = Math.round(MAP_VIEW.x + 20 + hash(k, 1, 51) * (MAP_VIEW.width - 40) + Math.sin(s.t * 5 + k) * 4);
+        const y = Math.round(MAP_VIEW.y + 40 + ((hash(k, 2, 51) + 1 - s.t * (0.3 + hash(k, 3, 51) * 0.3)) % 1) * (MAP_VIEW.height - 60));
+        if ((k + Math.floor(s.t * 24)) % 4 === 0 || bayer(x, y) >= shown) continue;
+        this.screen.set(x, y, NEUTRAL[7]);
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) this.screen.set(x + dx, y + dy, k % 2 ? GOLD[6] : GOLD[5]);
       }
     } else if (s.kind === 'dust') {
       // Dust thrown up along the ground where something lands (#190): low puffs spread `size` wide,

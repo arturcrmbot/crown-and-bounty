@@ -91,3 +91,10 @@ export function volleyOf(count: number, leader = false): number {
   if (leader || count <= 5) return 1;
   return count <= 15 ? 2 : count <= 40 ? 3 : count <= 100 ? 4 : 5;
 }
+
+/** How high the winners' stack number `i` hops `t` seconds into a victory (#190): two hops each, one stack after another. */
+export function victoryHop(t: number, i: number): number {
+  const k = (t - i * 0.12) / 0.5;
+  if (k <= 0 || k >= 1) return 0;
+  return Math.round(Math.abs(Math.sin(k * Math.PI * 2)) * 7);
+}

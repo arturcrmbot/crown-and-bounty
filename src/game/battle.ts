@@ -9,7 +9,7 @@ import { activeFighter, bardOf, battleAct, battleEnd, bribeOffer, canCast, canJo
 import { aimTag, bardTag, forecastOf, type AimTag } from '../rules/battle/forecast';
 import { paintBanner } from '../render/banner';
 import { BattleScreen, BUTTONS, FIRE_FALL, FLOAT_LIFE, FLOAT_RISE, hexAt, hexCentre, leaderAt, LOG_BOTTOM, spotOf, type BattleView, type Shot } from '../render/battleScreen';
-import { FRAME, holdFrames, kickLeft, kickOf, POP_LIFE, ROLL, TOPPLE_TIME, toppleAngle, volleyOf, type Blow } from '../render/juice';
+import { FRAME, holdFrames, kickLeft, kickOf, POP_LIFE, ROLL, TOPPLE_TIME, toppleAngle, victoryHop, volleyOf, type Blow } from '../render/juice';
 import { hash } from '../render/noise';
 import { animLength, bodyHeight, hitTime, STAND, type AnimName } from '../render/battleSprites';
 import { cursorIcon, type CursorKind, type Heading } from '../render/cursors';
@@ -147,6 +147,8 @@ export class BattleController implements Screen {
       topple: new Map(),
       fallen: new Map(),
       lifts: new Map(),
+      front: new Map(),
+      ending: { fast: false, dip: 0, fall: 0, dusk: 0 },
       hidden: new Set(),
       looks: new Map(),
       reach: new Set(),
@@ -486,6 +488,13 @@ export class BattleController implements Screen {
     if (!isGentle()) this.view.kick = [this.view.kick[0], this.view.kick[1] + 2];
   }
 
+  /** A burst that plays out by itself over `seconds`, at the battle's pace, without holding up the queue. */
+  private burst(kind: Shot['kind'], at: [number, number], seconds: number, extra: Partial<Shot> = {}) {
+    const shot: Shot = { from: at, to: at, t: 0, kind, rate: 1 / seconds, ...extra };
+    this.view.shots.push(shot);
+    this.sparks.push(shot);
+  }
+
   /** The leaders behind each line react as a stack is wiped out, as HoMM2's heroes do: the other side's hop for joy, and its own sag. */
   private react(lost: string) {
     for (const f of this.battle.fighters) if (isLeader(f) && f.count > 0) this.reactions.set(f.id, { joy: f.side !== lost, age: 0 });
@@ -662,10 +671,28 @@ export class BattleController implements Screen {
     const release = missile ? Math.max(0, hit - 150) : hit;
     // The ribbon names the blow as it starts, and says what it did when it lands.
     const blow = `${this.fighterName(e.attacker)} ${this.verb(e.attacker, e.ranged ? 'shoot' : e.retaliation ? 'strike back at' : e.charge ? 'charge' : 'hit')} ${this.objectName(e.target)}`;
+    if (e.lucky) {
+      // Good luck shines on it, as in HoMM2 (#190): a rainbow comes down onto the stack with a chime before its blow.
+      this.step(0.35, {
+        start: () => {
+          turn();
+          const head: [number, number] = [ax, ay + 12 - bodyHeight(attacker.troop, 'battle') - 2];
+          const side = attacker.side === 'player' ? -1 : 1;
+          const sky: [number, number] = [Math.max(MAP_VIEW.x + 20, Math.min(MAP_VIEW.x + MAP_VIEW.width - 20, head[0] + side * 170)), MAP_VIEW.y + 40];
+          const rainbow: Shot = { from: sky, to: head, t: 0, kind: 'rainbow', rate: 1 / 0.9 };
+          v.shots.push(rainbow);
+          this.sparks.push(rainbow);
+          play('luck', this.panAt(ax));
+          v.log = `Good luck shines on ${this.objectName(e.attacker)}!`;
+        },
+      });
+    }
     this.step(release * MS, {
       start: () => {
         turn();
         v.log = `${blow}...`;
+        // Struck at close quarters, the target stands in front of whoever strikes it, so its flash shows (#190).
+        if (!e.ranged) v.front.set(e.target, e.attacker);
       },
       tick: (t) => {
         swing(t * release);
@@ -690,7 +717,7 @@ export class BattleController implements Screen {
         end: () => v.shots.splice(v.shots.indexOf(shot), 1),
       });
     }
-    const reel = (e.ranged ? 4 : 8) * (e.charge ? 1.6 : 1);
+    const reel = (e.ranged ? 4 : 8) * (e.charge ? 2.2 : 1);
     // The blow lands, and the field holds still on it for a moment (#190): the target a white shape
     // for a frame, then red, the field kicked the way the blow went, and the kill popping out of the badge.
     const landed: Blow = { killed: e.killed, charge: e.charge, lucky: e.lucky, wiped: dies };
@@ -745,6 +772,7 @@ export class BattleController implements Screen {
         for (const map of [v.poses, v.offsets, v.facings]) map.delete(e.attacker);
         v.flashing.delete(e.target);
         v.offsets.delete(e.target);
+        v.front.delete(e.target);
         if (falls) return falls.end();
         v.poses.delete(e.target);
         v.facings.delete(e.target);
@@ -801,6 +829,8 @@ export class BattleController implements Screen {
           // Riders gallop and beasts lope, in their own frames; folk on foot hop from hex to hex.
           const frames = !!ART[f.troop].move;
           const feet = `feet:${TROOP_SOUNDS[f.troop].feet}` as const;
+          // A charge's run-up (#190): dust flies from the hooves on every hex of it.
+          const charging = !back && events.some((n) => n.type === 'hit' && n.charge && n.attacker === e.fighter);
           for (const [n, to] of path.entries()) {
             const a = n === 0 ? start : path[n - 1];
             // A hex a step for a stack; a leader gallops, however far his first and last stretches are.
@@ -810,6 +840,7 @@ export class BattleController implements Screen {
                 if (n === 0 && !back) v.log = `${this.fighterName(e.fighter)} ${this.verb(e.fighter, leader ? 'ride out' : 'advance')}...`;
                 if (to[0] !== a[0]) v.facings.set(e.fighter, to[0] > a[0] ? 1 : -1);
                 play(feet, this.panAt(to[0]));
+                if (charging) this.burst('dust', [Math.round(a[0]), Math.round(a[1]) + 12], 0.45, { size: 30 });
               },
               tick: (t) => {
                 const hop = frames ? 0 : Math.sin(t * Math.PI) * 4;
@@ -853,6 +884,8 @@ export class BattleController implements Screen {
           this.step(0.35, {
             start: () => {
               play('cheer');
+              const [x, y] = this.spot(e.fighter);
+              this.burst('ring', [x, y + 12], 0.9);
               this.float(e.fighter, 'Morale!', GOLD[6]);
               v.log = `${this.fighterName(e.fighter)} ${this.verb(e.fighter, 'cheer')}, and ${this.named(e.fighter) ? 'goes' : 'go'} again before the round moves on.`;
             },
@@ -998,11 +1031,18 @@ export class BattleController implements Screen {
           this.step(0.6, {
             start: () => {
               play('falter');
-              this.float(e.fighter, 'Falters', RED[6]);
+              const f = fighterById(this.battle, e.fighter);
+              const [x, y] = this.spot(e.fighter);
+              // A little grey cloud sits over it and drizzles (#190): the ribbon says why.
+              this.burst('cloud', [x, y + 12 - bodyHeight(f.troop, 'battle') - 6], 1.2);
+              if (!isLeader(f)) v.offsets.set(e.fighter, [0, 2]);
               v.log = `${this.fighterName(e.fighter)} ${this.verb(e.fighter, 'lose')} heart${why ? `, ${why},` : ''} and ${this.named(e.fighter) ? 'his' : 'their'} turn.`;
               v.poses.set(e.fighter, { anim: 'defend', ms: 0 });
             },
-            end: () => v.poses.delete(e.fighter),
+            end: () => {
+              v.poses.delete(e.fighter);
+              v.offsets.delete(e.fighter);
+            },
           });
           break;
         }
@@ -1143,6 +1183,11 @@ export class BattleController implements Screen {
           const end = battleEnd(this.battle);
           const beaten = e.result === 'won' ? 'enemy' : e.result === 'lost' ? 'player' : null;
           const leaders = end ? this.battle.fighters.filter((f) => f.side === beaten && isLeader(f) && f.count > 0) : [];
+          // Your stacks still standing, who cheer at a victory, one after another from the top of the field.
+          const cheering = this.battle.fighters
+            .filter((f) => f.side === 'player' && f.count > 0 && !isLeader(f))
+            .sort((x, y) => hexCentre(x.at)[1] - hexCentre(y.at)[1])
+            .map((f) => f.id);
           // A villain taken has the last word, in his own voice, and the fight stops on it; one with his
           // walls to run to has a parting shot before he goes.
           const words = e.result === 'won' && leaders.length ? this.battle.lastWords : undefined;
@@ -1165,8 +1210,28 @@ export class BattleController implements Screen {
                       : 'You sound the retreat.';
               for (const f of leaders) this.float(f.id, e.result === 'won' ? (this.battle.flees ? 'Flees!' : 'Taken!') : 'Retreats!', e.result === 'won' ? GOLD[6] : RED[5]);
               if (e.result !== 'fled') play(e.result === 'won' ? 'victory' : 'defeat');
+              // A victory you can feel (#190): your stacks cheer, the King's star flaps hard, theirs falls, and gold drifts up over the field.
+              if (e.result === 'won') {
+                v.ending.fast = true;
+                this.burst('motes', [0, 0], 2.2);
+                this.react('enemy');
+              }
             },
             tick: (t) => {
+              const seconds = t * 2.2;
+              if (e.result === 'won') {
+                // Theirs tips over and comes to rest leaning on the trees, not flat across the field.
+                v.ending.fall = toppleAngle(Math.max(0, seconds - 0.3)) * 0.8;
+                cheering.forEach((id, i) => {
+                  const hop = victoryHop(seconds, i);
+                  if (hop) v.offsets.set(id, [0, -hop]);
+                  else v.offsets.delete(id);
+                });
+              } else if (e.result === 'lost') {
+                // A defeat: your standard dips, and the field darkens a shade.
+                v.ending.dip = Math.min(1, seconds / 0.6) * 35;
+                v.ending.dusk = Math.min(1, seconds / 1.2);
+              }
               for (const f of leaders) {
                 // The villain throws up his hands, or, with his walls to run to, turns and flees; Aldric turns and rides off the field.
                 if (e.result === 'won' && !this.battle.flees) {

@@ -66,3 +66,19 @@ describe('the fallen and the arrows', () => {
     expect(volleyOf(300, true)).toBe(1);
   });
 });
+
+describe('a victory', () => {
+  it('makes each winning stack hop twice, one after another, and stand still after', async () => {
+    const { victoryHop } = await import('./juice');
+    expect(victoryHop(0, 0)).toBe(0);
+    expect(victoryHop(0.125, 0)).toBe(7);
+    expect(victoryHop(0.125, 1)).toBe(0);
+    expect(victoryHop(0.245, 1)).toBe(7);
+    // Two hops: down to the ground half way through.
+    expect(victoryHop(0.25, 0)).toBe(0);
+    expect(victoryHop(0.375, 0)).toBe(7);
+    // Even the tenth stack is done well inside the banner's two seconds.
+    expect(victoryHop(9 * 0.12 + 0.5, 9)).toBe(0);
+    expect(9 * 0.12 + 0.5).toBeLessThan(2.2);
+  });
+});
