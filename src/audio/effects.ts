@@ -155,6 +155,20 @@ const EVERYDAY = {
   // A short call rising on the brass: good spirits, and a stack goes again.
   cheer: effect('firm', (ctx, dest, t) => brass(ctx, dest, t, [[62, 0, 0.09], [67, 0.1, 0.3]], 0.28), 1.1),
   spell: effect('firm', (ctx, dest, t) => [660, 880, 1100, 1320].forEach((f, i) => tone(ctx, dest, t + i * 0.06, f, 0.25, 0.3)), 1.2),
+  // Gear found: the harp runs up the chord of C, and a bell rings over it.
+  find: effect('firm', (ctx, dest, t) => {
+    [60, 64, 67, 72].forEach((midi, i) => playNote(ctx, dest, 'harp', t + i * 0.06, midi, 0.6, 0.4));
+    playNote(ctx, dest, 'bell', t + 0.26, 84, 0.9, 0.18);
+  }, 0.2),
+  // Mana: a glassy run up high, quick as a sparkle.
+  shimmer: effect('firm', (ctx, dest, t) => [1568, 1976, 2349, 2794, 3136].forEach((f, i) => tone(ctx, dest, t + i * 0.035, f, 0.22, 0.16)), 1.5),
+  // Movement: a few quick hoofbeats, picking up speed.
+  gallop: effect('soft', (ctx, dest, t) => [0, 0.08, 0.15, 0.21, 0.26, 0.3].forEach((d, i) => burst(ctx, dest, t + d, 0.05, 'lowpass', 650 + i * 40, 0.6)), 2.8),
+  // A coin dropping into the purse on the bar.
+  clink: effect('soft', (ctx, dest, t) => {
+    tone(ctx, dest, t, 2637, 0.07, 0.25, 'triangle');
+    tone(ctx, dest, t + 0.01, 3520, 0.05, 0.1);
+  }, 2),
   bolt: effect('firm', (ctx, dest, t) => {
     burst(ctx, dest, t, 0.35, 'highpass', 1800, 0.8, 0.5);
     tone(ctx, dest, t, 880, 0.3, 0.25, 'sawtooth', 0.25);

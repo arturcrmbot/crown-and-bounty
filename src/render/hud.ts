@@ -11,7 +11,7 @@ function icon(rows: string[], colours: Record<string, number>): Bitmap {
   return sprite;
 }
 
-const COIN = icon(
+export const COIN = icon(
   ['..oooo..', '.oyyYYo.', 'oyyyyYYo', 'oyddyyYo', 'oydyyyyo', 'oyyyyydo', '.oyyddo.', '..oooo..'],
   { o: INK, y: GOLD[4], Y: GOLD[6], d: GOLD[2] },
 );
@@ -105,7 +105,16 @@ const button = (item: BarItem) => item.kind === 'hourglass' || item.kind === 'jo
  * change. What a click would work (`hover`) is underlined in gold, or lit. Returns where each thing
  * sits, for hover labels and clicks.
  */
-export function paintHud(frame: Bitmap, state: GameState, hover: BarItem | null = null): HudHit[] {
+/**
+ * What the bar shows that isn't yet the state's: the gold still flying to it (the count rolls up as
+ * the coins land, lit while it does), and the journal lit when something new has gone into it.
+ */
+export type HudShown = { gold?: number; rolling?: boolean; book?: boolean };
+
+/** Where the coin on the bar is, for gold flying to it. */
+export const GOLD_AT = { x: BAR.x + 14 + COIN.width / 2, y: BAR.y + BAR.height / 2 };
+
+export function paintHud(frame: Bitmap, state: GameState, hover: BarItem | null = null, shown: HudShown = {}): HudHit[] {
   paintBarBackground(frame, HUD_DIVIDERS);
   const hits: HudHit[] = [];
   const size = lettered(13);
@@ -122,7 +131,7 @@ export function paintHud(frame: Bitmap, state: GameState, hover: BarItem | null 
     hits.push({ item: what, x0: x - 5, x1: Math.max(at, x + width - 12) + 5 });
   };
   const left = BAR.x + 14;
-  item({ kind: 'gold' }, left, 76, COIN, state.gold.toLocaleString('en-GB'), GOLD[6]);
+  item({ kind: 'gold' }, left, 76, COIN, (shown.gold ?? state.gold).toLocaleString('en-GB'), shown.rolling ? NEUTRAL[7] : GOLD[6]);
   state.army.forEach((stack, index) => item({ kind: 'stack', index }, left + 76 + index * STACK_STEP, STACK_STEP, TROOP_ICONS[stack.troop], String(stack.count)));
   // The villain's name, without "Bounty:" when a long one needs the room.
   const villain = commissionOf(state).villain.toUpperCase();
@@ -134,7 +143,7 @@ export function paintHud(frame: Bitmap, state: GameState, hover: BarItem | null 
   item({ kind: 'mana' }, right + 50, 62, CRYSTAL, `${state.hero.mana}/${heroStats(state).maxMana}`, state.hero.mana > 0 ? BLUE[6] : STONE[5]);
   item({ kind: 'day' }, right + 112, 0, null, `DAY  ${roman(state.day)}`);
   const lit = (kind: BarItem['kind']) => hover?.kind === kind;
-  blit(frame, lit('journal') ? JOURNAL_LIT : JOURNAL, JOURNAL_AT.x, JOURNAL_AT.y);
+  blit(frame, lit('journal') || shown.book ? JOURNAL_LIT : JOURNAL, JOURNAL_AT.x, JOURNAL_AT.y);
   hits.push({ item: { kind: 'journal' }, x0: JOURNAL_AT.x - 6, x1: JOURNAL_AT.x + JOURNAL.width + 4 });
   blit(frame, lit('hourglass') ? HOURGLASS_LIT : HOURGLASS, HOURGLASS_AT.x, HOURGLASS_AT.y);
   hits.push({ item: { kind: 'hourglass' }, x0: HOURGLASS_AT.x - 5, x1: HOURGLASS_AT.x + HOURGLASS.width + 6 });
