@@ -70,20 +70,27 @@ The music is yubatake's: tunes from the
 | --- | --- | --- | --- | --- |
 | `JRPG_mainTheme.mid` | Main Theme | JRPG Collection | CC BY 4.0 | the title |
 | `JRPG_fields.mid` | Fields | JRPG Collection | CC BY 4.0 | Aldmoor, and two later lands |
-| `JRPG_shop.mid` | Shop | JRPG Collection 2 | CC BY 4.0 | Aldmoor, and two later lands |
-| `JRPG_inn.mid` | Inn | JRPG Collection 2 | CC BY 4.0 | Aldmoor, and two later lands |
-| `JRPG_town.mid` | Town | JRPG Collection | CC BY 4.0 | Aldmoor, and a later land |
-| `JRPG_tavern.mid` | Tavern | JRPG Collection 2 | CC BY 4.0 | Aldmoor, and two later lands |
+| `JRPG_town.mid` | Town | JRPG Collection | CC BY 4.0 | Aldmoor, and two later lands |
 | `JRPG_mysticIsle.mid` | Mystic Isle | JRPG Collection 2 | CC BY 4.0 | the Fenmarch, and a later land |
-| `NorthernIsles.mid` | Northern Isles | Northern Isles | CC BY 4.0 | the Fenmarch, and two later lands |
-| `JRPG_docks.mid` | Docks | JRPG Collection 2 | CC BY 4.0 | the Fenmarch, and a later land |
-| `JRPG_temple.mid` | Temple | JRPG Collection | CC BY 4.0 | the Fenmarch, and a later land |
-| `JRPG_princess.mid` | Princess | JRPG Collection | CC BY 4.0 | the court, and a later land |
-| `JRPG_royalCourt.mid` | Royal Court | JRPG Collection | CC BY 4.0 | the court |
+| `NorthernIsles.mid` | Northern Isles | Northern Isles | CC BY 4.0 | Aldmoor, the Fenmarch, and three later lands |
+| `JRPG_docks.mid` | Docks | JRPG Collection 2 | CC BY 4.0 | Aldmoor, the Fenmarch, and two later lands |
+| `JRPG_temple.mid` | Temple | JRPG Collection | CC BY 4.0 | Aldmoor, the Fenmarch, and two later lands |
 | `JRPG_battle.mid` | Battle | JRPG Collection | CC BY 4.0 | battles |
 | `JRPG_battleBoss.mid` | Boss Battle | JRPG Collection 2 | CC BY 4.0 | Baron Grimsby, by his lair and in his battle |
-| `JRPG_labyrinth.mid` | Labyrinth | JRPG Collection | CC BY 4.0 | Mother Mirrow, by her lair and in her battle |
+| `JRPG_labyrinth.mid` | Labyrinth | JRPG Collection | CC BY 4.0 | Aldmoor, and Mother Mirrow, by her lair and in her battle |
 | `JRPG_dungeon.mid` | Dungeon | JRPG Collection | CC BY 4.0 | Aunt Bramble, by her lair and in her battle |
+
+## The court's music: the Mutopia Project
+
+Two Renaissance pieces play at the King's court, from the [Mutopia Project](https://www.mutopiaproject.org/)'s
+free editions. The MIDI files are kept as Mutopia publishes them, in `public/assets/music/`, and are
+played by the same band and arrangement rules as the rest (`src/audio/score.ts`): a small consort of
+recorder, shawm, lute and viol.
+
+| File | Piece | Edition | Licence | Plays |
+| --- | --- | --- | --- | --- |
+| `Arbeau_BelleQui.mid` | Belle qui tiens ma vie, Thoinot Arbeau (1589) | [Mutopia](https://www.mutopiaproject.org/cgibin/make-table.cgi?searchingfor=Belle+qui) | Public domain | the court |
+| `Dowland_UnquietThoughts.mid` | Unquiet Thoughts, John Dowland (1597) | [Mutopia](https://www.mutopiaproject.org/cgibin/make-table.cgi?searchingfor=Unquiet+Thoughts) | Public domain | the court |
 
 ## The instruments: GeneralUser GS
 
