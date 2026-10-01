@@ -181,6 +181,23 @@ def cut(sheet, box, width, name='', height=None):
     return out
 
 
+def clumps(rgb, shades):
+    """Pixel noise into drawn tufts, as HoMM2's ground is: a median over 3 pixels (wrapping, so it still
+    tiles) turns static into little clumps, the contrast goes up so they read, and it's cut to a few
+    flat shades of its own colours. No blur: every pixel stays sharp."""
+    med = nd.median_filter(rgb, size=(3, 3, 1), mode='wrap')
+    mean = med.reshape(-1, 3).mean(0)
+    med = np.clip(mean + (med - mean) * 1.8, 0, 255)
+    flat = med.reshape(-1, 3)
+    lum = flat @ [0.3, 0.59, 0.11]
+    edges = np.quantile(lum, np.linspace(0, 1, shades + 1)[1:-1])
+    band = np.searchsorted(edges, lum)
+    out = np.zeros_like(flat)
+    for k in range(shades):
+        out[band == k] = np.median(flat[band == k], 0)
+    return out.reshape(rgb.shape)
+
+
 def foot(px):
     """How far below the top the piece stands: the bottom of its painted part, a little up."""
     rows = np.nonzero((px[..., 3] == 255).any(1))[0]
@@ -265,14 +282,13 @@ def main():
     for name, (x0, y0, x1, y1) in GROUND.items():
         rgb = np.asarray(Image.open(os.path.join(SHEETS, name + '.png')).convert('RGB')).astype(float)[y0:y1, x0:x1]
         # HoMM2's ground is bright and clean: lift the grass and the rest out of the murk the sheets came in.
-        lift = {'grass': (1.45, 1.35), 'water': (1.25, 1.2), 'heath': (1.15, 1.1), 'dirt': (1.2, 1.15)}.get(name, (1.1, 1.05))
+        lift = {'grass': (1.3, 1.25), 'water': (1.25, 1.2), 'heath': (1.15, 1.1), 'dirt': (1.2, 1.15)}.get(name, (1.1, 1.05))
         hsv = np.asarray(Image.fromarray(rgb.astype('uint8')).convert('HSV')).astype(float)
         hsv[..., 2] = np.minimum(255, hsv[..., 2] * lift[0])
         hsv[..., 1] = np.minimum(255, hsv[..., 1] * lift[1])
-        if name == 'grass':
-            # Calm the speckle: pull each pixel halfway to its neighbourhood, so it reads as lawn, not noise.
-            v = hsv[..., 2]; hsv[..., 2] = v * 0.55 + nd.uniform_filter(v, 3, mode='wrap') * 0.45
         rgb = np.asarray(Image.fromarray(hsv.astype('uint8'), 'HSV').convert('RGB')).astype(float)
+        if name in ('grass', 'dirt', 'water'):
+            rgb = clumps(rgb, 5)
         px = np.dstack([snap(rgb), np.full(rgb.shape[:2], 255)]).astype('uint8')
         Image.fromarray(px).save(os.path.join(OUT, 'ground-' + name + '.png'))
     pieces = ',\n'.join(f'  {n}: {f}' for n, f in feet.items())

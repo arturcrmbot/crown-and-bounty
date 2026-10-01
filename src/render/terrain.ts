@@ -1,6 +1,5 @@
 import { lineAt, type Point } from '../rules/map/geometry';
 import { forestAmount, pathHalfWidth, poolDistance, riverHalfWidth, shoreWobble, type MapModel } from '../rules/map/model';
-import { bayer } from './noise';
 import { Bitmap } from './bitmap';
 import { ground as groundArt } from './mapArt';
 import type { GroundName } from './mapPieces';
@@ -148,8 +147,8 @@ export class TerrainPainter {
     const c = t.data[v * t.width + u];
     // Only real shade (under woods, at a bank) darkens it: the land's broad light is left to the texture, which has its own.
     const d = level - 0.52;
-    if (d < -0.2 && bayer(x, y) < (-d - 0.2) * 2) return SHADOW_LUT[c];
-    if (d > 0.2 && bayer(x, y) < (d - 0.2) * 1.6) return LIGHT_LUT[c];
+    if (d < -0.24) return SHADOW_LUT[c];
+    if (d > 0.3) return LIGHT_LUT[c];
     return c;
   }
 
@@ -178,11 +177,10 @@ export class TerrainPainter {
         const hedged = hash(Math.min(a, b), Math.max(a, b), 85) > 0.25 && noise(x / 9, y / 9, 86) > 0.22;
         // Hedges are a soft band of darker grass, not a line.
         const worked = (hash(a, 0, 404) < WORKED && CROP_GROUND[fields.crop[a]] !== 'grass') || (hash(b, 0, 404) < WORKED && CROP_GROUND[fields.crop[b]] !== 'grass');
-        if (worked && hedged && hedge < 1.2 && bayer(x, y) < 0.6) return { colour: SHADOW_LUT[this.texel('grass', x, y, level)], ground: Ground.Hedge };
+        if (worked && hedged && hedge < 1.2) return { colour: SHADOW_LUT[this.texel('grass', x, y, level)], ground: Ground.Hedge };
         const crop = hash(a, 0, 404) < WORKED ? CROP_GROUND[fields.crop[a]] : 'grass';
         // A field fades into the grass round it over a few pixels, ragged, as HoMM2's ground meets.
-        const fade = Math.min(1, (hedge - 1.2) / 6 + (noise(x / 3, y / 3, 403) - 0.5) * 0.5);
-        if (fields.farmed[a] && crop !== 'grass' && bayer(x, y) < fade) return { colour: this.texel(crop, x, y, level - 0.08), ground: Ground.Field };
+        if (fields.farmed[a] && crop !== 'grass' && hedge > 1.2) return { colour: this.texel(crop, x, y, level - 0.08), ground: Ground.Field };
       }
     }
     if (this.regions.downs.length && this.within('downs', x, y) > 0) {
@@ -423,7 +421,7 @@ export class TerrainPainter {
           continue;
         }
         // On the painted map the road is wider than the rules' track: its worn verge is road too, frayed at the edge.
-        if (this.painted && p < pathHalf * 2.1 + (bayer(x, y) - 0.5) * 2) {
+        if (this.painted && p < pathHalf * 2.1) {
           ground[i] = Ground.Road;
           bitmap.data[i] = this.texel('dirt', x, y, p > pathHalf * 1.8 ? 0.4 : 0.56);
           continue;
