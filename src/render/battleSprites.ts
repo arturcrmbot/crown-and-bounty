@@ -186,6 +186,20 @@ function tint(mix: (rgb: readonly [number, number, number]) => [number, number, 
 }
 let hurt: Uint8Array | null = null;
 let dim: Uint8Array | null = null;
+let white: Uint8Array | null = null;
+const whites = new WeakMap<Bitmap, Bitmap>();
+
+/** The same sprite as a white shape, for the frame a blow lands (#190), as a hit flashes in Vlambeer's games. */
+export function whiteSprite(sprite: Bitmap): Bitmap {
+  let out = whites.get(sprite);
+  if (!out) {
+    white ??= Uint8Array.from({ length: 256 }, (_, i) => (i === 0 || i === SHADOW ? i : NEUTRAL[7]));
+    out = new Bitmap(sprite.width, sprite.height);
+    for (let i = 0; i < sprite.data.length; i++) out.data[i] = white[sprite.data[i]];
+    whites.set(sprite, out);
+  }
+  return out;
+}
 
 /** The same sprite blended half with red, as Wesnoth flashes a unit that is hit. */
 export function hurtSprite(sprite: Bitmap): Bitmap {

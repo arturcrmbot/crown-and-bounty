@@ -8,7 +8,8 @@ import { coins, listed } from '../rules/state';
 import { activeFighter, bardOf, battleAct, battleEnd, bribeOffer, canCast, canJoin, casterOf, castsLeft, chargeOf, fighterById, isCharge, isLeader, onField, options, ridesOut, spellCost, spellDamage, spellsOf, spellVictims, unitOf, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
 import { aimTag, bardTag, forecastOf, type AimTag } from '../rules/battle/forecast';
 import { paintBanner } from '../render/banner';
-import { BattleScreen, BUTTONS, FIRE_FALL, FLOAT_RISE, hexAt, hexCentre, leaderAt, LOG_BOTTOM, spotOf, type BattleView, type Shot } from '../render/battleScreen';
+import { BattleScreen, BUTTONS, FIRE_FALL, FLOAT_LIFE, FLOAT_RISE, hexAt, hexCentre, leaderAt, LOG_BOTTOM, spotOf, type BattleView, type Shot } from '../render/battleScreen';
+import { FRAME, holdFrames, kickLeft, kickOf, POP_LIFE, ROLL, type Blow } from '../render/juice';
 import { animLength, bodyHeight, hitTime, STAND, type AnimName } from '../render/battleSprites';
 import { cursorIcon, type CursorKind, type Heading } from '../render/cursors';
 import { ART, type Missile } from '../render/units';
@@ -21,6 +22,7 @@ import { bitmapUrl } from '../ui/pixels';
 import { play, speak } from '../ui/sound';
 import { ForecastTag, type PageBox, type TagSide } from '../ui/tag';
 import { touch } from '../ui/touch';
+import { isGentle } from '../ui/gentle';
 import type { Display } from './display';
 import type { Screen, SideButton } from './screen';
 
@@ -135,6 +137,7 @@ export class BattleController implements Screen {
       health: new Map(),
       poses: new Map(),
       flashing: new Set(),
+      whites: new Set(),
       dying: new Set(),
       hidden: new Set(),
       looks: new Map(),
@@ -142,6 +145,8 @@ export class BattleController implements Screen {
       hover: null,
       lit: UNLIT,
       floaters: [],
+      pops: [],
+      rolls: new Map(),
       shots: [],
       log: this.startLine(),
       active: activeFighter(battle)?.id ?? null,
@@ -151,6 +156,7 @@ export class BattleController implements Screen {
       bard: false,
       time: 0,
       shake: 0,
+      kick: [0, 0],
       banner: null,
       speech: null,
       finishOffer: false,
@@ -384,6 +390,8 @@ export class BattleController implements Screen {
     if (missile) play(`land:${missile}`, pan);
     else play(`blow:${e.charge && ART[attacker.troop].charge ? 'lance' : TROOP_SOUNDS[attacker.troop].blow}`, pan);
     const lands = missile ? 0 : CONTACT;
+    // Weight under the blow, as heavy as what it did (#190).
+    play(e.charge || dies ? 'thump:huge' : e.killed ? 'thump:heavy' : 'thump:light', pan, lands);
     if (target.armour) play('armour', pan, lands);
     if (!dies && e.damage > 0) play(`hurt:${target.cry}`, pan, lands + 0.06);
   }
@@ -393,17 +401,38 @@ export class BattleController implements Screen {
     play(`dies:${TROOP_SOUNDS[fighterById(this.battle, id).troop].cry}`, this.panAt(this.spot(id)[0]));
   }
 
-  /** A burst where a blow lands, blood for the wounded, and a jolt that grows with the damage. */
-  private impact(target: number, damage: number, heavy: boolean) {
+  /**
+   * A burst where a blow lands, as big as what it did, with chips flung the way it went, blood for
+   * the wounded, and the field kicked that way too (#190), springing back in a moment.
+   */
+  private impact(target: number, blow: Blow, heavy: boolean, heading: [number, number]) {
     const f = fighterById(this.battle, target);
     const [x, y] = this.spot(target);
     const chest = y + 12 - Math.round(bodyHeight(f.troop, 'battle') * 0.5);
+    const size = blow.charge || blow.wiped ? 1.7 : blow.killed > 0 || blow.lucky ? 1.35 : heavy ? 1.1 : 0.9;
     for (const kind of ['spark', 'blood'] as const) {
-      const shot = { from: [x, chest] as [number, number], to: [x, chest] as [number, number], t: 0, kind };
+      const shot: Shot = { from: [x, chest], to: [x, chest], t: 0, kind, ...(kind === 'spark' ? { size, heading: Math.atan2(heading[1], heading[0]) } : {}) };
       this.view.shots.push(shot);
       this.sparks.push(shot);
     }
-    this.view.shake = Math.max(this.view.shake, Math.min(8, (heavy ? 2 : 0.8) + damage / 40));
+    const [kx, ky] = kickOf(heading, blow, isGentle());
+    this.view.kick = [this.view.kick[0] + kx, this.view.kick[1] + ky];
+  }
+
+  /** A stack's count and health as a blow lands: its badge rolls down to the new count, white for a frame (#190). */
+  private counted(id: number, left: { count: number; hp: number }) {
+    const v = this.view;
+    const was = v.counts.get(id) ?? fighterById(this.battle, id).count;
+    v.counts.set(id, left.count);
+    v.health.set(id, left.hp);
+    if (was !== left.count) v.rolls.set(id, { from: was, to: left.count, age: 0 });
+  }
+
+  /** How many fell, or the damage when nobody did, popping out of the stack's badge (#190): gold for their losses, red for yours. */
+  private pop(id: number, killed: number, damage: number) {
+    const f = fighterById(this.battle, id);
+    if (isLeader(f) || (!killed && !damage)) return;
+    this.view.pops.push({ fighter: id, words: killed ? `\u2212${killed}` : `\u2212${damage} hp`, colour: f.side === 'player' ? RED[5] : GOLD[6], skull: killed > 0, age: 0 });
   }
 
   /**
@@ -614,24 +643,38 @@ export class BattleController implements Screen {
       });
     }
     const reel = (e.ranged ? 4 : 8) * (e.charge ? 1.6 : 1);
-    this.step(after * MS, {
+    // The blow lands, and the field holds still on it for a moment (#190): the target a white shape
+    // for a frame, then red, the field kicked the way the blow went, and the kill popping out of the badge.
+    const landed: Blow = { killed: e.killed, charge: e.charge, lucky: e.lucky, wiped: dies };
+    const gentle = isGentle();
+    const hold = holdFrames(landed, gentle) * FRAME;
+    // The white shape shows for a frame at least, even when Auto hurries the hold along.
+    let ticks = 0;
+    this.step(hold, {
       start: () => {
-        v.flashing.add(e.target);
+        v[gentle ? 'flashing' : 'whites'].add(e.target);
         v.poses.set(e.target, { anim: flinch(), ms: 0 });
-        v.counts.set(e.target, left.count);
-        v.health.set(e.target, left.hp);
+        this.counted(e.target, left);
         this.landSound(e, missile, dies, tx);
-        this.impact(e.target, e.damage, !e.ranged);
+        this.impact(e.target, landed, !e.ranged, [ux, uy]);
         if (e.charge) {
           this.float(e.attacker, 'Charge!', GOLD[6], from);
           play('charge');
-          v.shake = Math.max(v.shake, 6);
         }
         if (e.lucky) this.float(e.attacker, 'Lucky!', GOLD[5], from);
-        this.float(e.target, e.killed ? `-${e.killed}` : `-${e.damage} hp`, e.killed ? RED[5] : RED[6]);
+        this.pop(e.target, e.killed, e.damage);
         const fell = !e.killed ? '.' : `. ${perish(e.killed)}.`;
         v.log = `${blow} for ${e.damage}${fell}${e.lucky ? ' A lucky blow!' : ''}${e.status ? ` ${STATUSES[e.status].onHit ?? ''}` : ''}`;
       },
+      tick: (t) => {
+        swing(hit);
+        if (++ticks > 1 && t * hold >= FRAME && v.whites.delete(e.target)) v.flashing.add(e.target);
+      },
+      end: () => {
+        if (v.whites.delete(e.target)) v.flashing.add(e.target);
+      },
+    });
+    this.step(after * MS, {
       tick: (t) => {
         const ms = t * after;
         swing(hit + ms);
@@ -766,7 +809,7 @@ export class BattleController implements Screen {
           this.step(0.3, {
             start: () => {
               v.health.set(e.fighter, hurt.hp - e.hurt);
-              this.float(e.fighter, `-${e.hurt}`, RED[6]);
+              this.pop(e.fighter, 0, e.hurt);
               play(`hurt:${TROOP_SOUNDS[fighterById(this.battle, e.fighter).troop].cry}`, this.panAt(this.spot(e.fighter)[0]));
               v.log = `${this.fighterName(e.fighter)} ${this.verb(e.fighter, 'wince')} as the poison bites deep.`;
             },
@@ -804,6 +847,7 @@ export class BattleController implements Screen {
           // A fireball has to fall before it bursts: the sound, the numbers, the flinch and the jolt land with the burst.
           const land = look.kind === 'fire' ? FIRE_FALL : 0;
           let landed = false;
+          let sinceLanding = 0;
           const impact = () => {
             landed = true;
             play(look.kind === 'sparkle' ? 'spell' : 'bolt');
@@ -815,18 +859,22 @@ export class BattleController implements Screen {
               v.looks.delete(id);
               this.puff(id);
             }
-            for (const { h, remaining, ours } of victims) {
-              v.counts.set(h.target, remaining.count);
-              v.health.set(h.target, remaining.hp);
+            for (const { h, remaining } of victims) {
+              this.counted(h.target, remaining);
               if (h.healed) this.float(h.target, h.raised && !this.named(h.target) ? `+${h.raised}` : `+${h.healed} hp`, GOLD[6]);
               if (status) this.float(h.target, status.name, BLUE[6]);
               if (!h.damage) continue;
               v.poses.set(h.target, { anim: 'defendRanged', ms: 0 });
-              this.float(h.target, h.killed && !this.named(h.target) ? `-${h.killed}` : `-${h.damage} hp`, ours ? RED[5] : GOLD[6]);
+              if (!isGentle()) v.whites.add(h.target);
+              this.pop(h.target, h.killed, h.damage);
             }
-            if (e.damage && look.kind !== 'sparkle') v.shake = Math.max(v.shake, look.kind === 'fire' ? 5 : 4);
+            if (e.damage && look.kind !== 'sparkle') {
+              if (!isGentle()) v.shake = Math.max(v.shake, look.kind === 'fire' ? 5 : 4);
+              play(victims.some((x) => x.h.killed) ? 'thump:heavy' : 'thump:light', this.panAt(this.spot(e.target)[0]));
+            }
           };
-          this.step(look.kind === 'fire' ? 0.95 : 0.4, {
+          const length = look.kind === 'fire' ? 0.95 : 0.4;
+          this.step(length, {
             start: () => {
               v.shots.push(...shots);
               // An order was bellowed for all to hear: the ribbon keeps his words.
@@ -836,14 +884,20 @@ export class BattleController implements Screen {
             tick: (t) => {
               for (const shot of shots) shot.t = t;
               if (!landed && t >= land) impact();
-              // The spell burns in two red pulses, as Wesnoth flashes a unit that is hit.
+              // The spell lands white for a frame (#190), then burns in two red pulses, as Wesnoth flashes a unit that is hit.
               const k = landed ? ((t - land) / (1 - land)) * 0.95 : 0;
-              for (const { h } of victims) if (h.damage) v.flashing[pulse(k) ? 'add' : 'delete'](h.target);
+              const white = landed && (sinceLanding++ < 1 || (t - land) * length < FRAME);
+              for (const { h } of victims) {
+                if (!h.damage) continue;
+                if (!white) v.whites.delete(h.target);
+                v.flashing[!white && pulse(k) ? 'add' : 'delete'](h.target);
+              }
             },
             end: () => {
               for (const shot of shots) v.shots.splice(v.shots.indexOf(shot), 1);
               for (const { h, dies } of victims) {
                 v.flashing.delete(h.target);
+                v.whites.delete(h.target);
                 if (!dies) v.poses.delete(h.target);
               }
             },
@@ -1077,9 +1131,13 @@ export class BattleController implements Screen {
     const v = this.view;
     const pace = this.pace * (this.auto ? 2.5 : 1);
     for (const f of v.floaters) f.age += dt;
-    v.floaters = v.floaters.filter((f) => f.age < 1);
+    v.floaters = v.floaters.filter((f) => f.age < FLOAT_LIFE);
+    for (const p of v.pops) p.age += dt;
+    v.pops = v.pops.filter((p) => p.age < POP_LIFE);
+    for (const [id, roll] of v.rolls) if ((roll.age += dt * pace) >= ROLL + FRAME) v.rolls.delete(id);
     v.time += dt;
-    v.shake = Math.max(0, v.shake - dt * 20);
+    v.shake = isGentle() ? 0 : Math.max(0, v.shake - dt * 20);
+    v.kick = kickLeft(v.kick, dt);
     if (v.banner) v.banner.age += dt * pace;
     for (const spark of this.sparks) spark.t += dt * pace * 4;
     for (const spark of this.sparks.filter((k) => k.t >= 1)) v.shots.splice(v.shots.indexOf(spark), 1);

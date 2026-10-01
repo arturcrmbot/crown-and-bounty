@@ -1,12 +1,14 @@
 /**
  * The little mix panel beside the Sound button: a slider for music, effects and ambience, each
- * remembered like mute (see `audio/context.ts`). A gilt knob button opens and closes it.
+ * remembered like mute (see `audio/context.ts`), and the switch for gentle effects in battle
+ * (`ui/gentle.ts`). A gilt knob button opens and closes it.
  */
 import { getVolume, setVolume, type Bus } from '../audio/context';
 import type { Display } from '../game/display';
 import { Bitmap } from '../render/bitmap';
 import { GOLD, PARCHMENT } from '../render/palette';
 import './mix.css';
+import { isGentle, setGentle } from './gentle';
 import { bitmapUrl } from './pixels';
 import { SOUND_AT, SOUND_SIZE } from './mute';
 
@@ -43,7 +45,7 @@ export class MixPanel {
 
   constructor() {
     this.button.className = 'kc-mix';
-    this.button.title = 'Mix: music, effects and ambience volumes';
+    this.button.title = 'Mix: music, effects and ambience volumes, and gentle effects in battle';
     this.button.setAttribute('aria-label', 'Open the mix panel');
     const icon = document.createElement('img');
     icon.src = bitmapUrl(bars());
@@ -66,6 +68,18 @@ export class MixPanel {
       row.append(name, slider);
       this.panel.append(row);
     }
+    // Less shaking and flashing in battle, for players sensitive to motion or flashing light (#190).
+    const gentle = document.createElement('label');
+    gentle.className = 'kc-mix-row kc-mix-gentle';
+    gentle.title = 'Less shaking and flashing in battle';
+    const words = document.createElement('span');
+    words.textContent = 'Gentle effects';
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.checked = isGentle();
+    box.addEventListener('change', () => setGentle(box.checked));
+    gentle.append(words, box);
+    this.panel.append(gentle);
 
     // Its own clicks never reach the map underneath, and never close the panel they're inside.
     for (const el of [this.button, this.panel]) for (const type of ['pointerdown', 'pointerup', 'click'] as const) el.addEventListener(type, (e) => e.stopPropagation());
