@@ -1,5 +1,6 @@
-import { Bitmap } from './bitmap';
+import { Bitmap, blit } from './bitmap';
 import type { Point } from '../rules/map/geometry';
+import { COIN } from './hud';
 import { bayer } from './noise';
 import { DIRT, GOLD, INK, NEUTRAL, STONE } from './palette';
 import { textMask } from './text';
@@ -11,8 +12,16 @@ type Mote = { x: number; y: number; vx: number; vy: number; age: number; life: n
  * the same spot, and `lift` how far it has got there.
  */
 type Floater = { x: number; y: number; sprite: Bitmap; age: number; above: number; lift: number };
-/** A burst at a point: dust where a foe went down, glitter where treasure was, a golden ring for a level. */
-type Puff = { x: number; y: number; age: number; life: number; kind: 'dust' | 'sparkle' | 'glow' };
+/** A burst at a point: dust where a foe went down, glitter where treasure was, a golden ring for a level, a twinkle on treasure still lying there. */
+type Puff = { x: number; y: number; age: number; life: number; kind: 'dust' | 'sparkle' | 'glow' | 'twinkle' };
+/**
+ * A coin flying from where gold was found to the gold on the bar, in screen pixels, on a curve
+ * through `via`. It pays its share of the gold into the bar's count as it lands.
+ */
+type Coin = { from: Point; via: Point; to: Point; age: number; gold: number; land: (gold: number) => void };
+/** Seconds a coin takes to reach the bar, and between one coin and the next. */
+const COIN_TIME = 0.6;
+const COIN_GAP = 0.07;
 const FLOAT_LIFE = 1.7;
 /** Seconds between words rising from the same spot. */
 const FLOAT_GAP = 0.35;
@@ -34,15 +43,18 @@ export class Effects {
   private readonly birds: Bird[] = [];
   private floaters: Floater[] = [];
   private puffs: Puff[] = [];
+  private coins: Coin[] = [];
 
-  /** Words rising from map point (x, y), outlined so they read over anything; `delay` seconds later. */
-  floatText(x: number, y: number, text: string, colour: number, delay = 0) {
+  /** Words rising from map point (x, y), outlined so they read over anything; `delay` seconds later, with a `picture` before them (gear found). */
+  floatText(x: number, y: number, text: string, colour: number, delay = 0, picture?: Bitmap) {
     const mask = textMask(text, 16);
-    const sprite = new Bitmap(mask.width + 2, mask.height + 2);
+    const left = picture ? picture.width + 3 : 0;
+    const sprite = new Bitmap(left + mask.width + 2, Math.max(mask.height + 2, picture?.height ?? 0));
+    if (picture) blit(sprite, picture, 0, Math.floor((sprite.height - picture.height) / 2));
     for (let j = -1; j <= mask.height; j++) {
       for (let i = -1; i <= mask.width; i++) {
-        if (mask.solid(i, j)) sprite.set(i + 1, j + 1, colour);
-        else if ([-1, 0, 1].some((dj) => [-1, 0, 1].some((di) => mask.solid(i + di, j + dj)))) sprite.set(i + 1, j + 1, INK);
+        if (mask.solid(i, j)) sprite.set(left + i + 1, j + 1, colour);
+        else if ([-1, 0, 1].some((dj) => [-1, 0, 1].some((di) => mask.solid(i + di, j + dj)))) sprite.set(left + i + 1, j + 1, INK);
       }
     }
     // Words rising from the same spot keep apart: each waits a moment after the one before, and those
@@ -59,7 +71,27 @@ export class Effects {
   }
 
   puff(x: number, y: number, kind: Puff['kind']) {
-    this.puffs.push({ x, y, age: 0, life: kind === 'glow' ? 1.2 : kind === 'sparkle' ? 0.8 : 0.6, kind });
+    this.puffs.push({ x, y, age: 0, life: kind === 'glow' ? 1.2 : kind === 'sparkle' ? 0.8 : kind === 'twinkle' ? 0.5 : 0.6, kind });
+  }
+
+  /**
+   * Gold flying from `from` to `to` (screen pixels) as a handful of coins, `delay` seconds from now,
+   * each paying its share into `land` as it gets there, so the count on the bar rolls up as they land.
+   */
+  flyCoins(from: Point, to: Point, gold: number, delay: number, land: (gold: number) => void) {
+    const count = Math.max(3, Math.min(10, Math.ceil(gold / 40)));
+    let left = gold;
+    for (let i = 0; i < count; i++) {
+      const share = i === count - 1 ? left : Math.floor(gold / count);
+      left -= share;
+      const via: Point = [from[0] + (to[0] - from[0]) * 0.25 + ((i % 3) - 1) * 14, Math.min(from[1], to[1]) - 46 - (i % 2) * 16];
+      this.coins.push({ from, via, to, age: -(delay + i * COIN_GAP), gold: share, land });
+    }
+  }
+
+  /** Whether any coins are still on their way to the bar. */
+  get flying() {
+    return this.coins.length > 0;
   }
 
   /** A few crows circling above `home`, until someone rides within `shyness` pixels. */
@@ -84,6 +116,11 @@ export class Effects {
     this.floaters = this.floaters.filter((f) => f.age < FLOAT_LIFE);
     for (const p of this.puffs) p.age += dt;
     this.puffs = this.puffs.filter((p) => p.age < p.life);
+    for (const c of this.coins) {
+      c.age += dt;
+      if (c.age >= COIN_TIME) c.land(c.gold);
+    }
+    this.coins = this.coins.filter((c) => c.age < COIN_TIME);
     for (const m of this.motes) {
       m.age += dt;
       m.x += m.vx * dt;
@@ -134,6 +171,18 @@ export class Effects {
     }
   }
 
+  /** Coins on their way to the bar, over everything: the map, its frame and the bar itself. */
+  drawFlights(screen: Bitmap) {
+    for (const c of this.coins) {
+      if (c.age < 0) continue;
+      // They speed up as they go, as if the purse pulled them in.
+      const t = Math.min(1, c.age / COIN_TIME) ** 2;
+      const x = (1 - t) ** 2 * c.from[0] + 2 * (1 - t) * t * c.via[0] + t * t * c.to[0];
+      const y = (1 - t) ** 2 * c.from[1] + 2 * (1 - t) * t * c.via[1] + t * t * c.to[1];
+      blit(screen, COIN, Math.round(x - COIN.width / 2), Math.round(y - COIN.height / 2));
+    }
+  }
+
   /** The words rising off the map, drawn last of all so no light or weather dims them. */
   drawWords(screen: Bitmap, ox: number, oy: number, clip: { x: number; y: number; width: number; height: number }) {
     for (const f of this.floaters) {
@@ -175,6 +224,14 @@ export class Effects {
         if ((k + Math.floor(p.age * 20)) % 3 === 0) continue;
         put(x, y, k % 2 ? GOLD[6] : NEUTRAL[7]);
         if (t < 0.5) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) put(x + dx, y + dy, GOLD[4]);
+      }
+    } else if (p.kind === 'twinkle') {
+      // A little four-pointed star that opens and closes again, white at its heart so it shows on gold.
+      const arm = Math.round(Math.sin(t * Math.PI) * 4);
+      put(Math.round(cx), Math.round(cy), NEUTRAL[7]);
+      for (let k = 1; k <= arm; k++) {
+        const colour = k === arm ? GOLD[5] : k === 1 ? NEUTRAL[7] : GOLD[6];
+        for (const [dx, dy] of [[k, 0], [-k, 0], [0, k], [0, -k]]) put(Math.round(cx) + dx, Math.round(cy) + dy, colour);
       }
     } else {
       // A golden ring swelling out from his feet, and rays going up.

@@ -83,3 +83,59 @@ describe('words rising off the map', () => {
     expect(left!.top).toBe(200 + 3 - 22);
   });
 });
+
+describe('coins flying to the bar', () => {
+  it('pay in all the gold they carry as they land, a little at a time', () => {
+    const effects = new Effects();
+    const landed: number[] = [];
+    effects.flyCoins([300, 100], [30, 280], 250, 0, (gold) => landed.push(gold));
+    expect(effects.flying).toBe(true);
+    for (let t = 0; t < 3; t += 1 / 60) effects.update(1 / 60, [0, 0]);
+    expect(landed.length).toBeGreaterThan(2);
+    expect(landed.reduce((a, b) => a + b, 0)).toBe(250);
+    expect(effects.flying).toBe(false);
+  });
+
+  it('are drawn over the whole screen on their way, not only over the map', () => {
+    const effects = new Effects();
+    effects.flyCoins([300, 100], [30, 280], 100, 0, () => {});
+    for (let t = 0; t < 0.45; t += 1 / 60) effects.update(1 / 60, [0, 0]);
+    const screen = new Bitmap(CLIP.width, CLIP.height);
+    effects.drawFlights(screen);
+    expect(screen.data.some((v) => v !== 0)).toBe(true);
+  });
+});
+
+describe('a glint on treasure', () => {
+  it('twinkles, a small star at its point, for a moment and is gone', () => {
+    const effects = new Effects();
+    effects.puff(100, 100, 'twinkle');
+    const drawn = () => {
+      const screen = new Bitmap(CLIP.width, CLIP.height);
+      effects.draw(screen, 0, 0, CLIP, () => true);
+      const at: [number, number][] = [];
+      screen.data.forEach((v, i) => v && at.push([i % screen.width, Math.floor(i / screen.width)]));
+      return at;
+    };
+    effects.update(0.2, [0, 0]);
+    const star = drawn();
+    expect(star.length).toBeGreaterThan(0);
+    expect(star.every(([x, y]) => Math.abs(x - 100) <= 4 && Math.abs(y - 100) <= 4)).toBe(true);
+    effects.update(1, [0, 0]);
+    expect(drawn()).toEqual([]);
+  });
+});
+
+describe('gear found', () => {
+  it('rises with its picture beside its name', () => {
+    const effects = new Effects();
+    const picture = new Bitmap(16, 16);
+    picture.data.fill(77);
+    effects.floatText(200, 200, 'A Pilgrim\u2019s Hat', 41, 0, picture);
+    effects.update(0.5, [0, 0]);
+    const [words] = rowsOf(effects, [41]);
+    const [shown] = rowsOf(effects, [77]);
+    expect(words).not.toBeNull();
+    expect(shown).not.toBeNull();
+  });
+});

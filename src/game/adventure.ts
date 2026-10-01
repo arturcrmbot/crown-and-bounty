@@ -1,11 +1,10 @@
 import { BACKGROUNDS } from '../content/backgrounds';
-import { troops } from '../content/troops';
 import { addPlace, buildAdventureScene, refreshPlace, setHeroFigure, type AdventureScene, type Hitbox } from '../render/adventureScene';
 import { BANNER_TIME, drawBanner, paintBanner } from '../render/banner';
 import type { Bitmap } from '../render/bitmap';
 import { BAR, MAP_VIEW as VIEW } from '../render/frame';
-import { BLUE, GOLD, NEUTRAL, PARCHMENT, RED } from '../render/palette';
-import { clickable, paintHud, type HudHit } from '../render/hud';
+import { BLUE, GOLD, LEAF, NEUTRAL, PARCHMENT, PLUM, RED, WATER } from '../render/palette';
+import { clickable, GOLD_AT, paintHud, type HudHit } from '../render/hud';
 import { ART, heroArtId } from '../render/units';
 import type { BattleState } from '../rules/battle/battle';
 import { ambushCard, apply, bountyCard, commissionOf, describe, finishFight, heardOf, heroStats, journalCard, levelUpCard, locationById, placeNote, placeOdds, roman, VANISHES, visit, whenThere, type Action, type Card, type GameEvent, type GameState, type Result, type Verdict } from '../rules/game';
@@ -13,10 +12,10 @@ import { barNote } from '../rules/heroSheet';
 import type { Point } from '../rules/map/geometry';
 import { CELL, cellCentre, type MapModel, type Terrain } from '../rules/map/model';
 import { daysAway, facingEnemy, planRoute, routeCosts, stepAlong } from '../rules/map/movement';
-import { statIcon } from '../render/artifactIcons';
+import { artifactIcon, statIcon } from '../render/artifactIcons';
 import { CardView } from '../ui/card';
 import { bitmapUrl } from '../ui/pixels';
-import { play, playStep } from '../ui/sound';
+import { play, playStep, type Sound } from '../ui/sound';
 import { sting } from '../audio/stings';
 import type { Place, Soundscape } from '../audio/ambience';
 import { soundscapeOf } from './soundscape';
@@ -35,6 +34,8 @@ import { Walks } from './walks';
 import { tiredResult } from './adventureCards';
 import { doorsOf, hiddenShare, HIDES, reachOf, type Reach } from './doors';
 import { oddsAhead } from './odds';
+import { gainsOf, type GainKind } from './gains';
+import { hash } from '../rules/noise';
 
 type HintId = Extract<Action, { type: 'hint' }>['id'];
 
@@ -78,6 +79,28 @@ function curve(points: Point[]): Point[] {
  * The adventure map: turns clicks into rules actions, animates the ride between the cells the
  * rules move the hero through, and shows whatever the rules' events say happened.
  */
+/** A gain waiting to rise off the hero: its words, colour, sound and picture, and any gold that flies to the bar. */
+type Rising = { text: string; colour: number; sound?: Sound; picture?: Bitmap; gold: number; level: boolean };
+
+/** Each kind of gain's colour as it rises, and its sound (gold has its coins already, and a level its sting). */
+const GAIN_LOOKS: Record<GainKind, { colour: number; sound?: Sound }> = {
+  gold: { colour: GOLD[6] },
+  troops: { colour: PARCHMENT[6], sound: 'march' },
+  leadership: { colour: BLUE[6], sound: 'cheer' },
+  movement: { colour: LEAF[8], sound: 'gallop' },
+  mana: { colour: WATER[8], sound: 'shimmer' },
+  spell: { colour: PLUM[4], sound: 'spell' },
+  gear: { colour: GOLD[6], sound: 'find' },
+  level: { colour: GOLD[6] },
+  experience: { colour: NEUTRAL[7] },
+};
+
+/** Seconds the journal on the bar stays lit after something new goes into it. */
+const BOOK_LIT = 2.5;
+/** Treasure still lying on the map twinkles now and then: one twinkle every this many seconds, on one of what's in view. */
+const TWINKLE_EVERY = 0.8;
+const TWINKLES: ReadonlySet<string> = new Set(['chest', 'gold']);
+
 export class AdventureController implements Screen {
   readonly name = 'adventure';
   state: GameState;
@@ -133,7 +156,14 @@ export class AdventureController implements Screen {
   /** A card that came while the province's name was up, waiting for its turn. */
   private held: { card: Card; at: Point | null } | null = null;
   /** What the hero just gained, waiting for the card on screen to close before it rises off him. */
-  private gains: [string, number][] = [];
+  private gains: Rising[] = [];
+  /** Gold he has gained that hasn't landed on the bar yet: the count shows his gold less this, and rolls up as the coins land. */
+  private goldOwed = 0;
+  /** Seconds the journal on the bar stays lit after something new goes into it. */
+  private bookLit = 0;
+  /** Seconds since untaken treasure last twinkled, and how many times it has. */
+  private sinceTwinkle = 0;
+  private twinkles = 0;
   /** Seconds left of gains rising: the level-up card waits for them. */
   private celebrating = 0;
   /** Seconds into the night that falls between two days, while it does. */
@@ -295,8 +325,14 @@ export class AdventureController implements Screen {
     const told = heard ? this.teach(result, 'journal', touch() ? '**Hint.** What you hear on the road goes in your journal. Tap **Journal**, at the side.' : '**Hint.** What you hear on the road goes in your journal. Press **J**, or click the book on the bar.') : result;
     this.state = told.state;
     if (this.state.gold > before.gold) play('coins');
-    this.handle(told.events);
+    // Something new in the journal: a page turns, and the book on the bar lights up for a moment.
+    if (heard) {
+      play('page');
+      this.bookLit = BOOK_LIT;
+    }
+    // Gains first, so the bar the events repaint already holds back the gold still to fly to it.
     this.floatGains(before, this.state);
+    this.handle(told.events);
     saveGame(this.state);
   }
 
@@ -314,28 +350,62 @@ export class AdventureController implements Screen {
     return { state: taught.state, events };
   }
 
-  /** Whatever the hero gained rises off him in words, one after another: gold, troops, leadership, experience. */
+  /**
+   * Whatever the hero gained rises off him, one after another, each in its own colour and with its
+   * own sound (see `gainsOf`): gold, troops, leadership, movement, mana, a spell, gear with its
+   * picture, and his experience or his new level. Gold he gains flies to the bar as coins.
+   */
   private floatGains(before: GameState, after: GameState) {
-    const gains: [string, number][] = [];
-    const gold = after.gold - before.gold;
-    if (gold) gains.push([`${gold > 0 ? '+' : '\u2212'}${Math.abs(gold).toLocaleString('en-GB')} gold`, gold > 0 ? GOLD[6] : RED[5]]);
-    for (const stack of after.army) {
-      const had = before.army.find((s) => s.troop === stack.troop)?.count ?? 0;
-      if (stack.count > had && !before.battle) gains.push([`+${troops(stack.troop, stack.count - had)}`, PARCHMENT[6]]);
+    for (const gain of gainsOf(before, after)) {
+      const look = GAIN_LOOKS[gain.kind];
+      const gold = gain.kind === 'gold' && gain.amount > 0 ? gain.amount : 0;
+      this.goldOwed += gold;
+      this.gains.push({
+        text: gain.text,
+        colour: gain.amount < 0 ? RED[5] : look.colour,
+        sound: gain.amount > 0 ? look.sound : undefined,
+        picture: gain.artifact ? artifactIcon(gain.artifact) : undefined,
+        gold,
+        level: gain.kind === 'level',
+      });
     }
-    if (after.leadership > before.leadership) gains.push([`+${after.leadership - before.leadership} leadership`, BLUE[6]]);
-    if (after.hero.level > before.hero.level) gains.push([`Level ${roman(after.hero.level)}!`, GOLD[6]]);
-    else if (after.hero.xp > before.hero.xp) gains.push([`+${after.hero.xp - before.hero.xp} experience`, NEUTRAL[7]]);
-    if (gains.length) this.gains.push(...gains);
   }
 
   /** Gains wait until no card is in the way, then rise one after another; a level-up card waits for them. */
   private releaseGains() {
     if (this.cards.isOpen || !this.gains.length) return;
-    for (const [i, [text, colour]] of this.gains.entries()) this.view.effects.floatText(this.drawn.x, this.drawn.y - this.scene.hero.head - 12, text, colour, i * 0.35);
+    const [x, y] = [this.drawn.x, this.drawn.y - this.scene.hero.head - 12];
+    const { camera } = this.view;
+    for (const [i, gain] of this.gains.entries()) {
+      const delay = i * 0.35;
+      this.view.effects.floatText(x, y, gain.text, gain.colour, delay, gain.picture);
+      if (gain.sound) play(gain.sound, 0, delay);
+      if (gain.gold) this.view.effects.flyCoins([VIEW.x + x - camera.x, VIEW.y + y - camera.y + 8], [GOLD_AT.x, GOLD_AT.y], gain.gold, delay + 0.15, (gold) => this.landGold(gold));
+    }
     this.celebrating = 0.6 + this.gains.length * 0.35;
-    if (this.gains.some(([text]) => text.startsWith('Level'))) this.view.effects.puff(this.drawn.x, this.drawn.y, 'glow');
+    if (this.gains.some((gain) => gain.level)) this.view.effects.puff(this.drawn.x, this.drawn.y, 'glow');
     this.gains = [];
+  }
+
+  /** A coin lands in the purse on the bar: a clink, and the count goes up by its share. */
+  private landGold(gold: number) {
+    this.goldOwed = Math.max(0, this.goldOwed - gold);
+    play('clink');
+    this.repaintHud();
+  }
+
+  /** Now and then, a twinkle on treasure that's still lying where he can see it. */
+  private twinkle(dt: number) {
+    this.sinceTwinkle += dt;
+    if (this.sinceTwinkle < TWINKLE_EVERY) return;
+    this.sinceTwinkle = 0;
+    const lying = this.state.locations.filter((l) => !l.done && TWINKLES.has(l.kind) && this.inView(l.at) && !this.view.isFogged(l.at[0], l.at[1] - 4));
+    if (!lying.length) return;
+    const n = ++this.twinkles;
+    const place = lying[Math.floor(hash(n, 7, 501) * lying.length)];
+    const box = this.scene.hitboxes.find((b) => b.id === place.id);
+    if (!box) return;
+    this.view.effects.puff(box.x0 + 4 + hash(n, 8, 502) * (box.x1 - box.x0 - 8), box.y0 + 2 + hash(n, 9, 503) * (box.y1 - box.y0) * 0.4, 'twinkle');
   }
 
   /** Shows events that happened elsewhere, like the arrival card of a new commission. */
@@ -445,7 +515,8 @@ export class AdventureController implements Screen {
 
   private repaintHud() {
     this.hudMovement = Math.floor(this.state.movement);
-    this.hud = paintHud(this.view.frame, this.state, this.hudHover && this.barClickable(this.hudHover) ? this.hudHover.item : null);
+    const shown = { gold: Math.max(0, this.state.gold - this.goldOwed), rolling: this.goldOwed > 0 && this.view.effects.flying, book: this.bookLit > 0 };
+    this.hud = paintHud(this.view.frame, this.state, this.hudHover && this.barClickable(this.hudHover) ? this.hudHover.item : null, shown);
   }
 
   /** The journal: the commission's poster, pinned in, and what's been heard on the road. J, or the book on the bar. */
@@ -667,6 +738,13 @@ export class AdventureController implements Screen {
     }
     this.releaseGains();
     this.celebrating = Math.max(0, this.celebrating - dt * this.pace);
+    if (this.bookLit > 0 && (this.bookLit -= dt) <= 0) this.repaintHud();
+    // Gold owed with no coins on the way (a new screen took them) is shown at once.
+    if (this.goldOwed && !this.gains.length && !this.view.effects.flying) {
+      this.goldOwed = 0;
+      this.repaintHud();
+    }
+    this.twinkle(dt);
     if (this.nightfall !== null) {
       this.nightfall += dt;
       this.view.dusk = this.nightfall < NIGHT ? Math.sin((Math.PI * this.nightfall) / NIGHT) * 0.9 : 0;

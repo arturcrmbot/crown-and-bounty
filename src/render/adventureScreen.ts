@@ -157,6 +157,7 @@ export class AdventureScreen {
       }
     }
     blit(screen, this.overlay, 0, 0);
+    this.effects.drawFlights(screen);
     return screen;
   }
 }

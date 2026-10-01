@@ -526,3 +526,11 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   leaves him more men than he had. The cards say how many are left, and the map, the hover label and the odds show the
   enemy as it is now. A lair recruits from what's left, a sortie's band and a convoy's squad go home with whoever is
   left of them, and the goose's hymn isn't offered once no crossbowmen are left to run after her.
+- **Every find answers back (1 Oct, #192):** Artur asked for more juice, and for exploring Aldmoor to be an adventure.
+  This is the first slice of the ideas he picked on #192. Whatever Aldric gains rises off him in its own colour and with
+  its own sound: movement, mana, a new spell and gear, with its picture, as well as gold, troops, leadership and
+  experience, which rose before. Gold flies from where it was found to the bar as coins, and the count there rolls up as
+  they land, lit while it does. Treasure still lying where he can see it twinkles now and then, and when something new
+  goes into the journal a page turns and the book on the bar lights up. Four new sounds were measured onto their marks
+  with `npm run listen`: a harp and a bell for gear, a glassy run for mana, hoofbeats for movement, and a clink for each
+  coin. It is drawing and sound only, so the rules, the balance and the saves are as they were.
