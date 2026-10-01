@@ -221,15 +221,34 @@ export class TerrainPainter {
       }
     }
     if (this.regions.downs.length && this.within('downs', x, y) > 0) {
-      // The downs: the same grass, a touch brighter on the open slopes.
-      return { colour: this.texel('grass', x, y, Math.min(0.6, level + 0.06)), ground: Ground.Grass };
+      // The downs: the same grass, a touch brighter on the open slopes, and rolling twice as high.
+      return { colour: this.rolling(this.texel('grass', x, y, Math.min(0.6, level + 0.06)), x, y, 1.6), ground: Ground.Grass };
     }
     if (this.regions.heath.length && this.within('heath', x, y) > 0) {
-      // Dry grass, with clumps of heather where the noise rises: soft-edged, never in a grid.
-      const heather = fbm(x / 26, y / 20, 2, 88) + (noise(x / 5, y / 5, 89) - 0.5) * 0.18;
-      return { colour: this.texel(heather > 0.6 ? 'heather' : 'heath', x, y, level), ground: Ground.Rough };
+      // Dry grass, with a bare patch here and there where the noise rises: soft-edged, never in a grid.
+      const bare = fbm(x / 60, y / 46, 2, 88) + (noise(x / 6, y / 6, 89) - 0.5) * 0.14 + (hash(x, y, 90) - 0.5) * 0.05;
+      return { colour: this.rolling(bare > 0.7 ? this.texel('dirt', x, y, level + 0.1) : this.texel('heath', x, y, level), x, y), ground: Ground.Rough };
     }
-    return { colour: this.texel('grass', x, y, level), ground: Ground.Grass };
+    // The meadow: worn patches of earth and darker swales here and there, as HoMM2's grass is never one sheet.
+    const worn = fbm(x / 48, y / 40, 2, 505) + (noise(x / 5, y / 5, 506) - 0.5) * 0.12 + (hash(x, y, 508) - 0.5) * 0.05;
+    if (worn > 0.8 && level > 0.4) return { colour: this.texel('dirt', x, y, level), ground: Ground.Grass };
+    return { colour: this.rolling(this.texel('grass', x, y, level), x, y), ground: Ground.Grass };
+  }
+
+  /**
+   * The land's rolling light (#178): the ground rises and falls in long, low swells, lit from the top
+   * left, the slopes towards the light a shade brighter and those away a shade darker, dithered, as
+   * HoMM2's grass rolls. Darker swales lie in the hollows.
+   */
+  private rolling(c: number, x: number, y: number, height = 1): number {
+    const n = (px: number, py: number) => fbm(px / 150, py / 110, 2, 501);
+    const slope = (n(x - 10, y - 10) - n(x + 10, y + 10)) * 9 * height;
+    const b = hash(x, y, 507);
+    if (slope > 0.12 && b < Math.min(0.5, (slope - 0.12) * 0.8)) return LIGHT_LUT[c];
+    if (slope < -0.12 && b < Math.min(0.45, (-slope - 0.12) * 0.7)) return SHADOW_LUT[c];
+    const swale = fbm(x / 80, y / 64, 2, 503);
+    if (swale > 0.66 && b < Math.min(0.3, (swale - 0.66) * 4)) return SHADOW_LUT[c];
+    return c;
   }
 
   /** How far inside a region of this kind a point lies: above zero inside, with a ragged edge. */
