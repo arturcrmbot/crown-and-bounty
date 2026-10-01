@@ -95,7 +95,7 @@ export class TerrainPainter {
     this.width = map.province.width;
     this.height = map.province.height;
     this.river = segments([map.river], 40);
-    this.paths = segments(map.paths, 20);
+    this.paths = segments(joined(map.paths), 20);
     this.cliffTops = new Float32Array(this.width).fill(NaN);
     if (map.cliff) {
       for (let x = 0; x < this.width; x++) {
@@ -541,6 +541,43 @@ export class TerrainPainter {
     }
     return { x: X0, y: Y0, bitmap, wild };
   }
+}
+
+/**
+ * The roads, each end that stops just short of another road (at a signpost, a fork) carried on to
+ * meet it, so every junction on the map is joined. Ends further off are where a road reaches a place.
+ */
+function joined(lines: readonly Point[][]): Point[][] {
+  const nearestOn = ([px, py]: Point, line: readonly Point[]): { at: Point; d: number } => {
+    let best = { at: line[0], d: Infinity };
+    for (let n = 1; n < line.length; n++) {
+      const [ax, ay] = line[n - 1];
+      const [bx, by] = line[n];
+      const [dx, dy] = [bx - ax, by - ay];
+      const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy || 1)));
+      const at: Point = [ax + t * dx, ay + t * dy];
+      const d = Math.hypot(px - at[0], py - at[1]);
+      if (d < best.d) best = { at, d };
+    }
+    return best;
+  };
+  return lines.map((line, i) => {
+    const out = [...line];
+    for (const end of [0, 1]) {
+      const p = end ? out[out.length - 1] : out[0];
+      let best = { at: p, d: Infinity };
+      lines.forEach((other, k) => {
+        if (k === i) return;
+        const hit = nearestOn(p, other);
+        if (hit.d < best.d) best = hit;
+      });
+      if (best.d > 0.5 && best.d < 40) {
+        if (end) out.push(best.at);
+        else out.unshift(best.at);
+      }
+    }
+    return out;
+  });
 }
 
 /** The stretches of some polylines, each with the box round it that `radius` reaches. */
