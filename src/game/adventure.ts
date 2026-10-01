@@ -397,19 +397,19 @@ export class AdventureController implements Screen {
   /**
    * Things picked up by the way (#192): each chimes a step higher than the last one today, what it
    * gave rises off him, and a letter's words go in the journal, which lights up. If he was riding to
-   * it, or it's a letter to read, he stops where he picked it up.
+   * it, he stops where he picked it up, and a letter he reads there.
    */
   private pickedUp(before: GameState, events: GameEvent[]) {
-    // A letter to read stops him where he found it.
-    const reading = events.some((e) => e.type === 'card');
     for (const e of events) {
       if (e.type !== 'picked') continue;
       play(PICK_NOTES[Math.min(this.pickedToday, PICK_NOTES.length - 1)]);
       this.pickedToday++;
-      if (e.id === this.visiting || reading) {
+      if (e.id === this.visiting) {
         this.route = [];
         this.visiting = null;
         this.target = null;
+        const place = locationById(this.state, e.id);
+        if (place.text?.visit) this.showCard({ title: place.name, lines: place.text.visit, choices: [{ label: 'Close', action: { type: 'close' } }] }, place.at);
       }
     }
     if (heardOf(this.state).length > heardOf(before).length) {

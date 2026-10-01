@@ -73,10 +73,10 @@ describe('things lying by the way (#192)', () => {
 
   it('a lost letter puts its words in the journal, and the journal keeps a tally of what was picked up', () => {
     const start = fresh();
-    // He stops to read it, and the journal quotes it as it was written.
+    // Picked up in passing, it stops nobody: the journal quotes it as it was written.
     const picked = visit(start, 'letterPike');
-    const card = picked.events.find((e) => e.type === 'card');
-    expect(card?.type === 'card' && card.card.lines.join(' ')).toContain('Dear Mum, I am a sergeant now');
+    expect(picked.events.some((e) => e.type === 'card')).toBe(false);
+    expect(placeOf(start, 'letterPike').text?.visit?.join(' ')).toContain('Dear Mum, I am a sergeant now');
     const read = picked.state;
     const heard = heardOf(read).map((h) => h.who);
     expect(heard.some((who) => who.includes('young Pike'))).toBe(true);
