@@ -4,7 +4,7 @@ import { outline } from '../render/bitmap';
 import { INK } from '../render/palette';
 import { portraitOf } from '../render/portraits';
 import { standingFigure } from '../render/battleSprites';
-import { manaLine, type Action, type Army, type Card, type Heard } from '../rules/game';
+import { manaLine, type Action, type Army, type Card, type Found, type Heard } from '../rules/game';
 import './card.css';
 import { bitmapUrl, PARCHMENT_SHADOW } from './pixels';
 import { uiRoom, uiScale } from './scale';
@@ -84,11 +84,15 @@ function battleResultMarkup(card: NonNullable<Card['battleResult']>): string {
   return `<div class="battle-result">${side('Your fallen', card.player, 'blue')}${side('Their fallen', card.enemy, 'red')}</div><p class="battle-result-mana">${escape(manaLine(card))}</p>`;
 }
 
-/** The journal's right-hand page: each thing heard in its own words, who said it, and a tick once it has paid off. */
-function heardMarkup(heard: Heard[]): string {
+/**
+ * The journal's right-hand page: each thing heard in its own words, who said it, and a tick once it
+ * has paid off. Under them, the tally of things found in the province (#192).
+ */
+function heardMarkup(heard: Heard[], found: Found[] = []): string {
   const items = heard.map((h) => `<li${h.done ? ' class="done"' : ''}><span class="words">\u201c${format(h.words)}\u201d</span><small>${escape(h.who)}</small></li>`).join('');
   const list = heard.length ? `<ul>${items}</ul>` : '<p class="none">You have heard nothing yet. What you hear on the road goes down here.</p>';
-  return `<section class="heard"><h4>Things heard</h4>${list}</section>`;
+  const tally = found.length ? `<h4 class="found">Things found</h4><ul class="found">${found.map((f) => `<li><span>${escape(f.what)}</span><i></i><b>${f.got} of ${f.of}</b></li>`).join('')}</ul>` : '';
+  return `<section class="heard"><h4>Things heard</h4>${list}${tally}</section>`;
 }
 
 /**
@@ -205,7 +209,7 @@ export class CardView {
     if (card.journal) {
       // Two pages: the commission, with its poster pinned in (stamped long since, so it doesn't land again), and what's been heard.
       const pinned = `<div class="pinned"><b>WANTED</b><div class="mugshot">${face}${stamp}</div></div>`;
-      this.body.innerHTML = `<div class="page">${title}${pinned}${words}</div>${heardMarkup(card.journal.heard)}`;
+      this.body.innerHTML = `<div class="page">${title}${pinned}${words}</div>${heardMarkup(card.journal.heard, card.journal.found)}`;
     } else this.body.innerHTML = card.poster ? `${title}<div class="mugshot">${face}${stamp}</div>${words}${inset}` : `${face}${title}${verdict}${words}${inset}`;
     if (fresh && card.stamp && !card.journal) setTimeout(() => play('stamp'), STAMP_LANDS);
     this.card.querySelector('.choices')?.remove();

@@ -37,10 +37,14 @@ export const describe = (state: GameState, id: string) => {
   return PLACE_KINDS[place.kind].about(state, place);
 };
 
-/** What happens when the hero arrives. */
+/** The band still guarding a place, if one is: until it's gone, riding up to the place brings it to its feet. */
+export const guardOf = (state: GameState, place: Location): Location | null => (place.guard ? (state.locations.find((l) => l.id === place.guard && !l.done) ?? null) : null);
+
+/** What happens when the hero arrives. A place with its guard still over it is that guard's to settle first. */
 export const visit = (state: GameState, id: string): Result => {
   const place = locationById(state, id);
-  return PLACE_KINDS[place.kind].arrive(state, place);
+  const guard = guardOf(state, place);
+  return guard ? PLACE_KINDS[guard.kind].arrive(state, guard) : PLACE_KINDS[place.kind].arrive(state, place);
 };
 
 /** A choice on a place's card: `page/choice` or `parley/id` for content, else the kind's own. */

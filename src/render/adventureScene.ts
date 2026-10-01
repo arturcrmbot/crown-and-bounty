@@ -174,6 +174,8 @@ function landmark(l: Location): { frames: Bitmap[]; foot: number; animated: bool
   if (painted) {
     // The hunt hall is drawn anew once it opens, so it's kept with the places that change.
     if (l.look === 'hall') return art(l.recruits ? 'hallOpen' : 'hallShut', true) ?? drawn(l);
+    // So is a chest, which stays open and empty once it's opened; a guarded one is gilded (#192).
+    if (l.kind === 'chest') return art(l.done ? 'chestOpen' : l.guard ? 'chestGold' : 'chestShut', true) ?? drawn(l);
     const name = (l.look && PAINTED_LOOKS[l.look]) ?? (!l.look || !(l.look in LOOKS_DRAWN) ? PAINTED_KINDS[l.kind] : undefined);
     const look = name ? art(name) : null;
     if (look) return look;
@@ -260,7 +262,7 @@ function drawn(l: Location): { frames: Bitmap[]; foot: number; animated: boolean
     case 'event':
       return { frames: [shrine()], foot: 30, animated: false };
     case 'chest':
-      return { frames: [chest()], foot: 19, animated: true };
+      return { frames: [chest(l.done)], foot: 19, animated: true };
     case 'gold':
       return { frames: [goldPile()], foot: 15, animated: true };
     case 'hideout':

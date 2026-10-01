@@ -29,7 +29,9 @@ describe('Aldmoor\u2019s rides (#124): something worth stopping for is never far
     for (const land of lands) expect(FINDS.filter((f) => landOf(f.at) === land).length, LANDS[land]).toBeGreaterThanOrEqual(2);
     for (const find of FINDS) {
       for (const other of ALDMOOR.locations) {
-        if (other !== find) expect(Math.hypot(other.at[0] - find.at[0], other.at[1] - find.at[1]), `${find.id} and ${other.id}`).toBeGreaterThan(90);
+        // A guard lies close round what it guards, though never on it.
+        const room = find.guard === other.id || other.guard === find.id ? 32 : 90;
+        if (other !== find) expect(Math.hypot(other.at[0] - find.at[0], other.at[1] - find.at[1]), `${find.id} and ${other.id}`).toBeGreaterThan(room);
       }
     }
   });
