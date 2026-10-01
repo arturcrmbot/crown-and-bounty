@@ -12,7 +12,7 @@ import { countsExactly, forceLine, laterNote } from './places/common';
 import { oddsOf } from './places/enemy';
 import { heroStats, LEVELS, type StatId } from './hero';
 import { riddenOut } from './map/sortie';
-import { close, COMMISSION, coins, LAST_DAY, leadershipUsed, listed, locationById, PAYDAY_EVERY, roman, wages, type Card, type GameState, type Verdict } from './state';
+import { close, COMMISSION, coins, LAST_DAY, leadershipUsed, listed, locationById, PAYDAY_EVERY, roman, wages, type Card, type Found, type GameState, type Location, type Verdict } from './state';
 
 /** How mana comes back, in a few words: a quarter at dawn, for some heroes as they ride, and in full at a well or his castle. */
 export function manaBack(state: GameState): string {
@@ -127,10 +127,21 @@ export function bountyCard(state: GameState): Card {
   };
 }
 
+/** The kinds of thing the journal keeps a tally of, each counted only where the province has some (#192). */
+const FINDS_TALLIED: { what: string; is: (l: Location) => boolean }[] = [{ what: 'Chests opened', is: (l) => l.kind === 'chest' }];
+
+/** The journal's tally of things found: how many of each kind he has, of all the province has. */
+export const foundOf = (state: GameState): Found[] =>
+  FINDS_TALLIED.map(({ what, is }) => {
+    const all = state.locations.filter(is);
+    return { what, got: all.filter((l) => l.done).length, of: all.length };
+  }).filter((f) => f.of > 0);
+
 /**
  * The journal (J, or the book on the bar): the commission, with the villain's poster pinned in
  * (stamped PAID once he's taken), the reward, the day and the pieces of the old map; then what's been
- * heard on the road, quoted and not explained, the open things first and those that paid off ticked.
+ * heard on the road, quoted and not explained, the open things first and those that paid off ticked,
+ * and under them the tally of things found.
  */
 export function journalCard(state: GameState): Card {
   const c = commissionOf(state);
@@ -146,7 +157,7 @@ export function journalCard(state: GameState): Card {
       paid ? paidLine(state) : `Reward: **${coins(bountyOf(state))} gold**.`,
       `*You have ${mapPieces(state)} of the ${CAMPAIGN_LENGTH} pieces of the old map.*`,
     ],
-    journal: { heard: heardOf(state) },
+    journal: { heard: heardOf(state), found: foundOf(state) },
     choices: [close],
   };
 }

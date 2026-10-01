@@ -133,11 +133,12 @@ describe('the minimap', () => {
     // With the mist lifted: the King's castle, the villain's lair, the bands on the roads, and the treasure.
     const kinds = Object.fromEntries(marksOf(state.locations, CLEAR).map((m) => [m.id, m.kind]));
     expect(kinds).toMatchObject({ castle: 'town', village: 'town', hideout: 'villain', patrol: 'foe', wolves: 'foe', chest: 'treasure', gold: 'treasure' });
-    // What's used up and gone from the map is gone from the minimap; a used place turns grey.
-    const used = state.locations.map((l) => (l.id === 'chest' || l.id === 'tower' || l.id === 'patrol' ? { ...l, done: true } : l));
+    // What's used up and gone from the map is gone from the minimap; a used place turns grey, an opened chest too.
+    const used = state.locations.map((l) => (['chest', 'gold', 'tower', 'patrol'].includes(l.id) ? { ...l, done: true } : l));
     const after = Object.fromEntries(marksOf(used, CLEAR).map((m) => [m.id, m.kind]));
-    expect(after.chest).toBeUndefined();
+    expect(after.gold).toBeUndefined();
     expect(after.patrol).toBeUndefined();
+    expect(after.chest).toBe('spent');
     expect(after.tower).toBe('spent');
     // When he rides out, the villain is marked where he rides, and his lair as his men's.
     const lair = state.locations.find((l) => l.id === 'hideout')!;

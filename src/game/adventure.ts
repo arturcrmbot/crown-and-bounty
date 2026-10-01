@@ -465,9 +465,16 @@ export class AdventureController implements Screen {
           addPlace(this.scene, walk?.type === 'enemyMoved' ? { ...l, at: walk.from } : l);
           break;
         }
-        case 'changed':
-          refreshPlace(this.scene, locationById(this.state, e.id));
+        case 'changed': {
+          const l = locationById(this.state, e.id);
+          refreshPlace(this.scene, l);
+          // A chest just opened: its lid creaks up, and the glitter of what was in it.
+          if (l.kind === 'chest' && l.done) {
+            play('creak');
+            this.view.effects.puff(l.at[0], l.at[1] - 8, 'sparkle');
+          }
           break;
+        }
         case 'removed': {
           const gone = this.state.locations.find((l) => l.id === e.id);
           const object = this.scene.pickups.get(e.id);

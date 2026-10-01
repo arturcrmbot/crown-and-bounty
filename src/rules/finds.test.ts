@@ -389,6 +389,8 @@ describe('one-off finds', () => {
             continue;
           }
           if (!doers.length || l.kind === 'event' && !flag) continue;
+          // A chest's choices open it, and an open chest never shows its pages again.
+          if (l.kind === 'chest' && doers.every((c) => c.effects!.done)) continue;
           expect(flag, `${p.id} ${l.id}/${page.id}`).toBeTruthy();
           for (const c of doers) expect(c.effects!.flags?.[flag!], `${p.id} ${l.id}/${page.id}/${c.id}`).toBeTruthy();
         }

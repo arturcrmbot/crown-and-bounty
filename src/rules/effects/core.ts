@@ -212,7 +212,8 @@ export function applyEffects(state: GameState, place: Location, effects: Effects
   }
   if (effects.done) {
     next = update(next, place.id, { done: true });
-    if (VANISHES.has(place.kind)) events.push({ type: 'removed', id: place.id });
+    // A pile vanishes; anything else used up is drawn anew, as a chest opened and empty.
+    events.push({ type: VANISHES.has(place.kind) ? 'removed' : 'changed', id: place.id });
   }
   return { state: next, events, lines };
 }

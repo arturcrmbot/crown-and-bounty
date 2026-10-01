@@ -7,6 +7,156 @@ import type { Location } from '../rules/state';
  * Baron's orders, a lost pack, a band to fight, pay or dodge. None of them answers a quest.
  */
 export const FINDS: Location[] = [
+  // --- Chests (#192): they all look the same, as in King's Bounty, and each holds something different ---
+  {
+    id: 'heathChest',
+    kind: 'chest',
+    name: 'A Chest in the Heather',
+    at: [844, 799],
+    done: false,
+    gold: 150,
+    text: { about: ['An iron-bound chest lies half hidden in the heather, as if somebody meant to come back for it.'] },
+  },
+  {
+    id: 'hedgeChest',
+    kind: 'chest',
+    name: 'A Chest under the Hedge',
+    at: [2718, 1035],
+    done: false,
+    gold: 200,
+    text: { about: ['Somebody has pushed a chest under a hedge at the edge of a field, and thrown a sack over it.'] },
+  },
+  {
+    id: 'cragChest',
+    kind: 'chest',
+    name: 'A Chest in the Crags',
+    at: [1300, 500],
+    done: false,
+    gold: 120,
+    text: { about: ['A chest is wedged in a cleft of the crags, where nobody would find it unless they climbed.'] },
+  },
+  {
+    id: 'pineChest',
+    kind: 'chest',
+    name: 'A Chest under the Pines',
+    at: [436, 1276],
+    done: false,
+    gold: 200,
+    text: { about: ['A chest lies under the pines, green with moss, and its padlock has rusted right through.'] },
+  },
+  {
+    id: 'riverChest',
+    kind: 'chest',
+    name: 'A Chest by the River',
+    at: [1815, 1089],
+    done: false,
+    text: { about: ['A small chest sits on a flat stone by the river, dry as a bone, with a wax seal on its lid.'] },
+    pages: [
+      {
+        id: 'scroll',
+        when: { notSpell: 'slow' },
+        lines: ['You break the seal. Inside, wrapped in oilcloth, is a scroll in a wizard\u2019s hand, with a charm written out on it.'],
+        choices: [{ id: 'read', label: 'Read the charm', effects: { spell: 'slow', done: true }, lines: ['You read it through twice, and the third time the words stay put.'] }],
+      },
+      {
+        id: 'known',
+        lines: ['You break the seal. Inside is a scroll with the charm for **Slow** on it, which you know already, and somebody has filled its margins with notes.'],
+        choices: [{ id: 'notes', label: 'Read the notes in its margins', effects: { xp: 100, done: true }, lines: ['The notes are better than the charm.'] }],
+      },
+    ],
+  },
+  {
+    id: 'downsChest',
+    kind: 'chest',
+    name: 'A Chest in a Hollow',
+    at: [2007, 550],
+    done: false,
+    text: { about: ['A battered chest lies in a hollow of the downs, where a shepherd might shelter from the rain.'] },
+    pages: [
+      {
+        id: 'map',
+        lines: ['Inside, rolled up tight, is a map of the King\u2019s chase, drawn by one of the old King\u2019s huntsmen. Every track and every hollow oak is on it.'],
+        choices: [{ id: 'study', label: 'Study the map', effects: { reveal: { at: [2380, 1960], radius: 460 }, done: true }, lines: ['You learn the chase by heart before you roll the map up again.'] }],
+      },
+    ],
+  },
+  {
+    id: 'gildedChest',
+    kind: 'chest',
+    name: 'A Gilded Chest',
+    at: [1162, 1070],
+    done: false,
+    guard: 'heathWolves',
+    text: {
+      about: ['A gilded chest stands in the heather, and a pack of wolves lies round it as if it were theirs.'],
+      later: [{ when: { seen: 'heathWolves' }, about: ['A gilded chest stands in the heather where the wolves were lying.'] }],
+    },
+    pages: [
+      {
+        id: 'breastplate',
+        lines: ['You pry the lid off. Inside, wrapped in old sacking, lies a breastplate with the King\u2019s crown on it. It must have fallen off a cart a long time ago.'],
+        choices: [{ id: 'take', label: 'Take the breastplate', effects: { artifact: 'breastplate', done: true } }],
+      },
+    ],
+  },
+  {
+    id: 'heathWolves',
+    kind: 'patrol',
+    name: 'Wolves',
+    at: [1194, 1092],
+    done: false,
+    enemy: {
+      look: 'wolves',
+      tier: 'band',
+      behaviour: 'guard',
+      lines: ['A big pack of wolves lies round a gilded chest in the heather, and not one of them is asleep.'],
+      army: [{ troop: 'wolves', count: 45 }],
+      reward: 80,
+      threat: 'The biggest wolf gets up, stretches, and shows you all of its teeth.',
+      tamed: 'You sit down in the heather and wait. One by one the wolves come and lie down at your feet, and the chest is yours.',
+      flees: 'The wolves melt away into the heather.',
+      loot: 'Round the chest you find {gold} in old coins, and a great many bones.',
+    },
+  },
+  {
+    id: 'rootChest',
+    kind: 'chest',
+    name: 'A Chest among the Roots',
+    at: [2106, 1822],
+    done: false,
+    guard: 'chaseBoars',
+    text: {
+      about: ['A chest lies among the roots of an old oak, and a sounder of boars is rooting all round it.'],
+      later: [{ when: { seen: 'chaseBoars' }, about: ['A chest lies among the roots of an old oak, in ground the boars have turned over.'] }],
+    },
+    pages: [
+      {
+        id: 'button',
+        lines: ['You pry the lid off. Inside, on a velvet cushion, lies a single brass button, and the cushion has a wizard\u2019s star on it.'],
+        choices: [{ id: 'take', label: 'Take the button', effects: { artifact: 'wizardsButton', done: true } }],
+      },
+    ],
+  },
+  {
+    id: 'chaseBoars',
+    kind: 'patrol',
+    name: 'A Sounder of Boars',
+    at: [2148, 1822],
+    done: false,
+    enemy: {
+      look: 'wolves',
+      tier: 'band',
+      behaviour: 'guard',
+      lines: ['A sounder of boars is rooting round a chest under an old oak, and the old sow is watching you.'],
+      army: [{ troop: 'boars', count: 40 }],
+      reward: 60,
+      threat: 'The old sow lowers her head and scrapes the ground, and the rest of them do as she does.',
+      tamed: 'You scatter a pocketful of acorns, and the whole sounder follows them into your baggage train, the old sow first.',
+      flees: 'The boars crash away into the chase.',
+      loot: 'Where they were rooting you find {gold}, and a great many truffles.',
+    },
+  },
+
   // --- On the roads ---------------------------------------------------------------------------
   {
     id: 'crossroads',

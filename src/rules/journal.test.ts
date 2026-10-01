@@ -28,7 +28,7 @@ describe('the journal', () => {
       '*You have 0 of the 5 pieces of the old map.*',
     ]);
     // Nothing heard yet, but the page is there for it.
-    expect(card.journal).toEqual({ heard: [] });
+    expect(card.journal?.heard).toEqual([]);
     expect(card.choices.map((c) => c.label)).toEqual(['Close']);
   });
 
@@ -92,5 +92,14 @@ describe('the journal', () => {
         }
       }
     }
+  });
+});
+
+describe('the journal\u2019s tally of things found', () => {
+  it('counts the chests he has opened, of all the province has', () => {
+    const start = fresh();
+    expect(journalCard(start).journal?.found).toEqual([{ what: 'Chests opened', got: 0, of: 9 }]);
+    const opened = take(start, 'hedgeChest', 'keep');
+    expect(journalCard(opened).journal?.found).toEqual([{ what: 'Chests opened', got: 1, of: 9 }]);
   });
 });
