@@ -410,7 +410,13 @@ try {
   // The highwaymen are the long way round, by the ford: a fight by hand, by touch.
   await go('highwaymen', 'Approach');
   await look('fight-card');
+  const DIAG = async (tag) => console.log(`DIAG ${tag}`, JSON.stringify(await call(() => ({ screen: window.__kc.screen(), title: document.querySelector('.kc-card-wrap:not([hidden]) h3')?.textContent ?? null, buttons: [...document.querySelectorAll('.kc-card-wrap:not([hidden]) .kc-card button')].map((b) => { const r = b.getBoundingClientRect(); return `${b.textContent.slice(0, 20)}@${Math.round(r.x)},${Math.round(r.y)},${Math.round(r.width)}x${Math.round(r.height)}`; }), battle: Boolean(window.__kc.state().battle), hw: window.__kc.state().locations.find((l) => l.id === 'highwaymen')?.done, card: document.querySelector('.kc-card-wrap:not([hidden]) .kc-card')?.getAnimations().map((a) => a.playState).join(), gold: window.__kc.state().gold, at: window.__kc.state().hero.at }))));
+  await DIAG('before');
   await press('Fight');
+  console.log('DIAG tapped', JSON.stringify(pressed.at(-1)));
+  await DIAG('after');
+  await wait(1500);
+  await DIAG('later');
   await page.waitForFunction(() => window.__kc.screen() === 'battle', null, { timeout: 10_000 });
   await wait(600);
   const battleRails = await call(() => [...document.querySelectorAll('.kc-rail:not([hidden]) button')].map((b) => b.getAttribute('aria-label')));
