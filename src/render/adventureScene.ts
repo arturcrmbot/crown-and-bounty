@@ -2,7 +2,7 @@ import type { BackgroundId } from '../content/backgrounds';
 import { leads, troopPower, type TroopId } from '../content/troops';
 import { VANISHES, type Army, type GameState, type Location } from '../rules/game';
 import type { Point } from '../rules/map/geometry';
-import { Terrain, type MapModel } from '../rules/map/model';
+import { forestAmount, Terrain, type MapModel } from '../rules/map/model';
 import { AdventureScreen, type Placed } from './adventureScreen';
 import { Bitmap, SHADOW } from './bitmap';
 import { FogMask } from './fog';
@@ -19,7 +19,7 @@ import {
   stoneBridge, washingCottage, watchtower, well, willow, windmill, xMark,
 } from './sprites';
 import { TerrainPainter } from './terrain';
-import { mapArtReady, piece, TREE_KINDS } from './mapArt';
+import { mapArtReady, paintedFigure, piece, TREE_KINDS } from './mapArt';
 import type { PieceName } from './mapPieces';
 
 /**
@@ -235,7 +235,7 @@ function drawn(l: Location): { frames: Bitmap[]; foot: number; animated: boolean
       // Pike's grain cart, and one of his lads at its tail in a foe's red ring, fidgeting as they wait.
       const lead = leadTroop(l.enemy!.army);
       const still = troopFigure(lead, 'red', -1, STAND, 'map');
-      const fidget = animFrames(lead, 'idle').length > 1 ? everyFrame(lead, 'idle', 'red', -1, 'map', 120) : Array<Bitmap>(4).fill(raised(still.sprite));
+      const fidget = animFrames(lead, 'idle').length > 1 && !paintedFigure(lead, 'map') ? everyFrame(lead, 'idle', 'red', -1, 'map', 120) : Array<Bitmap>(4).fill(raised(still.sprite));
       const joined = [...Array<Bitmap>(fidget.length > 4 ? 24 : 14).fill(still.sprite), ...fidget].map((f) => withCart(ringed(f, -still.y, RED), -still.y));
       return { frames: joined.map((j) => j.sprite), foot: joined[0].foot, animated: true };
     }
@@ -270,7 +270,7 @@ function drawn(l: Location): { frames: Bitmap[]; foot: number; animated: boolean
       const lead = leadTroop(l.enemy!.army);
       const still = troopFigure(lead, 'red', -1, STAND, 'map');
       // Those Wesnoth gave no fidget just breathe: a pixel up for a moment, every couple of seconds.
-      const fidget = animFrames(lead, 'idle').length > 1 ? everyFrame(lead, 'idle', 'red', -1, 'map', 120) : Array<Bitmap>(4).fill(raised(still.sprite));
+      const fidget = animFrames(lead, 'idle').length > 1 && !paintedFigure(lead, 'map') ? everyFrame(lead, 'idle', 'red', -1, 'map', 120) : Array<Bitmap>(4).fill(raised(still.sprite));
       let poses = [...Array<Bitmap>(fidget.length > 4 ? 24 : 14).fill(still.sprite), ...fidget];
       let foot = -still.y;
       // A villain or a captain has one of his men at his heel, so a band reads as his: a wolf at the huntsman's.
@@ -336,6 +336,41 @@ export function addPlace(scene: AdventureScene, l: Location) {
   scene.hitboxes.push({ id: l.id, x0: o.x, y0: o.y, x1: o.x + o.sprite.width, y1: o.y + o.sprite.height });
 }
 
+/** The meadow's small things, by kind: bushes, flowers, grass and ferns, and the odd stump, log, mushrooms, stones or bramble. */
+const BUSHES = [0, 1, 2, 3, 4, 5, 26, 27, 28] as const;
+const FLOWERS = [6, 7, 8, 9, 10, 11] as const;
+const GRASS_TUFTS = [12, 13, 14, 15, 16] as const;
+const ODDS = [17, 18, 19, 20, 21, 22, 23, 24, 25] as const;
+
+/**
+ * Scatters the meadow's small things over open land, as HoMM2 fills its map: never on a road, the water,
+ * a place or in a wood, thickest along the edge of a wood, and a little everywhere else, so open
+ * country is never a bare green sheet. One in four, on a jittered grid; what grows is the hash's choice.
+ */
+function meadow(map: MapModel, scenery: Placed[]) {
+  const { province } = map;
+  const near = [...province.locations.map((l) => l.at), ...province.decor.map((d) => d.at), province.hero];
+  for (let gy = 20; gy < province.height - 10; gy += 26) {
+    for (let gx = 16; gx < province.width - 10; gx += 26) {
+      const x = gx + (hash(gx, gy, 420) - 0.5) * 22;
+      const y = gy + (hash(gx, gy, 421) - 0.5) * 22;
+      const cell = map.terrain[Math.floor(y / 8) * map.width + Math.floor(x / 8)];
+      if (cell !== Terrain.Grass) continue;
+      const wood = forestAmount(province, x, y);
+      if (wood > 0.45) continue;
+      // Thick along the edge of a wood, sparse in the open.
+      const chance = wood > 0.2 ? 0.75 : 0.22;
+      if (hash(gx, gy, 422) > chance) continue;
+      if (near.some(([px, py]) => Math.abs(px - x) < 40 && Math.abs(py - y) < 34)) continue;
+      const pick = hash(gx, gy, 423);
+      const list = wood > 0.2 ? (pick < 0.7 ? BUSHES : GRASS_TUFTS) : pick < 0.35 ? GRASS_TUFTS : pick < 0.62 ? FLOWERS : pick < 0.88 ? BUSHES : ODDS;
+      const p = piece(`decor${list[Math.floor(hash(gx, gy, 424) * list.length)]}` as PieceName);
+      if (!p) continue;
+      scenery.push(place(hash(gx, gy, 425) < 0.5 ? mirror(p.sprite) : p.sprite, [x, y], p.foot));
+    }
+  }
+}
+
 /**
  * The painted map's trees, rocks, crags and village huts. The rules plant a tree every few pixels for
  * the drawn map's little ones; the painted trees are bigger, so one in four of those stands. Woods of
@@ -384,6 +419,7 @@ function paintedScenery(map: MapModel, scenery: Placed[], landmarks: Placed[], p
       scenery.push(place(hash(x, 4, 415) < 0.5 ? mirror(p.sprite) : p.sprite, [x, y + province.cliff.height + 4], p.foot));
     }
   }
+  meadow(map, scenery);
   for (const d of province.decor) {
     const p = piece(d.sprite === 'holes' ? 'holes' : d.seed % 2 ? 'hut' : 'cottage')!;
     const o = place(p.sprite, d.at, p.foot);
@@ -505,12 +541,13 @@ function heroFrames(background: BackgroundId): Omit<HeroRig, 'object'> {
   const art = heroArtId(background);
   const still = troopFigure(art, 'blue', 1, STAND, 'map');
   const foot = -still.y;
-  const fidget = animFrames(art, 'idle').length > 1 ? everyFrame(art, 'idle', 'blue', 1, 'map', 120) : Array<Bitmap>(4).fill(raised(still.sprite));
+  const fidget = animFrames(art, 'idle').length > 1 && !paintedFigure(art, 'map') ? everyFrame(art, 'idle', 'blue', 1, 'map', 120) : Array<Bitmap>(4).fill(raised(still.sprite));
   // Still for at least half again as long as the fidget lasts, so it comes now and then.
   const idle = [...Array<Bitmap>(Math.max(16, Math.round(fidget.length * 1.5))).fill(still.sprite), ...fidget].map((f) => ringed(f, foot));
   const up = raised(still.sprite);
   const stride = [still.sprite, still.sprite, up, raised(up), raised(up), up];
-  const walk = (animFrames(art, 'move').length > 1 ? everyFrame(art, 'move', 'blue', 1, 'map', 70) : stride).map((f) => ringed(f, foot));
+  // A painted figure is one picture: it trots by bobbing, as a Wesnoth unit with no walk frames does.
+  const walk = (!paintedFigure(art, 'map') && animFrames(art, 'move').length > 1 ? everyFrame(art, 'move', 'blue', 1, 'map', 70) : stride).map((f) => ringed(f, foot));
   return { idle, walk, idleLeft: idle.map(mirror), walkLeft: walk.map(mirror), foot, head: bodyHeight(art, 'map') };
 }
 
