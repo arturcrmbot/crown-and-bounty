@@ -46,9 +46,9 @@ PIECES = {
     'cragBig': ('land', (54, 4, 195, 77), 140),
     'cragMid': ('land', (13, 73, 87, 130), 74),
     'cragSmall': ('land', (178, 81, 234, 123), 56),
-    'boulder1': ('land', (109, 90, 147, 121), 38),
-    'boulder2': ('land', (11, 145, 57, 177), 46),
-    'boulder3': ('land', (73, 151, 107, 176), 34),
+    'boulder1': ('land', (109, 90, 147, 121), 22),
+    'boulder2': ('land', (11, 145, 57, 177), 28),
+    'boulder3': ('land', (73, 151, 107, 176), 20),
     'bridge': ('land', (121, 123, 245, 196), 124),
     'tower': ('places', (114, 85, 142, 153), 28),
     'windmill': ('places', (185, 78, 238, 152), 53),
@@ -78,14 +78,16 @@ FIGURES = {
 FIGURES['hero'] = FIGURES['heroKnight']
 TROOPS_OUT = os.path.join(ROOT, 'public/assets/troops')
 # Ground: the seamless square inside each ground sheet's frame.
-GROUND = {'water': (36, 36, 92, 92), 'grass': (33, 33, 95, 95), 'dirt': (33, 33, 95, 95), 'wheat': (33, 36, 95, 95), 'heath': (14, 34, 114, 114), 'plough': (33, 33, 95, 95)}
+GROUND = {'heather': (14, 34, 114, 114), 'water': (36, 36, 92, 92), 'grass': (33, 33, 95, 95), 'dirt': (33, 33, 95, 95), 'wheat': (33, 36, 95, 95), 'heath': (14, 34, 114, 114), 'plough': (33, 33, 95, 95)}
 
 
 def palette():
-    js = "import('./src/render/palette.ts').then(m=>console.log(JSON.stringify({c:m.COLORS,cyc:[...m.CYCLING],sil:m.SILHOUETTE})))"
+    js = "import('./src/render/palette.ts').then(m=>console.log(JSON.stringify({c:m.COLORS,cyc:[...m.CYCLING],sil:m.SILHOUETTE,unit:[...m.UNIT]})))"
     out = subprocess.run(['npx', 'tsx', '-e', js], cwd=ROOT, capture_output=True, text=True, check=True).stdout
     d = json.loads(out.strip().splitlines()[-1])
     steady = [i for i in range(1, len(d['c'])) if i not in set(d['cyc']) and i != d['sil']]
+    global UNIT
+    UNIT = set(d['unit'])
     return np.array(d['c'], float), steady
 
 
@@ -106,13 +108,16 @@ except FileNotFoundError:
 LAB = oklab(COLORS[STEADY])
 
 
-def snap(rgb):
-    """The nearest steady palette colour to each pixel, by OKLab."""
+def snap(rgb, land=False):
+    """The nearest steady palette colour to each pixel, by OKLab. The ground (`land`) keeps to the land's
+    own ramps, not the units' colours: the day's light (evening, night) is tuned for those."""
     flat = rgb.reshape(-1, 3).astype(float)
     best = np.zeros(len(flat), int)
     lab = oklab(flat)
+    allowed = np.array([i not in UNIT for i in STEADY]) if land else np.ones(len(STEADY), bool)
+    table = np.where(allowed[:, None], LAB, 1e6)
     for s in range(0, len(flat), 8192):
-        best[s:s + 8192] = ((lab[s:s + 8192, None] - LAB[None]) ** 2).sum(2).argmin(1)
+        best[s:s + 8192] = ((lab[s:s + 8192, None] - table[None]) ** 2).sum(2).argmin(1)
     return COLORS[np.array(STEADY)[best]].reshape(rgb.shape)
 
 
@@ -123,6 +128,9 @@ def layers(sheet):
     back = np.abs(a - bg).sum(2) <= 8
     rim = nd.binary_dilation(back) & ~back
     grey = (a.max(2) - a.min(2) < 12) & (a.sum(2) > 120) & (a.sum(2) < bg.sum() - 20)
+    if sheet == 'heath':
+        # A ground sheet: nothing is background, nothing is shadow; its pieces are cut by colour.
+        return a, np.zeros(a.shape[:2], bool), np.zeros(a.shape[:2], bool)
     tone = np.array(Counter(map(tuple, a[rim & grey])).most_common(1)[0][0])
     flat = np.abs(a - tone).sum(2) <= 6
     lab, _ = nd.label(flat)
@@ -147,6 +155,10 @@ def cut(sheet, box, width, name='', height=None):
         solid[30:, 27:] = False
         sh[30:, :12] = False
         sh[30:, 27:] = False
+    if name.startswith('heather'):
+        purple = (rgb[..., 2] > rgb[..., 1] + 10) & (rgb[..., 0] > rgb[..., 1])
+        solid = nd.binary_closing(purple, iterations=1) & solid
+        sh = np.zeros_like(solid)
     if name == 'cart':
         # A tent stands behind the cart: its pale canvas goes.
         hsv = np.asarray(Image.fromarray(rgb.astype('uint8')).convert('HSV')).astype(int)
@@ -187,13 +199,38 @@ def cut(sheet, box, width, name='', height=None):
     return out
 
 
-def clumps(rgb, shades):
+def heath(rgb):
+    """The heath's ground: the meadow's own grass gone dry and golden, so it's the same land as the grass.
+    Its heather (the `heather` ground) is laid over it in patches, where the map's noise says, so it never repeats in a grid."""
+    x0, y0, x1, y1 = GROUND['grass']
+    grass = np.asarray(Image.open(os.path.join(SHEETS, 'grass.png')).convert('RGB')).astype(float)[y0:y1, x0:x1]
+    grass = clumps(seamless(np.asarray(Image.fromarray(grass.astype('uint8')).resize(rgb.shape[1::-1], Image.NEAREST)).astype(float)), 5)
+    hsv = np.asarray(Image.fromarray(grass.astype('uint8')).convert('HSV')).astype(float)
+    hsv[..., 0] = hsv[..., 0] * 0.3 + 38 * 0.7
+    hsv[..., 1] = np.minimum(255, hsv[..., 1] * 1.05)
+    hsv[..., 2] = np.minimum(255, hsv[..., 2] * 1.25)
+    out = np.asarray(Image.fromarray(hsv.astype('uint8'), 'HSV').convert('RGB')).astype(float)
+    return np.clip(out, 0, 255)
+
+
+def seamless(rgb):
+    """A square that tiles without mirroring: blended with itself shifted half a square, the shifted copy
+    showing at the edges (where it runs on round the wrap) and the square itself in the middle."""
+    h, w = rgb.shape[:2]
+    shifted = np.roll(np.roll(rgb, h // 2, 0), w // 2, 1)
+    yy, xx = np.mgrid[0:h, 0:w]
+    weight = np.minimum(np.minimum(xx, w - 1 - xx) / (w / 2), np.minimum(yy, h - 1 - yy) / (h / 2))
+    weight = np.clip(weight * 1.6, 0, 1)[..., None]
+    return rgb * weight + shifted * (1 - weight)
+
+
+def clumps(rgb, shades, contrast=1.8):
     """Pixel noise into drawn tufts, as HoMM2's ground is: a median over 3 pixels (wrapping, so it still
     tiles) turns static into little clumps, the contrast goes up so they read, and it's cut to a few
     flat shades of its own colours. No blur: every pixel stays sharp."""
     med = nd.median_filter(rgb, size=(3, 3, 1), mode='wrap')
     mean = med.reshape(-1, 3).mean(0)
-    med = np.clip(mean + (med - mean) * 1.8, 0, 255)
+    med = np.clip(mean + (med - mean) * contrast, 0, 255)
     flat = med.reshape(-1, 3)
     lum = flat @ [0.3, 0.59, 0.11]
     edges = np.quantile(lum, np.linspace(0, 1, shades + 1)[1:-1])
@@ -293,9 +330,16 @@ def main():
         hsv[..., 2] = np.minimum(255, hsv[..., 2] * lift[0])
         hsv[..., 1] = np.minimum(255, hsv[..., 1] * lift[1])
         rgb = np.asarray(Image.fromarray(hsv.astype('uint8'), 'HSV').convert('RGB')).astype(float)
-        if name in ('grass', 'dirt', 'water'):
-            rgb = clumps(rgb, 5)
-        px = np.dstack([snap(rgb), np.full(rgb.shape[:2], 255)]).astype('uint8')
+        rgb = seamless(rgb)
+        if name == 'water':
+            rgb = clumps(rgb, 6, contrast=3.0)
+        elif name == 'heath':
+            rgb = heath(rgb)
+        elif name == 'heather':
+            rgb = clumps(rgb, 7, contrast=1.2)
+        else:
+            rgb = clumps(rgb, 5 if name in ('grass', 'dirt') else 7)
+        px = np.dstack([snap(rgb, land=True), np.full(rgb.shape[:2], 255)]).astype('uint8')
         Image.fromarray(px).save(os.path.join(OUT, 'ground-' + name + '.png'))
     pieces = ',\n'.join(f'  {n}: {f}' for n, f in feet.items())
     with open(os.path.join(ROOT, 'src/render/mapPieces.ts'), 'w') as f:

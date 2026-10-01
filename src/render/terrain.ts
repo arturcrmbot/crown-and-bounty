@@ -89,7 +89,7 @@ export class TerrainPainter {
 
   constructor(map: MapModel) {
     this.map = map;
-    const names: GroundName[] = ['grass', 'dirt', 'heath', 'wheat', 'plough', 'water'];
+    const names: GroundName[] = ['grass', 'dirt', 'heath', 'heather', 'wheat', 'plough', 'water'];
     const art = names.map((n) => groundArt(n));
     this.painted = map.province.id === 'aldmoor' && art.every(Boolean) ? (Object.fromEntries(names.map((n, i) => [n, art[i]!])) as Record<GroundName, Bitmap>) : null;
     this.width = map.province.width;
@@ -221,12 +221,14 @@ export class TerrainPainter {
       }
     }
     if (this.regions.downs.length && this.within('downs', x, y) > 0) {
-      const slope = fbm((x - 5) / 240, (y - 5) / 170, 2, 95) - fbm((x + 5) / 240, (y + 5) / 170, 2, 95);
-      const chalk = fbm(x / 22, y / 22, 2, 96) + (noise(x / 5, y / 5, 97) - 0.5) * 0.2 > 0.8;
-      if (chalk) return { colour: this.texel('dirt', x, y, level + 0.1), ground: Ground.Rough };
-      return { colour: this.texel('grass', x, y, level + 0.1 + slope * 6), ground: Ground.Grass };
+      // The downs: the same grass, a touch brighter on the open slopes.
+      return { colour: this.texel('grass', x, y, Math.min(0.6, level + 0.06)), ground: Ground.Grass };
     }
-    if (this.regions.heath.length && this.within('heath', x, y) > 0) return { colour: this.texel('heath', x, y, level), ground: Ground.Rough };
+    if (this.regions.heath.length && this.within('heath', x, y) > 0) {
+      // Dry grass, with clumps of heather where the noise rises: soft-edged, never in a grid.
+      const heather = fbm(x / 26, y / 20, 2, 88) + (noise(x / 5, y / 5, 89) - 0.5) * 0.18;
+      return { colour: this.texel(heather > 0.6 ? 'heather' : 'heath', x, y, level), ground: Ground.Rough };
+    }
     return { colour: this.texel('grass', x, y, level), ground: Ground.Grass };
   }
 
@@ -443,6 +445,13 @@ export class TerrainPainter {
         if (!Number.isNaN(top) && face >= CLIFF_HEIGHT && face < CLIFF_HEIGHT + 8) level -= 0.28 - (face - CLIFF_HEIGHT) * 0.03;
 
         if (province.fen) level -= 0.06;
+        // The painted ground has its own light: only woods, banks and the cliff's foot shade it, never the land's broad noise.
+        if (this.painted) {
+          level = 0.52;
+          if (edge < 10) level -= (10 - edge) * 0.02;
+          if (forest > 0.56) level -= Math.min(0.3, (forest - 0.56) * 1.4);
+          if (!Number.isNaN(top) && face >= CLIFF_HEIGHT && face < CLIFF_HEIGHT + 8) level -= 0.3;
+        }
         const land = this.land(x, y, level, Boolean(province.fen));
         wild.data[i] = land.colour;
         if (p < pathHalf) {
