@@ -52,12 +52,12 @@ const feasts = [];
  * Takes on an enemy the way a patient player would: ride up, and if the sergeants don't like the
  * odds yet, wait for payday, recruit, and come back. Returns the title of the card that follows.
  */
-async function beatWhenReady(id, tries = 6) {
+async function beatWhenReady(id, tries = 6, ready = (lines) => lines.includes('nervous')) {
   for (let attempt = 1; attempt <= tries; attempt++) {
     // A hunter may have fallen on the camp at dawn and been seen off by the sergeants already.
     if ((await kc.state()).locations.find((l) => l.id === id)?.done) return ambushes.some((a) => a.id === id && a.title === 'Victory!') ? 'Victory!' : 'done';
     await go(id, 'Approach');
-    if ((await kc.lines()).includes('nervous') || attempt === tries) {
+    if (ready(await kc.lines()) || attempt === tries) {
       await kc.choose('Let the sergeants');
       const title = await kc.title();
       if (title === 'Victory!' || title?.endsWith('is taken!')) return title;
@@ -110,8 +110,6 @@ async function sight(id) {
 async function go(id, action) {
   await settle();
   await sight(id);
-  // Riding to see a band again, he may have ridden right up to it, and its card is open already.
-  if (action === 'Approach' && (await kc.call(() => [...document.querySelectorAll('.kc-card-wrap:not([hidden]) button')].some((b) => b.textContent.startsWith('Let the sergeants'))))) return kc.title();
   const [x, y] = await kc.centre(id);
   // If the hero stands in front of the place he takes the click, as he should: close his screen
   // and click another corner of the place, as a player would.
@@ -122,7 +120,16 @@ async function go(id, action) {
     await page.waitForTimeout(60);
   }
   if ((await kc.title()) === 'Unexplored') action = 'Ride there';
-  if (!(await kc.choose(action))) throw new Error(`${id}: no "${action}" on "${await kc.title()}": ${await kc.lines()}`);
+  // Already on his way there (looking for them, say), the click rides on with no card.
+  const riding = (await kc.status()).visiting === id;
+  // Ridden up to them already: their card offers the fight itself.
+  if (action === 'Approach' && !riding) {
+    const offers = await page
+      .waitForFunction(() => [...document.querySelectorAll('.kc-card-wrap:not([hidden]) button')].map((b) => b.textContent).find((t) => t.startsWith('Approach') || t.startsWith('Let the sergeants')), null, { timeout: 3000, polling: 50 })
+      .then((h) => h.jsonValue(), () => '');
+    if (offers.startsWith('Let the sergeants')) return kc.title();
+  }
+  if (!riding && !(await kc.choose(action))) throw new Error(`${id}: no "${action}" on "${await kc.title()}": ${await kc.lines()}`);
   for (;;) {
     await page.waitForFunction(() => {
       const s = window.__kc.status();
@@ -402,7 +409,8 @@ try {
   await close();
 
   // Explored and grown: back to the patrol, the wolves, and Grimsby, each when the sergeants like the odds.
-  check((await beatWhenReady('patrol')) === 'Victory!', 'once explored, the sergeants beat the patrol');
+  // Not at the cost of half his army, with the Baron and his guard to meet next.
+  check((await beatWhenReady('patrol', 6, (lines) => lines.includes('nervous') && !/lose (about half|most)/.test(lines))) === 'Victory!', 'once explored, the sergeants beat the patrol');
   await close();
   // Taking his patrol off the bridge hurts Grimsby: he rides out with his guard to meet the hero, and
   // falls on his camp. Beaten in the open, he flees home to his stockade, and his guard straggles in after him.
