@@ -27,6 +27,7 @@ const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('console', (m) => m.type() === 'error' && !m.text().includes('404') && errors.push(m.text()));
+page.on('console', (m) => ['warning', 'error'].includes(m.type()) && console.log('DIAG console', m.type(), m.text().slice(0, 300)));
 // Drags and long presses need the touch events underneath a tap: Chromium's, through its protocol.
 const cdp = engine === 'webkit' ? null : await context.newCDPSession(page);
 const landscape = { ...device.viewport };
@@ -417,6 +418,7 @@ try {
   await DIAG('after');
   await wait(1500);
   await DIAG('later');
+  console.log('DIAG errors', JSON.stringify(errors));
   await page.waitForFunction(() => window.__kc.screen() === 'battle', null, { timeout: 10_000 });
   await wait(600);
   const battleRails = await call(() => [...document.querySelectorAll('.kc-rail:not([hidden]) button')].map((b) => b.getAttribute('aria-label')));
