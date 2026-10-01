@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/arturcrmbot/crown-and-bounty/actions/workflows/ci.yml/badge.svg)](https://github.com/arturcrmbot/crown-and-bounty/actions/workflows/ci.yml)
 
-A small browser game: King's Bounty (1990) rebuilt with the charm of Heroes of Might and Magic 2. The troops are Battle for Wesnoth's hand-painted units; every other pixel, and every note, is made in code.
+A small browser game: King's Bounty (1990) rebuilt with the charm of Heroes of Might and Magic 2. The troops are Battle for Wesnoth's hand-painted units; every other pixel is made in code. The music is yubatake's tunes, played on GeneralUser GS's instruments.
 
 Ride out for King Osric across five commissions, as a Knight who charges, a Ranger who rides the woods, a Hedge Wizard who casts twice a round, or a Courtier who buys his way through. Commission I is out now, and the other four are on their way.
 

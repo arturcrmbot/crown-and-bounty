@@ -4,7 +4,7 @@
 // (`MARKS` in src/audio/context.ts), how far the score ducks under each sting, how they end, how
 // bright they are and how the tracks loop.
 //   npm run listen                 (everything)
-//   npm run listen -- stings       (or tracks, effects, ambience, or a name: heath, victory, blow:bite...)
+//   npm run listen -- stings       (or tracks, effects, ambience, or a name: fields, victory, blow:bite...)
 //   npm run listen -- --check      (and fail if anything sits too far from its mark, or peaks too high)
 import { openPage } from './lib/browser.mjs';
 import { startServer } from './lib/server.mjs';
@@ -20,11 +20,15 @@ try {
   const report = await page.evaluate(async (wanted) => {
     const { playNote } = await import('/src/audio/instruments.ts');
     const { STINGS } = await import('/src/audio/stings.ts');
-    const { TRACKS, notesOf, loopUnits, midiOf, gateLevel, moodLevel } = await import('/src/audio/score.ts');
+    const { TRACKS, TUNES, notesOf, lengthOf, midiOf, gateLevel, moodLevel } = await import('/src/audio/score.ts');
+    const { loadBand, playBand } = await import('/src/audio/band.ts');
     const { LEVELS, MARKS, masterChain } = await import('/src/audio/context.ts');
     const { AMBIENT_BEDS, AMBIENT_CALLS, AMBIENT_LAYERS } = await import('/src/audio/ambience.ts');
     const { EFFECTS } = await import('/src/audio/effects.ts');
-    const { duck, deepen, DUCK_IN } = await import('/src/audio/music.ts');
+    const { duck, deepen, DUCK_IN, loadTune, tuneMidi, scoreChain } = await import('/src/audio/music.ts');
+    // The band's samples and every tune, as the game loads them.
+    await loadBand();
+    for (const id of Object.keys(TUNES)) await loadTune(id);
     // BS.1770's K-weighting filters are given for 48 kHz.
     const RATE = 48000;
     const want = (group, name) => !wanted.length || wanted.includes(group) || wanted.includes(name);
@@ -157,16 +161,25 @@ try {
     }
 
     const MOODS = { map: { intensity: 0, balance: 0 }, start: { intensity: 0.25, balance: 0 }, heated: { intensity: 0.85, balance: 0 }, winning: { intensity: 0.85, balance: 0.6 }, losing: { intensity: 0.85, balance: -0.6 } };
-    /** Plays the stretch of a track's time [from, to) (laps wrap round) in a mood, as the game does, starting `offset` seconds into the render. */
-    function playTrack(ctx, dest, track, from, to, mood, offset = 0) {
-      const loop = loopUnits(track) * track.unit;
-      const whole = moodLevel(track, mood);
-      for (let lap = Math.floor(from / loop); lap <= Math.floor(to / loop); lap++) {
-        for (const n of notesOf(track)) {
-          const t = lap * loop + n.at * track.unit;
+    /** The track a tune plays in that has a lair's arrangement (a villain's theme), if it's one. */
+    const lairOf = (id) => Object.values(TRACKS).find((t) => t.calm !== undefined && t.tunes.includes(id));
+    /**
+     * Plays the stretch of a tune's time [from, to) in a mood, as the game does (through the score's
+     * room echo, and coming round again if it loops), starting `offset` seconds into the render.
+     */
+    function playTune(ctx, dest, id, from, to, mood, offset = 0) {
+      const tune = TUNES[id];
+      const loop = lengthOf(tune, tuneMidi(id));
+      const lair = lairOf(id);
+      const whole = lair ? moodLevel(lair, mood) : 1;
+      const into = scoreChain(ctx, dest);
+      for (let lap = Math.max(0, Math.floor(from / loop)); lap <= Math.floor(to / loop); lap++) {
+        if (lap > 0 && !tune.loops) break;
+        for (const n of notesOf(tune, tuneMidi(id))) {
+          const t = lap * loop + n.at;
           if (t < from || t >= to) continue;
           const level = gateLevel(n.gate, mood) * whole;
-          if (level > 0.02) playNote(ctx, dest, n.instrument, t - from + offset, n.midi, n.length * track.unit, n.volume * level);
+          if (level > 0.02) playBand(ctx, into, n.instrument, t - from + offset, n.key, n.length, n.volume * level);
         }
       }
     }
@@ -178,15 +191,15 @@ try {
       return round(lufs(sum / Math.max(1, k.length)));
     };
     /**
-     * How the score steps back under something played over it: the heath's tune ducked at 3 s as the
-     * game ducks it, and its loudness just before and under the duck.
+     * How the score steps back under something played over it: Aldmoor's first tune ducked at 3 s
+     * as the game ducks it, and its loudness just before and under the duck.
      */
     async function ducked(seconds, depth) {
       const music = await render(4 + seconds, LEVELS.music, (ctx, dest) => {
         const g = ctx.createGain();
         g.connect(dest);
         duck(g.gain, 3, deepen({ depth: 1, until: 0 }, 3, seconds, depth));
-        playTrack(ctx, g, TRACKS.heath, 0, 4 + seconds, MOODS.map);
+        playTune(ctx, g, TRACKS.heath.tunes[0], 0, 4 + seconds, MOODS.map);
       });
       return { before: between(music, 1, 3), under: between(music, 3 + DUCK_IN, 3 + Math.max(DUCK_IN + 0.3, seconds)) };
     }
@@ -239,40 +252,40 @@ try {
       const dip = await ducked(def.duck, 0.3);
       out.stings.push({ id, peak: peak(data), loudness, off: round(loudness - MARKS.sting), rings: tail(data), duck: def.duck, dip: round(dip.under - dip.before), over: round(loudness - dip.under), next: def.next ?? null });
     }
-    for (const [id, track] of Object.entries(TRACKS)) {
+    for (const [id, tune] of Object.entries(TUNES)) {
       if (!want('tracks', id)) continue;
-      const loop = loopUnits(track) * track.unit;
-      const gated = notesOf(track).some((n) => n.gate);
-      /** Renders the stretch of track time [from, to) in a mood, and returns it without its 3 s lead-in (the notes still ringing from before). */
+      const loop = lengthOf(tune, tuneMidi(id));
+      const gated = notesOf(tune, tuneMidi(id)).some((n) => n.gate);
+      const level = tune.level * (lairOf(id)?.calm ?? 1);
+      /** Renders the stretch of tune time [from, to) in a mood, and returns it without its 3 s lead-in (the notes still ringing from before). */
       const stretch = async (from, to, mood) => {
         const lead = 3;
-        const data = await render(to - from + lead + 2, LEVELS.music, (ctx, dest) => playTrack(ctx, dest, track, from - lead, to, mood));
+        const data = await render(to - from + lead + 2, LEVELS.music, (ctx, dest) => playTune(ctx, dest, id, from - lead, to, mood));
         return data.subarray(Math.floor(lead * RATE), Math.floor((lead + to - from) * RATE));
       };
-      // Each pass of the form on its own, so a quiet verse can't hide.
+      // Each quarter on its own, so a quiet stretch can't hide.
       const passes = [];
-      let at = 0;
-      for (const pass of track.form) {
-        const seconds = track.sections[pass.section].chords.length * track.unitsPerBar * track.unit;
-        passes.push({ section: pass.section, loudness: integrated(await stretch(at, at + seconds, MOODS.map)) });
-        at += seconds;
-      }
-      // The whole loop, as a player riding along hears it.
+      for (let q = 0; q < 4; q++) passes.push({ section: `${q + 1}/4`, loudness: integrated(await stretch((q * loop) / 4, ((q + 1) * loop) / 4, MOODS.map)) });
+      // The whole tune, as a player riding along hears it.
       const whole = integrated(await stretch(0, loop, MOODS.map));
-      // The seam: the last seconds of the loop and the first of the next time round.
-      const seam = await stretch(loop - 3, loop + 3, MOODS.map);
+      // The seam, for a tune that loops: the last seconds and the first of the next time round.
+      const seam = tune.loops ? await stretch(loop - 3, loop + 3, MOODS.map) : null;
       const moods = {};
       if (gated) for (const [name, mood] of Object.entries(MOODS)) moods[name] = integrated(await stretch(0, Math.min(loop, 20), mood));
-      out.tracks.push({ id, seconds: Math.round(loop), loudness: whole, off: round(whole - MARKS.music), passes, seamBefore: integrated(seam.subarray(0, 3 * RATE)), seamAfter: integrated(seam.subarray(3 * RATE)), moods, gated });
+      const off = round(whole - MARKS.music);
+      // The level that would put it right on its mark (for a villain's theme, his lair's arrangement is set by its `calm`).
+      const fit = Number((tune.level * 10 ** (-(gated && lairOf(id) ? round(moods.start - MARKS.music) : off) / 20)).toPrecision(2));
+      const calmFit = lairOf(id) ? Number(((lairOf(id).calm ?? 1) * 10 ** (-off / 20)).toPrecision(2)) : null;
+      out.tracks.push({ id, seconds: Math.round(loop), loudness: whole, off, level, fit, calmFit, passes, seamBefore: seam ? integrated(seam.subarray(0, 3 * RATE)) : null, seamAfter: seam ? integrated(seam.subarray(3 * RATE)) : null, moods, gated });
     }
     return out;
   }, only);
   const sign = (v) => (v > 0 ? `+${v}` : `${v}`);
   const { marks } = report;
   if (report.tracks.length) {
-    console.log(`\nTracks, as heard riding along (music bus and master; LUFS, gated): the whole loop against the music's mark (${marks.music}), each pass of the form, the seam, and for gated tracks each mood (first 20 s)`);
+    console.log(`\nTunes, as heard riding along (music bus, the score's room and the master; LUFS, gated): the whole tune against the music's mark (${marks.music}), the level that would put it there (for a villain's theme, by his lair: calm), each quarter, the seam of one that loops, and for gated tunes each mood (first 20 s)`);
     for (const t of report.tracks) {
-      console.log(`${t.id.padEnd(9)} ${String(t.seconds).padStart(4)}s  ${String(t.loudness).padStart(5)} (${sign(t.off)})  passes ${t.passes.map((p) => `${p.section}:${p.loudness}`).join('  ')}  seam ${t.seamBefore} -> ${t.seamAfter}`);
+      console.log(`${t.id.padEnd(10)} ${String(t.seconds).padStart(4)}s  ${String(t.loudness).padStart(5)} (${sign(t.off)})  fit ${t.fit}${t.calmFit === null ? '' : ` calm ${t.calmFit}`}  quarters ${t.passes.map((p) => p.loudness).join(' ')}${t.seamBefore === null ? '' : `  seam ${t.seamBefore} -> ${t.seamAfter}`}`);
       if (Object.keys(t.moods).length) console.log(`${''.padEnd(16)}moods ${Object.entries(t.moods).map(([k, v]) => `${k} ${v}`).join('  ')}`);
     }
   }
