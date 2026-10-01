@@ -41,7 +41,7 @@ PIECES = {
     'cart': ('wild', (15, 174, 88, 244), 60),
     'pack': ('wild', (104, 190, 154, 239), 28),
     'nest': ('wild', (177, 182, 244, 243), 46),
-    'signpost': ('wild', (120, 95, 144, 156), 30),
+    'signpost': ('wild', (110, 95, 148, 152), 18),
     'holes': ('wild', (136, 128, 175, 162), 40),
     'cragBig': ('land', (54, 4, 195, 77), 140),
     'cragMid': ('land', (13, 73, 87, 130), 74),
@@ -141,6 +141,12 @@ def cut(sheet, box, width, name='', height=None):
     a, back, shadow = CACHE[sheet]
     x0, y0, x1, y1 = box
     rgb, solid, sh = a[y0:y1, x0:x1].copy(), ~back[y0:y1, x0:x1] & ~shadow[y0:y1, x0:x1], shadow[y0:y1, x0:x1].copy()
+    if name == 'signpost':
+        # The diggings' spoil heaps touch the post's foot: keep the post's columns only below the arms.
+        solid[30:, :12] = False
+        solid[30:, 27:] = False
+        sh[30:, :12] = False
+        sh[30:, 27:] = False
     if name == 'cart':
         # A tent stands behind the cart: its pale canvas goes.
         hsv = np.asarray(Image.fromarray(rgb.astype('uint8')).convert('HSV')).astype(int)

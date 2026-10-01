@@ -128,6 +128,42 @@ export class TerrainPainter {
           fields.furrow[k] = Math.floor(hash(i, j, 84) * FURROWS.length);
         }
       }
+      if (this.painted) {
+        // On the painted map a field is worked only if nothing crosses it: no road, no river, and
+        // nothing built in it. A field is the land nearer its centre than any other's, so a field is
+        // spoilt by any road, river or place whose ground is nearest its centre.
+        const owner = (x: number, y: number) => {
+          const ci = Math.floor(x / FIELD);
+          const cj = Math.floor(y / FIELD);
+          let best = -1;
+          let bestD = Infinity;
+          for (let j = Math.max(0, cj - 1); j <= Math.min(rows - 1, cj + 1); j++) {
+            for (let i = Math.max(0, ci - 1); i <= Math.min(cols - 1, ci + 1); i++) {
+              const k = j * cols + i;
+              const d = (x - fields.x[k]) ** 2 + (y - fields.y[k]) ** 2;
+              if (d < bestD) [best, bestD] = [k, d];
+            }
+          }
+          return best;
+        };
+        const spoil = (x: number, y: number, r: number) => {
+          for (let dy = -r; dy <= r; dy += 4) for (let dx = -r; dx <= r; dx += 4) if (dx * dx + dy * dy <= r * r) {
+            const k = owner(x + dx, y + dy);
+            if (k >= 0) fields.farmed[k] = 0;
+          }
+        };
+        const along = (line: readonly Point[], r: number) => {
+          for (let n = 1; n < line.length; n++) {
+            const [ax, ay] = line[n - 1];
+            const [bx, by] = line[n];
+            const steps = Math.ceil(Math.hypot(bx - ax, by - ay) / 4);
+            for (let t = 0; t <= steps; t++) spoil(ax + ((bx - ax) * t) / steps, ay + ((by - ay) * t) / steps, r);
+          }
+        };
+        for (const line of map.paths) along(line, 12);
+        along(map.river, 28);
+        for (const [x, y] of [...map.province.locations.map((l) => l.at), ...map.province.decor.map((d) => d.at)]) spoil(x, y, 44);
+      }
       this.fields = fields;
     }
   }
@@ -176,11 +212,12 @@ export class TerrainPainter {
         const hedge = (db - da) / (2 * Math.hypot(fields.x[a] - fields.x[b], fields.y[a] - fields.y[b]));
         const hedged = hash(Math.min(a, b), Math.max(a, b), 85) > 0.25 && noise(x / 9, y / 9, 86) > 0.22;
         // Hedges are a soft band of darker grass, not a line.
-        const worked = (hash(a, 0, 404) < WORKED && CROP_GROUND[fields.crop[a]] !== 'grass') || (hash(b, 0, 404) < WORKED && CROP_GROUND[fields.crop[b]] !== 'grass');
+        const tilled = (k: number) => fields.farmed[k] === 1 && forestAmount(this.map.province, fields.x[k], fields.y[k]) < 0.2 && hash(k, 0, 404) < WORKED && CROP_GROUND[fields.crop[k]] !== 'grass';
+        const worked = tilled(a) || tilled(b);
         if (worked && hedged && hedge < 1.2) return { colour: SHADOW_LUT[this.texel('grass', x, y, level)], ground: Ground.Hedge };
         const crop = hash(a, 0, 404) < WORKED ? CROP_GROUND[fields.crop[a]] : 'grass';
         // A field fades into the grass round it over a few pixels, ragged, as HoMM2's ground meets.
-        if (fields.farmed[a] && crop !== 'grass' && hedge > 1.2) return { colour: this.texel(crop, x, y, level - 0.08), ground: Ground.Field };
+        if (tilled(a) && crop !== 'grass' && hedge > 1.2 && forestAmount(this.map.province, x, y) < 0.4) return { colour: this.texel(crop, x, y, level - 0.08), ground: Ground.Field };
       }
     }
     if (this.regions.downs.length && this.within('downs', x, y) > 0) {
