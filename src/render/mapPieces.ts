@@ -22,7 +22,7 @@ export const PIECE_FEET = {
   cart: 39,
   pack: 24,
   nest: 38,
-  signpost: 69,
+  signpost: 25,
   holes: 32,
   cragBig: 65,
   cragMid: 51,
