@@ -5,4 +5,6 @@ export default defineConfig({
   base: './',
   // Port 5173 is often taken by other projects on this machine, so the game has its own.
   server: { host: '127.0.0.1', port: 5188, strictPort: true },
+  // The music's MIDI files and the band's samples are assets: the tests read them as data URLs.
+  assetsInclude: ['**/*.mid', '**/*.bin'],
 });

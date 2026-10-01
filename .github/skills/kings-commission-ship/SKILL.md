@@ -105,6 +105,7 @@ nothing can reach them.
   keep old saves, stop and say so rather than bump.
 - Browsers only allow sound after a click or key press; M mutes.
 - No image-generation models. The units are Battle for Wesnoth's (`npm run wesnoth`; every file is
-  credited in `public/assets/CREDITS.md`, and the game is GPL-2.0-or-later); all other art, music
-  and sound are made in code. A new unit or frame goes in `src/render/units.ts`, then
+  credited in `public/assets/CREDITS.md`, and the game is GPL-2.0-or-later); all other art, and the
+  sound effects, are made in code. The music is yubatake's MIDI tunes (CC BY 4.0) on GeneralUser
+  GS's instruments, every file credited in `public/assets/CREDITS.md` too. A new unit or frame goes in `src/render/units.ts`, then
   `npm run wesnoth -- --palette --credits`.

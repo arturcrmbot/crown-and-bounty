@@ -1,160 +1,276 @@
 /**
- * The music, written down. Each track has sections (A, B...), each a chord for every bar and a melody
- * written out note by note, and accompaniment built from the chords by pattern: arpeggios, a bass, a
- * drone, drums. A track's form plays its sections in turn, each pass arranged its own way (another
- * lead, fewer parts, a drum that drops out), so the map's tunes take minutes to come round again.
- * Some parts only play in the right mood: as a battle builds, when you're winning or losing, or
- * near a villain's lair and not yet in his battle (see `Gate`). All of it is original, in the style
- * of a small medieval band.
- *
- * Melody notation: `D5:2 B4:1 G4:2 B4:1 | ...`, with notes as name and octave, `r` for a rest, and
- * lengths in the track's unit (an eighth note). Bars are separated by `|`.
+ * The music: Yubatake's tunes from his "JRPG Collection" and his "Northern Isles" (CC-BY 4.0), as he wrote them, in MIDI
+ * (`public/assets/music/`), played on the band's General MIDI instruments (`band.ts`) as our
+ * arrangement has it here: for each tune, which instrument plays each of his parts, how loud, and in
+ * which mood. And for each place in the game, the tunes that take turns there: on a map each plays
+ * through (twice, if it's short), and after a breath the next begins, so the music never stays on
+ * one tune for long. Some parts only play in the right mood: as a battle builds, when you're winning
+ * or losing, or once a villain's fight has started, his lair's quieter arrangement filling out (see
+ * `Gate`). Which place's music plays when is `game/tunes.ts`.
  */
-import type { InstrumentId } from './instruments';
+import { RANGES, type Drum, type Melodic } from './band';
+import type { Midi } from './midi';
 
-export type TrackId = 'title' | 'heath' | 'fen' | 'weald' | 'marsh' | 'reach' | 'town' | 'battle' | 'court' | 'grimsby' | 'mirrow' | 'bramble';
+export type TrackId = 'title' | 'heath' | 'fen' | 'weald' | 'marsh' | 'reach' | 'battle' | 'court' | 'grimsby' | 'mirrow' | 'bramble';
 
 /**
- * When a part plays: from an intensity up (a battle building), below one (a lair's quiet
- * arrangement, gone once the fighting starts), or in a mood: winning, losing, or anything but losing.
+ * When a part plays: from an intensity up (a battle building, or a villain's fight begun), below
+ * one (gone once the fighting starts), or in a mood: winning, losing, or anything but losing.
  */
 export type Gate = { from?: number; below?: number; mood?: 'win' | 'lose' | 'steady' };
 
 /** The music's mood: how hard the fighting is (0 on the map, rising through a battle), and who's winning (-1 to 1). */
 export type Mood = { intensity: number; balance: number };
 
-export type Note = { at: number; length: number; midi: number; instrument: InstrumentId; volume: number; gate?: Gate; lead?: boolean };
+/** One note to play, in seconds from the top of its tune. */
+export type Note = { at: number; length: number; key: number; instrument: Melodic | Drum; volume: number; gate?: Gate };
 
-/** A pattern step: when in the bar (in units), which chord tone (0 root, 1 third, 2 fifth, 3 the octave), octave, length, volume. */
-type Step = [at: number, tone: number, octave: number, length: number, volume?: number];
+/**
+ * Who plays one of his parts: an instrument, its notes moved `octave` octaves and folded into the
+ * instrument's keys (`RANGES`), or the drums, each of his drum notes played on one of ours.
+ */
+export type Voice = ({ instrument: Melodic; octave?: number } | { drums: Record<number, Drum> }) & { volume: number; gate?: Gate };
 
-type Accompaniment = { gate?: Gate } & (
-  | { kind: 'pattern'; instrument: InstrumentId; volume: number; steps: Step[]; bars?: number[] }
-  | { kind: 'drums'; steps: [at: number, drum: 'tabor' | 'rim', volume: number][]; bars?: number[] }
-);
+export type TuneId =
+  | 'fields' | 'shop' | 'inn' | 'town' | 'tavern' | 'mysticIsle' | 'northernIsles' | 'docks' | 'temple'
+  | 'mainTheme' | 'royalCourt' | 'princess' | 'battle' | 'battleBoss' | 'labyrinth' | 'dungeon';
 
-export type Section = { chords: string[]; melody: string };
-
-/** One time through a section: which lead plays it (or none), and which parts (all of them, if not said). */
-export type Pass = { section: string; lead?: { instrument?: InstrumentId; volume?: number; octave?: number } | null; parts?: string[] };
-
-export type TrackDef = {
-  id: TrackId;
-  /** Seconds per unit (an eighth note). */
-  unit: number;
-  unitsPerBar: number;
-  /** Units in a bar where the melody must sit on a chord tone. */
-  strong: number[];
-  sections: Record<string, Section>;
-  lead: { instrument: InstrumentId; volume: number };
-  parts: Record<string, Accompaniment>;
-  form: Pass[];
-  /** Scales the whole track, so every track plays at the music's mark in the mix (see `npm run listen -- tracks`). */
-  level?: number;
-  /**
-   * Scales it again in the calm, on the map, for a villain's theme: by his lair it's a sparer
-   * arrangement than the whole band in his battle, and this brings it up to the mark too.
-   */
-  calm?: number;
-  /** Lively tunes: every other time round, the recorder and the fife swap. */
-  swap?: boolean;
+export type Tune = {
+  /** His file, in `public/assets/music/`, and his name for it. */
+  file: string;
+  title: string;
+  /** Each of his parts, by its track's name in the file, and who plays it (or several, doubling it). Parts not named are left out. */
+  parts: Record<string, Voice | Voice[]>;
+  /** Scales the whole tune, so every tune plays at the music's mark in the mix (`npm run listen -- tracks`). */
+  level: number;
+  /** He wrote it to come round again with no pause; otherwise it ends, and the next tune starts after a breath. */
+  loops?: boolean;
 };
 
-const NAMES: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+const drums = (map: Record<number, Drum>, volume: number, gate?: Gate): Voice => ({ drums: map, volume, gate });
+const play = (instrument: Melodic, volume: number, more: { octave?: number; gate?: Gate } = {}): Voice => ({ instrument, volume, ...more });
 
-/** "F#4" to a MIDI note number. */
-export function midiOf(name: string): number {
-  const m = /^([A-G])(#|b)?(-?\d)$/.exec(name);
-  if (!m) throw new Error(`Not a note: ${name}`);
-  return 12 * (Number(m[3]) + 1) + NAMES[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0);
+/** Into a villain's fight: the parts his lair's quieter arrangement leaves out. */
+const FIGHT: Gate = { from: 0.2 };
+
+export const TUNES: Record<TuneId, Tune> = {
+  // Aldmoor's, the sunny farmland: a lilting three-time field, the shop's clarinet, the inn's recorder, the town and the tavern.
+  fields: {
+    file: 'JRPG_fields.mid',
+    title: 'Fields',
+    parts: { Lead_Square: play('flute', 0.9), Middle_Pulse: play('harp', 0.6), Bass_Tri: play('upright', 0.8), Mid_Aux: play('strings', 0.35) },
+    level: 0.93,
+    loops: true,
+  },
+  shop: {
+    file: 'JRPG_shop.mid',
+    title: 'Shop',
+    parts: { Lead_Square: play('clarinet', 0.85), Middle_Pulse: play('pizzicato', 0.55), Bass_Tri: play('upright', 0.8), Percussion: drums({ 55: 'stick', 57: 'hat' }, 0.35) },
+    level: 1.3,
+    loops: true,
+  },
+  inn: {
+    file: 'JRPG_inn.mid',
+    title: 'Inn',
+    parts: { Lead_Pulse: play('recorder', 0.85), Middle_Square: play('harpsichord', 0.45), Bass_Tri: play('pizzicato', 0.75), Percussion: drums({ 55: 'tambourine' }, 0.3) },
+    level: 1.1,
+    loops: true,
+  },
+  town: {
+    file: 'JRPG_town.mid',
+    title: 'Town',
+    parts: {
+      Lead_Pulse: play('oboe', 0.8),
+      Middle_Pulse: play('harp', 0.55),
+      Middle_Pulse_Extra: play('glockenspiel', 0.3),
+      Bass_Short: play('pizzicato', 0.6),
+      Bass_Long: play('upright', 0.7),
+      Percussion: drums({ 52: 'tambourine' }, 0.28),
+    },
+    level: 1.1,
+    loops: true,
+  },
+  tavern: {
+    file: 'JRPG_tavern.mid',
+    title: 'Tavern',
+    parts: { Stringed1_Pulse: play('harpsichord', 0.45), Stringed2_Pulse: play('guitar', 0.6), Lead_Tri: play('recorder', 0.85) },
+    level: 0.79,
+  },
+  // The Fenmarch's: mist on the water, a folk tune from the isles, the boats at the jetty, and a quiet shrine.
+  mysticIsle: {
+    file: 'JRPG_mysticIsle.mid',
+    title: 'Mystic Isle',
+    parts: { Lead_Tri: play('flute', 0.9), ChordsUpper_Pulse: play('strings', 0.4), ChordsLower_Pulse: play('harp', 0.55), Bass_Tri: play('upright', 0.8) },
+    level: 1.2,
+  },
+  northernIsles: {
+    file: 'NorthernIsles.mid',
+    title: 'Northern Isles',
+    parts: {
+      Woodwind: play('flute', 0.85, { octave: 1 }),
+      Dulcimer: play('harp', 0.5),
+      BassLute: play('guitar', 0.55),
+      Stringed: play('strings', 0.35),
+      Drum: drums({ 86: 'tom', 87: 'stick' }, 0.3),
+    },
+    level: 0.71,
+  },
+  docks: {
+    file: 'JRPG_docks.mid',
+    title: 'Docks',
+    parts: { Lead_Square: play('clarinet', 0.85), Middle_Square: play('harp', 0.55), Bass_Tri: play('upright', 0.8), Percussion: drums({ 57: 'hat' }, 0.28) },
+    level: 1.4,
+    loops: true,
+  },
+  temple: {
+    file: 'JRPG_temple.mid',
+    title: 'Temple',
+    parts: { Lead_Square: play('oboe', 0.8), Middle_Square: play('harp', 0.55), Bass_Tri: play('strings', 0.5) },
+    level: 1.3,
+  },
+  // The title's, and the court's.
+  mainTheme: {
+    file: 'JRPG_mainTheme.mid',
+    title: 'Main Theme',
+    parts: { Lead_Square: play('flute', 0.9), Middle_Pulse: play('harp', 0.6), Bass_Tri: play('upright', 0.8) },
+    level: 0.65,
+  },
+  royalCourt: {
+    file: 'JRPG_royalCourt.mid',
+    title: 'Royal Court',
+    parts: { Lead_Pulse: play('flute', 0.9), Middle_Pulse: play('harpsichord', 0.5), Percussion: drums({ 52: 'stick' }, 0.35) },
+    level: 1,
+    loops: true,
+  },
+  princess: {
+    file: 'JRPG_princess.mid',
+    title: 'Princess',
+    parts: { Lead_Square: play('oboe', 0.8), Middle_Square: play('harp', 0.55), Bass_Tri: play('pizzicato', 0.75) },
+    level: 0.95,
+  },
+  // A battle: the horn leads, the drums come in as it heats up, strings join the fight, a
+  // glockenspiel rings over the tune while you're winning, and the oboe takes it over while you're losing.
+  battle: {
+    file: 'JRPG_battle.mid',
+    title: 'Battle',
+    parts: {
+      Lead_Square: [play('horn', 0.85, { gate: { mood: 'steady' } }), play('oboe', 0.85, { gate: { mood: 'lose' } }), play('glockenspiel', 0.3, { gate: { mood: 'win' } })],
+      Middle_Pulse: play('pizzicato', 0.5),
+      Bass_Tri: [play('upright', 0.85), play('strings', 0.35, { gate: { from: 0.55 } })],
+      Percussion: drums({ 55: 'kick', 57: 'snare' }, 0.4, { from: 0.35 }),
+    },
+    level: 0.95,
+    loops: true,
+  },
+  // The villains' themes: by the lair, only some of the band, and all of it once his fight begins.
+  battleBoss: {
+    file: 'JRPG_battleBoss.mid',
+    title: 'Boss Battle',
+    parts: {
+      Lead_Square: [play('oboe', 0.8), play('horn', 0.6, { gate: { from: 0.55 } })],
+      Middle_PulsePiano: play('harpsichord', 0.45),
+      Middle_PulsePianoExtra: play('harpsichord', 0.45),
+      Bass_Tri: play('upright', 0.85),
+      WhiteNoiseDrum: drums({ 45: 'snare' }, 0.4, FIGHT),
+      PinkNoiseRing: drums({ 45: 'ride' }, 0.25, FIGHT),
+      PinkNoiseGong: drums({ 30: 'tom', 31: 'tom', 34: 'tom', 35: 'tom' }, 0.45, FIGHT),
+    },
+    level: 1.1,
+    loops: true,
+  },
+  labyrinth: {
+    file: 'JRPG_labyrinth.mid',
+    title: 'Labyrinth',
+    parts: { Lead_Pulse: play('clarinet', 0.85), Middle_Pulse: play('harp', 0.55, { gate: FIGHT }), Bass_Tri: play('pizzicato', 0.8), Percussion: drums({ 51: 'kick', 52: 'stick' }, 0.4, FIGHT) },
+    level: 1.15,
+    loops: true,
+  },
+  dungeon: {
+    file: 'JRPG_dungeon.mid',
+    title: 'Dungeon',
+    parts: { Lead_Pulse: play('oboe', 0.8), Middle_Pulse: play('harpsichord', 0.45, { gate: FIGHT }), Bass_Tri: play('upright', 0.8), Percussion: drums({ 51: 'kick', 52: 'stick' }, 0.4, FIGHT) },
+    level: 1.1,
+    loops: true,
+  },
+};
+
+/** The music of a place: the tunes that take turns there, in order. */
+export type TrackDef = {
+  id: TrackId;
+  tunes: TuneId[];
+  /**
+   * Scales a villain's theme by his lair, on the map, where it's his quieter arrangement: up to
+   * the mark, as his whole band is in his battle.
+   */
+  calm?: number;
+};
+
+export const TRACKS: Record<TrackId, TrackDef> = {
+  title: { id: 'title', tunes: ['mainTheme'] },
+  // Each commission's land has its own turn of tunes: Aldmoor's farms, the Fenmarch's meres, then the three beyond.
+  heath: { id: 'heath', tunes: ['fields', 'shop', 'inn', 'town', 'tavern'] },
+  fen: { id: 'fen', tunes: ['mysticIsle', 'northernIsles', 'docks', 'temple'] },
+  weald: { id: 'weald', tunes: ['princess', 'fields', 'northernIsles', 'tavern', 'shop'] },
+  marsh: { id: 'marsh', tunes: ['docks', 'mysticIsle', 'inn', 'temple', 'northernIsles'] },
+  reach: { id: 'reach', tunes: ['town', 'inn', 'fields', 'shop', 'tavern'] },
+  court: { id: 'court', tunes: ['royalCourt', 'princess'] },
+  battle: { id: 'battle', tunes: ['battle'] },
+  grimsby: { id: 'grimsby', tunes: ['battleBoss'], calm: 1 },
+  mirrow: { id: 'mirrow', tunes: ['labyrinth'], calm: 1 },
+  bramble: { id: 'bramble', tunes: ['dungeon'], calm: 1.25 },
+};
+
+/** A tune shorter than this plays through twice before the next one's turn. */
+export const TURN = 90;
+/** The breath between one tune's end and the next, or a tune that doesn't loop and its next time round. */
+export const BREATH = 2.5;
+
+/** A key moved by octaves into a range. */
+export function fold(key: number, [low, high]: [number, number]): number {
+  while (key < low) key += 12;
+  while (key > high) key -= 12;
+  return key;
 }
 
-/** A chord's pitch classes: root, third and fifth (and a seventh with 7). "Em", "F#", "Bb", "D7". */
-export function chordTones(chord: string): number[] {
-  const m = /^([A-G])(#|b)?(m)?(7)?$/.exec(chord);
-  if (!m) throw new Error(`Not a chord: ${chord}`);
-  const root = (NAMES[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0) + 12) % 12;
-  const tones = [root, (root + (m[3] ? 3 : 4)) % 12, (root + 7) % 12];
-  return m[4] ? [...tones, (root + 10) % 12] : tones;
+/**
+ * How long a tune lasts: to the bar line where it comes round again, if it loops; otherwise until
+ * its last note ends.
+ */
+export function lengthOf(tune: Tune, midi: Midi): number {
+  if (tune.loops) return midi.seconds;
+  return Math.max(midi.seconds, ...midi.parts.flatMap((p) => p.notes.map((n) => n.at + n.length)));
 }
 
-/** A chord tone as a MIDI note: tone 0 is the root, 1 the third, 2 the fifth, 3 the root an octave up. */
-function voice(chord: string, tone: number, octave: number): number {
-  const tones = chordTones(chord);
-  const root = 12 * (octave + 1) + tones[0];
-  const pc = tones[tone % 3];
-  const up = (pc - tones[0] + 12) % 12;
-  return root + up + (tone >= 3 ? 12 : 0);
-}
-
-/** The melody's bars, parsed: each note's start in the bar and its length. */
-export function parseMelody(text: string): { at: number; length: number; name: string }[][] {
-  return text.split('|').map((bar) => {
-    let at = 0;
-    return bar
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean)
-      .map((token) => {
-        const [name, length] = token.split(':');
-        const note = { at, length: Number(length), name };
-        at += Number(length);
-        return note;
-      });
-  });
-}
-
-/** Every note of a track's whole form, in order, with starts in units from the top of the loop. */
-export function notesOf(track: TrackDef): Note[] {
+/**
+ * Every note of a tune, from his MIDI file as our band plays it: each part's notes for each of its
+ * voices, folded into the instrument's keys, at a volume from its velocity (the square law General
+ * MIDI asks for), its voice and the tune's level. A tune that loops leaves out a last note on the
+ * bar line it comes round at: its first note plays there.
+ */
+export function notesOf(tune: Tune, midi: Midi): Note[] {
   const notes: Note[] = [];
-  const level = track.level ?? 1;
-  let bar = 0;
-  for (const pass of track.form) {
-    const section = track.sections[pass.section];
-    const top = bar * track.unitsPerBar;
-    if (pass.lead !== null) {
-      const lead = { ...track.lead, ...pass.lead };
-      const shift = 12 * (pass.lead?.octave ?? 0);
-      parseMelody(section.melody).forEach((notesInBar, b) => {
-        for (const n of notesInBar) if (n.name !== 'r') notes.push({ at: top + b * track.unitsPerBar + n.at, length: n.length, midi: midiOf(n.name) + shift, instrument: lead.instrument, volume: lead.volume * level, lead: true });
-      });
-    }
-    for (const [name, part] of Object.entries(track.parts)) {
-      if (pass.parts && !pass.parts.includes(name)) continue;
-      section.chords.forEach((chord, b) => {
-        if (part.bars && !part.bars.includes(b)) return;
-        const at = top + b * track.unitsPerBar;
-        if (part.kind === 'drums') {
-          for (const [step, drum, volume] of part.steps) notes.push({ at: at + step, length: 0.5, midi: 0, instrument: drum, volume: volume * level, gate: part.gate });
-          return;
+  const end = lengthOf(tune, midi);
+  for (const part of midi.parts) {
+    const voices = tune.parts[part.name];
+    if (!voices) continue;
+    for (const voice of Array.isArray(voices) ? voices : [voices]) {
+      for (const n of part.notes) {
+        if (n.at >= end - 0.01) continue;
+        const volume = voice.volume * (n.velocity / 127) ** 2 * tune.level;
+        if ('drums' in voice) {
+          const drum = voice.drums[n.key];
+          if (drum) notes.push({ at: n.at, length: n.length, key: n.key, instrument: drum, volume, gate: voice.gate });
+          continue;
         }
-        for (const [step, tone, octave, length, volume] of part.steps) {
-          notes.push({ at: at + step, length, midi: voice(chord, tone, octave), instrument: part.instrument, volume: (volume ?? 1) * part.volume * level, gate: part.gate });
-        }
-      });
+        notes.push({ at: n.at, length: n.length, key: fold(n.key + 12 * (voice.octave ?? 0), RANGES[voice.instrument]), instrument: voice.instrument, volume, gate: voice.gate });
+      }
     }
-    bar += section.chords.length;
   }
   return notes.sort((a, b) => a.at - b.at);
 }
 
-/** The notes a track uses, as pitch classes: its tune's and its chords', which make its scale. */
-export function scaleOf(track: TrackDef): number[] {
-  const pcs = new Set<number>();
-  for (const section of Object.values(track.sections)) {
-    for (const bar of parseMelody(section.melody)) for (const n of bar) if (n.name !== 'r') pcs.add(midiOf(n.name) % 12);
-    for (const chord of section.chords) for (const pc of chordTones(chord)) pcs.add(pc);
-  }
-  return [...pcs].sort((a, b) => a - b);
-}
-
-/** The next note up the scale from `midi`. */
-export function stepUp(scale: number[], midi: number): number {
-  for (let m = midi + 1; m <= midi + 3; m++) if (scale.includes(m % 12)) return m;
-  return midi + 2;
-}
-
-export const loopUnits = (track: TrackDef) => track.form.reduce((sum, pass) => sum + track.sections[pass.section].chords.length, 0) * track.unitsPerBar;
+/** How many times a tune plays through before the next one's turn: once, or twice if it's short. */
+export const lapsOf = (seconds: number) => (seconds < TURN / 2 ? Math.ceil(TURN / seconds) : seconds < TURN ? 2 : 1);
 
 /** How loud the whole track plays in a mood: its `calm` level on the map, giving way to 1 as a fight begins (as a lair's parts give way to the battle's). */
 export function moodLevel(track: TrackDef, mood: Mood): number {
@@ -174,444 +290,11 @@ export function gateLevel(gate: Gate | undefined, mood: Mood): number {
   return level;
 }
 
-// --- Parts used by more than one track ------------------------------------------------------
+const NAMES: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 
-/** A jig's lute: the chord broken across two beats of three. */
-const JIG_LUTE: Step[] = [[0, 0, 3, 1], [1, 2, 3, 1, 0.7], [2, 1, 4, 1, 0.8], [3, 3, 3, 1, 0.9], [4, 1, 4, 1, 0.7], [5, 2, 3, 1, 0.7]];
-/** Four-in-a-bar: a lute on the beat and its chord between. */
-const REEL_LUTE: Step[] = [[0, 0, 3, 1], [1, 2, 3, 1, 0.6], [2, 1, 4, 1, 0.7], [3, 2, 3, 1, 0.6], [4, 3, 3, 1, 0.8], [5, 2, 3, 1, 0.6], [6, 1, 4, 1, 0.7], [7, 2, 3, 1, 0.6]];
-
-// --- The tracks ---------------------------------------------------------------------------------
-
-/** "The Heather Road": a jig in G for the open country, recorder over lute, bass and frame drum; the second strain climbs to E minor. */
-const heath: TrackDef = {
-  id: 'heath',
-  unit: 0.3,
-  unitsPerBar: 6,
-  strong: [0, 3],
-  sections: {
-    A: {
-      chords: ['G', 'C', 'G', 'D', 'G', 'C', 'D', 'G', 'Em', 'C', 'G', 'D', 'Em', 'C', 'D', 'G'],
-      melody: `D5:2 B4:1 G4:2 B4:1 | C5:2 E5:1 G5:2 E5:1 | D5:2 B4:1 D5:1 C5:1 B4:1 | A4:3 F#4:2 A4:1 |
-        B4:2 D5:1 G5:2 D5:1 | E5:2 C5:1 E5:1 D5:1 C5:1 | A4:2 F#4:1 A4:1 B4:1 C5:1 | B4:3 G4:3 |
-        G5:2 E5:1 B4:2 E5:1 | G5:2 E5:1 C5:2 E5:1 | D5:2 G5:1 B4:2 D5:1 | A4:2 D5:1 F#4:2 A4:1 |
-        B4:1 C5:1 D5:1 E5:2 B4:1 | C5:1 D5:1 E5:1 G5:2 E5:1 | D5:2 C5:1 A4:2 F#4:1 | G4:6`,
-    },
-    B: {
-      chords: ['Em', 'C', 'G', 'D', 'Em', 'C', 'D', 'D', 'C', 'G', 'Am', 'Em', 'C', 'G', 'D', 'G'],
-      melody: `E5:2 G5:1 B5:2 G5:1 | G5:2 E5:1 C5:2 E5:1 | D5:2 B4:1 G4:2 B4:1 | A4:2 D5:1 F#5:2 D5:1 |
-        G5:2 F#5:1 E5:2 B4:1 | C5:1 D5:1 E5:1 G5:2 E5:1 | F#5:2 E5:1 D5:2 A4:1 | A4:3 D5:3 |
-        E5:2 G5:1 C6:2 G5:1 | B5:2 G5:1 D5:2 G5:1 | A5:2 E5:1 C5:2 E5:1 | B4:2 E5:1 G5:2 E5:1 |
-        G5:1 A5:1 G5:1 E5:2 C5:1 | D5:2 B4:1 G4:2 B4:1 | A4:1 B4:1 C5:1 D5:2 F#4:1 | G4:6`,
-    },
-  },
-  lead: { instrument: 'recorder', volume: 0.3 },
-  parts: {
-    lute: { kind: 'pattern', instrument: 'lute', volume: 0.2, steps: JIG_LUTE },
-    bass: { kind: 'pattern', instrument: 'bass', volume: 0.32, steps: [[0, 0, 2, 3], [3, 2, 2, 3, 0.8]] },
-    drone: { kind: 'pattern', instrument: 'drone', volume: 0.05, steps: [[0, 0, 2, 6]] },
-    drum: { kind: 'drums', steps: [[0, 'tabor', 0.35], [2, 'rim', 0.12], [3, 'tabor', 0.22], [5, 'rim', 0.12]] },
-  },
-  form: [
-    { section: 'A', parts: ['lute', 'bass', 'drum'] },
-    { section: 'B', lead: { instrument: 'fife', volume: 0.22 }, parts: ['lute', 'bass', 'drum'] },
-    // A quiet verse: the harp has the tune, over the bass and a drone, and the drum rests.
-    { section: 'A', lead: { instrument: 'harp', volume: 0.2 }, parts: ['bass', 'drone'] },
-    { section: 'B', parts: ['lute', 'bass', 'drone', 'drum'] },
-  ],
-  level: 0.88,
-  swap: true,
-};
-
-/** "Mist on the Meres": slow and uneasy, in D Dorian, harp and a hurdy-gurdy drone under the recorder; the middle turns to A minor. */
-const fen: TrackDef = {
-  id: 'fen',
-  unit: 0.42,
-  unitsPerBar: 6,
-  strong: [0],
-  sections: {
-    A: {
-      chords: ['Dm', 'Dm', 'C', 'C', 'G', 'G', 'Dm', 'Dm', 'F', 'C', 'G', 'Am', 'Dm', 'C', 'Am', 'Dm'],
-      melody: `A4:6 | F4:2 E4:2 D4:2 | E4:4 G4:2 | E4:6 | G4:4 B4:2 | B4:4 A4:2 | A4:4 F4:2 | D4:6 |
-        C5:4 A4:2 | G4:4 E4:2 | D5:4 B4:2 | C5:2 B4:2 A4:2 | A4:4 F4:2 | G4:4 E4:2 | E4:4 A4:2 | D4:6`,
-    },
-    B: {
-      chords: ['Am', 'Am', 'G', 'G', 'F', 'C', 'Dm', 'Dm', 'F', 'G', 'Am', 'Am', 'Dm', 'C', 'G', 'Dm'],
-      melody: `E5:4 C5:2 | A4:4 B4:2 | D5:4 B4:2 | G4:6 | A4:2 C5:2 F5:2 | E5:4 D5:2 | F5:4 E5:2 | D5:6 |
-        C5:4 A4:2 | B4:4 D5:2 | C5:2 B4:2 A4:2 | E4:6 | F4:2 A4:2 D5:2 | E5:4 G4:2 | D5:2 B4:2 G4:2 | A4:6`,
-    },
-  },
-  lead: { instrument: 'recorder', volume: 0.26 },
-  parts: {
-    harp: { kind: 'pattern', instrument: 'harp', volume: 0.17, steps: [[0, 0, 3, 2], [1, 2, 3, 2, 0.7], [2, 3, 3, 2, 0.8], [3, 1, 4, 2, 0.7], [4, 2, 4, 2, 0.6], [5, 1, 4, 2, 0.5]] },
-    drone: { kind: 'pattern', instrument: 'drone', volume: 0.07, steps: [[0, 0, 2, 6], [0, 2, 2, 6, 0.7]] },
-    bell: { kind: 'pattern', instrument: 'bell', volume: 0.07, steps: [[0, 0, 5, 6]], bars: [0, 8] },
-    heart: { kind: 'drums', steps: [[0, 'tabor', 0.14], [1, 'tabor', 0.08]] },
-  },
-  form: [
-    { section: 'A', parts: ['harp', 'drone', 'bell'] },
-    { section: 'B', parts: ['harp', 'drone'] },
-    // The mist thickens: only the drone and a far bell, and the harp picks out the tune.
-    { section: 'A', lead: { instrument: 'harp', volume: 0.32 }, parts: ['drone', 'bell'] },
-    // Something moves out on the water: a heartbeat under the harp.
-    { section: 'B', parts: ['harp', 'drone', 'heart'] },
-  ],
-  level: 1.39,
-};
-
-/** "The Baron's Road": a reel in D Mixolydian for the country Grimsby ran to, fife and recorder by turns over lute and drum. */
-const weald: TrackDef = {
-  id: 'weald',
-  unit: 0.2,
-  unitsPerBar: 8,
-  strong: [0, 4],
-  sections: {
-    A: {
-      chords: ['D', 'D', 'C', 'C', 'D', 'G', 'C', 'D'],
-      melody: `A4:1 D5:1 F#5:1 D5:1 A5:1 F#5:1 D5:1 F#5:1 | A5:2 F#5:1 E5:1 D5:2 A4:2 |
-        G4:1 C5:1 E5:1 C5:1 G5:1 E5:1 C5:1 E5:1 | G5:2 E5:1 D5:1 C5:2 G4:2 |
-        F#5:2 A5:2 D6:2 A5:2 | B5:2 G5:2 D5:2 B4:2 | C5:1 D5:1 E5:1 G5:1 E5:2 C5:2 | D5:4 A4:2 F#4:2`,
-    },
-    B: {
-      chords: ['G', 'D', 'C', 'D', 'G', 'D', 'C', 'D'],
-      melody: `B4:1 D5:1 G5:1 D5:1 B5:1 G5:1 D5:1 G5:1 | A5:2 F#5:2 D5:2 F#5:2 | G5:2 E5:1 G5:1 C6:2 G5:2 |
-        F#5:1 E5:1 D5:1 E5:1 F#5:2 A5:2 | G5:2 B5:2 D6:2 B5:2 | A5:2 F#5:1 A5:1 D5:4 |
-        E5:1 F#5:1 G5:1 E5:1 C5:2 E5:2 | D5:6 r:2`,
-    },
-  },
-  lead: { instrument: 'recorder', volume: 0.26 },
-  parts: {
-    lute: { kind: 'pattern', instrument: 'lute', volume: 0.17, steps: REEL_LUTE },
-    bass: { kind: 'pattern', instrument: 'bass', volume: 0.3, steps: [[0, 0, 2, 2], [2, 2, 2, 2, 0.7], [4, 0, 2, 2, 0.9], [6, 2, 2, 2, 0.7]] },
-    drone: { kind: 'pattern', instrument: 'drone', volume: 0.05, steps: [[0, 0, 2, 8]], bars: [0, 1, 4, 7] },
-    drum: { kind: 'drums', steps: [[0, 'tabor', 0.32], [2, 'rim', 0.12], [4, 'tabor', 0.24], [6, 'rim', 0.12], [7, 'rim', 0.06]] },
-  },
-  form: [
-    { section: 'A', parts: ['lute', 'bass', 'drum'] },
-    { section: 'A', lead: { instrument: 'fife', volume: 0.2 }, parts: ['lute', 'bass', 'drum'] },
-    { section: 'B', parts: ['lute', 'bass', 'drum'] },
-    { section: 'B', lead: { instrument: 'fife', volume: 0.2 }, parts: ['lute', 'bass', 'drone', 'drum'] },
-    { section: 'A', lead: { instrument: 'harp', volume: 0.2 }, parts: ['bass', 'drone'] },
-    { section: 'B', parts: ['lute', 'bass', 'drone', 'drum'] },
-    { section: 'A', parts: ['lute', 'bass', 'drone', 'drum'] },
-    { section: 'B', lead: { instrument: 'fife', volume: 0.2 }, parts: ['lute', 'bass', 'drum'] },
-  ],
-  level: 0.79,
-  swap: true,
-};
-
-/** "Bramble's Water": a slow air in E minor for the witch's fen, the recorder over harp and drone, with a turn to G. */
-const marsh: TrackDef = {
-  id: 'marsh',
-  unit: 0.38,
-  unitsPerBar: 6,
-  strong: [0],
-  sections: {
-    A: {
-      chords: ['Em', 'Em', 'C', 'C', 'Am', 'Am', 'B', 'B', 'Em', 'Em', 'D', 'D', 'C', 'Am', 'B', 'Em'],
-      melody: `B4:4 G4:2 | E5:4 D5:2 | E5:2 D5:2 C5:2 | G4:6 | A4:2 C5:2 E5:2 | E5:4 F#5:2 | D#5:4 F#5:2 | B4:6 |
-        G5:4 F#5:2 | E5:2 B4:2 G4:2 | F#5:4 A5:2 | D5:6 | E5:2 G5:2 E5:2 | C5:4 B4:2 | D#5:2 F#5:2 B4:2 | E5:6`,
-    },
-    B: {
-      chords: ['G', 'D', 'Em', 'C', 'G', 'D', 'C', 'B'],
-      melody: `D5:4 B4:2 | A4:4 F#4:2 | G4:2 B4:2 E5:2 | G5:4 E5:2 | B5:4 G5:2 | A5:2 F#5:2 D5:2 | E5:4 C5:2 | F#5:6`,
-    },
-  },
-  lead: { instrument: 'recorder', volume: 0.25 },
-  parts: {
-    harp: { kind: 'pattern', instrument: 'harp', volume: 0.16, steps: [[0, 0, 3, 2], [1, 2, 3, 2, 0.6], [2, 1, 4, 2, 0.7], [3, 3, 3, 2, 0.7], [4, 2, 3, 2, 0.6], [5, 1, 4, 2, 0.5]] },
-    drone: { kind: 'pattern', instrument: 'drone', volume: 0.065, steps: [[0, 0, 2, 6], [0, 2, 2, 6, 0.6]] },
-    bell: { kind: 'pattern', instrument: 'bell', volume: 0.06, steps: [[0, 1, 5, 6]], bars: [0, 7] },
-    heart: { kind: 'drums', steps: [[0, 'tabor', 0.13], [1, 'tabor', 0.07]] },
-    drip: { kind: 'drums', steps: [[3, 'rim', 0.05]], bars: [1, 3, 5, 9, 12] },
-  },
-  form: [
-    { section: 'A', parts: ['harp', 'drone', 'drip'] },
-    { section: 'B', parts: ['harp', 'drone', 'bell'] },
-    { section: 'A', lead: { instrument: 'harp', volume: 0.32 }, parts: ['drone', 'drip', 'bell'] },
-    { section: 'B', lead: { instrument: 'recorder', volume: 0.25, octave: 0 }, parts: ['harp', 'drone', 'heart'] },
-  ],
-  level: 1.46,
-};
-
-/** "The Last Commission": broad and hopeful, in D; its second strain is the title's tune, the King's own, on brass. */
-const reach: TrackDef = {
-  id: 'reach',
-  unit: 0.3,
-  unitsPerBar: 8,
-  strong: [0, 4],
-  sections: {
-    A: {
-      chords: ['D', 'Bm', 'G', 'A', 'D', 'Bm', 'Em', 'A'],
-      melody: `D5:3 E5:1 F#5:2 A5:2 | B5:4 F#5:2 D5:2 | G5:3 A5:1 B5:2 G5:2 | A5:4 E5:2 C#5:2 |
-        F#5:3 E5:1 D5:2 F#5:2 | D5:2 F#5:2 B5:4 | G5:3 F#5:1 E5:2 B4:2 | A4:4 C#5:2 E5:2`,
-    },
-    B: {
-      chords: ['D', 'G', 'A', 'D', 'Bm', 'G', 'A', 'D'],
-      melody: `F#4:2 A4:2 D5:4 | B4:2 D5:2 G5:4 | E5:2 C#5:2 A4:4 | D5:8 | F#5:2 D5:2 B4:4 | G5:4 D5:2 B4:2 | A4:2 C#5:2 E5:2 C#5:2 | D5:8`,
-    },
-  },
-  lead: { instrument: 'recorder', volume: 0.27 },
-  parts: {
-    harp: { kind: 'pattern', instrument: 'harp', volume: 0.15, steps: [[0, 0, 3, 2], [1, 2, 3, 2, 0.6], [2, 1, 4, 2, 0.7], [3, 3, 3, 2, 0.8], [4, 2, 4, 2, 0.6], [5, 3, 3, 2, 0.6], [6, 1, 4, 2, 0.7], [7, 2, 3, 2, 0.5]] },
-    bass: { kind: 'pattern', instrument: 'bass', volume: 0.28, steps: [[0, 0, 2, 4], [4, 2, 2, 4, 0.8]] },
-    brass: { kind: 'pattern', instrument: 'brass', volume: 0.09, steps: [[0, 0, 4, 6], [0, 1, 4, 6], [0, 2, 3, 6]], bars: [0, 4] },
-    bells: { kind: 'pattern', instrument: 'bell', volume: 0.07, steps: [[0, 0, 5, 8]], bars: [0, 3, 7] },
-    drum: { kind: 'drums', steps: [[0, 'tabor', 0.24], [4, 'tabor', 0.16], [6, 'rim', 0.08], [7, 'rim', 0.08]] },
-  },
-  form: [
-    { section: 'A', parts: ['harp', 'bass', 'drum'] },
-    { section: 'B', lead: { instrument: 'brass', volume: 0.2 }, parts: ['harp', 'bass', 'drum'] },
-    { section: 'A', lead: { instrument: 'fife', volume: 0.2 }, parts: ['harp', 'bass', 'brass', 'drum'] },
-    { section: 'B', parts: ['harp', 'bass', 'bells'] },
-    { section: 'A', lead: { instrument: 'harp', volume: 0.2 }, parts: ['bass', 'bells'] },
-    { section: 'B', parts: ['harp', 'bass', 'brass', 'drum'] },
-  ],
-  level: 1.15,
-  swap: true,
-};
-
-/** "Market Day": what a castle or village sounds like while you're in it: a bright round dance in C. */
-const town: TrackDef = {
-  id: 'town',
-  unit: 0.19,
-  unitsPerBar: 8,
-  strong: [0, 4],
-  sections: {
-    A: {
-      chords: ['C', 'G', 'Am', 'F', 'C', 'F', 'G', 'C'],
-      melody: `E5:2 G5:2 E5:1 D5:1 C5:2 | D5:2 B4:2 G4:2 B4:2 | C5:2 E5:2 A5:2 E5:2 | F5:2 E5:1 D5:1 C5:4 |
-        G5:2 E5:2 C5:2 E5:2 | A5:2 F5:2 C5:2 A4:2 | B4:2 D5:2 G5:2 F5:2 | E5:4 C5:4`,
-    },
-    B: {
-      chords: ['F', 'C', 'Dm', 'G', 'F', 'C', 'G', 'C'],
-      melody: `A5:3 G5:1 F5:2 A5:2 | G5:2 E5:2 C5:4 | F5:2 D5:2 A4:2 D5:2 | B4:2 D5:2 G5:4 |
-        C6:2 A5:2 F5:2 A5:2 | G5:2 E5:2 G5:1 E5:1 C5:2 | D5:2 G5:2 B4:2 D5:2 | C5:6 r:2`,
-    },
-  },
-  lead: { instrument: 'recorder', volume: 0.26 },
-  parts: {
-    lute: { kind: 'pattern', instrument: 'lute', volume: 0.18, steps: [[0, 0, 3, 2], [2, 1, 4, 1, 0.6], [2, 2, 3, 1, 0.6], [4, 2, 3, 2, 0.8], [6, 1, 4, 1, 0.6], [6, 3, 3, 1, 0.6]] },
-    bass: { kind: 'pattern', instrument: 'bass', volume: 0.28, steps: [[0, 0, 2, 3], [4, 2, 2, 3, 0.8]] },
-    drum: { kind: 'drums', steps: [[0, 'tabor', 0.3], [2, 'rim', 0.14], [4, 'tabor', 0.22], [6, 'rim', 0.14], [7, 'rim', 0.07]] },
-  },
-  form: [
-    { section: 'A' },
-    { section: 'B' },
-    { section: 'A', lead: { instrument: 'fife', volume: 0.2 } },
-    { section: 'B', lead: { instrument: 'harp', volume: 0.2 }, parts: ['bass', 'drum'] },
-  ],
-  swap: true,
-};
-
-/**
- * "Steel and Feathers": a driving fife march in E minor, with a galloping bass and drums. It builds
- * with the fight: the lute comes in, then the brass, then more drums; winning, the brass calls
- * above it and a harp rings; losing, the lute falls silent and a drone and a bell darken it.
- */
-const battle: TrackDef = {
-  id: 'battle',
-  unit: 0.215,
-  unitsPerBar: 8,
-  strong: [0, 4],
-  sections: {
-    A: {
-      chords: ['Em', 'Em', 'C', 'D', 'Em', 'Em', 'C', 'B', 'Am', 'Em', 'C', 'D', 'Am', 'Em', 'B', 'Em'],
-      melody: `E5:4 B4:2 G4:2 | G4:2 A4:2 B4:4 | C5:2 B4:1 A4:1 G4:2 E4:2 | F#4:2 A4:2 D5:4 |
-        E5:3 D5:1 B4:2 G4:2 | B4:1 A4:1 G4:1 A4:1 B4:4 | C5:2 E5:2 G5:2 E5:2 | D#5:4 B4:2 F#4:2 |
-        C5:2 A4:2 E5:4 | B4:2 G4:2 E4:4 | E5:2 D5:1 C5:1 G4:4 | F#4:2 A4:2 D5:2 A4:2 |
-        A4:2 C5:2 E5:2 C5:2 | G5:2 E5:2 B4:4 | F#5:2 D#5:2 B4:2 A4:2 | G4:1 F#4:1 E4:6`,
-    },
-    B: {
-      chords: ['Am', 'Am', 'Em', 'Em', 'C', 'D', 'B7', 'Em'],
-      melody: `A5:2 E5:2 C5:2 E5:2 | A5:1 B5:1 C6:2 A5:4 | G5:2 E5:2 B4:2 E5:2 | E5:1 F#5:1 G5:2 E5:4 |
-        E5:2 G5:2 C6:2 G5:2 | F#5:2 A5:2 D6:2 A5:2 | D#6:2 B5:2 A5:2 F#5:2 | E5:4 B4:2 G4:2`,
-    },
-  },
-  lead: { instrument: 'fife', volume: 0.24 },
-  parts: {
-    bass: { kind: 'pattern', instrument: 'bass', volume: 0.26, steps: [[0, 0, 2, 1], [1, 0, 2, 1, 0.6], [2, 0, 2, 1, 0.8], [3, 2, 2, 1, 0.7], [4, 0, 2, 1], [5, 0, 2, 1, 0.6], [6, 3, 2, 1, 0.8], [7, 2, 2, 1, 0.7]] },
-    drum: { kind: 'drums', steps: [[0, 'tabor', 0.5], [2, 'rim', 0.25], [3, 'tabor', 0.25], [4, 'tabor', 0.45], [6, 'rim', 0.25], [7, 'rim', 0.1]] },
-    lute: { kind: 'pattern', instrument: 'lute', volume: 0.14, steps: [[0, 0, 3, 2], [0, 1, 3, 2], [0, 2, 3, 2], [4, 0, 3, 2, 0.8], [4, 1, 3, 2, 0.8], [4, 2, 3, 2, 0.8]], gate: { from: 0.35, mood: 'steady' } },
-    brass: { kind: 'pattern', instrument: 'brass', volume: 0.13, steps: [[0, 0, 4, 3], [0, 2, 3, 3]], bars: [0, 4, 8, 12], gate: { from: 0.55 } },
-    rush: { kind: 'drums', steps: [[1, 'rim', 0.12], [5, 'tabor', 0.2], [6, 'tabor', 0.16], [7, 'tabor', 0.22]], gate: { from: 0.7 } },
-    call: { kind: 'pattern', instrument: 'brass', volume: 0.11, steps: [[0, 0, 4, 1.5], [2, 2, 4, 1.5], [4, 3, 4, 3]], bars: [1, 3, 5, 7, 9, 11, 13, 15], gate: { mood: 'win' } },
-    ring: { kind: 'pattern', instrument: 'harp', volume: 0.1, steps: [[0, 0, 4, 1], [1, 1, 4, 1], [2, 2, 4, 1], [3, 3, 4, 2]], bars: [2, 6, 10, 14], gate: { mood: 'win' } },
-    dark: { kind: 'pattern', instrument: 'drone', volume: 0.08, steps: [[0, 0, 2, 8], [0, 2, 2, 8, 0.8]], gate: { mood: 'lose' } },
-    toll: { kind: 'pattern', instrument: 'knell', volume: 0.12, steps: [[0, 0, 4, 4]], bars: [0, 4], gate: { mood: 'lose' } },
-  },
-  form: [{ section: 'A' }, { section: 'B' }, { section: 'A', lead: { instrument: 'recorder', volume: 0.28 } }, { section: 'B' }],
-  level: 0.87,
-  swap: true,
-};
-
-/** "The King's Pavane": stately, in F, harpsichord and recorder, with bells for a court. */
-const court: TrackDef = {
-  id: 'court',
-  unit: 0.39,
-  unitsPerBar: 8,
-  strong: [0, 4],
-  sections: {
-    A: {
-      chords: ['F', 'Bb', 'C', 'F', 'Dm', 'Bb', 'C', 'F', 'Bb', 'F', 'Gm', 'C', 'Dm', 'Bb', 'C', 'F'],
-      melody: `A4:4 C5:2 A4:2 | D5:4 Bb4:2 F4:2 | E4:2 G4:2 C5:4 | A4:8 | F4:2 A4:2 D5:2 C5:2 | Bb4:4 D5:2 Bb4:2 | C5:2 Bb4:2 G4:2 E4:2 | F4:8 |
-        D5:4 F5:2 D5:2 | C5:4 A4:2 F4:2 | G4:2 Bb4:2 D5:4 | E5:4 C5:2 G4:2 | F5:4 D5:2 A4:2 | Bb4:2 D5:2 F5:4 | E5:2 C5:2 G4:2 E4:2 | F4:8`,
-    },
-  },
-  lead: { instrument: 'recorder', volume: 0.27 },
-  parts: {
-    harpsichord: { kind: 'pattern', instrument: 'harpsichord', volume: 0.15, steps: [[0, 0, 3, 1], [1, 2, 3, 1, 0.6], [2, 1, 4, 1, 0.7], [3, 2, 3, 1, 0.6], [4, 3, 3, 1, 0.8], [5, 2, 3, 1, 0.6], [6, 1, 4, 1, 0.7], [7, 2, 3, 1, 0.6]] },
-    bass: { kind: 'pattern', instrument: 'bass', volume: 0.28, steps: [[0, 0, 2, 4], [4, 2, 2, 4, 0.8]] },
-    bell: { kind: 'pattern', instrument: 'bell', volume: 0.08, steps: [[0, 0, 5, 8]], bars: [0, 8] },
-    drum: { kind: 'drums', steps: [[0, 'tabor', 0.16]] },
-  },
-  form: [{ section: 'A' }, { section: 'A', lead: { instrument: 'harpsichord', volume: 0.2 }, parts: ['bass', 'bell', 'drum'] }],
-  level: 1.29,
-};
-
-/** "The King's Commission": the title, in D, harp arpeggios and brass under a broad recorder tune. */
-const title: TrackDef = {
-  id: 'title',
-  unit: 0.36,
-  unitsPerBar: 8,
-  strong: [0, 4],
-  sections: {
-    A: {
-      chords: ['D', 'G', 'A', 'D', 'Bm', 'G', 'A', 'D'],
-      melody: `F#4:2 A4:2 D5:4 | B4:2 D5:2 G5:4 | E5:2 C#5:2 A4:4 | D5:8 | F#5:2 D5:2 B4:4 | G5:4 D5:2 B4:2 | A4:2 C#5:2 E5:2 C#5:2 | D5:8`,
-    },
-  },
-  lead: { instrument: 'recorder', volume: 0.28 },
-  parts: {
-    harp: { kind: 'pattern', instrument: 'harp', volume: 0.16, steps: [[0, 0, 3, 2], [1, 2, 3, 2, 0.6], [2, 1, 4, 2, 0.7], [3, 3, 3, 2, 0.8], [4, 2, 4, 2, 0.6], [5, 3, 3, 2, 0.6], [6, 1, 4, 2, 0.7], [7, 2, 3, 2, 0.5]] },
-    drone: { kind: 'pattern', instrument: 'drone', volume: 0.06, steps: [[0, 0, 2, 8], [0, 2, 2, 8, 0.7]] },
-    brass: { kind: 'pattern', instrument: 'brass', volume: 0.1, steps: [[0, 0, 4, 6], [0, 1, 4, 6], [0, 2, 3, 6]], bars: [0, 4] },
-    drum: { kind: 'drums', steps: [[0, 'tabor', 0.22], [6, 'tabor', 0.12], [7, 'tabor', 0.12]], bars: [3, 7] },
-  },
-  form: [{ section: 'A' }],
-  level: 1.34,
-};
-
-/**
- * "The Baron's March": Grimsby's own, pompous and dotted, in C. By his stockade it's a lone fife over
- * a low horn and a slow drum behind the walls; in his battle the whole band marches, and it trips
- * over its own feet at the end of the second strain.
- */
-const grimsby: TrackDef = {
-  id: 'grimsby',
-  unit: 0.27,
-  unitsPerBar: 8,
-  strong: [0, 4],
-  sections: {
-    A: {
-      chords: ['C', 'C', 'G', 'G', 'F', 'C', 'G7', 'C'],
-      melody: `C5:3 C5:1 E5:3 E5:1 | G5:4 E5:2 C5:2 | D5:3 D5:1 B4:3 B4:1 | G4:4 r:2 G4:1 A4:1 |
-        A4:3 C5:1 F5:3 A5:1 | G5:3 F5:1 E5:2 D5:2 | D5:3 E5:1 F5:2 B4:2 | C5:4 G4:2 C5:2`,
-    },
-    B: {
-      chords: ['F', 'G', 'Em', 'Am', 'F', 'C', 'G7', 'C'],
-      melody: `F5:3 F5:1 A5:3 A5:1 | G5:4 D5:2 B4:2 | E5:3 E5:1 G5:3 G5:1 | A5:2 G5:1 F5:1 E5:4 |
-        C5:3 C5:1 F5:3 F5:1 | E5:2 G5:2 C6:4 | B5:1 A5:1 G5:1 F5:1 D5:2 B4:2 | C5:2 r:2 C5:1 r:1 C5:2`,
-    },
-  },
-  lead: { instrument: 'fife', volume: 0.22 },
-  parts: {
-    horn: { kind: 'pattern', instrument: 'brass', volume: 0.1, steps: [[0, 0, 3, 7]], gate: { below: 0.2 } },
-    slow: { kind: 'drums', steps: [[0, 'tabor', 0.2], [4, 'tabor', 0.1]], gate: { below: 0.2 } },
-    oompah: { kind: 'pattern', instrument: 'brass', volume: 0.1, steps: [[0, 0, 2, 1.5], [2, 2, 3, 1, 0.7], [2, 1, 3, 1, 0.7], [4, 2, 2, 1.5, 0.9], [6, 2, 3, 1, 0.7], [6, 1, 3, 1, 0.7]], gate: { from: 0.2 } },
-    bass: { kind: 'pattern', instrument: 'bass', volume: 0.26, steps: [[0, 0, 2, 2], [4, 2, 2, 2, 0.8]], gate: { from: 0.2 } },
-    march: { kind: 'drums', steps: [[0, 'tabor', 0.45], [2, 'tabor', 0.25], [4, 'tabor', 0.4], [6, 'tabor', 0.25], [7, 'rim', 0.15], [3, 'rim', 0.12]], gate: { from: 0.2 } },
-    fanfare: { kind: 'pattern', instrument: 'brass', volume: 0.1, steps: [[0, 0, 4, 2], [0, 2, 4, 2], [4, 3, 4, 3]], bars: [1, 3, 5, 7], gate: { from: 0.2, mood: 'win' } },
-    dread: { kind: 'pattern', instrument: 'drone', volume: 0.07, steps: [[0, 0, 2, 8]], gate: { from: 0.2, mood: 'lose' } },
-  },
-  form: [
-    { section: 'A' },
-    { section: 'A', lead: { instrument: 'recorder', volume: 0.25 } },
-    { section: 'B' },
-    { section: 'A', lead: { instrument: 'brass', volume: 0.2 } },
-    { section: 'B', lead: { instrument: 'fife', volume: 0.22 } },
-  ],
-  level: 1.34,
-  calm: 1.64,
-  swap: true,
-};
-
-/**
- * "The Bog Waltz": Mother Mirrow's, in A minor, lurching on its third beat. At her hut the harp's
- * oom-pah-pah and a drone; in her battle a bass, drums and brass join the dance.
- */
-const mirrow: TrackDef = {
-  id: 'mirrow',
-  unit: 0.2,
-  unitsPerBar: 6,
-  strong: [0],
-  sections: {
-    A: {
-      chords: ['Am', 'Am', 'E', 'E', 'Am', 'Am', 'Dm', 'E', 'F', 'C', 'Dm', 'Am', 'F', 'E', 'Am', 'Am'],
-      melody: `E5:4 C5:2 | A4:2 B4:2 C5:2 | B4:4 G#4:2 | E4:6 | A4:2 C5:2 E5:2 | A5:4 G#5:2 | F5:2 E5:2 D5:2 | E5:4 D5:1 B4:1 |
-        C5:4 A4:2 | G4:2 C5:2 E5:2 | D5:4 F5:2 | E5:2 C5:2 A4:2 | A4:4 C5:2 | B4:2 G#4:2 E4:2 | A4:6 | r:2 E4:2 A4:2`,
-    },
-    B: {
-      chords: ['C', 'G', 'Am', 'E', 'F', 'C', 'Dm', 'E'],
-      melody: `G5:4 E5:2 | D5:4 B4:2 | C5:2 E5:2 A5:2 | G#5:4 B5:2 | A5:2 F5:2 C5:2 | E5:4 G4:2 | F4:2 A4:2 D5:2 | E5:6`,
-    },
-  },
-  lead: { instrument: 'recorder', volume: 0.25 },
-  parts: {
-    pah: { kind: 'pattern', instrument: 'harp', volume: 0.14, steps: [[0, 0, 3, 2], [2, 1, 4, 1.5, 0.7], [2, 2, 4, 1.5, 0.7], [4, 1, 4, 1.5, 0.6], [4, 2, 4, 1.5, 0.6]] },
-    hum: { kind: 'pattern', instrument: 'drone', volume: 0.06, steps: [[0, 0, 2, 6]], gate: { below: 0.2 } },
-    bass: { kind: 'pattern', instrument: 'bass', volume: 0.28, steps: [[0, 0, 2, 2]], gate: { from: 0.2 } },
-    drum: { kind: 'drums', steps: [[0, 'tabor', 0.38], [2, 'rim', 0.14], [4, 'rim', 0.12]], gate: { from: 0.2 } },
-    stab: { kind: 'pattern', instrument: 'brass', volume: 0.1, steps: [[0, 0, 3, 1.5], [0, 1, 3, 1.5]], bars: [2, 3, 7, 13], gate: { from: 0.2 } },
-    bell: { kind: 'pattern', instrument: 'bell', volume: 0.07, steps: [[0, 1, 5, 6]], bars: [0, 8] },
-    cackle: { kind: 'pattern', instrument: 'fife', volume: 0.08, steps: [[3, 3, 4, 0.5], [3.5, 2, 4, 0.5], [4, 1, 4, 0.5], [4.5, 0, 4, 1]], bars: [5, 11], gate: { from: 0.2, mood: 'lose' } },
-  },
-  form: [{ section: 'A' }, { section: 'B' }, { section: 'A', lead: { instrument: 'fife', volume: 0.2 } }, { section: 'B', lead: { instrument: 'harp', volume: 0.3 }, parts: ['hum', 'bass', 'drum', 'stab', 'bell'] }],
-  level: 1.05,
-  calm: 1.4,
-};
-
-/**
- * "Bramble's Temper": Aunt Bramble's, a stamping witch's jig in G minor, bigger and crosser than her
- * sister's waltz. A hurdy-gurdy growls under it all; by her lair a stamp, in her battle the drums,
- * the bass and the brass.
- */
-const bramble: TrackDef = {
-  id: 'bramble',
-  unit: 0.19,
-  unitsPerBar: 6,
-  strong: [0, 3],
-  sections: {
-    A: {
-      chords: ['Gm', 'F', 'Eb', 'D', 'Gm', 'Cm', 'D', 'Gm'],
-      melody: `G5:2 D5:1 Bb4:2 D5:1 | A5:2 F5:1 C5:2 F5:1 | G5:2 Eb5:1 Bb4:2 Eb5:1 | F#5:2 A5:1 D5:2 C5:1 |
-        Bb5:1 A5:1 G5:1 D5:2 G5:1 | C5:2 Eb5:1 G5:2 Eb5:1 | D5:1 D5:1 D5:1 F#5:2 A5:1 | G5:3 G4:3`,
-    },
-    B: {
-      chords: ['Eb', 'Bb', 'Cm', 'Gm', 'Eb', 'Bb', 'Cm', 'D'],
-      melody: `Bb5:2 G5:1 Eb5:2 G5:1 | F5:2 D5:1 Bb4:2 D5:1 | Eb5:2 G5:1 C6:2 G5:1 | D5:2 Bb4:1 G4:2 Bb4:1 |
-        G5:1 G5:1 G5:1 Bb5:2 G5:1 | F5:2 D5:1 F5:2 Bb5:1 | G5:2 Eb5:1 C5:2 Eb5:1 | D5:3 F#5:3`,
-    },
-  },
-  lead: { instrument: 'fife', volume: 0.22 },
-  parts: {
-    growl: { kind: 'pattern', instrument: 'drone', volume: 0.07, steps: [[0, 0, 2, 6], [0, 2, 2, 6, 0.6]] },
-    stamp: { kind: 'drums', steps: [[0, 'tabor', 0.48], [3, 'tabor', 0.35]], gate: { below: 0.2 } },
-    bass: { kind: 'pattern', instrument: 'bass', volume: 0.22, steps: [[0, 0, 2, 2], [3, 0, 2, 2, 0.9]], gate: { from: 0.2 } },
-    drum: { kind: 'drums', steps: [[0, 'tabor', 0.38], [1, 'rim', 0.09], [2, 'rim', 0.08], [3, 'tabor', 0.32], [4, 'rim', 0.09], [5, 'rim', 0.08]], gate: { from: 0.2 } },
-    lute: { kind: 'pattern', instrument: 'lute', volume: 0.11, steps: JIG_LUTE, gate: { from: 0.4 } },
-    brass: { kind: 'pattern', instrument: 'brass', volume: 0.09, steps: [[0, 0, 3, 2], [0, 2, 3, 2]], bars: [0, 3, 4, 7], gate: { from: 0.2 } },
-    toll: { kind: 'pattern', instrument: 'knell', volume: 0.1, steps: [[0, 0, 4, 4]], bars: [0, 4], gate: { from: 0.2, mood: 'lose' } },
-  },
-  form: [
-    { section: 'A' },
-    { section: 'A', lead: { instrument: 'recorder', volume: 0.25 } },
-    { section: 'B' },
-    { section: 'B', lead: { instrument: 'brass', volume: 0.22 } },
-  ],
-  level: 1.17,
-  calm: 1.82,
-  swap: true,
-};
-
-export const TRACKS: Record<TrackId, TrackDef> = { title, heath, fen, weald, marsh, reach, town, battle, court, grimsby, mirrow, bramble };
+/** "F#4" to a MIDI note number (the stings are written in names). */
+export function midiOf(name: string): number {
+  const m = /^([A-G])(#|b)?(-?\d)$/.exec(name);
+  if (!m) throw new Error(`Not a note: ${name}`);
+  return 12 * (Number(m[3]) + 1) + NAMES[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0);
+}

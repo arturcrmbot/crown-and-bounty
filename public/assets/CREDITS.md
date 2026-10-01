@@ -42,10 +42,59 @@ device, Android phones included, which have no Palatino of their own.
   line spacing; saved as WOFF2. `public/assets/fonts/README-bounty-serif.txt` lists every change and
   where to get the original, and `GUST-FONT-LICENSE.txt` is beside it.
 
+## The music: yubatake
+
+The music is yubatake's: tunes from the
+[JRPG Collection](https://opengameart.org/content/jrpg-collection), the
+[JRPG Collection 2](https://opengameart.org/content/jrpg-collection-2) and
+[Northern Isles](https://opengameart.org/content/northern-isles), on OpenGameArt. Thank you to them.
+
+- **Licence.** [Creative Commons BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+- **Unchanged files.** The MIDI files are kept exactly as they come in each page's download, in
+  `public/assets/music/`.
+- **Changes, made in code as the game plays them** (`src/audio/score.ts`): we chose a General MIDI
+  instrument for each of his parts, and how loud it plays; some notes move by octaves into their
+  instrument's range; some parts play only in a battle, or as it heats up, or while you're winning or
+  losing; each tune is set to a common loudness; and the band plays in a small room's echo.
+
+| File | Tune | From | Licence | Plays |
+| --- | --- | --- | --- | --- |
+| `JRPG_mainTheme.mid` | Main Theme | JRPG Collection | CC BY 4.0 | the title |
+| `JRPG_fields.mid` | Fields | JRPG Collection | CC BY 4.0 | Aldmoor, and two later lands |
+| `JRPG_shop.mid` | Shop | JRPG Collection 2 | CC BY 4.0 | Aldmoor, and two later lands |
+| `JRPG_inn.mid` | Inn | JRPG Collection 2 | CC BY 4.0 | Aldmoor, and two later lands |
+| `JRPG_town.mid` | Town | JRPG Collection | CC BY 4.0 | Aldmoor, and a later land |
+| `JRPG_tavern.mid` | Tavern | JRPG Collection 2 | CC BY 4.0 | Aldmoor, and two later lands |
+| `JRPG_mysticIsle.mid` | Mystic Isle | JRPG Collection 2 | CC BY 4.0 | the Fenmarch, and a later land |
+| `NorthernIsles.mid` | Northern Isles | Northern Isles | CC BY 4.0 | the Fenmarch, and two later lands |
+| `JRPG_docks.mid` | Docks | JRPG Collection 2 | CC BY 4.0 | the Fenmarch, and a later land |
+| `JRPG_temple.mid` | Temple | JRPG Collection | CC BY 4.0 | the Fenmarch, and a later land |
+| `JRPG_princess.mid` | Princess | JRPG Collection | CC BY 4.0 | the court, and a later land |
+| `JRPG_royalCourt.mid` | Royal Court | JRPG Collection | CC BY 4.0 | the court |
+| `JRPG_battle.mid` | Battle | JRPG Collection | CC BY 4.0 | battles |
+| `JRPG_battleBoss.mid` | Boss Battle | JRPG Collection 2 | CC BY 4.0 | Baron Grimsby, by his lair and in his battle |
+| `JRPG_labyrinth.mid` | Labyrinth | JRPG Collection | CC BY 4.0 | Mother Mirrow, by her lair and in her battle |
+| `JRPG_dungeon.mid` | Dungeon | JRPG Collection | CC BY 4.0 | Aunt Bramble, by her lair and in her battle |
+
+## The instruments: GeneralUser GS
+
+The band plays its notes on samples from [GeneralUser GS](https://www.schristiancollins.com/generaluser.php)
+v2.0.3, S. Christian Collins's General MIDI SoundFont, taken from
+[its repository](https://github.com/mrbumpy409/GeneralUser-GS) at commit
+`684543d5e5efaef08d02be50dcda8d552478fa60`. Thank you to him.
+
+- **Licence.** GeneralUser GS License v2.0, which lets software use it and change it:
+  `public/assets/music/GeneralUser-GS-LICENSE.txt`.
+- **Changes** (`scripts/soundfont.py`): cut down to the twelve instruments and eight drums the music
+  uses, and to the keys it plays; one velocity layer, one layer of a layered sound and one side of a
+  stereo sample; every other sample of the strings and the flute; tails over a second or two faded
+  out; resampled to 22 kHz; stored as 4-bit IMA ADPCM in `band.bin`, with each sample's zones, tuning,
+  loop and envelope in `band.json`.
+
 ## Everything else
 
-The terrain, buildings, portraits, title painting, interface, icon, music and sound are all made in
-code (`src/render/`, `src/audio/`). No image-generation models are used.
+The terrain, buildings, portraits, title painting, interface, icon, sound effects, stings and
+ambience are all made in code (`src/render/`, `src/audio/`). No image-generation models are used.
 
 ## Wesnoth files
 

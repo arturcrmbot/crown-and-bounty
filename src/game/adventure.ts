@@ -44,10 +44,6 @@ const BANNER_HOLD = 2.4;
 const NIGHT = 1.4;
 /** How dark the map grows once a commission is lost. */
 const GLOOM = 0.6;
-/** How near a castle or village the hero must be for its card to bring the town's tune. */
-const TOWN_REACH = 90;
-/** Seconds the town's tune plays on after its card closes, so a quick visit still hears it. */
-const TOWN_LINGER = 3;
 /** Map pixels per second. */
 const RIDE_SPEED = 95;
 /** Map pixels per step of the trot cycle, so hooves don't slide. */
@@ -146,12 +142,8 @@ export class AdventureController implements Screen {
   private gloom = 0;
   /** Where the land makes its sounds. */
   private readonly soundscape: Soundscape;
-  /** The place whose card is open, if the card came from a visit there. */
-  private cardPlace: string | null = null;
   /** Settling a battle fought on the field, whose stings have played already. */
   private fromBattle = false;
-  /** Seconds the town's tune plays on: kept full while its card is open, then running down. */
-  private inTown = 0;
   /** Seconds on the map, and since this day's dawn, for the weather. */
   private clock = 0;
   private sinceDawn = 0;
@@ -209,18 +201,11 @@ export class AdventureController implements Screen {
   }
 
   /**
-   * The province's own tune; a villain's theme near his lair; and while the hero is in a castle or
-   * a village, with its card open, the town's.
+   * The province's own tunes, taking turns; and a villain's theme near his lair. A castle's or a
+   * village's card leaves the music as it is: it changes only between the map and a battle.
    */
   get music(): TrackId {
-    if (this.inTown > 0) return 'town';
     return lairTune(this.state, [this.drawn.x, this.drawn.y]) ?? provinceTune(this.state.campaign.chapter, Boolean(this.map.province.fen));
-  }
-
-  /** Whether the hero is in a castle or village, with its card open: its tune plays, and lingers a moment after. */
-  private visitingTown(): boolean {
-    const here = this.cardPlace && this.cards.isOpen ? this.state.locations.find((l) => l.id === this.cardPlace) : null;
-    return Boolean(here && (here.kind === 'castle' || here.kind === 'village') && !here.look && Math.hypot(here.at[0] - this.drawn.x, here.at[1] - this.drawn.y) < TOWN_REACH);
   }
 
   get ambience() {
@@ -271,7 +256,6 @@ export class AdventureController implements Screen {
   }
 
   showCard(card: Card, at: Point | null) {
-    this.cardPlace = null;
     this.reading = false;
     // A new province's name gets its moment across the sky before any card covers it.
     if (this.banner && this.banner.age < BANNER_HOLD) {
@@ -295,7 +279,6 @@ export class AdventureController implements Screen {
 
   hideCard() {
     this.looking = null;
-    this.cardPlace = null;
     this.reading = false;
     this.restartAsked = false;
     this.focus = null;
@@ -388,7 +371,6 @@ export class AdventureController implements Screen {
           return;
         case 'card':
           this.showCard(e.card, e.place ? this.anchorOf(e.place) : e.at);
-          this.cardPlace = e.place ?? null;
           // A fight the sergeants settled gets the same brass, or the same bell, as one fought on the field.
           if (!this.fromBattle && (e.card.title === 'Victory!' || e.card.title === 'Defeat')) sting(e.card.title === 'Defeat' ? 'defeat' : 'victory');
           break;
@@ -673,7 +655,6 @@ export class AdventureController implements Screen {
   }
 
   update(dt: number, held: ReadonlySet<string>) {
-    this.inTown = this.visitingTown() ? TOWN_LINGER : Math.max(0, this.inTown - dt);
     // The sky keeps its own clock: real seconds, stopped when frozen.
     this.clock += dt;
     this.sinceDawn += dt;
