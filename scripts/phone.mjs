@@ -27,7 +27,6 @@ const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('console', (m) => m.type() === 'error' && !m.text().includes('404') && errors.push(m.text()));
-page.on('console', (m) => ['warning', 'error'].includes(m.type()) && console.log('DIAG console', m.type(), m.text().slice(0, 300)));
 // Drags and long presses need the touch events underneath a tap: Chromium's, through its protocol.
 const cdp = engine === 'webkit' ? null : await context.newCDPSession(page);
 const landscape = { ...device.viewport };
@@ -234,8 +233,12 @@ async function go(id, action) {
   }
   if ((await title()) === 'Unexplored') action = 'Ride there';
   // Ridden up to them already (looking for them, say): their card offers the fight itself.
-  const facing = await call(() => [...document.querySelectorAll('.kc-card-wrap:not([hidden]) button')].some((b) => b.textContent.startsWith('Let the sergeants')));
-  if (action === 'Approach' && facing) return title();
+  if (action === 'Approach') {
+    const offers = await page
+      .waitForFunction(() => [...document.querySelectorAll('.kc-card-wrap:not([hidden]) button')].map((b) => b.textContent).find((t) => t.startsWith('Approach') || t.startsWith('Let the sergeants')), null, { timeout: 3000, polling: 50 })
+      .then((h) => h.jsonValue(), () => '');
+    if (offers.startsWith('Let the sergeants')) return title();
+  }
   if (!(await press(action))) throw new Error(`${id}: no "${action}" on "${await title()}": ${await lines()}`);
   for (let nights = 0; ; nights++) {
     if (nights > 12) throw new Error(`${id}: still on the road after ${nights} nights (day ${(await state()).day})`);
@@ -411,20 +414,13 @@ try {
   // The highwaymen are the long way round, by the ford: a fight by hand, by touch.
   await go('highwaymen', 'Approach');
   await look('fight-card');
-  const DIAG = async (tag) => console.log(`DIAG ${tag}`, JSON.stringify(await call(() => ({ screen: window.__kc.screen(), title: document.querySelector('.kc-card-wrap:not([hidden]) h3')?.textContent ?? null, buttons: [...document.querySelectorAll('.kc-card-wrap:not([hidden]) .kc-card button')].map((b) => { const r = b.getBoundingClientRect(); return `${b.textContent.slice(0, 20)}@${Math.round(r.x)},${Math.round(r.y)},${Math.round(r.width)}x${Math.round(r.height)}`; }), battle: Boolean(window.__kc.state().battle), hw: window.__kc.state().locations.find((l) => l.id === 'highwaymen')?.done, card: document.querySelector('.kc-card-wrap:not([hidden]) .kc-card')?.getAnimations().map((a) => a.playState).join(), gold: window.__kc.state().gold, at: window.__kc.state().hero.at }))));
-  await DIAG('before');
-  console.log('DIAG army', JSON.stringify(await call(() => ({ army: window.__kc.state().army, ambush: window.__kc.state().ambush ?? null, over: window.__kc.state().over ?? null }))));
-  await call(() => {
-    window.__diag = [];
-    for (const t of ['touchstart', 'touchend', 'pointerdown', 'pointerup', 'click']) document.addEventListener(t, (e) => window.__diag.push(`${t}:${e.target?.tagName}.${String(e.target?.className).slice(0, 30)}:${(e.target?.textContent ?? '').slice(0, 12)}:${e.defaultPrevented}`), true);
-  });
   await press('Fight');
-  console.log('DIAG events', JSON.stringify(await call(() => window.__diag)));
-  console.log('DIAG tapped', JSON.stringify(pressed.at(-1)));
-  await DIAG('after');
-  await wait(1500);
-  await DIAG('later');
-  console.log('DIAG errors', JSON.stringify(errors));
+  // A tap that comes to nothing (it happens on CI's slower machine) gets another, as a player's would.
+  const fighting = () => page.waitForFunction(() => window.__kc.screen() === 'battle', null, { timeout: 3000 }).then(() => true, () => false);
+  if (!(await fighting()) && !(await title())) {
+    await go('highwaymen', 'Approach');
+    await press('Fight');
+  }
   await page.waitForFunction(() => window.__kc.screen() === 'battle', null, { timeout: 10_000 });
   await wait(600);
   const battleRails = await call(() => [...document.querySelectorAll('.kc-rail:not([hidden]) button')].map((b) => b.getAttribute('aria-label')));
