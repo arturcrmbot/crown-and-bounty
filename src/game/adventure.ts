@@ -8,7 +8,7 @@ import { clickable, GOLD_AT, paintHud, type HudHit } from '../render/hud';
 import { feastArtReady } from '../render/mapArt';
 import { ART, heroArtId } from '../render/units';
 import type { BattleState } from '../rules/battle/battle';
-import { ambushCard, apply, bountyCard, commissionOf, describe, finishFight, heardOf, heroStats, journalCard, levelUpCard, locationById, placeNote, placeOdds, roman, VANISHES, visit, whenThere, type Action, type Card, type GameEvent, type GameState, type Result, type Verdict } from '../rules/game';
+import { ambushCard, apply, bountyCard, commissionOf, describe, finishFight, geeseHome, heardOf, heroStats, journalCard, levelUpCard, locationById, placeNote, placeOdds, roman, VANISHES, visit, whenThere, type Action, type Card, type GameEvent, type GameState, type Location, type Result, type Verdict } from '../rules/game';
 import { barNote } from '../rules/heroSheet';
 import type { Point } from '../rules/map/geometry';
 import { CELL, cellCentre, type MapModel, type Terrain } from '../rules/map/model';
@@ -85,6 +85,7 @@ type Rising = { text: string; colour: number; sound?: Sound; picture?: Bitmap; g
 
 /** Each kind of gain's colour as it rises, and its sound (gold has its coins already, and a level its sting). */
 const GAIN_LOOKS: Record<GainKind, { colour: number; sound?: Sound }> = {
+  goose: { colour: NEUTRAL[7], sound: 'honk' },
   gold: { colour: GOLD[6] },
   troops: { colour: PARCHMENT[6], sound: 'march' },
   leadership: { colour: BLUE[6], sound: 'cheer' },
@@ -103,6 +104,10 @@ const TWINKLE_EVERY = 0.8;
 const TWINKLES: ReadonlySet<string> = new Set(['chest', 'gold', 'pickup']);
 /** Each thing picked up by the way the same day chimes a step higher up the scale than the last (#192). */
 const PICK_NOTES = ['pick0', 'pick1', 'pick2', 'pick3', 'pick4', 'pick5'] as const;
+/** A reveal this wide is a lookout's, a map's or a spell's: the mist rolls back with a gust of wind (#192). */
+const WIDE_REVEAL = 300;
+/** How far from land he has seen treasure under the mist glints through its edge now and then. */
+const MIST_EDGE = 48;
 
 export class AdventureController implements Screen {
   readonly name = 'adventure';
@@ -426,18 +431,28 @@ export class AdventureController implements Screen {
     this.repaintHud();
   }
 
-  /** Now and then, a twinkle on treasure that's still lying where he can see it. */
+  /**
+   * Now and then, a twinkle on treasure that's still lying where he can see it, or a fainter glint
+   * through the edge of the mist, so he sees that something is there before he knows what (#192).
+   */
   private twinkle(dt: number) {
     this.sinceTwinkle += dt;
     if (this.sinceTwinkle < TWINKLE_EVERY) return;
     this.sinceTwinkle = 0;
-    const lying = this.state.locations.filter((l) => !l.done && TWINKLES.has(l.kind) && this.inView(l.at) && !this.view.isFogged(l.at[0], l.at[1] - 4));
+    const fogged = (l: Location) => this.view.isFogged(l.at[0], l.at[1] - 4);
+    const byTheMist = (l: Location) => [0, 1, 2, 3, 4, 5, 6, 7].some((k) => !this.view.isFogged(l.at[0] + Math.cos(k * 0.785) * MIST_EDGE, l.at[1] - 4 + Math.sin(k * 0.785) * MIST_EDGE));
+    const lying = this.state.locations.filter((l) => !l.done && TWINKLES.has(l.kind) && this.inView(l.at) && (!fogged(l) || byTheMist(l)));
     if (!lying.length) return;
-    const n = ++this.twinkles;
-    const place = lying[Math.floor(hash(n, 7, 501) * lying.length)];
+    const place = lying[Math.floor(hash(++this.twinkles, 7, 501) * lying.length)];
+    this.glint(place, fogged(place) ? 'glint' : 'twinkle');
+  }
+
+  /** A twinkle on a place (or under the mist, a fainter glint), somewhere on its upper part. */
+  private glint(place: Location, kind: 'twinkle' | 'glint') {
     const box = this.scene.hitboxes.find((b) => b.id === place.id);
     if (!box) return;
-    this.view.effects.puff(box.x0 + 4 + hash(n, 8, 502) * (box.x1 - box.x0 - 8), box.y0 + 2 + hash(n, 9, 503) * (box.y1 - box.y0) * 0.4, 'twinkle');
+    const n = ++this.twinkles;
+    this.view.effects.puff(box.x0 + 4 + hash(n, 8, 502) * Math.max(0, box.x1 - box.x0 - 8), box.y0 + 2 + hash(n, 9, 503) * (box.y1 - box.y0) * 0.4, kind);
   }
 
   /** Shows events that happened elsewhere, like the arrival card of a new commission. */
@@ -483,10 +498,15 @@ export class AdventureController implements Screen {
           // A fight the sergeants settled gets the same brass, or the same bell, as one fought on the field.
           if (!this.fromBattle && (e.card.title === 'Victory!' || e.card.title === 'Defeat')) sting(e.card.title === 'Defeat' ? 'defeat' : 'victory');
           break;
-        case 'reveal':
+        case 'reveal': {
+          // Treasure the mist was hiding glints once as it comes into sight (#192).
+          const hidden = this.state.locations.filter((l) => !l.done && TWINKLES.has(l.kind) && Math.hypot(l.at[0] - e.at[0], l.at[1] - e.at[1]) <= e.radius + 8 && this.scene.fog.isFogged(l.at[0], l.at[1] - 4));
           this.scene.fog.reveal(this.state.explored, e.at[0], e.at[1], e.radius);
           this.scene.minimap.refog(e);
+          for (const l of hidden) if (!this.scene.fog.isFogged(l.at[0], l.at[1] - 4)) this.glint(l, 'twinkle');
+          if (e.radius >= WIDE_REVEAL) play('gust');
           break;
+        }
         case 'added': {
           // A band that rides out and on in the same night sets off from where it rode out.
           const l = locationById(this.state, e.id);
@@ -496,7 +516,7 @@ export class AdventureController implements Screen {
         }
         case 'changed': {
           const l = locationById(this.state, e.id);
-          refreshPlace(this.scene, l);
+          refreshPlace(this.scene, l, l.look === 'pond' ? geeseHome(this.state) : 0);
           // A chest just opened: its lid creaks up, and the glitter of what was in it.
           if (l.kind === 'chest' && l.done) {
             play('creak');
@@ -507,8 +527,8 @@ export class AdventureController implements Screen {
         case 'removed': {
           const gone = this.state.locations.find((l) => l.id === e.id);
           const object = this.scene.pickups.get(e.id);
-          // Out of sight, it goes without anyone seeing it go.
-          if (gone && !object?.hidden) this.view.effects.puff(gone.at[0], gone.at[1], gone.enemy ? 'dust' : 'sparkle');
+          // Out of sight, it goes without anyone seeing it go. A lost goose goes home in a flurry of feathers.
+          if (gone && !object?.hidden) this.view.effects.puff(gone.at[0], gone.at[1], gone.enemy ? 'dust' : gone.kind === 'goose' ? 'feathers' : 'sparkle');
           if (object) this.view.remove(object);
           this.scene.pickups.delete(e.id);
           break;

@@ -442,10 +442,20 @@ export const FINDS: Location[] = [
     text: { about: ['There is a pond at the bottom of Westmere green, and a great many geese on it, every one of them looking at you.'] },
     pages: [
       {
+        id: 'thanks',
+        when: { flag: 'geese', notFlag: 'gooseGirl' },
+        lines: [
+          'The goose-girl counts the geese on the pond, pointing at each one with her stick. *"Every one of them home, and not a feather missing. The royal goose will hear of this."*',
+          'She takes the feather out of her hat and gives it to you. It has brought her luck all her life, she says, and now it can bring you some.',
+        ],
+        choices: [{ id: 'feather', label: 'Take her lucky feather', effects: { artifact: 'luckyFeather', flags: { gooseGirl: true } } }],
+      },
+      {
         id: 'geese',
         lines: [
           'The goose-girl says every goose in Aldmoor is some cousin of the royal goose, and they all know it.',
           '*"The Baron came by once, with her under his arm. Every goose on the pond hissed him all the way to the bridge. Geese don\u2019t forget."*',
+          '*"Seven of mine have wandered off, and I can\u2019t leave the rest to go looking. If you see one, send her home."*',
         ],
         choices: [],
       },
@@ -506,6 +516,111 @@ export const FINDS: Location[] = [
         ],
       },
       { id: 'after', when: { flag: 'wethers' }, lines: ['The stones stand where they stood. *Probably.*'], choices: [] },
+    ],
+  },
+  // --- Lookouts (#192): one in each land that had none, each lifting the mist round it as the Grey Wethers do ---
+  {
+    id: 'beacon',
+    kind: 'event',
+    look: 'beacon',
+    name: 'The Beacon on the Downs',
+    at: [2840, 600],
+    done: false,
+    text: { about: ['An old beacon stands on the top of the downs, where they lit a fire to warn the castle. Somebody still keeps it burning.'] },
+    pages: [
+      {
+        id: 'climb',
+        when: { notFlag: 'beacon' },
+        lines: ['The beacon stands on the highest point of the downs. On a clear day, they say, you can see the sea from here. You can\u2019t, but you can see a great deal of Aldmoor.'],
+        choices: [
+          {
+            id: 'look',
+            label: 'Climb up beside the fire',
+            effects: { reveal: { at: [2840, 600], radius: 440 }, flags: { beacon: true } },
+            lines: ['From up here you can see the downs rolling away to the castle, the King\u2019s road, and sheep in every direction.'],
+          },
+          { id: 'leave', label: 'Leave it be' },
+        ],
+      },
+      { id: 'after', when: { flag: 'beacon' }, lines: ['The beacon is still burning. Nobody has come to see why.'], choices: [] },
+    ],
+  },
+  {
+    id: 'lonePine',
+    kind: 'event',
+    look: 'lonePine',
+    name: 'The Lone Pine',
+    at: [264, 1224],
+    done: false,
+    text: { about: ['One pine stands head and shoulders above the rest of Darkwood, and somebody has nailed rungs up its trunk.'] },
+    pages: [
+      {
+        id: 'climb',
+        when: { notFlag: 'lonePine' },
+        lines: ['The rungs go up a long way. The old King\u2019s foresters used to watch for fires from the top.'],
+        choices: [
+          {
+            id: 'look',
+            label: 'Climb the pine',
+            effects: { reveal: { at: [264, 1224], radius: 400 }, flags: { lonePine: true } },
+            lines: ['From the top you can see over Darkwood to the heath, and smoke rising far off in the south, where the Baron keeps his stockade.'],
+          },
+          { id: 'leave', label: 'Stay on the ground' },
+        ],
+      },
+      { id: 'after', when: { flag: 'lonePine' }, lines: ['The pine sways a little in the wind. Better it than you.'], choices: [] },
+    ],
+  },
+  {
+    id: 'huntStand',
+    kind: 'event',
+    look: 'stand',
+    name: 'The Old King\u2019s Hunting Stand',
+    at: [2216, 1976],
+    done: false,
+    text: { about: ['A little wooden pavilion stands on a rise in the King\u2019s chase, where the old King sat to watch the hunt go by.'] },
+    pages: [
+      {
+        id: 'climb',
+        when: { notFlag: 'huntStand' },
+        lines: ['The old King had a good eye for a view. The steps up to it are rotten, but the seat at the top is still sound.'],
+        choices: [
+          {
+            id: 'look',
+            label: 'Climb up to his seat',
+            effects: { reveal: { at: [2216, 1976], radius: 420 }, flags: { huntStand: true } },
+            lines: ['From the old King\u2019s seat you can see the chase laid out below you, its rides, its clearings and its oaks, and something large asleep on the track to the lodge.'],
+          },
+          { id: 'leave', label: 'Leave it be' },
+        ],
+      },
+      { id: 'after', when: { flag: 'huntStand' }, lines: ['The old King\u2019s seat is still there. It is a very good seat.'], choices: [] },
+    ],
+  },
+  {
+    id: 'cairn',
+    kind: 'event',
+    look: 'cairn',
+    name: 'The Old Cairn',
+    at: [792, 440],
+    done: false,
+    text: { about: ['Somebody piled stones into a cairn on the crags above the heath, a long time ago, and every traveller since has added one.'] },
+    pages: [
+      {
+        id: 'climb',
+        when: { notFlag: 'cairn' },
+        lines: ['There is a path of sorts up to the cairn, and a fine view from the top of it.'],
+        choices: [
+          {
+            id: 'look',
+            label: 'Climb up and add a stone',
+            effects: { reveal: { at: [792, 440], radius: 420 }, flags: { cairn: true } },
+            lines: ['You add your stone to the cairn. From up here you can see the heath spread out below you, the old watchtower, and somebody\u2019s men digging a great many holes in it.'],
+          },
+          { id: 'leave', label: 'Leave it be' },
+        ],
+      },
+      { id: 'after', when: { flag: 'cairn' }, lines: ['Your stone is still on the cairn, near the top. It looks very well there.'], choices: [] },
     ],
   },
   {

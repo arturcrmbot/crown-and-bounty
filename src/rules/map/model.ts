@@ -95,9 +95,9 @@ function forestIndex(province: Province): ForestIndex {
   let index = forestIndexes.get(province);
   if (index) return index;
   const clearings: [number, number, number][] = [
-    // Enemies stand on roads that are clear already; a clearing round them would open a way past. Nor
-    // do the small things lying by the way (#192) clear the woods: they lie where a rider passes already.
-    ...province.locations.filter((l) => !l.enemy && l.kind !== 'pickup').map((l) => [l.at[0], l.at[1] - 10, 38] as [number, number, number]),
+    // Enemies stand on roads that are clear already; a clearing round them would open a way past. Nor do the
+    // small things lying by the way or the lost geese (#192) clear the woods: they're where a rider passes already.
+    ...province.locations.filter((l) => !l.enemy && l.kind !== 'pickup' && l.kind !== 'goose').map((l) => [l.at[0], l.at[1] - 10, 38] as [number, number, number]),
     [province.hero[0], province.hero[1] - 10, 38],
     ...province.locations.filter((l) => l.kind === 'hideout').map((l) => [l.at[0], l.at[1] - 20, 64] as [number, number, number]),
   ];

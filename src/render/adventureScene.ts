@@ -1,6 +1,6 @@
 import type { BackgroundId } from '../content/backgrounds';
 import { leads, troopPower, type TroopId } from '../content/troops';
-import { VANISHES, type Army, type GameState, type Location } from '../rules/game';
+import { geeseHome, VANISHES, type Army, type GameState, type Location } from '../rules/game';
 import type { Point } from '../rules/map/geometry';
 import { forestAmount, Terrain, type MapModel } from '../rules/map/model';
 import { AdventureScreen, type Placed } from './adventureScreen';
@@ -16,7 +16,7 @@ import { heroArtId } from './units';
 import {
   abbey, boat, boulder, camp, campfire,
   butts, CART_GROUND as DRAWN_CART_GROUND, cottage, castle, standingStones, chest, crag, fold, goldPile, grainCart, hayrick, hideout, holes, huntHall, hut, kiln, lodge, mews, mill, mine, mirror, nest, oak, pack, peatHut, pine, pond, signpost, skeps, stiltHut, shrine,
-  stoneBridge, washingCottage, watchtower, wayside, well, willow, windmill, xMark,
+  stoneBridge, swimmingGoose, washingCottage, watchtower, wayside, well, willow, windmill, xMark, lostGoose, cairn,
 } from './sprites';
 import { TerrainPainter } from './terrain';
 import { dress } from './dressing';
@@ -55,6 +55,8 @@ const PAINTED_LOOKS: Partial<Record<string, PieceName>> = {
   purse: 'goldSmall',
   oats: 'haystack',
   crystals: 'crystals',
+  lonePine: 'bFir',
+  stand: 'gazebo',
   camp: 'tents',
   windmill: 'windmill',
   shrine: 'shrine',
@@ -172,9 +174,51 @@ function withCart(escort: Bitmap, foot: number): { sprite: Bitmap; foot: number 
   return { sprite: out, foot: top };
 }
 
-/** The sprite (or frames) that stands for a place on the map, and how far below its top the foot is. */
-function landmark(l: Location): { frames: Bitmap[]; foot: number; animated: boolean } | null {
+/** Where the lost geese swim on the painted pond once they're home, in the order they come (#192). */
+const POND_SPOTS: readonly [number, number, boolean][] = [[27, 10, true], [9, 22, false], [40, 15, true], [3, 13, false], [37, 22, true], [18, 23, false], [49, 13, false]];
+
+/** The painted pond with `home` of the lost geese swimming on it too. */
+function withGeese(pond: Bitmap, home: number): Bitmap {
+  const out = new Bitmap(pond.width, pond.height);
+  out.data.set(pond.data);
+  for (const [x, y, right] of POND_SPOTS.slice(0, home)) swimmingGoose(out, x, y, right);
+  return out;
+}
+
+/** One painted piece standing on another: `top`'s foot at `at` on `base` (the beacon's fire on its hill). */
+function stacked(base: { sprite: Bitmap; foot: number }, top: { sprite: Bitmap; foot: number }, at: Point): { frames: Bitmap[]; foot: number; animated: boolean } {
+  const x0 = Math.min(0, at[0] - Math.floor(top.sprite.width / 2));
+  const y0 = Math.min(0, at[1] - top.foot);
+  const out = new Bitmap(Math.max(base.sprite.width, at[0] + Math.ceil(top.sprite.width / 2)) - x0, base.sprite.height - y0);
+  const paint = (src: Bitmap, ox: number, oy: number) => {
+    for (let y = 0; y < src.height; y++) {
+      for (let x = 0; x < src.width; x++) {
+        const v = src.data[y * src.width + x];
+        if (v !== 0 && (v !== SHADOW || out.get(ox + x, oy + y) === 0)) out.set(ox + x, oy + y, v);
+      }
+    }
+  };
+  paint(base.sprite, -x0, -y0);
+  paint(top.sprite, at[0] - Math.floor(top.sprite.width / 2) - x0, at[1] - top.foot - y0);
+  return { frames: [out], foot: base.foot - y0, animated: false };
+}
+
+/**
+ * The sprite (or frames) that stands for a place on the map, and how far below its top the foot is.
+ * The goose pond shows the lost geese that are `home` (#192).
+ */
+function landmark(l: Location, home = 0): { frames: Bitmap[]; foot: number; animated: boolean } | null {
   if (painted) {
+    // The goose pond is drawn anew as the lost geese come home to it, so it's kept with the places that change.
+    if (l.look === 'pond') {
+      const look = art('pond', true);
+      if (look) return home ? { ...look, frames: [withGeese(look.frames[0], home)] } : look;
+    }
+    // The beacon on the downs: a fire on a little hill.
+    if (l.look === 'beacon') {
+      const [hill, fire] = [piece('hill'), piece('fire')];
+      if (hill && fire) return stacked(hill, fire, [Math.round(hill.sprite.width / 2), 9]);
+    }
     // The hunt hall is drawn anew once it opens, so it's kept with the places that change.
     if (l.look === 'hall') return art(l.recruits ? 'hallOpen' : 'hallShut', true) ?? drawn(l);
     // So is a chest, which stays open and empty once it's opened; a guarded one is gilded (#192).
@@ -187,7 +231,7 @@ function landmark(l: Location): { frames: Bitmap[]; foot: number; animated: bool
 }
 
 /** Looks that stand for a place on the map in their own drawing, even on the painted map. */
-const LOOKS_DRAWN = { cart: 1, hamper: 1, abbey: 1, peathut: 1, stilthut: 1 } as const;
+const LOOKS_DRAWN = { cart: 1, hamper: 1, abbey: 1, peathut: 1, stilthut: 1, cairn: 1 } as const;
 
 /** A place as it's drawn in code. */
 function drawn(l: Location): { frames: Bitmap[]; foot: number; animated: boolean } | null {
@@ -242,6 +286,14 @@ function drawn(l: Location): { frames: Bitmap[]; foot: number; animated: boolean
     case 'crystals':
     case 'letter':
       return { frames: [wayside(l.look)], foot: 12, animated: true };
+    case 'beacon':
+      return { frames: animation((t) => campfire(t)), foot: 30, animated: true };
+    case 'lonePine':
+      return { frames: [pine(77, 52)], foot: 47, animated: false };
+    case 'stand':
+      return { frames: [lodge()], foot: 46, animated: false };
+    case 'cairn':
+      return { frames: [cairn()], foot: 28, animated: false };
     case 'cart': {
       // Pike's grain cart, and one of his lads at its tail in a foe's red ring, fidgeting as they wait.
       const lead = leadTroop(l.enemy!.army);
@@ -299,6 +351,8 @@ function drawn(l: Location): { frames: Bitmap[]; foot: number; animated: boolean
     }
     case 'pickup':
       return { frames: [wayside('purse')], foot: 12, animated: true };
+    case 'goose':
+      return { frames: [lostGoose()], foot: 15, animated: true };
   }
 }
 
@@ -325,10 +379,10 @@ function ringed(sprite: Bitmap, foot: number, ramp: readonly number[] = GOLD, wi
   return out;
 }
 
-/** Draws a place anew where it stands, as the state has it now: the hunt hall, opened, or a band with fewer men. */
-export function refreshPlace(scene: AdventureScene, l: Location) {
+/** Draws a place anew where it stands, as the state has it now: the hunt hall, opened, a band with fewer men, or the goose pond with `home` of the lost geese on it. */
+export function refreshPlace(scene: AdventureScene, l: Location, home = 0) {
   const o = scene.sights.get(l.id) ?? scene.pickups.get(l.id);
-  const look = landmark(l);
+  const look = landmark(l, home);
   if (!o || !look) return;
   Object.assign(o, place(look.frames[0], l.at, look.foot), { frames: look.frames.length > 1 ? look.frames : undefined });
   // A band may stand for itself as another of its troops now, so it's clicked where the new figure stands.
@@ -468,7 +522,7 @@ export function buildAdventureScene(map: MapModel, state: GameState): AdventureS
   }
 
   for (const l of state.locations) {
-    const look = landmark(l);
+    const look = landmark(l, l.look === 'pond' ? geeseHome(state) : 0);
     if (!look) continue;
     const o: Placed = { ...place(look.frames[0], l.at, look.foot), frames: look.frames.length > 1 ? look.frames : undefined };
     partOf(l.id, o);

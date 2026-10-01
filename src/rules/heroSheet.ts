@@ -128,16 +128,24 @@ export function bountyCard(state: GameState): Card {
 }
 
 /** The kinds of thing the journal keeps a tally of, each counted only where the province has some (#192). */
-const FINDS_TALLIED: { what: string; is: (l: Location) => boolean }[] = [
+const FINDS_TALLIED: { what: string; is: (l: Location) => boolean; got?: (state: GameState, l: Location) => boolean }[] = [
   { what: 'Chests opened', is: (l) => l.kind === 'chest' },
   { what: 'Things picked up by the way', is: (l) => l.kind === 'pickup' },
+  { what: 'Lost geese sent home', is: (l) => l.kind === 'goose' },
+  { what: 'Lookouts climbed', is: (l) => Boolean(climbOf(l)), got: (state, l) => Object.keys(climbOf(l)?.effects?.flags ?? {}).some((f) => state.flags?.[f] !== undefined) },
 ];
+
+/** A lookout's climb: the choice that lifts the mist round the place itself (the Grey Wethers, the beacon on the downs). */
+function climbOf(l: Location) {
+  if (l.kind !== 'event') return undefined;
+  return l.pages?.flatMap((p) => p.choices).find((c) => c.effects?.flags && c.effects.reveal && Math.hypot(c.effects.reveal.at[0] - l.at[0], c.effects.reveal.at[1] - l.at[1]) < 40);
+}
 
 /** The journal's tally of things found: how many of each kind he has, of all the province has. */
 export const foundOf = (state: GameState): Found[] =>
-  FINDS_TALLIED.map(({ what, is }) => {
+  FINDS_TALLIED.map(({ what, is, got = (_, l) => l.done }) => {
     const all = state.locations.filter(is);
-    return { what, got: all.filter((l) => l.done).length, of: all.length };
+    return { what, got: all.filter((l) => got(state, l)).length, of: all.length };
   }).filter((f) => f.of > 0);
 
 /**

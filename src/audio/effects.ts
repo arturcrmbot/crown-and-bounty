@@ -185,6 +185,18 @@ const EVERYDAY = {
   pick3: chime(1568, 0.8),
   pick4: chime(1760, 0.77),
   pick5: chime(2093, 0.72),
+  // A lost goose found (#192): two indignant honks, the second lower.
+  honk: effect('firm', (ctx, dest, t) => {
+    for (const [at, f] of [[0, 392], [0.2, 330]] as const) {
+      tone(ctx, dest, t + at, f, 0.16, 0.22, 'sawtooth', 0.82);
+      tone(ctx, dest, t + at, f * 2, 0.14, 0.1, 'square', 0.85);
+    }
+  }, 3.3),
+  // The mist rolling back from a lookout (#192): a gust of wind that rises and dies away.
+  gust: effect('soft', (ctx, dest, t) => {
+    burst(ctx, dest, t, 1.1, 'bandpass', 380, 0.5, 3, 0.8, 0.35);
+    burst(ctx, dest, t + 0.15, 0.8, 'bandpass', 900, 0.25, 2, 1.2, 0.25);
+  }, 1.1),
   // A coin dropping into the purse on the bar.
   clink: effect('soft', (ctx, dest, t) => {
     tone(ctx, dest, t, 2637, 0.07, 0.25, 'triangle');

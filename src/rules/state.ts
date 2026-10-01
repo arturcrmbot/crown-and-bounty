@@ -25,7 +25,7 @@ export const PAYDAY_EVERY = 7;
 export const COMMISSION = 1000;
 export const LAST_DAY = 100;
 
-export type LocationKind = 'castle' | 'tower' | 'mine' | 'village' | 'mill' | 'chest' | 'gold' | 'patrol' | 'hideout' | 'signpost' | 'dig' | 'event' | 'well' | 'pickup';
+export type LocationKind = 'castle' | 'tower' | 'mine' | 'village' | 'mill' | 'chest' | 'gold' | 'patrol' | 'hideout' | 'signpost' | 'dig' | 'event' | 'well' | 'pickup' | 'goose';
 
 export type Enemy = {
   /** How the enemy is drawn on the map. */
@@ -253,7 +253,8 @@ export type PlaceText = { about?: string[]; done?: string[]; visit?: string[]; l
 export type PlaceLook =
   | 'abbey' | 'peathut' | 'windmill' | 'stilthut' | 'shrine' | 'camp' | 'cottage' | 'house' | 'stones' | 'range' | 'hall' | 'lodge' | 'cart' | 'mews'
   | 'pack' | 'hamper' | 'campfire' | 'fold' | 'boat' | 'skeps' | 'hayrick' | 'pond' | 'kiln' | 'nest'
-  | 'purse' | 'oats' | 'crystals' | 'letter';
+  | 'purse' | 'oats' | 'crystals' | 'letter'
+  | 'beacon' | 'lonePine' | 'stand' | 'cairn';
 
 /** The campaign so far: which commission this is, how the others went, and how this one began. */
 export type Campaign = {
@@ -515,5 +516,5 @@ export const locationById = (state: GameState, id: string) => {
   return found;
 };
 
-/** Objects that vanish from the map once their place is done. A chest stays, open and empty (#192). */
-export const VANISHES = new Set<LocationKind>(['gold', 'patrol', 'pickup']);
+/** Objects that vanish from the map once their place is done. A chest stays, open and empty, and a lost goose goes home (#192). */
+export const VANISHES = new Set<LocationKind>(['gold', 'patrol', 'pickup', 'goose']);

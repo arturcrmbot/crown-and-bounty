@@ -46,6 +46,7 @@ export type ArtifactId =
   | 'stewardsLedger'
   | 'bonesDice'
   | 'rabbitsFoot'
+  | 'luckyFeather'
   | 'castellansPipes'
   | 'oldKingsHawk';
 
@@ -211,6 +212,14 @@ export const ARTIFACTS: Record<ArtifactId, Artifact> = {
     name: 'A Rabbit\u2019s Foot',
     slot: 'trinket',
     note: 'It gives a 10% chance that any blow lands lucky, twice as hard. It was less lucky for the rabbit.',
+    bonus: { luck: 0.1 },
+  },
+  // The goose-girl's thanks for her seven lost geese (#192).
+  luckyFeather: {
+    id: 'luckyFeather',
+    name: 'The Goose-girl\u2019s Lucky Feather',
+    slot: 'trinket',
+    note: 'It gives a 10% chance that any blow lands lucky, twice as hard. Every goose in Aldmoor knows whose hat it came out of.',
     bonus: { luck: 0.1 },
   },
   castellansPipes: {

@@ -93,6 +93,7 @@ export const COMMISSIONS: Commission[] = [
       { when: { mrsPike: true }, line: '"Mrs Pike has sent me a pie, with her thanks. It is the size of a cartwheel."' },
       { when: { lullaby: true }, line: '"Old Nan says she taught you the Baron\u2019s lullaby. I do hope you never sing it to him, or he\u2019ll cry for a week."' },
       { when: { goose: true }, line: '"The goose says somebody prayed for her at St Aldhelm\u2019s shrine. She was very touched, and bit only one footman."' },
+      { when: { geese: true }, line: '"My goose tells me you found all seven of her lost cousins and sent them home. She has been unbearable about it all week."' },
       { when: { aldhelm: 'crown' }, line: '"St Aldhelm has lent you his crown, I hear. He has never lent it to me."' },
       { when: { aldhelm: 'hat' }, line: '"I hear you\u2019ve taken up pilgrimage. I\u2019m told the hat suits you."' },
       { when: { miller: 'loaf' }, line: '"I hear the miller gave you a loaf that has stayed warm for forty years. My cook can\u2019t keep one warm from the kitchen to my table."' },
@@ -169,6 +170,12 @@ export const COMMISSIONS: Commission[] = [
         words: 'Hollow oak, south of the old bridge. Take the horn, my lord. We won\u2019t be needing it.',
         heard: { flags: { poachers: 'spared' } },
         done: { used: 'cache' },
+      },
+      {
+        who: 'the goose-girl at the pond',
+        words: 'Seven of mine have wandered off, and I can\u2019t leave the rest to go looking. If you see one, send her home.',
+        heard: { seen: 'goosePond' },
+        done: { flags: { gooseGirl: true } },
       },
       // Lost letters, picked up by the roads (#192, `content/aldmoorPickups.ts`).
       {
