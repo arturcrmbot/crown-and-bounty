@@ -14,6 +14,10 @@ trees (`groves.png`, `conifers.png`), the waterside (`shore.png`), farm things (
 outcrops (`hills.png`), treasure (`treasure.png`), the battlefield's obstacles (`battle.png`), and the
 troops and Aldric drawn again with HoMM2's battle screen as the reference (`units-a.png` to `units-d.png`).
 
+The payday feast's people and things (`public/assets/feast/`, #191) were made the same way on 1 October 2026,
+with our own unit and place sheets as the reference: Aldric as each background, the troops celebrating, the fire,
+the roast, the tents and the horses (`feast-1.png` to `feast-4.png` in `art/map/sheets/`).
+
 ## The units: Battle for Wesnoth
 
 The troops and the hero are units from [Battle for Wesnoth](https://www.wesnoth.org/) 1.18, taken
@@ -87,15 +91,16 @@ The music is yubatake's: tunes from the
 
 ## The court's music: the Mutopia Project
 
-Two Renaissance pieces play at the King's court, from the [Mutopia Project](https://www.mutopiaproject.org/)'s
+Two Renaissance pieces play at the King's court, and a third at the payday feast, from the [Mutopia Project](https://www.mutopiaproject.org/)'s
 free editions. The MIDI files are kept as Mutopia publishes them, in `public/assets/music/`, and are
 played by the same band and arrangement rules as the rest (`src/audio/score.ts`): a small consort of
-recorder, shawm, lute and viol.
+recorder, shawm, lute and viol at court, and the harp and the lute at the feast.
 
 | File | Piece | Edition | Licence | Plays |
 | --- | --- | --- | --- | --- |
 | `Arbeau_BelleQui.mid` | Belle qui tiens ma vie, Thoinot Arbeau (1589) | [Mutopia](https://www.mutopiaproject.org/cgibin/make-table.cgi?searchingfor=Belle+qui) | Public domain | the court |
 | `Dowland_UnquietThoughts.mid` | Unquiet Thoughts, John Dowland (1597) | [Mutopia](https://www.mutopiaproject.org/cgibin/make-table.cgi?searchingfor=Unquiet+Thoughts) | Public domain | the court |
+| `Galilei_Saltarello.mid` | Saltarello, Vincenzo Galilei (16th century) | [Mutopia](https://www.mutopiaproject.org/cgibin/piece-info.cgi?id=110) | Public domain | the payday feast, on harp and lute |
 
 ## The instruments: GeneralUser GS
 

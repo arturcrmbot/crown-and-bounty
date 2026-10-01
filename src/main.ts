@@ -78,7 +78,9 @@ function debugStart(): GameState {
   const said = (value: string) => (value === 'true' ? true : value === 'false' ? false : Number.isFinite(Number(value)) ? Number(value) : value);
   const flagged = flags.length ? { ...begun, flags: { ...begun.flags, ...Object.fromEntries(flags.map(([flag, value]) => [flag, said(value)])) } } : begun;
   // ?movement=40 leaves that much of today's riding, for the evening's light; 0 is nightfall.
-  const base = query.has('movement') ? { ...flagged, movement: Math.max(0, Number(query.get('movement'))) } : flagged;
+  const moved = query.has('movement') ? { ...flagged, movement: Math.max(0, Number(query.get('movement'))) } : flagged;
+  // ?feast=1 (#191): the eve of payday, so the day ends at once into the payday feast.
+  const base = query.get('feast') === '1' ? { ...moved, day: 7, opening: undefined } : moved;
   if (court > 0) return { ...base, opening: undefined, over: 'won', bounty: 'paid' };
   // ?sceptre=1 (with ?commission=5): the last bounty is paid and the X is on the map.
   const x = commissionAt(first.campaign, chapter).province.sceptre;
@@ -103,7 +105,7 @@ const game = new Game(display, Math.max(1, Number(query.get('speed') ?? 1)), !fr
 const input = new Input(display, game.input);
 // The title and the King's welcome come first, unless a debug start (or a frozen screenshot) wants straight in.
 // ?quick=1 skips them too; ?title=1 brings them back even when frozen.
-const quick = (frozen && query.get('title') !== '1') || ['quick', 'battle', 'chapter', 'court', 'commission', 'sceptre', 'reveal', 'x', 'hero', 'spells', 'army', 'gear', 'flags', 'movement'].some((k) => query.has(k));
+const quick = (frozen && query.get('title') !== '1') || ['quick', 'battle', 'chapter', 'court', 'commission', 'sceptre', 'reveal', 'x', 'hero', 'spells', 'army', 'gear', 'flags', 'movement', 'feast'].some((k) => query.has(k));
 if (quick) {
   if (requestedChapter !== null) {
     game.showTitle(null, () => newGame(seed));
@@ -139,6 +141,7 @@ if (quick) {
     if (query.has('x')) game.adventure.view.centreOn(Number(query.get('x')), Number(query.get('y') ?? 480));
     const dig = start.locations.find((l) => l.kind === 'dig');
     if (query.get('sceptre') === '1' && dig) game.adventure.view.centreOn(dig.at[0], dig.at[1]);
+    if (query.get('feast') === '1' && !resume && game.top.name === 'adventure') game.adventure.choose({ type: 'endDay' });
     if (game.top.name === 'adventure' && resume && !resume.opening) game.adventure.showCard(resume.over === 'lost' ? failedCard(resume) : welcomeBackCard(resume), null);
   }
 } else game.showTitle(resume, () => newGame(seed));

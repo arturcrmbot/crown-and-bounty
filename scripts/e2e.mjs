@@ -32,6 +32,8 @@ const learned = [];
 
 /** Closes the card, then deals with any level-up it was hiding. An enemy that falls on the camp at dawn is left to the sergeants. */
 async function close() {
+  // Payday's card opens at the feast by the fire (#191), once its picture is in.
+  if ((await screen()) === 'feast') feasts.push((await kc.state()).day);
   if ((await kc.title())?.startsWith('An ambush')) {
     const who = (await kc.lines()).match(/At first light, (.+?) fall on your camp/)?.[1];
     const id = (await kc.state()).ambush;
@@ -43,6 +45,8 @@ async function close() {
 }
 /** Who fell on the camp, when, and how it went. */
 const ambushes = [];
+/** The paydays that opened the feast. */
+const feasts = [];
 
 /**
  * Takes on an enemy the way a patient player would: ride up, and if the sergeants don't like the
@@ -430,6 +434,7 @@ try {
   const final = await kc.state();
   check(final.over === 'won' && final.bounty === 'paid', `the commission is won on day ${final.day}`);
   check(final.hero.level >= 3, `Sir Aldric grew to level ${final.hero.level} (${learned.join(', ')})`);
+  check(feasts.length > 0 && feasts.every((day) => day % 7 === 1), `payday opens the feast by the fire, and closes back to the map (on day ${feasts.join(', ') || 'none'})`);
 
   // To court: level-ups from the last battle, the King's thanks and a boon, then word that more commissions are coming.
   const first = () => kc.call(() => document.querySelector('.kc-card-wrap:not([hidden]) button')?.textContent ?? null);

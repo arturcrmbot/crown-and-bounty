@@ -11,7 +11,7 @@
 import { RANGES, type Drum, type Melodic } from './band';
 import type { Midi } from './midi';
 
-export type TrackId = 'title' | 'heath' | 'fen' | 'weald' | 'marsh' | 'reach' | 'battle' | 'court' | 'grimsby' | 'mirrow' | 'bramble';
+export type TrackId = 'title' | 'heath' | 'fen' | 'weald' | 'marsh' | 'reach' | 'battle' | 'court' | 'feast' | 'grimsby' | 'mirrow' | 'bramble';
 
 /**
  * When a part plays: from an intensity up (a battle building, or a villain's fight begun), below
@@ -33,7 +33,7 @@ export type Voice = ({ instrument: Melodic; octave?: number } | { drums: Record<
 
 export type TuneId =
   | 'fields' | 'town' | 'mysticIsle' | 'northernIsles' | 'docks' | 'temple'
-  | 'mainTheme' | 'battle' | 'battleBoss' | 'labyrinth' | 'dungeon' | 'belle' | 'unquiet';
+  | 'mainTheme' | 'battle' | 'battleBoss' | 'labyrinth' | 'dungeon' | 'belle' | 'unquiet' | 'saltarello';
 
 export type Tune = {
   /** His file, in `public/assets/music/`, and his name for it. */
@@ -122,6 +122,14 @@ export const TUNES: Record<TuneId, Tune> = {
     parts: { cantus: play('flute', 0.8), altus: play('recorder', 0.6), tenor: play('guitar', 0.65), bass: play('strings', 0.5) },
     level: 0.21,
   },
+  // The payday feast's (#191): a quick Italian dance for the lute, from the Mutopia Project's public-domain edition.
+  // The harp plays his line as he wrote it, and the lute doubles it, its lowest notes an octave up.
+  saltarello: {
+    file: 'Galilei_Saltarello.mid',
+    title: 'Saltarello (Galilei)',
+    parts: { 'staff:staff first voice': [play('harp', 0.45), play('guitar', 0.75)] },
+    level: 0.47,
+  },
   // The title's, and the court's.
   mainTheme: {
     file: 'JRPG_mainTheme.mid',
@@ -195,6 +203,7 @@ export const TRACKS: Record<TrackId, TrackDef> = {
   marsh: { id: 'marsh', tunes: ['docks', 'mysticIsle', 'temple', 'northernIsles'] },
   reach: { id: 'reach', tunes: ['town', 'fields', 'docks', 'northernIsles'] },
   court: { id: 'court', tunes: ['belle', 'unquiet'] },
+  feast: { id: 'feast', tunes: ['saltarello'] },
   battle: { id: 'battle', tunes: ['battle'] },
   grimsby: { id: 'grimsby', tunes: ['battleBoss'], calm: 1 },
   mirrow: { id: 'mirrow', tunes: ['labyrinth'], calm: 1 },

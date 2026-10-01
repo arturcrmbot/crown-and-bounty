@@ -1,7 +1,7 @@
 import { Bitmap, SHADOW } from './bitmap';
 import { COLORS, CYCLING, SILHOUETTE } from './palette';
 import { decodePng, type Rgba } from './png';
-import { FIGURES, GROUNDS, PIECE_FEET, type GroundName, type PieceName } from './mapPieces';
+import { FEAST_PIECES, FIGURES, GROUNDS, PIECE_FEET, type FeastPieceName, type GroundName, type PieceName } from './mapPieces';
 
 /**
  * Aldmoor's painted map (#178): its places, trees, crags and ground, drawn in the spirit of HoMM2's
@@ -13,6 +13,7 @@ import { FIGURES, GROUNDS, PIECE_FEET, type GroundName, type PieceName } from '.
 const pieces = new Map<string, Bitmap>();
 const grounds = new Map<GroundName, Bitmap>();
 const figures = new Map<string, Bitmap>();
+const feast = new Map<FeastPieceName, Bitmap>();
 let loading: Promise<void> | null = null;
 
 const fetchPiece = async (file: string) => {
@@ -83,6 +84,14 @@ export function loadMapArt(read: (file: string) => Promise<Uint8Array> = fetchPi
         }
       }),
     ),
+    // The payday feast's pieces (#191), small enough to come with the rest.
+    ...FEAST_PIECES.map(async (name) => {
+      try {
+        feast.set(name, toBitmap(await decodePng(await read(`feast/${name}.png`))));
+      } catch (error) {
+        console.warn(error);
+      }
+    }),
   ]).then(() => undefined);
   return loading;
 }
@@ -101,3 +110,9 @@ export const mapArtReady = () => pieces.size === Object.keys(PIECE_FEET).length 
 
 /** A troop's (or Aldric's) painted figure (#178), facing right, at battle or map size, if it's loaded. */
 export const paintedFigure = (id: string, size: 'battle' | 'map'): Bitmap | null => figures.get(`${id}-${size}`) ?? null;
+
+/** A piece of the payday feast (#191), facing right as it was drawn, if it's loaded. */
+export const feastPiece = (name: FeastPieceName): Bitmap | null => feast.get(name) ?? null;
+
+/** Whether every piece of the feast is in: until then, payday's card opens over the map as it always did. */
+export const feastArtReady = () => feast.size === FEAST_PIECES.length;

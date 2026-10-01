@@ -4,7 +4,8 @@ src/render/mapPieces.ts. Python 3 with Pillow, numpy and scipy:  npm run mapart
 
 The sheets were made with Retro Diffusion (RD Pro, with HoMM2's map as the style reference) on 1 Oct
 2026, at Artur's request: see public/assets/CREDITS.md. Each sheet is objects on one flat grey, their
-shadows one flatter grey; the ground sheets are a framed square of seamless texture.
+shadows one flatter grey; the ground sheets are a framed square of seamless texture. The payday feast's
+sheets (feast-1 to feast-4, #191) are cut into public/assets/feast/ at the size they were drawn.
 """
 import json, os, subprocess
 from collections import Counter
@@ -153,6 +154,24 @@ FIGURES = {
 }
 FIGURES['hero'] = FIGURES['heroKnight']
 TROOPS_OUT = os.path.join(ROOT, 'public/assets/troops')
+# The payday feast (#191): Aldric and his troops celebrating payday round the fire, and the camp's things. Four sheets
+# (feast-1 to feast-4), cut at the size they were drawn, a little closer than the battle's (a person sitting is about
+# 60 px), and with no shadow of their own: the feast lays its shadows away from its fire. Each troop's figure is named
+# for the troop; a troop with none stands at the feast in its battle figure.
+FEAST = {
+    'heroKnight': ('feast-3', (110, 9, 159, 85)), 'heroWizard': ('feast-2', (6, 11, 87, 88)),
+    'heroRanger': ('feast-2', (95, 10, 168, 90)), 'heroCourtier': ('feast-2', (192, 6, 245, 94)),
+    'knights': ('feast-3', (181, 21, 246, 79)), 'archers': ('feast-3', (15, 101, 75, 160)), 'peasants': ('feast-3', (108, 91, 154, 167)),
+    'swordsmen': ('feast-2', (96, 177, 166, 247)), 'crossbowmen': ('feast-2', (188, 176, 248, 246)),
+    'wolves': ('feast-2', (10, 114, 80, 155)), 'boars': ('feast-2', (90, 111, 167, 153)), 'bears': ('feast-2', (174, 106, 253, 159)),
+    'goblins': ('feast-4', (20, 26, 69, 79)), 'trolls': ('feast-4', (104, 9, 159, 86)), 'poachers': ('feast-4', (181, 21, 253, 85)),
+    'bandits': ('feast-4', (9, 100, 75, 160)), 'huntsmen': ('feast-4', (96, 99, 159, 160)),
+    'fire': ('feast-1', (179, 100, 246, 166)), 'spit': ('feast-4', (172, 194, 255, 243)), 'tent': ('feast-1', (90, 174, 168, 250)),
+    'horseWhite': ('feast-1', (13, 107, 85, 165)), 'horseBrown': ('feast-1', (95, 107, 167, 165)),
+    'barrel': ('feast-3', (185, 97, 242, 160)), 'chest': ('feast-3', (19, 184, 70, 241)), 'food': ('feast-3', (87, 188, 174, 241)),
+    'banner': ('feast-3', (189, 176, 248, 247)),
+}
+FEAST_OUT = os.path.join(ROOT, 'public/assets/feast')
 # Ground: the seamless square inside each ground sheet's frame.
 GROUND = {'heather': (14, 34, 114, 114), 'water': (36, 36, 92, 92), 'grass': (33, 33, 95, 95), 'dirt': (33, 33, 95, 95), 'wheat': (33, 36, 95, 95), 'heath': (14, 34, 114, 114), 'plough': (33, 33, 95, 95)}
 
@@ -349,6 +368,42 @@ def foot(px):
     return int(rows.max() - max(2, round(len(rows) * 0.08)))
 
 
+def cut_feast(name, sheet, box):
+    """A piece of the payday feast at the size it was drawn: its painted pixels, in the palette, and no shadow."""
+    if sheet not in CACHE:
+        CACHE[sheet] = layers(sheet)
+    a, back, shadow = CACHE[sheet]
+    x0, y0, x1, y1 = box
+    rgb = a[y0:y1, x0:x1].copy()
+    solid = ~back[y0:y1, x0:x1] & ~shadow[y0:y1, x0:x1]
+    hsv = np.asarray(Image.fromarray(rgb.astype('uint8')).convert('HSV')).astype(float)
+    if name == 'fire':
+        # Its painted flames go, and the sparks over them: the feast draws its own flames each frame, behind the logs.
+        flames = (hsv[..., 2] > 185) & (hsv[..., 0] < 62 * 255 / 360) & (hsv[..., 1] > 60)
+        flames |= (hsv[..., 2] > 235) & (hsv[..., 1] < 90)
+        solid &= ~flames
+        lab, _ = nd.label(solid, structure=np.ones((3, 3)))
+        sizes = np.bincount(lab.ravel()); sizes[0] = 0
+        solid = lab == sizes.argmax()
+    if name == 'spit':
+        # Roasted, not raw (#191): the pig's orange goes a deep golden brown, its light and shade kept.
+        pig = solid & (hsv[..., 0] < 40 * 255 / 360) & (hsv[..., 1] > 90) & (hsv[..., 2] > 120)
+        hsv[..., 0] = np.where(pig, 19 * 255 / 360 + (hsv[..., 0] - 19 * 255 / 360) * 0.4, hsv[..., 0])
+        hsv[..., 1] = np.where(pig, np.minimum(255, hsv[..., 1] * 1.05), hsv[..., 1])
+        hsv[..., 2] = np.where(pig, hsv[..., 2] * 0.7, hsv[..., 2])
+        rgb = np.asarray(Image.fromarray(hsv.astype('uint8'), 'HSV').convert('RGB')).astype(int)
+    # Keep only what's joined to the piece's biggest part, so a neighbour's edge doesn't come along.
+    lab, _ = nd.label(solid, structure=np.ones((3, 3)))
+    sizes = np.bincount(lab.ravel()); sizes[0] = 0
+    solid &= (sizes > max(12, sizes.max() * 0.03))[lab]
+    ys, xs = np.nonzero(solid)
+    rgb, solid = rgb[ys.min():ys.max() + 1, xs.min():xs.max() + 1], solid[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+    out = np.zeros(rgb.shape[:2] + (4,), 'uint8')
+    out[solid, :3] = snap(rgb)[solid]
+    out[solid, 3] = 255
+    return out
+
+
 def pick_colours(n=8):
     """The `n` colours to add to the palette (`MAP_COLOURS`): k-means in OKLab over the art's pixels the
     palette without them matches worst, weighted by how badly."""
@@ -423,6 +478,9 @@ def main():
         for size, k in (('battle', 1), ('map', 2 / 3 if name.startswith('hero') else 0.6)):
             px = cut(sheet, box, 0, name, height=round(tall * k))
             Image.fromarray(px).save(os.path.join(TROOPS_OUT, f'{name}-{size}.png'))
+    os.makedirs(FEAST_OUT, exist_ok=True)
+    for name, (sheet, box) in FEAST.items():
+        Image.fromarray(cut_feast(name, sheet, box)).save(os.path.join(FEAST_OUT, name + '.png'))
     for name, (x0, y0, x1, y1) in GROUND.items():
         rgb = np.asarray(Image.open(os.path.join(SHEETS, name + '.png')).convert('RGB')).astype(float)[y0:y1, x0:x1]
         # HoMM2's ground is bright and clean: lift the grass and the rest out of the murk the sheets came in.
@@ -451,6 +509,8 @@ def main():
         f.write(f"export const GROVE_TREES = {json.dumps(kinds)} as const;\n")
         f.write(f"export const GROUNDS = {json.dumps(list(GROUND))} as const;\n")
         f.write(f"/** The troops and Aldric's figures, painted: in public/assets/troops/, each at battle and map size. */\nexport const FIGURES = {json.dumps(list(FIGURES))} as const;\n")
+        f.write(f"/** The payday feast's pieces (#191), in public/assets/feast/: Aldric as each background, a figure for each troop that has one, and the camp's things. */\nexport const FEAST_PIECES = {json.dumps(list(FEAST))} as const;\n")
+        f.write("export type FeastPieceName = (typeof FEAST_PIECES)[number];\n")
         f.write("export type GroundName = (typeof GROUNDS)[number];\n")
     print(f'{len(feet)} pieces and {len(GROUND)} grounds in {OUT}')
 
