@@ -113,7 +113,7 @@ _widths = {
     'lily': 12, 'wetRock': 18, 'wetRocks': 22, 'wetRocks2': 22, 'bedYellow': 26, 'bedYellow2': 26, 'driftLog': 40,
     'hillSmall': 36, 'hill': 70, 'outcrop': 44, 'hillWide': 76, 'hillBig': 100, 'outcrop2': 52, 'outcrop3': 54, 'rock': 24, 'mound': 50, 'mound2': 46, 'peak': 50,
     'chestShut': 24, 'chestGold': 26, 'chestOpen': 24, 'goldHeap': 28, 'goldSmall': 20, 'wood': 28, 'ore': 26, 'gems': 26, 'crystals': 24, 'lamp': 20, 'cauldron': 24, 'fire': 24, 'bones': 30,
-    'bOak': 84, 'bOak2': 84, 'bOak3': 80, 'bOak4': 76, 'bFir': 44, 'bFir2': 44, 'bRock': 58, 'bRock2': 56, 'bRock3': 56, 'bRock4': 56, 'bRock5': 50, 'bBramble': 56, 'bLog': 110, 'bStump': 52, 'bPond': 66,
+    'bOak': 74, 'bOak2': 74, 'bOak3': 70, 'bOak4': 66, 'bFir': 42, 'bFir2': 42, 'bRock': 58, 'bRock2': 56, 'bRock3': 56, 'bRock4': 56, 'bRock5': 50, 'bBramble': 56, 'bLog': 110, 'bStump': 52, 'bPond': 66,
 }
 for _sheet, _names in _more.items():
     for _name, _box in zip(_names, _boxes[_sheet]):
@@ -139,9 +139,6 @@ def grove_kind(px):
     return 'red' if h < 14 or h > 330 else 'orange' if h < 30 else 'gold' if h < 60 else 'green' if h < 150 else 'teal'
 
 
-# Trees: the tree sheet's rows, dark pines and blue firs, then broadleaves and autumn ones.
-TREE_BOXES = [(79, 14, 111, 73), (146, 20, 177, 73), (46, 25, 74, 73), (181, 27, 211, 73), (216, 30, 242, 73), (14, 31, 39, 73), (79, 81, 111, 140), (146, 86, 177, 140), (46, 90, 76, 140), (181, 93, 211, 140), (13, 95, 42, 140), (215, 96, 243, 140), (49, 149, 74, 183), (83, 149, 109, 183), (117, 149, 141, 183), (149, 149, 176, 183), (183, 149, 210, 183), (217, 149, 243, 182), (15, 150, 39, 183), (183, 203, 209, 242), (216, 203, 243, 242), (48, 204, 74, 242), (81, 204, 108, 242), (149, 204, 175, 242), (13, 207, 40, 242)]
-TREE_SCALE = 0.62
 # The troops and Aldric (#178): each one's box on its sheet, and how tall he stands in battle, from
 # his feet to the top of his head (a person about 65 px; on the map three fifths of that, Aldric two thirds).
 FIGURES = {
@@ -364,10 +361,6 @@ def pick_colours(n=8):
         x0, y0, x1, y1 = box
         m = ~back[y0:y1, x0:x1] & ~shadow[y0:y1, x0:x1]
         pixels.append(a[y0:y1, x0:x1][m])
-    if 'trees' not in CACHE:
-        CACHE['trees'] = layers('trees')
-    a, back, shadow = CACHE['trees']
-    pixels.append(a[~back & ~shadow])
     os.makedirs(TROOPS_OUT, exist_ok=True)
     for name, (sheet, box, tall) in FIGURES.items():
         for size, k in (('battle', 1), ('map', 2 / 3 if name.startswith('hero') else 0.6)):
@@ -415,13 +408,6 @@ def main():
         px = cut(sheet, box, width, name)
         Image.fromarray(px).save(os.path.join(OUT, name + '.png'))
         feet[name] = foot(px)
-    trees = []
-    for i, box in enumerate(TREE_BOXES):
-        px = cut('trees', box, max(8, round((box[2] - box[0]) * TREE_SCALE)))
-        name = f'tree{i}'
-        Image.fromarray(px).save(os.path.join(OUT, name + '.png'))
-        feet[name] = foot(px) + 2
-        trees.append(name)
     kinds = {}
     bright = [('groves', box, None) for box in GROVES] + [('conifers', box, kind) for box, kind in CONIFERS]
     for i, (sheet, box, kind) in enumerate(bright):
@@ -461,8 +447,6 @@ def main():
         f.write('// Written by `npm run mapart` (scripts/mapart.py): the map\'s pieces, and how far below its top each one stands.\n')
         f.write(f'export const PIECE_FEET = {{\n{pieces},\n}} as const;\n')
         f.write(f"export type PieceName = keyof typeof PIECE_FEET;\n")
-        f.write(f"/** The trees: dark pines and blue firs first (0 to 11), then broadleaves (12 to 19) and autumn ones (20 to 24). */\n")
-        f.write(f"export const TREES = {json.dumps(trees)} as const;\n")
         f.write("/** The bright trees (1 Oct), by kind: woods are grouped by kind, as HoMM2's are. */\n")
         f.write(f"export const GROVE_TREES = {json.dumps(kinds)} as const;\n")
         f.write(f"export const GROUNDS = {json.dumps(list(GROUND))} as const;\n")

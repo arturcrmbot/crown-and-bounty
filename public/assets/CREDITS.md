@@ -9,6 +9,11 @@ in the spirit of Heroes of Might and Magic II's adventure map. The sheets it mad
 came in `art/map/sheets/`; `npm run mapart` (`scripts/mapart.py`) cuts them into pieces, sizes them
 to the map and puts them in the game's palette. They're part of Crown & Bounty, under its licence.
 
+A second set of sheets was made the same day, after Artur put the map beside HoMM2's: the bright
+trees (`groves.png`, `conifers.png`), the waterside (`shore.png`), farm things (`farm.png`), hills and
+outcrops (`hills.png`), treasure (`treasure.png`), the battlefield's obstacles (`battle.png`), and the
+troops and Aldric drawn again with HoMM2's battle screen as the reference (`units-a.png` to `units-d.png`).
+
 ## The units: Battle for Wesnoth
 
 The troops and the hero are units from [Battle for Wesnoth](https://www.wesnoth.org/) 1.18, taken

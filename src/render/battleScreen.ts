@@ -10,10 +10,11 @@ import { ART } from './units';
 import { drawBanner } from './banner';
 import { TIP } from './speech';
 import { BAR, MAP_VIEW, paintBarBackground, paintFrame, SCREEN, type Rect } from './frame';
-import { bayer, hash, noise, shade } from './noise';
-import { ground, piece, TREE_KINDS } from './mapArt';
+import { bayer, fbm, hash, noise, shade } from './noise';
+import { ground, piece } from './mapArt';
+import type { PieceName } from './mapPieces';
 import { BLUE, CYCLE_BOG, DANGER_LUT, EARTH, GOLD, GRASS, INK, LEAF, LIGHT_LUT, NEUTRAL, PARCHMENT, PLUM, RED, REED, SHADOW_LUT, STONE, WOOD } from './palette';
-import { boulder, oak, pine, willow } from './sprites';
+import { boulder, mirror, oak, pine, willow } from './sprites';
 import { bigLettering, drawText, lettered, textMask } from './text';
 
 /** The King's blue with his gold star, over Aldric's side. */
@@ -178,35 +179,59 @@ export const BUTTONS: { id: 'spells' | 'wait' | 'defend' | 'auto' | 'retreat'; l
 }));
 
 /**
- * The field on Aldmoor's painted ground (#178): the map's own grass, darker beyond the hexes, trees from
- * the map's woods along the edges, and the map's boulders and trees for the obstacles.
+ * The field on Aldmoor's painted ground (#178), as HoMM2's grass battlefield is: the map's own grass
+ * rolling in long swells of light, worn paths curling across it, tufts and flowers, a wall of big trees
+ * along the top and in the corners, and the battle's own rocks, trees and brambles for the obstacles.
  */
+const OBSTACLES: PieceName[] = ['bRock', 'bOak', 'bRock2', 'bFir', 'bBramble', 'bRock3', 'bOak2', 'bStump', 'bRock4', 'bOak3', 'bFir2', 'bRock5', 'bOak4', 'bPond'];
+const EDGE_TREES: PieceName[] = ['bOak', 'bFir', 'bOak2', 'bOak3', 'bFir2', 'bOak4'];
+const SPRIGS: PieceName[] = ['decor12', 'decor13', 'decor14', 'decor15', 'decor16', 'decor6', 'decor7', 'decor8', 'decor9', 'decor10', 'decor11'];
+const BEDS: PieceName[] = ['bedYellow', 'bedYellow2', 'bedRed', 'bedRed2', 'bedRed3', 'bedPink', 'bedPurple'];
+
 function paintedField(obstacles: number[], seed: number): Bitmap | null {
   const grass = ground('grass');
-  // The map's trees and rocks, at twice their map size: the troops stand half as big again in battle.
-  const twice = (b: Bitmap) => {
-    const out = new Bitmap(b.width * 2, b.height * 2);
-    for (let y = 0; y < out.height; y++) for (let x = 0; x < out.width; x++) out.data[y * out.width + x] = b.data[(y >> 1) * b.width + (x >> 1)];
-    return out;
-  };
-  const trees = [...new Set(TREE_KINDS.oak)].map((n) => piece(n)?.sprite).filter((t): t is Bitmap => Boolean(t)).map(twice);
-  const rocks = (['boulder1', 'boulder2'] as const).map((n) => piece(n)?.sprite).filter((t): t is Bitmap => Boolean(t)).map(twice);
-  if (!grass || trees.length < 4 || rocks.length < 2) return null;
+  const dirt = ground('dirt');
+  const art = (names: readonly PieceName[]) => names.map((n) => piece(n)).filter((p): p is { sprite: Bitmap; foot: number } => Boolean(p));
+  const rocks = art(OBSTACLES);
+  const edge = art(EDGE_TREES);
+  const sprigs = art(SPRIGS);
+  const beds = art(BEDS);
+  if (!grass || !dirt || rocks.length < OBSTACLES.length || edge.length < EDGE_TREES.length) return null;
   const field = new Bitmap(SCREEN.width, SCREEN.height);
+  const sx = seed * 3;
+  const fy = Y0 + (ROWS - 1) * ROW_H + HALF_H * 2;
   for (let y = MAP_VIEW.y; y < MAP_VIEW.y + MAP_VIEW.height; y++) {
     for (let x = MAP_VIEW.x; x < MAP_VIEW.x + MAP_VIEW.width; x++) {
-      const inField = x > X0 - 10 && x < X0 + FIELD_W + 10 && y > Y0 - 4 && y < Y0 + (ROWS - 1) * ROW_H + HALF_H * 2 + 6;
-      const c = grass.data[((y + seed) % grass.height) * grass.width + ((x + seed * 3) % grass.width)];
-      field.set(x, y, inField ? c : SHADOW_LUT[c]);
+      const [gx, gy] = [x + sx, y + seed];
+      let c = grass.data[(gy % grass.height) * grass.width + (gx % grass.width)];
+      // Worn paths curling across the grass, where the troops have trodden: a band of earth with a ragged edge.
+      const worn = Math.abs(fbm(gx / 230, gy / 150, 2, 610) - 0.5) + (noise(gx / 6, gy / 6, 611) - 0.5) * 0.02;
+      if (worn < 0.009) c = dirt.data[(gy % dirt.height) * dirt.width + (gx % dirt.width)];
+      else if (worn < 0.022 && hash(gx, gy, 612) < 0.45) c = LIGHT_LUT[c];
+      // The swells: slopes towards the light (top left) a shade brighter, those away a shade darker, stippled.
+      const n = (px: number, py: number) => fbm(px / 120, py / 80, 2, 613);
+      const slope = (n(gx - 8, gy - 8) - n(gx + 8, gy + 8)) * 9;
+      const r = hash(gx, gy, 614);
+      if (slope > 0.1 && r < Math.min(0.5, (slope - 0.1) * 0.8)) c = LIGHT_LUT[c];
+      else if (slope < -0.1 && r < Math.min(0.45, (-slope - 0.1) * 0.7)) c = SHADOW_LUT[c];
+      // Beyond the hexes the land falls into shade, softly.
+      const out = Math.max(X0 - 6 - x, x - (X0 + FIELD_W + 6), Y0 - 2 - y, y - fy - 4);
+      if (out > 0 && r < Math.min(0.85, out / 18)) c = SHADOW_LUT[c];
+      field.set(x, y, c);
     }
   }
-  for (let i = 0; i < 30; i++) {
-    const t = trees[(i * 7 + seed) % trees.length];
-    const x = MAP_VIEW.x + 6 + ((i * 47 + 13) % (MAP_VIEW.width - 20));
-    const top = i % 2 === 0;
-    const y = top ? MAP_VIEW.y - t.height + 30 + (i % 3) * 3 : MAP_VIEW.y + MAP_VIEW.height - 14;
-    if (!top && x > X0 && x < X0 + FIELD_W - 20) continue;
-    blit(field, t, x, y, MAP_VIEW);
+  const stand = (p: { sprite: Bitmap; foot: number }, x: number, y: number, flip = false) => blit(field, flip ? mirror(p.sprite) : p.sprite, Math.round(x - p.sprite.width / 2), Math.round(y - p.foot), MAP_VIEW);
+  // Tufts and flowers, at twice their size on the map, and beds of flowers here and there.
+  const twice = sprigs.map((p) => ({ sprite: doubled(p.sprite), foot: p.foot * 2 }));
+  for (let i = 0; i < 48; i++) {
+    const x = MAP_VIEW.x + 10 + hash(i, seed, 615) * (MAP_VIEW.width - 20);
+    const y = MAP_VIEW.y + 44 + hash(i, seed, 616) * (MAP_VIEW.height - 50);
+    stand(twice[Math.floor(hash(i, seed, 617) * twice.length)], x, y, hash(i, seed, 618) < 0.5);
+  }
+  for (let i = 0; i < 7; i++) {
+    const x = MAP_VIEW.x + 20 + hash(i, seed, 619) * (MAP_VIEW.width - 40);
+    const y = MAP_VIEW.y + 60 + hash(i, seed, 620) * (MAP_VIEW.height - 70);
+    stand(beds[Math.floor(hash(i, seed, 621) * beds.length)], x, y, hash(i, seed, 622) < 0.5);
   }
   for (let i = 0; i < HEXES; i++) {
     const [cx, cy] = hexCentre(i);
@@ -218,12 +243,29 @@ function paintedField(obstacles: number[], seed: number): Bitmap | null {
       }
     }
   }
+  // A wall of trees along the top, their crowns cut by the frame, and clumps in the corners below the standards and at the foot.
+  for (let x = MAP_VIEW.x - 20, i = 0; x < MAP_VIEW.x + MAP_VIEW.width + 30; i++) {
+    const t = edge[Math.floor(hash(i, seed, 623) * edge.length)];
+    stand(t, x, MAP_VIEW.y + 40 + hash(i, seed, 624) * 14, hash(i, seed, 625) < 0.5);
+    x += t.sprite.width * (0.45 + hash(i, seed, 626) * 0.25);
+  }
+  for (const [x, y] of [[MAP_VIEW.x + 18, fy + 22], [MAP_VIEW.x + 70, fy + 30], [MAP_VIEW.x + MAP_VIEW.width - 18, fy + 22], [MAP_VIEW.x + MAP_VIEW.width - 70, fy + 30], [MAP_VIEW.x + 360, fy + 34], [MAP_VIEW.x + 560, fy + 36]] as const) {
+    const t = edge[Math.floor(hash(x, y, 627) * edge.length)];
+    stand(t, x, y, hash(x, y, 628) < 0.5);
+  }
   for (const [n, i] of obstacles.entries()) {
     const [cx, cy] = hexCentre(i);
-    const rock = n % 2 === 0 ? rocks[n % rocks.length] : trees[(n * 5 + seed) % trees.length];
-    blit(field, rock, Math.round(cx - rock.width / 2), Math.round(cy + 14 - rock.height));
+    const o = rocks[(n * 5 + seed) % rocks.length];
+    stand(o, cx, cy + 14, hash(n, seed, 629) < 0.5);
   }
   return field;
+}
+
+/** A small picture at twice its size, pixel for pixel. */
+function doubled(b: Bitmap): Bitmap {
+  const out = new Bitmap(b.width * 2, b.height * 2);
+  for (let y = 0; y < out.height; y++) for (let x = 0; x < out.width; x++) out.data[y * out.width + x] = b.data[(y >> 1) * b.width + (x >> 1)];
+  return out;
 }
 
 function paintField(obstacles: number[], seed: number, fen: boolean): Bitmap {
