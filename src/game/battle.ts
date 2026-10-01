@@ -1,5 +1,5 @@
 import { needsTarget, SPELLS, STATUSES, type SpellId, type StatusDef } from '../content/spells';
-import { TROOPS, troops } from '../content/troops';
+import { isBeast, TROOPS, troops } from '../content/troops';
 import { CONTACT, TROOP_SOUNDS } from '../audio/blows';
 import { chooseAction, finishEstimate, sergeantsAct } from '../rules/battle/ai';
 import { manaInBattle, signedShare, spiritsOf, uneasyWords } from '../rules/heroSheet';
@@ -9,7 +9,7 @@ import { activeFighter, bardOf, battleAct, battleEnd, bribeOffer, canCast, canJo
 import { aimTag, bardTag, forecastOf, type AimTag } from '../rules/battle/forecast';
 import { paintBanner } from '../render/banner';
 import { BattleScreen, BUTTONS, FIRE_FALL, FLOAT_LIFE, FLOAT_RISE, hexAt, hexCentre, leaderAt, LOG_BOTTOM, spotOf, type BattleView, type Shot } from '../render/battleScreen';
-import { FRAME, holdFrames, kickLeft, kickOf, POP_LIFE, ROLL, TOPPLE_TIME, toppleAngle, victoryHop, volleyOf, type Blow } from '../render/juice';
+import { CUE_PING, cueBounce, FLASH_GAP, FLASH_TIME, FRAME, holdFrames, kickLeft, kickOf, POP_LIFE, ROLL, TOPPLE_TIME, toppleAngle, victoryHop, volleyOf, type Blow } from '../render/juice';
 import { hash } from '../render/noise';
 import { animLength, bodyHeight, hitTime, STAND, type AnimName } from '../render/battleSprites';
 import { cursorIcon, type CursorKind, type Heading } from '../render/cursors';
@@ -108,6 +108,13 @@ export class BattleController implements Screen {
   private flights: { shot: Shot; delay: number; age: number; flight: number; hits: boolean; bolt: boolean }[] = [];
   /** Leaders reacting as a stack is wiped out (#190): a hop for joy, or a sag. */
   private reactions = new Map<number, { joy: boolean; age: number }>();
+  /** When the field last flashed for Lightning, on the battle's clock: never more than once a second (#190). */
+  private flashed = -Infinity;
+  /** The last turn of yours the cue played for (#190), and whether anything has happened yet: the first turn of a fight has none. */
+  private cued: string | null = null;
+  private acted = false;
+  /** A Fireball's light on the ground, fading over the burst. */
+  private lightAge = 0;
   private think = 0;
   private finished = false;
   /** The stack whose move is playing out: it keeps the gold hex until its blows have landed. */
@@ -149,6 +156,9 @@ export class BattleController implements Screen {
       lifts: new Map(),
       front: new Map(),
       ending: { fast: false, dip: 0, fall: 0, dusk: 0 },
+      flash: 0,
+      light: null,
+      cue: null,
       hidden: new Set(),
       looks: new Map(),
       reach: new Set(),
@@ -427,6 +437,8 @@ export class BattleController implements Screen {
     }
     const [kx, ky] = kickOf(heading, blow, isGentle());
     this.view.kick = [this.view.kick[0] + kx, this.view.kick[1] + ky];
+    // Blood on the grass at its feet (#190), but not from a beast's hide or a leader behind the line.
+    if (!isLeader(f) && !isBeast(f.troop)) this.screen.markBlood(f.at, f.id * 31 + this.battle.round * 7 + Math.round(size * 10));
   }
 
   /** A stack's count and health as a blow lands: its badge rolls down to the new count, white for a frame (#190). */
@@ -481,6 +493,9 @@ export class BattleController implements Screen {
 
   /** A fallen stack hits the ground: dust along it, and the field jolts down a little. Its death cry ends in the thud. */
   private landed(id: number) {
+    const f = fighterById(this.battle, id);
+    // What it carried lies in the grass beside it (#190): a helmet from those in steel, a shield from other folk.
+    if (!isBeast(f.troop) && !isLeader(f)) this.screen.markDropped(f.at, TROOP_SOUNDS[f.troop].armour ? 'helmet' : 'shield', f.side === 'player', this.view.fallen.get(id) ?? this.facingOf(f));
     const [x, y] = this.spot(id);
     const dust: Shot = { from: [x, y + 12], to: [x, y + 12], t: 0, kind: 'dust', size: 56, rate: 2.2 };
     this.view.shots.push(dust);
@@ -785,6 +800,7 @@ export class BattleController implements Screen {
     const before = this.battle;
     const { battle, events } = (sergeants ? sergeantsAct : battleAct)(before, action);
     if (events.length === 0) return false;
+    this.acted = true;
     // A villain's spell or order is his to show, whoever's turn it is.
     this.acting = action.type === 'volley' ? null : action.type === 'cast' && action.by !== undefined ? action.by : (activeFighter(before)?.id ?? null);
     this.battle = battle;
@@ -941,7 +957,26 @@ export class BattleController implements Screen {
           let sinceLanding = 0;
           const impact = () => {
             landed = true;
-            play(look.kind === 'sparkle' ? 'spell' : 'bolt');
+            play(look.kind === 'sparkle' ? 'spell' : look.kind === 'fire' ? 'boom' : 'bolt');
+            const [sx, sy] = hexCentre(target.at);
+            if (look.kind === 'bolt' && e.damage) {
+              // Lightning lights the whole field for a moment (#190), never more than once a second, and
+              // not at all with gentle effects; thunder rolls after it, and it leaves a scorch.
+              if (!isGentle() && v.time - this.flashed >= FLASH_GAP) {
+                v.flash = FLASH_TIME;
+                this.flashed = v.time;
+              }
+              play('thunder', this.panAt(sx), 0.25);
+              this.screen.markScorch(sx, sy + 12, false);
+              this.burst('spark', [sx, sy + 12 - bodyHeight(target.troop, 'battle') * 0.5], 0.3, { size: 1.3, heading: Math.PI / 2 });
+            }
+            if (look.kind === 'fire') {
+              // A Fireball throws its light on the ground round it, and leaves smoke and a scorched ring (#190).
+              v.light = { x: sx, y: sy + 8, radius: 96, strength: 1 };
+              this.lightAge = 0;
+              this.screen.markScorch(sx, sy + 12, true);
+              this.burst('smoke', [sx, sy + 4], 1.4);
+            }
             // The stacks it hurts cry out (two at most, not a whole choir); those it kills cry as they fall.
             for (const { h } of victims.filter((x) => x.h.damage > 0 && !x.dies).slice(0, 2)) {
               play(`hurt:${TROOP_SOUNDS[fighterById(this.battle, h.target).troop].cry}`, this.panAt(this.spot(h.target)[0]), 0.08);
@@ -974,6 +1009,7 @@ export class BattleController implements Screen {
           this.step(length, {
             start: () => {
               v.shots.push(...shots);
+              if (look.kind === 'fire') play('whoosh', this.panAt(hexCentre(target.at)[0]));
               // An order was bellowed for all to hear: the ribbon keeps his words.
               if (!spell.shout) v.log = this.spellLine(e, victims.length);
               if (!land) impact();
@@ -1271,6 +1307,19 @@ export class BattleController implements Screen {
     v.pops = v.pops.filter((p) => p.age < POP_LIFE);
     for (const [id, roll] of v.rolls) if ((roll.age += dt * pace) >= ROLL + FRAME) v.rolls.delete(id);
     v.time += dt;
+    v.flash = Math.max(0, v.flash - dt);
+    if (v.light) {
+      this.lightAge += dt * pace;
+      v.light.strength = Math.max(0, 1 - this.lightAge / 0.6);
+      if (!v.light.strength) v.light = null;
+    }
+    if (v.cue) {
+      v.cue.age += dt;
+      const bounce = cueBounce(v.cue.age);
+      if (bounce) v.lifts.set(v.cue.fighter, bounce);
+      else if (!this.reactions.has(v.cue.fighter)) v.lifts.delete(v.cue.fighter);
+      if (v.cue.age >= CUE_PING) v.cue = null;
+    }
     v.shake = isGentle() ? 0 : Math.max(0, v.shake - dt * 20);
     v.kick = kickLeft(v.kick, dt);
     if (v.banner) v.banner.age += dt * pace;
@@ -1348,6 +1397,16 @@ export class BattleController implements Screen {
     }
     if (this.queue.length === 0) this.updateFinishOffer();
     const mine = !!f && f.side === 'player' && !this.auto && this.queue.length === 0 && !this.battle.volley;
+    // One of your stacks is ready for orders (#190): it bounces, its hex pings, and a soft tap says so.
+    // Not on the fight's first turn, where the ribbon says what to do, nor while the sergeants have command.
+    const turn = mine && f && !this.battle.result ? `${this.battle.round}/${f.id}/${this.battle.order.length}` : null;
+    if (turn && turn !== this.cued) {
+      this.cued = turn;
+      if (this.acted) {
+        v.cue = { fighter: f!.id, age: 0 };
+        play('ready');
+      }
+    }
     // Where the acting stack can walk to, or how far a leader who rides out can ride.
     const opts = mine && !v.targeting ? options(this.battle) : null;
     v.reach = opts ? new Set([...opts.moves.keys(), ...(opts.rides?.keys() ?? [])]) : new Set();

@@ -7,7 +7,7 @@
  */
 import { BATTLE_EFFECTS } from './blows';
 import { playNote } from './instruments';
-import { burst, rand, tone, voice } from './synth';
+import { burst, crackle, rand, tone, voice } from './synth';
 
 export type Loudness = 'faint' | 'soft' | 'firm' | 'loud';
 export type EffectDef = {
@@ -178,6 +178,25 @@ const EVERYDAY = {
     burst(ctx, dest, t, 0.35, 'highpass', 1800, 0.8, 0.5);
     tone(ctx, dest, t, 880, 0.3, 0.25, 'sawtooth', 0.25);
   }, 0.78),
+  // The thunder after a Lightning Bolt (#190): a low roll that grumbles away.
+  thunder: effect('soft', (ctx, dest, t) => {
+    burst(ctx, dest, t, 0.9, 'lowpass', 160, 1, 0.6, 0.7, 0.05);
+    burst(ctx, dest, t + 0.12, 0.6, 'lowpass', 300, 0.5, 0.5, 0.7, 0.03);
+    tone(ctx, dest, t, 45, 0.7, 0.5, 'sine', 0.8, 0.04);
+  }, 0.62),
+  // A Fireball falling (#190): air rushing, rising as it comes.
+  whoosh: effect('soft', (ctx, dest, t) => burst(ctx, dest, t, 0.32, 'bandpass', 500, 0.7, 4, 1.2, 0.2), 1.3),
+  // A Fireball bursting (#190): a deep boom, and flames crackling after it.
+  boom: effect('firm', (ctx, dest, t) => {
+    tone(ctx, dest, t, 60, 0.45, 1, 'sine', 0.5, 0.004);
+    burst(ctx, dest, t, 0.5, 'lowpass', 420, 1, 0.4);
+    crackle(ctx, dest, t + 0.05, 0.6, 0.2, 60, 0.35, 'bandpass', 2400);
+  }, 1),
+  // One of your stacks is ready for orders (#190): a soft tap on a wood block.
+  ready: effect('faint', (ctx, dest, t) => {
+    tone(ctx, dest, t, 1180, 0.05, 0.3, 'triangle', 0.9, 0.002);
+    burst(ctx, dest, t, 0.02, 'bandpass', 2600, 0.2, 1, 2);
+  }, 1),
   // Footfalls under hoofbeats, and softer on grass and leaves than on a road or a bridge's boards.
   'foot:road': effect('faint', footfall('road', 0.65), 2),
   'foot:bridge': effect('faint', footfall('bridge', 0.65), 1.1),

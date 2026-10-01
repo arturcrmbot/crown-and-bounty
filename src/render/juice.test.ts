@@ -82,3 +82,13 @@ describe('a victory', () => {
     expect(9 * 0.12 + 0.5).toBeLessThan(2.2);
   });
 });
+
+describe('your turn, clearly', () => {
+  it('bounces a stack once, three pixels, in a quarter of a second', async () => {
+    const { cueBounce, CUE_BOUNCE } = await import('./juice');
+    expect(cueBounce(0)).toBe(0);
+    expect(cueBounce(CUE_BOUNCE / 2)).toBe(3);
+    expect(cueBounce(CUE_BOUNCE)).toBe(0);
+    expect(cueBounce(1)).toBe(0);
+  });
+});
