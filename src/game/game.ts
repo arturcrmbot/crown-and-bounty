@@ -7,10 +7,11 @@ import { Transition, type TransitionStyle } from '../render/transition';
 import { setVeil } from '../ui/veil';
 import { effectsHeard } from '../ui/sound';
 import { mapOf } from '../rules/map/maps';
-import { hasNextCommission, newGame, toCourt, type Card, type GameEvent, type GameState } from '../rules/game';
+import { hasNextCommission, newGame, toCourt, type Action, type Card, type GameEvent, type GameState } from '../rules/game';
 import { AdventureController } from './adventure';
 import { BattleController } from './battle';
 import { CourtController } from './court';
+import { FeastController, type FeastEnd } from './feast';
 import { HeroController } from './hero';
 import { PrologueController } from './prologue';
 import { TitleController } from './title';
@@ -180,6 +181,7 @@ export class Game {
     // Trying a lost commission again: the map sinks into the dark and rises fresh.
     adventure.onCommission = (next, rest) => this.change('fade', null, () => this.beginCommission(next, rest));
     adventure.onHero = (stack) => this.openHero(stack);
+    adventure.onFeast = (card) => this.openFeast(card);
     return adventure;
   }
 
@@ -187,6 +189,21 @@ export class Game {
   private openHero(stack: number | null) {
     if (this.top !== this.adventure) return;
     this.push(new HeroController(this.display, this.adventure, () => this.top instanceof HeroController && this.pop(), stack));
+  }
+
+  /** The payday feast (#191): the night sinks into the camp with payday's ta-da, and the card comes once it's in. */
+  private openFeast(card: Card) {
+    const feast = new FeastController(this.display, this.adventure, card, (end, then) => this.closeFeast(end, then));
+    this.change('fade', 'payday', () => this.push(feast));
+    this.whenRevealed(() => feast.open());
+  }
+
+  /** The feast dissolves into the morning; E or the hourglass ends the next day at once, as on the map. */
+  private closeFeast(end: FeastEnd, then?: Action) {
+    if (!(this.top instanceof FeastController)) return;
+    this.change('dissolve', null, () => this.pop());
+    if (end === 'endDay') this.adventure.choose({ type: 'endDay' });
+    else if (then) this.adventure.choose(then);
   }
 
   private pushBattle() {

@@ -5,6 +5,7 @@ import type { Bitmap } from '../render/bitmap';
 import { BAR, MAP_VIEW as VIEW } from '../render/frame';
 import { BLUE, GOLD, LEAF, NEUTRAL, PARCHMENT, PLUM, RED, WATER } from '../render/palette';
 import { clickable, GOLD_AT, paintHud, type HudHit } from '../render/hud';
+import { feastArtReady } from '../render/mapArt';
 import { ART, heroArtId } from '../render/units';
 import type { BattleState } from '../rules/battle/battle';
 import { ambushCard, apply, bountyCard, commissionOf, describe, finishFight, heardOf, heroStats, journalCard, levelUpCard, locationById, placeNote, placeOdds, roman, VANISHES, visit, whenThere, type Action, type Card, type GameEvent, type GameState, type Result, type Verdict } from '../rules/game';
@@ -187,6 +188,8 @@ export class AdventureController implements Screen {
   onCommission: ((state: GameState, rest: GameEvent[]) => void) | null = null;
   /** Called to open the hero screen, maybe with one stack's card open. */
   onHero: ((stack: number | null) => void) | null = null;
+  /** Called on the night that brings payday, with its card: the feast opens over the map (#191). */
+  onFeast: ((card: Card) => void) | null = null;
 
   constructor(display: Display, map: MapModel, state: GameState, speed = 1) {
     this.display = display;
@@ -429,6 +432,7 @@ export class AdventureController implements Screen {
 
   private handle(events: GameEvent[]) {
     countEvents(this.state, events);
+    const feast = this.feastCard(events);
     for (const [i, e] of events.entries()) {
       switch (e.type) {
         case 'court':
@@ -440,6 +444,12 @@ export class AdventureController implements Screen {
           this.onCommission?.(this.state, events.slice(i + 1));
           return;
         case 'card':
+          // Payday's card opens at the feast instead, by the fire.
+          if (feast && e.card === feast) {
+            this.hideCard();
+            this.onFeast?.(feast);
+            break;
+          }
           this.showCard(e.card, e.place ? this.anchorOf(e.place) : e.at);
           // A fight the sergeants settled gets the same brass, or the same bell, as one fought on the field.
           if (!this.fromBattle && (e.card.title === 'Victory!' || e.card.title === 'Defeat')) sting(e.card.title === 'Defeat' ? 'defeat' : 'victory');
@@ -469,12 +479,15 @@ export class AdventureController implements Screen {
         }
         case 'day':
           this.tiredShown = false;
-          this.nightfall = 0;
           this.sinceDawn = 0;
           // Yesterday's route still ahead: he rides on (see `ride`).
           this.dawnRide = this.route.length > 0;
           play('day');
-          if (e.payday) sting('payday');
+          // On payday the night falls into the feast, which brings payday's ta-da with it.
+          if (!feast) {
+            this.nightfall = 0;
+            if (e.payday) sting('payday');
+          }
           // A quiet dawn has no card: the new day's number rises off the hero as the light comes back.
           if (!events.some((x) => x.type === 'card')) this.view.effects.floatText(this.drawn.x, this.drawn.y - this.scene.hero.head - 12, `Day ${roman(e.day)}`, GOLD[6], NIGHT * 0.55);
           break;
@@ -513,10 +526,26 @@ export class AdventureController implements Screen {
     this.repaintHud();
   }
 
+  /** The gold the bar shows: his gold, less any still to fly to it. The feast's bar shows the same. */
+  get barGold() {
+    return Math.max(0, this.state.gold - this.goldOwed);
+  }
+
   private repaintHud() {
     this.hudMovement = Math.floor(this.state.movement);
-    const shown = { gold: Math.max(0, this.state.gold - this.goldOwed), rolling: this.goldOwed > 0 && this.view.effects.flying, book: this.bookLit > 0 };
+    const shown = { gold: this.barGold, rolling: this.goldOwed > 0 && this.view.effects.flying, book: this.bookLit > 0 };
     this.hud = paintHud(this.view.frame, this.state, this.hudHover && this.barClickable(this.hudHover) ? this.hudHover.item : null, shown);
+  }
+
+  /**
+   * Payday's card, on a night the feast can be held (#191): every payday, however the day was ended, but not when a
+   * band falls on the camp at dawn or the commission is lost, and not before the feast's pieces are in.
+   */
+  private feastCard(events: GameEvent[]): Card | null {
+    if (!this.onFeast || !feastArtReady() || this.state.over || this.state.ambush) return null;
+    const day = events.find((e) => e.type === 'day');
+    const card = events.find((e) => e.type === 'card');
+    return day?.type === 'day' && day.payday && card?.type === 'card' ? card.card : null;
   }
 
   /** The journal: the commission's poster, pinned in, and what's been heard on the road. J, or the book on the bar. */

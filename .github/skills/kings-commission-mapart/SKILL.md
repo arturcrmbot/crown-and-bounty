@@ -58,6 +58,9 @@ trees along the top cut by the frame, clumps in the corners, and obstacles at ba
   is turned to one it has before snapping (`cool`), never added.
 - **It writes** `public/assets/map/*.png`, `public/assets/troops/*-{battle,map}.png` and
   `src/render/mapPieces.ts` (`PIECE_FEET`, `GROVE_TREES`). `src/render/mapArt.ts` loads them.
+- **The payday feast** (#191) has its own sheets (`feast-1` to `feast-4`): `FEAST` in mapart.py cuts them at the
+  size they were drawn, with no shadow (the feast lays its own, away from its fire), into `public/assets/feast/`, and
+  lists them as `FEAST_PIECES`. Its fire is cut without its painted flames: the feast draws its own, behind the logs.
 
 ## Where the dressing is placed
 

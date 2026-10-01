@@ -18,6 +18,7 @@ export { beginCommission, chooseBackground, newGame } from './scenario';
 export { battleXp, fight, finishFight, heroFighter, heroInBattle, learnOdds, lossesLine, manaLine, oddsFor, oddsKnown, startFight, winChance, type HeroFighter, type Odds } from './fight';
 export { equip, gainXp, giveArtifact, heroStats, learn, levelFor, levelUpCard, LEVELS, movePack, unequip, wear } from './hero';
 export { dismiss, moveStack } from './army';
+export { feastLine } from './feast';
 
 /** Applies a card choice. `go`, `close`, `restart`, `title`, `spell` and `retreat` are for the screens, so they return null here. */
 export function apply(state: GameState, action: Action): Result | null {

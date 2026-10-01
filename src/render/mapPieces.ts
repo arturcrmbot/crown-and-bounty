@@ -185,4 +185,7 @@ export const GROVE_TREES = {"orange": ["orange0", "orange1", "orange2"], "green"
 export const GROUNDS = ["heather", "water", "grass", "dirt", "wheat", "heath", "plough"] as const;
 /** The troops and Aldric's figures, painted: in public/assets/troops/, each at battle and map size. */
 export const FIGURES = ["peasants", "archers", "knights", "swordsmen", "crossbowmen", "wolves", "baron", "goblins", "trolls", "witch", "bramble", "poachers", "bandits", "boars", "bears", "huntsmen", "heroKnight", "heroWizard", "heroRanger", "heroCourtier", "rook", "hero"] as const;
+/** The payday feast's pieces (#191), in public/assets/feast/: Aldric as each background, a figure for each troop that has one, and the camp's things. */
+export const FEAST_PIECES = ["heroKnight", "heroWizard", "heroRanger", "heroCourtier", "knights", "archers", "peasants", "swordsmen", "crossbowmen", "wolves", "boars", "bears", "goblins", "trolls", "poachers", "bandits", "huntsmen", "fire", "spit", "tent", "horseWhite", "horseBrown", "barrel", "chest", "food", "banner"] as const;
+export type FeastPieceName = (typeof FEAST_PIECES)[number];
 export type GroundName = (typeof GROUNDS)[number];

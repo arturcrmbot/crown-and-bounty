@@ -143,8 +143,16 @@ async function settle() {
 }
 /** Who fell on the camp, when, and how it went. */
 const ambushes = [];
+/** The paydays that opened the feast (#191). */
+const feasts = [];
 /** Closes the card, then deals with any level-up it was hiding. An enemy falling on the camp at dawn is left to the sergeants. */
 async function close() {
+  // Payday's card opens at the feast by the fire, once its picture is in.
+  if ((await screen()) === 'feast') {
+    await page.waitForFunction(() => document.querySelector('.kc-card-wrap:not([hidden]) .kc-card button'), null, { timeout: 5000 }).catch(() => {});
+    if (!feasts.length) await look('payday-feast');
+    feasts.push((await state()).day);
+  }
   if ((await title())?.startsWith('An ambush')) {
     const who = (await lines()).match(/At first light, (.+?) fall on your camp/)?.[1];
     const id = (await state()).ambush;
@@ -561,6 +569,7 @@ try {
     await beatWhenReady('hideout', 8);
     const final = await state();
     check(final.over === 'won' && final.bounty === 'paid', `Baron Grimsby is beaten on day ${final.day}, by touch alone`);
+    check(feasts.length > 0, `payday opens the feast by the fire, and its card's Close takes him back to the map (on day ${feasts.join(', ') || 'none'})`);
     check((await title()) === 'Baron Grimsby is taken!', 'and has the last word');
     await look('grimsby-taken');
     check((await press('Claim the bounty')) && (await title()) === 'WANTED', 'his poster comes back, paid in full');
