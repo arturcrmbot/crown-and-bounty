@@ -93,8 +93,8 @@ function heardMarkup(heard: Heard[]): string {
 }
 
 /**
- * The parchment's sounds: it crackles open as a card unfolds, and folds away as it goes. A card put
- * away only to be replaced by the next at once just unfolds: the fold waits a moment to see.
+ * The card's sounds: a soft pat as it unfolds, and another as it's put away. A card put away only
+ * to be replaced by the next at once just unfolds: the fold waits a moment to see.
  */
 let folding: ReturnType<typeof setTimeout> | null = null;
 function unfolds() {
