@@ -71,3 +71,23 @@ export function popRise(age: number): number {
 export function popShown(age: number): number {
   return Math.max(0, Math.min(1, (POP_LIFE - age) / POP_FADE));
 }
+
+/**
+ * How far over a figure has tipped as the last of a stack falls (#190), frame by frame at 30 frames
+ * a second: slow at first, then faster, overshooting as it hits the ground, and settling flat.
+ */
+export const TOPPLE = [4, 10, 20, 34, 52, 74, 92, 97, 90] as const;
+/** How long a fall takes, and the frame it hits the ground. */
+export const TOPPLE_TIME = TOPPLE.length * FRAME;
+export const TOPPLE_LANDS = TOPPLE.findIndex((a) => a >= 90);
+
+/** The angle a falling figure has tipped to, `t` seconds into its fall. */
+export function toppleAngle(t: number): number {
+  return TOPPLE[Math.min(TOPPLE.length - 1, Math.max(0, Math.floor(t / FRAME)))];
+}
+
+/** How many arrows a stack of `count` looses in one shot (#190): one for a handful, up to five for a big company. A leader shoots one. */
+export function volleyOf(count: number, leader = false): number {
+  if (leader || count <= 5) return 1;
+  return count <= 15 ? 2 : count <= 40 ? 3 : count <= 100 ? 4 : 5;
+}

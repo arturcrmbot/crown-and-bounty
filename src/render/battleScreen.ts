@@ -4,7 +4,7 @@ import { canCast, hasTurn, isLeader, lookOf, luckOf, moraleOf, speedOf, statsOf,
 import { COLS, colOf, HEXES, hexIndex, ROWS, rowOf } from '../rules/battle/hex';
 import { Bitmap, blit, SHADOW } from './bitmap';
 import { critters, critterSprite, type Critter } from './critters';
-import { animLength, bodyHeight, corpseSprite, hurtSprite, standard, STAND, troopFigure, whiteSprite, type Pose, type Standard } from './battleSprites';
+import { animLength, bodyHeight, corpseSprite, hurtSprite, standard, STAND, toppledFigure, troopFigure, whiteSprite, type Pose, type Standard } from './battleSprites';
 import { upcomingFighters } from './battleOrder';
 import { ART } from './units';
 import { drawBanner } from './banner';
@@ -104,8 +104,12 @@ const FLOAT_FADE = 0.25;
 /** The message ribbon across the top of the field. */
 const LOG_TOP = MAP_VIEW.y + 6;
 export const LOG_BOTTOM = LOG_TOP + 18;
-/** A missile, a spell or a burst. A spark's `size` scales it, and its `heading` (radians) is the way the blow went, for the chips it flings. */
-export type Shot = { from: [number, number]; to: [number, number]; t: number; kind: 'arrow' | 'quarrel' | 'hex' | 'magic' | 'gather' | 'bolt' | 'fire' | 'sparkle' | 'spark' | 'blood' | 'poof'; color?: number; size?: number; heading?: number };
+/**
+ * A missile, a spell or a burst. A spark's `size` scales it, and its `heading` (radians) is the way
+ * the blow went, for the chips it flings; dust's `size` is how wide it spreads along the ground. An
+ * arrow's `arc` is how high it flies. A burst that runs by itself goes `rate` of its life a second.
+ */
+export type Shot = { from: [number, number]; to: [number, number]; t: number; kind: 'arrow' | 'quarrel' | 'hex' | 'magic' | 'gather' | 'bolt' | 'fire' | 'sparkle' | 'spark' | 'blood' | 'poof' | 'dust'; color?: number; size?: number; heading?: number; arc?: number; rate?: number };
 /** How much of a fireball's flight is the fall from the sky; it bursts after that. */
 export const FIRE_FALL = 0.35;
 
@@ -145,6 +149,12 @@ export type BattleView = {
   whites: Set<number>;
   /** Fighters still drawn although the rules have them dead, until their hit plays out. */
   dying: Set<number>;
+  /** The last of a stack falling over (#190), and how far it has tipped, in degrees. */
+  topple: Map<number, number>;
+  /** Which way each fallen stack was facing as it fell, so its corpse lies the way it fell. */
+  fallen: Map<number, 1 | -1>;
+  /** Leaders lifted off the ground (a hop for joy) or sunk into it (they sag), in pixels, as a stack falls (#190). */
+  lifts: Map<number, number>;
   /** Stacks the rules have on the field that haven't got there yet: a summoned stack, till it marches in. */
   hidden: Set<number>;
   /** What a stack looks like while a change plays out (newts, or null for itself), instead of what its statuses say. */
@@ -476,7 +486,7 @@ export class BattleScreen {
     for (const f of b.fighters) {
       if (f.count > 0 || view.dying.has(f.id) || isLeader(f) || f.left) continue;
       const [cx, cy] = hexCentre(f.at);
-      const { sprite, x, y } = corpseSprite(f.troop, f.side === 'player' ? 'blue' : 'red', f.side === 'player' ? 1 : -1);
+      const { sprite, x, y } = corpseSprite(f.troop, f.side === 'player' ? 'blue' : 'red', view.fallen.get(f.id) ?? (f.side === 'player' ? 1 : -1));
       blit(screen, sprite, Math.round(cx + x), Math.round(cy + 12 + y), MAP_VIEW);
     }
     const flap = Math.floor(view.time * 5) % 8;
@@ -514,12 +524,20 @@ export class BattleScreen {
         }
         continue;
       }
+      const angle = view.topple.get(f.id);
+      if (angle !== undefined) {
+        // The last of the stack falling over, away from the blow (#190).
+        const fell = toppledFigure(f.troop, f.side === 'player' ? 'blue' : 'red', view.fallen.get(f.id) ?? facing, angle);
+        blit(screen, view.flashing.has(f.id) ? hurtSprite(fell.sprite) : fell.sprite, Math.round(px + fell.x), Math.round(py + 12 + fell.y), MAP_VIEW);
+        continue;
+      }
       const pose = view.poses.get(f.id) ?? (view.positions.has(f.id) ? STAND : fidget(f.troop, f.id, view.time));
       const figure = troopFigure(f.troop, f.side === 'player' ? 'blue' : 'red', facing, pose, 'battle');
       const sprite = view.whites.has(f.id) ? whiteSprite(figure.sprite) : view.flashing.has(f.id) ? hurtSprite(figure.sprite) : figure.sprite;
       // Standing about, everyone breathes: a pixel up and down, each stack in its own time.
       const breath = pose.anim === 'stand' && !view.positions.has(f.id) && !view.offsets.has(f.id) && Math.sin(view.time * 2.4 + f.id * 1.9) > 0.35 ? 1 : 0;
-      const [x, y] = [Math.round(px + ox + figure.x), Math.round(py + oy + 12 + figure.y) - breath];
+      const lift = view.positions.has(f.id) ? 0 : (view.lifts.get(f.id) ?? 0);
+      const [x, y] = [Math.round(px + ox + figure.x), Math.round(py + oy + 12 + figure.y) - breath - lift];
       if (view.lit.has(f.id)) this.glow(figure.sprite, x, y, view.lit.get(f.id)!, view.time);
       blit(screen, sprite, x, y, MAP_VIEW);
     }
@@ -562,6 +580,33 @@ export class BattleScreen {
     const x0 = Math.max(MAP_VIEW.x + 4, Math.min(MAP_VIEW.x + MAP_VIEW.width - bubble.width - 4, px - (bubble.width - 3 - TIP)));
     const y0 = Math.max(LOG_BOTTOM + 6, head - 4 - (bubble.height - 3));
     drawBanner(this.screen, bubble, x0 + bubble.width / 2, y0, speech.age, speech.life);
+  }
+
+  /**
+   * An arrow that missed, stuck in the ground where it came down (#190): drawn into the field itself,
+   * under everyone, so it stays there till the fight ends. It flew from `from` to `to` on an `arc`.
+   */
+  markArrow(from: [number, number], to: [number, number], arc: number, bolt = false) {
+    const [ax, ay] = from;
+    const [bx, by] = to;
+    // The way it was going as it came down.
+    const vx = bx - ax;
+    const vy = by - ay + Math.PI * arc;
+    const n = Math.hypot(vx, vy) || 1;
+    const [ux, uy] = [vx / n, vy / n];
+    const length = bolt ? 9 : 13;
+    // Its head and a little of the shaft are in the ground.
+    for (let k = 3; k <= length; k++) {
+      const px = Math.round(bx - ux * k);
+      const py = Math.round(by - uy * k);
+      const feather = k > length - 3;
+      if (!feather) this.field.set(Math.round(px - uy * 2), Math.round(py + ux * 2), SHADOW_LUT[this.field.get(Math.round(px - uy * 2), Math.round(py + ux * 2))]);
+      this.field.set(px, py, feather ? (bolt ? RED[4] : NEUTRAL[7]) : bolt ? EARTH[3] : WOOD[5]);
+      this.field.set(Math.round(px - uy), Math.round(py + ux), feather ? (bolt ? RED[2] : NEUTRAL[5]) : bolt ? EARTH[1] : WOOD[2]);
+    }
+    // A little scuffed earth where it went in.
+    this.field.set(bx, by, EARTH[2]);
+    this.field.set(bx + 1, by, EARTH[3]);
   }
 
   /** Jolts the field (not the frame round it) by (dx, dy) pixels, for a blow. */
@@ -732,7 +777,7 @@ export class BattleScreen {
       // An arrow arcs high; a crossbow bolt flies flatter, shorter and thicker. Either points along
       // its flight, with a steel head and pale fletching, big enough to follow across the field.
       const bolt = s.kind === 'quarrel';
-      const arc = bolt ? 14 : 44;
+      const arc = s.arc ?? (bolt ? 14 : 44);
       const t = Math.min(1, s.t);
       const x = ax + (bx - ax) * t;
       const y = ay + (by - ay) * t - Math.sin(t * Math.PI) * arc;
@@ -869,6 +914,22 @@ export class BattleScreen {
       if (s.t > 0.6) {
         const flare = (s.t - 0.6) / 0.4;
         for (let j = -7; j <= 7; j++) for (let i = -7; i <= 7; i++) if (Math.abs(i) + Math.abs(j) <= 2 + flare * 5) this.screen.set(Math.round(bx + i), Math.round(by + j), Math.abs(i) + Math.abs(j) <= 1 + flare * 2 ? NEUTRAL[7] : colour);
+      }
+    } else if (s.kind === 'dust') {
+      // Dust thrown up along the ground where something lands (#190): low puffs spread `size` wide,
+      // swelling, rising a little and thinning out.
+      const width = s.size ?? 40;
+      for (let k = 0; k < 6; k++) {
+        const px = bx + (k - 2.5) * (width / 6) + (hash(k, Math.round(bx), 41) - 0.5) * 4;
+        const py = by - 2 - s.t * 8 - (k % 2) * 3;
+        const r = 2 + s.t * (3 + width / 10) + (k % 3);
+        for (let y = Math.floor(py - r); y <= py + r; y++) {
+          for (let x = Math.floor(px - r); x <= px + r; x++) {
+            const d = Math.hypot(x - px, (y - py) * 1.3) / r;
+            if (d > 1 || bayer(x, y) < s.t * 0.95) continue;
+            this.screen.set(x, y, d < 0.35 ? STONE[6] : d < 0.7 ? STONE[5] : STONE[3]);
+          }
+        }
       }
     } else if (s.kind === 'poof') {
       // Dust where a stack went down: puffs that swell, rise and thin out.
