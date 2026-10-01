@@ -99,7 +99,7 @@ export function dress(map: MapModel, locations: readonly Location[], scenery: Pl
   };
 
   // How many things stand in each 96 px square, so the last pass can find the bare ones.
-  const BLOCK = 96;
+  const BLOCK = 80;
   const blocks = Math.ceil(province.width / BLOCK);
   const count = new Uint16Array(blocks * Math.ceil(province.height / BLOCK));
   const put = (name: PieceName, x: number, y: number, flip: boolean) => {
@@ -135,10 +135,12 @@ export function dress(map: MapModel, locations: readonly Location[], scenery: Pl
     for (const [name, dx, dy] of SCENES[key] ?? []) {
       const p = piece(name);
       if (!p) continue;
-      const x = px + dx;
-      const y = py + dy;
-      if (!fits(x, y, p.sprite.width, 10) || isTaken(x, y, p.sprite.width)) continue;
-      if (places.some(([qx, qy]) => (qx !== px || qy !== py) && Math.abs(qx - x) < 30 && Math.abs(qy - y) < 26)) continue;
+      // Where it's meant to stand, or failing that, mirrored, or a little further out.
+      const spot = ([[dx, dy], [-dx, dy], [dx * 1.3, dy + 12], [-dx * 1.3, dy + 12]] as const)
+        .map(([ox, oy]) => [px + ox, py + oy] as const)
+        .find(([x, y]) => fits(x, y, p.sprite.width, 10) && !isTaken(x, y, p.sprite.width) && !places.some(([qx, qy]) => (qx !== px || qy !== py) && Math.abs(qx - x) < 30 && Math.abs(qy - y) < 26));
+      if (!spot) continue;
+      const [x, y] = spot;
       put(name, x, y, hash(px, py + dx, seed) < 0.5 && !name.startsWith('wagon'));
       take(x, y, p.sprite.width);
     }
@@ -187,8 +189,8 @@ export function dress(map: MapModel, locations: readonly Location[], scenery: Pl
       const x = gx + (hash(gx, gy, 470) - 0.5) * 14;
       const y = gy + (hash(gx, gy, 471) - 0.5) * 12;
       const c = fbm(x / 150, y / 130, 3, 472) + (noise(x / 30, y / 30, 473) - 0.5) * 0.12;
-      if (c < 0.57 || at(x, y) !== Terrain.Grass || forestAmount(province, x, y) > 0.36 || nearPlace(x, y, 70) || isTaken(x, y, 20)) continue;
-      if (c > 0.63) {
+      if (c < 0.53 || at(x, y) !== Terrain.Grass || forestAmount(province, x, y) > 0.36 || nearPlace(x, y, 70) || isTaken(x, y, 20)) continue;
+      if (c > 0.585) {
         if (hash(gx, gy, 474) < 0.85 && fits(x, y, 20, 40)) tree(x, y, lookOf(x, y, hash(Math.floor(x / 300), Math.floor(y / 300), 475) < 0.3), 476);
       } else if (hash(gx, gy, 477) < 0.35 && fits(x, y, 14, 16)) {
         put(`decor${pick(hash(gx, gy, 478) < 0.7 ? BUSHES : FLOWERS, hash(gx, gy, 479))}` as PieceName, x, y, hash(gx, gy, 480) < 0.5);
