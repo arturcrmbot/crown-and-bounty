@@ -11,6 +11,7 @@ import { drawBanner } from './banner';
 import { TIP } from './speech';
 import { BAR, MAP_VIEW, paintBarBackground, paintFrame, SCREEN, type Rect } from './frame';
 import { bayer, hash, noise, shade } from './noise';
+import { ground, piece, TREE_KINDS } from './mapArt';
 import { BLUE, CYCLE_BOG, DANGER_LUT, EARTH, GOLD, GRASS, INK, LEAF, LIGHT_LUT, NEUTRAL, PARCHMENT, PLUM, RED, REED, SHADOW_LUT, STONE, WOOD } from './palette';
 import { boulder, oak, pine, willow } from './sprites';
 import { bigLettering, drawText, lettered, textMask } from './text';
@@ -176,7 +177,58 @@ export const BUTTONS: { id: 'spells' | 'wait' | 'defend' | 'auto' | 'retreat'; l
   rect: { x: BAR.x + BAR.width - 5 * 66 - 6 + i * 66, y: BAR.y + 3, width: 62, height: BAR.height - 6 },
 }));
 
+/**
+ * The field on Aldmoor's painted ground (#178): the map's own grass, darker beyond the hexes, trees from
+ * the map's woods along the edges, and the map's boulders and trees for the obstacles.
+ */
+function paintedField(obstacles: number[], seed: number): Bitmap | null {
+  const grass = ground('grass');
+  // The map's trees and rocks, at twice their map size: the troops stand half as big again in battle.
+  const twice = (b: Bitmap) => {
+    const out = new Bitmap(b.width * 2, b.height * 2);
+    for (let y = 0; y < out.height; y++) for (let x = 0; x < out.width; x++) out.data[y * out.width + x] = b.data[(y >> 1) * b.width + (x >> 1)];
+    return out;
+  };
+  const trees = [...new Set(TREE_KINDS.oak)].map((n) => piece(n)?.sprite).filter((t): t is Bitmap => Boolean(t)).map(twice);
+  const rocks = (['boulder1', 'boulder2'] as const).map((n) => piece(n)?.sprite).filter((t): t is Bitmap => Boolean(t)).map(twice);
+  if (!grass || trees.length < 4 || rocks.length < 2) return null;
+  const field = new Bitmap(SCREEN.width, SCREEN.height);
+  for (let y = MAP_VIEW.y; y < MAP_VIEW.y + MAP_VIEW.height; y++) {
+    for (let x = MAP_VIEW.x; x < MAP_VIEW.x + MAP_VIEW.width; x++) {
+      const inField = x > X0 - 10 && x < X0 + FIELD_W + 10 && y > Y0 - 4 && y < Y0 + (ROWS - 1) * ROW_H + HALF_H * 2 + 6;
+      const c = grass.data[((y + seed) % grass.height) * grass.width + ((x + seed * 3) % grass.width)];
+      field.set(x, y, inField ? c : SHADOW_LUT[c]);
+    }
+  }
+  for (let i = 0; i < 30; i++) {
+    const t = trees[(i * 7 + seed) % trees.length];
+    const x = MAP_VIEW.x + 6 + ((i * 47 + 13) % (MAP_VIEW.width - 20));
+    const top = i % 2 === 0;
+    const y = top ? MAP_VIEW.y - t.height + 30 + (i % 3) * 3 : MAP_VIEW.y + MAP_VIEW.height - 14;
+    if (!top && x > X0 && x < X0 + FIELD_W - 20) continue;
+    blit(field, t, x, y, MAP_VIEW);
+  }
+  for (let i = 0; i < HEXES; i++) {
+    const [cx, cy] = hexCentre(i);
+    for (let y = Math.floor(cy - HALF_H); y <= cy + HALF_H; y++) {
+      for (let x = Math.floor(cx - HEX_W / 2); x <= cx + HEX_W / 2; x++) {
+        if (!insideHex(x, y, cx, cy)) continue;
+        const edge = !insideHex(x + 1, y, cx, cy) || !insideHex(x, y + 1, cx, cy) || !insideHex(x - 1, y, cx, cy) || !insideHex(x, y - 1, cx, cy);
+        if (edge && (x + y) % 2 === 0) field.set(x, y, SHADOW_LUT[field.get(x, y)]);
+      }
+    }
+  }
+  for (const [n, i] of obstacles.entries()) {
+    const [cx, cy] = hexCentre(i);
+    const rock = n % 2 === 0 ? rocks[n % rocks.length] : trees[(n * 5 + seed) % trees.length];
+    blit(field, rock, Math.round(cx - rock.width / 2), Math.round(cy + 14 - rock.height));
+  }
+  return field;
+}
+
 function paintField(obstacles: number[], seed: number, fen: boolean): Bitmap {
+  const painted = fen ? null : paintedField(obstacles, seed);
+  if (painted) return painted;
   const field = new Bitmap(SCREEN.width, SCREEN.height);
   for (let y = MAP_VIEW.y; y < MAP_VIEW.y + MAP_VIEW.height; y++) {
     for (let x = MAP_VIEW.x; x < MAP_VIEW.x + MAP_VIEW.width; x++) {

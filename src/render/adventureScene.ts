@@ -358,10 +358,32 @@ function paintedScenery(map: MapModel, scenery: Placed[], landmarks: Placed[], p
     const p = piece(size >= 8 ? 'boulder2' : pick(['boulder1', 'boulder3'] as const, hash(i, 2, 413)))!;
     scenery.push(place(p.sprite, [x, y], p.foot));
   });
-  province.crags.forEach(([x, y, w]) => {
-    const p = piece(w >= 120 ? 'cragBig' : w >= 90 ? 'cragMid' : 'cragSmall')!;
-    scenery.push(place(p.sprite, [x, y], p.foot));
+  // Crags stand as ranges, not dots: most are the big range, the rest the single peak, mirrored at random.
+  province.crags.forEach(([x, y, w], i) => {
+    const p = piece(w >= 95 ? 'cragBig' : 'cragMid')!;
+    scenery.push(place(hash(i, 3, 414) < 0.5 ? mirror(p.sprite) : p.sprite, [x, y], p.foot));
   });
+  // The step the river falls over: a line of crags along it, either side of the falls.
+  if (province.cliff) {
+    const line = province.cliff.line;
+    const riverX = (y: number) => {
+      for (let n = 1; n < province.river.length; n++) {
+        const [ax, ay] = province.river[n - 1];
+        const [bx, by] = province.river[n];
+        if (y >= ay && y <= by) return ax + ((bx - ax) * (y - ay)) / (by - ay || 1);
+      }
+      return Infinity;
+    };
+    const p = piece('cragMid')!;
+    for (let x = line[0][0] - 20; x <= line[line.length - 1][0] + 20; x += 34) {
+      const n = line.findIndex(([lx]) => lx >= x);
+      const [ax, ay] = line[Math.max(0, n - 1)];
+      const [bx, by] = line[Math.max(0, n)] ?? line[line.length - 1];
+      const y = ay + ((by - ay) * (x - ax)) / (bx - ax || 1);
+      if (Math.abs(x - riverX(y)) < 30) continue;
+      scenery.push(place(hash(x, 4, 415) < 0.5 ? mirror(p.sprite) : p.sprite, [x, y + province.cliff.height + 4], p.foot));
+    }
+  }
   for (const d of province.decor) {
     const p = piece(d.sprite === 'holes' ? 'holes' : d.seed % 2 ? 'hut' : 'cottage')!;
     const o = place(p.sprite, d.at, p.foot);

@@ -105,7 +105,7 @@ const [darkPines, firs, greens, autumn] = [[0, 2, 5, 6, 8, 10], [1, 3, 4, 7, 9, 
  * and there; broadleaf woods are green, with a tree turning gold or red now and then.
  */
 export const TREE_KINDS = {
-  pine: [...darkPines, ...darkPines, ...darkPines, ...darkPines, ...darkPines, ...darkPines, ...darkPines, ...firs],
+  pine: [...Array(14).fill(darkPines).flat(), ...firs],
   oak: [...greens, ...greens, ...greens, ...autumn],
 } as const;
 
