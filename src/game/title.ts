@@ -11,7 +11,8 @@ import { NO_INPUT, type Screen } from './screen';
 export class TitleController implements Screen {
   readonly name = 'title';
   readonly music = 'title' as const;
-  readonly ambience = 'heath' as const;
+  // Just the music on the title: the heath's wind under it sounded like noise (Artur, 1 Oct).
+  readonly ambience = null;
   private readonly display: Display;
   private readonly screen = titlePainting();
   private readonly cards: CardView;

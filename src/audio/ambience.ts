@@ -147,9 +147,11 @@ function wind(ctx: BaseAudioContext, dest: AudioNode, cold: boolean): () => void
   const source = noiseLoop(ctx);
   const band = filter(ctx, 'bandpass', cold ? 500 : 800, 0.8);
   const swell = ctx.createGain();
-  // The fen's colder wind is lower and swells more; the two sit about as loud as each other.
-  swell.gain.value = cold ? 0.22 : 0.145;
-  const lfo = wobble(ctx, swell.gain, 0.07, cold ? 0.14 : 0.097);
+  // The fen's colder wind is lower and swells more; the two sit about as loud as each other. Both
+  // are a faint air under the music, 10 dB down since 1 Oct: under yubatake's gentler tunes the
+  // wind's swell was the loudest thing between notes, and Artur heard it as noise.
+  swell.gain.value = cold ? 0.07 : 0.046;
+  const lfo = wobble(ctx, swell.gain, 0.07, cold ? 0.045 : 0.031);
   source.connect(band).connect(swell).connect(dest);
   return () => {
     source.stop();

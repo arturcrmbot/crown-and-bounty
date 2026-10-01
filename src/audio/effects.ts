@@ -7,7 +7,7 @@
  */
 import { BATTLE_EFFECTS } from './blows';
 import { playNote } from './instruments';
-import { burst, crackle, rand, swish, tone, voice } from './synth';
+import { burst, rand, tone, voice } from './synth';
 
 export type Loudness = 'faint' | 'soft' | 'firm' | 'loud';
 export type EffectDef = {
@@ -55,21 +55,12 @@ const hoofbeat =
   };
 
 /**
- * A card opening, like a letter unfolded: the parchment crackles and creaks as it opens, and lies
- * flat with a soft slap as the card's 170 ms unfold ends.
+ * A card opening: it lies flat with a soft pat as the card's 170 ms unfold ends. (Its parchment
+ * crackled as it opened until 1 Oct, when, under the gentler music, Artur heard it as a scratch.)
  */
-const unfold: Play = (ctx, dest, t) => {
-  crackle(ctx, dest, t, 0.2, 0.35, 900, 0.55, 'bandpass', 3200, 0.7);
-  crackle(ctx, dest, t, 0.18, 0.3, 260, 0.45, 'bandpass', 1100, 1);
-  swish(ctx, dest, t, 0.16, 600, 1500, 0.1, 0.7);
-  burst(ctx, dest, t + 0.16, 0.05, 'lowpass', 300, 0.4);
-};
-/** A card put away: a quicker crackle as it's folded, and a pat as it's laid down. */
-const fold: Play = (ctx, dest, t) => {
-  crackle(ctx, dest, t, 0.13, 0.5, 1100, 0.45, 'bandpass', 2900, 0.7);
-  swish(ctx, dest, t, 0.1, 1500, 600, 0.08, 0.7);
-  burst(ctx, dest, t + 0.1, 0.04, 'lowpass', 360, 0.28);
-};
+const unfold: Play = (ctx, dest, t) => burst(ctx, dest, t + 0.16, 0.05, 'lowpass', 520, 0.6);
+/** A card put away: a pat as it's laid down. */
+const fold: Play = (ctx, dest, t) => burst(ctx, dest, t + 0.1, 0.04, 'lowpass', 580, 0.5);
 
 const brass = (ctx: BaseAudioContext, dest: AudioNode, t: number, calls: readonly (readonly [midi: number, at: number, length: number])[], volume: number) => {
   for (const [midi, at, length] of calls) playNote(ctx, dest, 'brass', t + at, midi, length, volume);
@@ -115,7 +106,7 @@ const EVERYDAY = {
     tone(ctx, dest, t + 0.02, 1760, 0.1, 0.22, 'triangle');
     tone(ctx, dest, t + 0.06, 2637, 0.18, 0.14);
   }, 1.1),
-  unfold: effect('soft', unfold, 0.8),
+  unfold: effect('soft', unfold, 6.2),
   // A rubber stamp slammed down on the poster: a thump, a rap of wood, and the coins it stands for.
   stamp: effect('firm', (ctx, dest, t) => {
     burst(ctx, dest, t, 0.16, 'lowpass', 420, 1, 0.5);
@@ -125,7 +116,7 @@ const EVERYDAY = {
   }, 1.7),
   // Someone speaking, at a middling pitch: a villain's last words use his own (`speak` in ui/sound.ts).
   speech: effect('firm', babble(150, 8), 1.3),
-  fold: effect('soft', fold, 0.9),
+  fold: effect('soft', fold, 8.4),
   coins: effect('firm', (ctx, dest, t) => [1320, 1760, 1480, 1980].forEach((f, i) => tone(ctx, dest, t + i * 0.055, f, 0.12, 0.35)), 1.3),
   day: effect('firm', (ctx, dest, t) => {
     tone(ctx, dest, t, 392, 1.1, 0.4);
