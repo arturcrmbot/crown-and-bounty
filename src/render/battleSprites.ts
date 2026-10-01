@@ -119,7 +119,11 @@ function paintedPose(troop: ArtId, facing: 1 | -1, { anim, ms }: Pose, size: Siz
   const key = `${troop}|${facing}|${size}`;
   let made = paintedSprites.get(key);
   if (!made) {
-    let sprite = size === 'map' ? outline(base, INK) : base;
+    // A few clear rows over the head, as Wesnoth's frames have, so a bob or a lift never clips it.
+    const HEADROOM = 6;
+    const padded = new Bitmap(base.width + 2, base.height + HEADROOM);
+    for (let y = 0; y < base.height; y++) padded.data.set(base.data.subarray(y * base.width, (y + 1) * base.width), (y + HEADROOM) * padded.width + 1);
+    let sprite = size === 'map' ? outline(padded, INK) : padded;
     if (facing < 0) sprite = mirror(sprite);
     made = { sprite, foot: rows(sprite)[1] + 1 };
     paintedSprites.set(key, made);
