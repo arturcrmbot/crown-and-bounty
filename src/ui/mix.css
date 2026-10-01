@@ -60,3 +60,16 @@
   margin: 0;
   accent-color: #c28a1c;
 }
+
+/* The switch for gentle effects in battle (#190), under the sliders. */
+.kc-mix-gentle {
+  cursor: pointer;
+}
+.kc-mix-row.kc-mix-gentle span {
+  width: auto;
+}
+.kc-mix-gentle input[type='checkbox'] {
+  margin: 0;
+  accent-color: #c28a1c;
+  cursor: pointer;
+}

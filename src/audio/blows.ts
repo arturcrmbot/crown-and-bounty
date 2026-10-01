@@ -274,13 +274,35 @@ const FEET: Record<FeetKind, Play> = {
   },
 };
 
+/**
+ * Weight under a blow (#190): a low thump that grows with what the blow did, `light` for a scratch,
+ * `heavy` when men fall, and `huge` for a charge or a stack wiped out.
+ */
+export type ThumpKind = 'light' | 'heavy' | 'huge';
+const THUMPS: Record<ThumpKind, Play> = {
+  light: (ctx, dest, at) => {
+    tone(ctx, dest, at, 96, 0.11, 0.9, 'sine', 0.55, 0.003);
+    burst(ctx, dest, at, 0.07, 'lowpass', 240, 0.5);
+  },
+  heavy: (ctx, dest, at) => {
+    tone(ctx, dest, at, 82, 0.2, 1, 'sine', 0.5, 0.003);
+    tone(ctx, dest, at, 164, 0.08, 0.3, 'triangle', 0.5, 0.003);
+    burst(ctx, dest, at, 0.13, 'lowpass', 220, 0.8);
+  },
+  huge: (ctx, dest, at) => {
+    tone(ctx, dest, at, 66, 0.34, 1, 'sine', 0.45, 0.003);
+    tone(ctx, dest, at, 132, 0.14, 0.45, 'triangle', 0.5, 0.003);
+    burst(ctx, dest, at, 0.26, 'lowpass', 200, 1);
+  },
+};
+
 /** Steel on plate or mail: a clash that rings, played on top of whatever lands on an armoured troop. */
 const armour: Play = (ctx, dest, at) => {
   ring(ctx, dest, at, rand(900, 1300), STEEL, 0.18);
   burst(ctx, dest, at, 0.03, 'bandpass', 4500, 0.5, 1, 1.5);
 };
 
-type BattleEffectId = `blow:${BlowKind}` | `loose:${ShotKind}` | `land:${ShotKind}` | `hurt:${CryKind}` | `dies:${CryKind}` | `feet:${FeetKind}` | 'armour';
+type BattleEffectId = `blow:${BlowKind}` | `loose:${ShotKind}` | `land:${ShotKind}` | `hurt:${CryKind}` | `dies:${CryKind}` | `feet:${FeetKind}` | `thump:${ThumpKind}` | 'armour';
 
 /**
  * The level that brings each to its place in the mix (see `npm run listen -- effects`): blows and
@@ -325,6 +347,9 @@ const LEVELS: Record<BattleEffectId, number> = {
   'feet:trotters': 3.3,
   'feet:patter': 3.8,
   armour: 1.5,
+  'thump:light': 0.27,
+  'thump:heavy': 0.58,
+  'thump:huge': 1.2,
 };
 
 const entries = (prefix: string, plays: Record<string, Play>, loud: Loudness) =>
@@ -333,7 +358,7 @@ const entries = (prefix: string, plays: Record<string, Play>, loud: Loudness) =>
     return [id, { loud, level: LEVELS[id], play }] as const;
   });
 
-/** Every sound of a fight, as effects: `blow:blade`, `loose:arrow`, `land:arrow`, `hurt:wolf`, `dies:troll`, `feet:hooves`, `armour`. */
+/** Every sound of a fight, as effects: `blow:blade`, `loose:arrow`, `land:arrow`, `hurt:wolf`, `dies:troll`, `feet:hooves`, `armour`, `thump:heavy`. */
 export const BATTLE_EFFECTS = Object.fromEntries([
   ...entries('blow', BLOWS, 'firm'),
   ...entries('loose', LOOSE, 'firm'),
@@ -342,4 +367,7 @@ export const BATTLE_EFFECTS = Object.fromEntries([
   ...entries('dies', Object.fromEntries(Object.entries(CRIES).map(([kind, cry]) => [kind, cry.dies])), 'firm'),
   ...entries('feet', FEET, 'faint'),
   ['armour', { loud: 'soft', level: LEVELS.armour, play: armour }],
+  ['thump:light', { loud: 'faint', level: LEVELS['thump:light'], play: THUMPS.light }],
+  ['thump:heavy', { loud: 'soft', level: LEVELS['thump:heavy'], play: THUMPS.heavy }],
+  ['thump:huge', { loud: 'firm', level: LEVELS['thump:huge'], play: THUMPS.huge }],
 ]) as Record<BattleEffectId, EffectDef>;

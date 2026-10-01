@@ -4,13 +4,15 @@ import { canCast, hasTurn, isLeader, lookOf, luckOf, moraleOf, speedOf, statsOf,
 import { COLS, colOf, HEXES, hexIndex, ROWS, rowOf } from '../rules/battle/hex';
 import { Bitmap, blit, SHADOW } from './bitmap';
 import { critters, critterSprite, type Critter } from './critters';
-import { animLength, bodyHeight, corpseSprite, hurtSprite, standard, STAND, troopFigure, type Pose, type Standard } from './battleSprites';
+import { animLength, bodyHeight, corpseSprite, hurtSprite, standard, STAND, troopFigure, whiteSprite, type Pose, type Standard } from './battleSprites';
 import { upcomingFighters } from './battleOrder';
 import { ART } from './units';
 import { drawBanner } from './banner';
 import { TIP } from './speech';
 import { BAR, MAP_VIEW, paintBarBackground, paintFrame, SCREEN, type Rect } from './frame';
 import { bayer, fbm, hash, noise, shade } from './noise';
+import { FRAME, rolled } from './juice';
+import { drawPops, type Pop } from './pops';
 import { ground, piece } from './mapArt';
 import type { PieceName } from './mapPieces';
 import { BLUE, CYCLE_BOG, DANGER_LUT, EARTH, GOLD, GRASS, INK, LEAF, LIGHT_LUT, NEUTRAL, PARCHMENT, PLUM, RED, REED, SHADOW_LUT, STONE, WOOD } from './palette';
@@ -96,10 +98,14 @@ export function leaderAt(b: BattleState, x: number, y: number): Fighter | null {
 export type Floater = { x: number; y: number; text: string; color: number; age: number };
 /** How far a floater rises over its one-second life. */
 export const FLOAT_RISE = 30;
+/** How long a floater lasts, and how long it takes to dither away at the end. */
+export const FLOAT_LIFE = 1;
+const FLOAT_FADE = 0.25;
 /** The message ribbon across the top of the field. */
 const LOG_TOP = MAP_VIEW.y + 6;
 export const LOG_BOTTOM = LOG_TOP + 18;
-export type Shot = { from: [number, number]; to: [number, number]; t: number; kind: 'arrow' | 'quarrel' | 'hex' | 'magic' | 'gather' | 'bolt' | 'fire' | 'sparkle' | 'spark' | 'blood' | 'poof'; color?: number };
+/** A missile, a spell or a burst. A spark's `size` scales it, and its `heading` (radians) is the way the blow went, for the chips it flings. */
+export type Shot = { from: [number, number]; to: [number, number]; t: number; kind: 'arrow' | 'quarrel' | 'hex' | 'magic' | 'gather' | 'bolt' | 'fire' | 'sparkle' | 'spark' | 'blood' | 'poof'; color?: number; size?: number; heading?: number };
 /** How much of a fireball's flight is the fall from the sky; it bursts after that. */
 export const FIRE_FALL = 0.35;
 
@@ -135,6 +141,8 @@ export type BattleView = {
   health: Map<number, number>;
   poses: Map<number, Pose>;
   flashing: Set<number>;
+  /** Stacks shown as a white shape: the frame a blow lands on them (#190). */
+  whites: Set<number>;
   /** Fighters still drawn although the rules have them dead, until their hit plays out. */
   dying: Set<number>;
   /** Stacks the rules have on the field that haven't got there yet: a summoned stack, till it marches in. */
@@ -147,6 +155,10 @@ export type BattleView = {
   /** The stacks that click would reach, lit: `target` for those it's aimed at, `danger` for your own it would hurt too. */
   lit: ReadonlyMap<number, 'target' | 'danger'>;
   floaters: Floater[];
+  /** Kills and wounds popping out of the stacks' badges (#190). */
+  pops: Pop[];
+  /** Badges rolling down to their new count, `age` seconds in (#190). */
+  rolls: Map<number, { from: number; to: number; age: number }>;
   shots: Shot[];
   log: string;
   /** Whose turn it is, for the bar. */
@@ -160,8 +172,10 @@ export type BattleView = {
   bard: boolean;
   /** Seconds since the battle opened, for breathing and flags. */
   time: number;
-  /** How hard the field shakes this frame, in pixels. */
+  /** How hard the field shakes this frame, in pixels, every way at random. */
   shake: number;
+  /** How far the field is kicked this frame, the way the last blow went (#190), in pixels. */
+  kick: [number, number];
   /** VICTORY or DEFEAT across the field at the end. */
   banner: { sprite: Bitmap; age: number; life: number } | null;
   /** A leader's last words, in a bubble over his head (`render/speech.ts`), for `life` seconds. */
@@ -493,7 +507,7 @@ export class BattleScreen {
       if (look) {
         for (const c of critters(look, !oneOfAKind(f), view.time, f.id)) {
           const sprite = critterSprite(look, facing, c.phase);
-          const shown = view.flashing.has(f.id) ? hurtSprite(sprite) : sprite;
+          const shown = view.whites.has(f.id) ? whiteSprite(sprite) : view.flashing.has(f.id) ? hurtSprite(sprite) : sprite;
           const [x, y] = [Math.round(px + ox + c.dx - sprite.width / 2), Math.round(py + oy + 12 + c.dy - sprite.height)];
           if (view.lit.has(f.id)) this.glow(sprite, x, y, view.lit.get(f.id)!, view.time);
           blit(screen, shown, x, y, MAP_VIEW);
@@ -502,7 +516,7 @@ export class BattleScreen {
       }
       const pose = view.poses.get(f.id) ?? (view.positions.has(f.id) ? STAND : fidget(f.troop, f.id, view.time));
       const figure = troopFigure(f.troop, f.side === 'player' ? 'blue' : 'red', facing, pose, 'battle');
-      const sprite = view.flashing.has(f.id) ? hurtSprite(figure.sprite) : figure.sprite;
+      const sprite = view.whites.has(f.id) ? whiteSprite(figure.sprite) : view.flashing.has(f.id) ? hurtSprite(figure.sprite) : figure.sprite;
       // Standing about, everyone breathes: a pixel up and down, each stack in its own time.
       const breath = pose.anim === 'stand' && !view.positions.has(f.id) && !view.offsets.has(f.id) && Math.sin(view.time * 2.4 + f.id * 1.9) > 0.35 ? 1 : 0;
       const [x, y] = [Math.round(px + ox + figure.x), Math.round(py + oy + 12 + figure.y) - breath];
@@ -513,17 +527,24 @@ export class BattleScreen {
     if (view.hover?.kind === 'melee' && view.hover.from !== undefined) this.arrow(hexCentre(view.hover.from), hexCentre(view.hover.hex));
     // Counts go on last, so a troll never hides the goblins behind him. A leader has none: he's one
     // of a kind, and nothing can hurt him.
+    // A count that has just changed rolls down to its new number, its badge white for the first frame (#190).
     for (const f of shown) {
-      const count = view.counts.get(f.id) ?? f.count;
+      const roll = view.rolls.get(f.id);
+      const count = roll ? rolled(roll.from, roll.to, roll.age) : (view.counts.get(f.id) ?? f.count);
       if (count <= 0 || isLeader(f)) continue;
       const [cx, cy] = place(f);
-      this.badge(Math.round(cx + (f.side === 'player' ? 14 : -14)), Math.round(cy + 8), count, f.side === 'player');
+      this.badge(Math.round(cx + (f.side === 'player' ? 14 : -14)), Math.round(cy + 8), count, f.side === 'player', !!roll && roll.age < FRAME);
     }
     for (const s of view.shots) this.shot(s);
-    for (const t of view.floaters) drawText(screen, t.text, Math.round(t.x - t.text.length * 4), Math.round(t.y - t.age * FLOAT_RISE), t.color, INK, 15);
+    this.pops(b, view);
+    for (const t of view.floaters) this.words(t.text, Math.round(t.x), Math.round(t.y - t.age * FLOAT_RISE), t.color, (FLOAT_LIFE - t.age) / FLOAT_FADE);
     if (view.speech) this.speech(b, view.speech);
     if (view.banner) drawBanner(screen, view.banner.sprite, MAP_VIEW.x + MAP_VIEW.width / 2, MAP_VIEW.y + 150, view.banner.age, view.banner.life);
-    if (view.shake > 0.5) this.shake(view.shake, view.time);
+    // The field jolts: kicked the way the last blow went, and shaken every way for the biggest moments.
+    const jitter = view.shake > 0.5 ? view.shake : 0;
+    const dx = Math.round(view.kick[0] + (jitter ? (hash(Math.floor(view.time * 60), 1, 3) - 0.5) * 2 * jitter : 0));
+    const dy = Math.round(view.kick[1] + (jitter ? (hash(Math.floor(view.time * 60), 2, 3) - 0.5) * 2 * jitter : 0));
+    if (dx || dy) this.jolt(dx, dy);
     this.logLine(view.preview ?? view.log);
     this.turnStrip(b);
     this.bar(b, view);
@@ -543,10 +564,8 @@ export class BattleScreen {
     drawBanner(this.screen, bubble, x0 + bubble.width / 2, y0, speech.age, speech.life);
   }
 
-  /** Jolts the field (not the frame round it) by up to `amount` pixels, for a heavy blow. */
-  private shake(amount: number, time: number) {
-    const dx = Math.round((hash(Math.floor(time * 60), 1, 3) - 0.5) * 2 * amount);
-    const dy = Math.round((hash(Math.floor(time * 60), 2, 3) - 0.5) * 2 * amount);
+  /** Jolts the field (not the frame round it) by (dx, dy) pixels, for a blow. */
+  private jolt(dx: number, dy: number) {
     const { screen } = this;
     const copy = screen.data.slice();
     for (let y = MAP_VIEW.y; y < MAP_VIEW.y + MAP_VIEW.height; y++) {
@@ -554,6 +573,34 @@ export class BattleScreen {
       for (let x = MAP_VIEW.x; x < MAP_VIEW.x + MAP_VIEW.width; x++) {
         const sx = Math.min(MAP_VIEW.x + MAP_VIEW.width - 1, Math.max(MAP_VIEW.x, x - dx));
         screen.data[y * SCREEN.width + x] = copy[sy * SCREEN.width + sx];
+      }
+    }
+  }
+
+  /** The kills and wounds popping out of each stack's badge (#190), over the stack's own hex wherever it fell. */
+  private pops(b: BattleState, view: BattleView) {
+    if (!view.pops.length) return;
+    const by = new Map<number, Pop[]>();
+    for (const p of view.pops) by.set(p.fighter, [...(by.get(p.fighter) ?? []), p]);
+    for (const [id, list] of by) {
+      const f = b.fighters.find((x) => x.id === id);
+      if (!f || isLeader(f)) continue;
+      const [cx, cy] = view.positions.get(id) ?? spotOf(b, f);
+      drawPops(this.screen, list, Math.round(cx + (f.side === 'player' ? 14 : -14)), Math.round(cy + 8), MAP_VIEW);
+    }
+  }
+
+  /** Words rising off a stack, centred on `cx`, outlined all round so they read over the grass, dithering away as `shown` falls below 1. */
+  private words(text: string, cx: number, y: number, colour: number, shown: number) {
+    const { width, height, solid } = textMask(text, 15);
+    const x0 = Math.round(cx - width / 2);
+    for (let j = -1; j <= height; j++) {
+      for (let i = -1; i <= width; i++) {
+        const [x, yy] = [x0 + i, y + j];
+        if (shown < 1 && bayer(x, yy) >= shown) continue;
+        if (yy < MAP_VIEW.y || yy >= MAP_VIEW.y + MAP_VIEW.height) continue;
+        if (solid(i, j)) this.screen.set(x, yy, colour);
+        else if ([-1, 0, 1].some((dj) => [-1, 0, 1].some((di) => solid(i + di, j + dj)))) this.screen.set(x, yy, INK);
       }
     }
   }
@@ -604,22 +651,22 @@ export class BattleScreen {
     }
   }
 
-  /** A stack's count on its hex. */
-  private badge(cx: number, y: number, count: number, player: boolean) {
+  /** A stack's count on its hex; `flash` draws it white, the frame its count changes. */
+  private badge(cx: number, y: number, count: number, player: boolean, flash = false) {
     const text = String(count);
     // By touch the count is bigger, and its badge with it, from the same top.
     const size = lettered(11);
     const w = bigLettering() ? textMask(text, size).width + 6 : text.length * 7 + 7;
     const h = size + 2;
     const x = cx - Math.floor(w / 2);
-    const fill = player ? BLUE[2] : RED[2];
+    const fill = flash ? NEUTRAL[7] : player ? BLUE[2] : RED[2];
     for (let j = 0; j < h; j++) {
       for (let i = 0; i < w; i++) {
         const edge = i === 0 || j === 0 || i === w - 1 || j === h - 1;
-        this.screen.set(x + i, y + j, edge ? GOLD[3] : fill);
+        this.screen.set(x + i, y + j, edge ? (flash ? GOLD[6] : GOLD[3]) : fill);
       }
     }
-    drawText(this.screen, text, x + 3, y - 2, NEUTRAL[7], INK, size);
+    drawText(this.screen, text, x + 3, y - 2, flash ? (player ? BLUE[2] : RED[2]) : NEUTRAL[7], flash ? NEUTRAL[7] : INK, size);
   }
 
   /** The next turns, as small versions of the figures on the field. */
@@ -773,13 +820,28 @@ export class BattleScreen {
         }
       }
     } else if (s.kind === 'spark') {
-      // A star of white and gold where the blow lands: a hard flash at the heart, then streaks out.
-      if (s.t < 0.3) for (let j = -4; j <= 4; j++) for (let i = -4; i <= 4; i++) if (Math.abs(i) + Math.abs(j) <= 4 - s.t * 8) this.screen.set(Math.round(bx + i), Math.round(by + j), NEUTRAL[7]);
+      // A star of white and gold where the blow lands: a hard flash at the heart, then streaks out,
+      // as big as the blow (`size`), with chips flung on the way it went (#190).
+      const size = s.size ?? 1;
+      const core = (4 - s.t * 8) * size;
+      const reach = Math.ceil(4 * size);
+      if (s.t < 0.3) for (let j = -reach; j <= reach; j++) for (let i = -reach; i <= reach; i++) if (Math.abs(i) + Math.abs(j) <= core) this.screen.set(Math.round(bx + i), Math.round(by + j), NEUTRAL[7]);
       for (let k = 0; k < 12; k++) {
         const a = k * 0.52 + (hash(k, Math.round(bx), 9) - 0.5) * 0.4;
-        const r0 = 3 + s.t * 16;
-        const r1 = r0 + 10 * (1 - s.t);
+        const r0 = 3 + s.t * 16 * size;
+        const r1 = r0 + 10 * size * (1 - s.t) * (k % 2 ? 0.7 : 1.2);
         for (let r = r0; r < r1; r++) if (s.t < 0.6 || (Math.round(r) + k) % 2 === 0) this.screen.set(Math.round(bx + Math.cos(a) * r), Math.round(by + Math.sin(a) * r * 0.7), r < r0 + 3 ? NEUTRAL[7] : GOLD[5]);
+      }
+      if (s.heading !== undefined) {
+        for (let k = 0; k < 8; k++) {
+          const a = s.heading + (hash(k, Math.round(by), 31) - 0.5) * 1.5;
+          const d = 5 + s.t * (14 + hash(k, 2, 31) * 14) * size;
+          const x = Math.round(bx + Math.cos(a) * d);
+          const y = Math.round(by + Math.sin(a) * d * 0.7 + s.t * s.t * 16);
+          const c = [NEUTRAL[7], GOLD[6], EARTH[5], RED[4]][k % 4];
+          this.screen.set(x, y, c);
+          if (s.t < 0.7) this.screen.set(x + 1, y, c);
+        }
       }
     } else if (s.kind === 'blood') {
       // A spray of red droplets that arc up and fall.
