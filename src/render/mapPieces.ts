@@ -69,5 +69,7 @@ export const PIECE_FEET = {
 export type PieceName = keyof typeof PIECE_FEET;
 /** The trees: dark pines and blue firs first (0 to 11), then broadleaves (12 to 19) and autumn ones (20 to 24). */
 export const TREES = ["tree0", "tree1", "tree2", "tree3", "tree4", "tree5", "tree6", "tree7", "tree8", "tree9", "tree10", "tree11", "tree12", "tree13", "tree14", "tree15", "tree16", "tree17", "tree18", "tree19", "tree20", "tree21", "tree22", "tree23", "tree24"] as const;
-export const GROUNDS = ["grass", "dirt", "wheat", "heath", "plough"] as const;
+export const GROUNDS = ["water", "grass", "dirt", "wheat", "heath", "plough"] as const;
+/** The troops and Aldric's figures, painted: in public/assets/troops/, each at battle and map size. */
+export const FIGURES = ["peasants", "archers", "knights", "swordsmen", "crossbowmen", "wolves", "baron", "goblins", "trolls", "witch", "bramble", "poachers", "bandits", "boars", "bears", "huntsmen", "heroKnight", "heroWizard", "heroRanger", "heroCourtier", "rook", "hero"] as const;
 export type GroundName = (typeof GROUNDS)[number];

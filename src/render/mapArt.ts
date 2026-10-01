@@ -1,7 +1,7 @@
 import { Bitmap, SHADOW } from './bitmap';
 import { COLORS, CYCLING, SILHOUETTE } from './palette';
 import { decodePng, type Rgba } from './png';
-import { GROUNDS, PIECE_FEET, TREES, type GroundName, type PieceName } from './mapPieces';
+import { FIGURES, GROUNDS, PIECE_FEET, TREES, type GroundName, type PieceName } from './mapPieces';
 
 /**
  * Aldmoor's painted map (#178): its places, trees, crags and ground, drawn in the spirit of HoMM2's
@@ -12,10 +12,11 @@ import { GROUNDS, PIECE_FEET, TREES, type GroundName, type PieceName } from './m
 
 const pieces = new Map<string, Bitmap>();
 const grounds = new Map<GroundName, Bitmap>();
+const figures = new Map<string, Bitmap>();
 let loading: Promise<void> | null = null;
 
 const fetchPiece = async (file: string) => {
-  const response = await fetch(`${import.meta.env.BASE_URL}assets/map/${file}`);
+  const response = await fetch(`${import.meta.env.BASE_URL}assets/${file.includes('/') ? file : `map/${file}`}`);
   if (!response.ok) throw new Error(`missing map art: ${file}`);
   return new Uint8Array(await response.arrayBuffer());
 };
@@ -73,6 +74,15 @@ export function loadMapArt(read: (file: string) => Promise<Uint8Array> = fetchPi
         console.warn(error);
       }
     }),
+    ...FIGURES.flatMap((id) =>
+      (['battle', 'map'] as const).map(async (size) => {
+        try {
+          figures.set(`${id}-${size}`, toBitmap(await decodePng(await read(`troops/${id}-${size}.png`))));
+        } catch (error) {
+          console.warn(error);
+        }
+      }),
+    ),
   ]).then(() => undefined);
   return loading;
 }
@@ -98,3 +108,6 @@ export const TREE_KINDS = {
   pine: [...darkPines, ...darkPines, ...darkPines, ...darkPines, ...darkPines, ...darkPines, ...darkPines, ...firs],
   oak: [...greens, ...greens, ...greens, ...autumn],
 } as const;
+
+/** A troop's (or Aldric's) painted figure (#178), facing right, at battle or map size, if it's loaded. */
+export const paintedFigure = (id: string, size: 'battle' | 'map'): Bitmap | null => figures.get(`${id}-${size}`) ?? null;

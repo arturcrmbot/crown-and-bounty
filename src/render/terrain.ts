@@ -37,6 +37,8 @@ const CROPS: [number, Crop][] = [
 ];
 /** Which painted ground each crop is, on Aldmoor's painted map. */
 const CROP_GROUND: GroundName[] = ['wheat', 'grass', 'grass', 'plough', 'grass', 'grass'];
+/** On the painted map only one field in this many is worked: HoMM2's land is meadow, with a field or two by a village. */
+const WORKED = 0.4;
 const FURROWS = [0, Math.PI / 2, Math.PI / 4, (Math.PI * 3) / 4].map((a) => [Math.cos(a), Math.sin(a)] as const);
 
 /** The land is painted in squares this many pixels across, as they come into view. */
@@ -88,7 +90,7 @@ export class TerrainPainter {
 
   constructor(map: MapModel) {
     this.map = map;
-    const names: GroundName[] = ['grass', 'dirt', 'heath', 'wheat', 'plough'];
+    const names: GroundName[] = ['grass', 'dirt', 'heath', 'wheat', 'plough', 'water'];
     const art = names.map((n) => groundArt(n));
     this.painted = map.province.id === 'aldmoor' && art.every(Boolean) ? (Object.fromEntries(names.map((n, i) => [n, art[i]!])) as Record<GroundName, Bitmap>) : null;
     this.width = map.province.width;
@@ -174,9 +176,9 @@ export class TerrainPainter {
         const hedge = (db - da) / (2 * Math.hypot(fields.x[a] - fields.x[b], fields.y[a] - fields.y[b]));
         const hedged = hash(Math.min(a, b), Math.max(a, b), 85) > 0.25 && noise(x / 9, y / 9, 86) > 0.22;
         // Hedges are a soft band of darker grass, not a line.
-        const worked = CROP_GROUND[fields.crop[a]] !== 'grass' || CROP_GROUND[fields.crop[b]] !== 'grass';
+        const worked = (hash(a, 0, 404) < WORKED && CROP_GROUND[fields.crop[a]] !== 'grass') || (hash(b, 0, 404) < WORKED && CROP_GROUND[fields.crop[b]] !== 'grass');
         if (worked && hedged && hedge < 1.2 && bayer(x, y) < 0.6) return { colour: SHADOW_LUT[this.texel('grass', x, y, level)], ground: Ground.Hedge };
-        const crop = CROP_GROUND[fields.crop[a]];
+        const crop = hash(a, 0, 404) < WORKED ? CROP_GROUND[fields.crop[a]] : 'grass';
         // A field fades into the grass round it over a few pixels, ragged, as HoMM2's ground meets.
         const fade = Math.min(1, (hedge - 1.2) / 6 + (noise(x / 3, y / 3, 403) - 0.5) * 0.5);
         if (fields.farmed[a] && crop !== 'grass' && bayer(x, y) < fade) return { colour: this.texel(crop, x, y, level - 0.08), ground: Ground.Field };
@@ -365,7 +367,12 @@ export class TerrainPainter {
           const phase = Math.floor(r.s / 3.4 + fbm(r.s / 18, (r.d * r.side) / 6, 2, 13) * 5) % 6;
           const pool = !Number.isNaN(top) && face >= CLIFF_HEIGHT && face < CLIFF_HEIGHT + 16;
           if (pool && hash(x, y, 75) < 0.7 - (face - CLIFF_HEIGHT) * 0.04) bitmap.data[i] = hash(x, y, 76) < 0.5 ? WATER[9] : WATER[8];
-          else if (edge > -1.5) bitmap.data[i] = hash(x, y, 14) < 0.6 ? WATER[9] : CYCLE_SHALLOW[phase];
+          else if (this.painted) {
+            // The painted river: its own water, a light rim at the bank, and a glint here and there that still turns with the clock.
+            if (edge > -1.5) bitmap.data[i] = hash(x, y, 14) < 0.5 ? LIGHT_LUT[this.texel('water', x, y)] : CYCLE_SHALLOW[phase];
+            else if (hash(x, y, 17) < 0.04) bitmap.data[i] = CYCLE_SHALLOW[phase];
+            else bitmap.data[i] = this.texel('water', x, Math.round(y - r.s * 0.3), 0.52 - depth * 0.1);
+          } else if (edge > -1.5) bitmap.data[i] = hash(x, y, 14) < 0.6 ? WATER[9] : CYCLE_SHALLOW[phase];
           else if (depth > 0.45 + (hash(x, y, 15) - 0.5) * 0.2) bitmap.data[i] = CYCLE_DEEP[phase];
           else bitmap.data[i] = CYCLE_SHALLOW[phase];
           continue;

@@ -1,8 +1,9 @@
 # Asset credits
 
-## Aldmoor's map
+## Aldmoor's map and the troops
 
-Aldmoor's places, trees, crags, bridge and ground (`public/assets/map/`) were made on 1 October 2026
+Aldmoor's places, trees, crags, bridge, river and ground (`public/assets/map/`), and the troops' and
+Aldric's figures (`public/assets/troops/`), were made on 1 October 2026
 with [Retro Diffusion](https://www.retrodiffusion.ai/), an image model, at Artur's direction (#178),
 in the spirit of Heroes of Might and Magic II's adventure map. The sheets it made are kept as they
 came in `art/map/sheets/`; `npm run mapart` (`scripts/mapart.py`) cuts them into pieces, sizes them

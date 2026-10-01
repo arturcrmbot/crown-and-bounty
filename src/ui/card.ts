@@ -3,8 +3,7 @@ import { troops, type TroopId } from '../content/troops';
 import { outline } from '../render/bitmap';
 import { INK } from '../render/palette';
 import { portraitOf } from '../render/portraits';
-import { ART } from '../render/units';
-import { unitBitmap } from '../render/wesnoth';
+import { standingFigure } from '../render/battleSprites';
 import { manaLine, type Action, type Army, type Card, type Heard } from '../rules/game';
 import './card.css';
 import { bitmapUrl, PARCHMENT_SHADOW } from './pixels';
@@ -70,7 +69,7 @@ function fallenImage(id: TroopId, team: 'blue' | 'red'): string {
   const key = `${id}:${team}`;
   let url = fallenImages.get(key);
   if (!url) {
-    url = bitmapUrl(outline(unitBitmap(ART[id].stand, team, 0.5), INK), PARCHMENT_SHADOW);
+    url = bitmapUrl(outline(standingFigure(id, team, 0.5), INK), PARCHMENT_SHADOW);
     fallenImages.set(key, url);
   }
   return url;

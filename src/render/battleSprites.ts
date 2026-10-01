@@ -4,6 +4,7 @@ import { flat, mirror, shadowOval } from './sprites';
 import { unitLift, unitScale, type Size } from './scale';
 import { ART, type ArtId, type Frame } from './units';
 import { nearestTint, unitBitmap, unitImage, type Team } from './wesnoth';
+import { paintedFigure } from './mapArt';
 
 /** What a stack is doing, and how far into it: a Wesnoth animation and the milliseconds since it began. */
 export type AnimName = 'stand' | 'idle' | 'move' | 'melee' | 'charge' | 'cast' | 'ranged' | 'defend' | 'defendRanged' | 'death';
@@ -82,8 +83,60 @@ function measure(troop: ArtId) {
   return m;
 }
 
+/** The rows a sprite paints, top and bottom. */
+function rows(sprite: Bitmap): [number, number] {
+  let [top, bottom] = [sprite.height, 0];
+  for (let y = 0; y < sprite.height; y++) {
+    for (let x = 0; x < sprite.width; x++) {
+      const v = sprite.data[y * sprite.width + x];
+      if (v === 0 || v === SHADOW) continue;
+      top = Math.min(top, y);
+      bottom = Math.max(bottom, y);
+    }
+  }
+  return [top, bottom];
+}
+
 /** Pixels from a troop's feet to the top of its head, at a size. */
-export const bodyHeight = (troop: ArtId, size: Size) => Math.round(measure(troop).head * unitScale(size, troop));
+export function bodyHeight(troop: ArtId, size: Size): number {
+  const painted = paintedFigure(troop, size);
+  if (painted) {
+    const [top, bottom] = rows(painted);
+    return bottom + 1 - top;
+  }
+  return Math.round(measure(troop).head * unitScale(size, troop));
+}
+
+const paintedSprites = new Map<string, { sprite: Bitmap; foot: number }>();
+/**
+ * A troop's painted figure (#178) doing `pose`: one picture, which the game moves itself, as the 90s
+ * games did. It breathes as it waits, bobs as it walks, lunges into a blow, rocks back from a shot or
+ * a spell, and flinches when hit. Its colours are its own, whichever side it's on.
+ */
+function paintedPose(troop: ArtId, facing: 1 | -1, { anim, ms }: Pose, size: Size): Figure | null {
+  const base = paintedFigure(troop, size);
+  if (!base) return null;
+  const key = `${troop}|${facing}|${size}`;
+  let made = paintedSprites.get(key);
+  if (!made) {
+    let sprite = size === 'map' ? outline(base, INK) : base;
+    if (facing < 0) sprite = mirror(sprite);
+    made = { sprite, foot: rows(sprite)[1] + 1 };
+    paintedSprites.set(key, made);
+  }
+  const reach = size === 'battle' ? 10 : 4;
+  let [dx, dy] = [0, 0];
+  if (anim === 'idle') dy = Math.floor(ms / 400) % 2 ? -1 : 0;
+  else if (anim === 'move') dy = -Math.round(Math.abs(Math.sin(ms / 110)) * (size === 'battle' ? 3 : 2));
+  else if (anim === 'melee' || anim === 'charge' || anim === 'ranged' || anim === 'cast') {
+    const hit = Math.max(1, hitTime(troop, anim === 'cast' ? 'ranged' : anim));
+    const swing = ms < hit ? ms / hit : Math.max(0, 1 - (ms - hit) / 220);
+    // A blow carries him forward into it; a shot or a spell rocks him back a little.
+    dx = Math.round(facing * swing * (anim === 'melee' || anim === 'charge' ? reach * (anim === 'charge' ? 1.6 : 1) : -reach * 0.3));
+    dy = anim === 'melee' || anim === 'charge' ? -Math.round(swing * 2) : 0;
+  } else if (anim === 'defend' || anim === 'defendRanged' || anim === 'death') dx = -facing * (size === 'battle' ? 4 : 2);
+  return { sprite: made.sprite, x: -Math.round(made.sprite.width / 2) + dx, y: -made.foot + dy };
+}
 
 const sprites = new Map<string, Bitmap>();
 function frameBitmap(troop: ArtId, image: string, team: Team, facing: 1 | -1, size: Size): Bitmap {
@@ -107,6 +160,8 @@ function frameBitmap(troop: ArtId, image: string, team: Team, facing: 1 | -1, si
  * Wesnoth, so the feet stay put whatever the frame's size.
  */
 export function troopFigure(troop: ArtId, team: Team, facing: 1 | -1, pose: Pose, size: Size): Figure {
+  const painted = paintedPose(troop, facing, pose, size);
+  if (painted) return painted;
   return place(troop, frameBitmap(troop, imageAt(troop, pose), team, facing, size), size);
 }
 
@@ -148,13 +203,14 @@ export function corpseSprite(troop: ArtId, team: Team, facing: 1 | -1): Figure {
   if (!corpse) {
     dim ??= tint(([r, g, b]) => [Math.round(r * 0.7), Math.round(g * 0.7), Math.round(b * 0.76)]);
     const shade = (v: number) => (v === SHADOW ? SHADOW : dim![v]);
-    if (ART[troop].death) {
+    const painted = paintedPose(troop, facing, STAND, 'battle');
+    if (!painted && ART[troop].death) {
       const last = troopFigure(troop, team, facing, { anim: 'death', ms: animLength(troop, 'death') }, 'battle');
       const sprite = new Bitmap(last.sprite.width, last.sprite.height);
       for (let i = 0; i < sprite.data.length; i++) sprite.data[i] = shade(last.sprite.data[i]);
       corpse = { sprite, x: last.x, y: last.y };
     } else {
-      const up = frameBitmap(troop, ART[troop].defend, team, facing, 'battle');
+      const up = painted?.sprite ?? frameBitmap(troop, ART[troop].defend, team, facing, 'battle');
       const out = new Bitmap(up.height, up.width);
       let [x0, x1, y1] = [out.width, 0, 0];
       for (let y = 0; y < up.height; y++) {
@@ -211,4 +267,10 @@ export function standard({ cloth, emblem }: Standard, phase: number, facing: 1 |
   const shaped = outline(s, INK);
   shadowOval(shaped, pole + 1, h - 4, 7, 2);
   return facing > 0 ? shaped : mirror(shaped);
+}
+
+/** A troop's figure standing, for the cards and the hero screen: painted if it's loaded, else Wesnoth's at `scale`. */
+export function standingFigure(troop: ArtId, team: Team, scale: number): Bitmap {
+  const painted = paintedFigure(troop, scale >= 1 ? 'battle' : 'map');
+  return painted ?? unitBitmap(ART[troop].stand, team, scale);
 }

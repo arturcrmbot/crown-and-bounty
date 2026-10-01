@@ -63,8 +63,22 @@ PIECES = {
 # Trees: the tree sheet's rows, dark pines and blue firs, then broadleaves and autumn ones.
 TREE_BOXES = [(79, 14, 111, 73), (146, 20, 177, 73), (46, 25, 74, 73), (181, 27, 211, 73), (216, 30, 242, 73), (14, 31, 39, 73), (79, 81, 111, 140), (146, 86, 177, 140), (46, 90, 76, 140), (181, 93, 211, 140), (13, 95, 42, 140), (215, 96, 243, 140), (49, 149, 74, 183), (83, 149, 109, 183), (117, 149, 141, 183), (149, 149, 176, 183), (183, 149, 210, 183), (217, 149, 243, 182), (15, 150, 39, 183), (183, 203, 209, 242), (216, 203, 243, 242), (48, 204, 74, 242), (81, 204, 108, 242), (149, 204, 175, 242), (13, 207, 40, 242)]
 TREE_SCALE = 0.62
+# The troops and Aldric (#178): each one's box on its sheet, and how tall he stands in battle, from
+# his feet to the top of his head (a person about 65 px; on the map three fifths of that, Aldric two thirds).
+FIGURES = {
+    'peasants': ('troops-a', (9, 18, 68, 119), 66), 'archers': ('troops-a', (80, 8, 155, 119), 64), 'knights': ('troops-a', (153, 2, 252, 180), 105),
+    'swordsmen': ('troops-a', (9, 133, 71, 252), 68), 'crossbowmen': ('troops-a', (86, 145, 158, 252), 68), 'wolves': ('troops-a', (161, 187, 250, 253), 44),
+    'baron': ('troops-b', (7, 12, 83, 120), 82), 'goblins': ('troops-b', (94, 37, 169, 120), 48), 'trolls': ('troops-b', (166, 12, 245, 119), 86),
+    'witch': ('troops-b', (23, 142, 82, 246), 70), 'bramble': ('troops-b', (94, 129, 167, 246), 82), 'poachers': ('troops-b', (177, 145, 249, 246), 64),
+    'bandits': ('troops-c', (24, 9, 74, 83), 64), 'boars': ('troops-c', (174, 22, 252, 83), 42), 'bears': ('troops-c', (5, 102, 98, 171), 60),
+    'huntsmen': ('troops-c', (110, 171, 156, 245), 66), 'heroKnight': ('troops-c', (173, 94, 251, 244), 96),
+    'heroWizard': ('troops-d', (15, 19, 78, 123), 72), 'heroRanger': ('troops-d', (98, 17, 170, 123), 72), 'heroCourtier': ('troops-d', (182, 11, 240, 123), 72),
+    'rook': ('troops-d', (180, 140, 250, 250), 68),
+}
+FIGURES['hero'] = FIGURES['heroKnight']
+TROOPS_OUT = os.path.join(ROOT, 'public/assets/troops')
 # Ground: the seamless square inside each ground sheet's frame.
-GROUND = {'grass': (33, 33, 95, 95), 'dirt': (33, 33, 95, 95), 'wheat': (33, 36, 95, 95), 'heath': (14, 34, 114, 114), 'plough': (33, 33, 95, 95)}
+GROUND = {'water': (36, 36, 92, 92), 'grass': (33, 33, 95, 95), 'dirt': (33, 33, 95, 95), 'wheat': (33, 36, 95, 95), 'heath': (14, 34, 114, 114), 'plough': (33, 33, 95, 95)}
 
 
 def palette():
@@ -120,7 +134,7 @@ def layers(sheet):
 CACHE = {}
 
 
-def cut(sheet, box, width, name=''):
+def cut(sheet, box, width, name='', height=None):
     """RGBA of one piece at `width` pixels across: painted pixels opaque, shadow at alpha 128."""
     if sheet not in CACHE:
         CACHE[sheet] = layers(sheet)
@@ -146,7 +160,7 @@ def cut(sheet, box, width, name=''):
     sh &= keep
     ys, xs = np.nonzero(solid | sh)
     rgb, solid, sh = rgb[ys.min():ys.max() + 1, xs.min():xs.max() + 1], solid[ys.min():ys.max() + 1, xs.min():xs.max() + 1], sh[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
-    k = width / rgb.shape[1]
+    k = width / rgb.shape[1] if height is None else height / (np.ptp(np.nonzero(solid.any(1))[0]) + 1)
     w, h = max(1, round(rgb.shape[1] * k)), max(1, round(rgb.shape[0] * k))
     if k != 1:
         own = np.unique(rgb[solid].reshape(-1, 3), axis=0).astype(float)
@@ -189,6 +203,11 @@ def pick_colours(n=8):
         CACHE['trees'] = layers('trees')
     a, back, shadow = CACHE['trees']
     pixels.append(a[~back & ~shadow])
+    os.makedirs(TROOPS_OUT, exist_ok=True)
+    for name, (sheet, box, tall) in FIGURES.items():
+        for size, k in (('battle', 1), ('map', 2 / 3 if name.startswith('hero') else 0.6)):
+            px = cut(sheet, box, 0, name, height=round(tall * k))
+            Image.fromarray(px).save(os.path.join(TROOPS_OUT, f'{name}-{size}.png'))
     for name, (x0, y0, x1, y1) in GROUND.items():
         pixels.append(np.asarray(Image.open(os.path.join(SHEETS, name + '.png')).convert('RGB')).astype(int)[y0:y1, x0:x1].reshape(-1, 3))
     px = np.concatenate(pixels).astype(float)
@@ -238,6 +257,11 @@ def main():
         Image.fromarray(px).save(os.path.join(OUT, name + '.png'))
         feet[name] = foot(px) + 2
         trees.append(name)
+    os.makedirs(TROOPS_OUT, exist_ok=True)
+    for name, (sheet, box, tall) in FIGURES.items():
+        for size, k in (('battle', 1), ('map', 2 / 3 if name.startswith('hero') else 0.6)):
+            px = cut(sheet, box, 0, name, height=round(tall * k))
+            Image.fromarray(px).save(os.path.join(TROOPS_OUT, f'{name}-{size}.png'))
     for name, (x0, y0, x1, y1) in GROUND.items():
         rgb = np.asarray(Image.open(os.path.join(SHEETS, name + '.png')).convert('RGB')).astype(float)[y0:y1, x0:x1]
         px = np.dstack([snap(rgb), np.full(rgb.shape[:2], 255)]).astype('uint8')
@@ -250,6 +274,7 @@ def main():
         f.write(f"/** The trees: dark pines and blue firs first (0 to 11), then broadleaves (12 to 19) and autumn ones (20 to 24). */\n")
         f.write(f"export const TREES = {json.dumps(trees)} as const;\n")
         f.write(f"export const GROUNDS = {json.dumps(list(GROUND))} as const;\n")
+        f.write(f"/** The troops and Aldric's figures, painted: in public/assets/troops/, each at battle and map size. */\nexport const FIGURES = {json.dumps(list(FIGURES))} as const;\n")
         f.write("export type GroundName = (typeof GROUNDS)[number];\n")
     print(f'{len(feet)} pieces and {len(GROUND)} grounds in {OUT}')
 
