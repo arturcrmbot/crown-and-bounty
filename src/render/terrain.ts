@@ -146,9 +146,10 @@ export class TerrainPainter {
     if (hash(cx, cy, 401) < 0.5) u = t.width - 1 - u;
     if (hash(cx, cy, 402) < 0.5) v = t.height - 1 - v;
     const c = t.data[v * t.width + u];
+    // Only real shade (under woods, at a bank) darkens it: the land's broad light is left to the texture, which has its own.
     const d = level - 0.52;
-    if (d < -0.06 && bayer(x, y) < (-d - 0.06) * 2.6) return SHADOW_LUT[c];
-    if (d > 0.14 && bayer(x, y) < (d - 0.14) * 1.6) return LIGHT_LUT[c];
+    if (d < -0.2 && bayer(x, y) < (-d - 0.2) * 2) return SHADOW_LUT[c];
+    if (d > 0.2 && bayer(x, y) < (d - 0.2) * 1.6) return LIGHT_LUT[c];
     return c;
   }
 

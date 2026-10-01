@@ -264,6 +264,15 @@ def main():
             Image.fromarray(px).save(os.path.join(TROOPS_OUT, f'{name}-{size}.png'))
     for name, (x0, y0, x1, y1) in GROUND.items():
         rgb = np.asarray(Image.open(os.path.join(SHEETS, name + '.png')).convert('RGB')).astype(float)[y0:y1, x0:x1]
+        # HoMM2's ground is bright and clean: lift the grass and the rest out of the murk the sheets came in.
+        lift = {'grass': (1.45, 1.35), 'water': (1.25, 1.2), 'heath': (1.15, 1.1), 'dirt': (1.2, 1.15)}.get(name, (1.1, 1.05))
+        hsv = np.asarray(Image.fromarray(rgb.astype('uint8')).convert('HSV')).astype(float)
+        hsv[..., 2] = np.minimum(255, hsv[..., 2] * lift[0])
+        hsv[..., 1] = np.minimum(255, hsv[..., 1] * lift[1])
+        if name == 'grass':
+            # Calm the speckle: pull each pixel halfway to its neighbourhood, so it reads as lawn, not noise.
+            v = hsv[..., 2]; hsv[..., 2] = v * 0.55 + nd.uniform_filter(v, 3, mode='wrap') * 0.45
+        rgb = np.asarray(Image.fromarray(hsv.astype('uint8'), 'HSV').convert('RGB')).astype(float)
         px = np.dstack([snap(rgb), np.full(rgb.shape[:2], 255)]).astype('uint8')
         Image.fromarray(px).save(os.path.join(OUT, 'ground-' + name + '.png'))
     pieces = ',\n'.join(f'  {n}: {f}' for n, f in feet.items())
