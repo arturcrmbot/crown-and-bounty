@@ -536,6 +536,24 @@
   border-width: 0 3px 3px 0;
   transform: rotate(40deg);
 }
+/* The tally of things found, under what's been heard: each kind, a dotted line, and how many of how many. */
+.kc-card .heard h4.found {
+  margin-top: 14px;
+}
+.kc-card .heard ul.found li {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 0 4px;
+  padding-left: 0;
+}
+.kc-card .heard ul.found li::before {
+  display: none;
+}
+.kc-card .heard ul.found i {
+  flex: 1;
+  border-bottom: 1px dotted #a88652;
+}
 .kc-card .heard .none {
   font-style: italic;
   color: #5a3e14;

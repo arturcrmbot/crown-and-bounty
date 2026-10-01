@@ -439,25 +439,30 @@ export function bridge(length: number): Bitmap {
   return shaped;
 }
 
-/** A treasure chest, about two-thirds of a tile across: an arched lid, iron bands and a gold lock. */
-export function chest(): Bitmap {
+/**
+ * A treasure chest, about two-thirds of a tile across: an arched lid, iron bands and a gold lock.
+ * `open`, its lid stands up behind the box, and it is empty.
+ */
+export function chest(open = false): Bitmap {
   const sprite = new Bitmap(26, 22);
   const [x0, x1, top, lidEdge, bottom] = [3, 22, 4, 11, 19];
   for (let y = top; y < bottom; y++) {
     for (let x = x0; x < x1; x++) {
       const lid = y < lidEdge;
-      // The lid bulges: its corners are cut round.
-      if (lid && y < top + 2 && (x < x0 + 2 - (y - top) || x >= x1 - 2 + (y - top))) continue;
+      // The lid bulges: its corners are cut round. Open, it stands up behind the box, thinner.
+      if (lid && open && y < lidEdge - 4) continue;
+      if (lid && !open && y < top + 2 && (x < x0 + 2 - (y - top) || x >= x1 - 2 + (y - top))) continue;
       const band = x === x0 + 4 || x === x1 - 5;
       let color = flat(WOOD4, (lid ? 0.82 : 0.56) - (x - x0) * 0.018 - (lid ? (y - top) * 0.02 : 0), x, y);
       if (band) color = lid ? STONE[5] : STONE[3];
-      if (y === lidEdge) color = GOLD[4];
+      if (y === lidEdge) color = open ? WOOD[0] : GOLD[4];
+      if (open && y === lidEdge + 1 && x > x0 && x < x1 - 1) color = WOOD[1];
       if (y === bottom - 1) color = WOOD[1];
       sprite.set(x, y, color);
     }
   }
   const mid = Math.floor((x0 + x1) / 2);
-  for (let y = lidEdge - 1; y < lidEdge + 3; y++) for (let x = mid - 1; x <= mid + 1; x++) sprite.set(x, y, y === lidEdge + 1 && x === mid ? INK : GOLD[x < mid ? 6 : 5]);
+  if (!open) for (let y = lidEdge - 1; y < lidEdge + 3; y++) for (let x = mid - 1; x <= mid + 1; x++) sprite.set(x, y, y === lidEdge + 1 && x === mid ? INK : GOLD[x < mid ? 6 : 5]);
   const shaped = outline(sprite, INK);
   shadowOval(shaped, 15, 19.5, 11, 2.4);
   return shaped;

@@ -164,6 +164,12 @@ const EVERYDAY = {
   shimmer: effect('firm', (ctx, dest, t) => [1568, 1976, 2349, 2794, 3136].forEach((f, i) => tone(ctx, dest, t + i * 0.035, f, 0.22, 0.16)), 1.5),
   // Movement: a few quick hoofbeats, picking up speed.
   gallop: effect('soft', (ctx, dest, t) => [0, 0.08, 0.15, 0.21, 0.26, 0.3].forEach((d, i) => burst(ctx, dest, t + d, 0.05, 'lowpass', 650 + i * 40, 0.6)), 2.8),
+  // A chest's lid creaking up on its old hinges, and falling back against the box.
+  creak: effect('soft', (ctx, dest, t) => {
+    tone(ctx, dest, t, 230, 0.34, 0.2, 'sawtooth', 0.55);
+    tone(ctx, dest, t + 0.05, 345, 0.22, 0.08, 'sawtooth', 0.7);
+    burst(ctx, dest, t + 0.34, 0.06, 'lowpass', 480, 0.7);
+  }, 1.8),
   // A coin dropping into the purse on the bar.
   clink: effect('soft', (ctx, dest, t) => {
     tone(ctx, dest, t, 2637, 0.07, 0.25, 'triangle');

@@ -534,3 +534,14 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   goes into the journal a page turns and the book on the bar lights up. Four new sounds were measured onto their marks
   with `npm run listen`: a harp and a bell for gear, a glassy run for mana, hoofbeats for movement, and a clink for each
   coin. It is drawing and sound only, so the rules, the balance and the saves are as they were.
+- **Chests with a surprise inside (1 Oct, #192):** the second slice. Eight more chests stand in Aldmoor, one or two
+  a land, and they all look the same, as King's Bounty's do. Four hold gold (670 in all), which you keep or hand out
+  for leadership. One holds a scroll of Slow, or for a hero who knows it, the notes in its margins. One holds a map
+  of the King's chase, and two hold a piece of gear, each guarded in plain sight: 45 wolves lie round a gilded chest
+  on the heath with the Breastplate of the Crown in it, and 40 boars root round one in the chase with a wizard's
+  button. Each guard wins on day one but costs a fifth to a third of the army, so it's worth coming back to later. An
+  opened chest stays on the map, open and empty, with a creak, and the journal keeps a tally of the chests opened.
+  The careful player still wins every run (`npm run sim -- 10`), with every tier inside its targets
+  (`npm run difficulty`). He spends a few more days and a level or two before Grimsby, opening chests and fighting
+  their guards, except the Ranger, whom a chest by the start leads to the chase to tame its boars and bears on day
+  three, so he takes the bridge on day five or six.

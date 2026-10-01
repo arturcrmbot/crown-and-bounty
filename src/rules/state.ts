@@ -237,6 +237,8 @@ export type Location = {
   look?: PlaceLook;
   /** Cards written as content: an event's whole story, or extra pages for any place. */
   pages?: Page[];
+  /** The band that guards it (a chest the wolves lie round): until that band is gone, riding up to it brings the band to its feet. */
+  guard?: string;
 };
 
 /**
@@ -379,6 +381,8 @@ export type BattleResultCard = { player: Army; enemy: Army; manaSpent: number; m
 
 /** Something heard on the road, as the journal lists it: the words as they were said, who said them, and whether it has paid off. */
 export type Heard = { who: string; words: string; done: boolean };
+/** A tally in the journal of one kind of thing to find in the province: how many he has, of how many (#192). */
+export type Found = { what: string; got: number; of: number };
 
 /** A link off the game, opened in a new tab: following the game's maker, say. */
 export type Link = { label: string; href: string; detail?: string };
@@ -410,7 +414,7 @@ export type Card = {
   inset?: { portrait: PortraitId; line: string };
   tiles?: boolean;
   battleResult?: BattleResultCard;
-  journal?: { heard: Heard[] };
+  journal?: { heard: Heard[]; found?: Found[] };
   verdict?: Verdict;
 };
 
@@ -506,5 +510,5 @@ export const locationById = (state: GameState, id: string) => {
   return found;
 };
 
-/** Objects that vanish from the map once their place is done. */
-export const VANISHES = new Set<LocationKind>(['chest', 'gold', 'patrol']);
+/** Objects that vanish from the map once their place is done. A chest stays, open and empty (#192). */
+export const VANISHES = new Set<LocationKind>(['gold', 'patrol']);
