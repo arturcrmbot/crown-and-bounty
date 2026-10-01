@@ -1,12 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import json from '../../public/assets/music/band.json';
-import binary from '../../public/assets/music/band.bin?inline';
+import flac from '../../public/assets/music/band.flac?inline';
 import script from '../../scripts/soundfont.py?raw';
-import { decodeAdpcm, KIT, MELODIC, RANGES, zoneFor, type BandData } from './band';
+import { KIT, MELODIC, RANGES, zoneFor, type BandData } from './band';
 import { TUNES } from './score';
 
 const band = json as unknown as BandData;
-const pack = Uint8Array.from(atob(binary.split(',')[1]), (c) => c.charCodeAt(0));
+const pack = Uint8Array.from(atob(flac.split(',')[1]), (c) => c.charCodeAt(0));
+
+/** A FLAC file's own account of itself (its STREAMINFO): rate, channels, bits a sample, and how many samples. */
+function streamInfo(bytes: Uint8Array) {
+  const at = 8 + 10;
+  const bits = (from: number, count: number) => {
+    let v = 0;
+    for (let i = 0; i < count; i++) v = v * 2 + ((bytes[at + ((from + i) >> 3)] >> (7 - ((from + i) & 7))) & 1);
+    return v;
+  };
+  return { magic: String.fromCharCode(...bytes.subarray(0, 4)), rate: bits(0, 20), channels: bits(20, 3) + 1, depth: bits(23, 5) + 1, samples: bits(28, 36) };
+}
 
 describe('the band', () => {
   it('has every instrument the score plays, every key of each, and every drum', () => {
@@ -31,17 +42,19 @@ describe('the band', () => {
     for (const [instrument, [low, high]] of Object.entries(RANGES)) expect(script, instrument).toContain(`'${instrument}': (${low}, ${high})`);
   });
 
-  it('decodes every sample, and every loop lies inside its sample', () => {
+  it('keeps its samples one after another in a lossless pack, each loop inside its sample', () => {
+    const info = streamInfo(pack);
+    expect(info).toMatchObject({ magic: 'fLaC', rate: band.rate, channels: 1, depth: 16 });
+    let at = 0;
     for (const s of band.samples) {
-      const data = decodeAdpcm(pack, s);
-      expect(data.length).toBe(s.length);
-      expect(data.every((v) => Number.isFinite(v) && Math.abs(v) <= 1)).toBe(true);
+      expect(s.offset).toBe(at);
       expect(s.loopStart >= 0 && s.loopStart <= s.loopEnd && s.loopEnd <= s.length).toBe(true);
-      expect(s.offset + Math.ceil(s.length / 2)).toBeLessThanOrEqual(pack.length);
+      at += s.length;
     }
+    expect(info.samples).toBe(at);
   });
 
   it('stays light enough for a phone to fetch', () => {
-    expect(pack.length).toBeLessThan(1_000_000);
+    expect(pack.length).toBeLessThan(2_000_000);
   });
 });
