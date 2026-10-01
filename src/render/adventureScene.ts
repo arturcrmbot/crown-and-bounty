@@ -19,7 +19,8 @@ import {
   stoneBridge, washingCottage, watchtower, well, willow, windmill, xMark,
 } from './sprites';
 import { TerrainPainter } from './terrain';
-import { mapArtReady, paintedFigure, piece, TREE_KINDS } from './mapArt';
+import { dress } from './dressing';
+import { mapArtReady, paintedFigure, piece } from './mapArt';
 import type { PieceName } from './mapPieces';
 
 /**
@@ -64,8 +65,8 @@ const PAINTED_KINDS: Partial<Record<string, PieceName>> = {
   mill: 'watermill',
   signpost: 'signpost',
   event: 'shrine',
-  chest: 'chest',
-  gold: 'gold',
+  chest: 'chestShut',
+  gold: 'goldHeap',
   hideout: 'stockade',
 };
 
@@ -376,19 +377,10 @@ function meadow(map: MapModel, scenery: Placed[]) {
  * the drawn map's little ones; the painted trees are bigger, so one in four of those stands. Woods of
  * pines are dark pines and blue firs; the rest broadleaves, a few of them in autumn colours.
  */
-function paintedScenery(map: MapModel, scenery: Placed[], landmarks: Placed[], partOf: (id: string, o: Placed) => void) {
+function paintedScenery(map: MapModel, locations: readonly Location[], scenery: Placed[], landmarks: Placed[], partOf: (id: string, o: Placed) => void) {
   const { province } = map;
-  const tree = (name: PieceName, at: Point) => {
-    const p = piece(name)!;
-    scenery.push(place(p.sprite, at, p.foot));
-  };
   const pick = <T,>(list: readonly T[], v: number) => list[Math.floor(v * list.length) % list.length];
-  for (const t of map.trees) {
-    if (hash(Math.round(t.x), Math.round(t.y), 411) > 0.27) continue;
-    const kind = t.kind === 'pine' ? TREE_KINDS.pine : TREE_KINDS.oak;
-    tree(pick(kind, t.variant), [t.x, t.y]);
-  }
-  province.trees.forEach(([x, y, isPine], i) => tree(pick(isPine ? TREE_KINDS.pine : TREE_KINDS.oak, hash(i, 1, 412)), [x, y]));
+  dress(map, locations, scenery);
   province.rocks.forEach(([x, y, size], i) => {
     const p = piece(size >= 8 ? 'boulder2' : pick(['boulder1', 'boulder3'] as const, hash(i, 2, 413)))!;
     scenery.push(place(p.sprite, [x, y], p.foot));
@@ -441,7 +433,7 @@ export function buildAdventureScene(map: MapModel, state: GameState): AdventureS
   const partOf = (id: string, o: Placed) => parts.set(id, [...(parts.get(id) ?? []), o]);
 
   painted = province.id === 'aldmoor' && mapArtReady();
-  if (painted) paintedScenery(map, scenery, landmarks, partOf);
+  if (painted) paintedScenery(map, state.locations, scenery, landmarks, partOf);
   else {
     const pines = Array.from({ length: 18 }, (_, i) => pine(500 + i, 13 + (i % 6) * 2));
     const oaks = Array.from({ length: 12 }, (_, i) => oak(700 + i, 12 + (i % 4) * 2));

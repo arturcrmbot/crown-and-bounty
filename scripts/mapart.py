@@ -90,20 +90,66 @@ PIECES = {
     'gold': ('places', (205, 162, 255, 200), 32),
     'shrine': ('places', (212, 207, 248, 255), 30),
 }
-# Trees: the tree sheet's rows, dark pines and blue firs, then broadleaves and autumn ones.
-TREE_BOXES = [(79, 14, 111, 73), (146, 20, 177, 73), (46, 25, 74, 73), (181, 27, 211, 73), (216, 30, 242, 73), (14, 31, 39, 73), (79, 81, 111, 140), (146, 86, 177, 140), (46, 90, 76, 140), (181, 93, 211, 140), (13, 95, 42, 140), (215, 96, 243, 140), (49, 149, 74, 183), (83, 149, 109, 183), (117, 149, 141, 183), (149, 149, 176, 183), (183, 149, 210, 183), (217, 149, 243, 182), (15, 150, 39, 183), (183, 203, 209, 242), (216, 203, 243, 242), (48, 204, 74, 242), (81, 204, 108, 242), (149, 204, 175, 242), (13, 207, 40, 242)]
-TREE_SCALE = 0.62
+# The second batch (1 Oct, after Artur put the map beside HoMM2's): what makes each place a little scene.
+# Farm things, waterside beds and reeds, rolling hills and outcrops, treasure, and the battle's own obstacles.
+_more = {
+    'farm': ['logPile', 'wagon', 'fence', 'haystack', 'barrels', 'crates', 'scarecrow', 'wellHouse', 'gazebo', 'fountain', None, 'garden'],
+    'shore': ['bedPurple', 'bedPurple2', 'bedPink', 'bedPink2', 'bedRed', 'bedRed2', 'bedRed3', 'reeds', 'reeds2', 'reeds3', 'reeds4', 'lily', 'wetRock', 'wetRocks', 'wetRocks2', 'bedYellow', 'bedYellow2', 'driftLog'],
+    'hills': ['hillSmall', 'hill', 'outcrop', 'hillWide', 'hillBig', 'outcrop2', 'outcrop3', 'rock', 'mound', 'mound2', 'peak'],
+    'treasure': ['chestShut', 'chestGold', 'chestOpen', 'goldHeap', 'goldSmall', 'wood', 'ore', 'gems', None, 'crystals', 'lamp', 'cauldron', 'fire', 'bones'],
+    'battle': ['bOak', 'bOak2', 'bOak3', 'bOak4', 'bFir', 'bFir2', 'bRock', 'bRock2', 'bRock3', 'bRock4', 'bRock5', 'bBramble', 'bLog', 'bStump', 'bPond'],
+}
+_boxes = {
+    'farm': [(7, 12, 63, 50), (79, 8, 169, 56), (183, 16, 247, 48), (5, 60, 63, 109), (85, 64, 144, 108), (181, 56, 245, 110), (12, 117, 59, 177), (73, 114, 125, 176), (169, 109, 246, 180), (5, 185, 64, 245), (72, 182, 156, 248), (163, 193, 249, 244)],
+    'shore': [(6, 1, 108, 44), (123, 9, 242, 44), (6, 44, 109, 87), (123, 52, 242, 87), (7, 94, 72, 126), (77, 94, 142, 127), (146, 94, 200, 127), (204, 90, 248, 128), (4, 137, 44, 189), (52, 133, 97, 189), (101, 133, 141, 189), (153, 140, 195, 168), (206, 134, 246, 168), (148, 174, 197, 209), (203, 173, 251, 209), (7, 198, 67, 251), (73, 198, 134, 251), (148, 212, 247, 251)],
+    'hills': [(13, 21, 56, 45), (75, 12, 168, 54), (190, 9, 250, 56), (9, 73, 105, 121), (122, 67, 250, 126), (12, 134, 87, 191), (99, 134, 180, 193), (195, 145, 245, 182), (9, 206, 87, 246), (102, 208, 174, 246), (189, 200, 250, 248)],
+    'treasure': [(72, 14, 119, 56), (135, 9, 185, 57), (197, 11, 243, 57), (7, 75, 63, 119), (77, 81, 118, 113), (132, 74, 185, 116), (194, 75, 247, 115), (8, 137, 62, 178), (48, 168, 60, 178), (72, 133, 124, 178), (131, 137, 187, 175), (199, 129, 244, 183), (73, 190, 120, 244), (130, 197, 190, 241)],
+    'battle': [(3, 1, 61, 60), (67, 1, 125, 59), (132, 2, 187, 59), (198, 2, 249, 59), (13, 64, 50, 126), (78, 65, 115, 126), (133, 72, 183, 120), (198, 74, 246, 119), (6, 136, 54, 184), (70, 136, 118, 184), (138, 137, 182, 183), (198, 139, 247, 183), (10, 200, 117, 247), (131, 202, 186, 247), (194, 209, 254, 240)],
+}
+# Widths on the map (a tile is 32 px), and in battle for the battle's (a hex is 64 px across).
+_widths = {
+    'logPile': 26, 'wagon': 40, 'fence': 30, 'haystack': 24, 'barrels': 18, 'crates': 20, 'scarecrow': 14, 'wellHouse': 22, 'gazebo': 34, 'fountain': 28, 'garden': 36,
+    'bedPurple': 46, 'bedPurple2': 50, 'bedPink': 44, 'bedPink2': 50, 'bedRed': 30, 'bedRed2': 30, 'bedRed3': 26, 'reeds': 18, 'reeds2': 16, 'reeds3': 18, 'reeds4': 16,
+    'lily': 12, 'wetRock': 18, 'wetRocks': 22, 'wetRocks2': 22, 'bedYellow': 26, 'bedYellow2': 26, 'driftLog': 40,
+    'hillSmall': 36, 'hill': 70, 'outcrop': 44, 'hillWide': 76, 'hillBig': 100, 'outcrop2': 52, 'outcrop3': 54, 'rock': 24, 'mound': 50, 'mound2': 46, 'peak': 50,
+    'chestShut': 24, 'chestGold': 26, 'chestOpen': 24, 'goldHeap': 28, 'goldSmall': 20, 'wood': 28, 'ore': 26, 'gems': 26, 'crystals': 24, 'lamp': 20, 'cauldron': 24, 'fire': 24, 'bones': 30,
+    'bOak': 74, 'bOak2': 74, 'bOak3': 70, 'bOak4': 66, 'bFir': 42, 'bFir2': 42, 'bRock': 58, 'bRock2': 56, 'bRock3': 56, 'bRock4': 56, 'bRock5': 50, 'bBramble': 56, 'bLog': 110, 'bStump': 52, 'bPond': 66,
+}
+for _sheet, _names in _more.items():
+    for _name, _box in zip(_names, _boxes[_sheet]):
+        if _name:
+            PIECES[_name] = (_sheet, _box, _widths[_name])
+# The bright trees: twenty round broadleaves (orange, gold, green, teal, red), and the conifers sheet's
+# blue firs, dark pines, willows, birches and dead trees. Each is cut to a height on the map, not a width:
+# HoMM2's trees stand a tile and a bit tall. Their kind is worked out from their colour (see `grove_kind`).
+GROVES = [(74, 4, 107, 63), (158, 15, 188, 70), (45, 38, 78, 97), (106, 32, 138, 90), (14, 69, 47, 129), (77, 68, 110, 127), (138, 64, 171, 122), (186, 47, 217, 105), (49, 103, 82, 162), (111, 98, 145, 156), (164, 106, 195, 164), (212, 93, 245, 152), (29, 142, 59, 197), (84, 136, 117, 196), (137, 148, 170, 207), (188, 147, 221, 206), (59, 177, 92, 236), (111, 188, 144, 247), (162, 186, 196, 246)]
+CONIFERS = [((5, 2, 37, 60), 'fir'), ((48, 2, 80, 60), 'fir'), ((90, 1, 123, 60), 'fir'), ((133, 2, 165, 60), 'fir'), ((176, 4, 208, 60), 'fir'), ((219, 4, 250, 59), 'fir'),
+            ((4, 68, 39, 123), 'pine'), ((47, 67, 81, 123), 'pine'), ((89, 68, 124, 123), 'pine'), ((132, 68, 167, 123), 'pine'), ((175, 68, 209, 125), 'pine'), ((220, 67, 250, 123), 'pine'),
+            ((2, 132, 47, 184), 'willow'), ((54, 133, 96, 183), 'willow'), ((105, 131, 150, 185), 'willow'), ((175, 129, 206, 188), 'birch'), ((215, 129, 248, 189), 'birch'),
+            ((8, 193, 39, 252), 'birch'), ((54, 192, 86, 252), 'birch'), ((104, 192, 137, 252), 'birch'), ((168, 194, 203, 254), 'dead'), ((214, 195, 250, 254), 'dead')]
+TREE_HEIGHT = {'orange': 40, 'gold': 40, 'green': 42, 'teal': 40, 'red': 40, 'fir': 44, 'pine': 44, 'willow': 34, 'birch': 38, 'dead': 36}
+
+
+def grove_kind(px):
+    """A broadleaf's kind, from the mean hue of its crown."""
+    rgb = px[..., :3][px[..., 3] == 255].astype(float)
+    hsv = np.asarray(Image.fromarray(rgb[None].astype('uint8')).convert('HSV'))[0].astype(float)
+    crown = hsv[hsv[:, 1] > 80]
+    h = np.median(crown[:, 0]) * 360 / 255
+    return 'red' if h < 14 or h > 330 else 'orange' if h < 30 else 'gold' if h < 60 else 'green' if h < 150 else 'teal'
+
+
 # The troops and Aldric (#178): each one's box on its sheet, and how tall he stands in battle, from
 # his feet to the top of his head (a person about 65 px; on the map three fifths of that, Aldric two thirds).
 FIGURES = {
-    'peasants': ('troops-a', (9, 18, 68, 119), 66), 'archers': ('troops-a', (80, 8, 155, 119), 64), 'knights': ('troops-a', (153, 2, 252, 180), 105),
-    'swordsmen': ('troops-a', (9, 133, 71, 252), 68), 'crossbowmen': ('troops-a', (86, 145, 158, 252), 68), 'wolves': ('troops-a', (161, 187, 250, 253), 44),
-    'baron': ('troops-b', (7, 12, 83, 120), 82), 'goblins': ('troops-b', (94, 37, 169, 120), 48), 'trolls': ('troops-b', (166, 12, 245, 119), 86),
-    'witch': ('troops-b', (23, 142, 82, 246), 70), 'bramble': ('troops-b', (94, 129, 167, 246), 82), 'poachers': ('troops-b', (177, 145, 249, 246), 64),
-    'bandits': ('troops-c', (24, 9, 74, 83), 64), 'boars': ('troops-c', (174, 22, 252, 83), 42), 'bears': ('troops-c', (5, 102, 98, 171), 60),
-    'huntsmen': ('troops-c', (110, 171, 156, 245), 66), 'heroKnight': ('troops-c', (173, 94, 251, 244), 96),
-    'heroWizard': ('troops-d', (15, 19, 78, 123), 72), 'heroRanger': ('troops-d', (98, 17, 170, 123), 72), 'heroCourtier': ('troops-d', (182, 11, 240, 123), 72),
-    'rook': ('troops-d', (180, 140, 250, 250), 68),
+    'peasants': ('units-a', (19, 19, 78, 124), 66), 'archers': ('units-a', (99, 20, 157, 125), 64), 'knights': ('units-a', (172, 0, 256, 127), 105),
+    'swordsmen': ('units-a', (10, 128, 79, 252), 68), 'crossbowmen': ('units-a', (95, 140, 171, 252), 68), 'wolves': ('units-a', (167, 171, 249, 252), 44),
+    'baron': ('units-b', (10, 9, 83, 124), 82), 'goblins': ('units-b', (96, 42, 174, 124), 48), 'trolls': ('units-b', (178, 7, 244, 124), 86),
+    'witch': ('units-b', (22, 145, 84, 249), 70), 'bramble': ('units-b', (97, 131, 167, 249), 82), 'poachers': ('units-b', (177, 147, 250, 250), 64),
+    'bandits': ('units-c', (8, 13, 83, 124), 64), 'boars': ('units-c', (163, 45, 253, 119), 42), 'bears': ('units-c', (0, 158, 98, 250), 60),
+    'huntsmen': ('units-c', (96, 130, 170, 252), 66), 'heroKnight': ('units-c', (170, 118, 256, 255), 96),
+    'heroWizard': ('units-d', (13, 8, 82, 124), 72), 'heroRanger': ('units-d', (98, 14, 170, 125), 72), 'heroCourtier': ('units-d', (178, 6, 243, 125), 72),
+    'rook': ('units-d', (170, 138, 254, 252), 68),
 }
 FIGURES['hero'] = FIGURES['heroKnight']
 TROOPS_OUT = os.path.join(ROOT, 'public/assets/troops')
@@ -161,6 +207,8 @@ def layers(sheet):
     if sheet == 'heath':
         # A ground sheet: nothing is background, nothing is shadow; its pieces are cut by colour.
         return a, np.zeros(a.shape[:2], bool), np.zeros(a.shape[:2], bool)
+    if not (rim & grey).any():
+        return a, back, np.zeros(a.shape[:2], bool)
     tone = np.array(Counter(map(tuple, a[rim & grey])).most_common(1)[0][0])
     flat = np.abs(a - tone).sum(2) <= 6
     lab, _ = nd.label(flat)
@@ -172,13 +220,29 @@ def layers(sheet):
 CACHE = {}
 
 
-def cut(sheet, box, width, name='', height=None):
+def cut(sheet, box, width, name='', height=None, alone=False, cool=False):
     """RGBA of one piece at `width` pixels across: painted pixels opaque, shadow at alpha 128."""
     if sheet not in CACHE:
         CACHE[sheet] = layers(sheet)
     a, back, shadow = CACHE[sheet]
     x0, y0, x1, y1 = box
     rgb, solid, sh = a[y0:y1, x0:x1].copy(), ~back[y0:y1, x0:x1] & ~shadow[y0:y1, x0:x1], shadow[y0:y1, x0:x1].copy()
+    if cool:
+        # Blue firs and teal trees: the palette has no teal, and they snapped to a royal blue. Turned to a
+        # blue-green that snaps to the pines' own ramp, as HoMM2's blue-green firs are.
+        hsv = np.asarray(Image.fromarray(rgb.astype('uint8')).convert('HSV')).astype(float)
+        blue = (hsv[..., 0] > 150 * 255 / 360) & (hsv[..., 0] < 260 * 255 / 360) & (hsv[..., 1] > 40)
+        hsv[..., 0] = np.where(blue, 172 * 255 / 360, hsv[..., 0])
+        hsv[..., 1] = np.where(blue, hsv[..., 1] * 0.65, hsv[..., 1])
+        rgb = np.asarray(Image.fromarray(hsv.astype('uint8'), 'HSV').convert('RGB')).astype(int)
+    if sheet == 'hills':
+        # The hills came out a neon green: calmed to the meadow's own.
+        hsv = np.asarray(Image.fromarray(rgb.astype('uint8')).convert('HSV')).astype(float)
+        green = (hsv[..., 0] > 40) & (hsv[..., 0] < 110) & (hsv[..., 1] > 90)
+        hsv[..., 1] = np.where(green, hsv[..., 1] * 0.72, hsv[..., 1])
+        hsv[..., 2] = np.where(green, hsv[..., 2] * 0.86, hsv[..., 2])
+        hsv[..., 0] = np.where(green, hsv[..., 0] + 4, hsv[..., 0])
+        rgb = np.asarray(Image.fromarray(hsv.astype('uint8'), 'HSV').convert('RGB')).astype(int)
     if name == 'signpost':
         # The diggings' spoil heaps touch the post's foot: keep the post's columns only below the arms.
         solid[30:, :12] = False
@@ -199,6 +263,14 @@ def cut(sheet, box, width, name='', height=None):
         lab, _ = nd.label(solid & ~tent)
         sizes = np.bincount(lab.ravel()); sizes[0] = 0
         solid = lab == sizes.argmax()
+    if alone:
+        # One tree among many: only its own biggest painted part, and the shadow that touches it.
+        lab, _ = nd.label(solid, structure=np.ones((3, 3)))
+        sizes = np.bincount(lab.ravel()); sizes[0] = 0
+        solid = lab == sizes.argmax()
+        lab, _ = nd.label(sh, structure=np.ones((3, 3)))
+        touching = np.unique(lab[nd.binary_dilation(solid, iterations=2) & sh])
+        sh = np.isin(lab, touching[touching > 0])
     # Keep only what's joined to the piece's biggest part, so a neighbour's edge doesn't come along.
     lab, _ = nd.label(solid | sh, structure=np.ones((3, 3)))
     sizes = np.bincount(lab.ravel()); sizes[0] = 0
@@ -289,10 +361,6 @@ def pick_colours(n=8):
         x0, y0, x1, y1 = box
         m = ~back[y0:y1, x0:x1] & ~shadow[y0:y1, x0:x1]
         pixels.append(a[y0:y1, x0:x1][m])
-    if 'trees' not in CACHE:
-        CACHE['trees'] = layers('trees')
-    a, back, shadow = CACHE['trees']
-    pixels.append(a[~back & ~shadow])
     os.makedirs(TROOPS_OUT, exist_ok=True)
     for name, (sheet, box, tall) in FIGURES.items():
         for size, k in (('battle', 1), ('map', 2 / 3 if name.startswith('hero') else 0.6)):
@@ -340,13 +408,16 @@ def main():
         px = cut(sheet, box, width, name)
         Image.fromarray(px).save(os.path.join(OUT, name + '.png'))
         feet[name] = foot(px)
-    trees = []
-    for i, box in enumerate(TREE_BOXES):
-        px = cut('trees', box, max(8, round((box[2] - box[0]) * TREE_SCALE)))
-        name = f'tree{i}'
+    kinds = {}
+    bright = [('groves', box, None) for box in GROVES] + [('conifers', box, kind) for box, kind in CONIFERS]
+    for i, (sheet, box, kind) in enumerate(bright):
+        if kind is None:
+            kind = grove_kind(cut(sheet, box, box[2] - box[0], alone=True))
+        px = cut(sheet, box, 0, height=TREE_HEIGHT[kind] + (i % 3 - 1) * 3, alone=True, cool=kind in ('fir', 'teal'))
+        name = f'{kind}{len(kinds.get(kind, []))}'
         Image.fromarray(px).save(os.path.join(OUT, name + '.png'))
         feet[name] = foot(px) + 2
-        trees.append(name)
+        kinds.setdefault(kind, []).append(name)
     os.makedirs(TROOPS_OUT, exist_ok=True)
     for name, (sheet, box, tall) in FIGURES.items():
         for size, k in (('battle', 1), ('map', 2 / 3 if name.startswith('hero') else 0.6)):
@@ -376,8 +447,8 @@ def main():
         f.write('// Written by `npm run mapart` (scripts/mapart.py): the map\'s pieces, and how far below its top each one stands.\n')
         f.write(f'export const PIECE_FEET = {{\n{pieces},\n}} as const;\n')
         f.write(f"export type PieceName = keyof typeof PIECE_FEET;\n")
-        f.write(f"/** The trees: dark pines and blue firs first (0 to 11), then broadleaves (12 to 19) and autumn ones (20 to 24). */\n")
-        f.write(f"export const TREES = {json.dumps(trees)} as const;\n")
+        f.write("/** The bright trees (1 Oct), by kind: woods are grouped by kind, as HoMM2's are. */\n")
+        f.write(f"export const GROVE_TREES = {json.dumps(kinds)} as const;\n")
         f.write(f"export const GROUNDS = {json.dumps(list(GROUND))} as const;\n")
         f.write(f"/** The troops and Aldric's figures, painted: in public/assets/troops/, each at battle and map size. */\nexport const FIGURES = {json.dumps(list(FIGURES))} as const;\n")
         f.write("export type GroundName = (typeof GROUNDS)[number];\n")

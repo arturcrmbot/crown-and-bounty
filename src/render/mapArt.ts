@@ -1,7 +1,7 @@
 import { Bitmap, SHADOW } from './bitmap';
 import { COLORS, CYCLING, SILHOUETTE } from './palette';
 import { decodePng, type Rgba } from './png';
-import { FIGURES, GROUNDS, PIECE_FEET, TREES, type GroundName, type PieceName } from './mapPieces';
+import { FIGURES, GROUNDS, PIECE_FEET, type GroundName, type PieceName } from './mapPieces';
 
 /**
  * Aldmoor's painted map (#178): its places, trees, crags and ground, drawn in the spirit of HoMM2's
@@ -98,16 +98,6 @@ export const ground = (name: GroundName): Bitmap | null => grounds.get(name) ?? 
 
 /** Whether the whole painted map is in: every piece and every ground. */
 export const mapArtReady = () => pieces.size === Object.keys(PIECE_FEET).length && grounds.size === GROUNDS.length;
-
-const [darkPines, firs, greens, autumn] = [[0, 2, 5, 6, 8, 10], [1, 3, 4, 7, 9, 11], [12, 13, 14, 15, 16, 17, 18, 24], [19, 20, 21, 22, 23]].map((l) => l.map((i) => TREES[i]));
-/**
- * The trees, by kind, as often as each should come up: pinewoods are dark pines with a blue fir here
- * and there; broadleaf woods are green, with a tree turning gold or red now and then.
- */
-export const TREE_KINDS = {
-  pine: [...Array(14).fill(darkPines).flat(), ...firs],
-  oak: [...greens, ...greens, ...greens, ...autumn],
-} as const;
 
 /** A troop's (or Aldric's) painted figure (#178), facing right, at battle or map size, if it's loaded. */
 export const paintedFigure = (id: string, size: 'battle' | 'map'): Bitmap | null => figures.get(`${id}-${size}`) ?? null;
