@@ -233,8 +233,12 @@ async function go(id, action) {
   }
   if ((await title()) === 'Unexplored') action = 'Ride there';
   // Ridden up to them already (looking for them, say): their card offers the fight itself.
-  const facing = await call(() => [...document.querySelectorAll('.kc-card-wrap:not([hidden]) button')].some((b) => b.textContent.startsWith('Let the sergeants')));
-  if (action === 'Approach' && facing) return title();
+  if (action === 'Approach') {
+    const offers = await page
+      .waitForFunction(() => [...document.querySelectorAll('.kc-card-wrap:not([hidden]) button')].map((b) => b.textContent).find((t) => t.startsWith('Approach') || t.startsWith('Let the sergeants')), null, { timeout: 3000, polling: 50 })
+      .then((h) => h.jsonValue(), () => '');
+    if (offers.startsWith('Let the sergeants')) return title();
+  }
   if (!(await press(action))) throw new Error(`${id}: no "${action}" on "${await title()}": ${await lines()}`);
   for (let nights = 0; ; nights++) {
     if (nights > 12) throw new Error(`${id}: still on the road after ${nights} nights (day ${(await state()).day})`);
@@ -411,6 +415,12 @@ try {
   await go('highwaymen', 'Approach');
   await look('fight-card');
   await press('Fight');
+  // A tap that comes to nothing (it happens on CI's slower machine) gets another, as a player's would.
+  const fighting = () => page.waitForFunction(() => window.__kc.screen() === 'battle', null, { timeout: 3000 }).then(() => true, () => false);
+  if (!(await fighting()) && !(await title())) {
+    await go('highwaymen', 'Approach');
+    await press('Fight');
+  }
   await page.waitForFunction(() => window.__kc.screen() === 'battle', null, { timeout: 10_000 });
   await wait(600);
   const battleRails = await call(() => [...document.querySelectorAll('.kc-rail:not([hidden]) button')].map((b) => b.getAttribute('aria-label')));

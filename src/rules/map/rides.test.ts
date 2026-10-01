@@ -4,9 +4,9 @@ import { FINDS } from '../../content/aldmoorFinds';
 import { MOVEMENT_PER_DAY } from '../state';
 import { buildMap, CELL } from './model';
 import { nearestPassable, reachFrom } from './pathfinding';
-import { measureRides, type Gap } from './rides';
+import { measureRides, worthStopping, type Gap } from './rides';
 
-const rides = measureRides(buildMap(ALDMOOR), ALDMOOR.locations.filter((l) => !l.done));
+const rides = measureRides(buildMap(ALDMOOR), ALDMOOR.locations.filter(worthStopping));
 /** The longest ride between two things through a gap, in days: from the last thing to it, and on to the next. */
 const days = (gap: Gap) => (2 * gap.cost) / MOVEMENT_PER_DAY;
 const lands = Object.keys(LANDS) as Land[];
@@ -28,7 +28,8 @@ describe('Aldmoor\u2019s rides (#124): something worth stopping for is never far
   it('every land has small finds of its own, and none of them stands on another place', () => {
     for (const land of lands) expect(FINDS.filter((f) => landOf(f.at) === land).length, LANDS[land]).toBeGreaterThanOrEqual(2);
     for (const find of FINDS) {
-      for (const other of ALDMOOR.locations) {
+      // The small things lying by the roads aren't places (see the pickups' own test).
+      for (const other of ALDMOOR.locations.filter((l) => l.kind !== 'pickup')) {
         // A guard lies close round what it guards, though never on it.
         const room = find.guard === other.id || other.guard === find.id ? 32 : 90;
         if (other !== find) expect(Math.hypot(other.at[0] - find.at[0], other.at[1] - find.at[1]), `${find.id} and ${other.id}`).toBeGreaterThan(room);

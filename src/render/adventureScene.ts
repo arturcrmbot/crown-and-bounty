@@ -16,7 +16,7 @@ import { heroArtId } from './units';
 import {
   abbey, boat, boulder, camp, campfire,
   butts, CART_GROUND as DRAWN_CART_GROUND, cottage, castle, standingStones, chest, crag, fold, goldPile, grainCart, hayrick, hideout, holes, huntHall, hut, kiln, lodge, mews, mill, mine, mirror, nest, oak, pack, peatHut, pine, pond, signpost, skeps, stiltHut, shrine,
-  stoneBridge, washingCottage, watchtower, well, willow, windmill, xMark,
+  stoneBridge, washingCottage, watchtower, wayside, well, willow, windmill, xMark,
 } from './sprites';
 import { TerrainPainter } from './terrain';
 import { dress } from './dressing';
@@ -52,6 +52,9 @@ const PAINTED_LOOKS: Partial<Record<string, PieceName>> = {
   pond: 'pond',
   kiln: 'kiln',
   nest: 'nest',
+  purse: 'goldSmall',
+  oats: 'haystack',
+  crystals: 'crystals',
   camp: 'tents',
   windmill: 'windmill',
   shrine: 'shrine',
@@ -234,6 +237,11 @@ function drawn(l: Location): { frames: Bitmap[]; foot: number; animated: boolean
       return { frames: [kiln(0.3)], foot: 40, animated: false };
     case 'nest':
       return { frames: animation((t) => nest(t)), foot: 38, animated: true };
+    case 'purse':
+    case 'oats':
+    case 'crystals':
+    case 'letter':
+      return { frames: [wayside(l.look)], foot: 12, animated: true };
     case 'cart': {
       // Pike's grain cart, and one of his lads at its tail in a foe's red ring, fidgeting as they wait.
       const lead = leadTroop(l.enemy!.army);
@@ -289,6 +297,8 @@ function drawn(l: Location): { frames: Bitmap[]; foot: number; animated: boolean
       const turn = [...l.id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % frames.length;
       return { frames: [...frames.slice(turn), ...frames.slice(0, turn)], foot, animated: true };
     }
+    case 'pickup':
+      return { frames: [wayside('purse')], foot: 12, animated: true };
   }
 }
 

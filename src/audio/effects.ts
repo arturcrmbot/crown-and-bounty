@@ -95,6 +95,14 @@ export const babble =
   };
 
 /** The effects of the map, the cards and the hero screen. */
+/** A glockenspiel's note: its ring, the bar's high partial for its strike, and a fifth above, quieter. */
+const chime = (frequency: number, level: number) =>
+  effect('soft', (ctx, dest, t) => {
+    tone(ctx, dest, t, frequency, 0.42, 0.22);
+    tone(ctx, dest, t, frequency * 2.76, 0.12, 0.05);
+    tone(ctx, dest, t + 0.06, frequency * 1.5, 0.3, 0.08);
+  }, level);
+
 const EVERYDAY = {
   click: effect('soft', (ctx, dest, t) => tone(ctx, dest, t, 520, 0.05, 0.12, 'square', 0.7), 3.8),
   // A page of the hero's book turning.
@@ -170,6 +178,13 @@ const EVERYDAY = {
     tone(ctx, dest, t + 0.05, 345, 0.22, 0.08, 'sawtooth', 0.7);
     burst(ctx, dest, t + 0.34, 0.06, 'lowpass', 480, 0.7);
   }, 1.8),
+  // Something picked up by the way (#192): a glockenspiel note, a step higher up the scale for each one the same day.
+  pick0: chime(1046.5, 0.93),
+  pick1: chime(1174.7, 0.9),
+  pick2: chime(1318.5, 0.86),
+  pick3: chime(1568, 0.8),
+  pick4: chime(1760, 0.77),
+  pick5: chime(2093, 0.72),
   // A coin dropping into the purse on the bar.
   clink: effect('soft', (ctx, dest, t) => {
     tone(ctx, dest, t, 2637, 0.07, 0.25, 'triangle');

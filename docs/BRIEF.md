@@ -564,3 +564,13 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   (`npm run difficulty`). He spends a few more days and a level or two before Grimsby, opening chests and fighting
   their guards, except the Ranger, whom a chest by the start leads to the chase to tame its boars and bears on day
   three, so he takes the bridge on day five or six.
+- **Things you pick up as you ride (1 Oct, #192):** the third slice. 34 small things lie by Aldmoor's roads and on
+  the tracks across open land, about a quarter of a day apart, and Aldric takes them as he rides by, without a card or
+  a stop, as Heroes II's piles are taken: eleven purses (250 gold in all), eleven sheaves of oats (20 movement for the
+  day), six clusters of blue crystals by the crags and in Darkwood (5 mana), and six lost letters (25 experience).
+  Each one he picks up the same day chimes a step higher than the last, and what it gave rises off him. A letter's
+  words go in the journal, from young Pike's letter home to the Baron's list for the cart, and the book on the bar
+  lights up, and if he rode to it on purpose he stops and reads it there. The journal counts what he has picked up. They aren't places: finding one gives no experience of its own, the
+  minimap doesn't mark them, and `npm run rides` doesn't count them as stops. The bot picks them up as it rides, and
+  the careful player still wins every run, taking Grimsby on the same days or a little sooner, with every tier inside
+  its targets.

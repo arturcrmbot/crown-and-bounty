@@ -1,3 +1,4 @@
+import type { Location } from '../state';
 import type { Point } from './geometry';
 import { CELL, Terrain, type MapModel } from './model';
 import { nearestPassable, reachFrom, type Cell } from './pathfinding';
@@ -17,6 +18,9 @@ import { nearestPassable, reachFrom, type Cell } from './pathfinding';
 
 /** Anything with a place on the map, for measuring. */
 export type Thing = { id: string; at: Point };
+
+/** What's worth stopping for: anything still to do, but not the small things he picks up as he rides by (#192). */
+export const worthStopping = (l: Location) => !l.done && l.kind !== 'pickup';
 
 /** The ridden spot furthest from the nearest thing, in some stretch of the map. */
 export type Gap = {

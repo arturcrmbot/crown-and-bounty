@@ -128,7 +128,10 @@ export function bountyCard(state: GameState): Card {
 }
 
 /** The kinds of thing the journal keeps a tally of, each counted only where the province has some (#192). */
-const FINDS_TALLIED: { what: string; is: (l: Location) => boolean }[] = [{ what: 'Chests opened', is: (l) => l.kind === 'chest' }];
+const FINDS_TALLIED: { what: string; is: (l: Location) => boolean }[] = [
+  { what: 'Chests opened', is: (l) => l.kind === 'chest' },
+  { what: 'Things picked up by the way', is: (l) => l.kind === 'pickup' },
+];
 
 /** The journal's tally of things found: how many of each kind he has, of all the province has. */
 export const foundOf = (state: GameState): Found[] =>

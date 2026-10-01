@@ -1,5 +1,6 @@
 import type { GameEvent, GameState } from '../game';
 import { heroStats } from '../hero';
+import { pickUp } from '../places/pickup';
 import { revealDisc } from './fog';
 import { seeBands } from './sight';
 import type { Point } from './geometry';
@@ -160,8 +161,10 @@ export function stepAlong(state: GameState, map: MapModel, route: number[]): { s
   const sight = revealDisc(state.explored, state.world, at[0], at[1], stats.sight);
   const movement = state.movement - cost;
   const mana = Math.max(state.hero.mana, Math.min(stats.maxMana, state.hero.mana + manaRidden(stats.manaRate, state.movement, movement)));
-  const next = seeBands({ ...state, movement, hero: { ...state.hero, at, facing, mana }, explored: sight.bits }, at, stats.sight);
+  const seen = seeBands({ ...state, movement, hero: { ...state.hero, at, facing, mana }, explored: sight.bits }, at, stats.sight);
+  // Whatever lies by the way within his reach, he takes as he rides by.
+  const picked = pickUp(seen, at);
   const events: GameEvent[] = [{ type: 'moved', at, facing }];
   if (sight.changed) events.push({ type: 'reveal', at, radius: stats.sight });
-  return { state: next, events };
+  return { state: picked.state, events: [...events, ...picked.events] };
 }

@@ -25,7 +25,7 @@ export const PAYDAY_EVERY = 7;
 export const COMMISSION = 1000;
 export const LAST_DAY = 100;
 
-export type LocationKind = 'castle' | 'tower' | 'mine' | 'village' | 'mill' | 'chest' | 'gold' | 'patrol' | 'hideout' | 'signpost' | 'dig' | 'event' | 'well';
+export type LocationKind = 'castle' | 'tower' | 'mine' | 'village' | 'mill' | 'chest' | 'gold' | 'patrol' | 'hideout' | 'signpost' | 'dig' | 'event' | 'well' | 'pickup';
 
 export type Enemy = {
   /** How the enemy is drawn on the map. */
@@ -239,6 +239,8 @@ export type Location = {
   pages?: Page[];
   /** The band that guards it (a chest the wolves lie round): until that band is gone, riding up to it brings the band to its feet. */
   guard?: string;
+  /** What something lying by the road gives whoever rides by it (a purse, a sheaf of oats): he takes it in passing, with no card (#192). */
+  gives?: Effects;
 };
 
 /**
@@ -250,7 +252,8 @@ export type Location = {
 export type PlaceText = { about?: string[]; done?: string[]; visit?: string[]; later?: { when: Needs; about: string[]; note?: string }[] };
 export type PlaceLook =
   | 'abbey' | 'peathut' | 'windmill' | 'stilthut' | 'shrine' | 'camp' | 'cottage' | 'house' | 'stones' | 'range' | 'hall' | 'lodge' | 'cart' | 'mews'
-  | 'pack' | 'hamper' | 'campfire' | 'fold' | 'boat' | 'skeps' | 'hayrick' | 'pond' | 'kiln' | 'nest';
+  | 'pack' | 'hamper' | 'campfire' | 'fold' | 'boat' | 'skeps' | 'hayrick' | 'pond' | 'kiln' | 'nest'
+  | 'purse' | 'oats' | 'crystals' | 'letter';
 
 /** The campaign so far: which commission this is, how the others went, and how this one began. */
 export type Campaign = {
@@ -428,6 +431,8 @@ export type GameEvent =
   | { type: 'added'; id: string }
   /** A place looks different now: the old King's hunt hall, opened. */
   | { type: 'changed'; id: string }
+  /** Something lying by the road, taken in passing as he rode by (a purse, a sheaf of oats). */
+  | { type: 'picked'; id: string }
   | { type: 'moved'; at: Point; facing: 1 | -1 }
   /** An enemy stack moved in the night, from where it stood along these points. */
   | { type: 'enemyMoved'; id: string; from: Point; path: Point[] }
@@ -511,4 +516,4 @@ export const locationById = (state: GameState, id: string) => {
 };
 
 /** Objects that vanish from the map once their place is done. A chest stays, open and empty (#192). */
-export const VANISHES = new Set<LocationKind>(['gold', 'patrol']);
+export const VANISHES = new Set<LocationKind>(['gold', 'patrol', 'pickup']);

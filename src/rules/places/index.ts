@@ -11,6 +11,7 @@ import { x } from './ending';
 import { enemy, haggled } from './enemy';
 import { event } from './event';
 import type { PlaceKind } from './kind';
+import { pickup } from './pickup';
 import { mill, mine, signpost, tower } from './sights';
 import { chest, pile } from './treasure';
 import { well } from './well';
@@ -29,6 +30,7 @@ export const PLACE_KINDS: Record<LocationKind, PlaceKind> = {
   dig: x,
   event,
   well,
+  pickup,
 };
 
 /** The card for a place before the hero rides there. */
