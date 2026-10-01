@@ -1,6 +1,6 @@
 /**
  * The band: a few General MIDI instruments from GeneralUser GS, S. Christian Collins's free
- * SoundFont, cut down by `scripts/soundfont.py` to `public/assets/music/band.bin` and `band.json`.
+ * SoundFont, cut down by `scripts/soundfont.py` to `public/assets/music/band.flac` and `band.json`.
  * Each note plays its zone's sample tuned to its key, looped while it's held, through the zone's
  * volume envelope, as a 90s sound card played General MIDI. The pack is fetched and decoded once,
  * as sound wakes.
@@ -51,33 +51,10 @@ export type Zone = {
   gain: number;
   drum?: boolean;
 };
-export type Sample = { offset: number; length: number; rate: number; predictor: number; index: number; loopStart: number; loopEnd: number };
-export type BandData = { source: string; samples: Sample[]; instruments: Record<BandInstrument, Zone[]> };
-
-const STEPS = [
-  7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 19, 21, 23, 25, 28, 31, 34, 37, 41, 45, 50, 55, 60, 66, 73, 80, 88, 97, 107, 118, 130, 143, 157, 173, 190, 209, 230, 253, 279, 307, 337, 371, 408,
-  449, 494, 544, 598, 658, 724, 796, 876, 963, 1060, 1166, 1282, 1411, 1552, 1707, 1878, 2066, 2272, 2499, 2749, 3024, 3327, 3660, 4026, 4428, 4871, 5358, 5894, 6484, 7132, 7845, 8630,
-  9493, 10442, 11487, 12635, 13899, 15289, 16818, 18500, 20350, 22385, 24623, 27086, 29794, 32767,
-];
-const INDEX = [-1, -1, -1, -1, 2, 4, 6, 8];
-
-/** Decodes a sample's IMA ADPCM: four bits a sample, two to a byte (low nibble first), each a step from the last value. */
-export function decodeAdpcm(pack: Uint8Array, s: Sample): Float32Array {
-  const out = new Float32Array(s.length);
-  let [value, index] = [s.predictor, s.index];
-  for (let i = 0; i < s.length; i++) {
-    const code = (pack[s.offset + (i >> 1)] >> (4 * (i & 1))) & 15;
-    const step = STEPS[index];
-    let delta = step >> 3;
-    if (code & 4) delta += step;
-    if (code & 2) delta += step >> 1;
-    if (code & 1) delta += step >> 2;
-    value = Math.max(-32768, Math.min(32767, code & 8 ? value - delta : value + delta));
-    index = Math.max(0, Math.min(88, index + INDEX[code & 7]));
-    out[i] = value / 32768;
-  }
-  return out;
-}
+/** A sample in the pack: where it starts and how long it is (in the pack's samples), the rate it plays at, and its loop. */
+export type Sample = { offset: number; length: number; rate: number; loopStart: number; loopEnd: number };
+/** The pack: the rate it's stored at, its samples one after another, and each instrument's zones. */
+export type BandData = { source: string; rate: number; samples: Sample[]; instruments: Record<BandInstrument, Zone[]> };
 
 type Band = { data: BandData; buffers: AudioBuffer[] };
 let band: Band | null = null;
@@ -85,18 +62,26 @@ let loading: Promise<void> | null = null;
 
 export const bandReady = () => band !== null;
 
-/** Fetches and decodes the band's samples, once (later calls wait on the first). */
+/**
+ * Fetches and decodes the band's samples, once (later calls wait on the first). The pack is
+ * lossless FLAC, decoded at its own rate, so every sample and loop comes out exactly as it was cut.
+ */
 export function loadBand(base = import.meta.env.BASE_URL): Promise<void> {
   loading ??= (async () => {
     const [data, pack] = await Promise.all([
       fetch(`${base}assets/music/band.json`).then((r) => r.json() as Promise<BandData>),
-      fetch(`${base}assets/music/band.bin`).then((r) => r.arrayBuffer()),
+      fetch(`${base}assets/music/band.flac`).then((r) => r.arrayBuffer()),
     ]);
-    const bytes = new Uint8Array(pack);
+    const decoded = await new OfflineAudioContext(1, 1, data.rate).decodeAudioData(pack);
+    const all = decoded.getChannelData(0);
+    // Should a browser decode it at another rate after all, the samples still sit in proportion.
+    const scale = decoded.sampleRate / data.rate;
     const buffers = data.samples.map((s) => {
+      const from = Math.round(s.offset * scale);
+      const length = Math.max(1, Math.round(s.length * scale));
       // A whole number of samples a second, which every browser takes; the note's rate makes up the hair of difference.
-      const buffer = new AudioBuffer({ length: Math.max(1, s.length), sampleRate: Math.round(s.rate), numberOfChannels: 1 });
-      buffer.copyToChannel(decodeAdpcm(bytes, s) as Float32Array<ArrayBuffer>, 0);
+      const buffer = new AudioBuffer({ length, sampleRate: Math.round(s.rate * scale), numberOfChannels: 1 });
+      buffer.copyToChannel(all.slice(from, from + length), 0);
       return buffer;
     });
     band = { data, buffers };
@@ -126,11 +111,14 @@ export function playBand(ctx: BaseAudioContext, dest: AudioNode, instrument: Ban
   const source = ctx.createBufferSource();
   source.buffer = buffer;
   const pitch = z.drum ? 0 : (key - z.root) / 12;
-  source.playbackRate.value = 2 ** (pitch + z.tune / 1200) * (s.rate / buffer.sampleRate);
+  // The buffer holds the sample at a rounded rate (and, in a browser that decoded the pack at
+  // another rate, scaled): play it at the rate it was cut at, and its loop where it was.
+  const scale = buffer.length / Math.max(1, s.length);
+  source.playbackRate.value = 2 ** (pitch + z.tune / 1200) * ((s.rate * scale) / buffer.sampleRate);
   if (z.loop && s.loopEnd > s.loopStart + 8) {
     source.loop = true;
-    source.loopStart = s.loopStart / buffer.sampleRate;
-    source.loopEnd = s.loopEnd / buffer.sampleRate;
+    source.loopStart = (s.loopStart * scale) / buffer.sampleRate;
+    source.loopEnd = (s.loopEnd * scale) / buffer.sampleRate;
   }
   const peak = Math.max(0.0001, volume * z.gain);
   const env = ctx.createGain();

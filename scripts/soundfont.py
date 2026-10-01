@@ -1,7 +1,7 @@
 """
 The band's instruments: the few General MIDI instruments the score uses, cut out of GeneralUser GS
 (S. Christian Collins's free SoundFont, pinned below) into one small sample pack the game loads,
-`public/assets/music/band.bin` and `band.json`.
+`public/assets/music/band.flac` and `band.json`.
 
 For each instrument it keeps the zones a note in its range could play (`RANGES` in
 `src/audio/band.ts`, which the score folds every note into): one velocity layer, one layer of a
@@ -10,15 +10,16 @@ than a small band needs. Each zone keeps its sample, root key, tuning, loop and 
 and a gain that brings every instrument to the same loudness at full volume. The samples are
 resampled to 22 kHz at most, as a 90s sound card had them, with each loop resampled as the cycle
 it is so it stays seamless, and a tail that rings longer than `TAIL` seconds is faded out there.
-They are stored as 4-bit IMA ADPCM, the compression 90s Windows games kept their sounds in, which
-the game decodes once as it loads them (`src/audio/band.ts`).
+They are stored one after another in a single FLAC file, which is lossless, so they play exactly as
+cut, and the game decodes it once as it loads (`src/audio/band.ts`). (A 4-bit ADPCM pack was a third
+of the size, but Artur heard its hiss at the start of every note, on 1 Oct.)
 
-Needs Python 3 with numpy (`pip3 install numpy`).
+Needs Python 3 with numpy (`pip3 install numpy`), and ffmpeg.
 
     python3 scripts/soundfont.py              (downloads the SoundFont to /tmp the first time)
     python3 scripts/soundfont.py path/to/GeneralUser-GS.sf2
 """
-import json, math, os, struct, sys, urllib.request
+import json, math, os, struct, subprocess, sys, urllib.request
 from array import array
 
 import numpy as np
@@ -226,32 +227,6 @@ def resample(data, rate, loop, loop_start, loop_end, tail):
     return out, rate * q, 0, n
 
 
-STEPS = [7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 19, 21, 23, 25, 28, 31, 34, 37, 41, 45, 50, 55, 60, 66, 73, 80, 88, 97, 107, 118, 130, 143, 157, 173, 190, 209, 230, 253, 279, 307, 337, 371, 408, 449, 494, 544, 598, 658, 724, 796, 876, 963, 1060, 1166, 1282, 1411, 1552, 1707, 1878, 2066, 2272, 2499, 2749, 3024, 3327, 3660, 4026, 4428, 4871, 5358, 5894, 6484, 7132, 7845, 8630, 9493, 10442, 11487, 12635, 13899, 15289, 16818, 18500, 20350, 22385, 24623, 27086, 29794, 32767]
-INDEX = [-1, -1, -1, -1, 2, 4, 6, 8]
-
-
-def adpcm(samples):
-    """IMA ADPCM: four bits a sample, two to a byte (low nibble first), each the step from the decoder's own guess. Returns the bytes and the starting state."""
-    predictor, index = int(samples[0]) if len(samples) else 0, 0
-    start = (predictor, index)
-    out = bytearray((len(samples) + 1) // 2)
-    for i, value in enumerate(samples):
-        step = STEPS[index]
-        diff = int(value) - predictor
-        code = 8 if diff < 0 else 0
-        diff = abs(diff)
-        delta = step >> 3
-        for bit, part in ((4, step), (2, step >> 1), (1, step >> 2)):
-            if diff >= part:
-                code |= bit
-                diff -= part
-                delta += part
-        predictor = max(-32768, min(32767, predictor - delta if code & 8 else predictor + delta))
-        index = max(0, min(88, index + INDEX[code & 7]))
-        out[i >> 1] |= code << (4 * (i & 1))
-    return bytes(out), start
-
-
 def main():
     path = sys.argv[1] if len(sys.argv) > 1 else '/tmp/GeneralUser-GS.sf2'
     if not os.path.exists(path):
@@ -267,8 +242,9 @@ def main():
         z = pick(zones, key)
         assert z, ours
         band[ours] = [{**z[0], 'keys': [key, key], 'drum': True}]
-    # Each sample once, in a single pack, trimmed to what a zone plays, resampled and compressed.
-    pack, samples = bytearray(), []
+    # Each sample once, in a single pack, trimmed to what a zone plays and resampled.
+    pack, samples = [], []
+    at = 0
     for ours, zones in band.items():
         for z in zones:
             span = (z['start'], z['end'], z['loopStart'], z['loopEnd'], z['loop'])
@@ -279,20 +255,23 @@ def main():
                 # loop): the gain that brings every instrument to the same level at full volume.
                 body = data[:max(1, int(rate * 0.5))]
                 level = math.sqrt(float(np.mean(body * body))) / 32768
-                coded, (predictor, index) = adpcm(pcm.tolist())
                 used[span] = (len(samples), level)
-                samples.append({'offset': len(pack), 'length': len(pcm), 'rate': round(rate, 3), 'predictor': predictor, 'index': index, 'loopStart': ls, 'loopEnd': le})
-                pack.extend(coded)
+                samples.append({'offset': at, 'length': len(pcm), 'rate': round(rate, 3), 'loopStart': ls, 'loopEnd': le})
+                pack.append(pcm)
+                at += len(pcm)
             z['sample'], level = used[span]
             z['gain'] = round(min(50, 1 / max(1e-6, level)), 4)
             for k in ('start', 'end', 'kind', 'vels', 'name', 'loopStart', 'loopEnd', 'rate', 'attenuation'):
                 z.pop(k)
     os.makedirs(OUT, exist_ok=True)
-    with open(os.path.join(OUT, 'band.bin'), 'wb') as f:
-        f.write(pack)
+    raw = os.path.join(OUT, 'band.raw')
+    np.concatenate(pack).astype('<i2').tofile(raw)
+    flac = os.path.join(OUT, 'band.flac')
+    subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-f', 's16le', '-ar', str(RATE), '-ac', '1', '-i', raw, '-c:a', 'flac', '-compression_level', '12', flac], check=True)
+    os.remove(raw)
     with open(os.path.join(OUT, 'band.json'), 'w') as f:
-        json.dump({'source': f'GeneralUser GS v2.0.3 ({COMMIT[:7]})', 'samples': samples, 'instruments': band}, f, separators=(',', ':'))
-    print(f'{len(band)} instruments, {sum(len(z) for z in band.values())} zones, {len(samples)} samples, {len(pack) / 1e6:.2f} MB')
+        json.dump({'source': f'GeneralUser GS v2.0.3 ({COMMIT[:7]})', 'rate': RATE, 'samples': samples, 'instruments': band}, f, separators=(',', ':'))
+    print(f'{len(band)} instruments, {sum(len(z) for z in band.values())} zones, {len(samples)} samples, {os.path.getsize(flac) / 1e6:.2f} MB')
     for ours, zones in band.items():
         print(f"  {ours:12s} {len(zones)} zones  " + ' '.join(f"{z['keys'][0]}-{z['keys'][1]}{'L' if z['loop'] else ''}" for z in zones))
 

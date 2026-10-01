@@ -88,7 +88,7 @@ v2.0.3, S. Christian Collins's General MIDI SoundFont, taken from
 - **Changes** (`scripts/soundfont.py`): cut down to the twelve instruments and eight drums the music
   uses, and to the keys it plays; one velocity layer, one layer of a layered sound and one side of a
   stereo sample; every other sample of the strings and the flute; tails over a second or two faded
-  out; resampled to 22 kHz; stored as 4-bit IMA ADPCM in `band.bin`, with each sample's zones, tuning,
+  out; resampled to 22 kHz; stored losslessly, one after another, in `band.flac`, with each sample's zones, tuning,
   loop and envelope in `band.json`.
 
 ## Everything else

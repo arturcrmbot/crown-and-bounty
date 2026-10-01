@@ -114,15 +114,28 @@ function room(ctx: BaseAudioContext): AudioBuffer {
 /** How much of the room's echo the band plays into. */
 export const ROOM = 0.22;
 
-/** The score's own gain into `dest`, with the room's echo on everything played through it: returns the gain to play into. */
+/**
+ * Where the band's sound stops: its samples are kept at 22 kHz, and a browser playing one at
+ * another pitch leaves a faint fizz above half that, which this takes away.
+ */
+export const TOP = 10000;
+
+/**
+ * The score's own gain into `dest`, through a gentle low-pass at `TOP` and with the room's echo on
+ * everything played through it: returns the gain to play into.
+ */
 export function scoreChain(ctx: BaseAudioContext, dest: AudioNode): GainNode {
   const gain = ctx.createGain();
+  const top = ctx.createBiquadFilter();
+  top.type = 'lowpass';
+  top.frequency.value = TOP;
+  top.Q.value = 0.6;
   const echo = ctx.createConvolver();
   echo.buffer = room(ctx);
   const wet = ctx.createGain();
   wet.gain.value = ROOM;
-  gain.connect(dest);
-  gain.connect(echo).connect(wet).connect(dest);
+  gain.connect(top).connect(dest);
+  top.connect(echo).connect(wet).connect(dest);
   return gain;
 }
 
