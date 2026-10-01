@@ -98,3 +98,16 @@ export function victoryHop(t: number, i: number): number {
   if (k <= 0 || k >= 1) return 0;
   return Math.round(Math.abs(Math.sin(k * Math.PI * 2)) * 7);
 }
+
+/** How long the ring takes to ping out from a stack's hex as its turn comes, and how long it bounces (#190). */
+export const CUE_PING = 0.4;
+export const CUE_BOUNCE = 0.24;
+
+/** How high a stack bounces `age` seconds after its turn comes: once, three pixels. */
+export function cueBounce(age: number): number {
+  return age <= 0 || age >= CUE_BOUNCE ? 0 : Math.round(Math.sin((age / CUE_BOUNCE) * Math.PI) * 3);
+}
+
+/** At most one flash of the whole field a second, and how long one lasts (#190). */
+export const FLASH_GAP = 1;
+export const FLASH_TIME = FRAME;

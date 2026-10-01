@@ -534,3 +534,15 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   goes into the journal a page turns and the book on the bar lights up. Four new sounds were measured onto their marks
   with `npm run listen`: a harp and a bell for gear, a glassy run for mana, hoofbeats for movement, and a clink for each
   coin. It is drawing and sound only, so the rules, the balance and the saves are as they were.
+- **Combat with juice (1 Oct, #190):** Artur asked for more juice in combat too. A design session played fights by hand,
+  frame by frame, and ranked twelve ideas on #190; ten were picked and built in four slices (#198, #200, #201 and the
+  last). A blow holds the field still for a few frames as it lands, shows its target white for a frame and kicks the
+  field the way it went, with a thump under it. How many fell pops out of the stack's own badge as its count rolls down.
+  The last of a stack falls over and lands in dust, and the leaders behind each line hop for joy or sag. Shooters loose
+  volleys, and the arrows that miss stay in the ground. A lucky blow has a rainbow come down onto its stack, good morale
+  a gold ring, and faltering a grey cloud. A charge throws up dust and its target stands in front of it. A victory makes
+  your stacks hop and the enemy's standard fall, and a defeat dips yours. Lightning lights the field and rolls thunder, a
+  Fireball booms and smokes, and the field keeps the blood, the scorches and what the fallen dropped. Your stacks bounce
+  as their turns come. Only the holds add time, about a second to a fight on Auto, and a switch for gentle effects in the
+  mix panel turns the kick, the flashes and the holds down. Squash and stretch (#197) and a living battlefield (#196)
+  wait for Artur to pick them.

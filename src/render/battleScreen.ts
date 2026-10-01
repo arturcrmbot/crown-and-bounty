@@ -11,7 +11,7 @@ import { drawBanner } from './banner';
 import { TIP } from './speech';
 import { BAR, MAP_VIEW, paintBarBackground, paintFrame, SCREEN, type Rect } from './frame';
 import { bayer, fbm, hash, noise, shade } from './noise';
-import { FRAME, rolled } from './juice';
+import { CUE_PING, FRAME, rolled } from './juice';
 import { rotateAbout } from './rotate';
 import { drawPops, type Pop } from './pops';
 import { ground, piece } from './mapArt';
@@ -114,7 +114,7 @@ export type Shot = {
   from: [number, number];
   to: [number, number];
   t: number;
-  kind: 'arrow' | 'quarrel' | 'hex' | 'magic' | 'gather' | 'bolt' | 'fire' | 'sparkle' | 'spark' | 'blood' | 'poof' | 'dust' | 'rainbow' | 'ring' | 'cloud' | 'motes';
+  kind: 'arrow' | 'quarrel' | 'hex' | 'magic' | 'gather' | 'bolt' | 'fire' | 'sparkle' | 'spark' | 'blood' | 'poof' | 'dust' | 'rainbow' | 'ring' | 'cloud' | 'motes' | 'smoke';
   color?: number;
   size?: number;
   heading?: number;
@@ -174,6 +174,12 @@ export type BattleView = {
    * field a shade (0 to 1) as a defeat sinks in.
    */
   ending: { fast: boolean; dip: number; fall: number; dusk: number };
+  /** The whole field lit up as Lightning strikes (#190), for this many more seconds. */
+  flash: number;
+  /** Ground lit round a Fireball as it bursts (#190): where, how far, and how strongly (0 to 1). */
+  light: { x: number; y: number; radius: number; strength: number } | null;
+  /** One of your stacks is ready for orders (#190): its hex pings and it bounces, `age` seconds in. */
+  cue: { fighter: number; age: number } | null;
   /** Stacks the rules have on the field that haven't got there yet: a summoned stack, till it marches in. */
   hidden: Set<number>;
   /** What a stack looks like while a change plays out (newts, or null for itself), instead of what its statuses say. */
@@ -479,12 +485,24 @@ export class BattleScreen {
       const row = y * SCREEN.width;
       screen.data.set(this.field.data.subarray(row + MAP_VIEW.x, row + MAP_VIEW.x + MAP_VIEW.width), row + MAP_VIEW.x);
     }
+    // A Fireball's light on the ground round it (#190), dithered thinner towards its edge.
+    if (view.light && view.light.strength > 0) {
+      const { x: lx, y: ly, radius, strength } = view.light;
+      for (let y = Math.max(MAP_VIEW.y, Math.floor(ly - radius * 0.55)); y <= Math.min(MAP_VIEW.y + MAP_VIEW.height - 1, ly + radius * 0.55); y++) {
+        for (let x = Math.max(MAP_VIEW.x, Math.floor(lx - radius)); x <= Math.min(MAP_VIEW.x + MAP_VIEW.width - 1, lx + radius); x++) {
+          const d = Math.hypot((x - lx) / radius, (y - ly) / (radius * 0.55));
+          if (d < 1 && bayer(x, y) < (1 - d) * strength * 1.4) screen.set(x, y, LIGHT_LUT[screen.get(x, y)]);
+        }
+      }
+    }
     for (const i of view.reach) fillHex(screen, i, LIGHT_LUT, 2);
     const active = view.active === null ? null : b.fighters.find((f) => f.id === view.active);
     // The stack whose turn it is stands on a lit hex; a leader has his ring behind the line instead.
     if (active && active.count > 0 && !isLeader(active)) {
       fillHex(screen, active.at, LIGHT_LUT, 1);
       outlineHex(screen, active.at, GOLD[5]);
+      // Its turn has just come (#190): a gold ring pings out from its hex once.
+      if (view.cue?.fighter === active.id && view.cue.age < CUE_PING) this.ping(active.at, view.cue.age / CUE_PING);
     }
     // Where a click would take the stack: the hex it would move to, or the one it would strike from.
     const going = view.hover?.kind === 'move' ? view.hover.hex : view.hover?.from !== undefined && view.hover.from !== active?.at ? view.hover.from : null;
@@ -580,6 +598,13 @@ export class BattleScreen {
       const [cx, cy] = place(f);
       this.badge(Math.round(cx + (f.side === 'player' ? 14 : -14)), Math.round(cy + 8), count, f.side === 'player', !!roll && roll.age < FRAME);
     }
+    // Lightning lights the whole field for a moment, figures and all (#190): two shades up, never white.
+    if (view.flash > 0) {
+      for (let y = MAP_VIEW.y; y < MAP_VIEW.y + MAP_VIEW.height; y++) {
+        const row = y * SCREEN.width;
+        for (let x = MAP_VIEW.x; x < MAP_VIEW.x + MAP_VIEW.width; x++) screen.data[row + x] = LIGHT_LUT[LIGHT_LUT[screen.data[row + x]]];
+      }
+    }
     for (const s of view.shots) this.shot(s);
     this.pops(b, view);
     for (const t of view.floaters) this.words(t.text, Math.round(t.x), Math.round(t.y - t.age * FLOAT_RISE), t.color, (FLOAT_LIFE - t.age) / FLOAT_FADE);
@@ -651,6 +676,75 @@ export class BattleScreen {
       for (let x = MAP_VIEW.x; x < MAP_VIEW.x + MAP_VIEW.width; x++) {
         const sx = Math.min(MAP_VIEW.x + MAP_VIEW.width - 1, Math.max(MAP_VIEW.x, x - dx));
         screen.data[y * SCREEN.width + x] = copy[sy * SCREEN.width + sx];
+      }
+    }
+  }
+
+  /** A gold ring growing out from a hex and thinning away, `t` from 0 to 1 (#190). */
+  private ping(i: number, t: number) {
+    const [cx, cy] = hexCentre(i);
+    const grow = 1 + t * 0.35;
+    for (let y = Math.floor(cy - HALF_H * grow - 1); y <= cy + HALF_H * grow + 1; y++) {
+      for (let x = Math.floor(cx - (HEX_W / 2) * grow - 1); x <= cx + (HEX_W / 2) * grow + 1; x++) {
+        const [u, v] = [cx + (x - cx) / grow, cy + (y - cy) / grow];
+        if (!insideHex(u, v, cx, cy)) continue;
+        const edge = !insideHex(cx + (x + 1 - cx) / grow, v, cx, cy) || !insideHex(cx + (x - 1 - cx) / grow, v, cx, cy) || !insideHex(u, cy + (y + 1 - cy) / grow, cx, cy) || !insideHex(u, cy + (y - 1 - cy) / grow, cx, cy);
+        if (edge && bayer(x, y) >= t) this.screen.set(x, y, t < 0.4 ? NEUTRAL[7] : GOLD[6]);
+      }
+    }
+  }
+
+  /** How many blood marks each hex has had, so a long fight never paints a hex red. */
+  private readonly bloodied = new Map<number, number>();
+
+  /**
+   * Blood on the grass at a stack's feet where a blow hurt it (#190), drawn into the field itself: a
+   * few small dark drops, never more than four times on one hex.
+   */
+  markBlood(hex: number, seed: number) {
+    const n = this.bloodied.get(hex) ?? 0;
+    if (n >= 4) return;
+    this.bloodied.set(hex, n + 1);
+    const [cx, cy] = hexCentre(hex);
+    for (let k = 0; k < 5; k++) {
+      const x = Math.round(cx + (hash(k, seed, 61) - 0.5) * 34);
+      const y = Math.round(cy + 6 + (hash(k, seed, 62) - 0.5) * 16);
+      this.field.set(x, y, k % 2 ? RED[1] : RED[2]);
+      if (k % 3 === 0) this.field.set(x + 1, y, RED[1]);
+    }
+  }
+
+  /**
+   * Something dropped where a stack fell (#190), in the grass beside its corpse: a helmet for those
+   * who wore steel, a round shield in their side's colour for other folk, and nothing for beasts.
+   */
+  markDropped(hex: number, what: 'helmet' | 'shield', player: boolean, side: 1 | -1) {
+    const [cx, cy] = hexCentre(hex);
+    const [x0, y0] = [Math.round(cx + side * 24), Math.round(cy + 15)];
+    const rows = what === 'helmet' ? ['..###..', '.#####.', '#######', '#######', 'r#####r'] : ['..###..', '.#####.', '#######', '###o###', '#######', '.#####.', '..###..'];
+    rows.forEach((row, j) =>
+      [...row].forEach((ch, i) => {
+        if (ch === '.') return;
+        const c = ch === 'o' ? GOLD[5] : ch === 'r' ? STONE[2] : what === 'helmet' ? (j === 0 ? STONE[6] : STONE[4]) : player ? (j < 2 ? BLUE[4] : BLUE[3]) : j < 2 ? RED[4] : RED[3];
+        this.field.set(x0 + i, y0 + j, c);
+      }),
+    );
+    // Its shadow on the grass, down and to the right.
+    for (let i = 1; i <= rows[0].length; i++) this.field.set(x0 + i, y0 + rows.length, SHADOW_LUT[this.field.get(x0 + i, y0 + rows.length)]);
+  }
+
+  /** A burnt patch where a spell struck (#190), drawn into the field: a scorched ring for a Fireball, a smaller blot for Lightning. */
+  markScorch(x: number, y: number, ring: boolean) {
+    const [rx, ry] = ring ? [34, 15] : [16, 7];
+    for (let j = -ry - 1; j <= ry + 1; j++) {
+      for (let i = -rx - 1; i <= rx + 1; i++) {
+        const d = Math.hypot(i / rx, j / ry) + (hash(i, j, 63) - 0.5) * 0.2;
+        if (d > 1) continue;
+        const [px, py] = [Math.round(x + i), Math.round(y + j)];
+        // A ring is darkest at its rim, where the flames licked; a blot at its heart.
+        const burn = ring ? 1 - Math.abs(d - 0.75) * 2.4 : 1 - d;
+        if (bayer(px, py) >= burn * 0.9) continue;
+        this.field.set(px, py, burn > 0.6 ? EARTH[1] : SHADOW_LUT[this.field.get(px, py)]);
       }
     }
   }
@@ -866,11 +960,42 @@ export class BattleScreen {
         }
       }
     } else if (s.kind === 'bolt') {
-      let x = bx + 30;
-      for (let y = MAP_VIEW.y + 4; y < by; y += 2) {
-        x += (hash(y, Math.floor(s.t * 20), 5) - 0.5) * 10;
-        x += (bx - x) * 0.08;
-        for (const dx of [-1, 0, 1]) this.screen.set(Math.round(x + dx), y, dx === 0 ? NEUTRAL[7] : GOLD[6]);
+      // Lightning (#190): a solid bolt out of the sky onto the stack, forking half way, that holds for
+      // a tenth of a second at full strength, strikes once more, and thins away.
+      const strike = s.t < 0.45 ? 0 : 1;
+      const shown = s.t < 0.3 ? 1 : s.t < 0.45 ? 0.6 : Math.max(0, 1 - (s.t - 0.45) / 0.35);
+      if (shown > 0) {
+        const seed = Math.round(bx) * 7 + strike;
+        const path: [number, number][] = [];
+        let x = bx + 34;
+        for (let y = MAP_VIEW.y + 4; y < by; y++) {
+          if (y % 3 === 0) x += (hash(y, seed, 5) - 0.5) * 12;
+          x += (bx - x) * 0.05;
+          path.push([x, y]);
+        }
+        const fork: [number, number][] = [];
+        const [fx0, fy0] = path[Math.floor(path.length / 2)] ?? [bx, by];
+        let f = fx0;
+        for (let y = Math.round(fy0); y < fy0 + (by - fy0) * 0.7; y++) {
+          if (y % 3 === 0) f += (hash(y, seed, 6) - 0.5) * 10;
+          f += 0.6 + (hash(y, seed, 7) - 0.3) * 0.4;
+          fork.push([f, y]);
+        }
+        const wide = s.t < 0.3 ? 2 : 1;
+        for (const [px, py] of path) {
+          for (let dx = -wide - 1; dx <= wide + 1; dx++) {
+            const X = Math.round(px + dx);
+            if (shown < 1 && bayer(X, py) >= shown) continue;
+            this.screen.set(X, py, Math.abs(dx) <= wide - 1 ? NEUTRAL[7] : Math.abs(dx) <= wide ? GOLD[6] : GOLD[4]);
+          }
+        }
+        for (const [px, py] of fork) {
+          for (const dx of [0, 1]) {
+            const X = Math.round(px + dx);
+            if (shown < 1 && bayer(X, py) >= shown) continue;
+            this.screen.set(X, py, dx ? GOLD[5] : NEUTRAL[7]);
+          }
+        }
       }
     } else if (s.kind === 'fire') {
       if (s.t < FIRE_FALL) {
@@ -1022,6 +1147,20 @@ export class BattleScreen {
         if ((k + Math.floor(s.t * 24)) % 4 === 0 || bayer(x, y) >= shown) continue;
         this.screen.set(x, y, NEUTRAL[7]);
         for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) this.screen.set(x + dx, y + dy, k % 2 ? GOLD[6] : GOLD[5]);
+      }
+    } else if (s.kind === 'smoke') {
+      // Smoke rising where a Fireball burst (#190): grey puffs that swell, drift up and thin out.
+      for (let k = 0; k < 6; k++) {
+        const px = bx + (k - 2.5) * 10 + Math.sin(s.t * 4 + k) * 3;
+        const py = by - 6 - s.t * (34 + (k % 3) * 8);
+        const r = 4 + s.t * 9 + (k % 2) * 2;
+        for (let y = Math.floor(py - r); y <= py + r; y++) {
+          for (let x = Math.floor(px - r); x <= px + r; x++) {
+            const d = Math.hypot(x - px, (y - py) * 1.2) / r;
+            if (d > 1 || bayer(x, y) < s.t * 0.95 + 0.15) continue;
+            this.screen.set(x, y, d > 0.7 ? STONE[2] : d > 0.35 ? STONE[3] : STONE[4]);
+          }
+        }
       }
     } else if (s.kind === 'dust') {
       // Dust thrown up along the ground where something lands (#190): low puffs spread `size` wide,
