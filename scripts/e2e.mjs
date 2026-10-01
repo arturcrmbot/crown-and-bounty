@@ -110,6 +110,8 @@ async function sight(id) {
 async function go(id, action) {
   await settle();
   await sight(id);
+  // Riding to see a band again, he may have ridden right up to it, and its card is open already.
+  if (action === 'Approach' && (await kc.call(() => [...document.querySelectorAll('.kc-card-wrap:not([hidden]) button')].some((b) => b.textContent.startsWith('Let the sergeants'))))) return kc.title();
   const [x, y] = await kc.centre(id);
   // If the hero stands in front of the place he takes the click, as he should: close his screen
   // and click another corner of the place, as a player would.
