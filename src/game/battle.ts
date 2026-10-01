@@ -5,11 +5,12 @@ import { chooseAction, finishEstimate, sergeantsAct } from '../rules/battle/ai';
 import { manaInBattle, signedShare, spiritsOf, uneasyWords } from '../rules/heroSheet';
 import { grumbleLine } from '../rules/army';
 import { coins, listed } from '../rules/state';
-import { activeFighter, bardOf, battleAct, battleEnd, bribeOffer, canCast, canJoin, casterOf, castsLeft, chargeOf, fighterById, isCharge, isLeader, onField, options, ridesOut, spellCost, spellDamage, spellsOf, spellVictims, unitOf, wound, type BattleAction, type BattleEvent, type BattleState } from '../rules/battle/battle';
+import { activeFighter, bardOf, battleAct, battleEnd, bribeOffer, canCast, canJoin, casterOf, castsLeft, chargeOf, fighterById, isCharge, isLeader, onField, options, ridesOut, spellCost, spellDamage, spellsOf, spellVictims, unitOf, wound, type BattleAction, type BattleEvent, type BattleState, type Fighter } from '../rules/battle/battle';
 import { aimTag, bardTag, forecastOf, type AimTag } from '../rules/battle/forecast';
 import { paintBanner } from '../render/banner';
 import { BattleScreen, BUTTONS, FIRE_FALL, FLOAT_LIFE, FLOAT_RISE, hexAt, hexCentre, leaderAt, LOG_BOTTOM, spotOf, type BattleView, type Shot } from '../render/battleScreen';
-import { FRAME, holdFrames, kickLeft, kickOf, POP_LIFE, ROLL, type Blow } from '../render/juice';
+import { FRAME, holdFrames, kickLeft, kickOf, POP_LIFE, ROLL, TOPPLE_TIME, toppleAngle, volleyOf, type Blow } from '../render/juice';
+import { hash } from '../render/noise';
 import { animLength, bodyHeight, hitTime, STAND, type AnimName } from '../render/battleSprites';
 import { cursorIcon, type CursorKind, type Heading } from '../render/cursors';
 import { ART, type Missile } from '../render/units';
@@ -103,6 +104,10 @@ export class BattleController implements Screen {
   private finishState: BattleState | null = null;
   private finishLine: string | null = null;
   private sparks: Shot[] = [];
+  /** The arrows of a volley after the first (#190), each on its own clock: `delay` seconds after the first is loosed, `flight` long. */
+  private flights: { shot: Shot; delay: number; age: number; flight: number; hits: boolean; bolt: boolean }[] = [];
+  /** Leaders reacting as a stack is wiped out (#190): a hop for joy, or a sag. */
+  private reactions = new Map<number, { joy: boolean; age: number }>();
   private think = 0;
   private finished = false;
   /** The stack whose move is playing out: it keeps the gold hex until its blows have landed. */
@@ -139,6 +144,9 @@ export class BattleController implements Screen {
       flashing: new Set(),
       whites: new Set(),
       dying: new Set(),
+      topple: new Map(),
+      fallen: new Map(),
+      lifts: new Map(),
       hidden: new Set(),
       looks: new Map(),
       reach: new Set(),
@@ -396,9 +404,9 @@ export class BattleController implements Screen {
     if (!dies && e.damage > 0) play(`hurt:${target.cry}`, pan, lands + 0.06);
   }
 
-  /** A stack's death cry, as the last of it falls. */
-  private deathCry(id: number) {
-    play(`dies:${TROOP_SOUNDS[fighterById(this.battle, id).troop].cry}`, this.panAt(this.spot(id)[0]));
+  /** A stack's death cry, as the last of it falls, `delay` seconds from now. */
+  private deathCry(id: number, delay = 0) {
+    play(`dies:${TROOP_SOUNDS[fighterById(this.battle, id).troop].cry}`, this.panAt(this.spot(id)[0]), delay);
   }
 
   /**
@@ -436,25 +444,76 @@ export class BattleController implements Screen {
   }
 
   /**
-   * A stack that goes down: it plays its death where Wesnoth drew one, and a puff of dust where it
-   * didn't. Then its fallen stay on the field.
+   * The last of a stack falling over (#190): away from the way it faces, over a third of a second,
+   * landing in a puff of dust, then lying dimmed where it fell. Its side's leaders sag,
+   * and the other side's hop for joy. `tick` takes the seconds since it began to fall.
    */
-  private fall(target: number) {
-    const f = fighterById(this.battle, target);
-    if (!ART[f.troop].death) return this.poof(target);
-    const length = animLength(f.troop, 'death');
-    this.step(length * MS, {
+  private faller(id: number) {
+    const v = this.view;
+    let landed = false;
+    return {
       start: () => {
-        this.view.facings.set(target, this.facingOf(f));
-        this.deathCry(target);
+        const f = fighterById(this.battle, id);
+        v.fallen.set(id, v.facings.get(id) ?? this.facingOf(f));
+        v.offsets.delete(id);
+        v.topple.set(id, toppleAngle(0));
+        this.react(f.side);
       },
-      tick: (t) => this.view.poses.set(target, { anim: 'death', ms: t * length }),
+      tick: (elapsed: number) => {
+        const angle = toppleAngle(elapsed);
+        v.topple.set(id, angle);
+        if (!landed && angle >= 90) {
+          landed = true;
+          this.landed(id);
+        }
+      },
       end: () => {
-        this.view.poses.delete(target);
-        this.view.facings.delete(target);
-        this.view.dying.delete(target);
+        if (!landed) this.landed(id);
+        v.topple.delete(id);
+        v.dying.delete(id);
+        v.poses.delete(id);
+        v.facings.delete(id);
       },
-    });
+    };
+  }
+
+  /** A fallen stack hits the ground: dust along it, and the field jolts down a little. Its death cry ends in the thud. */
+  private landed(id: number) {
+    const [x, y] = this.spot(id);
+    const dust: Shot = { from: [x, y + 12], to: [x, y + 12], t: 0, kind: 'dust', size: 56, rate: 2.2 };
+    this.view.shots.push(dust);
+    this.sparks.push(dust);
+    if (!isGentle()) this.view.kick = [this.view.kick[0], this.view.kick[1] + 2];
+  }
+
+  /** The leaders behind each line react as a stack is wiped out, as HoMM2's heroes do: the other side's hop for joy, and its own sag. */
+  private react(lost: string) {
+    for (const f of this.battle.fighters) if (isLeader(f) && f.count > 0) this.reactions.set(f.id, { joy: f.side !== lost, age: 0 });
+  }
+
+  /** The battle's pace now: Auto plays everything two and a half times as fast. */
+  private get speed() {
+    return this.pace * (this.auto ? 2.5 : 1);
+  }
+
+  /**
+   * One more arrow of a volley (#190), loosed `k` beats after the first on its own arc. Odd ones
+   * strike the stack, even ones (and every one, if the first blow kills it) stick in the ground at
+   * its feet, inside its own hex, and stay there.
+   */
+  private volley(k: number, first: Shot, flight: number, missile: 'arrow' | 'quarrel', target: Fighter, dies: boolean) {
+    const [tx, ty] = this.spot(target.id);
+    const hits = !dies && k % 2 === 1;
+    const jitter = (n: number) => hash(k, n, target.id * 7 + this.battle.round) - 0.5;
+    // Misses come down in front of the stack and behind it, by turns.
+    const near = first.from[0] < tx ? -1 : 1;
+    // A miss lands clear of the stack's badge, between its feet and the edge of its hex.
+    const to: [number, number] = hits ? [first.to[0] + jitter(1) * 14, first.to[1] + jitter(2) * 18] : [tx + (k % 4 === 2 ? near : -near) * (21 + Math.abs(jitter(3)) * 12), ty + 3 + jitter(4) * 8];
+    const arc = (missile === 'quarrel' ? 14 : 44) + jitter(5) * 14;
+    const shot: Shot = { from: [first.from[0] + jitter(6) * 6, first.from[1] + jitter(7) * 4], to, t: 0, kind: missile, arc };
+    const delay = k * 0.05;
+    this.flights.push({ shot, delay, age: 0, flight, hits, bolt: missile === 'quarrel' });
+    play(`loose:${missile}`, this.panAt(first.from[0]), delay / this.speed);
   }
 
   /**
@@ -537,21 +596,6 @@ export class BattleController implements Screen {
     this.sparks.push(dust);
   }
 
-  /** A stack that goes down leaves a puff of dust, then its fallen. */
-  private poof(target: number) {
-    const [x, y] = this.spot(target);
-    const dust = { from: [x, y] as [number, number], to: [x, y] as [number, number], t: 0, kind: 'poof' as const };
-    this.step(0.4, {
-      start: () => {
-        this.view.shots.push(dust);
-        this.view.dying.delete(target);
-        this.deathCry(target);
-      },
-      tick: (t) => (dust.t = t),
-      end: () => this.view.shots.splice(this.view.shots.indexOf(dust), 1),
-    });
-  }
-
   /** Gives health back to what is left of a stack, raising its fallen. */
   private mend(left: Left, id: number, healed: number) {
     const was = left.get(id)!;
@@ -613,6 +657,8 @@ export class BattleController implements Screen {
       }
     };
     const missile = e.ranged ? (art.ranged?.missile ?? 'arrow') : null;
+    // A company of archers or crossbowmen looses a volley, not one arrow (#190).
+    const extra = missile === 'arrow' || missile === 'quarrel' ? volleyOf(attacker.count, isLeader(attacker)) - 1 : 0;
     const release = missile ? Math.max(0, hit - 150) : hit;
     // The ribbon names the blow as it starts, and says what it did when it lands.
     const blow = `${this.fighterName(e.attacker)} ${this.verb(e.attacker, e.ranged ? 'shoot' : e.retaliation ? 'strike back at' : e.charge ? 'charge' : 'hit')} ${this.objectName(e.target)}`;
@@ -629,10 +675,12 @@ export class BattleController implements Screen {
     if (missile) {
       // The release frame holds while the shot flies, however far.
       const shot: Shot = { from: [ax + ux * 12, ay - bodyHeight(attacker.troop, 'battle') * 0.55], to: [tx, ty + 12 - bodyHeight(target.troop, 'battle') * 0.5], t: 0, kind: missile };
-      this.step(0.16 + len / 1500, {
+      const flight = 0.16 + len / 1500;
+      this.step(flight, {
         start: () => {
           v.shots.push(shot);
           play(`loose:${missile}`, this.panAt(ax));
+          for (let k = 1; k <= extra; k++) this.volley(k, shot, flight, missile as 'arrow' | 'quarrel', target, dies);
         },
         tick: (t) => {
           shot.t = t;
@@ -656,6 +704,7 @@ export class BattleController implements Screen {
         v.poses.set(e.target, { anim: flinch(), ms: 0 });
         this.counted(e.target, left);
         this.landSound(e, missile, dies, tx);
+        if (dies) this.deathCry(e.target, (missile ? 0 : CONTACT) + 0.06);
         this.impact(e.target, landed, !e.ranged, [ux, uy]);
         if (e.charge) {
           this.float(e.attacker, 'Charge!', GOLD[6], from);
@@ -674,19 +723,29 @@ export class BattleController implements Screen {
         if (v.whites.delete(e.target)) v.flashing.add(e.target);
       },
     });
-    this.step(after * MS, {
+    // The last of a stack falls over as the attacker draws back, instead of reeling (#190).
+    const falls = dies ? this.faller(e.target) : null;
+    const length = Math.max(after * MS, falls ? TOPPLE_TIME + FRAME : 0);
+    this.step(length, {
+      start: () => falls?.start(),
       tick: (t) => {
-        const ms = t * after;
+        const ms = Math.min(after, (t * length) / MS);
         swing(hit + ms);
+        if (falls) {
+          // One red pulse as it goes over.
+          v.flashing[pulse(ms / 300) && ms < 120 ? 'add' : 'delete'](e.target);
+          falls.tick(t * length);
+          return;
+        }
         v.flashing[pulse(ms / 300) ? 'add' : 'delete'](e.target);
-        const k = Math.sin(Math.min(1, t * 1.8) * Math.PI) * (1 - t * 0.4);
+        const k = Math.sin(Math.min(1, (ms / after) * 1.8) * Math.PI) * (1 - (ms / after) * 0.4);
         v.offsets.set(e.target, [ux * reel * k, uy * reel * k]);
       },
       end: () => {
         for (const map of [v.poses, v.offsets, v.facings]) map.delete(e.attacker);
         v.flashing.delete(e.target);
         v.offsets.delete(e.target);
-        if (dies) return;
+        if (falls) return falls.end();
         v.poses.delete(e.target);
         v.facings.delete(e.target);
       },
@@ -775,7 +834,6 @@ export class BattleController implements Screen {
           const dies = this.wound(left, e.target, e.damage);
           if (dies) v.dying.add(e.target);
           this.strike(e, { ...left.get(e.target)! }, dies, out.get(e.attacker));
-          if (dies) this.fall(e.target);
           break;
         }
         case 'regen': {
@@ -874,6 +932,12 @@ export class BattleController implements Screen {
             }
           };
           const length = look.kind === 'fire' ? 0.95 : 0.4;
+          // Stacks it wipes out fall over before the spell is done (#190), together, crying out as
+          // they go (two at most, not a whole choir): as the flames thin, or as the bolt strikes.
+          const dead = victims.filter((x) => x.dies).map((x) => x.h.target);
+          const fallers = dead.map((id) => this.faller(id));
+          const fallFrom = Math.max(land, 1 - (TOPPLE_TIME + FRAME) / length);
+          let falling = false;
           this.step(length, {
             start: () => {
               v.shots.push(...shots);
@@ -884,6 +948,12 @@ export class BattleController implements Screen {
             tick: (t) => {
               for (const shot of shots) shot.t = t;
               if (!landed && t >= land) impact();
+              if (!falling && fallers.length && t >= fallFrom) {
+                falling = true;
+                for (const id of dead.slice(0, 2)) this.deathCry(id);
+                for (const f of fallers) f.start();
+              }
+              if (falling) for (const f of fallers) f.tick((t - fallFrom) * length);
               // The spell lands white for a frame (#190), then burns in two red pulses, as Wesnoth flashes a unit that is hit.
               const k = landed ? ((t - land) / (1 - land)) * 0.95 : 0;
               const white = landed && (sinceLanding++ < 1 || (t - land) * length < FRAME);
@@ -900,9 +970,9 @@ export class BattleController implements Screen {
                 v.whites.delete(h.target);
                 if (!dies) v.poses.delete(h.target);
               }
+              for (const f of fallers) f.end();
             },
           });
-          for (const { h, dies } of victims) if (dies) this.fall(h.target);
           break;
         }
         case 'wait':
@@ -1139,7 +1209,31 @@ export class BattleController implements Screen {
     v.shake = isGentle() ? 0 : Math.max(0, v.shake - dt * 20);
     v.kick = kickLeft(v.kick, dt);
     if (v.banner) v.banner.age += dt * pace;
-    for (const spark of this.sparks) spark.t += dt * pace * 4;
+    for (const spark of this.sparks) spark.t += dt * pace * (spark.rate ?? 4);
+    // The rest of a volley: in flight once its beat comes, landing on the stack or in the ground.
+    for (const f of this.flights) {
+      f.age += dt * pace;
+      const t = (f.age - f.delay) / f.flight;
+      if (t <= 0) continue;
+      if (!v.shots.includes(f.shot)) v.shots.push(f.shot);
+      f.shot.t = Math.min(1, t);
+      if (t < 1) continue;
+      v.shots.splice(v.shots.indexOf(f.shot), 1);
+      const at: [number, number] = [Math.round(f.shot.to[0]), Math.round(f.shot.to[1])];
+      const burst: Shot = f.hits ? { from: at, to: at, t: 0, kind: 'spark', size: 0.6, heading: Math.atan2(f.shot.to[1] - f.shot.from[1], f.shot.to[0] - f.shot.from[0]) } : { from: at, to: at, t: 0, kind: 'dust', size: 12, rate: 3 };
+      v.shots.push(burst);
+      this.sparks.push(burst);
+      if (!f.hits) this.screen.markArrow(f.shot.from, at, f.shot.arc ?? 44, f.bolt);
+    }
+    this.flights = this.flights.filter((f) => (f.age - f.delay) / f.flight < 1);
+    for (const [id, r] of this.reactions) {
+      r.age += dt * pace;
+      const done = r.age >= (r.joy ? 0.5 : 0.7);
+      if (done) {
+        this.reactions.delete(id);
+        v.lifts.delete(id);
+      } else v.lifts.set(id, r.joy ? Math.round(Math.abs(Math.sin((r.age / 0.5) * Math.PI * 2)) * 6) : -2);
+    }
     for (const spark of this.sparks.filter((k) => k.t >= 1)) v.shots.splice(v.shots.indexOf(spark), 1);
     this.sparks = this.sparks.filter((k) => k.t < 1);
     let budget = dt * pace;

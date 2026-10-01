@@ -48,3 +48,21 @@ describe('the count and the kill', () => {
     expect(popShown(POP_LIFE)).toBe(0);
   });
 });
+
+describe('the fallen and the arrows', () => {
+  it('fall in about a third of a second, faster as they go, landing flat after one bounce', async () => {
+    const { TOPPLE, TOPPLE_LANDS, TOPPLE_TIME, toppleAngle } = await import('./juice');
+    expect(TOPPLE_TIME).toBeLessThan(0.31);
+    expect(toppleAngle(0)).toBeLessThan(10);
+    expect(toppleAngle(TOPPLE_TIME + 1)).toBe(90);
+    expect(TOPPLE[TOPPLE_LANDS]).toBeGreaterThanOrEqual(90);
+    for (let i = 1; i < TOPPLE_LANDS; i++) expect(TOPPLE[i] - TOPPLE[i - 1]).toBeGreaterThanOrEqual(TOPPLE[Math.max(0, i - 1)] - TOPPLE[Math.max(0, i - 2)]);
+    expect(Math.max(...TOPPLE)).toBeLessThanOrEqual(100);
+  });
+
+  it('loose more arrows the bigger the company, and one from a leader', async () => {
+    const { volleyOf } = await import('./juice');
+    expect([3, 12, 40, 70, 300].map((n) => volleyOf(n))).toEqual([1, 2, 3, 4, 5]);
+    expect(volleyOf(300, true)).toBe(1);
+  });
+});

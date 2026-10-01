@@ -5,6 +5,7 @@ import { unitLift, unitScale, type Size } from './scale';
 import { ART, type ArtId, type Frame } from './units';
 import { nearestTint, unitBitmap, unitImage, type Team } from './wesnoth';
 import { paintedFigure } from './mapArt';
+import { paintedBox, rotateAbout } from './rotate';
 
 /** What a stack is doing, and how far into it: a Wesnoth animation and the milliseconds since it began. */
 export type AnimName = 'stand' | 'idle' | 'move' | 'melee' | 'charge' | 'cast' | 'ranged' | 'defend' | 'defendRanged' | 'death';
@@ -246,6 +247,43 @@ export function corpseSprite(troop: ArtId, team: Team, facing: 1 | -1): Figure {
     corpses.set(key, corpse);
   }
   return corpse;
+}
+
+const toppled = new Map<string, Figure>();
+
+/**
+ * The last of a stack falling (#190): its standing figure turned `degrees` back over its heels, away
+ * from the way it faces, and sliding as it goes, so that flat on the ground it lies just where its
+ * corpse will (`corpseSprite`), only not yet dimmed. Offsets are from where it stands, as `troopFigure`'s.
+ */
+export function toppledFigure(troop: ArtId, team: Team, facing: 1 | -1, degrees: number): Figure {
+  const key = `${troop}/${team}/${facing}/${degrees}`;
+  let made = toppled.get(key);
+  if (!made) {
+    const up = troopFigure(troop, team, facing, STAND, 'battle');
+    const box = paintedBox(up.sprite) ?? [0, 0, up.sprite.width - 1, up.sprite.height - 1];
+    // It pivots on the back of its feet: the heel on the side it falls to.
+    let [left, right] = [Infinity, -Infinity];
+    for (let y = Math.max(box[1], box[3] - 2); y <= box[3]; y++) {
+      for (let x = box[0]; x <= box[2]; x++) {
+        const v = up.sprite.get(x, y);
+        if (!v || v === SHADOW) continue;
+        [left, right] = [Math.min(left, x), Math.max(right, x)];
+      }
+    }
+    const pivot: [number, number] = [facing > 0 ? left : right + 1, box[3] + 1];
+    const turn = (d: number) => rotateAbout(up.sprite, facing > 0 ? d : -d, pivot);
+    const now = turn(degrees);
+    const flat = turn(90);
+    const flatBox = paintedBox(flat.sprite)!;
+    const [px, py] = [up.x + pivot[0], up.y + pivot[1]];
+    // Flat on the ground it lies centred where it stood, its lowest row on the ground, as the corpse lies.
+    const slide = [-Math.round((flatBox[0] + flatBox[2]) / 2) - (px + flat.x), -flatBox[3] - (py + flat.y)];
+    const k = Math.min(1, (degrees / 90) ** 2);
+    made = { sprite: now.sprite, x: Math.round(px + now.x + slide[0] * k), y: Math.round(py + now.y + slide[1] * k) };
+    toppled.set(key, made);
+  }
+  return made;
 }
 
 export type Standard = { cloth: readonly number[]; emblem: 'goose' | 'moon' | 'skull' | 'star' };
