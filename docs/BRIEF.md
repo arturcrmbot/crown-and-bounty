@@ -194,7 +194,7 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   welcome picks up to three things you did from the story's flags, the most telling first: Sergeant Pike home with
   his mother, the goose's hymn under Grimsby's walls, Old Nan warm in the wolf pelt, the dwarf's kettle (or his
   missing cart), the poachers off his deer, Pike's father's banner. An officer who did none of it gets a plain word
-  ("You went straight at him, and no nonsense"). His gold and boons follow on a card of their own. People you helped
+  ("You went straight at him without any nonsense"). His gold and boons follow on a card of their own. People you helped
   can ride on with you, as boons: up to two of the three on offer (one is always the King's own), each with his face
   and what he'd do. Sergeant Pike brings his old patrol, 20 swordsmen if you can lead them, and drills yours (+1
   attack and defence); Old Nan rides in the baggage cart, and after every battle you win her charms put a tenth of
@@ -221,7 +221,7 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   this"*), and sings you the lullaby: a condition built towards, as the goose's hymn is. At his walls, a Courtier who
   knows it can sing him Old Nan's lullaby: by the third verse the Baron is sobbing into the goose, and he comes
   quietly on one condition, that half his bounty goes to his old nanny. The stamped poster says so, and so does the
-  King at court (*"Well. She did bring him up."*). Other heroes see the button greyed, "(Courtier)", as a hint; for
+  King at court (*"I suppose she did bring him up."*). Other heroes see the button greyed, "(Courtier)", as a hint; for
   them the song is a story, and the King hopes they never sang it to him. The King also remembers Grimsby's dig on
   the heath (*"He won't find it there"*) and Mrs Pike's pie. Generated commissions keep their parleys, each with its
   reason, until the four crooks (`docs/act1/crooks.md`) replace them.

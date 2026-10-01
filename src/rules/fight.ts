@@ -254,7 +254,7 @@ export function bountyPaid(state: GameState, id: string, opening: string[], rewa
     const next = look({ ...state, bounty: 'paid', paid, locations: [...state.locations, x] }, sceptre, 110).state;
     const card = {
       title: 'The last piece of the map!',
-      lines: [...lines, `Among ${c.villain}\u2019s things you find the last torn piece of an old map. Laid together, the ${piece} pieces show an **X**, right here in ${provinceOf(state).name}.`],
+      lines: [...lines, `Among ${c.villain}\u2019s things you find the last torn piece of the old King\u2019s map. Laid together, the ${piece} pieces show an **X**, right here in ${provinceOf(state).name}.`],
       choices: [...decisions, claim],
       ...looks,
     };
@@ -264,7 +264,7 @@ export function bountyPaid(state: GameState, id: string, opening: string[], rewa
   const more = hasNextCommission(next);
   const card = {
     title: takenTitle(c.villain),
-    lines: [...lines, `Among ${c.villain}\u2019s things you find a torn piece of an old map. You now have **${piece} of ${CAMPAIGN_LENGTH}** pieces.`, `*You complete the commission on day ${roman(next.day)}.*`, ...(more ? [] : campaignLines(next))],
+    lines: [...lines, `Among ${c.villain}\u2019s things you find a torn piece of the old King\u2019s map. You now have **${piece} of ${CAMPAIGN_LENGTH}** pieces.`, `*You complete the commission on day ${roman(next.day)}.*`, ...(more ? [] : campaignLines(next))],
     choices: [...decisions, ...(more ? [claim] : [again, close])],
     ...looks,
   };

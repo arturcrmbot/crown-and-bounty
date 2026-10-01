@@ -243,7 +243,7 @@ export function heroSheet(state: GameState): HeroSheet {
     spells: h.spells.map((id) => ({ name: SPELLS[id].name, note: `It costs ${Math.max(1, SPELLS[id].mana - discount)} mana. ${SPELLS[id].note}` })),
     mapSpells: s.mapSpells.map((id) => ({ spell: id, label: `Cast ${MAP_SPELLS[id].name} (${MAP_SPELLS[id].mana} mana)`, note: MAP_SPELLS[id].note, disabled: h.mana < MAP_SPELLS[id].mana })),
     pieces: `Pieces of the old map: ${mapPieces(state)} of ${CAMPAIGN_LENGTH}`,
-    piecesNote: 'Every bounty brings a torn piece of an old map. With the last one, an X shows where the Sceptre of Order lies.',
+    piecesNote: 'Every bounty brings a torn piece of the old King\u2019s map. With the last one, an X shows where the old King\u2019s treasure lies.',
     day: `Day ${roman(state.day)} of ${LAST_DAY}`,
   };
 }

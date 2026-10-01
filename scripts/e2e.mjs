@@ -433,7 +433,7 @@ try {
 
   // To court: level-ups from the last battle, the King's thanks and a boon, then word that more commissions are coming.
   const first = () => kc.call(() => document.querySelector('.kc-card-wrap:not([hidden]) button')?.textContent ?? null);
-  check((await kc.title()) === 'Baron Grimsby is taken!' && (await kc.lines()).includes('Flemish'), 'Grimsby is taken, and has the last word');
+  check((await kc.title()) === 'Baron Grimsby is taken!' && (await kc.lines()).includes('your horse'), 'Grimsby is taken, and has the last word');
   const taken = await kc.call(() => {
     const card = document.querySelector('.kc-card-wrap:not([hidden]) .kc-card');
     const body = card.querySelector('.kc-card-body');

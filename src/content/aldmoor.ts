@@ -352,7 +352,7 @@ export const ALDMOOR: Province = {
       at: at.tower,
       done: false,
       text: {
-        about: ['Nobody has kept watch here for nearly a century.', '*Something has disturbed the crows recently.*'],
+        about: ['Nobody has kept watch here for years.', '*Something has disturbed the crows recently.*'],
         done: ['The tower is empty now, apart from some very offended crows.'],
       },
       pages: [
@@ -922,7 +922,7 @@ export const ALDMOOR: Province = {
         // Sized to the power budget: a hard fight for a careful player on day 21 (docs/BALANCE.md).
         army: [{ troop: 'swordsmen', count: 69 }, { troop: 'crossbowmen', count: 36 }, { troop: 'baron', count: 1 }],
         reward: 2000,
-        threat: 'The Baron shouts from the palisade, *"I have the goose AND the walls!"*',
+        threat: 'The Baron shouts from the palisade, *"Tell the King the goose is staying with me! She likes it here!"*',
         // Raid his dig, take his patrol off the bridge or his huntsman from his wolves, and he rides out with a fifth of his men to meet you.
         sortie: {
           when: [{ flag: 'dig', is: 'raided' }, { flag: 'patrolGone' }, { flag: 'pikeHome' }, { flag: 'rook' }],
@@ -938,7 +938,7 @@ export const ALDMOOR: Province = {
             label: 'Whistle St Aldhelm\u2019s hymn',
             needs: { flag: 'goose' },
             effects: { desert: { troop: 'crossbowmen', share: 0.5 }, flags: { goose: false } },
-            lines: ['You whistle the saint\u2019s hymn under the palisade. Inside, the royal goose hears it and makes a break for it, honking, and half the crossbowmen go after her. *They catch her in the end. The crossbowmen, you suspect, have kept running.*'],
+            lines: ['You whistle the saint\u2019s hymn under the palisade. Inside, the royal goose hears it and flaps over the wall, honking, and half the crossbowmen go over after her. *The Baron catches her by the tail feathers before she\u2019s clear, but nobody tells the crossbowmen, and they\u2019re still out in Darkwood looking for her.*'],
           },
           {
             // The Courtier's way: a bard's song, learned from Grimsby's old nanny, and the price is half the bounty, to her.
@@ -949,7 +949,7 @@ export const ALDMOOR: Province = {
             effects: { win: true, gold: 1000, xp: 450, flags: { lullaby: false } },
             lines: [
               'You tune your lute under the palisade and sing *Hush-a-bye, Baron*, all four verses, the way Old Nan sings it. By the second, his men are humming along. By the third, the Baron is sobbing into the goose.',
-              '*"Nobody\u2019s sung me that since I was six,"* he sniffs, and comes down to you, on one condition. Half his bounty must go to his old nanny.',
+              '*"Nobody has sung me that since I was six,"* he sniffs. He comes down to you on one condition, which is that half his bounty goes to his old nanny.',
             ],
             because: 'the other half went to the Baron\u2019s old nanny',
           },

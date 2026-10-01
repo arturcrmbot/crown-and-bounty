@@ -33,11 +33,11 @@ describe('the bounty paid, with a scene', () => {
     const card = cardOf(result);
     expect(card.title).toBe('Baron Grimsby is taken!');
     expect(card.portrait).toBe('grimsby');
-    expect(card.lines.slice(0, 3)).toEqual(['Their army is beaten, and **Baron Grimsby is taken**.', '*\u201cUnhand me, sir! This doublet is Flemish!\u201d*', COMMISSIONS[0].surrender]);
+    expect(card.lines.slice(0, 3)).toEqual(['Their army is beaten, and **Baron Grimsby is taken**.', '*\u201cMind the doublet, you oaf! It cost more than your horse!\u201d*', COMMISSIONS[0].surrender]);
     // The fallen come once he's taken, near the top, not at the foot of a long card (#114).
     expect(card.battleResult?.after).toBe(3);
     expect(card.lines.some((l) => l.includes('The Crown pays'))).toBe(false);
-    expect(card.lines).toContain(`Among Baron Grimsby\u2019s things you find a torn piece of an old map. You now have **1 of ${CAMPAIGN_LENGTH}** pieces.`);
+    expect(card.lines).toContain(`Among Baron Grimsby\u2019s things you find a torn piece of the old King\u2019s map. You now have **1 of ${CAMPAIGN_LENGTH}** pieces.`);
     expect(card.choices.at(-1)).toEqual({ label: 'Claim the bounty', action: { type: 'poster' } });
     // The poster's price, paid in full.
     expect(result.state.paid).toEqual({ gold: 2000 });
@@ -80,7 +80,7 @@ describe('the bounty paid, with a scene', () => {
   it('gives no last words to a hero who loses', () => {
     const lost = takeGrimsby(knight([{ troop: 'peasants', count: 5 }]));
     expect(lost.state.over).toBeUndefined();
-    expect(cardOf(lost).lines.some((l) => l.includes('Flemish'))).toBe(false);
+    expect(cardOf(lost).lines.some((l) => l.includes('your horse'))).toBe(false);
   });
 
   it('gives every villain a face, a charge and last words, and every deal its reason', () => {
