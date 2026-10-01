@@ -32,8 +32,8 @@ export type Note = { at: number; length: number; key: number; instrument: Melodi
 export type Voice = ({ instrument: Melodic; octave?: number } | { drums: Record<number, Drum> }) & { volume: number; gate?: Gate };
 
 export type TuneId =
-  | 'fields' | 'shop' | 'inn' | 'town' | 'tavern' | 'mysticIsle' | 'northernIsles' | 'docks' | 'temple'
-  | 'mainTheme' | 'royalCourt' | 'princess' | 'battle' | 'battleBoss' | 'labyrinth' | 'dungeon';
+  | 'fields' | 'town' | 'mysticIsle' | 'northernIsles' | 'docks' | 'temple'
+  | 'mainTheme' | 'battle' | 'battleBoss' | 'labyrinth' | 'dungeon' | 'belle' | 'unquiet';
 
 export type Tune = {
   /** His file, in `public/assets/music/`, and his name for it. */
@@ -54,26 +54,12 @@ const play = (instrument: Melodic, volume: number, more: { octave?: number; gate
 const FIGHT: Gate = { from: 0.2 };
 
 export const TUNES: Record<TuneId, Tune> = {
-  // Aldmoor's, the sunny farmland: a lilting three-time field, the shop's clarinet, the inn's recorder, the town and the tavern.
+  // The maps': a lilting three-time field and the town (Aldmoor's turn also has the isles' folk tune, the docks, the temple and the labyrinth, as Artur chose on 1 Oct).
   fields: {
     file: 'JRPG_fields.mid',
     title: 'Fields',
     parts: { Lead_Square: play('flute', 0.9), Middle_Pulse: play('harp', 0.6), Bass_Tri: play('upright', 0.8), Mid_Aux: play('strings', 0.35) },
     level: 0.93,
-    loops: true,
-  },
-  shop: {
-    file: 'JRPG_shop.mid',
-    title: 'Shop',
-    parts: { Lead_Square: play('clarinet', 0.85), Middle_Pulse: play('pizzicato', 0.55), Bass_Tri: play('upright', 0.8), Percussion: drums({ 55: 'stick', 57: 'hat' }, 0.35) },
-    level: 1.3,
-    loops: true,
-  },
-  inn: {
-    file: 'JRPG_inn.mid',
-    title: 'Inn',
-    parts: { Lead_Pulse: play('recorder', 0.85), Middle_Square: play('harpsichord', 0.45), Bass_Tri: play('pizzicato', 0.75), Percussion: drums({ 55: 'tambourine' }, 0.3) },
-    level: 1.1,
     loops: true,
   },
   town: {
@@ -89,12 +75,6 @@ export const TUNES: Record<TuneId, Tune> = {
     },
     level: 1.1,
     loops: true,
-  },
-  tavern: {
-    file: 'JRPG_tavern.mid',
-    title: 'Tavern',
-    parts: { Stringed1_Pulse: play('harpsichord', 0.45), Stringed2_Pulse: play('guitar', 0.6), Lead_Tri: play('recorder', 0.85) },
-    level: 0.79,
   },
   // The Fenmarch's: mist on the water, a folk tune from the isles, the boats at the jetty, and a quiet shrine.
   mysticIsle: {
@@ -128,25 +108,26 @@ export const TUNES: Record<TuneId, Tune> = {
     parts: { Lead_Square: play('oboe', 0.8), Middle_Square: play('harp', 0.55), Bass_Tri: play('strings', 0.5) },
     level: 1.3,
   },
+  // The court's since 1 Oct (#178): older music, made by people, as a small Renaissance consort would
+  // play it (recorder, shawm, lute and viol), from the Mutopia Project's public-domain editions.
+  belle: {
+    file: 'Arbeau_BelleQui.mid',
+    title: 'Belle qui tiens ma vie (Arbeau)',
+    parts: { D: play('recorder', 0.8), Tr: play('oboe', 0.6), T: play('guitar', 0.6), B: play('strings', 0.5), tambour: drums({ 53: 'tom' }, 0.35) },
+    level: 0.19,
+  },
+  unquiet: {
+    file: 'Dowland_UnquietThoughts.mid',
+    title: 'Unquiet Thoughts (Dowland)',
+    parts: { cantus: play('flute', 0.8), altus: play('recorder', 0.6), tenor: play('guitar', 0.65), bass: play('strings', 0.5) },
+    level: 0.21,
+  },
   // The title's, and the court's.
   mainTheme: {
     file: 'JRPG_mainTheme.mid',
     title: 'Main Theme',
     parts: { Lead_Square: play('flute', 0.9), Middle_Pulse: play('harp', 0.6), Bass_Tri: play('upright', 0.8) },
     level: 0.65,
-  },
-  royalCourt: {
-    file: 'JRPG_royalCourt.mid',
-    title: 'Royal Court',
-    parts: { Lead_Pulse: play('flute', 0.9), Middle_Pulse: play('harpsichord', 0.5), Percussion: drums({ 52: 'stick' }, 0.35) },
-    level: 1,
-    loops: true,
-  },
-  princess: {
-    file: 'JRPG_princess.mid',
-    title: 'Princess',
-    parts: { Lead_Square: play('oboe', 0.8), Middle_Square: play('harp', 0.55), Bass_Tri: play('pizzicato', 0.75) },
-    level: 0.95,
   },
   // A battle: the horn leads, the drums come in as it heats up, strings join the fight, a
   // glockenspiel rings over the tune while you're winning, and the oboe takes it over while you're losing.
@@ -208,12 +189,12 @@ export type TrackDef = {
 export const TRACKS: Record<TrackId, TrackDef> = {
   title: { id: 'title', tunes: ['mainTheme'] },
   // Each commission's land has its own turn of tunes: Aldmoor's farms, the Fenmarch's meres, then the three beyond.
-  heath: { id: 'heath', tunes: ['fields', 'shop', 'inn', 'town', 'tavern'] },
+  heath: { id: 'heath', tunes: ['northernIsles', 'fields', 'docks', 'town', 'temple', 'labyrinth'] },
   fen: { id: 'fen', tunes: ['mysticIsle', 'northernIsles', 'docks', 'temple'] },
-  weald: { id: 'weald', tunes: ['princess', 'fields', 'northernIsles', 'tavern', 'shop'] },
-  marsh: { id: 'marsh', tunes: ['docks', 'mysticIsle', 'inn', 'temple', 'northernIsles'] },
-  reach: { id: 'reach', tunes: ['town', 'inn', 'fields', 'shop', 'tavern'] },
-  court: { id: 'court', tunes: ['royalCourt', 'princess'] },
+  weald: { id: 'weald', tunes: ['fields', 'town', 'northernIsles', 'temple'] },
+  marsh: { id: 'marsh', tunes: ['docks', 'mysticIsle', 'temple', 'northernIsles'] },
+  reach: { id: 'reach', tunes: ['town', 'fields', 'docks', 'northernIsles'] },
+  court: { id: 'court', tunes: ['belle', 'unquiet'] },
   battle: { id: 'battle', tunes: ['battle'] },
   grimsby: { id: 'grimsby', tunes: ['battleBoss'], calm: 1 },
   mirrow: { id: 'mirrow', tunes: ['labyrinth'], calm: 1 },
