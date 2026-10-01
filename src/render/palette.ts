@@ -1,3 +1,4 @@
+import { MAP_COLOURS } from './mapPalette';
 import { UNIT_COLOURS } from './unitPalette';
 
 /**
@@ -57,6 +58,8 @@ export const REED = ramp('#3a3418', '#5a4f22', '#7d6e30', '#a08e44', '#c2ae62');
  * frame, the colours above held fixed), and writes them into `unitPalette.ts`.
  */
 export const UNIT = ramp(...UNIT_COLOURS);
+/** The colours Aldmoor's painted map (#178) needs that the rest lack: firs' dark teal and the like. `npm run mapart -- --palette` picks them. */
+export const MAP = ramp(...MAP_COLOURS);
 
 export const PALETTE_SIZE = hexes.length;
 
@@ -107,7 +110,7 @@ const cycling = new Set(CYCLES.flat());
 /** Colours that turn with the clock: sprites must never be painted in them. */
 export const CYCLING: ReadonlySet<number> = cycling;
 /** Colours the lookup tables never map to: cycling ones, and ramps added after the tables were tuned. */
-const excluded = new Set([...cycling, ...PLUM, ...REED, ...UNIT]);
+const excluded = new Set([...cycling, ...PLUM, ...REED, ...UNIT, ...MAP]);
 
 /** For each colour, the palette colour of the same thing in shadow: darker and a little bluer. */
 export const SHADOW_LUT = new Uint8Array(256).map((_, i) => {

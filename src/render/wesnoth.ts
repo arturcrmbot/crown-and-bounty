@@ -1,5 +1,6 @@
 import { Bitmap, SHADOW } from './bitmap';
 import { BLUE, COLORS, CYCLING, RED, SILHOUETTE } from './palette';
+import { loadMapArt } from './mapArt';
 import { decodePng, type Rgba } from './png';
 import { ART, artImages, unitImages } from './units';
 
@@ -26,7 +27,7 @@ const fetchImage = async (path: string) => {
   }
 };
 
-/** Loads every unit image once, a few at a time. `read` fetches from the site unless a script gives its own. */
+/** Loads every unit image once, a few at a time, and the map's pieces. `read` fetches from the site unless a script gives its own. */
 export function loadUnitArt(read: (path: string) => Promise<Uint8Array> = fetchImage): Promise<void> {
   if (loading) return loading;
   const queue = unitImages();
@@ -39,7 +40,9 @@ export function loadUnitArt(read: (path: string) => Promise<Uint8Array> = fetchI
       }
     }
   };
-  loading = Promise.all(Array.from({ length: 12 }, worker)).then(() => {
+  // In the browser, Aldmoor's painted map (#178) comes with them, so a scene is never built without it.
+  const map = read === fetchImage ? loadMapArt() : Promise.resolve();
+  loading = Promise.all([...Array.from({ length: 12 }, worker), map]).then(() => {
     loaded = true;
   });
   return loading;

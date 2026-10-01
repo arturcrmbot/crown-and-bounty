@@ -1,5 +1,14 @@
 # Asset credits
 
+## Aldmoor's map and the troops
+
+Aldmoor's places, trees, crags, bridge, river and ground (`public/assets/map/`), and the troops' and
+Aldric's figures (`public/assets/troops/`), were made on 1 October 2026
+with [Retro Diffusion](https://www.retrodiffusion.ai/), an image model, at Artur's direction (#178),
+in the spirit of Heroes of Might and Magic II's adventure map. The sheets it made are kept as they
+came in `art/map/sheets/`; `npm run mapart` (`scripts/mapart.py`) cuts them into pieces, sizes them
+to the map and puts them in the game's palette. They're part of Crown & Bounty, under its licence.
+
 ## The units: Battle for Wesnoth
 
 The troops and the hero are units from [Battle for Wesnoth](https://www.wesnoth.org/) 1.18, taken

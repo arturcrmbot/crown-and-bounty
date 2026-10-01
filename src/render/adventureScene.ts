@@ -9,15 +9,65 @@ import { FogMask } from './fog';
 import { MINIMAP } from './frame';
 import { MapTiles } from './mapTiles';
 import { Minimap } from './minimap';
+import { hash } from './noise';
 import { GOLD, INK, RED, SILHOUETTE } from './palette';
 import { animFrames, bodyHeight, everyFrame, STAND, troopFigure, type Figure } from './battleSprites';
 import { heroArtId } from './units';
 import {
   abbey, boat, boulder, camp, campfire,
-  butts, CART_GROUND, cottage, castle, standingStones, chest, crag, fold, goldPile, grainCart, hayrick, hideout, holes, huntHall, hut, kiln, lodge, mews, mill, mine, mirror, nest, oak, pack, peatHut, pine, pond, signpost, skeps, stiltHut, shrine,
+  butts, CART_GROUND as DRAWN_CART_GROUND, cottage, castle, standingStones, chest, crag, fold, goldPile, grainCart, hayrick, hideout, holes, huntHall, hut, kiln, lodge, mews, mill, mine, mirror, nest, oak, pack, peatHut, pine, pond, signpost, skeps, stiltHut, shrine,
   stoneBridge, washingCottage, watchtower, well, willow, windmill, xMark,
 } from './sprites';
 import { TerrainPainter } from './terrain';
+import { mapArtReady, piece, TREE_KINDS } from './mapArt';
+import type { PieceName } from './mapPieces';
+
+/**
+ * Whether the scene being drawn is Aldmoor's painted map (#178): set as each scene is built, and read
+ * when a place is drawn anew. Elsewhere, or until the pieces have loaded, the map is drawn in code.
+ */
+let painted = false;
+
+/** A place drawn as one of the painted pieces, if this is the painted map. */
+function art(name: PieceName, animated = false): { frames: Bitmap[]; foot: number; animated: boolean } | null {
+  const p = painted ? piece(name) : null;
+  return p ? { frames: [p.sprite], foot: p.foot, animated } : null;
+}
+
+/** What each place's look (or, failing that, its kind) is on the painted map. */
+const PAINTED_LOOKS: Partial<Record<string, PieceName>> = {
+  cottage: 'cottage',
+  house: 'washing',
+  stones: 'stones',
+  range: 'butts',
+  lodge: 'lodge',
+  mews: 'mews',
+  pack: 'pack',
+  campfire: 'campfire',
+  fold: 'fold',
+  boat: 'boat',
+  skeps: 'skeps',
+  hayrick: 'hayrick',
+  pond: 'pond',
+  kiln: 'kiln',
+  nest: 'nest',
+  camp: 'tents',
+  windmill: 'windmill',
+  shrine: 'shrine',
+};
+const PAINTED_KINDS: Partial<Record<string, PieceName>> = {
+  castle: 'castle',
+  tower: 'tower',
+  mine: 'mine',
+  village: 'well',
+  well: 'well',
+  mill: 'watermill',
+  signpost: 'signpost',
+  event: 'shrine',
+  chest: 'chest',
+  gold: 'gold',
+  hideout: 'stockade',
+};
 
 const FRAMES = 8;
 const animation = <T>(make: (t: number) => T) => Array.from({ length: FRAMES }, (_, i) => make(i / FRAMES));
@@ -99,7 +149,9 @@ function atHeel(leader: Bitmap, lead: Figure, man: Figure): { sprite: Bitmap; fo
  * in his red ring) walking at its tail. One sprite, with his feet and the cart's wheel on the ground.
  */
 function withCart(escort: Bitmap, foot: number): { sprite: Bitmap; foot: number } {
-  const cart = grainCart();
+  const painting = painted ? piece('cart') : null;
+  const cart = painting?.sprite ?? grainCart();
+  const CART_GROUND = painting?.foot ?? DRAWN_CART_GROUND;
   const overlap = 6;
   const top = Math.max(foot, CART_GROUND);
   const out = new Bitmap(cart.width + escort.width - overlap, top + Math.max(escort.height - foot, cart.height - CART_GROUND));
@@ -118,6 +170,21 @@ function withCart(escort: Bitmap, foot: number): { sprite: Bitmap; foot: number 
 
 /** The sprite (or frames) that stands for a place on the map, and how far below its top the foot is. */
 function landmark(l: Location): { frames: Bitmap[]; foot: number; animated: boolean } | null {
+  if (painted) {
+    // The hunt hall is drawn anew once it opens, so it's kept with the places that change.
+    if (l.look === 'hall') return art(l.recruits ? 'hallOpen' : 'hallShut', true) ?? drawn(l);
+    const name = (l.look && PAINTED_LOOKS[l.look]) ?? (!l.look || !(l.look in LOOKS_DRAWN) ? PAINTED_KINDS[l.kind] : undefined);
+    const look = name ? art(name) : null;
+    if (look) return look;
+  }
+  return drawn(l);
+}
+
+/** Looks that stand for a place on the map in their own drawing, even on the painted map. */
+const LOOKS_DRAWN = { cart: 1, hamper: 1, abbey: 1, peathut: 1, stilthut: 1 } as const;
+
+/** A place as it's drawn in code. */
+function drawn(l: Location): { frames: Bitmap[]; foot: number; animated: boolean } | null {
   switch (l.look) {
     case 'abbey':
       return { frames: [abbey()], foot: 60, animated: false };
@@ -269,6 +336,40 @@ export function addPlace(scene: AdventureScene, l: Location) {
   scene.hitboxes.push({ id: l.id, x0: o.x, y0: o.y, x1: o.x + o.sprite.width, y1: o.y + o.sprite.height });
 }
 
+/**
+ * The painted map's trees, rocks, crags and village huts. The rules plant a tree every few pixels for
+ * the drawn map's little ones; the painted trees are bigger, so one in four of those stands. Woods of
+ * pines are dark pines and blue firs; the rest broadleaves, a few of them in autumn colours.
+ */
+function paintedScenery(map: MapModel, scenery: Placed[], landmarks: Placed[], partOf: (id: string, o: Placed) => void) {
+  const { province } = map;
+  const tree = (name: PieceName, at: Point) => {
+    const p = piece(name)!;
+    scenery.push(place(p.sprite, at, p.foot));
+  };
+  const pick = <T,>(list: readonly T[], v: number) => list[Math.floor(v * list.length) % list.length];
+  for (const t of map.trees) {
+    if (hash(Math.round(t.x), Math.round(t.y), 411) > 0.27) continue;
+    const kind = t.kind === 'pine' ? TREE_KINDS.pine : TREE_KINDS.oak;
+    tree(pick(kind, t.variant), [t.x, t.y]);
+  }
+  province.trees.forEach(([x, y, isPine], i) => tree(pick(isPine ? TREE_KINDS.pine : TREE_KINDS.oak, hash(i, 1, 412)), [x, y]));
+  province.rocks.forEach(([x, y, size], i) => {
+    const p = piece(size >= 8 ? 'boulder2' : pick(['boulder1', 'boulder3'] as const, hash(i, 2, 413)))!;
+    scenery.push(place(p.sprite, [x, y], p.foot));
+  });
+  province.crags.forEach(([x, y, w]) => {
+    const p = piece(w >= 120 ? 'cragBig' : w >= 90 ? 'cragMid' : 'cragSmall')!;
+    scenery.push(place(p.sprite, [x, y], p.foot));
+  });
+  for (const d of province.decor) {
+    const p = piece(d.sprite === 'holes' ? 'holes' : d.seed % 2 ? 'hut' : 'cottage')!;
+    const o = place(p.sprite, d.at, p.foot);
+    landmarks.push(o);
+    partOf(d.place, o);
+  }
+}
+
 /** Sets out the province and everything on it, as the rules state has it right now. The land is painted as it comes into view. */
 export function buildAdventureScene(map: MapModel, state: GameState): AdventureScene {
   const { province } = map;
@@ -281,23 +382,27 @@ export function buildAdventureScene(map: MapModel, state: GameState): AdventureS
   const parts = new Map<string, Placed[]>();
   const partOf = (id: string, o: Placed) => parts.set(id, [...(parts.get(id) ?? []), o]);
 
-  const pines = Array.from({ length: 18 }, (_, i) => pine(500 + i, 13 + (i % 6) * 2));
-  const oaks = Array.from({ length: 12 }, (_, i) => oak(700 + i, 12 + (i % 4) * 2));
-  const willows = map.trees.some((t) => t.kind === 'willow') ? Array.from({ length: 10 }, (_, i) => willow(760 + i, 14 + (i % 4) * 2)) : [];
-  for (const t of map.trees) {
-    const variants = t.kind === 'pine' ? pines : t.kind === 'willow' ? willows : oaks;
-    scenery.push(place(variants[Math.floor(t.variant * variants.length)], [t.x, t.y], variants[0].height - 5));
-  }
-  province.trees.forEach(([x, y, isPine], i) => {
-    const sprite = isPine ? pine(300 + i, 22) : oak(320 + i, 22);
-    scenery.push(place(sprite, [x, y], sprite.height - 5));
-  });
-  province.rocks.forEach(([x, y, size], i) => scenery.push(place(boulder(260 + i, size), [x, y], Math.ceil(size * 0.8) + 2)));
-  province.crags.forEach(([x, y, w, h], i) => scenery.push(place(crag(w, h, 40 + i), [x, y], h)));
-  for (const d of province.decor) {
-    const o = d.sprite === 'holes' ? place(holes(d.seed), d.at, 26) : place(hut(d.seed), d.at, 28);
-    landmarks.push(o);
-    partOf(d.place, o);
+  painted = province.id === 'aldmoor' && mapArtReady();
+  if (painted) paintedScenery(map, scenery, landmarks, partOf);
+  else {
+    const pines = Array.from({ length: 18 }, (_, i) => pine(500 + i, 13 + (i % 6) * 2));
+    const oaks = Array.from({ length: 12 }, (_, i) => oak(700 + i, 12 + (i % 4) * 2));
+    const willows = map.trees.some((t) => t.kind === 'willow') ? Array.from({ length: 10 }, (_, i) => willow(760 + i, 14 + (i % 4) * 2)) : [];
+    for (const t of map.trees) {
+      const variants = t.kind === 'pine' ? pines : t.kind === 'willow' ? willows : oaks;
+      scenery.push(place(variants[Math.floor(t.variant * variants.length)], [t.x, t.y], variants[0].height - 5));
+    }
+    province.trees.forEach(([x, y, isPine], i) => {
+      const sprite = isPine ? pine(300 + i, 22) : oak(320 + i, 22);
+      scenery.push(place(sprite, [x, y], sprite.height - 5));
+    });
+    province.rocks.forEach(([x, y, size], i) => scenery.push(place(boulder(260 + i, size), [x, y], Math.ceil(size * 0.8) + 2)));
+    province.crags.forEach(([x, y, w, h], i) => scenery.push(place(crag(w, h, 40 + i), [x, y], h)));
+    for (const d of province.decor) {
+      const o = d.sprite === 'holes' ? place(holes(d.seed), d.at, 26) : place(hut(d.seed), d.at, 28);
+      landmarks.push(o);
+      partOf(d.place, o);
+    }
   }
 
   for (const l of state.locations) {
@@ -337,7 +442,8 @@ export function buildAdventureScene(map: MapModel, state: GameState): AdventureS
     const cx = xs.reduce((a, b) => a + b, 0) / group.length;
     const cy = group.reduce((s, i) => s + Math.floor(i / map.width), 0) / group.length;
     const span = (Math.max(...xs) - Math.min(...xs) + 1) * 8;
-    landmarks.push(place(stoneBridge(Math.max(46, span + 18)), [cx * 8 + 4, cy * 8 + 4], 12));
+    const arch = painted ? piece('bridge') : null;
+    landmarks.push(arch ? place(arch.sprite, [cx * 8 + 4, cy * 8 + 4], arch.foot - 6) : place(stoneBridge(Math.max(46, span + 18)), [cx * 8 + 4, cy * 8 + 4], 12));
   }
 
   const isLandmark = new Set(landmarks);

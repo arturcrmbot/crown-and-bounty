@@ -27,7 +27,8 @@
     "linkpreview": "node scripts/linkpreview.mjs",
     "icons": "node scripts/icons.mjs",
     "fonts": "python3 scripts/fonts.py",
-    "phone": "node scripts/phone.mjs"
+    "phone": "node scripts/phone.mjs",
+    "mapart": "python3 scripts/mapart.py"
   },
   "devDependencies": {
     "playwright": "^1.63.0",

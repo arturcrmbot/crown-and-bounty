@@ -4,8 +4,8 @@ import { outline } from '../render/bitmap';
 import { artifactIcon, slotGhost, statIcon } from '../render/artifactIcons';
 import { INK } from '../render/palette';
 import { portraitOf } from '../render/portraits';
-import { ART, heroArtId, type ArtId } from '../render/units';
-import { unitBitmap } from '../render/wesnoth';
+import { heroArtId, type ArtId } from '../render/units';
+import { standingFigure } from '../render/battleSprites';
 import { coins, heroSheet, heroStats, leaderSheet, leadershipUsed, SLOT_NAMES, stackSheet, wages, type Action, type GameState, type HeroSheet } from '../rules/game';
 import './heroScreen.css';
 import { bitmapUrl, PARCHMENT_SHADOW } from './pixels';
@@ -51,7 +51,7 @@ const ghostUrl = (slot: Slot) => cached(`g:${slot}`, () => bitmapUrl(slotGhost(s
 const statUrl = (id: 'attack' | 'defence' | 'spellPower' | 'knowledge') => cached(`s:${id}`, () => bitmapUrl(statIcon(id)));
 const faceUrl = (id: HeroSheet['background']) => cached(`p:${id}`, () => bitmapUrl(portraitOf(id)));
 /** A unit as Wesnoth drew it, standing, in our blue: at its own size in the army strip, twice that on its card. */
-export const unitUrl = (id: ArtId, scale = 1) => cached(`u:${id}:${scale}`, () => bitmapUrl(outline(unitBitmap(ART[id].stand, 'blue', scale), INK), PARCHMENT_SHADOW));
+export const unitUrl = (id: ArtId, scale = 1) => cached(`u:${id}:${scale}`, () => bitmapUrl(outline(standingFigure(id, 'blue', scale), INK), PARCHMENT_SHADOW));
 
 /** The pack always shows at least two rows of seven, and a free square after the last artifact. */
 const PACK_ROW = 7;
