@@ -35,6 +35,8 @@ const SCENES = {
   dig: { query: '&reveal=1&x=700&y=560' },
   // The King's pennant beside places he has done with (#256): St Aldhelm's shrine prayed at, and the beacon on the downs climbed.
   pennants: { query: '&hero=knight&reveal=1&x=2860&y=760&flags=aldhelm:prayed,beacon:true', steps: [] },
+  // The place a look is about lights up round its outside, all of it at once: Westmere's huts and its well (#256).
+  lit: { query: '&hero=knight&reveal=1&x=2100&y=1390', steps: ['look:village'] },
   // Land he has seen stays clear in any light (#125): the King's road in the evening, and at nightfall.
   evening: { query: '&hero=knight&movement=40&x=2760&y=960', steps: [] },
   nightfall: { query: '&hero=knight&movement=0&x=2760&y=960', steps: [] },
@@ -79,6 +81,7 @@ try {
         if (label === 'begin') await kc.begin();
         else if (label.startsWith('key:')) await page.keyboard.press(label.slice(4));
         else if (label.startsWith('place:')) await page.locator(`.kc-hero [data-place="${label.slice(6)}"]`).click();
+        else if (label.startsWith('look:')) await page.evaluate((id) => window.__kc.click(...window.__kc.centre(id)), label.slice(5));
         else if (label.startsWith('hover:')) {
           const at = await page.evaluate((side) => {
             const b = window.__kc.battle();

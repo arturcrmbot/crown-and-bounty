@@ -16,6 +16,7 @@ import { CELL, cellCentre, type MapModel, type Terrain } from '../rules/map/mode
 import { revealDisc } from '../rules/map/fog';
 import { daysAway, facingEnemy, planRoute, routeCosts, stepAlong } from '../rules/map/movement';
 import { artifactIcon, statIcon } from '../render/artifactIcons';
+import { gauntletIcon } from '../render/cursors';
 import { CardView } from '../ui/card';
 import { bitmapUrl } from '../ui/pixels';
 import { play, playStep, type Sound } from '../ui/sound';
@@ -61,6 +62,9 @@ const GALLOP = 3;
 /** The crossed swords, twice their size, for the pointer over an enemy. */
 let swords: string | null = null;
 const swordsCursor = () => (swords ??= `url("${bitmapUrl(statIcon('attack'), 0, 2)}") 16 16, pointer`);
+/** A steel gauntlet, twice its size and pointing with its finger, for the pointer over a place to visit (#256). */
+let gauntlet: string | null = null;
+const gauntletCursor = () => (gauntlet ??= `url("${bitmapUrl(gauntletIcon(), 0, 2)}") 12 2, pointer`);
 
 /** Cuts the corners of a cell-by-cell route so the dots curve like the ride does. */
 function curve(points: Point[]): Point[] {
@@ -206,6 +210,10 @@ export class AdventureController implements Screen {
   private fullDay: { state: GameState; movement: number } | null = null;
   /** The state the King's pennants were last put up for. */
   private pennanted: GameState | null = null;
+  /** The place under the pointer, seen clearly (#256): it lights up, as does the place whose card is open. */
+  private hovered: string | null = null;
+  /** The place whose card a look at it opened. */
+  private about: string | null = null;
   /** Called when the rules start a battle; the game switches screens. */
   onBattle: (() => void) | null = null;
   /** Called when the hero rides to court after a won commission. */
@@ -324,6 +332,7 @@ export class AdventureController implements Screen {
     }
     this.cardAnchor = at;
     this.looking = null;
+    this.about = null;
     this.restartAsked = false;
     this.label.hide();
     this.cards.show(card);
@@ -339,6 +348,7 @@ export class AdventureController implements Screen {
 
   hideCard() {
     this.looking = null;
+    this.about = null;
     this.reading = false;
     this.restartAsked = false;
     this.focus = null;
@@ -977,6 +987,7 @@ export class AdventureController implements Screen {
     // While he stands, the odds of every band still to fight are worked out ahead, for its label and its card.
     if (!walking) oddsAhead(this.state);
     this.flyPennants();
+    this.light();
     this.paintMinimap();
     // A tile of the land further off is painted each frame, nearest the view first, until all of it is.
     this.view.warm();
@@ -1004,6 +1015,16 @@ export class AdventureController implements Screen {
     if (this.pennanted === this.state) return;
     this.pennanted = this.state;
     flyPennants(this.scene, this.state);
+  }
+
+  /**
+   * Lights up the place under the pointer, or failing that the one whose card is open (#256): by touch,
+   * that is the place a tap looked at. Not one that's gone from the map, or out of the hero's sight.
+   */
+  private light() {
+    const id = this.hovered ?? (this.cards.isOpen ? this.about : null);
+    const place = id ? this.state.locations.find((l) => l.id === id) : undefined;
+    this.view.lit = place && !spent(place) ? (this.scene.parts.get(place.id) ?? []) : [];
   }
 
   /** The minimap, over the view's top right corner: it paints itself again only when something it shows has moved on. */
@@ -1259,6 +1280,7 @@ export class AdventureController implements Screen {
       ? { title: 'Unexplored', lines: ['You cannot see what lies there.'], choices: [{ label: 'Ride there', action: { type: 'go', id } as Action }, { label: 'Close', action: { type: 'close' } as Action }] }
       : describe(this.state, id);
     this.showCard(card, this.anchorOf(id));
+    this.about = fogged ? null : id;
     const go = card.choices.find((c) => c.action.type === 'go' && !c.disabled);
     this.looking = go ? { id, go: go.action, label: go.label } : null;
   }
@@ -1346,6 +1368,7 @@ export class AdventureController implements Screen {
     if (this.state.opening || this.state.over || this.state.ambush) return;
     this.hideCard();
     this.label.hide();
+    this.hovered = null;
     this.display.canvas.style.cursor = 'default';
     this.onHero?.(stack);
   }
@@ -1396,12 +1419,14 @@ export class AdventureController implements Screen {
       minimap.lit = !bar && minimap.onButton(x, y);
       if (bar) {
         this.resting = null;
+        this.hovered = null;
         this.display.canvas.style.cursor = this.barClickable(bar) ? 'pointer' : 'default';
         this.label.show(barNote(this.state, bar.item), clientX, clientY);
         return;
       }
       if (minimap.lit || minimap.contains(x, y)) {
         this.resting = null;
+        this.hovered = null;
         this.display.canvas.style.cursor = 'pointer';
         this.label.show(minimap.lit ? this.minimapButtonNote() : this.minimapNote(x, y), clientX, clientY, minimap.lit ? null : this.minimapOdds(x, y));
         return;
@@ -1410,7 +1435,8 @@ export class AdventureController implements Screen {
       const thing = point ? this.under(point) : null;
       // Crossed swords over an enemy, as in HoMM2: a click there is the start of a fight.
       const foe = thing?.box && !thing.fogged && this.state.locations.some((l) => l.id === thing.id && l.enemy && !l.done);
-      this.display.canvas.style.cursor = foe ? swordsCursor() : thing ? 'pointer' : 'default';
+      this.hovered = thing?.box && !thing.fogged ? thing.id : null;
+      this.display.canvas.style.cursor = foe ? swordsCursor() : thing ? gauntletCursor() : 'default';
       const again = thing && this.looking?.id === thing.id && this.cards.isOpen ? ` \u00b7 ${touch() ? 'tap' : 'click'} again: ${this.looking.label}` : '';
       // On open ground, or a place seen clearly, the ride's length comes up once the pointer rests.
       const place = thing?.box && !thing.fogged ? locationById(this.state, thing.id) : null;
@@ -1428,16 +1454,19 @@ export class AdventureController implements Screen {
     drag: (dx: number, dy: number, x: number, y: number) => {
       if (this.steering) return this.steer(x, y);
       this.letGo();
+      this.hovered = null;
       this.view.scrollTo(this.view.camera.x - dx, this.view.camera.y - dy);
     },
     wheel: (dx: number, dy: number) => {
       this.letGo();
       this.view.scrollTo(this.view.camera.x + dx, this.view.camera.y + dy);
-      // The ground under the pointer has moved: its label comes back when the pointer does.
+      // The ground under the pointer has moved: its label, and its light, come back when the pointer does.
       this.resting = null;
+      this.hovered = null;
       this.label.hide();
     },
     leave: () => {
+      this.hovered = null;
       this.label.hide();
       this.hoverBar(null);
       this.scene.minimap.lit = false;
