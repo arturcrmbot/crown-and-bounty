@@ -20,7 +20,8 @@ the roast, the tents and the horses (`feast-1.png` to `feast-4.png` in `art/map/
 
 The troops and captains that came later were drawn the same way on 2 October 2026 (#255), with HoMM2's battle screens
 and our own unit sheets as the reference: the cutpurses, the outlaws' captains and Darkwood's giant spiders
-(`units-e.png`). The request for each sheet is kept in `art/map/jobs/`.
+(`units-e.png`), and the Baron's pikemen, men-at-arms, sergeants, picket captain and foreman in his red and gold
+(`units-f.png`). The request for each sheet is kept in `art/map/jobs/`.
 
 ## The units: Battle for Wesnoth
 
