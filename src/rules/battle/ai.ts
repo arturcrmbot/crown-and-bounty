@@ -423,12 +423,28 @@ export function commander(b: BattleState): BattleAction {
   if (b.volley) return { type: 'volley' };
   const f = activeFighter(b)!;
   if (!b.fighters.some((o) => onField(o) && o.side !== f.side)) return { type: 'defend' };
-  // A spell first, if one is worth more than not casting (the stack still acts after it).
+  // A spell first, if one is worth more than not casting (the stack still acts after it). In a fight won
+  // already, only one that brings your fallen back is: the rest of your mana is kept for the next fight.
   if (f.side === 'player') {
-    const cast = best(b, castActions(b), 'player');
+    const won = wonAlready(b);
+    const cast = best(b, castActions(b).filter((a) => !won || (a.type === 'cast' && SPELLS[a.spell].effect.kind === 'heal')), 'player');
     if (cast && cast.score > evaluate(b, 'player') + 1) return cast.action;
   }
   return best(b, stackActions(b), f.side)?.action ?? { type: 'defend' };
+}
+
+/**
+ * Past this, a fight is won already: what's left of them on the field is worth less than this share
+ * of what's left of yours. The sergeants keep your mana for the next fight then (#211), because none
+ * of it comes back in battle and only a quarter at dawn.
+ */
+export const WON = 0.25;
+
+/** Whether the troops your side still has on the field outweigh theirs so far that no spell is needed to finish them. */
+export function wonAlready(b: BattleState): boolean {
+  const worth = (side: Side) => b.fighters.filter((o) => onField(o) && o.side === side).reduce((sum, o) => sum + stackWorth(b, o), 0);
+  const theirs = worth('enemy');
+  return theirs < worth('player') * WON;
 }
 
 /**
