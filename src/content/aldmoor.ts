@@ -54,10 +54,10 @@ const DELVING_SOUTH: Point = [668, 1744];
  * Pike's patrol, holding the old bridge for the Baron: the step ahead in the climb's third ring, too
  * strong at first, so a player comes back for it, or goes the long way round by the ford (`docs/BALANCE.md`).
  */
-const PATROL = { swordsmen: 27, pikemen: 18, crossbowmen: 18, menAtArms: 5 };
+const PATROL = { swordsmen: 29, pikemen: 19, crossbowmen: 19, menAtArms: 5 };
 
 /** The poachers east of Westmere, in the climb's second ring: their numbers, for the Courtier who hires them all. */
-const POACHERS = { poachers: 52, cutpurses: 29 };
+const POACHERS = { poachers: 58, cutpurses: 33 };
 
 /**
  * Young Pike's letter home, picked up on the bridge road (`letterPike`): carried to his mother's door, she
@@ -932,7 +932,7 @@ export const ALDMOOR: Province = {
         },
         lines: ['Westmere\u2019s grain is on its way to Grimsby\u2019s stockade, with a squad of Pike\u2019s lads from the bridge to see that it gets there.', '*The carter doesn\u2019t look happy about it. Nor does the ox.*'],
         // Its escort is a fifth of the patrol, whoever is left of it, sent off each payday (`setOut`): this is a fifth of it as it starts.
-        army: [{ troop: 'swordsmen', count: 5 }, { troop: 'pikemen', count: 4 }, { troop: 'crossbowmen', count: 4 }, { troop: 'menAtArms', count: 1 }],
+        army: [{ troop: 'swordsmen', count: 6 }, { troop: 'pikemen', count: 4 }, { troop: 'crossbowmen', count: 4 }, { troop: 'menAtArms', count: 1 }],
         reward: 100,
         threat: 'The carter whips up the ox. Pike\u2019s lads put themselves between you and the grain, rather apologetically.',
         // The rations are the grain kept, so they go in the baggage only once he says whose it is (#226).
@@ -977,7 +977,7 @@ export const ALDMOOR: Province = {
         charge: 'Storm the stockade',
         lines: ['A muddy stockade stands deep in Darkwood. Someone inside is honking.'],
         // The top of the climb: a hard fight for a careful player who reaches it on day 21 (docs/BALANCE.md).
-        army: [{ troop: 'swordsmen', count: 33 }, { troop: 'pikemen', count: 20 }, { troop: 'crossbowmen', count: 21 }, { troop: 'menAtArms', count: 8 }, { troop: 'baron', count: 1, level: 10 }],
+        army: [{ troop: 'swordsmen', count: 43 }, { troop: 'pikemen', count: 26 }, { troop: 'crossbowmen', count: 27 }, { troop: 'menAtArms', count: 10 }, { troop: 'baron', count: 1, level: 10 }],
         reward: 2000,
         threat: 'The Baron shouts from the palisade, *"Tell the King the goose is staying with me! She likes it here!"*',
         // Raid his dig, take his patrol off the bridge or his huntsman from his wolves, and he rides out with a fifth of his men to meet you.
@@ -1078,7 +1078,7 @@ export const ALDMOOR: Province = {
         look: 'soldiers',
         ring: 4,
         lines: ['Grimsby\u2019s men are digging on the heath for the old King\u2019s treasure, and a good many more of them are standing guard. They have dug forty holes so far.', '*None of them is the right one.*'],
-        army: [{ troop: 'swordsmen', count: 38 }, { troop: 'menAtArms', count: 10 }, { troop: 'crossbowmen', count: 19 }, { troop: 'peasants', count: 54 }, { troop: 'foreman', count: 1, level: 6 }],
+        army: [{ troop: 'swordsmen', count: 44 }, { troop: 'menAtArms', count: 12 }, { troop: 'crossbowmen', count: 22 }, { troop: 'peasants', count: 63 }, { troop: 'foreman', count: 1, level: 6 }],
         reward: 400,
         threat: 'The foreman waves his spade at you. *"Dig your own hole!"*',
         lastWords: 'Forty holes, and not one of them deep enough to hide in.',
@@ -1100,7 +1100,7 @@ export const ALDMOOR: Province = {
         behaviour: 'roam',
         range: 90,
         lines: ['Highwaymen work the road over the heath to the watchtower, under a black banner with a skull on it.', '*The cutpurses and poachers with them do the jobs a highwayman thinks are beneath him.*'],
-        army: [{ troop: 'bandits', count: 39 }, { troop: 'cutpurses', count: 30 }, { troop: 'poachers', count: 27 }, { troop: 'highwaymanCaptain', count: 1, level: 5 }],
+        army: [{ troop: 'bandits', count: 49 }, { troop: 'cutpurses', count: 37 }, { troop: 'poachers', count: 33 }, { troop: 'highwaymanCaptain', count: 1, level: 5 }],
         reward: 300,
         threat: '*"Stand and deliver!"* They stand. Somebody has to deliver.',
         parleys: [
@@ -1129,7 +1129,7 @@ export const ALDMOOR: Province = {
         behaviour: 'roam',
         range: 60,
         lines: ['Wild boars are rooting at the edge of the King\u2019s chase.'],
-        army: [{ troop: 'boars', count: 36 }],
+        army: [{ troop: 'boars', count: 42 }],
         reward: 80,
         threat: 'The biggest one lowers its tusks and scrapes the ground.',
         tamed: 'You lay a trail of acorns, and the boars follow it like a procession, all the way into your baggage train. They seem to think it was their idea.',
@@ -1147,7 +1147,7 @@ export const ALDMOOR: Province = {
         look: 'wolves',
         ring: 3,
         lines: ['Bears are asleep across the track to the old King\u2019s lodge.', '*The biggest one is snoring. The trees shake a little.*'],
-        army: [{ troop: 'bears', count: 9 }],
+        army: [{ troop: 'bears', count: 11 }],
         reward: 150,
         threat: 'The biggest bear gets up. It goes on getting up for quite a long time.',
         tamed: 'You sit down in the track, and wait. At dusk the biggest bear comes and sits beside you, and leans. *The others decide that makes you family.*',
@@ -1173,7 +1173,7 @@ export const ALDMOOR: Province = {
         sight: 380,
         wakes: { day: 8, news: 'The Baron has told **Rook the Huntsman** to bring you in, and Rook has let his wolves off the leash.' },
         lines: ['Rook the Huntsman and the Baron\u2019s wolves are sitting on the path as if they own it.', '*Rook was the best poacher Aldmoor ever had, until the Baron gave him the old King\u2019s huntsmen\u2019s job.*'],
-        army: [{ troop: 'wolves', count: 54 }, { troop: 'rook', count: 1, level: 7 }],
+        army: [{ troop: 'wolves', count: 67 }, { troop: 'rook', count: 1, level: 7 }],
         reward: 300,
         threat: 'Rook puts two fingers in his mouth and whistles, once. Every wolf in the pack looks at you.',
         lastWords: 'Don\u2019t tell the Baron! He\u2019ll give my job back to the old King\u2019s lot!',

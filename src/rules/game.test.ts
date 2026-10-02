@@ -6,6 +6,7 @@ import { isExplored } from './map/fog';
 import { buildMap, cellIndex } from './map/model';
 import { newGame } from './scenario';
 import { ALDMOOR } from '../content/aldmoor';
+import { leads } from '../content/troops';
 
 const cardOf = (result: Result) => {
   const event = result.events.find((e) => e.type === 'card');
@@ -103,7 +104,8 @@ suite('fights', () => {
     const report = cardOf(result).battleResult;
     expect(report).toEqual({
       player: [{ troop: player.troop, count: 2 }],
-      enemy: battle.fighters.filter((fighter) => fighter.side === 'enemy' && !fighter.hero).map((fighter) => ({ troop: fighter.troop, count: fighter.startCount })),
+      // Whoever led them is taken, not fallen (#239).
+      enemy: battle.fighters.filter((fighter) => fighter.side === 'enemy' && !leads(fighter.troop)).map((fighter) => ({ troop: fighter.troop, count: fighter.startCount })),
       manaSpent: 7,
       manaAvailable: 30,
     });

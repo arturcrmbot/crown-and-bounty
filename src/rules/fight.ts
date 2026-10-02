@@ -131,7 +131,7 @@ const heroAgainst = (state: GameState, place: Location): BattleHero => {
  * Each fight teaches a share of the fighting worth of what was beaten: less than all of it, so that over
  * the climb's fifteen bands Aldric's levels come steadily, to about IX or X by the villain (#239).
  */
-export const TEACHES = 0.4;
+export const TEACHES = 0.6;
 
 /** Experience for a won battle: the share of the fighting worth of what was beaten that a fight teaches. */
 export const battleXp = (enemy: Army) => Math.round(armyPower(enemy) * TEACHES);

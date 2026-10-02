@@ -14,14 +14,13 @@ function holds(state: GameState, when: keyof typeof TARGETS) {
 
 describe('the climb in Aldmoor', () => {
   for (const background of ['knight', 'wizard', 'ranger', 'courtier'] as const) {
-    it(`holds for the ${background}: a fair first fight, the river and the chase once the first two rings are done, and Darkwood and the villain out of reach`, () => {
+    it(`holds for the ${background}: a fair first fight, the river and the chase once the first two rings are done, and the villain out of reach`, () => {
       const start = { ...newGame(1066, undefined, background), opening: undefined };
       holds(start, 'start');
       const later = climbed(start);
       holds(later, 'climbed');
-      // The first two rings and nothing more: the first is beaten, and nothing beyond the second has been touched.
-      expect(later.locations.filter((l) => l.enemy?.ring === 1).every((l) => l.done)).toBe(true);
-      expect(later.locations.filter((l) => (l.enemy?.ring ?? 0) > 2).some((l) => l.done)).toBe(false);
+      // The first two rings and nothing more: no band beyond the second has been touched (the grain cart waits off the road till payday).
+      expect(later.locations.filter((l) => (l.enemy?.ring ?? 0) > 2 && !l.enemy!.convoy).some((l) => l.done)).toBe(false);
     }, 600_000);
   }
 });

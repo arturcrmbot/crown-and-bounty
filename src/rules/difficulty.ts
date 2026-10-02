@@ -4,8 +4,10 @@
  * most bands are a fair fight he wins with losses, and about one is a step ahead, so he comes back for
  * it. The balance tests hold Aldmoor to the climb's shape for every background, as win chances at two
  * moments: `start` is day I with the army he arrives with, and `climbed` a careful player at the end of
- * ring 2's days who has beaten what he could of rings 1 and 2. `reference` is a careful player on day
- * 21, for the reports (`npm run difficulty`, `npm run sim:curve`): no test holds him to a number.
+ * ring 2's days who has beaten what he could of rings 1 and 2. Every band grows a seventh a week, about
+ * as fast as he does, so what keeps the far rings for later is the ride to them: the day each ring falls
+ * is `npm run sim:curve`'s to say. `reference` is a careful player on day 21, for the reports
+ * (`npm run difficulty`, `npm run sim:curve`): no test holds him to a number.
  */
 import { BACKGROUNDS } from '../content/backgrounds';
 import { playCommission } from './bot';
@@ -24,13 +26,13 @@ export type Step = Ring | 'top';
 
 /**
  * What the climb should feel like at each moment, as the win chance of the median band of each ring
- * (and of the villain, at the top). On day I the first ring is a fair fight, and the heath, Darkwood
- * and the villain are out of reach. Once the first two rings are done, the river and the chase are
- * mostly a fair fight, and Darkwood and the villain still out of reach.
+ * (and of the villain, at the top). On day I the first ring is a fair fight, and everything from the
+ * river on, and the villain, is out of reach. Once the first two rings are done, the river and the chase
+ * are mostly a fair fight, and the villain is still out of reach.
  */
 export const TARGETS: Record<'start' | 'climbed', Partial<Record<Step, Range>>> = {
-  start: { 1: [0.5, 1], 4: [0, 0.35], 5: [0, 0.35], top: [0, 0.05] },
-  climbed: { 3: [0.5, 1], 5: [0, 0.35], top: [0, 0.05] },
+  start: { 1: [0.5, 1], 3: [0, 0.35], 4: [0, 0.35], 5: [0, 0.35], top: [0, 0.05] },
+  climbed: { 3: [0.5, 1], top: [0, 0.05] },
 };
 
 /** The day the reports look at a careful player: the third week, when he reaches the top of the climb. */

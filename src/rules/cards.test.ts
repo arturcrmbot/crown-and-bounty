@@ -119,7 +119,9 @@ describe('the odds', () => {
   it('lead the card with a verdict in plain words, and the army says what it thinks after the threat', () => {
     const card = cardOf(visit(knight(), 'patrol'));
     expect(card.verdict).toEqual({ odds: 'lose', words: 'You\u2019d likely lose.' });
-    expect(card.lines[1]).toBe('Your army looks at you. Then at them. Then at you.');
+    // After the threat, and what Sergeant Pike's level gives his men (#239).
+    expect(card.lines[1]).toMatch(/^\*\*Sergeant Pike\*\* is level V/);
+    expect(card.lines[2]).toBe('Your army looks at you. Then at them. Then at you.');
     const [fight, sergeants] = card.choices;
     expect(fight).toMatchObject({ label: 'Fight', detail: 'You command every stack yourself.' });
     expect(sergeants).toMatchObject({ label: 'Let the sergeants handle it', detail: 'They fight it out for you, by the same rules, in a moment.' });

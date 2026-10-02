@@ -606,3 +606,16 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   circle, stand by St Aldhelm's shrine and on the edge of the downs. Curse's, of the 2nd circle, stands on the heath behind
   the wolves round the gilded chest. Still to come: the Lightning Bolt's, of the 3rd circle, by the river behind
   #239's outlaws.
+- **More combat, harder as you go (2 Oct, #239):** Artur: *"We need way more combat, and it needs to get progressively
+  harder. At the moment it's essentially barren of combat, and what's out there is laughable."* He chose one difficulty
+  that's a real fight, where a careful player loses some battles and comes back stronger. Aldmoor has fifteen bands now,
+  in five rings by the ride from the start: round the castle (days 1 and 2), the fields and the downs (2 to 5), the
+  river and the chase (4 to 9), the heath and the crags (8 to 14) and Darkwood (12 to 20), with Grimsby at the top. The
+  King's side of the river has outlaws and wild things, the river is the step up, the Baron's soldiers hold his side,
+  and Darkwood is the dark end. Four bands are new: cutpurses on the King's road, outlaws round the chest by the river,
+  giant spiders in the western pines, and the Baron's pickets, back from their rabbits under Captain Warren. The other
+  eleven are mixed bands now, each band of men under a hero whose level climbs with the rings, from a cutpurse captain
+  at level I to the Baron at level X. Every band grows by a seventh each payday for three weeks, as HoMM2's do, and a
+  fight teaches less than it did, so Aldric reaches about level IX or X by Grimsby, a level or so every few days, with
+  no three at once at the bridge. Four new troops came first (pikemen, men-at-arms, cutpurses and giant spiders), then
+  the enemy heroes. The sizes are a first pass, and a balance session will tune them.

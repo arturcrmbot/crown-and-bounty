@@ -121,7 +121,8 @@ describe('Rook the Huntsman, Grimsby\u2019s captain', () => {
     const old = JSON.parse(JSON.stringify({ ...now, locations: now.locations.map((l) => (l.id === 'wolves' ? { ...l, seen: true, name: 'Wolf Pack', enemy: { ...l.enemy!, army: [{ troop: 'wolves', count: 70 }], behaviour: undefined, range: undefined, sight: undefined, wakes: undefined } } : l)) })) as GameState;
     const wolves = locationById(withNewPlaces(old), 'wolves');
     expect(wolves.name).toBe('Rook\u2019s Wolves');
-    expect(wolves.enemy!.army).toEqual([{ troop: 'wolves', count: 70 }, { troop: 'rook', count: 1 }]);
+    const rook = ALDMOOR.locations.find((l) => l.id === 'wolves')!.enemy!.army.find((x) => x.troop === 'rook');
+    expect(wolves.enemy!.army).toEqual([{ troop: 'wolves', count: 70 }, rook]);
     expect(wolves.enemy!.wakes?.day).toBe(8);
     const beaten = { ...old, locations: old.locations.map((l) => (l.id === 'wolves' ? { ...l, done: true } : l)) };
     expect(locationById(withNewPlaces(beaten), 'wolves').enemy!.army).toEqual([{ troop: 'wolves', count: 70 }]);

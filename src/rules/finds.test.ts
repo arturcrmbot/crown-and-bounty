@@ -50,7 +50,11 @@ describe('Aldmoor\u2019s finds', () => {
     const wizard = fresh('wizard');
     expect(labels(wizard, 'stoneArrow')).toEqual(['Read the notes in its margins']);
     const there = visit(wizard, 'stoneArrow').state;
-    expect(take(there, 'stoneArrow', 'known/notes').hero.xp - there.hero.xp).toBe(100);
+    const read = take(there, 'stoneArrow', 'known/notes');
+    expect(read.hero.xp - there.hero.xp).toBe(100);
+    // The scroll is used up, once: nobody reads its notes twice, or learns from it after (#239's bot read them all day).
+    for (const used of [read, learned]) expect(labels(used, used === read ? 'stoneArrow' : 'stoneBless')).toEqual(['Close']);
+    expect(choose(read, 'stoneArrow', 'known/notes')).toBeNull();
     // Curse's stone, of the 2nd circle, is the heath wolves' to settle first.
     const guarded = visit(fresh(), 'stoneCurse');
     expect(cardOf(guarded).title).toBe('Wolves');
@@ -560,8 +564,8 @@ describe('old saves', () => {
     expect(locationById(loaded, 'mill').pages).toBeUndefined();
     const wolves = locationById(loaded, 'wolves');
     expect(wolves.at).toEqual([260, 704]);
-    // As many wolves as there were, and Rook the Huntsman, who has taken them over since, in his ways.
-    expect(wolves.enemy!.army).toEqual([{ troop: 'wolves', count: 90 }, { troop: 'rook', count: 1 }]);
+    // As many wolves as there were, and Rook the Huntsman, who has taken them over since, in his ways, at his level.
+    expect(wolves.enemy!.army).toEqual([{ troop: 'wolves', count: 90 }, ALDMOOR.locations.find((l) => l.id === 'wolves')!.enemy!.army.find((x) => x.troop === 'rook')]);
     expect(wolves.name).toBe('Rook\u2019s Wolves');
     expect(wolves.enemy!.behaviour).toBe('hunt');
     expect(wolves.enemy!.wakes?.day).toBe(8);
