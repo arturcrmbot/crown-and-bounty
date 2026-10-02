@@ -60,6 +60,9 @@ describe('Aldmoor\u2019s finds', () => {
     expect(cardOf(guarded).title).toBe('Wolves');
     const free = { ...fresh(), locations: fresh().locations.map((l) => (l.id === 'heathWolves' ? { ...l, done: true } : l)) };
     expect(take(visit(free, 'stoneCurse').state, 'stoneCurse', 'scroll/learn').hero.spells).toEqual(['curse']);
+    // The Lightning Bolt's, of the 3rd circle, is the outlaws'.
+    expect(cardOf(visit(fresh(), 'stoneBolt')).title).toBe('Outlaws');
+    expect(fromAfar(fresh(), 'stoneBolt').lines.join(' ')).toContain('third circle');
   });
 
   it('asks before wearing the highwaymen\u2019s Black Banner', () => {

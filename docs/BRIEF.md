@@ -604,8 +604,8 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   do: a standing stone with a scroll bound to it under a seal of red wax, blue wax or gold, that teaches one spell to
   any hero, or gives one who knows it the notes in its margins (100 experience). Bless's and Magic Arrow's, of the 1st
   circle, stand by St Aldhelm's shrine and on the edge of the downs. Curse's, of the 2nd circle, stands on the heath behind
-  the wolves round the gilded chest. Still to come: the Lightning Bolt's, of the 3rd circle, by the river behind
-  #239's outlaws.
+  the wolves round the gilded chest. The Lightning Bolt's, of the 3rd circle, stands by the river above the mill,
+  behind the outlaws who sit on the river chest.
 - **More combat, harder as you go (2 Oct, #239):** Artur: *"We need way more combat, and it needs to get progressively
   harder. At the moment it's essentially barren of combat, and what's out there is laughable."* He chose one difficulty
   that's a real fight, where a careful player loses some battles and comes back stronger. Aldmoor has fifteen bands now,
