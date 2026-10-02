@@ -3,14 +3,15 @@
  * (the live one, or one rendered offline to be measured by `npm run listen`) at a given time, and its
  * `level` brings it to its mark there: `faint` (footfalls), `soft` under the music (clicks, pages),
  * `firm` level with it (coins, cries), `hit` over it (a blow landing), `loud` over it (the heralds'
- * fanfare, a Fireball). The sounds of a fight are recordings (#257), in `blows.ts`; the rest are made
- * in code here, until their own recordings come.
+ * fanfare, a Fireball). Since 2 Oct (#257) they are recordings made by people, cut and packed by
+ * `scripts/sfx.py`: the sounds of a fight in `blows.ts`, and those of the map, the cards and the hero
+ * screen here. What is music plays on the band, and only speech is still made in code.
  */
 import { playBand, type BandInstrument } from './band';
 import { BATTLE_EFFECTS } from './blows';
 import { jingleNotes } from './jingles';
 import { playSample } from './samples';
-import { burst, rand, tone, voice } from './synth';
+import { rand, voice } from './synth';
 
 export type Loudness = 'faint' | 'soft' | 'firm' | 'hit' | 'loud';
 export type EffectDef = {
@@ -26,44 +27,6 @@ type Play = EffectDef['play'];
 
 /** What the hero's feet (or his horse's hooves) fall on as he rides the map. */
 export type Ground = 'road' | 'bridge' | 'ford' | 'forest' | 'grass';
-
-/** One footfall, coloured by the ground: a crunch on the road, hollow boards on a bridge, a splash in the ford, leaves in the wood, a thud on grass. */
-const footfall =
-  (ground: Ground, loud: number): Play =>
-  (ctx, dest, t) => {
-    switch (ground) {
-      case 'road':
-        return burst(ctx, dest, t, 0.05, 'bandpass', 1300, 0.55 * loud, 0.6);
-      case 'bridge':
-        burst(ctx, dest, t, 0.05, 'bandpass', 900, 0.4 * loud);
-        return tone(ctx, dest, t, 200, 0.08, 0.22 * loud, 'triangle', 0.7);
-      case 'ford':
-        // Wading the ford: a splash, and the water running off.
-        burst(ctx, dest, t, 0.12, 'bandpass', 2100, 0.34 * loud, 0.45);
-        return burst(ctx, dest, t + 0.04, 0.2, 'bandpass', 4200, 0.1 * loud, 1, 0.8);
-      case 'forest':
-        // A soft fall, with a leaf or twig underfoot.
-        burst(ctx, dest, t, 0.06, 'lowpass', 400, 0.8 * loud, 0.5);
-        return burst(ctx, dest, t + 0.01, 0.03, 'bandpass', 2600, 0.12 * loud, 1, 1.2);
-      case 'grass':
-        return burst(ctx, dest, t, 0.07, 'lowpass', 320, 1.1 * loud, 0.5);
-    }
-  };
-/** A hoofbeat is two quick clops, the fore and the hind foot; a footstep one softer fall. */
-const hoofbeat =
-  (ground: Ground): Play =>
-  (ctx, dest, t) => {
-    footfall(ground, 1)(ctx, dest, t);
-    footfall(ground, 1)(ctx, dest, t + 0.09);
-  };
-
-/**
- * A card opening: it lies flat with a soft pat as the card's 170 ms unfold ends. (Its parchment
- * crackled as it opened until 1 Oct, when, under the gentler music, Artur heard it as a scratch.)
- */
-const unfold: Play = (ctx, dest, t) => burst(ctx, dest, t + 0.16, 0.05, 'lowpass', 520, 0.6);
-/** A card put away: a pat as it's laid down. */
-const fold: Play = (ctx, dest, t) => burst(ctx, dest, t + 0.1, 0.04, 'lowpass', 580, 0.5);
 
 /** Notes on the band's own instruments (#257): [instrument, MIDI note, seconds in, seconds long, volume]. A drum's note is its drum. */
 type BandNote = readonly [instrument: BandInstrument, key: number, at: number, length: number, volume: number];
@@ -102,48 +65,76 @@ export const babble =
     }
   };
 
-/** The effects of the map, the cards and the hero screen. */
-/** A glockenspiel's note: its ring, the bar's high partial for its strike, and a fifth above, quieter. */
-const chime = (frequency: number, level: number) =>
-  effect('soft', (ctx, dest, t) => {
-    tone(ctx, dest, t, frequency, 0.42, 0.22);
-    tone(ctx, dest, t, frequency * 2.76, 0.12, 0.05);
-    tone(ctx, dest, t + 0.06, frequency * 1.5, 0.3, 0.08);
-  }, level);
+/**
+ * The recorded sounds of the map, the cards and the hero screen (#257), each as one of its takes in
+ * the map's pack: its mark in the mix, the level that brings it there (`npm run listen -- effects`),
+ * and how far its pitch wanders from one time to the next (semitones). What each is cut from is in
+ * `scripts/sfx.py`, and who made it in `public/assets/CREDITS.md`.
+ */
+const MAP_RECORDED = {
+  // A button's click, a card sliding out as it opens and laid down as it's put away.
+  click: ['soft', 0.65, 0.5],
+  unfold: ['soft', 0.43, 0.5],
+  fold: ['soft', 0.4, 0.5],
+  // A page of the hero's book turning, cloth as a piece of gear is lifted, a buckle as it's worn.
+  page: ['soft', 0.41, 1],
+  lift: ['soft', 0.37, 1],
+  equip: ['soft', 0.46, 1],
+  // Coins in the hand, one coin into the purse on the bar, and PAID stamped on the poster with a heavy knock, then the coins.
+  coins: ['firm', 1, 0.5],
+  clink: ['soft', 0.47, 1.5],
+  stamp: ['firm', 1.4, 0.3],
+  // Digging for treasure, and troops joining: a knight's steps in mail going off down the road.
+  dig: ['firm', 1.1, 0.3],
+  march: ['soft', 0.43, 0.5],
+  // Mana: a wand glittering. Movement: a horse breaking into a gallop.
+  shimmer: ['firm', 1, 0.5],
+  gallop: ['soft', 0.35, 0.5],
+  // A chest's lid creaking up on its old hinges.
+  creak: ['soft', 0.37, 0.5],
+  // A lost goose found (#192), squawking. The mist rolling back from a lookout (#192): a gust of wind.
+  honk: ['firm', 0.95, 0.5],
+  gust: ['soft', 0.35, 0.5],
+  // The hero's feet on the map, or his horse's, on the ground underfoot: a road, a bridge's planks, the ford, the woods and grass.
+  'foot:road': ['faint', 0.14, 1.5],
+  'foot:bridge': ['faint', 0.17, 1.5],
+  'foot:ford': ['faint', 0.12, 1],
+  'foot:forest': ['faint', 0.15, 1.5],
+  'foot:grass': ['faint', 0.17, 1.5],
+  'hoof:road': ['faint', 0.13, 1],
+  'hoof:bridge': ['faint', 0.15, 1],
+  'hoof:ford': ['faint', 0.12, 1],
+  'hoof:forest': ['faint', 0.13, 1],
+  'hoof:grass': ['faint', 0.12, 1],
+} as const satisfies Record<string, readonly [Loudness, number, number]>;
+
+/** Something picked up by the way (#192): a small bell, rung a step higher up the scale for each one the same day, and its level at each step. */
+const PICKS = [
+  [-12, 0.38],
+  [-10, 0.4],
+  [-8, 0.41],
+  [-5, 0.44],
+  [-3, 0.47],
+  [0, 0.5],
+] as const;
+
+/** The recordings the map's effects play, which its pack must hold. */
+export const MAP_SAMPLES = [...Object.keys(MAP_RECORDED), 'pick'];
+
+const recorded = Object.fromEntries(
+  Object.entries(MAP_RECORDED).map(([id, [loud, level, spread]]) => [id, effect(loud, (ctx, dest, t) => playSample(ctx, dest, t, id, spread), level)]),
+) as Record<keyof typeof MAP_RECORDED, EffectDef>;
+const picks = Object.fromEntries(
+  PICKS.map(([semitones, level], i) => [`pick${i}`, effect('soft', (ctx, dest, t) => playSample(ctx, dest, t, 'pick', 0, semitones), level)]),
+) as Record<`pick${0 | 1 | 2 | 3 | 4 | 5}`, EffectDef>;
 
 const EVERYDAY = {
-  click: effect('soft', (ctx, dest, t) => tone(ctx, dest, t, 520, 0.05, 0.12, 'square', 0.7), 3.8),
-  // A page of the hero's book turning.
-  page: effect('soft', (ctx, dest, t) => burst(ctx, dest, t, 0.16, 'bandpass', 2600, 0.35, 0.45), 3),
-  lift: effect('soft', (ctx, dest, t) => burst(ctx, dest, t, 0.05, 'bandpass', 1400, 0.3, 1.6), 7.5),
-  // Buckles and a little ring of metal.
-  equip: effect('soft', (ctx, dest, t) => {
-    burst(ctx, dest, t, 0.04, 'highpass', 3000, 0.25);
-    tone(ctx, dest, t + 0.02, 1760, 0.1, 0.22, 'triangle');
-    tone(ctx, dest, t + 0.06, 2637, 0.18, 0.14);
-  }, 1.1),
-  unfold: effect('soft', unfold, 5),
-  // A rubber stamp slammed down on the poster: a thump, a rap of wood, and the coins it stands for.
-  stamp: effect('firm', (ctx, dest, t) => {
-    burst(ctx, dest, t, 0.16, 'lowpass', 420, 1, 0.5);
-    tone(ctx, dest, t, 82, 0.18, 0.8, 'sine', 0.6);
-    burst(ctx, dest, t + 0.005, 0.04, 'bandpass', 1800, 0.45);
-    [1760, 2349].forEach((f, i) => tone(ctx, dest, t + 0.14 + i * 0.07, f, 0.3, 0.16));
-  }, 1.7),
+  ...recorded,
+  ...picks,
   // Someone speaking, at a middling pitch: a villain's last words use his own (`speak` in ui/sound.ts).
   speech: effect('firm', babble(150, 8), 1.3),
-  fold: effect('soft', fold, 6.5),
-  coins: effect('firm', (ctx, dest, t) => [1320, 1760, 1480, 1980].forEach((f, i) => tone(ctx, dest, t + i * 0.055, f, 0.12, 0.35)), 1.3),
-  day: effect('firm', (ctx, dest, t) => {
-    tone(ctx, dest, t, 392, 1.1, 0.4);
-    tone(ctx, dest, t, 784, 0.8, 0.15);
-  }),
-  dig: effect('firm', (ctx, dest, t) => {
-    for (const d of [0, 0.25, 0.5]) burst(ctx, dest, t + d, 0.1, 'lowpass', 500, 0.8);
-    tone(ctx, dest, t + 0.8, 1568, 0.9, 0.35);
-  }, 0.76),
-  // Boots going off down the road.
-  march: effect('soft', (ctx, dest, t) => [0, 0.14, 0.28, 0.42].forEach((d, i) => burst(ctx, dest, t + d, 0.06, 'lowpass', 600, 0.55 - i * 0.12)), 6),
+  // A new day: the harp runs softly up the chord of G, and a bell rings over it.
+  day: effect('firm', (ctx, dest, t) => band(ctx, dest, t, [...call('harp', 0.7, [[55, 0, 1], [59, 0.09, 1], [62, 0.18, 1], [67, 0.27, 1.3]]), ['bells', 79, 0.27, 1.4, 0.3]]), 0.1, 1),
   // Three quick calls up the chord of G on the band's trumpets, then the whole chord held, and the timpani (#257).
   fanfare: effect('loud', (ctx, dest, t) =>
     band(ctx, dest, t, [
@@ -172,51 +163,6 @@ const EVERYDAY = {
   find: effect('firm', (ctx, dest, t) => {
     for (const n of jingleNotes('discovery')) playBand(ctx, dest, n.instrument, t + n.at, n.key, n.length, n.volume);
   }, 0.33),
-  // Mana: a glassy run up high, quick as a sparkle.
-  shimmer: effect('firm', (ctx, dest, t) => [1568, 1976, 2349, 2794, 3136].forEach((f, i) => tone(ctx, dest, t + i * 0.035, f, 0.22, 0.16)), 1.5),
-  // Movement: a few quick hoofbeats, picking up speed.
-  gallop: effect('soft', (ctx, dest, t) => [0, 0.08, 0.15, 0.21, 0.26, 0.3].forEach((d, i) => burst(ctx, dest, t + d, 0.05, 'lowpass', 650 + i * 40, 0.6)), 2.8),
-  // A chest's lid creaking up on its old hinges, and falling back against the box.
-  creak: effect('soft', (ctx, dest, t) => {
-    tone(ctx, dest, t, 230, 0.34, 0.2, 'sawtooth', 0.55);
-    tone(ctx, dest, t + 0.05, 345, 0.22, 0.08, 'sawtooth', 0.7);
-    burst(ctx, dest, t + 0.34, 0.06, 'lowpass', 480, 0.7);
-  }, 1.8),
-  // Something picked up by the way (#192): a glockenspiel note, a step higher up the scale for each one the same day.
-  pick0: chime(1046.5, 0.93),
-  pick1: chime(1174.7, 0.9),
-  pick2: chime(1318.5, 0.86),
-  pick3: chime(1568, 0.8),
-  pick4: chime(1760, 0.77),
-  pick5: chime(2093, 0.72),
-  // A lost goose found (#192): two indignant honks, the second lower.
-  honk: effect('firm', (ctx, dest, t) => {
-    for (const [at, f] of [[0, 392], [0.2, 330]] as const) {
-      tone(ctx, dest, t + at, f, 0.16, 0.22, 'sawtooth', 0.82);
-      tone(ctx, dest, t + at, f * 2, 0.14, 0.1, 'square', 0.85);
-    }
-  }, 3.3),
-  // The mist rolling back from a lookout (#192): a gust of wind that rises and dies away.
-  gust: effect('soft', (ctx, dest, t) => {
-    burst(ctx, dest, t, 1.1, 'bandpass', 380, 0.5, 3, 0.8, 0.35);
-    burst(ctx, dest, t + 0.15, 0.8, 'bandpass', 900, 0.25, 2, 1.2, 0.25);
-  }, 1.1),
-  // A coin dropping into the purse on the bar.
-  clink: effect('soft', (ctx, dest, t) => {
-    tone(ctx, dest, t, 2637, 0.07, 0.25, 'triangle');
-    tone(ctx, dest, t + 0.01, 3520, 0.05, 0.1);
-  }, 2),
-  // Footfalls under hoofbeats, and softer on grass and leaves than on a road or a bridge's boards.
-  'foot:road': effect('faint', footfall('road', 0.65), 2),
-  'foot:bridge': effect('faint', footfall('bridge', 0.65), 1.1),
-  'foot:ford': effect('faint', footfall('ford', 0.65)),
-  'foot:forest': effect('faint', footfall('forest', 0.65), 2.6),
-  'foot:grass': effect('faint', footfall('grass', 0.65), 2.5),
-  'hoof:road': effect('faint', hoofbeat('road'), 1.2),
-  'hoof:bridge': effect('faint', hoofbeat('bridge'), 0.8),
-  'hoof:ford': effect('faint', hoofbeat('ford'), 0.75),
-  'hoof:forest': effect('faint', hoofbeat('forest'), 1.4),
-  'hoof:grass': effect('faint', hoofbeat('grass'), 1.1),
 } satisfies Record<string, EffectDef>;
 
 export const EFFECTS = { ...EVERYDAY, ...BATTLE_EFFECTS };

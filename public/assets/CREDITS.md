@@ -125,15 +125,18 @@ v2.0.3, S. Christian Collins's General MIDI SoundFont, taken from
   brass; tails over a second or two faded out; resampled to 22 kHz; stored losslessly, one after another, in `band.flac`, with each sample's zones, tuning,
   loop and envelope in `band.json`.
 
-## The sounds of a fight: recordings made by people
+## The sound effects: recordings made by people
 
-Every sound of a battle is a recording (#257): a troop's weapon, what it lands on, its cries, its feet,
-and the spells. `scripts/sfx.py` fetches each recording below from the address it names, cuts it,
-layers it as the game plays it (a blow with a hit on flesh or on armour under it, a death cry with a
-body falling after it), sets every take to one loudness with a gentle limiter on its peaks, and packs
-the takes losslessly, at 32 kHz, into `public/assets/sfx/battle.flac` with their index in
-`battle.json`. The game plays each at its level in the mix (`src/audio/blows.ts`), a little higher or
-lower each time. Thank you to everyone below.
+Every sound effect is a recording (#257). In a battle it's a troop's weapon, what it lands on, its
+cries, its feet, and the spells. On the map, the cards and the hero screen it's the cards and pages,
+gold, gear, the hero's feet and his horse's hooves, and whatever he finds. `scripts/sfx.py` fetches
+each recording below from the address it names, cuts it, layers it as the game plays it (a blow with
+a hit on flesh or on armour under it, a death cry with a body falling after it), sets every take to
+one loudness with a gentle limiter on its peaks, and packs the takes losslessly, at 32 kHz, into
+`public/assets/sfx/`: a fight's into `battle.flac`, and the rest into `map.flac`, each with its index
+beside it. The game plays each at its level in the mix (`src/audio/blows.ts` and
+`src/audio/effects.ts`), a little higher or lower each time. Only speech is still made in code.
+Thank you to everyone below.
 
 ### Battle for Wesnoth's sounds
 
@@ -220,7 +223,8 @@ and low, for the weight under a heavy blow. Additional sound effects by Will Lea
 
 ### Kenney's sounds
 
-[Impact Sounds](https://kenney.nl/assets/impact-sounds) and [RPG Audio](https://kenney.nl/assets/rpg-audio)
+[Impact Sounds](https://kenney.nl/assets/impact-sounds), [RPG Audio](https://kenney.nl/assets/rpg-audio),
+[Casino Audio](https://kenney.nl/assets/casino-audio) and [UI Audio](https://kenney.nl/assets/ui-audio)
 by Kenney (kenney.nl). **Licence:** [CC0](https://creativecommons.org/publicdomain/zero/1.0/).
 
 - Impact Sounds: `footstep_grass_000.ogg`, `footstep_grass_001.ogg`, `footstep_grass_002.ogg`,
@@ -228,8 +232,40 @@ by Kenney (kenney.nl). **Licence:** [CC0](https://creativecommons.org/publicdoma
   field); `impactSoft_medium_000.ogg`, `impactSoft_medium_001.ogg` and `impactSoft_medium_002.ogg`
   (the weight under a scratch); `impactSoft_heavy_000.ogg` (a troll's blow and stomp);
   `impactWood_heavy_000.ogg` (a lance's shaft); `impactWood_light_000.ogg`, `impactWood_light_001.ogg`
-  and `impactWood_light_002.ogg` (your turn).
-- RPG Audio: `knifeSlice.ogg`, `knifeSlice2.ogg` (a knife).
+  and `impactWood_light_002.ogg` (your turn); `impactWood_heavy_001.ogg` (PAID stamped on a poster);
+  `impactPlank_medium_000.ogg`, `impactPlank_medium_001.ogg`, `impactPlank_medium_002.ogg`,
+  `impactPlank_medium_003.ogg` and `impactPlank_medium_004.ogg`, with `footstep_wood_000.ogg`,
+  `footstep_wood_001.ogg` and `footstep_wood_002.ogg` (a bridge's planks, underfoot and under hooves).
+- RPG Audio: `knifeSlice.ogg`, `knifeSlice2.ogg` (a knife); `bookFlip1.ogg`, `bookFlip2.ogg` and
+  `bookFlip3.ogg` (a page turning); `cloth1.ogg`, `cloth2.ogg` and `cloth3.ogg` (gear lifted);
+  `beltHandle1.ogg` and `beltHandle2.ogg` (gear worn); `handleCoins.ogg` and `handleCoins2.ogg` (gold);
+  `footstep00.ogg`, `footstep03.ogg` and `footstep06.ogg` (walking in the woods).
+- Casino Audio: `card-slide-1.ogg`, `card-slide-3.ogg` and `card-slide-8.ogg` (a card opening);
+  `card-place-1.ogg`, `card-place-2.ogg` and `card-place-4.ogg` (a card put away).
+- UI Audio: `click1.ogg` and `click2.ogg` (a button).
+
+### Little Robot Sound Factory's Fantasy Sound Effects Library
+
+[Fantasy Sound Effects Library](https://opengameart.org/content/fantasy-sound-effects-library) by
+Little Robot Sound Factory ([www.littlerobotsoundfactory.com](https://www.littlerobotsoundfactory.com)),
+on OpenGameArt: steps on dirt, `Footstep_Dirt_02.wav`, `Footstep_Dirt_05.wav` and
+`Footstep_Dirt_09.wav` (walking a road), and in water, `Footstep_Water_01.wav`,
+`Footstep_Water_02.wav`, `Footstep_Water_04.wav`, `Footstep_Water_05.wav` and
+`Footstep_Water_06.wav` (the ford, on foot and on horseback). **Licence:**
+[CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+
+### rubberduck's sounds
+
+[80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) and
+[100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) by rubberduck, on OpenGameArt:
+`item_coins_01.ogg` and `item_coins_03.ogg` (a coin into the purse on the bar), `item_gem_01.ogg`
+(a glint of treasure dug up), and `bell_02.ogg` (something picked up by the way, rung a step higher
+each time). **Licence:** [CC0](https://creativecommons.org/publicdomain/zero/1.0/).
+
+### Oiboo's chest
+
+[open chest SFX](https://opengameart.org/content/open-chest-sfx) by Oiboo, on OpenGameArt:
+`open chest_0.wav`, a chest opening. **Licence:** [CC0](https://creativecommons.org/publicdomain/zero/1.0/).
 
 ### Freesound's recordings
 
@@ -239,7 +275,7 @@ from Freesound's high-quality previews of them.
 
 | Recording | By | Plays |
 | --- | --- | --- |
-| [SRS_Foley_Horse_Galloping.wav](https://freesound.org/s/165532/) | StephenSaldanha | a knight's hooves on the field |
+| [SRS_Foley_Horse_Galloping.wav](https://freesound.org/s/165532/) | StephenSaldanha | a knight's hooves on the field, and the gallop under the charge's horn |
 | [Arrow Impact](https://freesound.org/s/205938/) | Twisted_Euphoria | an arrow landing |
 | [Arrow Impact](https://freesound.org/s/521552/) | omerbhatti34 | an arrow landing |
 | [Bow Release (Bow and Arrow) 3](https://freesound.org/s/384918/) | Ali_6868 | an arrow loosed |
@@ -248,12 +284,22 @@ from Freesound's high-quality previews of them.
 | [Body fall.wav](https://freesound.org/s/417994/) | DylanTheFish | a body falling after a death cry |
 | [BODY FALL - V HVY - DIRT](https://freesound.org/s/504626/) | leonelmail | a heavy body falling, a troll's stomp, and the weight under a charge |
 | [Fireball](https://freesound.org/s/683179/) | NearTheAtmoshphere | a Fireball falling |
+| [Wind Gust](https://freesound.org/s/146932/) | crashoverride6 | the mist rolling back from a lookout |
+| [Lots of Geese](https://freesound.org/s/160685/) | antique98 | a lost goose found |
+| [A squeaking goose](https://freesound.org/s/160686/) | antique98 | a lost goose found |
+| [Horse Clip Clopping Downhill (stereo)](https://freesound.org/s/182504/) | swiftoid | the hero's horse on a road |
+| [Magic Wand Glitter](https://freesound.org/s/211624/) | qubodup | mana gained |
+| [Shovel_dirt.wav](https://freesound.org/s/353907/) | dr19 | digging for treasure |
+| [Knight Right Footstep on Gravel 5 (With Chainmail)](https://freesound.org/s/384890/) | Ali_6868 | troops joining |
+| [Knight Left Footstep Forest/Grass 5 (With Chainmail)](https://freesound.org/s/384901/) | Ali_6868 | troops joining |
+| [Single Horse Galopp](https://freesound.org/s/564628/) | D4XX | movement gained, and the hero's horse on grass and in the woods |
 
 ## Everything else
 
-The terrain, buildings, portraits, title painting, interface, icon, the sound effects outside a
-fight and the ambience are all made in code (`src/render/`, `src/audio/`), and so are the heralds'
-and the curtain's notes, which the band plays. No image-generation models are used.
+The terrain, buildings, portraits, title painting, interface, icon, the people's speech and the
+ambience are all made in code (`src/render/`, `src/audio/`), and so are the notes the band plays for
+the heralds, the curtain, a new day, a province's fanfare, the charge's horn, cheers, falters, jeers
+and the bard's songs. No image-generation models are used.
 
 ## Wesnoth files
 

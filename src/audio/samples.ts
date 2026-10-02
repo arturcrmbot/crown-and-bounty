@@ -9,7 +9,8 @@
 /** A pack's index: the rate its takes are stored at, and each effect's takes (where each starts, and how long it is, in the pack's samples). */
 export type SamplePack = { rate: number; effects: Record<string, { offset: number; length: number }[]> };
 
-export type PackId = 'battle';
+/** The sounds of a fight, and those of the map, the cards and the hero screen. */
+export type PackId = 'battle' | 'map';
 
 const takes = new Map<string, AudioBuffer[]>();
 const loading = new Map<PackId, Promise<void>>();
@@ -20,7 +21,7 @@ export const samplesReady = (id: string) => takes.has(id);
  * Fetches and decodes a pack, once (later calls wait on the first). FLAC is decoded at its own rate,
  * so every take comes out exactly as it was cut.
  */
-export function loadSamples(pack: PackId = 'battle', base = import.meta.env.BASE_URL): Promise<void> {
+export function loadSamples(pack: PackId, base = import.meta.env.BASE_URL): Promise<void> {
   let p = loading.get(pack);
   if (!p) {
     p = (async () => {
@@ -54,16 +55,16 @@ export function loadSamples(pack: PackId = 'battle', base = import.meta.env.BASE
 }
 
 /**
- * Plays one of an effect's takes at random into `dest` at `at`, its pitch moved by up to `spread`
- * semitones either way (and its speed with it, as a recording played faster does). Silent until its
- * pack is in.
+ * Plays one of an effect's takes at random into `dest` at `at`, `semitones` higher (or lower) than
+ * it was recorded and moved by up to `spread` more either way, its speed moving with its pitch, as a
+ * recording played faster does. Silent until its pack is in.
  */
-export function playSample(ctx: BaseAudioContext, dest: AudioNode, at: number, id: string, spread = 0) {
+export function playSample(ctx: BaseAudioContext, dest: AudioNode, at: number, id: string, spread = 0, semitones = 0) {
   const list = takes.get(id);
   if (!list?.length) return;
   const source = ctx.createBufferSource();
   source.buffer = list[Math.floor(Math.random() * list.length)];
-  source.playbackRate.value = 2 ** (((Math.random() * 2 - 1) * spread) / 12);
+  source.playbackRate.value = 2 ** ((semitones + (Math.random() * 2 - 1) * spread) / 12);
   source.connect(dest);
   source.start(at);
 }
