@@ -6,7 +6,7 @@ import { isBeast } from '../content/troops';
 import { FENMARCH } from '../content/fenmarch';
 import type { Province } from '../content/types';
 import { withNewPlaces } from './campaign';
-import { apply, commissionAt, describe as fromAfar, heroStats, leadershipUsed, locationById, payday, placeNote, update, visit, wages, type Card, type GameState, type Location, type Result } from './game';
+import { apply, commissionAt, describe as fromAfar, heardOf, heroStats, leadershipUsed, locationById, payday, placeNote, update, visit, wages, type Card, type GameState, type Location, type Result } from './game';
 import { beat } from './fight';
 import { CELL } from './map/model';
 import { gridSize, isExplored as seenBit } from './map/fog';
@@ -413,7 +413,9 @@ describe('one-off finds', () => {
           // A chest's choices open it, and an open chest never shows its pages again.
           if (l.kind === 'chest' && doers.every((c) => c.effects!.done)) continue;
           expect(flag, `${p.id} ${l.id}/${page.id}`).toBeTruthy();
-          for (const c of doers) expect(c.effects!.flags?.[flag!], `${p.id} ${l.id}/${page.id}/${c.id}`).toBeTruthy();
+          // A choice that waits on a flag of its own, and sets it, is offered once too (Mrs Pike's letter).
+          const sets = (c: (typeof doers)[number], f?: string) => Boolean(f && c.effects!.flags?.[f]);
+          for (const c of doers) expect(sets(c, flag) || sets(c, c.when?.notFlag), `${p.id} ${l.id}/${page.id}/${c.id}`).toBe(true);
         }
       }
     }
@@ -633,6 +635,37 @@ describe('Aldmoor, bigger', () => {
     const word = take(home(start), 'mrsPike', 'home/word');
     expect(word.leadership).toBe(start.leadership + 20);
     expect(cardOf(visit(word, 'mrsPike')).choices.map((c) => c.label)).toEqual(['Close']);
+  });
+
+  it('Mrs Pike gets her boy\u2019s letter, whatever has happened to him since, and the journal ticks it off (#217)', () => {
+    const start = fresh();
+    const offered = (s: GameState) => labels(s, 'mrsPike').includes('Give her his letter');
+    const ticked = (s: GameState) => heardOf(s).find((h) => h.who.includes('young Pike'))?.done;
+    // Not until he has picked it up on the bridge road.
+    expect(offered(start)).toBe(false);
+    const carried = update(start, 'letterPike', { done: true });
+    expect(ticked(carried)).toBe(false);
+    const cases: [string, GameState][] = [
+      ['waiting', carried],
+      ['gone', { ...carried, flags: { patrolGone: true } }],
+      ['home', home(carried)],
+      ['fed', { ...home(carried), flags: { ...home(carried).flags, mrsPike: 'word' } }],
+    ];
+    for (const [page, state] of cases) {
+      expect(offered(state), page).toBe(true);
+      const given = choose(state, 'mrsPike', `${page}/letter`)!;
+      expect(cardOf(given).lines.join(' '), page).toMatch(/reads it/);
+      expect(given.state.flags?.pikeLetter, page).toBe(true);
+      expect(ticked(given.state), page).toBe(true);
+      expect(offered(given.state), page).toBe(false);
+    }
+    // Once Pike is home, the letter waits on his mother, not on him: the thanks don't tick it off.
+    expect(ticked(take(home(carried), 'mrsPike', 'home/word'))).toBe(false);
+    // A save from before, which had seen her cottage, gets the letter too: her pages have only grown.
+    const before = (l: Location): Location => (l.id === 'mrsPike' ? { ...l, seen: true, pages: JSON.parse(JSON.stringify(l.pages!.map((p) => ({ ...p, choices: p.choices.filter((c) => c.id !== 'letter') })))) } : l);
+    const old: GameState = { ...carried, locations: carried.locations.map(before) };
+    expect(offered(old)).toBe(false);
+    expect(offered(withNewPlaces(JSON.parse(JSON.stringify(old)) as GameState))).toBe(true);
   });
 
   it('sends Pike home to Westmere when he reads his father\u2019s journal', () => {
