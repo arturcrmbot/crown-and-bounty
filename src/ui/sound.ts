@@ -14,6 +14,7 @@ import { Terrain } from '../rules/map/model';
 // The recorded effects and the jingles load once sound is awake, in the background, the map's first; until they're in, they're silent.
 whenAwake(() => {
   loadSamples('map').catch(() => {});
+  loadSamples('land').catch(() => {});
   loadSamples('battle').catch(() => {});
   loadJingles().catch(() => {});
 });

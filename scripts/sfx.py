@@ -22,6 +22,7 @@ import numpy as np
 from scipy.signal import butter, lfilter, sosfilt
 
 # 32 kHz keeps everything up to 16 kHz, where most of these recordings (Vorbis and MP3 at the source) stop anyway.
+# The land's sounds, under the music and long, keep up to 12 kHz (`PACKS`).
 RATE = 32000
 OUT = os.path.join(os.path.dirname(__file__), '..', 'public', 'assets', 'sfx')
 CACHE = '/tmp/kc-sfx'
@@ -46,7 +47,7 @@ RUBBERDUCK = {
     'rpg': 'https://opengameart.org/sites/default/files/80-CC0-RPG-SFX_0.zip',
     'sfx': 'https://opengameart.org/sites/default/files/100-CC0-SFX_0.zip',
 }
-# A single file on OpenGameArt, by its name there.
+# A single file on OpenGameArt, by its name there (or a zip there, and a file in it).
 OGA = 'https://opengameart.org/sites/default/files/'
 # Freesound's recordings, all CC0, each by its id: its preview's address, who recorded it, and what it is.
 FREESOUND = {
@@ -68,6 +69,21 @@ FREESOUND = {
     384890: ('https://cdn.freesound.org/previews/384/384890_984733-hq.mp3', 'Ali_6868', 'Knight Right Footstep on Gravel 5 (With Chainmail)'),
     384901: ('https://cdn.freesound.org/previews/384/384901_984733-hq.mp3', 'Ali_6868', 'Knight Left Footstep Forest/Grass 5 (With Chainmail)'),
     564628: ('https://cdn.freesound.org/previews/564/564628_887696-hq.mp3', 'D4XX', 'Single Horse Galopp'),
+    75162: ('https://cdn.freesound.org/previews/75/75162_1088850-hq.mp3', 'nigelcoop', 'crow.wav'),
+    102972: ('https://cdn.freesound.org/previews/102/102972_1743164-hq.mp3', 'DjangoAltona', 'FX WOODPECKER.wav'),
+    129678: ('https://cdn.freesound.org/previews/129/129678_2362707-hq.mp3', 'FreethinkerAnon', 'crickets'),
+    131924: ('https://cdn.freesound.org/previews/131/131924_1661766-hq.mp3', 'felix.blume', 'A windmill is squeaking alone in the desert (USA, Arizona)'),
+    233630: ('https://cdn.freesound.org/previews/233/233630_3610778-hq.mp3', 'abstraktgeneriert', 'Pickaxe #2.wav'),
+    270588: ('https://cdn.freesound.org/previews/270/270588_3094998-hq.mp3', 'michorvath', 'Anvil Hit 2'),
+    321129: ('https://cdn.freesound.org/previews/321/321129_3853968-hq.mp3', 'dleigh', 'arrow hitting target.wav'),
+    346853: ('https://cdn.freesound.org/previews/346/346853_2247456-hq.mp3', 'Kinoton', 'Single Blackbird at Dawn'),
+    354132: ('https://cdn.freesound.org/previews/354/354132_5462031-hq.mp3', 'betterchinese', 'Frog croaking sound effect'),
+    361470: ('https://cdn.freesound.org/previews/361/361470_6512973-hq.mp3', 'Jofae', 'Crow Caw'),
+    364992: ('https://cdn.freesound.org/previews/364/364992_4351264-hq.mp3', 'forfie', 'Bonfire'),
+    378799: ('https://cdn.freesound.org/previews/378/378799_7025952-hq.mp3', 'kgeshev', 'BELL.wav'),
+    387426: ('https://cdn.freesound.org/previews/387/387426_2247456-hq.mp3', 'Kinoton', 'Single Skylark'),
+    435508: ('https://cdn.freesound.org/previews/435/435508_1196020-hq.mp3', 'BenjaminNelan', 'Rooster Crow 1'),
+    465697: ('https://cdn.freesound.org/previews/465/465697_9159316-hq.mp3', 'Breviceps', 'Owl Hoot'),
 }
 
 
@@ -125,6 +141,10 @@ def oga(name):
     return ('oga', name)
 
 
+def oga_zip(archive, name):
+    return ('oga_zip', archive, name)
+
+
 def path_of(source):
     kind = source[0]
     if kind == 'wesnoth':
@@ -141,6 +161,8 @@ def path_of(source):
         return member(RUBBERDUCK[source[1]], f'{source[2]}.ogg')
     if kind == 'oga':
         return fetch(OGA + urllib.parse.quote(source[1]))
+    if kind == 'oga_zip':
+        return member(OGA + urllib.parse.quote(source[1]), source[2])
     raise ValueError(source)
 
 
@@ -150,10 +172,10 @@ _decoded = {}
 
 
 def decode(path):
-    if path not in _decoded:
+    if (path, RATE) not in _decoded:
         raw = subprocess.run(['ffmpeg', '-nostdin', '-v', 'error', '-i', path, '-ac', '1', '-ar', str(RATE), '-f', 'f32le', '-'], capture_output=True, check=True).stdout
-        _decoded[path] = np.frombuffer(raw, dtype=np.float32).astype(np.float64)
-    return _decoded[path]
+        _decoded[path, RATE] = np.frombuffer(raw, dtype=np.float32).astype(np.float64)
+    return _decoded[path, RATE]
 
 
 def env_db(x, hop=128):
@@ -222,6 +244,9 @@ def cut(x, how):
         return cut(x[int(how[1] * RATE):], None)
     if kind == 'span':
         return fade(x[int(how[1] * RATE):int((how[1] + how[2]) * RATE)], 0.02, min(1.0, 0.3 * how[2]))
+    if kind == 'raw':
+        # A stretch exactly as it is, for a loop to be made from (`loop`).
+        return x[int(how[1] * RATE):int((how[1] + how[2]) * RATE)]
     if kind == 'loudest':
         # Its loudest stretch, `how[1]` seconds long, as the ear hears it.
         size = int(how[1] * RATE)
@@ -287,6 +312,17 @@ def take(*layers):
         out = limit(out * 10 ** ((LOUD - loudest(out)) / 20), 10 ** ((LOUD + CREST) / 20))
         if abs(loudest(out) - LOUD) < 0.3:
             break
+    return out
+
+
+def loop(source, start, length, fade=0.5):
+    """A take that plays round and round: `length` seconds from `start`, made in full first (levelled, its
+    rumble gone), then its last `fade` seconds laid over its first, so its end runs on into its start."""
+    x = take(layer(source, ('raw', start, length + fade)))
+    n, f = int(length * RATE), int(fade * RATE)
+    t = np.linspace(0, np.pi / 2, f)
+    out = x[:n].copy()
+    out[:f] = x[n:n + f] * np.cos(t) + x[:f] * np.sin(t)
     return out
 
 
@@ -440,15 +476,47 @@ def everyday():
     }
 
 
-# Each pack, made only when it's built, and the lowest it keeps. The map's recordings carry a rumble
-# under 40 Hz (wind, handling, a thud no phone or laptop plays) that would only be measured, not
-# heard, so its pack keeps what's over 50 Hz, the weight of a hoof or a spade included.
-PACKS = {'battle': (battle, 0), 'map': (everyday, 50)}
+def land():
+    return {
+        # What goes on while you're near: a brook, the falls, the wind over high ground, a shower, the
+        # crickets at night, and a fire at court and at the feast. Each loops, round and round.
+        'brook': [loop(oga_zip('stream-waterfall.zip', 'stream4.ogg'), 2, 6)],
+        'falls': [loop(oga_zip('stream-waterfall.zip', 'waterfall1.ogg'), 10, 5)],
+        'gale': [loop(oga('wind1.wav'), 20, 9, 1)],
+        'shower': [loop(oga_zip('Rain OGG.zip', '4.ogg'), 8, 5)],
+        'crickets': [loop(freesound(129678), 3, 4)],
+        'fire': [loop(wesnoth('ambient/campfire.ogg'), 1, 6)],
+        # What comes from a place now and then: birds in the woods, crows at the tower, an owl at night,
+        # a cockerel at dawn, frogs at the pools, the smith's anvil, a pick in the mine, the mill, the
+        # archery butts, the abbey's bell, and a log settling in the fire.
+        'songbird': [take(layer(wesnoth('ambient/birds1.ogg'), ('loudest', 2.5))), take(layer(wesnoth('ambient/birds2.ogg'), ('loudest', 2.5))), take(layer(wesnoth('ambient/birds3.ogg'), ('loudest', 2.5)))],
+        'blackbird': [take(layer(freesound(346853), ('loudest', 3)))],
+        'skylark': [take(layer(freesound(387426), ('loudest', 3.5)))],
+        'woodpecker': [take(layer(freesound(102972), ('loudest', 2)))],
+        'crow': [take(layer(freesound(361470))), take(layer(freesound(75162), ('loudest', 1.5)))],
+        # A tawny owl's whole call, "hoo... hu, hu-hu-hoooo", a little quicker than it was recorded.
+        'owl': [take(layer(freesound(465697), None, 0, 0, 1.1))],
+        'cockerel': [take(layer(freesound(435508)))],
+        'frog': [take(layer(freesound(354132), ('loudest', 1.2)))],
+        'anvil': [take(layer(freesound(270588)))],
+        'pick': [take(layer(freesound(233630)))],
+        'creak': [take(layer(freesound(131924), ('loudest', 2.5)))],
+        'arrow': [take(layer(freesound(321129)))],
+        'chapelBell': [take(layer(freesound(378799)))],
+        'crackle': each(lambda k: take(layer(freesound(364992), ('events', k, 2, 0.6))), (3, 9)),
+    }
+
+
+# Each pack, made only when it's built: the lowest it keeps, and its rate. The map's and the land's
+# recordings carry a rumble under 40 Hz (wind, handling, a thud no phone or laptop plays) that would
+# only be measured, not heard, so their packs keep what's over 50 Hz, the weight of a hoof or a spade
+# included. The land's play quietly under the music, so 24 kHz (up to 12 kHz) keeps all they have.
+PACKS = {'battle': (battle, 0, 32000), 'map': (everyday, 50, 32000), 'land': (land, 50, 24000)}
 
 
 def build(name):
-    global FLOOR
-    make, FLOOR = PACKS[name]
+    global FLOOR, RATE
+    make, FLOOR, RATE = PACKS[name]
     effects = make()
     pcm, index, at = [], {}, 0
     for effect, takes in effects.items():

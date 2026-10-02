@@ -29,7 +29,7 @@ try {
     const { loadSamples } = await import('/src/audio/samples.ts');
     // The band's samples, every tune and the recorded effects, as the game loads them.
     await loadBand();
-    await Promise.all([loadSamples('map'), loadSamples('battle')]);
+    await Promise.all([loadSamples('map'), loadSamples('land'), loadSamples('battle')]);
     await loadJingles();
     for (const id of Object.keys(TUNES)) await loadTune(id);
     // BS.1770's K-weighting filters are given for 48 kHz.

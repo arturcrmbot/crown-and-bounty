@@ -125,27 +125,36 @@ v2.0.3, S. Christian Collins's General MIDI SoundFont, taken from
   brass; tails over a second or two faded out; resampled to 22 kHz; stored losslessly, one after another, in `band.flac`, with each sample's zones, tuning,
   loop and envelope in `band.json`.
 
-## The sound effects: recordings made by people
+## The sounds: recordings made by people
 
-Every sound effect is a recording (#257). In a battle it's a troop's weapon, what it lands on, its
-cries, its feet, and the spells. On the map, the cards and the hero screen it's the cards and pages,
-gold, gear, the hero's feet and his horse's hooves, and whatever he finds. `scripts/sfx.py` fetches
-each recording below from the address it names, cuts it, layers it as the game plays it (a blow with
-a hit on flesh or on armour under it, a death cry with a body falling after it), sets every take to
-one loudness with a gentle limiter on its peaks, and packs the takes losslessly, at 32 kHz, into
-`public/assets/sfx/`: a fight's into `battle.flac`, and the rest into `map.flac`, each with its index
-beside it. The game plays each at its level in the mix (`src/audio/blows.ts` and
-`src/audio/effects.ts`), a little higher or lower each time. Only speech is still made in code.
-Thank you to everyone below.
+Every sound effect is a recording (#257), and so are most of the land's sounds under the music. In a
+battle it's a troop's weapon, what it lands on, its cries, its feet, and the spells. On the map, the
+cards and the hero screen it's the cards and pages, gold, gear, the hero's feet and his horse's
+hooves, and whatever he finds. Around him it's the water, the wind on the downs, the rain, the
+crickets, the birds, the smithy, the mine, the mill, the butts, the abbey's bell, and the fire at
+court. `scripts/sfx.py` fetches each recording below from the address it names, cuts it, layers it
+as the game plays it (a blow with a hit on flesh or on armour under it, a death cry with a body
+falling after it), sets every take to one loudness with a gentle limiter on its peaks, and packs the
+takes losslessly into `public/assets/sfx/`: a fight's into `battle.flac` and the map's into
+`map.flac`, at 32 kHz, and the land's into `land.flac`, at 24 kHz, each with its index beside it. The
+water, wind, rain, crickets and fire are cut to go round and round without a seam. The game plays
+each at its level in the mix (`src/audio/blows.ts`, `src/audio/effects.ts` and
+`src/audio/ambience.ts`), a little higher or lower each time. Thank you to everyone below.
 
 ### Battle for Wesnoth's sounds
 
 From [its repository](https://github.com/wesnoth/wesnoth) at the tag `1.18.8`, `data/core/sounds/`,
 by the people its `copyrights.csv` names. Each troop's weapon and cries are its own Wesnoth unit's,
-as its pictures are, and the war horn calls into battle. **Licence:** the [GNU GPL v2 or later](https://www.gnu.org/licenses/old-licenses/gpl-2.0.html).
+as its pictures are, the war horn calls into battle, the songbirds sing in the woods (Karol Nowak's
+`ambient/birds1.ogg`, `ambient/birds2.ogg` and `ambient/birds3.ogg`), and the fire burns at court
+and at the feast (Iris Morelle's `ambient/campfire.ogg`). **Licence:** the [GNU GPL v2 or later](https://www.gnu.org/licenses/old-licenses/gpl-2.0.html).
 
 | File | By | Licence |
 | --- | --- | --- |
+| `ambient/birds1.ogg` | Karol Nowak | GPL v2+ |
+| `ambient/birds2.ogg` | Karol Nowak | GPL v2+ |
+| `ambient/birds3.ogg` | Karol Nowak | GPL v2+ |
+| `ambient/campfire.ogg` | Iris Morelle | GPL v2+ |
 | `bite-small.ogg` | Lari Nieminen | GPL v2+ |
 | `bite.ogg` | Lari Nieminen | GPL v2+ |
 | `bow.ogg` | Lari Nieminen | GPL v2+ |
@@ -267,6 +276,22 @@ each time). **Licence:** [CC0](https://creativecommons.org/publicdomain/zero/1.0
 [open chest SFX](https://opengameart.org/content/open-chest-sfx) by Oiboo, on OpenGameArt:
 `open chest_0.wav`, a chest opening. **Licence:** [CC0](https://creativecommons.org/publicdomain/zero/1.0/).
 
+### kurt's Stream Sounds
+
+[Stream Sounds](https://opengameart.org/content/stream-sounds) by kurt, recorded on a camping trip,
+on OpenGameArt: from `stream-waterfall.zip`, `stream4.ogg` (a brook) and `waterfall1.ogg` (the falls).
+**Licence:** [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+
+### Ylmir's rain
+
+[Rain (loopable)](https://opengameart.org/content/rain-loopable) by Ylmir, recorded at a window, on
+OpenGameArt: from `Rain OGG.zip`, `4.ogg` (a shower). **Licence:** [CC0](https://creativecommons.org/publicdomain/zero/1.0/).
+
+### Luke.RUSTLTD's wind
+
+[wind1](https://opengameart.org/content/wind1) by Luke.RUSTLTD, on OpenGameArt: `wind1.wav`, the wind
+over the downs. **Licence:** [CC0](https://creativecommons.org/publicdomain/zero/1.0/).
+
 ### Freesound's recordings
 
 Each recorded by the person named, on [Freesound](https://freesound.org). **Licence:**
@@ -293,13 +318,29 @@ from Freesound's high-quality previews of them.
 | [Knight Right Footstep on Gravel 5 (With Chainmail)](https://freesound.org/s/384890/) | Ali_6868 | troops joining |
 | [Knight Left Footstep Forest/Grass 5 (With Chainmail)](https://freesound.org/s/384901/) | Ali_6868 | troops joining |
 | [Single Horse Galopp](https://freesound.org/s/564628/) | D4XX | movement gained, and the hero's horse on grass and in the woods |
+| [crickets](https://freesound.org/s/129678/) | FreethinkerAnon | crickets at night |
+| [Single Blackbird at Dawn](https://freesound.org/s/346853/) | Kinoton | a blackbird in the woods |
+| [Single Skylark](https://freesound.org/s/387426/) | Kinoton | a skylark over the open heath |
+| [FX WOODPECKER.wav](https://freesound.org/s/102972/) | DjangoAltona | a woodpecker in the woods |
+| [Crow Caw](https://freesound.org/s/361470/) | Jofae | crows at the tower |
+| [crow.wav](https://freesound.org/s/75162/) | nigelcoop | crows at the tower |
+| [Owl Hoot](https://freesound.org/s/465697/) | Breviceps | an owl at night |
+| [Rooster Crow 1](https://freesound.org/s/435508/) | BenjaminNelan | a cockerel at first light |
+| [Frog croaking sound effect](https://freesound.org/s/354132/) | betterchinese | frogs at the pools |
+| [Anvil Hit 2](https://freesound.org/s/270588/) | michorvath | the smith at his anvil |
+| [Pickaxe #2.wav](https://freesound.org/s/233630/) | abstraktgeneriert | a pick in the mine |
+| [A windmill is squeaking alone in the desert (USA, Arizona)](https://freesound.org/s/131924/) | felix.blume | the mill's sails turning |
+| [arrow hitting target.wav](https://freesound.org/s/321129/) | dleigh | an arrow into the straw at the butts |
+| [BELL.wav](https://freesound.org/s/378799/) | kgeshev | the abbey's bell |
+| [Bonfire](https://freesound.org/s/364992/) | forfie | a log settling in the fire at court |
 
 ## Everything else
 
-The terrain, buildings, portraits, title painting, interface, icon, the people's speech and the
-ambience are all made in code (`src/render/`, `src/audio/`), and so are the notes the band plays for
-the heralds, the curtain, a new day, a province's fanfare, the charge's horn, cheers, falters, jeers
-and the bard's songs. No image-generation models are used.
+The terrain, buildings, portraits, title painting, interface and icon are all made in code
+(`src/render/`), and so are a few sounds (`src/audio/`): the people's speech, the faint wind under
+the map, the cuckoo, a drop in the brook, the villagers' talk and the brothers' chant. So are the
+notes the band plays for the heralds, the curtain, a new day, a province's fanfare, the charge's
+horn, cheers, falters, jeers and the bard's songs. No image-generation models are used.
 
 ## Wesnoth files
 

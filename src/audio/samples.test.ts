@@ -2,9 +2,12 @@ import { describe, expect, it } from 'vitest';
 import credits from '../../public/assets/CREDITS.md?raw';
 import battleJson from '../../public/assets/sfx/battle.json';
 import battleFlac from '../../public/assets/sfx/battle.flac?inline';
+import landJson from '../../public/assets/sfx/land.json';
+import landFlac from '../../public/assets/sfx/land.flac?inline';
 import mapJson from '../../public/assets/sfx/map.json';
 import mapFlac from '../../public/assets/sfx/map.flac?inline';
 import script from '../../scripts/sfx.py?raw';
+import { LAND_SAMPLES } from './ambience';
 import { RECORDED_EFFECTS } from './blows';
 import { MAP_SAMPLES } from './effects';
 import { STING_SAMPLES } from './stings';
@@ -12,12 +15,14 @@ import type { SamplePack } from './samples';
 
 const bytesOf = (inline: string) => Uint8Array.from(atob(inline.split(',')[1]), (c) => c.charCodeAt(0));
 
-/** Each pack, its bytes, and what it must hold. */
+/** Each pack, its bytes, what it must hold, and how long its longest take may be (seconds). */
 const PACKS = {
-  // The fight's sounds, the war horn into battle, and the gallop under the charge's horn call.
-  battle: { pack: battleJson as unknown as SamplePack, bytes: bytesOf(battleFlac), holds: [...RECORDED_EFFECTS, ...STING_SAMPLES, 'charge:gallop'] },
+  // The fight's sounds, the war horn into battle, and the gallop under the charge's horn call. The longest is Lightning's roll of thunder.
+  battle: { pack: battleJson as unknown as SamplePack, bytes: bytesOf(battleFlac), holds: [...RECORDED_EFFECTS, ...STING_SAMPLES, 'charge:gallop'], longest: 4 },
   // The map's, the cards' and the hero screen's.
-  map: { pack: mapJson as unknown as SamplePack, bytes: bytesOf(mapFlac), holds: MAP_SAMPLES },
+  map: { pack: mapJson as unknown as SamplePack, bytes: bytesOf(mapFlac), holds: MAP_SAMPLES, longest: 4 },
+  // The land's, under the music: its calls, and the water, wind, rain, crickets and fire that go round and round, the longest the wind over the downs.
+  land: { pack: landJson as unknown as SamplePack, bytes: bytesOf(landFlac), holds: LAND_SAMPLES, longest: 10 },
 };
 
 /** A FLAC file's own account of itself (its STREAMINFO): rate, channels, bits a sample, and how many samples. */
@@ -31,13 +36,13 @@ function streamInfo(data: Uint8Array) {
   return { magic: String.fromCharCode(...data.subarray(0, 4)), rate: bits(0, 20), channels: bits(20, 3) + 1, depth: bits(23, 5) + 1, samples: bits(28, 36) };
 }
 
-describe.each(Object.entries(PACKS))('the %s pack of recorded sounds', (_, { pack, bytes, holds }) => {
+describe.each(Object.entries(PACKS))('the %s pack of recorded sounds', (_, { pack, bytes, holds, longest }) => {
   it('holds every sound it plays, each with a take or more', () => {
     expect(Object.keys(pack.effects).sort()).toEqual([...holds].sort());
     for (const [id, takes] of Object.entries(pack.effects)) {
       expect(takes.length, id).toBeGreaterThan(0);
-      // None runs on and on: the longest is Lightning's roll of thunder.
-      for (const t of takes) expect(t.length / pack.rate, id).toBeLessThan(4);
+      // None runs on and on.
+      for (const t of takes) expect(t.length / pack.rate, id).toBeLessThan(longest);
     }
   });
 
@@ -69,6 +74,7 @@ describe('the recorded sound effects', () => {
       ...[...script.matchAll(/lrsf\('([^']+)'\)/g)].map((m) => `${m[1]}.wav`),
       ...[...script.matchAll(/rubberduck\('\w+', '([^']+)'\)/g)].map((m) => `${m[1]}.ogg`),
       ...[...script.matchAll(/oga\('([^']+)'\)/g)].map((m) => m[1]),
+      ...[...script.matchAll(/oga_zip\('([^']+)', '([^']+)'\)/g)].flatMap((m) => [m[1], m[2]]),
     ];
     expect(named.length).toBeGreaterThan(40);
     // A take made in a loop names its file with the loop's letters in it: each of those is credited too.
