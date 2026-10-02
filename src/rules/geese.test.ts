@@ -79,7 +79,8 @@ describe('Aldmoor\u2019s lookouts (#192)', () => {
   const LOOKOUTS = ['stones', 'beacon', 'lonePine', 'huntStand', 'cairn'];
 
   it('each lifts the mist round it once climbed, and the journal counts them', () => {
-    let s = fresh();
+    // The spiders' webs run up the lone pine (#239): they're seen to first.
+    let s: GameState = { ...fresh(), locations: fresh().locations.map((l) => (l.id === 'spiders' ? { ...l, done: true } : l)) };
     expect(tally(s, 'Lookouts climbed')).toEqual({ what: 'Lookouts climbed', got: 0, of: LOOKOUTS.length });
     for (const id of LOOKOUTS.slice(1)) {
       const place = ALDMOOR.locations.find((l) => l.id === id)!;

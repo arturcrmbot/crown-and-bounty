@@ -43,6 +43,8 @@ const WORDS = ['text', 'pages', 'artifact', 'reveals', 'gold'] as const;
 const ENEMY_WORDS = ['lines', 'threat', 'flees', 'loot', 'tamed', 'parleys', 'spoils', 'taken', 'sortie', 'lastWords'] as const;
 /** How a band moves, which comes with the captain who leads it. */
 const CAPTAINS_WAYS = ['behaviour', 'range', 'sight', 'wakes', 'bold', 'pace'] as const;
+/** Where a band stands in the climb (#239), and what it carries home, which come with its army. */
+const CLIMB = ['ring', 'gate', 'reward', 'look'] as const;
 const pick = <T extends object>(from: T | undefined, keys: readonly (keyof T)[]) => JSON.stringify(keys.map((k) => from?.[k] ?? null));
 
 /** What a choice offers: its name, what it needs and what it does. Its words, and when it shows, can change. */
@@ -95,6 +97,17 @@ export function withNewPlaces(state: GameState): GameState {
     if (levelled) {
       changed = true;
       l = { ...l, enemy: { ...l.enemy!, army: levelled } };
+    }
+    // A place a band has come to guard since (the outlaws round the chest by the river, #239) is the band's to settle first.
+    if (now.guard && l.guard !== now.guard) {
+      changed = true;
+      l = { ...l, guard: now.guard };
+    }
+    // A band from before the climb (#239) is the climb's now, wherever it stands: its army, its ring and its ways, and its words.
+    if (l.enemy && now.enemy?.ring && !l.enemy.ring) {
+      changed = true;
+      const climb = Object.fromEntries([...ENEMY_WORDS, ...CAPTAINS_WAYS, ...CLIMB].map((k) => [k, structuredClone(now.enemy![k])]));
+      return { ...l, name: now.name, text: structuredClone(now.text), pages: structuredClone(now.pages), enemy: { ...l.enemy, ...climb, army: structuredClone(now.enemy.army) } };
     }
     // A captain who has taken a band over since leads it now (Rook, the Baron's wolves), under his name, in his ways
     // and with his words, even if the hero has met the band before: who leads it isn't something that happened to it.
@@ -189,13 +202,17 @@ function holds(state: GameState, clue: Clue, heard = false): boolean {
 export function heardOf(state: GameState): Heard[] {
   const heard = (commissionOf(state).heard ?? []).filter((r) => holds(state, r.heard, true)).map((r) => ({ who: r.who, words: r.words, done: Boolean(r.done && holds(state, r.done)) }));
   // The talk on payday goes here rather than on payday's card (#155): who has more men since he came, a band
-  // let loose, and a convoy on the road.
+  // let loose, and a convoy on the road. Every band grows on payday (`BAND_GROWTH`), and the talk says so once.
   const said = (words: string, done: boolean): Heard => ({ who: 'the talk on payday', words, done });
-  const talk = state.locations.flatMap((l) => [
-    ...(l.enemy?.grown ? [said(`More men have joined **${l.name}**.`, l.done)] : []),
-    ...(l.enemy?.wakes && state.day >= l.enemy.wakes.day ? [said(l.enemy.wakes.news, l.done)] : []),
-    ...(l.enemy?.convoy && !l.done ? [said(l.enemy.convoy.leaves, false)] : []),
-  ]);
+  const bands = state.locations.filter((l) => l.enemy?.grown && !l.enemy.grows);
+  const talk = [
+    ...(bands.length ? [said(`More have joined every band in ${provinceOf(state).name} since payday.`, bands.every((l) => l.done))] : []),
+    ...state.locations.flatMap((l) => [
+      ...(l.enemy?.grown && l.enemy.grows ? [said(`More men have joined **${l.name}**.`, l.done)] : []),
+      ...(l.enemy?.wakes && state.day >= l.enemy.wakes.day ? [said(l.enemy.wakes.news, l.done)] : []),
+      ...(l.enemy?.convoy && !l.done ? [said(l.enemy.convoy.leaves, false)] : []),
+    ]),
+  ];
   return [...heard.filter((h) => !h.done), ...talk.filter((h) => !h.done), ...heard.filter((h) => h.done), ...talk.filter((h) => h.done)];
 }
 

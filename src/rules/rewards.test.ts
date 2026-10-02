@@ -64,7 +64,8 @@ describe('choices that come back later', () => {
   });
 
   it('the highwaymen carry Grimsby\u2019s orders: some of the patrol goes to his stockade, the rest desert', () => {
-    const beaten = choose(fresh(), 'highwaymen', 'auto')!.state;
+    // The highwaymen are the climb's fourth ring: an army that could take them.
+    const beaten = choose({ ...fresh(), army: [{ troop: 'knights', count: 60 }, { troop: 'archers', count: 60 }] }, 'highwaymen', 'auto')!.state;
     expect(beaten.flags?.orders).toBe(true);
     const before = locationById(beaten, 'hideout').enemy!.army;
     const sent = choose(beaten, 'patrol', 'parley/orders')!.state;

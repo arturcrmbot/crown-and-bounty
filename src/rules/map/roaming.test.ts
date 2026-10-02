@@ -21,7 +21,7 @@ const dist = (a: readonly number[], b: readonly number[]) => Math.hypot(a[0] - b
 describe('enemies on the map', () => {
   it('keep their posts when they guard', () => {
     const s = nights(aldmoor(), 12);
-    expect(locationById(s, 'highwaymen').at).toEqual(locationById(aldmoor(), 'highwaymen').at);
+    expect(locationById(s, 'bears').at).toEqual(locationById(aldmoor(), 'bears').at);
   });
 
   it('wander their territory when they roam, and never stand where nobody could', () => {

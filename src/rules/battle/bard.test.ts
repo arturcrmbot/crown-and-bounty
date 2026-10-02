@@ -170,7 +170,8 @@ describe('the Courtier, a bard', () => {
   });
 
   it('pays out of the purse he rode in with, and the card says what his bribes cost', () => {
-    const state = courtier();
+    // The highwaymen as they were, one company, before the climb made them its fourth ring (#239).
+    const state = { ...courtier(), locations: courtier().locations.map((l) => (l.id === 'highwaymen' ? { ...l, enemy: { ...l.enemy!, army: [{ troop: 'bandits' as const, count: 14 }] } } : l)) };
     const b = startFight(state, 'highwaymen')!.state.battle!;
     const lord = lordOf(b);
     const bandits = of(b, 'bandits');

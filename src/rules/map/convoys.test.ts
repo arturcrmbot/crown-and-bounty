@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ALDMOOR } from '../../content/aldmoor';
 import { apply, choose, endDay, fight, finishFight, heardOf, heroStats, locationById, startFight, wages, type Card, type GameState, type Result } from '../game';
+import { BAND_GROWTH } from '../days';
 import { newGame } from '../scenario';
 import { pointAlong } from './convoys';
 import { nearest, smooth, type Point } from './geometry';
@@ -8,8 +9,8 @@ import { nearest, smooth, type Point } from './geometry';
 const fresh = (): GameState => ({ ...newGame(1066, ALDMOOR, 'knight'), opening: undefined });
 const cart = (state: GameState) => locationById(state, 'cart');
 const patrol = (state: GameState) => locationById(state, 'patrol').enemy!.army;
-/** The patrol on the bridge as the content has it, and the share of it that goes with the cart. */
-const PATROL = ALDMOOR.locations.find((l) => l.id === 'patrol')!.enemy!.army;
+/** The patrol on the bridge as it stands after the first payday, grown by a seventh as every band does (#239), and the share of it that goes with the cart. */
+const PATROL = ALDMOOR.locations.find((l) => l.id === 'patrol')!.enemy!.army.map((x) => ({ ...x, count: Math.round(x.count * (1 + BAND_GROWTH)) }));
 const SHARE = ALDMOOR.locations.find((l) => l.id === 'cart')!.enemy!.convoy!.share;
 const road = smooth(cart(fresh()).enemy!.convoy!.route);
 /** How far along its road the cart stands, and how far off it. */

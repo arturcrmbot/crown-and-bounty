@@ -113,7 +113,9 @@ describe('on the map', () => {
   });
 
   it('a courtier pays half a bribe, and buys small bands outright', () => {
-    const courtier: GameState = { ...newGame(1066, ALDMOOR, 'courtier'), opening: undefined };
+    const fresh: GameState = { ...newGame(1066, ALDMOOR, 'courtier'), opening: undefined };
+    // The highwaymen as they were, a small band, before the climb made them its fourth ring (#239).
+    const courtier: GameState = { ...fresh, locations: fresh.locations.map((l) => (l.id === 'highwaymen' ? { ...l, enemy: { ...l.enemy!, army: [{ troop: 'bandits', count: 14 }], reward: 200 } } : l)) };
     const labels = (s: GameState, id: string) => cardOf(visit(s, id)).choices.map((c) => c.label);
     expect(labels(courtier, 'patrol')).toContain('Pay them to go home (1,350 gold)');
     const offer = labels(courtier, 'highwaymen').find((l) => l.startsWith('Hire them'));

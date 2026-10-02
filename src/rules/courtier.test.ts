@@ -4,7 +4,7 @@ import { bribeOffer, battleAct, type BattleState } from './battle/battle';
 import { apply, battleXp, finishFight, levelUpCard, locationById, startFight, visit, type Card, type GameState, type Result } from './game';
 import { purseLines } from './fight';
 import { hireOffer } from './places/enemy';
-import { leadershipUsed } from './state';
+import { leadershipUsed, update, type Army } from './state';
 import { newGame } from './scenario';
 
 /** What the Courtier's playtest asked for (#231): his gold, told plainly on the cards. */
@@ -16,11 +16,14 @@ const cardOf = (result: Result | null): Card => {
 };
 const lordOf = (b: BattleState) => b.fighters.find((f) => f.hero)!;
 const turnOf = (b: BattleState, id: number): BattleState => ({ ...b, order: [id, ...b.order.filter((x) => x !== id)] });
+/** A band as these cards were written for, whatever size the climb makes it now. */
+const sized = (s: GameState, id: string, army: Army): GameState => update(s, id, { enemy: { ...locationById(s, id).enemy!, army } });
 
 describe('a fight card tells a Courtier what his gold could buy (#231)', () => {
   it('says who of them would take his gold, and what sending them home or winning them over would cost', () => {
     // On day 4 of the playtest the patrol's card said he'd likely lose, and 23 of its 40 crossbowmen would have taken his gold.
-    const s = { ...fresh(), leadership: fresh().leadership + 100, army: [{ troop: 'knights' as const, count: 15 }, { troop: 'archers' as const, count: 32 }] };
+    const patrol = sized(fresh(), 'patrol', [{ troop: 'swordsmen', count: 70 }, { troop: 'crossbowmen', count: 40 }]);
+    const s = { ...patrol, leadership: patrol.leadership + 100, army: [{ troop: 'knights' as const, count: 15 }, { troop: 'archers' as const, count: 32 }] };
     const b = startFight(s, 'patrol')!.state.battle!;
     const crossbows = b.fighters.find((f) => f.side === 'enemy' && f.troop === 'crossbowmen')!;
     const home = bribeOffer(b, lordOf(b), crossbows)!;
@@ -33,7 +36,7 @@ describe('a fight card tells a Courtier what his gold could buy (#231)', () => {
   });
 
   it('names every stack that would take it, and leaves out winning them over when there is no room for them all', () => {
-    const s = fresh();
+    const s = sized(fresh(), 'highwaymen', [{ troop: 'bandits', count: 14 }]);
     const [line] = purseLines(s, 'highwaymen');
     expect(line).toContain('In battle, all 14 Highwaymen would take your gold.');
     expect(line).toContain('would win them over to your side');
@@ -50,7 +53,7 @@ describe('a fight card tells a Courtier what his gold could buy (#231)', () => {
 
 describe('the card after a battle says what his gold did (#231)', () => {
   it('names whom it sent home and whom it won over, as well as what it cost', () => {
-    const s = fresh();
+    const s = sized(fresh(), 'collectors', [{ troop: 'swordsmen', count: 5 }, { troop: 'crossbowmen', count: 3 }]);
     let b = startFight(s, 'collectors')!.state.battle!;
     const lord = lordOf(b);
     const swordsmen = b.fighters.find((f) => f.side === 'enemy' && f.troop === 'swordsmen')!;
@@ -87,17 +90,18 @@ describe('what a Courtier has already is nothing new (#231)', () => {
 });
 
 describe('a band he hires hands over what it carried (#231)', () => {
-  /** A courtier whose army outweighs these bands twice over, with room to lead them and gold to pay them. */
-  const strong = (s: GameState = fresh()): GameState => ({ ...s, gold: 10000, leadership: 600, army: [{ troop: 'knights', count: 40 }, { troop: 'archers', count: 40 }] });
+  /** A courtier whose army outweighs these bands twice over, with room in his line and under his banner to lead them, and gold to pay them. */
+  const strong = (s: GameState = fresh()): GameState => ({ ...s, gold: 20000, leadership: 1400, army: [{ troop: 'knights', count: 160 }] });
   const hireCard = (s: GameState, id: string) => cardOf(apply(s, { type: 'choose', id, choice: 'hire' }));
 
   it('the highwaymen, hired whole, hand over their takings, the Baron\u2019s letter and their black banner, and teach him half', () => {
-    const s = fresh();
+    const s = sized(fresh(), 'highwaymen', [{ troop: 'bandits', count: 14 }]);
+    const takings = locationById(s, 'highwaymen').enemy!.reward;
     const offer = hireOffer(s, locationById(s, 'highwaymen'))!;
     expect(offer.all).toBe(true);
     const r = apply(s, { type: 'choose', id: 'highwaymen', choice: 'hire' })!;
     const half = Math.round(battleXp(locationById(s, 'highwaymen').enemy!.army) / 2);
-    expect(r.state.gold).toBe(s.gold - offer.price + 200);
+    expect(r.state.gold).toBe(s.gold - offer.price + takings);
     expect(r.state.hero.xp).toBe(s.hero.xp + half);
     expect(r.state.flags?.orders).toBe(true);
     expect(r.state.hero.pack).toContain('blackBanner');
@@ -105,7 +109,7 @@ describe('a band he hires hands over what it carried (#231)', () => {
     expect(locationById(r.state, 'highwaymen').done).toBe(true);
     expect(r.events).toContainEqual({ type: 'removed', id: 'highwaymen' });
     const card = cardOf(r);
-    expect(card.lines).toContain('Their takings come to **200 gold**, and among them is a letter with the Baron\u2019s seal. *"All patrols back to the stockade if the King\u2019s man comes. G."*');
+    expect(card.lines).toContain(`Their takings come to **${takings} gold**, and among them is a letter with the Baron\u2019s seal. *"All patrols back to the stockade if the King\u2019s man comes. G."*`);
     expect(card.lines).toContain(`You gain **${half} experience**.`);
     expect(card.choices.map((c) => c.label)).toEqual(['Wear the Black Banner', 'Keep it in your pack']);
     // The letter opens the patrol's way past, as it does for a hero who beats them.

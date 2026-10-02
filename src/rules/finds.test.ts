@@ -469,7 +469,7 @@ describe('Aldmoor\u2019s small finds along the rides (#124)', () => {
     expect(cardOf(visit(start, 'shepherd')).lines.join(' ')).toMatch(/Rustlers/);
     const beaten = beat(start, 'rustlers', { title: 'Victory!', lines: [], reward: 90, xp: 0 }).state;
     const bought = take(start, 'rustlers', 'parley/buy');
-    expect(bought.gold).toBe(start.gold - 80);
+    expect(bought.gold).toBe(start.gold - 150);
     // A courtier talks them round instead, so he's never offered them for hire, and the ewes still go home.
     const courtier = fresh('courtier');
     expect(hireOffer(courtier, locationById(courtier, 'rustlers'))).toBeNull();
@@ -485,7 +485,7 @@ describe('Aldmoor\u2019s small finds along the rides (#124)', () => {
 
   it('the Baron\u2019s tax collectors can be fought, paid off, or audited by a courtier, who can\u2019t hire them', () => {
     const knight = { ...fresh(), gold: 500 };
-    expect(labels(knight, 'collectors')).toContain('Pay what they say you owe (100 gold)');
+    expect(labels(knight, 'collectors')).toContain('Pay what they say you owe (200 gold)');
     expect(labels(knight, 'collectors')).toContain('Ask to see their sums (Courtier) [off]');
     expect(locationById(take(knight, 'collectors', 'parley/pay'), 'collectors').done).toBe(true);
     const courtier = fresh('courtier');
@@ -702,7 +702,7 @@ describe('Aldmoor, bigger', () => {
   it('has Grimsby\u2019s men digging on the heath: raiding them sets the flag Grimsby answers to', () => {
     const start = fresh();
     const dig = locationById(start, 'diggings');
-    expect(dig.enemy?.tier).toBe('band');
+    expect(dig.enemy?.ring).toBe(4);
     const raided = beat(start, 'diggings', { title: 'Victory!', lines: [], reward: dig.enemy!.reward, xp: 0 }).state;
     expect(raided.flags?.dig).toBe('raided');
   });

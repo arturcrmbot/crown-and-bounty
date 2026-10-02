@@ -1,7 +1,8 @@
 // The power curve (docs/BALANCE.md): how strong the hero is, day by day, in Grimsbys: the multiple of
 // Grimsby's stockade as it stood on 29 Sep 2026 (46 swordsmen, 24 crossbowmen and the Baron) that his army
 // beats half the time, the sergeants fighting. A careful player (the bot with a margin) plays everything but
-// the villain; beside him, Grimsby as he stands, the odds at his gate, and the day each gate falls.
+// the villain; beside him, Grimsby as he stands, the odds at his gate, the day each ring of the climb falls
+// (the median day its bands are beaten), and by day his level, leadership and the bands he has beaten.
 // npm run sim:curve [-- seeds] [--bot] [--days 1,3,7,10,14,21] [--bg knight,wizard]
 import { createServer } from 'vite';
 
@@ -15,7 +16,7 @@ const days = arg('days', '1,3,7,10,14,21').split(',').map(Number);
 const backgrounds = arg('bg', 'knight,wizard,ranger,courtier').split(',');
 const until = Math.max(...days);
 const GRIMSBY = [{ troop: 'swordsmen', count: 46 }, { troop: 'crossbowmen', count: 24 }, { troop: 'baron', count: 1 }];
-const GATES = ['patrol', 'wolves', 'diggings', 'grimsby'];
+const RINGS = [1, 2, 3, 4, 5];
 
 const server = await createServer({ server: { middlewareMode: true, hmr: false, ws: false }, appType: 'custom', logLevel: 'error' });
 try {
@@ -49,10 +50,10 @@ try {
   const troopsOf = (army) => armyPower(army.filter((a) => TROOPS[a.troop].leadership < 99));
   const median = (xs) => [...xs].sort((a, b) => a - b)[Math.floor((xs.length - 1) / 2)];
   console.log(`${careful ? 'A careful player' : 'The bot'}, ${seeds} seeds a background: strength in Grimsbys, and [Grimsby as he stands]. Median of seeds.`);
-  console.log(`${'day'.padEnd(10)}${days.map((d) => String(d).padEnd(15)).join('')}  gates fall (median day)          Grimsby on day ${TARGET_DAY}: all / army alone`);
+  console.log(`${'day'.padEnd(10)}${days.map((d) => String(d).padEnd(15)).join('')}  rings fall (median day)          Grimsby on day ${TARGET_DAY}: all / army alone`);
   for (const background of backgrounds) {
     const rows = days.map(() => []);
-    const fell = Object.fromEntries(GATES.map((g) => [g, []]));
+    const fell = Object.fromEntries(RINGS.map((r) => [r, []]));
     const target = { all: [], alone: [] };
     for (let n = 1; n <= seeds; n++) {
       const start = { ...newGame(n, undefined, background), opening: undefined };
@@ -63,22 +64,26 @@ try {
       days.forEach((d, i) => {
         const s = at(d);
         const hideout = atHome(s).locations.find((l) => l.id === 'hideout').enemy.army;
-        rows[i].push({ k: grimsbys(s), g: troopsOf(hideout) / troopsOf(GRIMSBY), level: s.hero.level, lead: heroStats(s).leadership });
+        const beaten = s.locations.filter((l) => l.enemy && l.done && l.kind !== 'hideout' && !l.enemy.convoy).length;
+        rows[i].push({ k: grimsbys(s), g: troopsOf(hideout) / troopsOf(GRIMSBY), level: s.hero.level, lead: heroStats(s).leadership, beaten });
       });
-      for (const g of GATES) {
-        const d = [...snaps.entries()].sort((a, b) => a[0] - b[0]).find(([, s]) => s.locations.find((l) => l.id === g)?.done)?.[0];
-        if (d !== undefined) fell[g].push(d);
+      // The day each band of a ring is beaten (never, by the last day, counts as never), and the ring's median.
+      const ordered = [...snaps.entries()].sort((a, b) => a[0] - b[0]);
+      for (const r of RINGS) {
+        const bands = start.locations.filter((l) => l.enemy?.ring === r && !l.enemy.convoy).map((l) => l.id);
+        const when = bands.map((id) => ordered.find(([, s]) => s.locations.find((l) => l.id === id)?.done)?.[0] ?? Infinity);
+        if (bands.length) fell[r].push(median(when));
       }
       const ref = atHome(at(TARGET_DAY));
       target.all.push(winChance(ref, 'hideout'));
       target.alone.push(winChance(bare(ref), 'hideout'));
     }
     const cells = rows.map((r) => `${median(r.map((x) => x.k)).toFixed(2)} [${median(r.map((x) => x.g)).toFixed(2)}]`.padEnd(15)).join('');
-    const gates = GATES.map((g) => `${g} ${fell[g].length ? median(fell[g]) : '-'}`).join(' ');
+    const gates = RINGS.map((r) => `${r}: ${fell[r].length && Number.isFinite(median(fell[r])) ? median(fell[r]) : '-'}`).join('  ');
     const odds = `${Math.round(median(target.all) * 100)}% / ${Math.round(median(target.alone) * 100)}%`;
     console.log(`${background.padEnd(10)}${cells}  ${gates.padEnd(32)} ${odds}`);
-    const levels = rows.map((r) => `L${median(r.map((x) => x.level))} ${median(r.map((x) => x.lead))}`.padEnd(15)).join('');
-    console.log(`${''.padEnd(10)}${levels}  (level, leadership)`);
+    const levels = rows.map((r) => `L${median(r.map((x) => x.level))} ${median(r.map((x) => x.lead))} ${median(r.map((x) => x.beaten))}`.padEnd(15)).join('');
+    console.log(`${''.padEnd(10)}${levels}  (level, leadership, bands beaten)`);
   }
 } finally {
   await server.close();

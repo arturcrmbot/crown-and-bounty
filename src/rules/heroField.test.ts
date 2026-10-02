@@ -199,7 +199,7 @@ describe('Aldric behind the line', () => {
 
   it('is missing from a battle saved before he came to them, which plays on without him', () => {
     const state = hero('wizard');
-    const old = createBattle({ place: 'highwaymen', seed: 5, player: state.army, enemy: state.locations.find((l) => l.id === 'highwaymen')!.enemy!.army, hero: { ...heroInBattle(state), unit: undefined } });
+    const old = createBattle({ place: 'cutpurses', seed: 5, player: state.army, enemy: state.locations.find((l) => l.id === 'cutpurses')!.enemy!.army, hero: { ...heroInBattle(state), unit: undefined } });
     expect(heroOnField(old)).toBeNull();
     expect(canCast(old, 'arrow')).toBe(true);
     const won = autoResolve(old);

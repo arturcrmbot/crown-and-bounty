@@ -90,7 +90,6 @@ suite('fights', () => {
     const started = startFight(state, 'poachers')!.state;
     const battle = started.battle!;
     const player = battle.fighters.find((fighter) => fighter.side === 'player' && !fighter.hero)!;
-    const enemy = battle.fighters.find((fighter) => fighter.side === 'enemy')!;
     const ended = {
       ...battle,
       result: 'won' as const,
@@ -104,7 +103,7 @@ suite('fights', () => {
     const report = cardOf(result).battleResult;
     expect(report).toEqual({
       player: [{ troop: player.troop, count: 2 }],
-      enemy: [{ troop: enemy.troop, count: enemy.startCount }],
+      enemy: battle.fighters.filter((fighter) => fighter.side === 'enemy' && !fighter.hero).map((fighter) => ({ troop: fighter.troop, count: fighter.startCount })),
       manaSpent: 7,
       manaAvailable: 30,
     });
@@ -168,26 +167,26 @@ suite('fights', () => {
 
   it('keeps your mana in a fight the sergeants have won already, for the next one (#211)', () => {
     const fresh = newGame(7, undefined, 'wizard');
-    // An army that outweighs the poachers many times over: none of your mana is spent on them.
+    // An army that outweighs the cutpurses many times over: none of your mana is spent on them.
     const strong = { ...fresh, army: [{ troop: 'knights' as const, count: 40 }, { troop: 'archers' as const, count: 60 }], hero: { ...fresh.hero, mana: 30 } };
-    const won = cardOf(fight(strong, 'poachers')!);
+    const won = cardOf(fight(strong, 'cutpurses')!);
     expect(won.title).toBe('Victory!');
     expect(won.battleResult!.manaSpent).toBe(0);
     expect(manaLine(won.battleResult!)).toBe('You spent no mana.');
-    const battle = startFight(strong, 'poachers')!.state.battle!;
+    const battle = startFight(strong, 'cutpurses')!.state.battle!;
     expect(wonAlready(battle)).toBe(true);
     // A close fight is no such thing.
     const close = { ...fresh, army: [{ troop: 'peasants' as const, count: 30 }] };
-    expect(wonAlready(startFight(close, 'poachers')!.state.battle!)).toBe(false);
+    expect(wonAlready(startFight(close, 'cutpurses')!.state.battle!)).toBe(false);
   });
 
-  it('beats the poachers with the starting army, with light losses', () => {
-    const result = fight(newGame(), 'poachers')!;
+  it('beats the cutpurses on the King\u2019s road, the first ring of the climb, with the starting army and light losses', () => {
+    const result = fight(newGame(), 'cutpurses')!;
     expect(cardOf(result).title).toBe('Victory!');
     expect(cardOf(result).battleResult?.enemy.length).toBeGreaterThan(0);
-    expect(result.events).toContainEqual({ type: 'removed', id: 'poachers' });
+    expect(result.events).toContainEqual({ type: 'removed', id: 'cutpurses' });
     expect(armyPower(result.state.army)).toBeGreaterThan(armyPower(newGame().army) * 0.8);
-    expect(locationById(result.state, 'poachers').done).toBe(true);
+    expect(locationById(result.state, 'cutpurses').done).toBe(true);
     expect(result.state.battle).toBeUndefined();
   });
 

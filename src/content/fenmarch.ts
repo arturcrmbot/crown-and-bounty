@@ -355,7 +355,6 @@ export const FENMARCH: Province = {
       done: false,
       enemy: {
         look: 'wolves',
-        tier: 'pest',
         lines: ['Wild boars, wallowing in a peat bog by the alder copse.', 'They look very happy about it, and would like to be left alone.'],
         army: [{ troop: 'boars', count: 14 }],
         reward: 150,

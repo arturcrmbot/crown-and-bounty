@@ -5,7 +5,15 @@ import type { BattleState, Fighter } from './battle/battle';
 import { finishFight, locationById, oddsKnown, startFight, visit, winChance, type Card, type GameState, type Result } from './game';
 import { newGame } from './scenario';
 
-const fresh = (background: BackgroundId = 'knight'): GameState => ({ ...newGame(1066, undefined, background), opening: undefined });
+/** The patrol and the stockade as these fights were measured (#167, #171), whatever size the climb makes them now (#239). */
+const ARMIES: Record<string, GameState['army']> = {
+  patrol: [{ troop: 'swordsmen', count: 70 }, { troop: 'crossbowmen', count: 40 }],
+  hideout: [{ troop: 'swordsmen', count: 69 }, { troop: 'crossbowmen', count: 36 }, { troop: 'baron', count: 1 }],
+};
+const fresh = (background: BackgroundId = 'knight'): GameState => {
+  const s = { ...newGame(1066, undefined, background), opening: undefined };
+  return { ...s, locations: s.locations.map((l) => (ARMIES[l.id] ? { ...l, enemy: { ...l.enemy!, army: ARMIES[l.id] } } : l)) };
+};
 const armyOf = (state: GameState, id: string) => locationById(state, id).enemy!.army;
 const cardOf = (result: Result): Card => {
   const e = result.events.find((x) => x.type === 'card');
