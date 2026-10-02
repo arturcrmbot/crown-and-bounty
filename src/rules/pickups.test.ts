@@ -98,10 +98,11 @@ describe('things lying by the way (#192)', () => {
     const passed = pickUp(full, crystals.at);
     expect(passed.events).toEqual([]);
     expect(placeOf(passed.state, crystals.id).done).toBe(false);
-    // Their card says why, and offers no ride to them.
+    // Their card says why, and still lets him ride there, as to any spot on the map (#226).
     const about = describePlace(full, crystals.id);
     expect(about.lines.at(-1)).toContain('Your mana is full already');
-    expect(about.choices.map((c) => c.label)).toEqual(['Close']);
+    expect(about.choices.map((c) => c.label)).toEqual(['Ride there', 'Close']);
+    expect(about.choices[0].action).toEqual({ type: 'go', id: crystals.id });
     // Ridden to on purpose, he says so there, and leaves them.
     const ridden = visit(full, crystals.id);
     expect(placeOf(ridden.state, crystals.id).done).toBe(false);

@@ -378,7 +378,9 @@ export function describeOption(option: string, state: GameState): { label: strin
   // A second cast is nothing new to a hero who casts two already: say so, rather than let him think it's a third.
   const capped = next.bonus.casts && heroStats(state).casts >= MAX_CASTS ? ' *You cast two spells a round already, and nobody casts more, so that part changes nothing for you.*' : '';
   const halved = next.bonus.bribes && heroStats(state).bribes >= MAX_BRIBES ? ' *No bribe is ever more than half off, and yours are already, so that part changes nothing for you.*' : '';
-  return { label: `${RANKS[rank]} ${SKILLS[id as SkillId].name}`, note: `${next.note}${capped}${halved}` };
+  // Advanced and Expert say what they add to the rank he has, not what the skill does in all (#226).
+  const words = 'adds' in next ? next.adds : next.note;
+  return { label: `${RANKS[rank]} ${SKILLS[id as SkillId].name}`, note: `${words}${capped}${halved}` };
 }
 
 /** The card for the first level-up still waiting, or null. */

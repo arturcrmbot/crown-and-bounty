@@ -52,9 +52,10 @@ function worthOf(state: GameState, place: Location): number {
 const pickUpLabel = (place: Location) => (/^(A|An) /.test(place.name) ? 'Pick it up' : 'Pick them up');
 
 export const pickup: PlaceKind = {
+  // With his mana full they wait for him, but he can still ride there, as to any spot on the map (#226).
   about: (state, place) =>
     wasted(state, place)
-      ? { title: place.name, lines: [...aboutWords(state, place), '*Your mana is full already, so they can wait for another day.*'], choices: [close] }
+      ? { title: place.name, lines: [...aboutWords(state, place), '*Your mana is full already, so they can wait for another day.*'], choices: [ride(place, 'Ride there'), close] }
       : { title: place.name, lines: aboutWords(state, place), choices: [ride(place, pickUpLabel(place)), close] },
   // Ridden up to, it's been taken on the way already, unless it lay where no way comes near enough, or would do him no good yet.
   arrive: (state, place) => {
