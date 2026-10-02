@@ -78,7 +78,8 @@ const BLOWS: Record<BlowKind, Play> = {
     voice(ctx, dest, at, { pitch: [[0, 95], [1, 80]], length: CONTACT + 0.04, vowel: [500, 1400, 2600], growl: [28, 0.8], breath: 0.6, volume: 0.8 });
     const t = at + CONTACT;
     burst(ctx, dest, t, 0.02, 'bandpass', 3000, 0.5, 1, 1.5);
-    ring(ctx, dest, t, rand(1600, 1800), [[1, 1, 0.025], [2.3, 0.5, 0.015]], 0.25);
+    // The jaws ring a moment after the snap: together they'd crest near full scale (#208).
+    ring(ctx, dest, t + 0.004, rand(1600, 1800), [[1, 1, 0.025], [2.3, 0.5, 0.015]], 0.25);
     burst(ctx, dest, t + 0.005, 0.1, 'lowpass', 600, 0.55, 1, 1, 0.004);
   },
   // A cudgel: a heavy swing, and a dull thud with the knock of the wood in it.
@@ -313,7 +314,7 @@ const LEVELS: Record<BattleEffectId, number> = {
   'blow:fork': 4.9,
   'blow:blade': 2.5,
   'blow:lance': 1,
-  'blow:bite': 3.4,
+  'blow:bite': 3.9,
   'blow:club': 1.2,
   'blow:fist': 0.95,
   'blow:spear': 2.9,
