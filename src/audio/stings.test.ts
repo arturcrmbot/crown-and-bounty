@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import json from '../../public/assets/sfx/battle.json';
+import { JINGLES } from './jingles';
+import type { SamplePack } from './samples';
 import { midiOf } from './score';
 import { STINGS } from './stings';
 
@@ -10,16 +13,21 @@ function scale(key: string): number[] {
   return steps.map((s) => (root + s) % 12);
 }
 
-const UNPITCHED = new Set(['tabor', 'rim', 'steel']);
+const DRUMS = new Set(['kick', 'stick', 'snare', 'tom', 'crash', 'ride']);
 
 describe('the stings', () => {
   for (const [id, sting] of Object.entries(STINGS)) {
-    it(`${id}: every note is in ${sting.key}, and it is over in a few seconds`, () => {
-      const pitches = scale(sting.key);
-      for (const [instrument, at, note] of sting.hits) {
-        expect(at >= 0 && at <= 3.5, `${instrument} ${note} at ${at}`).toBe(true);
-        if (UNPITCHED.has(instrument)) continue;
-        expect(pitches, `${instrument} ${note}`).toContain(midiOf(note) % 12);
+    it(`${id}: its music is there, and it is over in a few seconds`, () => {
+      const m = sting.music;
+      if ('jingle' in m) expect(JINGLES[m.jingle], id).toBeDefined();
+      else if ('sample' in m) expect((json as unknown as SamplePack).effects[m.sample]?.length, id).toBeGreaterThan(0);
+      else {
+        const pitches = scale(m.key);
+        for (const [instrument, at, note] of m.hits) {
+          expect(at >= 0 && at <= 3.5, `${instrument} ${note} at ${at}`).toBe(true);
+          if (DRUMS.has(instrument)) continue;
+          expect(pitches, `${instrument} ${note}`).toContain(midiOf(note) % 12);
+        }
       }
       // A sting that leads into a screen lets its music in soon.
       if (sting.next !== undefined) expect(sting.next).toBeLessThanOrEqual(1.3);

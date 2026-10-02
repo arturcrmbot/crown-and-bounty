@@ -18,8 +18,8 @@ try {
   await page.goto(`${server.url}?freeze=1`);
   await page.waitForFunction(() => window.__ready === true);
   const report = await page.evaluate(async (wanted) => {
-    const { playNote } = await import('/src/audio/instruments.ts');
-    const { STINGS } = await import('/src/audio/stings.ts');
+    const { STINGS, playSting } = await import('/src/audio/stings.ts');
+    const { loadJingles } = await import('/src/audio/jingles.ts');
     const { TRACKS, TUNES, arrange, lengthOf, midiOf, laneLevel } = await import('/src/audio/score.ts');
     const { loadBand, playBand } = await import('/src/audio/band.ts');
     const { LEVELS, MARKS, masterChain } = await import('/src/audio/context.ts');
@@ -30,6 +30,7 @@ try {
     // The band's samples, every tune and the recorded effects, as the game loads them.
     await loadBand();
     await loadSamples();
+    await loadJingles();
     for (const id of Object.keys(TUNES)) await loadTune(id);
     // BS.1770's K-weighting filters are given for 48 kHz.
     const RATE = 48000;
@@ -256,9 +257,8 @@ try {
     }
     for (const [id, def] of Object.entries(STINGS)) {
       if (!want('stings', id)) continue;
-      const data = await render(6, LEVELS.music, (ctx, dest) => {
-        for (const [instrument, at, note, length, volume] of def.hits) playNote(ctx, dest, instrument, 0.05 + at, instrument === 'tabor' || instrument === 'rim' ? 0 : midiOf(note), length, volume * def.level);
-      });
+      // Through a room and a top of its own, as the game plays it.
+      const data = await render(14, LEVELS.music, (ctx, dest) => playSting(ctx, scoreChain(ctx, dest), def, 0.05));
       const loudness = momentary(data);
       const dip = await ducked(def.duck, 0.3);
       out.stings.push({ id, peak: peak(data), loudness, off: round(loudness - MARKS.sting), rings: tail(data), duck: def.duck, dip: round(dip.under - dip.before), over: round(loudness - dip.under), next: def.next ?? null });

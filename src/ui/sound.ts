@@ -5,13 +5,17 @@
  */
 import { audio, isMuted, whenAwake } from '../audio/context';
 import { babble, EFFECTS, type EffectDef, type EffectId, type Ground } from '../audio/effects';
+import { loadJingles } from '../audio/jingles';
 import { duckMusic } from '../audio/music';
 import { loadSamples } from '../audio/samples';
 import { sting } from '../audio/stings';
 import { Terrain } from '../rules/map/model';
 
-// The recorded effects load once sound is awake, in the background; until they're in, they're silent.
-whenAwake(() => void loadSamples().catch(() => {}));
+// The recorded effects and the jingles load once sound is awake, in the background; until they're in, they're silent.
+whenAwake(() => {
+  loadSamples().catch(() => {});
+  loadJingles().catch(() => {});
+});
 
 export type Sound = EffectId | 'victory' | 'defeat' | 'levelUp';
 

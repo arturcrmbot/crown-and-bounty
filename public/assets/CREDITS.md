@@ -90,6 +90,12 @@ The music is yubatake's: tunes from the
 | `TheRide.mid` | The Ride | The Ride | CC BY 4.0 | battles, on violins, viola and cello |
 | `JRPG_battleBoss.mid` | Boss Battle | JRPG Collection 2 | CC BY 4.0 | Baron Grimsby's battle |
 | `JRPG_dungeon.mid` | Dungeon | JRPG Collection | CC BY 4.0 | Mother Mirrow's and Aunt Bramble's battles |
+| `JRPG_winBattle.mid` | Win Battle | JRPG Collection | CC BY 4.0 | a fight won, on brass and timpani |
+| `JRPG_winBattleBoss.mid` | Win Battle Boss | JRPG Collection 2 | CC BY 4.0 | Grimsby taken, the commission done |
+| `JRPG_gameOver.mid` | Game Over | JRPG Collection | CC BY 4.0 | a fight lost, or a commission |
+| `JRPG_levelUp.mid` | Level Up | JRPG Collection 2 | CC BY 4.0 | a level gained |
+| `JRPG_joinParty.mid` | Join Party | JRPG Collection 2 | CC BY 4.0 | payday |
+| `JRPG_discovery.mid` | Discovery | JRPG Collection 2 | CC BY 4.0 | gear found |
 
 ## The court's music: the Mutopia Project
 
@@ -133,7 +139,7 @@ lower each time. Thank you to everyone below.
 
 From [its repository](https://github.com/wesnoth/wesnoth) at the tag `1.18.8`, `data/core/sounds/`,
 by the people its `copyrights.csv` names. Each troop's weapon and cries are its own Wesnoth unit's,
-as its pictures are. **Licence:** the [GNU GPL v2 or later](https://www.gnu.org/licenses/old-licenses/gpl-2.0.html).
+as its pictures are, and the war horn calls into battle. **Licence:** the [GNU GPL v2 or later](https://www.gnu.org/licenses/old-licenses/gpl-2.0.html).
 
 | File | By | Licence |
 | --- | --- | --- |
@@ -152,6 +158,7 @@ as its pictures are. **Licence:** the [GNU GPL v2 or later](https://www.gnu.org/
 | `hiss-big.wav` | J.W. Bjerk | GPL v2+ |
 | `hiss-die.wav` | J.W. Bjerk | GPL v2+ |
 | `hiss-hit.wav` | J.W. Bjerk | GPL v2+ |
+| `horn-signals/horn-1.ogg` | Lari Nieminen | GPL v2+ |
 | `human-die-1.ogg` | Lari Nieminen | GPL v2+ |
 | `human-die-2.ogg` | Lari Nieminen | GPL v2+ |
 | `human-die-3.ogg` | Lari Nieminen | GPL v2+ |
@@ -245,8 +252,8 @@ from Freesound's high-quality previews of them.
 ## Everything else
 
 The terrain, buildings, portraits, title painting, interface, icon, the sound effects outside a
-fight, the stings and the ambience are all made in code (`src/render/`, `src/audio/`). No
-image-generation models are used.
+fight and the ambience are all made in code (`src/render/`, `src/audio/`), and so are the heralds'
+and the curtain's notes, which the band plays. No image-generation models are used.
 
 ## Wesnoth files
 

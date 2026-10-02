@@ -4,6 +4,7 @@ import json from '../../public/assets/sfx/battle.json';
 import flac from '../../public/assets/sfx/battle.flac?inline';
 import script from '../../scripts/sfx.py?raw';
 import { RECORDED_EFFECTS } from './blows';
+import { STING_SAMPLES } from './stings';
 import type { SamplePack } from './samples';
 
 const pack = json as unknown as SamplePack;
@@ -22,7 +23,8 @@ function streamInfo(data: Uint8Array) {
 
 describe('the recorded sound effects', () => {
   it('pack every sound of a fight, each with a take or more', () => {
-    expect(Object.keys(pack.effects).sort()).toEqual([...RECORDED_EFFECTS].sort());
+    // The fight's sounds, the war horn into battle, and the gallop under the charge's horn call.
+    expect(Object.keys(pack.effects).sort()).toEqual([...RECORDED_EFFECTS, ...STING_SAMPLES, 'charge:gallop'].sort());
     for (const [id, takes] of Object.entries(pack.effects)) {
       expect(takes.length, id).toBeGreaterThan(0);
       // None runs on and on: the longest is Lightning's roll of thunder.

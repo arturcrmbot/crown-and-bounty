@@ -6,8 +6,10 @@
  * fanfare, a Fireball). The sounds of a fight are recordings (#257), in `blows.ts`; the rest are made
  * in code here, until their own recordings come.
  */
+import { playBand, type BandInstrument } from './band';
 import { BATTLE_EFFECTS } from './blows';
-import { playNote } from './instruments';
+import { jingleNotes } from './jingles';
+import { playSample } from './samples';
 import { burst, rand, tone, voice } from './synth';
 
 export type Loudness = 'faint' | 'soft' | 'firm' | 'hit' | 'loud';
@@ -63,9 +65,14 @@ const unfold: Play = (ctx, dest, t) => burst(ctx, dest, t + 0.16, 0.05, 'lowpass
 /** A card put away: a pat as it's laid down. */
 const fold: Play = (ctx, dest, t) => burst(ctx, dest, t + 0.1, 0.04, 'lowpass', 580, 0.5);
 
-const brass = (ctx: BaseAudioContext, dest: AudioNode, t: number, calls: readonly (readonly [midi: number, at: number, length: number])[], volume: number) => {
-  for (const [midi, at, length] of calls) playNote(ctx, dest, 'brass', t + at, midi, length, volume);
+/** Notes on the band's own instruments (#257): [instrument, MIDI note, seconds in, seconds long, volume]. A drum's note is its drum. */
+type BandNote = readonly [instrument: BandInstrument, key: number, at: number, length: number, volume: number];
+const band = (ctx: BaseAudioContext, dest: AudioNode, t: number, notes: readonly BandNote[]) => {
+  for (const [instrument, key, at, length, volume] of notes) playBand(ctx, dest, instrument, t + at, key, length, volume);
 };
+/** A call on one instrument: [MIDI note, seconds in, seconds long] each. */
+const call = (instrument: BandInstrument, volume: number, notes: readonly (readonly [key: number, at: number, length: number])[]): BandNote[] =>
+  notes.map(([key, at, length]) => [instrument, key, at, length, volume] as const);
 
 const effect = (loud: Loudness, play: Play, level = 1, duck?: number): EffectDef => ({ loud, level, play, ...(duck ? { duck } : {}) });
 
@@ -115,7 +122,7 @@ const EVERYDAY = {
     tone(ctx, dest, t + 0.02, 1760, 0.1, 0.22, 'triangle');
     tone(ctx, dest, t + 0.06, 2637, 0.18, 0.14);
   }, 1.1),
-  unfold: effect('soft', unfold, 6.2),
+  unfold: effect('soft', unfold, 5),
   // A rubber stamp slammed down on the poster: a thump, a rap of wood, and the coins it stands for.
   stamp: effect('firm', (ctx, dest, t) => {
     burst(ctx, dest, t, 0.16, 'lowpass', 420, 1, 0.5);
@@ -125,7 +132,7 @@ const EVERYDAY = {
   }, 1.7),
   // Someone speaking, at a middling pitch: a villain's last words use his own (`speak` in ui/sound.ts).
   speech: effect('firm', babble(150, 8), 1.3),
-  fold: effect('soft', fold, 8.4),
+  fold: effect('soft', fold, 6.5),
   coins: effect('firm', (ctx, dest, t) => [1320, 1760, 1480, 1980].forEach((f, i) => tone(ctx, dest, t + i * 0.055, f, 0.12, 0.35)), 1.3),
   day: effect('firm', (ctx, dest, t) => {
     tone(ctx, dest, t, 392, 1.1, 0.4);
@@ -137,37 +144,34 @@ const EVERYDAY = {
   }, 0.76),
   // Boots going off down the road.
   march: effect('soft', (ctx, dest, t) => [0, 0.14, 0.28, 0.42].forEach((d, i) => burst(ctx, dest, t + d, 0.06, 'lowpass', 600, 0.55 - i * 0.12)), 6),
-  // Three quick calls up the chord of G, then the whole chord held, on the drum.
-  fanfare: effect('loud', (ctx, dest, t) => {
-    brass(ctx, dest, t, [[55, 0, 0.15], [59, 0.16, 0.15], [62, 0.32, 0.15], [67, 0.5, 1.2], [62, 0.5, 1.2], [59, 0.5, 1.2]], 0.3);
-    playNote(ctx, dest, 'tabor', t + 0.5, 43, 0.3, 0.7);
-  }, 1, 1.5),
-  // A hunting horn: two quick calls and a long one, and hooves.
+  // Three quick calls up the chord of G on the band's trumpets, then the whole chord held, and the timpani (#257).
+  fanfare: effect('loud', (ctx, dest, t) =>
+    band(ctx, dest, t, [
+      ...call('trumpet', 0.8, [[55, 0, 0.15], [59, 0.16, 0.15], [62, 0.32, 0.15], [67, 0.5, 1.2]]),
+      ...call('horn', 0.7, [[62, 0.5, 1.2], [59, 0.5, 1.2]]),
+      ['timpani', 43, 0.5, 0.6, 0.9],
+    ]), 0.19, 1.5),
+  // A hunting horn, two quick calls and a long one, and a horse breaking into a gallop (recorded by StephenSaldanha).
   charge: effect('loud', (ctx, dest, t) => {
-    brass(ctx, dest, t, [[67, 0, 0.1], [67, 0.12, 0.1], [74, 0.24, 0.45]], 0.34);
-    for (const d of [0, 0.09, 0.18, 0.27]) burst(ctx, dest, t + d, 0.06, 'lowpass', 700, 0.5);
-  }, 1.5),
-  // A raspberry on the brass: two notes sliding down, and a sour one to finish.
-  jeer: effect('firm', (ctx, dest, t) => brass(ctx, dest, t, [[62, 0, 0.14], [58, 0.16, 0.14], [53, 0.32, 0.5]], 0.3), 1.1),
-  // A marching song on the lute: up the chord of G and a stamp on the drum.
-  song: effect('firm', (ctx, dest, t) => {
-    [55, 59, 62, 67, 62, 67].forEach((midi, i) => playNote(ctx, dest, 'lute', t + i * 0.13, midi, 0.3, 0.45));
-    playNote(ctx, dest, 'tabor', t + 0.52, 43, 0.3, 0.5);
-  }, 0.22, 1),
-  // A lucky song: a lilting run on the lute, and a bell at the end.
-  luckySong: effect('firm', (ctx, dest, t) => {
-    [64, 67, 69, 72, 69, 76].forEach((midi, i) => playNote(ctx, dest, 'lute', t + i * 0.11, midi, 0.28, 0.42));
-    playNote(ctx, dest, 'bell', t + 0.7, 84, 0.8, 0.18);
-  }, 0.26, 1),
-  // Spirits sinking: a low drone that sags.
-  falter: effect('firm', (ctx, dest, t) => tone(ctx, dest, t, 196, 0.5, 0.35, 'triangle', 0.7), 2.1),
-  // A short call rising on the brass: good spirits, and a stack goes again.
-  cheer: effect('firm', (ctx, dest, t) => brass(ctx, dest, t, [[62, 0, 0.09], [67, 0.1, 0.3]], 0.28), 1.1),
-  // Gear found: the harp runs up the chord of C, and a bell rings over it.
+    band(ctx, dest, t, call('horn', 0.9, [[67, 0, 0.1], [67, 0.12, 0.1], [74, 0.24, 0.45]]));
+    playSample(ctx, dest, t + 0.05, 'charge:gallop', 0.5);
+  }, 0.31),
+  // A raspberry on the band's trombone: two notes sliding down, and a sour one to finish.
+  jeer: effect('firm', (ctx, dest, t) => band(ctx, dest, t, call('trombone', 0.8, [[62, 0, 0.14], [58, 0.16, 0.14], [53, 0.32, 0.5]])), 0.15),
+  // A marching song on the band's guitar (for a lute): up the chord of G, and a stamp on the drum.
+  song: effect('firm', (ctx, dest, t) =>
+    band(ctx, dest, t, [...call('guitar', 0.7, [55, 59, 62, 67, 62, 67].map((key, i) => [key, i * 0.13, 0.3] as const)), ['tom', 0, 0.52, 0.3, 0.7]]), 0.1, 1),
+  // A lucky song: a lilting run on the guitar, and a bell at the end.
+  luckySong: effect('firm', (ctx, dest, t) =>
+    band(ctx, dest, t, [...call('guitar', 0.7, [64, 67, 69, 72, 69, 76].map((key, i) => [key, i * 0.11, 0.28] as const)), ['bells', 72, 0.7, 0.9, 0.4]]), 0.11, 1),
+  // Spirits sinking: the horn sags, two notes falling.
+  falter: effect('firm', (ctx, dest, t) => band(ctx, dest, t, call('horn', 0.7, [[55, 0, 0.25], [50, 0.25, 0.55]])), 0.24),
+  // A short call rising on the horn: good spirits, and a stack goes again.
+  cheer: effect('firm', (ctx, dest, t) => band(ctx, dest, t, call('horn', 0.85, [[62, 0, 0.09], [67, 0.1, 0.3]])), 0.18),
+  // Gear found: yubatake's Discovery, the harp over the strings.
   find: effect('firm', (ctx, dest, t) => {
-    [60, 64, 67, 72].forEach((midi, i) => playNote(ctx, dest, 'harp', t + i * 0.06, midi, 0.6, 0.4));
-    playNote(ctx, dest, 'bell', t + 0.26, 84, 0.9, 0.18);
-  }, 0.2),
+    for (const n of jingleNotes('discovery')) playBand(ctx, dest, n.instrument, t + n.at, n.key, n.length, n.volume);
+  }, 0.33),
   // Mana: a glassy run up high, quick as a sparkle.
   shimmer: effect('firm', (ctx, dest, t) => [1568, 1976, 2349, 2794, 3136].forEach((f, i) => tone(ctx, dest, t + i * 0.035, f, 0.22, 0.16)), 1.5),
   // Movement: a few quick hoofbeats, picking up speed.
