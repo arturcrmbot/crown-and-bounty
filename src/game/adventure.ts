@@ -956,8 +956,8 @@ export class AdventureController implements Screen {
     r.asOf = asOf;
     const days = daysAway(this.state, this.map, r.place && !r.approach ? this.doorOf(r.place) : r.point, r.approach);
     if (r.name) r.text = `${r.name} \u00b7 ${days === null ? 'no way through yet' : whenThere(days)}`;
-    // While a band is on his trail, a ranger is shown which ground would hide him tonight (#217).
-    else r.text = days === null ? 'No way through' : `Ride here: ${whenThere(days)}${trailedBy(this.state).length && amongTrees(this.state, r.point) ? ' \u00b7 among the trees' : ''}`;
+    // While a band is on his trail, a ranger is shown which ground he could reach today would hide him tonight (#217).
+    else r.text = days === null ? 'No way through' : `Ride here: ${whenThere(days)}${days === 0 && trailedBy(this.state).length && amongTrees(this.state, r.point) ? ' \u00b7 among the trees' : ''}`;
     this.label.show(r.text, r.client[0], r.client[1], r.place ? placeOdds(this.state, r.place) : null);
   }
 
