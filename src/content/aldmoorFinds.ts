@@ -61,7 +61,7 @@ export const FINDS: Location[] = [
       ring: 5,
       behaviour: 'guard',
       lines: ['Giant spiders have strung their webs through the western pines, from a mossy old chest to the lone pine.', '*A pack of wolves sits round the edge of the webs, waiting for whatever falls out.*'],
-      army: [{ troop: 'spiders', count: 28 }, { troop: 'wolves', count: 24 }],
+      army: [{ troop: 'spiders', count: 31 }, { troop: 'wolves', count: 26 }],
       reward: 150,
       threat: 'The biggest spider comes down on a thread to look at you, and the wolves get up.',
       tamed: 'You stand very still in the webs all afternoon. At dusk the biggest spider decides you are not lunch, the rest follow it, and the wolves follow the spiders.',

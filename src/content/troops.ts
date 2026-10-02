@@ -192,9 +192,9 @@ export const TROOPS: Record<TroopId, TroopDef> = {
   },
   poachers: { id: 'poachers', name: 'Poachers', one: 'Poacher', hp: 7, attack: 3, defence: 2, damage: [1, 3], speed: 4, shots: 6, leadership: 1, wage: 1, people: 'outlaw', note: 'They hunt other people\u2019s deer, other people\u2019s rabbits, and now other people\u2019s officers.' },
   bandits: { id: 'bandits', name: 'Highwaymen', one: 'Highwayman', hp: 11, attack: 4, defence: 3, damage: [2, 3], speed: 4, leadership: 2, wage: 2, people: 'outlaw', note: '\u201cStand and deliver,\u201d they say. Mostly they stand.' },
-  boars: { id: 'boars', name: 'Wild Boars', one: 'Wild Boar', hp: 18, attack: 5, defence: 4, damage: [2, 4], speed: 4, leadership: 0, wage: 0, people: 'wild', note: 'They are all bristles, tusks and a very short temper.', tamed: 'The boars decide you are the biggest boar they have ever met, and trot after you, grunting happily.' },
+  boars: { id: 'boars', name: 'Wild Boars', one: 'Wild Boar', hp: 18, attack: 5, defence: 4, damage: [2, 4], speed: 5, leadership: 0, wage: 0, people: 'wild', note: 'They are all bristles, tusks and a very short temper.', tamed: 'The boars decide you are the biggest boar they have ever met, and trot after you, grunting happily.' },
   bears: {
-    id: 'bears', name: 'Bears', one: 'Bear', hp: 80, attack: 9, defence: 7, damage: [10, 16], speed: 4, leadership: 0, wage: 0, people: 'wild',
+    id: 'bears', name: 'Bears', one: 'Bear', hp: 80, attack: 9, defence: 7, damage: [10, 16], speed: 5, leadership: 0, wage: 0, people: 'wild',
     note: 'They are big and brown, and not at all sorry about it.',
     tamed: 'The biggest bear sniffs your hand, sneezes, and leans on you. *The others decide that makes you family.*',
   },

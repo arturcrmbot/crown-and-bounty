@@ -1100,7 +1100,7 @@ export const ALDMOOR: Province = {
         behaviour: 'roam',
         range: 90,
         lines: ['Highwaymen work the road over the heath to the watchtower, under a black banner with a skull on it.', '*The cutpurses and poachers with them do the jobs a highwayman thinks are beneath him.*'],
-        army: [{ troop: 'bandits', count: 37 }, { troop: 'cutpurses', count: 28 }, { troop: 'poachers', count: 25 }, { troop: 'highwaymanCaptain', count: 1, level: 5 }],
+        army: [{ troop: 'bandits', count: 41 }, { troop: 'cutpurses', count: 31 }, { troop: 'poachers', count: 28 }, { troop: 'highwaymanCaptain', count: 1, level: 5 }],
         reward: 300,
         threat: '*"Stand and deliver!"* They stand. Somebody has to deliver.',
         parleys: [
@@ -1147,7 +1147,7 @@ export const ALDMOOR: Province = {
         look: 'wolves',
         ring: 3,
         lines: ['Bears are asleep across the track to the old King\u2019s lodge.', '*The biggest one is snoring. The trees shake a little.*'],
-        army: [{ troop: 'bears', count: 10 }],
+        army: [{ troop: 'bears', count: 13 }],
         reward: 150,
         threat: 'The biggest bear gets up. It goes on getting up for quite a long time.',
         tamed: 'You sit down in the track, and wait. At dusk the biggest bear comes and sits beside you, and leans. *The others decide that makes you family.*',

@@ -34,12 +34,13 @@ describe('taming', () => {
     expect(count(s, 'boars')).toBe(boarsInBand);
     expect(s.movement).toBe(0);
     expect(cardOf(result).lines).toContain('*It has taken you the rest of the day.*');
-    // The bears, a ring further out (#239), follow him only in part: 6 of the 10. Anyone else who tames, with the same
-    // army, wins over only as many as it outweighs: the Ranger is the one beasts follow readily (Artur, 2 Oct).
-    expect(count(choose(start, 'bears', 'tame')!.state, 'bears')).toBe(6);
+    // The bears, a ring further out (#239), follow him only in part: 4 of the 13. Anyone else who tames, with the same
+    // army, wins over only as many as it outweighs them, and it doesn't: the Ranger is the one beasts follow readily (Artur, 2 Oct).
+    expect(count(choose(start, 'bears', 'tame')!.state, 'bears')).toBe(4);
     const knight = fresh('knight');
     const friend: GameState = { ...knight, army: start.army, hero: { ...knight.hero, perks: ['beastFriend'] } };
-    expect(count(choose(friend, 'bears', 'tame')!.state, 'bears')).toBe(1);
+    expect(choose(friend, 'bears', 'tame')).toBeNull();
+    expect(labels(friend, 'bears')).toContain('Tame them (they don\u2019t think much of your army yet) [off]');
     expect(locationById(s, 'boars').done).toBe(true);
     expect(s.ambush).toBeUndefined();
     expect(result.events).toContainEqual({ type: 'removed', id: 'boars' });
@@ -87,10 +88,10 @@ describe('taming', () => {
   });
 
   it('says who comes at him with a capital letter, though his scouts count only roughly', () => {
-    // A Knight with a way with beasts, and the ranger's first army, hears "several", not "9", and the line still starts a sentence.
+    // A Knight with a way with beasts, and the ranger's first army, wins over a few of the sounder and hears "a horde", not "52", and the line still starts a sentence.
     const knight = fresh('knight');
     const tamer: GameState = { ...knight, army: fresh().army, hero: { ...knight.hero, perks: ['beastFriend'] } };
-    const result = choose(tamer, 'bears', 'tame')!;
+    const result = choose(tamer, 'chaseBoars', 'tame')!;
     expect(result.state.ambushRest).toBe(true);
     const line = cardOf(result).lines.find((l) => l.endsWith('come at you!'))!;
     expect(line).toMatch(/^\*\*[A-Z]/);
