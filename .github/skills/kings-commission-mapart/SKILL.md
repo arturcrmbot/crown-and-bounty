@@ -11,9 +11,9 @@ have to learn it again.
 
 ## How HoMM2 composes a map
 
-1. **Every place is a little scene.** The watermill sits by a pond ringed with flowers; the lumber camp
-   has a log pile and a cart in a clearing; the castle stands among fountains and flower beds. Nothing
-   stands alone on bare grass.
+1. **Every place is a little scene.** The watermill sits by a pond ringed with flowers; the sawmill's log
+   pile and cart are in its own picture; the castle stands among flower beds. Nothing stands alone on bare
+   grass.
 2. **Woods are dense and grouped by kind.** A clump of autumn trees, a clump of blue-green firs, a few
    willows: each clump is one look, not a salad. Woods cover a big share of the screen, and their edges
    fray into single trees, bushes and flowers.
@@ -24,6 +24,12 @@ have to learn it again.
 5. **The ground is never one sheet.** It rolls: long swells with lit slopes towards the top left and
    shade away, darker swales, worn patches of earth, and rough land of a different colour.
 6. **No bare stretch bigger than a few tiles.** Bright objects on darker ground.
+7. **Only places are built** (#256). Anything people made that stands apart (a fountain, a pavilion, a
+   cart, a woodpile, barrels, bones) can be visited, and anything made that lies on the ground can be
+   picked up. The decoration is nature: trees, bushes, flowers, rocks, mounds and water. So a scene round
+   a place is flowers, bushes and rocks, with only a house's own garden and fence, and a piece that
+   stands for a place or a pickup is never decoration anywhere else. Artur rode to the pavilion by the
+   castle, which was the Old King's Hunting Stand's picture, and nothing happened.
 
 The battlefield is the same: grass that rolls, worn paths across it, tufts and flowers, a wall of big
 trees along the top cut by the frame, clumps in the corners, and obstacles at battle size.
@@ -82,6 +88,7 @@ Put a crop of ours, at 2×, beside one of his HoMM2 screens at the same pixel sc
 - [ ] Is any stretch bigger than three tiles bare? (Take a whole-map overview: tile the view with
       `__kc.view` and stitch the screenshots.)
 - [ ] Does every place stand in a scene of its own?
+- [ ] Is everything built a place or a pickup? Nothing made by hands stands about as decoration.
 - [ ] Are the woods dense, in clumps of one look, with frayed edges? No autumn tree alone in a pinewood
       (it reads as a fire).
 - [ ] Does the water have an edge everywhere?

@@ -26,15 +26,20 @@ const FLOWERS = [6, 7, 8, 9, 10, 11];
 const BEDS: PieceName[] = ['bedPurple', 'bedPurple2', 'bedPink', 'bedPink2', 'bedRed', 'bedRed2', 'bedRed3', 'bedYellow', 'bedYellow2'];
 const SMALL_BEDS: PieceName[] = ['bedRed', 'bedRed2', 'bedRed3', 'bedYellow', 'bedYellow2'];
 
-/** What stands round each sort of place, by its look (or its kind): a piece and where, from the place's foot. */
+/**
+ * What stands round each sort of place, by its look (or its kind): a piece and where, from the place's foot.
+ * Only nature, and a house's own garden and fence, as in HoMM2 (#256): anything made by hands that stands
+ * apart on the map is a place to visit or a thing to pick up, so a cart, a fountain or a haystack beside a
+ * place would only send the player riding to it for nothing.
+ */
 type Prop = [PieceName, number, number];
 const SCENES: Record<string, Prop[]> = {
-  castle: [['fountain', -82, 20], ['bedPink2', 80, 14], ['bedPurple', -60, 40], ['bedRed', 58, 36], ['gazebo', 96, -10], ['bedYellow', -96, -6]],
+  castle: [['bedPurple', -82, 20], ['bedPink2', 80, 14], ['decor27', -60, 40], ['bedRed', 58, 36], ['decor5', 96, -10], ['bedYellow', -96, -6]],
   well: [['bedRed', -24, 6], ['bedYellow', 24, 8], ['bedPurple', 0, 22]],
-  village: [['haystack', -70, -20], ['garden', 60, 26], ['fence', 92, 20], ['scarecrow', 70, 6], ['barrels', -40, 22], ['crates', 34, -22], ['bedYellow', -26, 6], ['bedRed', 24, 8]],
-  mill: [['logPile', 44, 18], ['wagon', 70, -4], ['barrels', -8, 26], ['crates', 18, 30], ['bedPink', 54, 40]],
-  tower: [['outcrop', -40, 4], ['rock', 30, 10], ['bones', 22, 28]],
-  mine: [['ore', 56, 10], ['wagon', -62, 12], ['logPile', 70, 30], ['rock', -50, 32]],
+  village: [['decor27', -70, -20], ['garden', 60, 26], ['fence', 92, 20], ['decor8', 70, 6], ['decor3', -40, 22], ['decor26', 34, -22], ['bedYellow', -26, 6], ['bedRed', 24, 8]],
+  mill: [['decor28', 44, 18], ['bedYellow2', 70, -4], ['decor9', -8, 26], ['decor2', 18, 30], ['bedPink', 54, 40]],
+  tower: [['outcrop', -40, 4], ['rock', 30, 10], ['decor25', 22, 28]],
+  mine: [['outcrop2', 56, 10], ['mound2', -62, 12], ['decor27', 70, 30], ['rock', -50, 32]],
   shrine: [['bedPurple', -30, 12], ['bedPink', 30, 14], ['bedYellow', 0, 28]],
   event: [['bedPurple', -30, 12], ['bedPink', 30, 14]],
   // A scroll stone (#240): two fallen stones of the old ring beside it, and flowers at its foot.
@@ -42,19 +47,19 @@ const SCENES: Record<string, Prop[]> = {
   stone2: [['boulder3', -24, 4], ['rock', 24, 6], ['bedPurple', -6, 20], ['bedPink', 22, 22]],
   stone3: [['boulder2', -26, 4], ['boulder3', 26, 6], ['bedYellow', -8, 20], ['bedPurple', 22, 22]],
   chest: [['outcrop3', -6, -12], ['bedYellow', 22, 8]],
-  gold: [['goldSmall', 20, 6]],
-  stockade: [['bones', -58, 24], ['fire', 54, 22], ['crates', 62, -6], ['barrels', -60, -4]],
-  camp: [['fire', 0, 24], ['cauldron', 34, 18], ['crates', -40, 14], ['barrels', 46, -6]],
-  lodge: [['logPile', -50, 12], ['wagon', 54, 14], ['fire', 12, 28], ['barrels', -28, 26]],
-  hall: [['fence', -60, 18], ['barrels', 56, 16], ['haystack', 66, -8], ['bedRed', -30, 30]],
-  mews: [['fence', -44, 14], ['haystack', 42, 10]],
-  range: [['haystack', -40, 6], ['barrels', 40, 12], ['fence', 0, 26]],
+  gold: [],
+  stockade: [['decor25', -58, 24], ['rock', 54, 22], ['decor24', 62, -6], ['decor3', -60, -4]],
+  camp: [['decor27', 0, 24], ['decor2', 34, 18], ['decor26', -40, 14], ['decor13', 46, -6]],
+  lodge: [['decor28', -50, 12], ['decor3', 54, 14], ['bedRed2', 12, 28], ['decor13', -28, 26]],
+  hall: [['fence', -60, 18], ['decor27', 56, 16], ['decor2', 66, -8], ['bedRed', -30, 30]],
+  mews: [['fence', -44, 14], ['decor28', 42, 10]],
+  range: [['decor26', -40, 6], ['bedYellow', 40, 12], ['fence', 0, 26]],
   cottage: [['garden', 44, 10], ['fence', -42, 14], ['bedYellow', 8, 22]],
-  house: [['garden', -48, 12], ['barrels', 40, 12], ['bedRed', 10, 24]],
-  windmill: [['haystack', 34, 12], ['wagon', -46, 14]],
+  house: [['garden', -48, 12], ['decor3', 40, 12], ['bedRed', 10, 24]],
+  windmill: [['bedYellow', 34, 12], ['decor27', -46, 14]],
   signpost: [['bedYellow2', 16, 6]],
-  hut: [['garden', 30, 10], ['fence', -30, 12], ['bedYellow', 6, 18], ['haystack', -24, -14]],
-  holes: [['ore', 30, 10], ['mound', -34, -6]],
+  hut: [['garden', 30, 10], ['fence', -30, 12], ['bedYellow', 6, 18], ['decor2', -24, -14]],
+  holes: [['decor22', 30, 10], ['mound', -34, -6]],
 };
 
 export function dress(map: MapModel, locations: readonly Location[], scenery: Placed[]) {
@@ -149,7 +154,7 @@ export function dress(map: MapModel, locations: readonly Location[], scenery: Pl
         .find(([x, y]) => fits(x, y, p.sprite.width, 10) && !isTaken(x, y, p.sprite.width) && !places.some(([qx, qy]) => (qx !== px || qy !== py) && Math.abs(qx - x) < 30 && Math.abs(qy - y) < 26));
       if (!spot) continue;
       const [x, y] = spot;
-      put(name, x, y, hash(px, py + dx, seed) < 0.5 && !name.startsWith('wagon'));
+      put(name, x, y, hash(px, py + dx, seed) < 0.5);
       take(x, y, p.sprite.width);
     }
   };
