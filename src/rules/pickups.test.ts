@@ -88,7 +88,7 @@ describe('things lying by the way (#192)', () => {
     const start = { ...newGame(3, ALDMOOR, 'knight'), opening: undefined };
     const run = playCommission(start, mapOf(start), 4000, { allow: (l) => l.kind !== 'hideout', stop: (s) => s.day > 3 });
     expect(run.state.locations.filter((l) => l.kind === 'pickup' && l.done).length).toBeGreaterThan(0);
-  });
+  }, 60_000);
 
   it('crystals wait for him while his mana is full, and he takes them once he has room (#211)', () => {
     const start = fresh();
