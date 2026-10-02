@@ -165,7 +165,7 @@ export const TROOPS: Record<TroopId, TroopDef> = {
   knights: { id: 'knights', name: 'Knights', one: 'Knight', hp: 42, attack: 8, defence: 8, damage: [5, 8], speed: 5, leadership: 5, wage: 8, people: 'loyal', note: 'They are heavy, loyal and very pleased with their armour.' },
   swordsmen: { id: 'swordsmen', name: 'Swordsmen', one: 'Swordsman', hp: 24, attack: 6, defence: 6, damage: [3, 5], speed: 4, leadership: 3, wage: 4, people: 'outlaw', note: 'They are Grimsby\u2019s men, with a goose feather in every helmet.' },
   crossbowmen: { id: 'crossbowmen', name: 'Crossbowmen', one: 'Crossbowman', hp: 14, attack: 5, defence: 4, damage: [2, 4], speed: 3, shots: 8, leadership: 2, wage: 3, people: 'outlaw', note: 'They are slow to reload and slower to smile. Their bolts punch through armour.', abilities: ['pierce'] },
-  wolves: { id: 'wolves', name: 'Wolves', one: 'Wolf', hp: 12, attack: 7, defence: 3, damage: [3, 5], speed: 7, leadership: 0, wage: 0, people: 'wild', note: 'They are fast, hungry, and not interested in your commission.', tamed: 'The pack leader sniffs your boots, decides you\u2019ll do, and the whole pack falls in behind you, tongues out.' },
+  wolves: { id: 'wolves', name: 'Wolves', one: 'Wolf', hp: 12, attack: 7, defence: 3, damage: [3, 5], speed: 6, leadership: 0, wage: 0, people: 'wild', note: 'They are fast, hungry, and not interested in your commission.', tamed: 'The pack leader sniffs your boots, decides you\u2019ll do, and the whole pack falls in behind you, tongues out.' },
   baron: {
     id: 'baron', name: 'Baron Grimsby', one: 'Baron Grimsby', hp: 160, attack: 11, defence: 10, damage: [9, 14], speed: 4, leadership: 99, wage: 0,
     note: 'He carries the royal goose under one arm, and gives the orders with the other.', abilities: ['leads'],
@@ -191,7 +191,7 @@ export const TROOPS: Record<TroopId, TroopDef> = {
     face: 'bramble',
   },
   poachers: { id: 'poachers', name: 'Poachers', one: 'Poacher', hp: 7, attack: 3, defence: 2, damage: [1, 3], speed: 4, shots: 6, leadership: 1, wage: 1, people: 'outlaw', note: 'They hunt other people\u2019s deer, other people\u2019s rabbits, and now other people\u2019s officers.' },
-  bandits: { id: 'bandits', name: 'Highwaymen', one: 'Highwayman', hp: 11, attack: 4, defence: 3, damage: [2, 3], speed: 5, leadership: 2, wage: 2, people: 'outlaw', note: '\u201cStand and deliver,\u201d they say. Mostly they stand.' },
+  bandits: { id: 'bandits', name: 'Highwaymen', one: 'Highwayman', hp: 11, attack: 4, defence: 3, damage: [2, 3], speed: 4, leadership: 2, wage: 2, people: 'outlaw', note: '\u201cStand and deliver,\u201d they say. Mostly they stand.' },
   boars: { id: 'boars', name: 'Wild Boars', one: 'Wild Boar', hp: 18, attack: 5, defence: 4, damage: [2, 4], speed: 5, leadership: 0, wage: 0, people: 'wild', note: 'They are all bristles, tusks and a very short temper.', tamed: 'The boars decide you are the biggest boar they have ever met, and trot after you, grunting happily.' },
   bears: {
     id: 'bears', name: 'Bears', one: 'Bear', hp: 80, attack: 9, defence: 7, damage: [10, 16], speed: 5, leadership: 0, wage: 0, people: 'wild',
@@ -215,10 +215,10 @@ export const TROOPS: Record<TroopId, TroopDef> = {
   pikemen: { id: 'pikemen', name: 'Pikemen', one: 'Pikeman', hp: 20, attack: 5, defence: 6, damage: [3, 5], speed: 4, leadership: 2, wage: 3, people: 'outlaw', abilities: ['setPikes'], note: 'They are the Baron\u2019s pikemen. Horses don\u2019t like them, and the feeling is mutual.' },
   menAtArms: { id: 'menAtArms', name: 'Men-at-Arms', one: 'Man-at-Arms', hp: 40, attack: 7, defence: 9, damage: [5, 8], speed: 3, leadership: 4, wage: 6, people: 'outlaw', abilities: ['plate'], note: 'They wear the Baron\u2019s best plate from helmet to boots, and you can hear them coming a mile off.' },
   // Outlaws who would rather rob you than fight you (#239).
-  cutpurses: { id: 'cutpurses', name: 'Cutpurses', one: 'Cutpurse', hp: 9, attack: 6, defence: 3, damage: [2, 4], speed: 6, leadership: 1, wage: 2, people: 'outlaw', abilities: ['backstab'], note: 'They would rather pick your pocket than fight you, and they would much rather do both.' },
+  cutpurses: { id: 'cutpurses', name: 'Cutpurses', one: 'Cutpurse', hp: 9, attack: 6, defence: 3, damage: [2, 4], speed: 5, leadership: 1, wage: 2, people: 'outlaw', abilities: ['backstab'], note: 'They would rather pick your pocket than fight you, and they would much rather do both.' },
   // Darkwood's spiders (#239): beasts, so a hero with a way with beasts can win them over.
   spiders: {
-    id: 'spiders', name: 'Giant Spiders', one: 'Giant Spider', hp: 30, attack: 7, defence: 4, damage: [4, 7], speed: 5, leadership: 0, wage: 0, people: 'wild', abilities: ['webs'],
+    id: 'spiders', name: 'Giant Spiders', one: 'Giant Spider', hp: 30, attack: 7, defence: 4, damage: [4, 7], speed: 4, leadership: 0, wage: 0, people: 'wild', abilities: ['webs'],
     note: 'They are as big as ponies and a good deal hairier.',
     tamed: 'The biggest spider looks you over with all eight eyes, and decides you are not lunch. The rest follow it, which nobody else in your army enjoys.',
   },
