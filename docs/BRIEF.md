@@ -619,3 +619,12 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   fight teaches less than it did, so Aldric reaches about level IX or X by Grimsby, a level or so every few days, with
   no three at once at the bridge. Four new troops came first (pikemen, men-at-arms, cutpurses and giant spiders), then
   the enemy heroes. The sizes are a first pass, and a balance session will tune them.
+- **Combat that doesn't snowball (2 Oct, #254):** Artur, after a Wizard's game: *"If you're losing a lot of troops
+  early on, you're going to be behind the power curve you need for what comes next. It also feels like almost every
+  fight you're levelling up, and the impact of a level isn't really noticeable."* The fights, replayed, said it wasn't
+  the shooting that cost him his army: with half the shooters a fight cost as much, because the blades did the killing
+  instead. What decided it was how big a band was next to his army. So the bands of the first two rings are a fifth
+  smaller, and wolves, cutpurses, highwaymen and spiders are a step slower, so that only wolves move before his
+  knights. A band's power counts its hero, and a pack follows its captain, so a Ranger can't tame Rook's wolves from
+  under him on day 1. A level comes about every other fight instead of nearly every one, and gives two stat points
+  and +10 leadership, and its card says what they do, in numbers. Aldric is about level VIII or IX by Grimsby.
