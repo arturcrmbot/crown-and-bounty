@@ -16,10 +16,10 @@ Needs Python 3 with numpy and scipy, and ffmpeg.
     python3 scripts/sfx.py              (every pack)
     python3 scripts/sfx.py battle
 """
-import io, json, os, subprocess, sys, urllib.request, zipfile
+import io, json, os, subprocess, sys, urllib.parse, urllib.request, zipfile
 
 import numpy as np
-from scipy.signal import lfilter
+from scipy.signal import butter, lfilter, sosfilt
 
 # 32 kHz keeps everything up to 16 kHz, where most of these recordings (Vorbis and MP3 at the source) stop anyway.
 RATE = 32000
@@ -29,13 +29,25 @@ CACHE = '/tmp/kc-sfx'
 # within `CREST` dB of that by a gentle limiter, so the mix can bring any of them up to its mark.
 LOUD = -15
 CREST = 12
+# The lowest a pack keeps (Hz), set as it's built (`PACKS`): below it, a take holds only rumble.
+FLOOR = 0
 
 WESNOTH = 'https://raw.githubusercontent.com/wesnoth/wesnoth/1.18.8/data/core/sounds/'
 KENNEY = {
     'impact': 'https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip',
     'rpg': 'https://kenney.nl/media/pages/assets/rpg-audio/8e99002d76-1677590336/kenney_rpg-audio.zip',
+    'casino': 'https://kenney.nl/media/pages/assets/casino-audio/2472606a04-1721639069/kenney_casino-audio.zip',
+    'ui': 'https://kenney.nl/media/pages/assets/ui-audio/490d233f68-1677590494/kenney_ui-audio.zip',
 }
 LEAMON = 'https://opengameart.org/sites/default/files/fleshy_fight_sounds.zip'
+# Little Robot Sound Factory's Fantasy Sound Effects Library (CC BY 3.0), and rubberduck's two packs (CC0).
+LRSF = 'https://opengameart.org/sites/default/files/Fantasy%20Sound%20Library.zip'
+RUBBERDUCK = {
+    'rpg': 'https://opengameart.org/sites/default/files/80-CC0-RPG-SFX_0.zip',
+    'sfx': 'https://opengameart.org/sites/default/files/100-CC0-SFX_0.zip',
+}
+# A single file on OpenGameArt, by its name there.
+OGA = 'https://opengameart.org/sites/default/files/'
 # Freesound's recordings, all CC0, each by its id: its preview's address, who recorded it, and what it is.
 FREESOUND = {
     165532: ('https://cdn.freesound.org/previews/165/165532_1799601-hq.mp3', 'StephenSaldanha', 'SRS_Foley_Horse_Galloping.wav'),
@@ -47,6 +59,15 @@ FREESOUND = {
     504626: ('https://cdn.freesound.org/previews/504/504626_4437257-hq.mp3', 'leonelmail', 'BODY FALL - V HVY - DIRT'),
     521552: ('https://cdn.freesound.org/previews/521/521552_11543986-hq.mp3', 'omerbhatti34', 'Arrow Impact'),
     683179: ('https://cdn.freesound.org/previews/683/683179_2578040-hq.mp3', 'NearTheAtmoshphere', 'Fireball'),
+    146932: ('https://cdn.freesound.org/previews/146/146932_1274078-hq.mp3', 'crashoverride6', 'Wind Gust'),
+    160685: ('https://cdn.freesound.org/previews/160/160685_2369092-hq.mp3', 'antique98', 'Lots of Geese'),
+    160686: ('https://cdn.freesound.org/previews/160/160686_2369092-hq.mp3', 'antique98', 'A squeaking goose'),
+    182504: ('https://cdn.freesound.org/previews/182/182504_854782-hq.mp3', 'swiftoid', 'Horse Clip Clopping Downhill (stereo)'),
+    211624: ('https://cdn.freesound.org/previews/211/211624_71257-hq.mp3', 'qubodup', 'Magic Wand Glitter'),
+    353907: ('https://cdn.freesound.org/previews/353/353907_5984825-hq.mp3', 'dr19', 'Shovel_dirt.wav'),
+    384890: ('https://cdn.freesound.org/previews/384/384890_984733-hq.mp3', 'Ali_6868', 'Knight Right Footstep on Gravel 5 (With Chainmail)'),
+    384901: ('https://cdn.freesound.org/previews/384/384901_984733-hq.mp3', 'Ali_6868', 'Knight Left Footstep Forest/Grass 5 (With Chainmail)'),
+    564628: ('https://cdn.freesound.org/previews/564/564628_887696-hq.mp3', 'D4XX', 'Single Horse Galopp'),
 }
 
 
@@ -92,6 +113,18 @@ def freesound(sound):
     return ('freesound', sound)
 
 
+def lrsf(name):
+    return ('lrsf', name)
+
+
+def rubberduck(pack, name):
+    return ('rubberduck', pack, name)
+
+
+def oga(name):
+    return ('oga', name)
+
+
 def path_of(source):
     kind = source[0]
     if kind == 'wesnoth':
@@ -102,6 +135,12 @@ def path_of(source):
         return member(LEAMON, f'{source[1]}.wav')
     if kind == 'freesound':
         return fetch(FREESOUND[source[1]][0])
+    if kind == 'lrsf':
+        return member(LRSF, f'{source[1]}.wav')
+    if kind == 'rubberduck':
+        return member(RUBBERDUCK[source[1]], f'{source[2]}.ogg')
+    if kind == 'oga':
+        return fetch(OGA + urllib.parse.quote(source[1]))
     raise ValueError(source)
 
 
@@ -183,6 +222,13 @@ def cut(x, how):
         return cut(x[int(how[1] * RATE):], None)
     if kind == 'span':
         return fade(x[int(how[1] * RATE):int((how[1] + how[2]) * RATE)], 0.02, min(1.0, 0.3 * how[2]))
+    if kind == 'loudest':
+        # Its loudest stretch, `how[1]` seconds long, as the ear hears it.
+        size = int(how[1] * RATE)
+        k = kweight(x)
+        power = np.convolve(k * k, np.ones(size) / size, mode='valid')
+        start = int(np.argmax(power[::480]) * 480)
+        return fade(x[start:start + size], 0.02, min(1.0, 0.3 * how[1]))
     raise ValueError(how)
 
 
@@ -207,8 +253,9 @@ def at_rate(x, rate):
     return np.interp(np.arange(n) * rate, np.arange(len(x)), x)
 
 
-def layer(source, how=None, gain=0.0, at=0.0, rate=1.0):
-    return (source, how, gain, at, rate)
+def layer(source, how=None, gain=0.0, at=0.0, rate=1.0, top=0):
+    """One recording in a take: how it's cut, its gain (dB), when it starts, its rate, and the highest it keeps (`top`, Hz; 0 keeps all)."""
+    return (source, how, gain, at, rate, top)
 
 
 IMPACT = 'impact'
@@ -218,8 +265,10 @@ def take(*layers):
     """Mixes a take's layers: each first set to one loudness, then to its gain against the first; a layer
     `at` IMPACT (or (IMPACT, seconds)) lands on the first layer's loudest onset."""
     parts, hit = [], 0
-    for n, (source, how, gain, at, rate) in enumerate(layers):
+    for n, (source, how, gain, at, rate, top) in enumerate(layers):
         y = at_rate(cut(decode(path_of(source)), how), rate)
+        if top:
+            y = sosfilt(butter(2, top, 'lowpass', fs=RATE, output='sos'), y)
         y = y * 10 ** ((-20 - loudest(y)) / 20) * 10 ** (gain / 20)
         if n == 0:
             hit = max(onsets(y), key=lambda o: o[1])[0]
@@ -231,6 +280,8 @@ def take(*layers):
     out = np.zeros(max(o + len(y) for o, y in parts))
     for o, y in parts:
         out[o:o + len(y)] += y
+    if FLOOR:
+        out = sosfilt(butter(4, FLOOR, 'highpass', fs=RATE, output='sos'), out)
     # Level it, hold its peaks, and level it again until it settles (holding the peaks takes a little off its loudness).
     for _ in range(12):
         out = limit(out * 10 ** ((LOUD - loudest(out)) / 20), 10 ** ((LOUD + CREST) / 20))
@@ -344,12 +395,61 @@ def battle():
     }
 
 
-# Each pack, made only when it's built.
-PACKS = {'battle': battle}
+def everyday():
+    return {
+        # The cards: a playing card sliding out as one opens, laid down as it's put away, and a button's click (Kenney's).
+        'unfold': each(lambda k: take(layer(kenney('casino', f'card-slide-{k}'))), '138'),
+        'fold': each(lambda k: take(layer(kenney('casino', f'card-place-{k}'))), '124'),
+        'click': each(lambda k: take(layer(kenney('ui', f'click{k}'))), '12'),
+        # The hero's book and his gear: a page turned, cloth as a piece is lifted, a buckle as it's worn.
+        'page': each(lambda k: take(layer(kenney('rpg', f'bookFlip{k}'))), '123'),
+        'lift': each(lambda k: take(layer(kenney('rpg', f'cloth{k}'))), '123'),
+        'equip': each(lambda k: take(layer(kenney('rpg', f'beltHandle{k}'))), '12'),
+        # Gold: coins in the hand, one coin into the purse on the bar, and PAID stamped on a poster with a heavy knock, then the coins.
+        'coins': [take(layer(kenney('rpg', 'handleCoins'))), take(layer(kenney('rpg', 'handleCoins2')))],
+        'clink': [take(layer(rubberduck('rpg', 'item_coins_01'), ('to', 0.1))), take(layer(rubberduck('rpg', 'item_coins_03'), ('to', 0.13)))],
+        'stamp': [take(layer(kenney('impact', 'impactWood_heavy_001'), HIT), layer(kenney('rpg', 'handleCoins'), None, -6, 0.15))],
+        # Digging for treasure: three spadefuls of earth, and a glint of something found.
+        'dig': [take(layer(freesound(353907), ('events', 0, 3, 1.6)), layer(rubberduck('rpg', 'item_gem_01'), None, -4, 1.5))],
+        # Troops join: a knight's steps in mail, going off down the road.
+        'march': [take(layer(freesound(384890)), layer(freesound(384901), ('from', 0.1), -2, 0.32), layer(freesound(384890), None, -4, 0.64), layer(freesound(384901), ('from', 0.1), -7, 0.96))],
+        # Mana: a wand glittering, its brightest sparkle softened. Movement: a horse breaking into a gallop.
+        'shimmer': [take(layer(freesound(211624), ('loudest', 1.2), top=6000))],
+        'gallop': [take(layer(freesound(564628), ('span', 0.3, 1.0)))],
+        # A chest opening on its old hinges.
+        'creak': [take(layer(oga('open chest_0.wav')))],
+        # Something picked up by the way: a small bell, rung a step higher for each one the same day (`PICKS` in effects.ts).
+        'pick': [take(layer(rubberduck('sfx', 'bell_02')))],
+        # A lost goose found: a goose squawking twice, or a gaggle.
+        'honk': [take(layer(freesound(160686), ('events', 3, 1, 0.4)), layer(freesound(160686), ('events', 3, 1, 0.4), -2, 0.25, 0.9)), take(layer(freesound(160685), ('loudest', 1.0)))],
+        # The mist rolling back from a lookout: a gust of wind.
+        'gust': [take(layer(freesound(146932), ('loudest', 2.5)))],
+        # The hero's feet on the map, and his horse's: grass, a road, a bridge's boards, the ford and the woods.
+        # A horse's fore and hind feet fall together, so each hoofbeat is two clops: soft on grass and in
+        # the woods (D4XX's horse), clipping on the road (swiftoid's), and knocking on the bridge's planks.
+        'foot:grass': each(lambda k: take(layer(kenney('impact', f'footstep_grass_00{k}'), STEP)), '012'),
+        'foot:road': each(lambda k: take(layer(lrsf(f'Footstep_Dirt_0{k}'), STEP)), '259'),
+        'foot:bridge': each(lambda k: take(layer(kenney('impact', f'impactPlank_medium_00{k}'), STEP), layer(kenney('impact', f'footstep_wood_00{k}'), STEP, -4)), '012'),
+        'foot:ford': each(lambda k: take(layer(lrsf(f'Footstep_Water_0{k}'))), '146'),
+        'foot:forest': each(lambda k: take(layer(kenney('rpg', f'footstep0{k}'), STEP)), '036'),
+        'hoof:grass': each(lambda k: take(layer(freesound(564628), ('events', k, 2, 0.35))), (0, 6)),
+        'hoof:road': each(lambda k: take(layer(freesound(182504), ('events', k, 2, 0.45))), (2, 8, 12)),
+        'hoof:bridge': each(lambda k: take(layer(kenney('impact', f'impactPlank_medium_00{k}'), STEP, 0, 0, 0.9), layer(kenney('impact', f'impactPlank_medium_00{k + 1}'), STEP, -2, 0.09, 0.9)), (3, 2)),
+        'hoof:ford': [take(layer(lrsf('Footstep_Water_02')), layer(lrsf('Footstep_Water_05'), None, -2, 0.09))],
+        'hoof:forest': each(lambda k: take(layer(freesound(564628), ('events', k, 2, 0.35))), (2, 10)),
+    }
+
+
+# Each pack, made only when it's built, and the lowest it keeps. The map's recordings carry a rumble
+# under 40 Hz (wind, handling, a thud no phone or laptop plays) that would only be measured, not
+# heard, so its pack keeps what's over 50 Hz, the weight of a hoof or a spade included.
+PACKS = {'battle': (battle, 0), 'map': (everyday, 50)}
 
 
 def build(name):
-    effects = PACKS[name]()
+    global FLOOR
+    make, FLOOR = PACKS[name]
+    effects = make()
     pcm, index, at = [], {}, 0
     for effect, takes in effects.items():
         index[effect] = []

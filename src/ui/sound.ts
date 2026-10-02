@@ -11,9 +11,10 @@ import { loadSamples } from '../audio/samples';
 import { sting } from '../audio/stings';
 import { Terrain } from '../rules/map/model';
 
-// The recorded effects and the jingles load once sound is awake, in the background; until they're in, they're silent.
+// The recorded effects and the jingles load once sound is awake, in the background, the map's first; until they're in, they're silent.
 whenAwake(() => {
-  loadSamples().catch(() => {});
+  loadSamples('map').catch(() => {});
+  loadSamples('battle').catch(() => {});
   loadJingles().catch(() => {});
 });
 
