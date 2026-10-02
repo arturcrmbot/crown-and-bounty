@@ -112,6 +112,8 @@ export type AdventureScene = {
   pickups: Map<string, Placed>;
   /** Animated landmarks by place, so one that changes (the hunt hall, opened) can be drawn anew. */
   sights: Map<string, Placed>;
+  /** Each place's pictures (a village's huts with its well), by place: what lights up under the pointer (#256). */
+  parts: Map<string, Placed[]>;
   /** The King's pennant beside each place the hero has done with (#256), by place. */
   pennants: Map<string, Placed>;
   /** The places it flies at: a new set only when that changes, so the minimap marks them again only then. */
@@ -434,6 +436,7 @@ export function addPlace(scene: AdventureScene, l: Location) {
   const o: Placed = { ...place(look.frames[0], l.at, look.foot), frames: look.frames.length > 1 ? look.frames : undefined, hidden: Boolean(l.enemy?.unseen) };
   scene.view.animate(o);
   scene.pickups.set(l.id, o);
+  scene.parts.set(l.id, [o]);
   // A place back on the map (a band that rode out before) is clicked where it stands now.
   const old = scene.hitboxes.findIndex((b) => b.id === l.id);
   if (old >= 0) scene.hitboxes.splice(old, 1);
@@ -654,7 +657,7 @@ export function buildAdventureScene(map: MapModel, state: GameState): AdventureS
   const rig: HeroRig = { object: { ...place(figure.idle[0], state.hero.at, figure.foot), frames: figure.idle }, ...figure };
   if (state.hero.facing < 0) rig.object.frames = rig.idleLeft;
   view.animate(rig.object);
-  return { view, fog, minimap, hero: rig, hitboxes, pickups, sights, pennants: new Map(), flown: new Set() };
+  return { view, fog, minimap, hero: rig, hitboxes, pickups, sights, parts, pennants: new Map(), flown: new Set() };
 }
 
 /**

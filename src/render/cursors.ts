@@ -212,6 +212,32 @@ const LUTE = [
   '................',
 ];
 
+/**
+ * A knight's steel gauntlet, pointing, for the map's pointer over a place to visit (#256): its finger's
+ * tip is at (6, 1). The map's own crossed swords stand over an enemy.
+ */
+const GAUNTLET = [
+  '................',
+  '.....Ss.........',
+  '.....St.........',
+  '.....St.........',
+  '.....Sto........',
+  '.....StoSs......',
+  '.....StoStoSs...',
+  '.Ss.oStoStoStS..',
+  '.StSoSttStttStt.',
+  '..StSttttttttSt.',
+  '...Stttttttttts.',
+  '...Sttttttttts..',
+  '....Stttttttts..',
+  '.....Gggggggg...',
+  '.....Ghhhhhhg...',
+  '................',
+];
+
+/** The gauntlet, for the map's pointer over a place (#256). */
+export const gauntletIcon = (): Bitmap => picture(GAUNTLET);
+
 /** A paw print, for a beast that pads there: four toes over a pad. */
 function paw(): Bitmap {
   const b = new Bitmap(16, 16);
