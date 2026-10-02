@@ -3,7 +3,7 @@ import type { PortraitId } from './portraits';
 import type { SpellId, StatusId } from './spells';
 
 /** Every kind of troop, with HoMM2-style numbers. Troops are just numbers: 400 peasants are 400 peasants. */
-export type TroopId = 'peasants' | 'archers' | 'knights' | 'swordsmen' | 'crossbowmen' | 'wolves' | 'baron' | 'goblins' | 'trolls' | 'witch' | 'bramble' | 'poachers' | 'bandits' | 'boars' | 'bears' | 'huntsmen' | 'rook' | HeroId;
+export type TroopId = 'peasants' | 'archers' | 'knights' | 'swordsmen' | 'crossbowmen' | 'wolves' | 'baron' | 'goblins' | 'trolls' | 'witch' | 'bramble' | 'poachers' | 'bandits' | 'boars' | 'bears' | 'huntsmen' | 'rook' | 'pikemen' | 'menAtArms' | 'cutpurses' | 'spiders' | HeroId;
 /** Aldric himself, as each background fights: one of a kind, like the villains, and never in the army. */
 export type HeroId = 'heroKnight' | 'heroWizard' | 'heroRanger' | 'heroCourtier';
 
@@ -72,7 +72,7 @@ export function feuding(a: TroopId, b: TroopId): boolean {
 /** A villain's magic: spell power, mana, spells he knows, and orders he can give a few times a battle for no mana. */
 export type Caster = { spellPower: number; mana: number; casts?: number; spells?: SpellId[]; charges?: { spell: SpellId; uses: number }[] };
 
-export type Ability = 'regenerates' | 'hexes' | 'leads' | 'rides' | 'bard' | 'firstStrike' | 'stings' | 'pierce' | 'marks' | 'hunter';
+export type Ability = 'regenerates' | 'hexes' | 'leads' | 'rides' | 'bard' | 'firstStrike' | 'stings' | 'pierce' | 'marks' | 'hunter' | 'setPikes' | 'plate' | 'backstab' | 'webs';
 
 /**
  * Troop abilities, as data the battle engine reads at fixed moments. A new ability that uses
@@ -109,6 +109,12 @@ export type AbilityDef = {
   pierce?: number;
   /** Its blows and shots land this much harder on beasts (see `isBeast`). */
   hunts?: number;
+  /** Set against a charge (pikes): whatever charges it gets no charge, so no bonus, no free blow, and no winding. */
+  braces?: boolean;
+  /** Shots land on it at this share of their damage (plate: half). Spells aren't shots. */
+  shotsTaken?: number;
+  /** Its blows land this many times as hard on a stack that another of its side already stands beside. */
+  backstab?: number;
 };
 
 export const ABILITIES: Record<Ability, AbilityDef> = {
@@ -126,6 +132,10 @@ export const ABILITIES: Record<Ability, AbilityDef> = {
   pierce: { name: 'Piercing Bolts', note: 'Its bolts punch through armour, so whatever they hit has 1 less defence against them.', pierce: 1 },
   marks: { name: 'Marks the Quarry', note: 'Whatever his arrows hit is marked for the pack, and has \u22123 defence for two rounds.', shotStatus: 'marked' },
   hunter: { name: 'Hunter', note: 'It knows its quarry, so its shots and blows land half as hard again on wolves, boars, bears and every other beast.', hunts: 0.5 },
+  setPikes: { name: 'Set Pikes', note: 'They set their pikes against a charge, so a charge into them gets no bonus, and they strike first at whatever closes with them.', firstStrike: true, braces: true },
+  plate: { name: 'Plate Armour', note: 'Arrows and bolts glance off their plate, so shots do them half the damage.', shotsTaken: 0.5 },
+  backstab: { name: 'Backstab', note: 'They strike twice as hard at a stack that one of theirs is fighting already.', backstab: 2 },
+  webs: { name: 'Webs', note: 'Whatever it bites is caught in its web, and can\u2019t move for the rest of that round and the next.', stingStatus: 'webbed' },
 };
 
 /** The abilities of a kind of troop, with their rules. */
@@ -184,6 +194,17 @@ export const TROOPS: Record<TroopId, TroopDef> = {
     note: 'He is the Baron\u2019s huntsman. He shoots from behind his wolves, and whatever his arrows find, the pack goes for.', abilities: ['leads', 'marks'],
     voice: 175,
     face: 'rook',
+  },
+  // The Baron's pikemen and men-at-arms (#239): his soldiers' answer to a charge, and to arrows.
+  pikemen: { id: 'pikemen', name: 'Pikemen', one: 'Pikeman', hp: 20, attack: 5, defence: 6, damage: [3, 5], speed: 4, leadership: 2, wage: 3, people: 'outlaw', abilities: ['setPikes'], note: 'They are the Baron\u2019s pikemen. Horses don\u2019t like them, and the feeling is mutual.' },
+  menAtArms: { id: 'menAtArms', name: 'Men-at-Arms', one: 'Man-at-Arms', hp: 40, attack: 7, defence: 9, damage: [5, 8], speed: 3, leadership: 4, wage: 6, people: 'outlaw', abilities: ['plate'], note: 'They wear the Baron\u2019s best plate from helmet to boots, and you can hear them coming a mile off.' },
+  // Outlaws who would rather rob you than fight you (#239).
+  cutpurses: { id: 'cutpurses', name: 'Cutpurses', one: 'Cutpurse', hp: 9, attack: 6, defence: 3, damage: [2, 4], speed: 6, leadership: 1, wage: 2, people: 'outlaw', abilities: ['backstab'], note: 'They would rather pick your pocket than fight you, and they would much rather do both.' },
+  // Darkwood's spiders (#239): beasts, so a hero with a way with beasts can win them over.
+  spiders: {
+    id: 'spiders', name: 'Giant Spiders', one: 'Giant Spider', hp: 30, attack: 7, defence: 4, damage: [4, 7], speed: 5, leadership: 0, wage: 0, people: 'wild', abilities: ['webs'],
+    note: 'They are as big as ponies and a good deal hairier.',
+    tamed: 'The biggest spider looks you over with all eight eyes, and decides you are not lunch. The rest follow it, which nobody else in your army enjoys.',
   },
   // Aldric in battle, as each background fights from behind the line. His numbers grow with him: see `hero`.
   heroKnight: {

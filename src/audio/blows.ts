@@ -35,6 +35,11 @@ export const TROOP_SOUNDS: Record<TroopId, TroopSounds> = {
   bears: { blow: 'bite', cry: 'troll', feet: 'paws' },
   huntsmen: { blow: 'dagger', cry: 'man', feet: 'boots' },
   rook: { blow: 'dagger', cry: 'man', feet: 'boots' },
+  pikemen: { blow: 'spear', cry: 'man', feet: 'boots', armour: true },
+  menAtArms: { blow: 'club', cry: 'man', feet: 'boots', armour: true },
+  cutpurses: { blow: 'dagger', cry: 'man', feet: 'boots' },
+  // A giant spider bites, screeches like a goblin, and patters about on all eight feet.
+  spiders: { blow: 'bite', cry: 'goblin', feet: 'patter' },
   heroKnight: { blow: 'lance', cry: 'man', feet: 'hooves', armour: true },
   heroWizard: { blow: 'staff', cry: 'man', feet: 'boots' },
   heroRanger: { blow: 'blade', cry: 'man', feet: 'boots' },

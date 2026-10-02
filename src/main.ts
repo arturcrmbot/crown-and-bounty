@@ -19,8 +19,12 @@ import { setUiRoom, setUiScale } from './ui/scale';
 import { touch, upright, whenTouchChanges } from './ui/touch';
 import { turnCard } from './ui/turn';
 import { ARTIFACTS, slotsForArtifact, type ArtifactId } from './content/artifacts';
-import { beginCommission, commissionAt, equip, giveArtifact, hasNextCommission, newGame, startFight, CAMPAIGN_LENGTH, type GameState } from './rules/game';
+import { beginCommission, commissionAt, equip, giveArtifact, hasNextCommission, newGame, startFight, update, CAMPAIGN_LENGTH, type GameState } from './rules/game';
 import { playCampaignStarts } from './rules/bot';
+
+/** "knights:20,archers:30" as an army, for the debug starts. */
+const armyFrom = (text: string | null) =>
+  (text ?? '').split(',').map((part) => part.split(':')).filter(([troop, count]) => troop in TROOPS && Number(count) > 0).map(([troop, count]) => ({ troop: troop as TroopId, count: Number(count) }));
 
 declare global {
   interface Window {
@@ -68,9 +72,7 @@ function debugStart(): GameState {
   const chapter = court > 0 ? court - 1 : Number(query.get('commission') ?? 1) - 1;
   const { hero, gold, leadership } = first;
   // ?army=knights:20,archers:30 sets the army for a debug start.
-  const army = query.has('army')
-    ? (query.get('army') ?? '').split(',').map((part) => part.split(':')).filter(([troop, count]) => troop in TROOPS && Number(count) > 0).map(([troop, count]) => ({ troop: troop as TroopId, count: Number(count) }))
-    : first.army;
+  const army = query.has('army') ? armyFrom(query.get('army')) : first.army;
   const record = Array.from({ length: chapter }, (_, i) => ({ chapter: i, days: 10, level: 1 }));
   const begun = chapter > 0 ? beginCommission(commissionAt(first.campaign, chapter).province, first.seed, { hero, gold, leadership, army }, chapter, record, first.seed) : { ...first, army };
   // ?flags=pike:false,dwarf:friend sets story flags, as if those things had happened (what the court remembers).
@@ -85,9 +87,11 @@ function debugStart(): GameState {
   // ?sceptre=1 (with ?commission=5): the last bounty is paid and the X is on the map.
   const x = commissionAt(first.campaign, chapter).province.sceptre;
   if (query.get('sceptre') === '1' && x) return { ...base, bounty: 'paid', locations: [...base.locations, { id: 'sceptre', kind: 'dig', name: 'X Marks the Spot', at: x, done: false }] };
-  // ?battle=patrol opens straight onto a fight, for checking the battle screen.
+  // ?battle=patrol opens straight onto a fight, for checking the battle screen; &enemy=pikemen:30,spiders:10 sets who it's against.
   const fightAt = query.get('battle');
-  return fightAt ? (startFight({ ...base, opening: undefined }, fightAt)?.state ?? base) : base;
+  const foe = fightAt && query.has('enemy') ? base.locations.find((l) => l.id === fightAt)?.enemy : undefined;
+  const staged = fightAt && foe ? update(base, fightAt, { enemy: { ...foe, army: armyFrom(query.get('enemy')) } }) : base;
+  return fightAt ? (startFight({ ...staged, opening: undefined }, fightAt)?.state ?? staged) : staged;
 }
 
 // The troops are Battle for Wesnoth's units: their images load while the title shows, and a

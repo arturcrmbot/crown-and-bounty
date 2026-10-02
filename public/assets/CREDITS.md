@@ -482,6 +482,94 @@ Frames and timings from `data/core/units/humans/Woodsman_Huntsman.cfg`.
 | `human-outlaws/huntsman-attack2.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Ignacio R. Morelle, Richard Kettering, Eric S. Raymond | 2007-07-22 | 2022-04-29 |
 | `human-outlaws/huntsman-attack3.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Ignacio R. Morelle, Richard Kettering | 2007-10-29 | 2022-04-29 |
 
+### Pikeman (our pikemen)
+
+Frames and timings from `data/core/units/humans/Loyalist_Pikeman.cfg`.
+
+| File | Licence | Artists, from the history | Added | Last changed |
+| --- | --- | --- | --- | --- |
+| `human-loyalists/pikeman.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-07-11 |
+| `human-loyalists/pikeman-defend-2.png` | CC BY-SA 4.0 | doofus-01 | 2022-07-11 | 2022-07-11 |
+| `human-loyalists/pikeman-idle-1.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering, Karen Baskins | 2007-06-16 | 2022-06-04 |
+| `human-loyalists/pikeman-idle-2.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering, Karen Baskins | 2007-06-16 | 2022-06-04 |
+| `human-loyalists/pikeman-idle-3.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering, Karen Baskins | 2007-06-16 | 2022-06-04 |
+| `human-loyalists/pikeman-idle-4.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering, Karen Baskins | 2007-06-16 | 2022-06-04 |
+| `human-loyalists/pikeman-attack-se.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-07-11 |
+| `human-loyalists/pikeman-die-1.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-06-04 |
+| `human-loyalists/pikeman-die-2.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-06-04 |
+| `human-loyalists/pikeman-die-3.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-06-04 |
+| `human-loyalists/pikeman-die-4.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-06-04 |
+| `human-loyalists/pikeman-die-5.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-06-04 |
+
+### Heavy Infantryman (our menAtArms)
+
+Frames and timings from `data/core/units/humans/Loyalist_Heavy_Infantryman.cfg`.
+
+| File | Licence | Artists, from the history | Added | Last changed |
+| --- | --- | --- | --- | --- |
+| `human-loyalists/heavyinfantry.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Charles Dang, Richard Kettering, Ignacio R. Morelle | 2007-05-16 | 2022-06-04 |
+| `human-loyalists/heavyinfantry-defend-1.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Charles Dang, Richard Kettering, Ignacio R. Morelle | 2007-05-16 | 2022-06-04 |
+| `human-loyalists/heavyinfantry-attack-1.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Charles Dang, Zoomo, Richard Kettering, Ignacio R. Morelle | 2007-05-16 | 2022-06-04 |
+| `human-loyalists/heavyinfantry-attack-2.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Zoomo, Charles Dang, Richard Kettering, Ignacio R. Morelle | 2007-05-16 | 2022-06-04 |
+| `human-loyalists/heavyinfantry-attack-3.png` | CC BY-SA 4.0 | doofus-01, Zoomo | 2018-03-14 | 2022-06-04 |
+| `human-loyalists/heavyinfantry-attack-4.png` | CC BY-SA 4.0 | doofus-01, Charles Dang, Zoomo | 2018-03-14 | 2022-06-04 |
+| `human-loyalists/heavyinfantry-attack-5.png` | CC BY-SA 4.0 | doofus-01, Charles Dang, Zoomo | 2018-03-14 | 2022-06-04 |
+| `human-loyalists/heavyinfantry-attack-6.png` | CC BY-SA 4.0 | doofus-01, Zoomo | 2018-03-14 | 2022-06-04 |
+| `human-loyalists/heavyinfantry-attack-7.png` | CC BY-SA 4.0 | doofus-01, Zoomo | 2018-03-14 | 2022-06-04 |
+| `human-loyalists/heavyinfantry-attack-8.png` | CC BY-SA 4.0 | doofus-01, Charles Dang, Zoomo | 2018-03-14 | 2022-06-04 |
+| `human-loyalists/heavyinfantry-attack-9.png` | CC BY-SA 4.0 | doofus-01, Charles Dang, Zoomo | 2018-03-14 | 2022-06-04 |
+| `human-loyalists/heavyinfantry-attack-10.png` | CC BY-SA 4.0 | doofus-01, Charles Dang, Zoomo | 2018-03-14 | 2022-06-04 |
+| `human-loyalists/heavyinfantry-attack-11.png` | CC BY-SA 4.0 | doofus-01, Zoomo | 2018-03-14 | 2022-06-04 |
+| `human-loyalists/heavyinfantry-attack-12.png` | CC BY-SA 4.0 | doofus-01, Charles Dang, Zoomo | 2018-03-14 | 2022-06-04 |
+| `human-loyalists/heavyinfantry-attack-13.png` | CC BY-SA 4.0 | doofus-01, Charles Dang, Zoomo | 2018-03-14 | 2022-06-04 |
+| `human-loyalists/heavyinfantry-attack-14.png` | CC BY-SA 4.0 | doofus-01, Zoomo | 2018-03-14 | 2022-06-04 |
+| `human-loyalists/heavyinfantry-attack-15.png` | CC BY-SA 4.0 | doofus-01, Zoomo | 2018-03-14 | 2022-06-04 |
+
+### Thief (our cutpurses)
+
+Frames and timings from `data/core/units/humans/Outlaw_Thief.cfg`.
+
+| File | Licence | Artists, from the history | Added | Last changed |
+| --- | --- | --- | --- | --- |
+| `human-outlaws/thief.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, thespaceinvader | 2007-05-16 | 2022-04-29 |
+| `human-outlaws/thief-defend.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, thespaceinvader | 2007-05-16 | 2022-04-29 |
+| `human-outlaws/thief-idle-1.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-12-24 | 2022-04-29 |
+| `human-outlaws/thief-idle-2.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-12-24 | 2022-04-29 |
+| `human-outlaws/thief-idle-3.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-12-24 | 2022-04-29 |
+| `human-outlaws/thief-idle-4.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-12-24 | 2022-04-29 |
+| `human-outlaws/thief-idle-5.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-12-24 | 2022-04-29 |
+| `human-outlaws/thief-idle-6.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-12-24 | 2022-04-29 |
+| `human-outlaws/thief-idle-7.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-12-24 | 2022-04-29 |
+| `human-outlaws/thief-attack.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, thespaceinvader | 2007-05-16 | 2022-04-29 |
+| `human-outlaws/thief-die-1.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, thespaceinvader | 2007-05-16 | 2022-04-29 |
+| `human-outlaws/thief-die-2.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, thespaceinvader | 2007-05-16 | 2022-04-29 |
+| `human-outlaws/thief-die-3.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, thespaceinvader | 2007-05-16 | 2022-04-29 |
+| `human-outlaws/thief-die-4.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, thespaceinvader | 2007-05-16 | 2022-04-29 |
+| `human-outlaws/thief-die-5.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, thespaceinvader | 2007-05-16 | 2022-04-29 |
+| `human-outlaws/thief-die-6.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, thespaceinvader | 2007-05-16 | 2022-04-29 |
+| `human-outlaws/thief-die-7.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, thespaceinvader | 2007-05-16 | 2022-04-29 |
+
+### Giant Spider (our spiders)
+
+Frames and timings from `data/core/units/monsters/Giant_Spider.cfg`.
+
+| File | Licence | Artists, from the history | Added | Last changed |
+| --- | --- | --- | --- | --- |
+| `monsters/spider.png` | GPL-2.0-or-later | beetlenaut | 2010-03-20 | 2010-03-20 |
+| `monsters/spider-melee-1.png` | GPL-2.0-or-later | beetlenaut | 2010-03-20 | 2010-03-20 |
+| `monsters/spider-melee-2.png` | GPL-2.0-or-later | beetlenaut | 2010-03-20 | 2010-03-20 |
+| `monsters/spider-melee-3.png` | GPL-2.0-or-later | beetlenaut | 2010-03-20 | 2010-03-20 |
+| `monsters/spider-melee-4.png` | GPL-2.0-or-later | beetlenaut | 2010-03-20 | 2010-03-20 |
+| `monsters/spider-melee-5.png` | GPL-2.0-or-later | beetlenaut | 2010-03-20 | 2010-03-20 |
+| `monsters/spider-melee-6.png` | GPL-2.0-or-later | beetlenaut | 2010-03-20 | 2010-03-20 |
+| `monsters/spider-melee-7.png` | GPL-2.0-or-later | beetlenaut | 2010-03-20 | 2010-03-20 |
+| `monsters/spider-melee-8.png` | GPL-2.0-or-later | beetlenaut | 2010-03-20 | 2010-03-20 |
+| `monsters/spider-melee-9.png` | GPL-2.0-or-later | beetlenaut | 2010-03-20 | 2010-03-20 |
+| `monsters/spider-melee-10.png` | GPL-2.0-or-later | beetlenaut | 2010-03-20 | 2010-03-20 |
+| `monsters/spider-melee-11.png` | GPL-2.0-or-later | beetlenaut | 2010-03-20 | 2010-03-20 |
+| `monsters/spider-melee-12.png` | GPL-2.0-or-later | beetlenaut | 2010-03-20 | 2010-03-20 |
+| `monsters/spider-melee-13.png` | GPL-2.0-or-later | beetlenaut | 2010-03-20 | 2010-03-20 |
+
 ### Horseman (our hero, as a Knight)
 
 Frames and timings from `data/core/units/humans/Horseman.cfg`.
