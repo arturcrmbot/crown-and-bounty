@@ -8,7 +8,7 @@ import { coins, listed } from '../rules/state';
 import { activeFighter, bardOf, battleAct, battleEnd, bribeOffer, canCast, canJoin, casterOf, castsLeft, chargeOf, fighterById, isCharge, isLeader, onField, options, ridesOut, spellCost, spellDamage, spellsOf, spellVictims, unitOf, wound, type BattleAction, type BattleEvent, type BattleState, type Fighter } from '../rules/battle/battle';
 import { aimTag, bardTag, forecastOf, type AimTag } from '../rules/battle/forecast';
 import { paintBanner } from '../render/banner';
-import { BattleScreen, BUTTONS, FIRE_FALL, FLOAT_LIFE, FLOAT_RISE, hexAt, hexCentre, leaderAt, LOG_BOTTOM, sideAt, spotOf, type BattleView, type Shot } from '../render/battleScreen';
+import { BattleScreen, BUTTONS, FIRE_FALL, FLOAT_LIFE, FLOAT_RISE, hexAt, hexCentre, leaderAt, LOG_BOTTOM, sideAt, spotOf, stripBottom, type BattleView, type Shot } from '../render/battleScreen';
 import { CUE_PING, cueBounce, FLASH_GAP, FLASH_TIME, FRAME, holdFrames, kickLeft, kickOf, POP_LIFE, ROLL, TOPPLE_TIME, toppleAngle, victoryHop, volleyOf, type Blow } from '../render/juice';
 import { hash } from '../render/noise';
 import { animLength, bodyHeight, hitTime, STAND, type AnimName } from '../render/battleSprites';
@@ -59,8 +59,8 @@ const SECOND_TAP = { move: 'Tap again to go.', melee: 'Tap again to attack.', sh
 const perish = (n: number) => `${n} ${n === 1 ? 'perishes' : 'perish'}`;
 
 const ENEMY_THINK = 0.35;
-/** Floaters start at least this low, so they rise and fade under the message ribbon, never into it. */
-const FLOAT_TOP = LOG_BOTTOM + FLOAT_RISE + 2;
+/** Floaters start at least this low, so they rise and fade under the ribbon and the strip of next turns, never into them (#211). */
+const floatTop = () => stripBottom() + FLOAT_RISE + 2;
 /** Wesnoth's animation milliseconds as our seconds: its own timing, a touch brisker. */
 const MS = 0.00085;
 /** Wesnoth's flinch starts a little before the blow lands. */
@@ -410,10 +410,11 @@ export class BattleController implements Screen {
     const [spotX, y] = from ?? this.spot(id);
     const half = text.length * 4 + 4;
     const x = Math.min(Math.max(spotX, MAP_VIEW.x + half), MAP_VIEW.x + MAP_VIEW.width - half);
-    const top = Math.max(FLOAT_TOP, y + 12 - bodyHeight(f.troop, 'battle') - 16);
+    const ceiling = floatTop();
+    const top = Math.max(ceiling, y + 12 - bodyHeight(f.troop, 'battle') - 16);
     // Words are 8 px a letter and 16 px a line, and all rise together, so where they are now is where they stay apart.
     const clash = (at: number) => this.view.floaters.some((o) => Math.abs(o.x - x) < ((o.text.length + text.length) * 8) / 2 + 4 && Math.abs(o.y - o.age * FLOAT_RISE - at) < 16);
-    const lines = [0, 1, 2, 3, 4, 5].map((k) => top - k * 16).filter((at) => at >= FLOAT_TOP);
+    const lines = [0, 1, 2, 3, 4, 5].map((k) => top - k * 16).filter((at) => at >= ceiling);
     const at = [...lines, ...[1, 2, 3, 4, 5, 6].map((k) => top + k * 16)].find((a) => !clash(a)) ?? top;
     this.view.floaters.push({ x, y: at, text, color, age: 0 });
   }

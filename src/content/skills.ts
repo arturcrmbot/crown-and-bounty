@@ -113,7 +113,8 @@ export const SKILLS: Record<SkillId, Skill> = {
     id: 'leadership',
     name: 'Leadership',
     ranks: [
-      { note: 'You get +25 leadership.', bonus: { leadership: 25 } },
+      // Not the same as rallying more men at a level-up: it says what its next ranks bring (#211).
+      { note: 'You get +25 leadership, and it leads to more. At Advanced, a third of every company stays on with you between commissions, and at Expert, volunteers join you every payday.', bonus: { leadership: 25 } },
       {
         note: 'You get +50 leadership, and a third of every company stays on with you between commissions, not a quarter.',
         adds: 'You get another +25 leadership, +50 in all, and a third of every company stays on with you between commissions, not a quarter.',

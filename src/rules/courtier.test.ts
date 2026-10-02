@@ -107,7 +107,7 @@ describe('a band he hires hands over what it carried (#231)', () => {
     const card = cardOf(r);
     expect(card.lines).toContain('Their takings come to **200 gold**, and among them is a letter with the Baron\u2019s seal. *"All patrols back to the stockade if the King\u2019s man comes. G."*');
     expect(card.lines).toContain(`You gain **${half} experience**.`);
-    expect(card.choices.map((c) => c.label)).toEqual(['Wear it', 'Keep it in your pack']);
+    expect(card.choices.map((c) => c.label)).toEqual(['Wear the Black Banner', 'Keep it in your pack']);
     // The letter opens the patrol's way past, as it does for a hero who beats them.
     expect(cardOf(visit({ ...r.state, hero: { ...r.state.hero, at: locationById(s, 'patrol').at } }, 'patrol')).choices.map((c) => c.label)).toContain('Show them the Baron\u2019s orders');
   });
@@ -118,7 +118,7 @@ describe('a band he hires hands over what it carried (#231)', () => {
     const s = strong();
     const onTheRoad = { ...s, locations: s.locations.map((l) => (l.id === 'cart' ? { ...l, done: false } : l)) };
     const card = hireCard(onTheRoad, 'cart');
-    expect(card.lines).toContain('*The carter would like to know whose grain it is now.*');
+    expect(card.lines).toContain('*The carter would like to know whose grain it is now. If you keep it, your troops eat it on the next payday instead of drawing their wages.*');
     expect(card.choices.map((c) => c.label)).toEqual(['Take it home to Westmere', 'Keep it for your men']);
   });
 

@@ -46,6 +46,11 @@ export class FogMask {
     this.refresh(cx - r, cy - r, cx + r, cy + r);
   }
 
+  /** What the fog has been told he has seen, as last revealed. */
+  get seen(): Explored {
+    return this.bits;
+  }
+
   /** Whether a map point is on land the hero has never seen. The fog's soft edge is only paint. */
   isFogged(x: number, y: number) {
     const cx = Math.floor(x / CELL);

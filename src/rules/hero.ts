@@ -1,4 +1,4 @@
-import { ARTIFACTS, piecesOf, SETS, slotAcceptsArtifact, slotsForArtifact, type ArtifactId, type ArtifactSlot, type SetId, type Slot } from '../content/artifacts';
+import { ARTIFACTS, artifactPhrase, piecesOf, SETS, slotAcceptsArtifact, slotsForArtifact, type ArtifactId, type ArtifactSlot, type SetId, type Slot } from '../content/artifacts';
 import { BACKGROUNDS, type BackgroundId, type Bonus } from '../content/backgrounds';
 import { FRIENDS } from '../content/friends';
 import { PERKS, RANKS, SKILLS, type PerkId, type SkillId } from '../content/skills';
@@ -472,7 +472,8 @@ export function giveArtifact(state: GameState, id: ArtifactId): GameState {
 export function artifactChoices(state: GameState, id: ArtifactId): Choice[] {
   if (!ARTIFACTS[id].drawback || !state.hero.pack.includes(id)) return [];
   return [
-    { label: 'Wear it', action: { type: 'equip', artifact: id } },
+    // Named on the button, so the choice makes sense with the card's words scrolled out of sight (#155).
+    { label: `Wear ${artifactPhrase(id).replace(/\*\*/g, '')}`, action: { type: 'equip', artifact: id } },
     { label: 'Keep it in your pack', action: close.action },
   ];
 }

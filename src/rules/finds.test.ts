@@ -39,7 +39,7 @@ describe('Aldmoor\u2019s finds', () => {
     const result = beat(fresh(), 'highwaymen', { title: 'Victory!', lines: [], reward: 0, xp: 0 });
     expect(result.state.hero.gear.banner).toBeUndefined();
     expect(result.state.hero.pack).toContain('blackBanner');
-    expect(cardOf(result).choices.map((c) => c.label)).toEqual(['Wear it', 'Keep it in your pack']);
+    expect(cardOf(result).choices.map((c) => c.label)).toEqual(['Wear the Black Banner', 'Keep it in your pack']);
     expect(apply(result.state, cardOf(result).choices[0].action)!.state.hero.gear.banner).toBe('blackBanner');
   });
 
@@ -52,7 +52,7 @@ describe('Aldmoor\u2019s finds', () => {
     const found = visit(state, 'tower');
     expect(found.state.hero.gear.banner).toBeUndefined();
     expect(found.state.hero.pack).toContain('blackBanner');
-    expect(cardOf(found).choices.map((c) => c.label)).toEqual(['Wear it', 'Keep it in your pack']);
+    expect(cardOf(found).choices.map((c) => c.label)).toEqual(['Wear the Black Banner', 'Keep it in your pack']);
     expect(apply(found.state, cardOf(found).choices[0].action)!.state.hero.gear.banner).toBe('blackBanner');
   });
 

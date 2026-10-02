@@ -66,7 +66,8 @@ export function storyCard(background: BackgroundId, briefed = false): Card {
     lines: [
       ...(briefed ? [] : [`${b.title}, the King has a commission for you. ${COMMISSIONS[0].brief.join(' ')}`]),
       `You ride out with ${listed(b.army.map((s) => troops(s.troop, s.count)))}${b.spells.length ? `, and ${listed(b.spells.map((s) => SPELLS[s].name))} in your spellbook` : ''}.`,
-      `**${b.signature.name}.** ${b.signature.note}`,
+      // Two sentences at most: the rules in full are on the hero screen (#155).
+      `**${b.signature.name}.** ${b.signature.brief ?? b.signature.note}`,
     ],
     choices: [{ label: 'Ride out', action: { type: 'close' } }],
     wide: true,

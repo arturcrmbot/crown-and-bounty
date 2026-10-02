@@ -109,8 +109,8 @@ export type Background = {
   gold: number;
   army: { troop: TroopId; count: number }[];
   spells: SpellId[];
-  /** The signature perk, always on. */
-  signature: { name: string; note: string; bonus: Bonus };
+  /** The signature perk, always on. `brief` is it in two sentences, for the card that starts the commission; the hero screen has the `note`. */
+  signature: { name: string; note: string; bonus: Bonus; brief?: string };
   /** Which stat grows on a level-up, as weights. */
   growth: { attack: number; defence: number; spellPower: number; knowledge: number };
   /** Skills this background is drawn to: they're offered more often. */
@@ -132,6 +132,7 @@ export const BACKGROUNDS: Record<BackgroundId, Background> = {
     spells: ['bless'],
     signature: {
       name: 'Banner of the Realm',
+      brief: 'Your knights get +1 attack and +1 defence, and charge as you do. A long charge hits a quarter harder, and nobody strikes back.',
       note: 'Your knights get +1 attack and +1 defence, and they charge, as you do yourself. After a run-up of 3 hexes or more, started clear of the enemy, they hit a quarter harder and nobody can strike back. The charge winds them, though, so they can\u2019t strike back themselves for the rest of that round and the next.',
       bonus: { troops: { knights: { attack: 1, defence: 1 } }, charge: ['knights', 'heroKnight'] },
     },
@@ -168,6 +169,7 @@ export const BACKGROUNDS: Record<BackgroundId, Background> = {
     spells: ['slow'],
     signature: {
       name: 'Pathfinder',
+      brief: 'You ride through the woods, where nothing on the map can follow you, and your archers loose a free volley before every battle. Beasts may follow you instead of fighting, and they draw no wages.',
       note: 'You ride through the woods, where nothing on the map can follow you. You get +30 movement a day and see further, and your scouts count every enemy exactly. Your archers get +1 attack and +4 shots, and loose a free volley before every battle, except at a villain\u2019s walls. Beasts follow you instead of fighting, the more of them the stronger your army is than theirs, and the rest attack. Beasts draw no wages and need no leadership.',
       bonus: { movement: 30, sight: 50, counts: true, troops: { archers: { attack: 1, shots: 4 } }, volley: true, forestWalk: true, tames: true },
     },

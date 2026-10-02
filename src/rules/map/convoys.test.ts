@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ALDMOOR } from '../../content/aldmoor';
-import { apply, choose, endDay, fight, finishFight, heroStats, locationById, startFight, wages, type Card, type GameState, type Result } from '../game';
+import { apply, choose, endDay, fight, finishFight, heardOf, heroStats, locationById, startFight, wages, type Card, type GameState, type Result } from '../game';
 import { newGame } from '../scenario';
 import { pointAlong } from './convoys';
 import { nearest, smooth, type Point } from './geometry';
@@ -44,7 +44,9 @@ describe('the grain cart', () => {
     // The squad comes from the bridge, which is that much weaker while it's out.
     expect(patrol(state)).toEqual(PATROL.map((x, i) => ({ troop: x.troop, count: x.count - squad[i].count })));
     expect(last.events.some((e) => e.type === 'added' && e.id === 'cart')).toBe(true);
-    expect(cardOf(last).lines.join(' ')).toMatch(/loading the village\u2019s grain/);
+    // The talk on payday, in the journal rather than on payday's card (#155).
+    expect(cardOf(last).lines.join(' ')).not.toMatch(/loading the village\u2019s grain/);
+    expect(heardOf(last.state).map((h) => h.words).join(' ')).toMatch(/loading the village\u2019s grain/);
   });
 
   it('keeps to the road over the bridge and through Darkwood, and its squad goes back to the bridge', () => {
@@ -78,10 +80,12 @@ describe('the grain cart', () => {
     expect(along(state).s).toBeLessThan(240);
     const caught = fight({ ...state, army: [{ troop: 'knights', count: 30 }, { troop: 'archers', count: 40 }] }, 'cart')!;
     expect(cart(caught.state).done).toBe(true);
-    expect(caught.state.rations).toBe(1);
+    // Nothing goes in the baggage until he says whose grain it is, and the question says what keeping it means (#226).
+    expect(caught.state.rations ?? 0).toBe(0);
     const card = cardOf(caught);
     expect(card.choices.map((c) => c.label)).toEqual(['Take it home to Westmere', 'Keep it for your men']);
-    expect(card.lines.join(' ')).toMatch(/rations/);
+    expect(card.lines.join(' ')).toMatch(/instead of drawing their wages/);
+    expect(card.lines.join(' ')).not.toMatch(/rations/);
     // The squad never goes back to the bridge.
     expect(patrol(caught.state)).toEqual(PATROL.map((x) => ({ troop: x.troop, count: x.count - Math.round(x.count * SHARE) })));
   });
@@ -91,8 +95,10 @@ describe('the grain cart', () => {
     const ahead = pointAlong(road, 240);
     const { state } = until({ ...start, hero: { ...start.hero, at: ahead } }, 9, ahead);
     const caught = fight({ ...state, army: [{ troop: 'knights', count: 30 }, { troop: 'archers', count: 40 }] }, 'cart')!.state;
-    // Kept: next payday, no wages.
-    const before = until(caught, 14).state;
+    // Kept: the rations go in the baggage, and next payday, no wages.
+    const keeping = choose(caught, 'cart', 'grain/keep')!;
+    expect(cardOf(keeping).lines.join(' ')).toMatch(/rations/);
+    const before = until(keeping.state, 14).state;
     const payday = until(before, 15);
     const hungry = until({ ...before, rations: 0 }, 15).state;
     expect(payday.state.gold - hungry.gold).toBe(Math.round(wages(before.army) * (1 + heroStats(before).wages)));
@@ -100,12 +106,12 @@ describe('the grain cart', () => {
     expect(cardOf(payday.last).lines.join(' ')).toMatch(/no wages/);
     // Eaten, the rations are gone: the payday after, wages as usual.
     expect(cardOf(until(payday.state, 22).last).lines.join(' ')).toMatch(/in wages/);
-    // Given back: Westmere has more to recruit, its name is Aldric's, and the rations are gone.
+    // Given back: Westmere has more to recruit, its name is Aldric's, and nothing goes in the baggage.
     const peasants = locationById(caught, 'village').recruits!.count;
     const home = choose(caught, 'cart', 'grain/westmere')!;
     expect(locationById(home.state, 'village').recruits!.count).toBe(peasants + 30);
     expect(home.state.leadership).toBe(caught.leadership + 10);
-    expect(home.state.rations).toBe(0);
+    expect(home.state.rations ?? 0).toBe(0);
     expect(cardOf(home).lines.join(' ')).toMatch(/Westmere/);
     // Either way, the question is answered once.
     expect(choose(home.state, 'cart', 'grain/keep')).toBeNull();

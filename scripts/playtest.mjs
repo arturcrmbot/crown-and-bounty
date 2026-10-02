@@ -79,7 +79,8 @@ async function go(id, action) {
     }, null, { timeout: 60_000 });
     const s = await kc.status();
     if (!(s.riding && s.tired)) break;
-    await kc.choose('End the day');
+    // The tired card comes once a ride: on the evenings after it, E ends the day.
+    if (!(await kc.choose('End the day'))) await page.keyboard.press('e');
     await kc.choose('Close');
   }
   return true;

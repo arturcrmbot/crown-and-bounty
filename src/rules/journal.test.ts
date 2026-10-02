@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ALDMOOR } from '../content/aldmoor';
 import { COMMISSIONS, type Clue } from '../content/campaign';
 import { autoResolve } from './battle/ai';
-import { apply, bountyOf, finishFight, heardOf, journalCard, startFight, visit, type GameState } from './game';
+import { apply, bountyOf, endDay, finishFight, heardOf, journalCard, startFight, visit, type GameState } from './game';
 import { newGame } from './scenario';
 
 const fresh = (): GameState => ({ ...newGame(1066, ALDMOOR, 'knight'), opening: undefined });
@@ -16,6 +16,16 @@ const flagged = (state: GameState, flags: GameState['flags']): GameState => ({ .
 const heard = (state: GameState) => heardOf(state).map((h) => `${h.done ? '[x]' : '[ ]'} ${h.who}`);
 
 describe('the journal', () => {
+  it('hears on payday that the villain has more men, where the payday card used to say it (#155)', () => {
+    const eve = { ...fresh(), day: 7 };
+    const payday = endDay(eve);
+    const card = payday.events.find((e) => e.type === 'card');
+    expect(card?.type === 'card' && card.card.lines[0]).toMatch(/^\*\*Payday!\*\*/);
+    expect(card?.type === 'card' && card.card.lines.join(' ')).not.toMatch(/more men have joined/);
+    expect(heardOf(eve).some((h) => h.who === 'the talk on payday')).toBe(false);
+    expect(heardOf(payday.state)).toContainEqual({ who: 'the talk on payday', words: 'More men have joined **Grimsby\u2019s Hideout**.', done: false });
+  });
+
   it('opens on the commission: the poster pinned in, the reward, the day and the pieces of the old map', () => {
     const card = journalCard({ ...fresh(), day: 5 });
     expect(card.title).toBe('Journal');
