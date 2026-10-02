@@ -1,0 +1,21 @@
+[
+  {
+    "out": "art/map/sheets/units-f.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 216,
+    "prompt": "a sheet of six: a pikeman in a red and gold tabard and a steel helmet with a white goose feather, holding a long pike at a slant; a man-at-arms in full steel plate from helmet to boots with a red and gold surcoat and a white goose feather on his helm, with a mace and a red and gold shield; a sergeant in a red and gold tabard over mail and a steel kettle hat, with a dark moustache, raising his sword as he shouts orders; a stiff, very tidy sergeant in a clean red and gold tabard over mail and a steel kettle hat, with a dark moustache and a halberd; a picket captain in dark steel plate with a red and gold surcoat, a plain dark helm and a black moustache, with a sword; a burly foreman with cropped grey hair and a great grey moustache, in a leather jerkin and apron with a red and gold sash, with a big pickaxe over his shoulder, each a full-body figure standing, facing right, drawn in exactly the art style of the reference 1996 DOS fantasy strategy game battle screens: charming, friendly, clearly readable, bright colours, painted shading reduced to 256 colours, soft dithering, a little character in every face, two rows of three figures, each separate and not touching, on a plain flat grey background",
+    "reference_images": [
+      "~/.config/retro-diffusion/refs/battle_hero.png",
+      "~/.config/retro-diffusion/refs/battle_troops.png",
+      "~/.config/retro-diffusion/refs/battle_wide.png",
+      "~/.config/retro-diffusion/refs/r1.png",
+      "art/map/sheets/units-a.png",
+      "art/map/sheets/units-b.png",
+      "art/map/sheets/units-c.png",
+      "art/map/sheets/units-d.png"
+    ]
+  }
+]

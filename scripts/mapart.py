@@ -156,6 +156,9 @@ FIGURES = {
     # The troops and captains that came later (#255), drawn the same way: the outlaws and Darkwood's spiders (units-e).
     'cutpurses': ('units-e', (12, 25, 81, 128), 62), 'cutpurseCaptain': ('units-e', (94, 14, 161, 129), 68), 'highwaymanCaptain': ('units-e', (181, 8, 243, 129), 70),
     'poacherCaptain': ('units-e', (13, 132, 82, 250), 69), 'spiders': ('units-e', (80, 172, 170, 245), 50),
+    # And the Baron's men, in his red and gold (units-f). The sergeant's sword, Pike's halberd and the Foreman's pick rise over their heads.
+    'pikemen': ('units-f', (0, 7, 106, 127), 67), 'menAtArms': ('units-f', (101, 2, 159, 129), 71), 'sergeant': ('units-f', (174, 0, 242, 128), 76),
+    'pike': ('units-f', (16, 128, 82, 256), 76), 'picketCaptain': ('units-f', (97, 136, 154, 256), 71), 'foreman': ('units-f', (185, 128, 255, 256), 76),
 }
 FIGURES['hero'] = FIGURES['heroKnight']
 TROOPS_OUT = os.path.join(ROOT, 'public/assets/troops')

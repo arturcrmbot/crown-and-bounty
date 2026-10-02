@@ -62,15 +62,16 @@ const RECIPES: Record<Exclude<PortraitId, 'goose'>, Recipe> = {
   mirrow: { skin: GREENSKIN, hair: GREY, hat: 'witch', hatColour: [PLUM[0], PLUM[0], PLUM[1], PLUM[2]], clothes: [PLUM[0], PLUM[1], PLUM[2], PLUM[3]], eyes: GOLD[6], mood: 'cackle', wart: true },
   bramble: { skin: GREENSKIN, hair: WHITE, hat: 'witch', hatColour: [INK, SLATE[0], SLATE[1], SLATE[2]], clothes: [LEAF[1], LEAF[2], LEAF[3], LEAF[4]], eyes: RED[5], mood: 'stern', wart: true },
   anselm: { skin: SKIN, hair: WHITE, beard: 'stubble', beardColour: WHITE, hat: 'coif', hatColour: BROWN, clothes: BROWN, eyes: BLUE[4], mood: 'smile' },
-  sergeant: { skin: SKIN, hair: DARK, beard: 'moustache', beardColour: DARK, hat: 'kettle', hatColour: [STONE[2], STONE[3], STONE[5], STONE[6]], clothes: [RED[1], RED[2], RED[3], RED[4]], collar: 'mail', eyes: EARTH[2], mood: 'stern' },
+  // Sergeant Pike, as his figure (#255): a steel kettle hat, a dark moustache and the Baron's red and gold over mail.
+  sergeant: { skin: SKIN, hair: DARK, beard: 'moustache', beardColour: DARK, hat: 'kettle', hatColour: [STONE[2], STONE[3], STONE[5], STONE[6]], clothes: [RED[1], RED[2], RED[3], RED[4]], trim: true, collar: 'mail', eyes: EARTH[2], mood: 'stern' },
   nan: { skin: SKIN, hair: WHITE, hat: 'scarf', hatColour: [RED[1], RED[2], RED[3], RED[4]], clothes: [PLUM[0], PLUM[1], PLUM[2], PLUM[3]], eyes: LEAF[5], mood: 'smile', specs: true },
   dwarf: { skin: SKIN, hair: GINGER, beard: 'full', beardColour: GINGER, hat: 'helm', bare: true, hatColour: [STONE[2], STONE[4], STONE[5], STONE[6]], clothes: BROWN, collar: 'mail', eyes: BLUE[4], mood: 'stern' },
   // Grimsby's huntsman, as Wesnoth's Trapper: a woodsman's cap with a rook's black feather, and a red cloth over his face.
   rook: { skin: SKIN, hair: DARK, hat: 'feathercap', hatColour: [LEAF[0], LEAF[1], EARTH[2], EARTH[4]], plume: [BLUE[1], INK], mask: [RED[1], RED[2], RED[3], RED[4]], clothes: [EARTH[1], EARTH[2], EARTH[3], EARTH[4]], eyes: GOLD[5], mood: 'sly' },
-  // The Foreman of Grimsby's dig (#239), as Wesnoth's Thug: cropped grey hair, a great grey moustache and a leather jerkin.
+  // The Foreman of Grimsby's dig (#239), as his figure (#255): cropped grey hair, a great grey moustache and a leather jerkin.
   foreman: { skin: SKIN, hair: GREY, beard: 'moustache', beardColour: GREY, hat: 'none', clothes: [EARTH[0], EARTH[1], EARTH[2], EARTH[3]], collar: 'none', eyes: EARTH[2], mood: 'stern' },
-  // Captain Warren of the Baron's pickets (#239), as Wesnoth's Shock Trooper: a plain dark helm, a black moustache and plate.
-  warren: { skin: SKIN, hair: DARK, beard: 'moustache', beardColour: DARK, hat: 'helm', bare: true, hatColour: [SLATE[1], SLATE[3], STONE[3], STONE[5]], clothes: [STONE[1], STONE[2], STONE[3], STONE[5]], collar: 'mail', eyes: EARTH[2], mood: 'stern' },
+  // Captain Warren of the Baron's pickets (#239), as his figure (#255): a plain dark helm, a black moustache, and the Baron's red and gold over his plate.
+  warren: { skin: SKIN, hair: DARK, beard: 'moustache', beardColour: DARK, hat: 'helm', bare: true, hatColour: [SLATE[1], SLATE[3], STONE[3], STONE[5]], clothes: [RED[1], RED[2], RED[3], RED[4]], trim: true, collar: 'mail', eyes: EARTH[2], mood: 'stern' },
 };
 
 const inEllipse = (x: number, y: number, cx: number, cy: number, rx: number, ry: number) => ((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2 <= 1;
