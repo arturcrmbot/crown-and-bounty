@@ -330,6 +330,12 @@ export function befriends(ours: number, theirs: number): number {
   return theirs > 0 ? Math.max(0, Math.min(1, ours / theirs - 0.5)) : 1;
 }
 
+/**
+ * What an enemy hero's level lends every stack of his side (#239), as Aldric's levels grow his: a point
+ * of attack or defence for every level after the first, attack first. A level-I hero lends nothing yet.
+ */
+export const heroHelp = (level: number) => ({ attack: Math.floor(level / 2), defence: Math.floor((level - 1) / 2) });
+
 /** The same worth for any numbers: a troop's, or the hero's as they stand. */
 export function unitPower(t: Pick<TroopDef, 'hp' | 'damage' | 'attack' | 'defence' | 'shots'>): number {
   const damage = (t.damage[0] + t.damage[1]) / 2;

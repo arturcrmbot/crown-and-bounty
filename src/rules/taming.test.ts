@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ALDMOOR } from '../content/aldmoor';
 import type { BackgroundId } from '../content/backgrounds';
 import { FENMARCH } from '../content/fenmarch';
-import { befriends, isBeast, TROOPS, type TroopId } from '../content/troops';
+import { isBeast, outweighs, TROOPS, type TroopId } from '../content/troops';
 import { autoResolve, chooseAction } from './battle/ai';
 import { createBattle } from './battle/battle';
 import { ambushCard, apply, battleXp, commissionAt, endDay, fightingPower, heroStats, leadershipUsed, locationById, visit, wages, type Card, type GameState, type Result } from './game';
@@ -53,21 +53,27 @@ describe('taming', () => {
     expect(lines).toContain(`**${boarsInBand} Wild Boars** join your army.`);
   });
 
-  it('wins over as much of a pack as befriends him, and the rest fall on him there and then', () => {
-    // Power is the one number (Artur, 30 Sep), and beasts follow far more of it (2 Oct): his first army outweighs
-    // Rook's pack, but not by half again, so some of the wolves come over and the rest fall on him.
+  it('wins over as much of Rook\u2019s pack as his army outweighs, Rook and all, and the rest fall on him there and then (#254)', () => {
+    // A pack whose captain leads it follows him. Power counts Rook, his own worth and what his level lends every wolf,
+    // so the ranger's first army, which loses to the whole band every time, wins none of it over.
     const start = fresh();
     const wolves = locationById(start, 'wolves');
+    expect(tameOffer(start, wolves)).toMatchObject({ share: 0, led: 'rook' });
+    expect(labels(start, 'wolves')).toContain('Tame them (they follow Rook the Huntsman) [off]');
+    expect(cardOf(visit(start, 'wolves')).lines).toContain('*They follow Rook the Huntsman. Only an army stronger than his whole band could win them away from him.*');
+    expect(choose(start, 'wolves', 'tame')).toBeNull();
+    // An army that outweighs the whole band wins as much of the pack as it outweighs them, and the rest fall on him.
+    const stronger: GameState = { ...start, army: [{ troop: 'knights', count: 20 }, { troop: 'archers', count: 34 }] };
     const pack = inBand('wolves', 'wolves');
-    const share = befriends(fightingPower(start.army), fightingPower(wolves.enemy!.army));
+    const share = outweighs(fightingPower(stronger.army), fightingPower(wolves.enemy!.army));
     expect(share).toBeGreaterThan(0);
     expect(share).toBeLessThan(1);
     const come = Math.floor(pack * share);
-    expect(labels(start, 'wolves')).toContain(`Tame ${come} of the ${pack}, and fight the rest (until dusk)`);
-    const result = choose(start, 'wolves', 'tame')!;
+    expect(labels(stronger, 'wolves')).toContain(`Tame ${come} of the ${pack}, and fight the rest (until dusk)`);
+    const result = choose(stronger, 'wolves', 'tame')!;
     const s = result.state;
     expect(count(s, 'wolves')).toBe(come);
-    expect(s.hero.xp).toBe(start.hero.xp + Math.round(battleXp([{ troop: 'wolves', count: come }]) / 2));
+    expect(s.hero.xp).toBe(stronger.hero.xp + Math.round(battleXp([{ troop: 'wolves', count: come }]) / 2));
     // The rest attack: fight them, or run.
     expect(s.ambush).toBe('wolves');
     expect(s.ambushRest).toBe(true);
@@ -98,11 +104,11 @@ describe('taming', () => {
     expect(ambushCard(result.state).lines).toContain(line);
   });
 
-  it('only for an army more than half as strong as theirs: the wolves won\u2019t follow a small one, and all follow one half as strong again', () => {
+  it('only for an army more than half as strong as theirs: the wolves on the heath won\u2019t follow a small one, and all of Rook\u2019s follow one twice as strong as his band', () => {
     const start: GameState = { ...fresh(), army: [{ troop: 'knights', count: 3 }, { troop: 'archers', count: 10 }] };
-    expect(labels(start, 'wolves')).toContain('Tame them (they don\u2019t think much of your army yet) [off]');
-    expect(cardOf(visit(start, 'wolves')).lines.some((l) => l.includes('Beasts follow nobody whose army is half as strong as theirs or weaker'))).toBe(true);
-    expect(choose(start, 'wolves', 'tame')).toBeNull();
+    expect(labels(start, 'heathWolves')).toContain('Tame them (they don\u2019t think much of your army yet) [off]');
+    expect(cardOf(visit(start, 'heathWolves')).lines.some((l) => l.includes('Beasts follow nobody whose army is half as strong as theirs or weaker'))).toBe(true);
+    expect(choose(start, 'heathWolves', 'tame')).toBeNull();
     const card = cardOf(visit(grown(start), 'wolves'));
     expect(card.lines.some((l) => l.includes('the way a pack watches its leader'))).toBe(true);
     const tamed = choose(grown(start), 'wolves', 'tame')!.state;

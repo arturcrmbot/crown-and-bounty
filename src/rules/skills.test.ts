@@ -3,6 +3,7 @@ import { ALDMOOR } from '../content/aldmoor';
 import { BACKGROUNDS, type BackgroundId } from '../content/backgrounds';
 import { FENMARCH } from '../content/fenmarch';
 import { RANKS, SKILLS, WIZARDRY, type HigherRank, type SkillId } from '../content/skills';
+import { leads } from '../content/troops';
 import { createBattle, statsOf } from './battle/battle';
 import { apply, battleXp, describe as about, endDay, fightingPower, heroInBattle, heroStats, levelUpCard, locationById, nextArmy, visit, winChance, type Card, type GameState, type Result } from './game';
 import { gainXp, giveArtifact, LEVELS } from './hero';
@@ -302,8 +303,8 @@ describe('Diplomacy', () => {
     const rich = (s: GameState) => ({ ...s, gold: 40000, leadership: 1100, army: [{ troop: 'knights' as const, count: 160 }] });
     expect(hireOffer(rich(skilled({ diplomacy: 1 })), locationById(fresh(), 'highwaymen'))).toBeNull();
     const advanced = rich(skilled({ diplomacy: 2 }));
-    // Three gold for every point of their power.
-    const worth = (id: string) => fightingPower(locationById(fresh(), id).enemy!.army);
+    // Three gold for every point of their power: the men's, who come over without their hero.
+    const worth = (id: string) => fightingPower(locationById(fresh(), id).enemy!.army.filter((s) => !leads(s.troop)));
     expect(hireOffer(advanced, locationById(advanced, 'highwaymen'))?.price).toBe(Math.round((worth('highwaymen') * 3) / 10) * 10);
     expect(hireOffer(advanced, locationById(advanced, 'patrol'))).toBeNull();
     const expert = rich(skilled({ diplomacy: 3 }));

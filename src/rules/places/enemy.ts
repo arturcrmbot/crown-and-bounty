@@ -1,5 +1,5 @@
 import { ARTIFACTS, artifactPhrase } from '../../content/artifacts';
-import { befriends, isBeast, leads, outweighs, TROOPS } from '../../content/troops';
+import { befriends, isBeast, leads, outweighs, TROOPS, type TroopId } from '../../content/troops';
 import { grumbleLine } from '../army';
 import { applyEffects, choiceButton, meets } from '../effects';
 import { battleXp, beat, expectedLosses, fight, purseLines, startFight, winChance } from '../fight';
@@ -169,6 +169,8 @@ export type TameOffer = {
   share: number;
   /** Enough of the day left to win them over: it takes the rest of it, and at least half a day. */
   daylight: boolean;
+  /** The captain who leads the pack, if one does: it leaves him only for an army that outweighs the whole band, him with it (#254). */
+  led?: TroopId;
 };
 
 const beastsOf = (place: Location) => (place.enemy?.army ?? []).filter((s) => s.count > 0 && isBeast(s.troop));
@@ -179,7 +181,9 @@ const allBeasts = (place: Location) => beastsOf(place).length === place.enemy!.a
 /**
  * What a hero with a way with beasts could win over here: a band's beasts (never at a villain's
  * walls), as many as his army outweighs the band (`outweighs`), or far more for a ranger (`befriends`), in
- * as many companies as he has room for. Beasts need no leadership. It takes him the rest of the day, so he needs half a day's riding
+ * as many companies as he has room for. A pack whose captain leads it, as Rook leads his wolves, follows
+ * him, and leaves him only for an army that outweighs the whole band, captain and all, a ranger's too
+ * (#254). Beasts need no leadership. It takes him the rest of the day, so he needs half a day's riding
  * left to try (Artur, 2 Oct, #167). Whoever doesn't follow him attacks, the rest of a mixed band too;
  * a band of nothing but beasts that all follow him is gone from the road, its captain too.
  */
@@ -187,11 +191,12 @@ export function tameOffer(state: GameState, place: Location): TameOffer | null {
   const beasts = beastsOf(place);
   const s = heroStats(state);
   if (!beasts.length || place.done || place.kind === 'hideout' || !s.tames) return null;
-  // The Ranger is the one beasts follow readily (Artur, 2 Oct); anyone else who tames, as far as his army outweighs them.
-  const share = s.beastMaster ? befriends(fightingPower(state.army), fightingPower(place.enemy!.army)) : shareOf(state, place);
+  const led = place.enemy!.army.find((x) => x.count > 0 && leads(x.troop))?.troop;
+  // The Ranger is the one beasts follow readily (Artur, 2 Oct); anyone else who tames, or any pack with a captain, as far as his army outweighs them.
+  const share = s.beastMaster && !led ? befriends(fightingPower(state.army), fightingPower(place.enemy!.army)) : shareOf(state, place);
   const joining = joiners(state, sharing(beasts, share));
   const all = beasts.every((b) => joining.find((j) => j.troop === b.troop)?.count === b.count);
-  return { beasts, joining, all, whole: allBeasts(place), share, daylight: state.movement >= s.movement / 2 };
+  return { beasts, joining, all, whole: allBeasts(place), share, daylight: state.movement >= s.movement / 2, ...(led ? { led } : {}) };
 }
 
 /** The beasts join: in their own words, as many as follow him, and whatever they kept in their den. The rest attack. */
@@ -229,7 +234,7 @@ function tameButton(state: GameState, place: Location): Choice[] {
   const offer = tameOffer(state, place);
   const them = allBeasts(place) ? 'them' : `their ${TROOPS[beasts[0].troop].name}`;
   if (!offer) return [option(place, `Tame ${them} (a way with beasts)`, 'tame', true)];
-  if (!offer.share) return [option(place, `Tame ${them} (they don\u2019t think much of your army yet)`, 'tame', true)];
+  if (!offer.share) return [option(place, `Tame ${them} (${offer.led ? `they follow ${TROOPS[offer.led].name}` : 'they don\u2019t think much of your army yet'})`, 'tame', true)];
   if (!offer.joining.length) return [option(place, `Tame ${them} (no room in your line)`, 'tame', true)];
   const fight = !nobodyLeft(whoIsLeft(place.enemy!.army, offer.joining));
   const which = offer.all ? `Tame ${them}` : `Tame ${headcount(offer.joining)} of the ${headcount(offer.beasts)}`;
@@ -241,6 +246,7 @@ function tameButton(state: GameState, place: Location): Choice[] {
 function tameLine(state: GameState, place: Location): string[] {
   const offer = tameOffer(state, place);
   if (!offer) return [];
+  if (!offer.share && offer.led) return [`*They follow ${TROOPS[offer.led].name}. Only an army stronger than his whole band could win them away from him.*`];
   if (!offer.share) return [heroStats(state).beastMaster ? '*Beasts follow nobody whose army is half as strong as theirs or weaker. Yours is, for now.*' : '*Beasts follow only an army stronger than theirs, and they don\u2019t think yours is. Not yet.*'];
   return [offer.all ? '*The beasts watch you the way a pack watches its leader.*' : '*Some of the beasts watch you the way a pack watches its leader. The rest are spoiling for a fight.*'];
 }

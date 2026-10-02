@@ -5,7 +5,7 @@ import type { FriendId } from '../content/friends';
 import type { PortraitId } from '../content/portraits';
 import type { PerkId, SkillId } from '../content/skills';
 import type { MapSpellId, SpellId, StatusId } from '../content/spells';
-import { leads, TROOPS, troopPower, troops, type TroopId } from '../content/troops';
+import { heroHelp, leads, TROOPS, troopPower, troops, unitPower, type TroopId } from '../content/troops';
 import type { BattleState } from './battle/battle';
 import type { Offer } from './hero';
 import type { Explored } from './map/fog';
@@ -502,8 +502,17 @@ export const armyPower = (army: Army) => army.reduce((sum, s) => sum + s.count *
 export const leadershipUsed = (army: Army) => army.reduce((sum, s) => sum + s.count * TROOPS[s.troop].leadership, 0);
 /** How many of a troop this much leadership has room for: any number of those who need none. */
 export const fits = (room: number, troop: TroopId) => (TROOPS[troop].leadership > 0 ? Math.floor(room / TROOPS[troop].leadership) : Infinity);
-/** An army's power, the one number for who comes over to whom (`outweighs`): the fighting worth of its troops, whoever leads them left out. */
-export const fightingPower = (army: Army) => armyPower(army.filter((s) => !leads(s.troop)));
+/**
+ * An army's power, the one number for who comes over to whom (`outweighs`): the fighting worth of its troops and
+ * of whoever leads them, with what his level lends every one of them (`heroHelp`, #254). Aldric is never in his
+ * army, so his power is his troops' worth alone.
+ */
+export function fightingPower(army: Army): number {
+  const level = army.find((s) => s.count > 0 && leads(s.troop))?.level;
+  if (!level) return armyPower(army);
+  const help = heroHelp(level);
+  return army.reduce((sum, s) => sum + s.count * unitPower({ ...TROOPS[s.troop], attack: TROOPS[s.troop].attack + help.attack, defence: TROOPS[s.troop].defence + help.defence }), 0);
+}
 export const wages = (army: Army) => army.reduce((sum, s) => sum + s.count * TROOPS[s.troop].wage, 0);
 export const countOf = (army: Army, troop: TroopId) => army.find((s) => s.troop === troop)?.count ?? 0;
 
