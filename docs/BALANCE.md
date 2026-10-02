@@ -148,8 +148,8 @@ your army."*
 
 - **Who comes over is one number, power** (`outweighs` in `content/troops.ts`): the fighting worth of an army. Nobody
   comes while your army is no stronger than theirs, all of them once it's twice as strong, and in between, as much as
-  it outweighs them. Whoever doesn't come attacks at once. That's the same for beasts tamed, bands hired and a stack
-  paid off in battle. A stack paid to go home costs 2 gold for every point of its power, or 6 to come over, and no
+  it outweighs them. Whoever doesn't come attacks at once. That's the same for bands hired and a stack paid off in
+  battle, and beasts tamed followed it too until 2 Oct (below). A stack paid to go home costs 2 gold for every point of its power, or 6 to come over, and no
   bribe is ever more than half off. Whoever comes teaches half what beating him would, and a band hired whole hands
   over what it carried, as one that surrenders does: its takings, its gear and its story (#231). So a day-one Courtier can't buy Grimsby's swordsmen (they're twice his army) until
   his army outweighs them, and a Ranger's day-one army wins 4 of the 7 bears and fights the other 3.
@@ -183,6 +183,33 @@ HoMM2 (`holding` in `rules/fight.ts`).
 The careful player rarely loses a fight, so only the 3 runs of 40 that lost at Grimsby's walls changed. The Ranger's seed
 10 lost there on day VIII with the stockade nearly beaten, and his next army took the 10 men left on day XIV, where
 before it waited until day XLIV. The Courtier's seed 3 took him on day XX, not XXXIII, and seed 9 on day XVIII, not XIX.
+
+## The lullaby, the gates and taming (2 Oct)
+
+Artur's calls 3 to 5 in #167, built small, with one quick `npm run sim -- 5` before and after.
+
+- **The lullaby** (#232) works only once Grimsby has been beaten in the field (his band, met in the open, sets
+  `baronRouted`), and at the stockade it sends two in five of his garrison home to their mothers instead of winning it.
+  Before, a Courtier who asked Old Nan took Grimsby on day 7 at level II with 41 troops.
+- **Gates** cost three times as much to pay off: the bridge 2,700 gold (1,350 for a Courtier), and an expert diplomat's
+  hire of a gatekeeper 18 gold a point of power instead of 6. A day-one Courtier paid the bridge 450 of his 2,400 gold;
+  now it's the gate or about a week of recruits.
+- **Taming** stays before the fight, with the rest of the pack attacking at once, and is far stronger for the Ranger,
+  the hero beasts follow (`beastMaster`): `befriends` in `content/troops.ts` brings none from an army half as strong as
+  the pack or weaker, half of a pack as strong as his army, and all of one two thirds as strong (it was none at parity
+  and all at twice as strong). In the Ranger's playtest (#219) his day-9 army won 3 of Rook's 100 wolves; it now wins
+  53. Anyone else who tames (the Hawthorn Crown, Beast Friend) wins over as many as his army outweighs, as before. A
+  first try made the curve everyone's, and the bot's Knight, who takes the crown, won in a median 12 days, not 18.
+  Taming costs the rest of the day, and needs half a day's riding left, because the beasts take till dusk to come
+  round (as every `tamed` line says), and a day is the one thing every hero runs short of.
+
+`npm run sim -- 5`, the careful player, before and after. Every run is won both times. Five seeds is a quick look, not
+a measurement, and the bot never sings or pays a gate off, so it sees mostly the taming.
+
+| Days to take Grimsby: median, 90th percentile | Knight | Wizard | Ranger | Courtier |
+| --- | --- | --- | --- | --- |
+| Before | 18, 25 | 10, 16 | 8, 12 | 17, 20 |
+| After | 15, 16 | 11, 17 | 10, 11 | 12, 20 |
 
 ## The approach
 

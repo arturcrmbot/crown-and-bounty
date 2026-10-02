@@ -110,7 +110,7 @@ describe('the castle', () => {
   it('warns before tamed beasts fall in with the King\u2019s folk', () => {
     const ranger: GameState = { ...newGame(1066, ALDMOOR, 'ranger'), opening: undefined };
     const card = cardOf(visit(ranger, 'boars'));
-    expect(card.choices.map((c) => c.label)).toContain('Tame them');
+    expect(card.choices.map((c) => c.label)).toContain('Tame them (until dusk)');
     expect(card.lines).toContain('*Your Knights and Archers won\u2019t march happily beside Wild Boars, and all of them lose 10% morale.*');
   });
 });

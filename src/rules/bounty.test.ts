@@ -59,8 +59,11 @@ describe('the bounty paid, with a scene', () => {
   });
 
   it('says why, when the Crown pays other than the poster\u2019s price', () => {
-    const courtier = { ...newGame(1, ALDMOOR, 'courtier'), opening: undefined, flags: { lullaby: true } };
-    const talked = apply(courtier, { type: 'choose', id: 'hideout', choice: 'parley/lullaby' })!;
+    // A villain talked round for less, as a generated one can be.
+    const start = { ...newGame(1, ALDMOOR, 'courtier'), opening: undefined };
+    const deal = { id: 'deal', label: 'Strike a deal', effects: { win: true, gold: 1000 }, because: 'the other half went to the Baron\u2019s old nanny' };
+    const courtier = { ...start, locations: start.locations.map((l) => (l.id === 'hideout' ? { ...l, enemy: { ...l.enemy!, parleys: [deal] } } : l)) };
+    const talked = apply(courtier, { type: 'choose', id: 'hideout', choice: 'parley/deal' })!;
     expect(cardOf(talked).title).toBe('Baron Grimsby is taken!');
     expect(talked.state.paid).toEqual({ gold: 1000, because: 'the other half went to the Baron\u2019s old nanny' });
     expect(bountyCard(talked.state).lines).toContain('The poster said **2,000 gold**. The Crown pays **1,000**, because the other half went to the Baron\u2019s old nanny.');

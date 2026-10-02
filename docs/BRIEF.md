@@ -586,3 +586,9 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   once as it comes into sight, and now and then through the edge of the mist, and the journal counts the geese sent
   home and the lookouts climbed. Idea 7, luck or heart for the next fight, waits in #206 for the battle's luck and
   morale to settle.
+- **The lullaby, the gates and taming (2 Oct, #167, #232, #219):** Artur's calls after the Courtier's playtest. Old
+  Nan's lullaby works only once Grimsby has been beaten in the field, and she says so (*"Give him a good fright
+  first"*). Sung under the stockade, it sends two in five of his garrison home to their mothers, and the Courtier still
+  has to take the rest. The bridge costs 2,700 gold to pay off, three times what it did. Taming stays before the fight,
+  and the Ranger, the hero beasts follow, wins over far more of a pack (half of one as strong as his army, all of one
+  two thirds as strong). Taming takes anyone the rest of the day, so it needs half a day left. The bigger design of the Ranger's beasts comes later.

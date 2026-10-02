@@ -5,7 +5,7 @@ import { COMMISSIONS } from '../content/campaign';
 import { FENMARCH } from '../content/fenmarch';
 import { withNewPlaces } from './campaign';
 import {
-  apply, briefingCard, CAMPAIGN_LENGTH, commissionAt, courtCard, heroStats, leadershipUsed, levelUpCard, nextArmy, provinceOf, veterans, visit, type GameState,
+  apply, briefingCard, CAMPAIGN_LENGTH, commissionAt, courtCard, heroStats, leadershipUsed, levelUpCard, locationById, nextArmy, provinceOf, veterans, visit, type GameState,
 } from './game';
 import { gainXp, giveArtifact, learn, unequip } from './hero';
 import { buildMap, CELL } from './map/model';
@@ -236,28 +236,26 @@ describe('parleys', () => {
     const lullaby = card(knight, 'hideout')!.choices.find((c) => c.label.startsWith('Sing him Old Nan'))!;
     expect(lullaby.label).toBe('Sing him Old Nan\u2019s lullaby (Courtier)');
     expect(lullaby.disabled).toBe(true);
-    const courtier = { ...newGame(1, ALDMOOR, 'courtier'), opening: undefined, flags: { lullaby: true } };
+    const courtier = { ...newGame(1, ALDMOOR, 'courtier'), opening: undefined, flags: { lullaby: true, baronRouted: true } };
     expect(card(courtier, 'hideout')!.choices.find((c) => c.label.startsWith('Sing him Old Nan'))!.disabled).toBeUndefined();
     const broke = { ...knight, gold: 100 };
     expect(card(broke, 'patrol')!.choices.find((c) => c.label.startsWith('Pay them to go home'))!.disabled).toBe(true);
   });
 
-  it('let a courtier who knows Old Nan\u2019s lullaby take Grimsby without a fight, for a smaller bounty', () => {
-    const courtier = { ...newGame(1, ALDMOOR, 'courtier'), opening: undefined, flags: { lullaby: true } };
+  it('let a courtier who knows Old Nan\u2019s lullaby thin Grimsby\u2019s garrison once he has been beaten in the field, not take him (#232)', () => {
+    const courtier = { ...newGame(1, ALDMOOR, 'courtier'), opening: undefined, flags: { lullaby: true, baronRouted: true } };
     const result = apply(courtier, { type: 'choose', id: 'hideout', choice: 'parley/lullaby' })!;
-    expect(result.state.over).toBe('won');
-    expect(result.state.bounty).toBe('paid');
-    expect(result.state.gold).toBe(courtier.gold + 1000);
-    expect(result.state.hero.xp).toBe(450);
-    const bounty = result.events.find((e) => e.type === 'card');
-    expect(bounty?.type === 'card' && bounty.card.title).toBe('Baron Grimsby is taken!');
-    expect(apply({ ...newGame(1, ALDMOOR, 'knight'), flags: { lullaby: true } }, { type: 'choose', id: 'hideout', choice: 'parley/lullaby' })).toBeNull();
+    expect(result.state.over).toBeUndefined();
+    expect(result.state.bounty).not.toBe('paid');
+    expect(result.state.hero.xp).toBe(300);
+    expect(locationById(result.state, 'hideout').done).toBe(false);
+    expect(apply({ ...newGame(1, ALDMOOR, 'knight'), flags: { lullaby: true, baronRouted: true } }, { type: 'choose', id: 'hideout', choice: 'parley/lullaby' })).toBeNull();
   });
 
-  it('let anyone pay the patrol to go home, which costs gold and gains nothing', () => {
-    const s = { ...newGame(1, ALDMOOR, 'knight'), opening: undefined };
+  it('let anyone pay the patrol to go home, for about a week of recruits, which gains nothing else (#167)', () => {
+    const s = { ...newGame(1, ALDMOOR, 'knight'), opening: undefined, gold: 3000 };
     const paid = apply(s, { type: 'choose', id: 'patrol', choice: 'parley/bribe' })!;
-    expect(paid.state.gold).toBe(s.gold - 900);
+    expect(paid.state.gold).toBe(s.gold - 2700);
     expect(paid.state.hero.xp).toBe(0);
     expect(paid.state.locations.find((l) => l.id === 'patrol')!.done).toBe(true);
     expect(paid.events[0]).toEqual({ type: 'removed', id: 'patrol' });
@@ -301,8 +299,11 @@ describe('the end of the campaign', () => {
 
 describe('parleys, carefully', () => {
   it('turn up the place\u2019s artifact when they count as a win', () => {
-    const courtier = { ...newGame(1, ALDMOOR, 'courtier'), opening: undefined, flags: { lullaby: true } };
-    const won = apply(courtier, { type: 'choose', id: 'hideout', choice: 'parley/lullaby' })!;
+    // A villain talked round, as a generated one's best man can be.
+    const start = { ...newGame(1, ALDMOOR, 'courtier'), opening: undefined };
+    const talked = { id: 'speech', label: 'Make a speech', effects: { win: true } };
+    const courtier = { ...start, locations: start.locations.map((l) => (l.id === 'hideout' ? { ...l, enemy: { ...l.enemy!, parleys: [talked] } } : l)) };
+    const won = apply(courtier, { type: 'choose', id: 'hideout', choice: 'parley/speech' })!;
     expect(Object.values(won.state.hero.gear).concat(won.state.hero.pack)).toContain('goldenFeather');
   });
 

@@ -100,6 +100,7 @@ export type HeroStats = {
   bribes: number;
   hires: boolean;
   tames: boolean;
+  beastMaster: boolean;
   /** Share off riding off the road (and through woods he can ride). */
   offRoad: number;
   /** His scouts count every enemy, put a number on his chances and say what an enemy carries, or shadow every band. */
@@ -201,6 +202,7 @@ export function heroStats(state: GameState): HeroStats {
     bribes: 0,
     hires: false,
     tames: false,
+    beastMaster: false,
     offRoad: 0,
     counts: false,
     odds: false,
@@ -263,6 +265,7 @@ export function heroStats(state: GameState): HeroStats {
     s.bribes += b.bribes ?? 0;
     s.hires ||= Boolean(b.hires);
     s.tames ||= Boolean(b.tames);
+    s.beastMaster ||= Boolean(b.beastMaster);
     s.offRoad += b.offRoad ?? 0;
     s.counts ||= Boolean(b.counts);
     s.odds ||= Boolean(b.odds);
