@@ -10,6 +10,7 @@ import { bountyOf, CAMPAIGN_LENGTH, commissionOf, hasNextCommission, heardOf } f
 import { heroFighter, heroInBattle } from './fight';
 import { countsExactly, forceLine, laterNote } from './places/common';
 import { oddsOf } from './places/enemy';
+import { finished } from './places';
 import { heroStats, LEVELS, type StatId } from './hero';
 import { riddenOut } from './map/sortie';
 import { close, COMMISSION, coins, LAST_DAY, leadershipUsed, listed, locationById, PAYDAY_EVERY, roman, wages, type Card, type Found, type GameState, type Location, type Verdict } from './state';
@@ -188,6 +189,8 @@ export function placeNote(state: GameState, id: string): string {
     const price = bandPrice(place);
     return `${place.name}: ${force}${price ? ` \u00b7 ${coins(price)} gold for the captain` : ''}${place.enemy.trailing ? ' \u00b7 on your trail!' : ''}${riddenOut(state, place) ? ' \u00b7 the gate is barred' : ''}`;
   }
+  // Under the King's pennant (#256).
+  if (finished(state, place)) return `${place.name}: you have done all there is here`;
   const later = laterNote(state, place);
   if (later) return `${place.name}: ${later}`;
   const offer = place.recruits;

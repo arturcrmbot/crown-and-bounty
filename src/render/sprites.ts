@@ -245,6 +245,39 @@ function pennant(sprite: Bitmap, x: number, y: number, phase: number) {
   }
 }
 
+/** Where the King's pennant's pole stands in its sprite: the foot, from the left and from the top. */
+export const PENNANT_FOOT: readonly [number, number] = [3, 28];
+
+/**
+ * The King's pennant on a pole of its own (#256), planted beside a place the hero has done with, as
+ * HoMM2's mines fly their owner's flag: swallow-tailed, in the King's blue with his gold star, waving
+ * with `phase`.
+ */
+export function kingsPennant(phase: number): Bitmap {
+  const sprite = new Bitmap(18, 30);
+  // The pole, lit from the left, with a gold knob on top.
+  for (let y = 4; y <= PENNANT_FOOT[1]; y++) {
+    sprite.set(2, y, WOOD[5]);
+    sprite.set(3, y, WOOD[2]);
+  }
+  for (const [x, y, c] of [[2, 1, GOLD[6]], [3, 1, GOLD[5]], [1, 2, GOLD[5]], [2, 2, GOLD[6]], [3, 2, GOLD[4]], [4, 2, GOLD[3]], [2, 3, GOLD[4]], [3, 3, GOLD[3]]] as const) sprite.set(x, y, c);
+  // The cloth: each column waves a little more than the one nearer the pole, and the tail is cut in a V.
+  const waveAt = (i: number) => Math.round(Math.sin(i * 0.55 - phase) * Math.min(1.2, i * 0.2));
+  for (let i = 0; i < 12; i++) {
+    const notch = Math.max(0, i - 8);
+    for (let j = 0; j < 11; j++) {
+      if (notch && Math.abs(j - 5) < notch) continue;
+      sprite.set(4 + i, 5 + j + waveAt(i), j === 0 ? BLUE[6] : j >= 9 ? BLUE[3] : i < 2 ? BLUE[4] : BLUE[5]);
+    }
+  }
+  // His star rides the cloth as one piece, so it stays a star as the cloth waves.
+  for (const [i, j] of [[4, 5], [3, 5], [5, 5], [4, 4], [4, 6], [2, 5], [6, 5]]) sprite.set(4 + i, 5 + j + waveAt(4), GOLD[6]);
+  const out = outline(sprite, INK);
+  // Its shadow falls to the lower right of its foot.
+  for (let x = 5; x < 9; x++) if (out.get(x, PENNANT_FOOT[1]) === 0) out.set(x, PENNANT_FOOT[1], SHADOW);
+  return out;
+}
+
 /** The King's castle: walls with crenellations, four round towers with red roofs, a keep and a gate. */
 export function castle(phase = 0): Bitmap {
   const w = 128;

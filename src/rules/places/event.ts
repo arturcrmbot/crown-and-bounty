@@ -1,4 +1,4 @@
-import { bestChoice, firstPage, pageCard, takeChoice } from '../effects';
+import { bestChoice, firstPage, meets, pageCard, takeChoice } from '../effects';
 import { close, type GameState, type Location } from '../state';
 import { aboutWords, found, note, ride, words } from './common';
 import type { PlaceKind } from './kind';
@@ -22,5 +22,18 @@ export const event: PlaceKind = {
     if (guardOf(state, place)) return state;
     const best = bestChoice(state, place);
     return best ? (takeChoice(state, place, best.choice)?.state ?? state) : state;
+  },
+  /**
+   * Nothing left to take here: the page a visit shows offers no choice that does anything, and it is
+   * either what the place says once something has happened (the shrine once you've prayed, a lookout
+   * once you've climbed it), or all it ever has to say, read already (the diggers' orders). A page with
+   * nothing to take that is only waiting for something (Old Tam's fold, until his ewes come home) isn't.
+   */
+  finished(state, place) {
+    const page = firstPage(state, place);
+    if (page?.choices.some((c) => c.effects && meets(state, c.when))) return false;
+    const after = Boolean(page?.when?.flag || page?.when?.used);
+    const read = Boolean(page && !page.when && place.pages?.length === 1 && place.seen);
+    return place.done || after || read;
   },
 };

@@ -1,5 +1,5 @@
 import { BACKGROUNDS } from '../content/backgrounds';
-import { addPlace, buildAdventureScene, refreshPlace, setHeroFigure, type AdventureScene, type Hitbox } from '../render/adventureScene';
+import { addPlace, buildAdventureScene, flyPennants, refreshPlace, setHeroFigure, type AdventureScene, type Hitbox } from '../render/adventureScene';
 import { BANNER_TIME, drawBanner, paintBanner } from '../render/banner';
 import type { Bitmap } from '../render/bitmap';
 import { BAR, MAP_VIEW as VIEW } from '../render/frame';
@@ -204,6 +204,8 @@ export class AdventureController implements Screen {
   private sinceDawn = 0;
   /** The day's full movement, worked out once per state. */
   private fullDay: { state: GameState; movement: number } | null = null;
+  /** The state the King's pennants were last put up for. */
+  private pennanted: GameState | null = null;
   /** Called when the rules start a battle; the game switches screens. */
   onBattle: (() => void) | null = null;
   /** Called when the hero rides to court after a won commission. */
@@ -222,6 +224,7 @@ export class AdventureController implements Screen {
     this.speed = RIDE_SPEED * speed;
     this.pace = speed;
     this.scene = buildAdventureScene(map, state);
+    this.flyPennants();
     this.soundscape = soundscapeOf(map, state);
     this.view.weather = weatherOf(map, state);
     this.cards = new CardView((action) => this.choose(action));
@@ -973,6 +976,7 @@ export class AdventureController implements Screen {
     if (Math.floor(this.state.movement) !== this.hudMovement) this.repaintHud();
     // While he stands, the odds of every band still to fight are worked out ahead, for its label and its card.
     if (!walking) oddsAhead(this.state);
+    this.flyPennants();
     this.paintMinimap();
     // A tile of the land further off is painted each frame, nearest the view first, until all of it is.
     this.view.warm();
@@ -995,10 +999,17 @@ export class AdventureController implements Screen {
     }
   }
 
+  /** The King's pennant beside every place he has done with (#256), looked at again whenever the state moves on. */
+  private flyPennants() {
+    if (this.pennanted === this.state) return;
+    this.pennanted = this.state;
+    flyPennants(this.scene, this.state);
+  }
+
   /** The minimap, over the view's top right corner: it paints itself again only when something it shows has moved on. */
   private paintMinimap() {
     const { camera } = this.view;
-    this.scene.minimap.paint(this.state.locations, [this.drawn.x, this.drawn.y], { x: camera.x, y: camera.y, width: VIEW.width, height: VIEW.height });
+    this.scene.minimap.paint(this.state.locations, [this.drawn.x, this.drawn.y], { x: camera.x, y: camera.y, width: VIEW.width, height: VIEW.height }, this.scene.flown);
   }
 
   /** The player looks around for himself: the view stops following the hero, or gliding to a card. */

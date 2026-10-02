@@ -9,7 +9,7 @@ import { chooseBackground } from './scenario';
 import type { Action, GameState, Result } from './state';
 
 export * from './state';
-export { choose, describe, DISCOVERY_XP, forceLine, geeseHome, lostGeese, payday, PLACE_KINDS, priceOf, recruitable, visit, type PlaceKind } from './places';
+export { choose, describe, DISCOVERY_XP, finished, forceLine, geeseHome, lostGeese, payday, PLACE_KINDS, priceOf, recruitable, visit, type PlaceKind } from './places';
 export { barNote, bountyCard, heroSheet, journalCard, leaderSheet, leaderTraits, manaNote, mapPieces, placeNote, placeOdds, SLOT_NAMES, stackSheet, whenThere, type BarItem, type HeroSheet, type LeaderSheet, type Note, type StackSheet } from './heroSheet';
 export { meets, needsLabel } from './effects';
 export { ambushCard, endDay } from './days';
