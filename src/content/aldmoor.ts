@@ -115,6 +115,8 @@ const GRIMSBY_RIDES: Location = {
     reward: 400,
     threat: '*"There he is!"* shouts the Baron, pointing with the goose. *"Get him!"*',
     lastWords: 'A strategic retreat! Hold on tight, goose!',
+    // Beaten in the open, he's no longer sure of his walls, and Old Nan's lullaby can reach his men (#232).
+    spoils: { flags: { baronRouted: true } },
     flees: 'The Baron gallops home to his stockade, the goose under his arm, and his guard limps after him.',
     loot: 'In the mud where he turned his pony you find {gold}, the guard\u2019s pay.',
   },
@@ -670,6 +672,7 @@ export const ALDMOOR: Province = {
               lines: [
                 '*"Little Master Grimsby? I was his nanny, dearie, before he went to the bad. Screamed the house down every night, he did, till I sang him this."*',
                 'She rocks in her chair and sings you a lullaby, all four verses. By the end of it, you could do with a nap yourself.',
+                '*"Mind, he won\u2019t listen to it while he thinks he\u2019s winning. Give him a good fright first."*',
               ],
             },
             NAN_HALL,
@@ -863,7 +866,8 @@ export const ALDMOOR: Province = {
           {
             id: 'bribe',
             label: 'Pay them to go home',
-            needs: { gold: 900 },
+            // A gate costs about a week of recruits to buy off, so it's a real choice (Artur, 2 Oct, #167).
+            needs: { gold: 2700 },
             effects: { done: true, flags: { patrolGone: true } },
             lines: ['The sergeant counts the coins twice, salutes, and marches the patrol back to Darkwood. *"We got lost, my lord. Very lost."*'],
           },
@@ -979,17 +983,26 @@ export const ALDMOOR: Province = {
             lines: ['You whistle the saint\u2019s hymn under the palisade. Inside, the royal goose hears it and flaps over the wall, honking, and half the crossbowmen go over after her. *The Baron catches her by the tail feathers before she\u2019s clear, but nobody tells the crossbowmen, and they\u2019re still out in Darkwood looking for her.*'],
           },
           {
-            // The Courtier's way: a bard's song, learned from Grimsby's old nanny, and the price is half the bounty, to her.
+            // The Courtier's way: a bard's song, learned from Grimsby's old nanny. It works only once the Baron has been
+            // beaten in the field, and it sends two in five of his garrison home to their mothers instead of winning the stockade (Artur, 2 Oct, #232).
             id: 'lullaby',
             label: 'Sing him Old Nan\u2019s lullaby',
+            when: { flag: 'baronRouted' },
             needs: { background: 'courtier', flag: 'lullaby' },
             hint: 'a song you don\u2019t know yet',
-            effects: { win: true, gold: 1000, xp: 450, flags: { lullaby: false } },
+            effects: { desert: { share: 0.4 }, xp: 300, flags: { lullaby: false } },
             lines: [
-              'You tune your lute under the palisade and sing *Hush-a-bye, Baron*, all four verses, the way Old Nan sings it. By the second, his men are humming along. By the third, the Baron is sobbing into the goose.',
-              '*"Nobody has sung me that since I was six,"* he sniffs. He comes down to you on one condition, which is that half his bounty goes to his old nanny.',
+              'You tune your lute under the palisade and sing *Hush-a-bye, Baron*, all four verses, the way Old Nan sings it. By the second, his men are humming along. By the fourth, a good many of them are homesick.',
+              'They slip out of the back gate to go and see their mothers. The Baron sobs into the goose, but he doesn\u2019t come down. *"I\u2019m not six any more!"*',
             ],
-            because: 'the other half went to the Baron\u2019s old nanny',
+          },
+          {
+            // The same song before he has been beaten: he's too sure of his walls to listen.
+            id: 'lullabyTooSoon',
+            label: 'Sing him Old Nan\u2019s lullaby',
+            when: { notFlag: 'baronRouted' },
+            needs: { background: 'courtier', flag: 'baronRouted' },
+            hint: 'not until he has been beaten in the field',
           },
         ],
         flees: 'The stockade gate falls open.',

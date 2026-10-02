@@ -279,9 +279,9 @@ describe('Diplomacy', () => {
     expect(winChance(envoy, 'highwaymen')).toBeGreaterThanOrEqual(0.9);
   });
 
-  it('Advanced: small bands take his coin; Expert: gatekeepers too, at twice the price', () => {
+  it('Advanced: small bands take his coin; Expert: gatekeepers too, at six times the price', () => {
     // An army more than twice as strong as the patrol, so that every one of them would come over.
-    const rich = (s: GameState) => ({ ...s, gold: 20000, leadership: 900, army: [{ troop: 'knights' as const, count: 80 }, { troop: 'archers' as const, count: 100 }] });
+    const rich = (s: GameState) => ({ ...s, gold: 40000, leadership: 900, army: [{ troop: 'knights' as const, count: 80 }, { troop: 'archers' as const, count: 100 }] });
     expect(hireOffer(rich(skilled({ diplomacy: 1 })), locationById(fresh(), 'highwaymen'))).toBeNull();
     const advanced = rich(skilled({ diplomacy: 2 }));
     // Three gold for every point of their power.
@@ -291,7 +291,7 @@ describe('Diplomacy', () => {
     const expert = rich(skilled({ diplomacy: 3 }));
     const patrol = hireOffer(expert, locationById(expert, 'patrol'))!;
     expect(patrol.all).toBe(true);
-    expect(patrol.price).toBe(Math.round((worth('patrol') * 3 * 2) / 10) * 10);
+    expect(patrol.price).toBe(Math.round((worth('patrol') * 3 * 6) / 10) * 10);
     const hired = apply(expert, { type: 'choose', id: 'patrol', choice: 'hire' })!.state;
     expect(hired.army.find((s) => s.troop === 'swordsmen')?.count).toBe(inContent('patrol', 'swordsmen'));
     expect(locationById(hired, 'patrol').done).toBe(true);

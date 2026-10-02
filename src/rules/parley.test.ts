@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ALDMOOR } from '../content/aldmoor';
 import type { BackgroundId } from '../content/backgrounds';
-import { apply, bountyCard, memoriesOf, visit, type Card, type GameState, type Result } from './game';
+import { apply, memoriesOf, visit, type Card, type GameState, type Result } from './game';
 import { newGame } from './scenario';
 
 const fresh = (background: BackgroundId = 'courtier', flags: GameState['flags'] = {}): GameState => ({ ...newGame(1066, ALDMOOR, background), opening: undefined, flags });
@@ -28,39 +28,52 @@ describe('Grimsby\u2019s parley has a price, and a song to learn first', () => {
     expect(choose(asked.state, 'nan', 'door/baron')).toBeNull();
   });
 
-  it('lets only a Courtier who knows the song sing the Baron round, and never for free', () => {
+  it('lets only a Courtier who knows the song sing it, once the Baron has been beaten in the field (#232)', () => {
     const lullaby = (s: GameState) => button(cardOf(visit(s, 'hideout')), 'Sing him Old Nan\u2019s lullaby')!;
-    expect(lullaby(fresh('knight', { lullaby: true }))).toMatchObject({ label: 'Sing him Old Nan\u2019s lullaby (Courtier)', disabled: true });
-    expect(lullaby(fresh()).disabled).toBe(true);
-    expect(lullaby(fresh('courtier', { lullaby: true })).disabled).toBeUndefined();
-    expect(choose(fresh(), 'hideout', 'parley/lullaby')).toBeNull();
-    expect(choose(fresh('knight', { lullaby: true }), 'hideout', 'parley/lullaby')).toBeNull();
+    expect(lullaby(fresh('knight', { lullaby: true, baronRouted: true }))).toMatchObject({ label: 'Sing him Old Nan\u2019s lullaby (Courtier)', disabled: true });
+    expect(lullaby(fresh('courtier', { baronRouted: true })).disabled).toBe(true);
+    // Knowing the song isn't enough while he's sure of his walls.
+    expect(lullaby(fresh('courtier', { lullaby: true }))).toMatchObject({ label: 'Sing him Old Nan\u2019s lullaby (not until he has been beaten in the field)', disabled: true });
+    expect(choose(fresh('courtier', { lullaby: true }), 'hideout', 'parley/lullaby')).toBeNull();
+    expect(choose(fresh('courtier', { lullaby: true }), 'hideout', 'parley/lullabyTooSoon')).toBeNull();
+    expect(lullaby(fresh('courtier', { lullaby: true, baronRouted: true })).disabled).toBeUndefined();
+    expect(choose(fresh('courtier', { baronRouted: true }), 'hideout', 'parley/lullaby')).toBeNull();
+    expect(choose(fresh('knight', { lullaby: true, baronRouted: true }), 'hideout', 'parley/lullaby')).toBeNull();
     // The old lunch, which cost nothing, is gone.
     expect(choose(fresh(), 'hideout', 'parley/pardon')).toBeNull();
   });
 
   it('tells a Courtier who hasn\u2019t learned the song what he lacks, not who he is (#116)', () => {
     const lullaby = (s: GameState) => button(cardOf(visit(s, 'hideout')), 'Sing him Old Nan\u2019s lullaby')!;
-    expect(lullaby(fresh())).toMatchObject({ label: 'Sing him Old Nan\u2019s lullaby (a song you don\u2019t know yet)', disabled: true });
+    expect(lullaby(fresh('courtier', { baronRouted: true }))).toMatchObject({ label: 'Sing him Old Nan\u2019s lullaby (a song you don\u2019t know yet)', disabled: true });
     // Anyone else can't sing it, song or no song, and hears only that.
     expect(lullaby(fresh('knight'))).toMatchObject({ label: 'Sing him Old Nan\u2019s lullaby (Courtier)', disabled: true });
     // Once he knows it, the button is his.
-    expect(lullaby(fresh('courtier', { lullaby: true }))).toEqual({ label: 'Sing him Old Nan\u2019s lullaby (Courtier)', action: { type: 'choose', id: 'hideout', choice: 'parley/lullaby' } });
+    expect(lullaby(fresh('courtier', { lullaby: true, baronRouted: true }))).toEqual({ label: 'Sing him Old Nan\u2019s lullaby (Courtier)', action: { type: 'choose', id: 'hideout', choice: 'parley/lullaby' } });
   });
 
-  it('takes him for half the bounty, which goes to his old nanny, as the poster and the King both say', () => {
-    const start = fresh('courtier', { lullaby: true });
+  it('has the Baron beaten in the field once his band is beaten in the open', () => {
+    const grimsby = ALDMOOR.locations.find((l) => l.id === 'hideout')!.enemy!.sortie!.band;
+    expect(grimsby.enemy!.spoils?.flags).toEqual({ baronRouted: true });
+  });
+
+  it('sends two in five of his garrison home instead of winning the stockade, as the King says after', () => {
+    const start = fresh('courtier', { lullaby: true, baronRouted: true });
+    const garrison = (s: GameState) => s.locations.find((l) => l.id === 'hideout')!.enemy!.army;
     const sung = choose(start, 'hideout', 'parley/lullaby')!;
-    expect(sung.state.over).toBe('won');
-    expect(sung.state.gold).toBe(start.gold + 1000);
-    expect(sung.state.paid).toEqual({ gold: 1000, because: 'the other half went to the Baron\u2019s old nanny' });
+    expect(sung.state.over).toBeUndefined();
     expect(sung.state.flags?.lullaby).toBe(false);
+    for (const stack of garrison(start)) {
+      const left = garrison(sung.state).find((s) => s.troop === stack.troop)!.count;
+      expect(left).toBe(stack.troop === 'baron' ? 1 : stack.count - Math.round(stack.count * 0.4));
+    }
     const card = cardOf(sung);
-    expect(card.title).toBe('Baron Grimsby is taken!');
     expect(card.lines[0]).toContain('Hush-a-bye, Baron');
-    expect(bountyCard(sung.state).lines).toContain('The poster said **2,000 gold**. The Crown pays **1,000**, because the other half went to the Baron\u2019s old nanny.');
-    const court = apply(sung.state, { type: 'court' })!.state;
-    expect(memoriesOf(court)[0]).toContain('half his bounty went to his old nanny');
+    expect(card.lines.join(' ')).toContain('slip away from Grimsby\u2019s Hideout');
+    // Sung once, it's gone from his walls.
+    expect(button(cardOf(visit(sung.state, 'hideout')), 'Sing him Old Nan\u2019s lullaby')).toBeUndefined();
+    const court = apply({ ...sung.state, over: 'won', bounty: 'paid' }, { type: 'court' })!.state;
+    expect(memoriesOf(court)[0]).toContain('went home to their mothers');
   });
 
   it('has the King remember a song heard and never sung, and the Baron\u2019s dig', () => {

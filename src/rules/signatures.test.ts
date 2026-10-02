@@ -115,7 +115,7 @@ describe('on the map', () => {
   it('a courtier pays half a bribe, and buys small bands outright', () => {
     const courtier: GameState = { ...newGame(1066, ALDMOOR, 'courtier'), opening: undefined };
     const labels = (s: GameState, id: string) => cardOf(visit(s, id)).choices.map((c) => c.label);
-    expect(labels(courtier, 'patrol')).toContain('Pay them to go home (450 gold)');
+    expect(labels(courtier, 'patrol')).toContain('Pay them to go home (1,350 gold)');
     const offer = labels(courtier, 'highwaymen').find((l) => l.startsWith('Hire them'));
     expect(offer).toBeDefined();
     const hired = apply(courtier, { type: 'choose', id: 'highwaymen', choice: 'hire' })!.state;

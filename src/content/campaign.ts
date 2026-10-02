@@ -79,7 +79,7 @@ export const COMMISSIONS: Commission[] = [
     arrival: ['The heather of Aldmoor stretches away, and somewhere in Darkwood there is a goose.'],
     reward: 1500,
     memories: [
-      { when: { lullaby: false }, line: '"I hear Grimsby came down off his walls for a lullaby, and that half his bounty went to his old nanny. I suppose she did bring him up."' },
+      { when: { lullaby: false }, line: '"I hear you sang Grimsby\u2019s men a lullaby under his walls, and a good many of them went home to their mothers. Old Nan must be very proud."' },
       { when: { pike: false }, line: '"Sergeant Pike is home with his mother, I hear. She has written me four pages of thanks, and most of them are about you."' },
       { when: { goose: false }, line: '"And the goose tells me somebody whistled St Aldhelm\u2019s hymn under the Baron\u2019s walls. She has honked it at me all through breakfast."' },
       { when: { wolfpelt: false }, line: '"Old Nan sends her thanks for the wolf pelt. She says she hasn\u2019t been so warm since my father\u2019s day."' },

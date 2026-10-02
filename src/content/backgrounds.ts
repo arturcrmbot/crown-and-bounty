@@ -52,8 +52,10 @@ export type Bonus = {
   bribes?: number;
   /** Small bands will take his coin and join him. */
   hires?: boolean;
-  /** Beasts follow him instead of fighting, as many as his army outweighs them (`tameOffer`), and the rest attack. */
+  /** Beasts follow him instead of fighting, as many as his army outweighs them (`tameOffer`), for the rest of his day, and the rest attack. */
   tames?: boolean;
+  /** Beasts follow him far more readily than they follow anyone else who tames (`befriends`): the Ranger's way with them. */
+  beastMaster?: boolean;
   /** Defence for every artifact he wears. */
   gearDefence?: number;
   /** Share off the cost of riding off the road, and through woods he can ride. */
@@ -170,8 +172,8 @@ export const BACKGROUNDS: Record<BackgroundId, Background> = {
     signature: {
       name: 'Pathfinder',
       brief: 'You ride through the woods, where nothing on the map can follow you, and your archers loose a free volley before every battle. Beasts may follow you instead of fighting, and they draw no wages.',
-      note: 'You ride through the woods, where nothing on the map can follow you. You get +30 movement a day and see further, and your scouts count every enemy exactly. Your archers get +1 attack and +4 shots, and loose a free volley before every battle, except at a villain\u2019s walls. Beasts follow you instead of fighting, the more of them the stronger your army is than theirs, and the rest attack. Beasts draw no wages and need no leadership.',
-      bonus: { movement: 30, sight: 50, counts: true, troops: { archers: { attack: 1, shots: 4 } }, volley: true, forestWalk: true, tames: true },
+      note: 'You ride through the woods, where nothing on the map can follow you. You get +30 movement a day and see further, and your scouts count every enemy exactly. Your archers get +1 attack and +4 shots, and loose a free volley before every battle, except at a villain\u2019s walls. Beasts follow you instead of fighting, half of a pack as strong as your army, and all of one two thirds as strong, and the rest attack. Winning them over takes the rest of the day. Beasts draw no wages and need no leadership.',
+      bonus: { movement: 30, sight: 50, counts: true, troops: { archers: { attack: 1, shots: 4 } }, volley: true, forestWalk: true, tames: true, beastMaster: true },
     },
     growth: { attack: 3, defence: 2, spellPower: 1, knowledge: 1 },
     favours: ['archery', 'logistics', 'scouting'],

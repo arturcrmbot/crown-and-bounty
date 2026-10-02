@@ -232,6 +232,15 @@ export function outweighs(ours: number, theirs: number): number {
   return theirs > 0 ? Math.max(0, Math.min(1, ours / theirs - 1)) : 1;
 }
 
+/**
+ * How much of a pack of beasts follows a ranger: far more than take gold, or follow anyone else (Artur, 2 Oct,
+ * #167). None follow an army half as strong as theirs or weaker, half of them follow one as strong, and all
+ * of them once it's half as strong again. It costs him the rest of the day (`tame` in places/enemy.ts).
+ */
+export function befriends(ours: number, theirs: number): number {
+  return theirs > 0 ? Math.max(0, Math.min(1, ours / theirs - 0.5)) : 1;
+}
+
 /** The same worth for any numbers: a troop's, or the hero's as they stand. */
 export function unitPower(t: Pick<TroopDef, 'hp' | 'damage' | 'attack' | 'defence' | 'shots'>): number {
   const damage = (t.damage[0] + t.damage[1]) / 2;

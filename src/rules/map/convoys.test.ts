@@ -158,7 +158,7 @@ describe('the grain cart', () => {
     expect(cart(until(gone, 8).state).done).toBe(true);
     // One already on the road goes on to the stockade, and its squad has no bridge to go back to.
     const out = until(start, 8).state;
-    let paidOff = apply(out, { type: 'choose', id: 'patrol', choice: 'parley/bribe' })!.state;
+    let paidOff = apply({ ...out, gold: 5000 }, { type: 'choose', id: 'patrol', choice: 'parley/bribe' })!.state;
     expect(locationById(paidOff, 'patrol').done).toBe(true);
     for (let day = 9; !cart(paidOff).done; day++) paidOff = until(paidOff, day).state;
     expect(paidOff.day).toBeLessThan(15);

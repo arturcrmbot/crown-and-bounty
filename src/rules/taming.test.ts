@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ALDMOOR } from '../content/aldmoor';
 import type { BackgroundId } from '../content/backgrounds';
 import { FENMARCH } from '../content/fenmarch';
-import { isBeast, outweighs, TROOPS, type TroopId } from '../content/troops';
+import { befriends, isBeast, TROOPS, type TroopId } from '../content/troops';
 import { autoResolve, chooseAction } from './battle/ai';
 import { createBattle } from './battle/battle';
 import { ambushCard, apply, battleXp, commissionAt, endDay, fightingPower, heroStats, leadershipUsed, locationById, visit, wages, type Card, type GameState, type Result } from './game';
@@ -23,12 +23,20 @@ const count = (state: GameState, troop: TroopId) => state.army.find((s) => s.tro
 const grown = (state: GameState): GameState => ({ ...state, leadership: 900, army: [{ troop: 'knights', count: 60 }, { troop: 'archers', count: 90 }] });
 
 describe('taming', () => {
-  it('takes a whole pack once his army is twice as strong as theirs: the ranger\u2019s boars on day I', () => {
+  it('takes a whole pack once his army is half as strong again as theirs, for the rest of the day: the ranger\u2019s boars on day I', () => {
     const start = fresh();
-    expect(labels(start, 'boars')).toContain('Tame them');
+    expect(labels(start, 'boars')).toContain('Tame them (until dusk)');
     const result = choose(start, 'boars', 'tame')!;
     const s = result.state;
     expect(count(s, 'boars')).toBe(9);
+    expect(s.movement).toBe(0);
+    expect(cardOf(result).lines).toContain('*It has taken you the rest of the day.*');
+    // The bears follow a ranger whole too, where once only 4 of the 7 did. Anyone else who tames, with the same
+    // army, still wins over only as many as it outweighs: the Ranger is the one beasts follow readily (Artur, 2 Oct).
+    expect(count(choose(start, 'bears', 'tame')!.state, 'bears')).toBe(7);
+    const knight = fresh('knight');
+    const friend: GameState = { ...knight, army: start.army, hero: { ...knight.hero, perks: ['beastFriend'] } };
+    expect(count(choose(friend, 'bears', 'tame')!.state, 'bears')).toBe(4);
     expect(locationById(s, 'boars').done).toBe(true);
     expect(s.ambush).toBeUndefined();
     expect(result.events).toContainEqual({ type: 'removed', id: 'boars' });
@@ -41,32 +49,35 @@ describe('taming', () => {
     expect(lines).toContain('**9 Wild Boars** join your army.');
   });
 
-  it('wins over as much of a pack as his army outweighs, and the rest fall on him there and then', () => {
-    // Power is the one number (Artur, 30 Sep): 9 knights and 34 archers are half as strong again as 7 bears, near enough.
+  it('wins over as much of a pack as befriends him, and the rest fall on him there and then', () => {
+    // Power is the one number (Artur, 30 Sep), and beasts follow far more of it (2 Oct): 9 knights and 34 archers are
+    // three fifths as strong as Rook's 100 wolves, so a tenth of them come over, where none did before.
     const start = fresh();
-    const bears = locationById(start, 'bears');
-    const share = outweighs(fightingPower(start.army), fightingPower(bears.enemy!.army));
-    expect(share).toBeGreaterThan(0.5);
-    expect(share).toBeLessThan(0.65);
-    expect(labels(start, 'bears')).toContain('Tame 4 of the 7, and fight the rest');
-    const result = choose(start, 'bears', 'tame')!;
+    const wolves = locationById(start, 'wolves');
+    const share = befriends(fightingPower(start.army), fightingPower(wolves.enemy!.army));
+    expect(share).toBeGreaterThan(0.1);
+    expect(share).toBeLessThan(0.15);
+    const come = Math.floor(100 * share);
+    expect(labels(start, 'wolves')).toContain(`Tame ${come} of the 100, and fight the rest (until dusk)`);
+    const result = choose(start, 'wolves', 'tame')!;
     const s = result.state;
-    expect(count(s, 'bears')).toBe(4);
-    expect(s.hero.xp).toBe(start.hero.xp + Math.round(battleXp([{ troop: 'bears', count: 4 }]) / 2));
-    // The other three attack: fight them, or run.
-    expect(s.ambush).toBe('bears');
+    expect(count(s, 'wolves')).toBe(come);
+    expect(s.hero.xp).toBe(start.hero.xp + Math.round(battleXp([{ troop: 'wolves', count: come }]) / 2));
+    // The rest attack: fight them, or run.
+    expect(s.ambush).toBe('wolves');
     expect(s.ambushRest).toBe(true);
-    expect(locationById(s, 'bears')).toMatchObject({ done: false, enemy: { army: [{ troop: 'bears', count: 3 }] } });
+    expect(locationById(s, 'wolves')).toMatchObject({ done: false, enemy: { army: [{ troop: 'wolves', count: 100 - come }, { troop: 'rook', count: 1 }] } });
     const card = cardOf(result);
-    expect(card.title).toBe('Bears');
-    expect(card.lines).toContain('**4 Bears** join your army.');
-    expect(card.lines).toContain('**3 Bears** come at you!');
-    // The biggest bear has just come over, so the rest don't get up the way the whole band would (#217).
-    expect(card.lines).not.toContain(bears.enemy!.threat);
+    expect(card.title).toBe('Rook\u2019s Wolves');
+    expect(card.lines).toContain(`**${come} Wolves** join your army.`);
+    const rest = card.lines.find((l) => l.endsWith('come at you!'))!;
+    expect(rest).toContain(`${100 - come} Wolves`);
+    // The old grey leader has just come over, so the rest don't get up the way the whole band would (#217).
+    expect(card.lines).not.toContain(wolves.enemy!.threat);
     expect(card.choices.map((c) => c.label)).toEqual(['To arms!', 'Let the sergeants handle it', 'Run for it (lose a fifth of the army)']);
-    expect(ambushCard(s).lines).toContain('**3 Bears** come at you!');
-    expect(ambushCard(s).lines).not.toContain(bears.enemy!.threat);
-    const after = choose(s, 'bears', 'auto')!.state;
+    expect(ambushCard(s).lines).toContain(rest);
+    expect(ambushCard(s).lines).not.toContain(wolves.enemy!.threat);
+    const after = choose(s, 'wolves', 'auto')!.state;
     expect(after.ambush).toBeUndefined();
     expect(after.ambushRest).toBeUndefined();
   });
@@ -82,10 +93,10 @@ describe('taming', () => {
     expect(ambushCard(result.state).lines).toContain(line);
   });
 
-  it('only for an army stronger than theirs: the wolves won\u2019t follow a fresh one, and all follow one twice as strong', () => {
-    const start = fresh();
+  it('only for an army more than half as strong as theirs: the wolves won\u2019t follow a small one, and all follow one half as strong again', () => {
+    const start: GameState = { ...fresh(), army: [{ troop: 'knights', count: 3 }, { troop: 'archers', count: 10 }] };
     expect(labels(start, 'wolves')).toContain('Tame them (they don\u2019t think much of your army yet) [off]');
-    expect(cardOf(visit(start, 'wolves')).lines.some((l) => l.includes('Beasts follow only an army stronger than theirs'))).toBe(true);
+    expect(cardOf(visit(start, 'wolves')).lines.some((l) => l.includes('Beasts follow nobody whose army is half as strong as theirs or weaker'))).toBe(true);
     expect(choose(start, 'wolves', 'tame')).toBeNull();
     const card = cardOf(visit(grown(start), 'wolves'));
     expect(card.lines.some((l) => l.includes('the way a pack watches its leader'))).toBe(true);
@@ -97,6 +108,15 @@ describe('taming', () => {
     expect(tamed.hero.gear.armour).toBe('greenwoodCloak');
     expect(tamed.flags?.wolfpelt).toBeUndefined();
     expect(tamed.gold).toBe(start.gold);
+  });
+
+  it('takes the rest of the day, so it needs half a day\u2019s riding left (Artur, 2 Oct, #167)', () => {
+    const start = fresh();
+    const late = { ...start, movement: Math.floor(heroStats(start).movement / 2) - 1 };
+    expect(labels(late, 'boars')).toContain('Tame them (not this late in the day) [off]');
+    expect(choose(late, 'boars', 'tame')).toBeNull();
+    const noon = { ...start, movement: Math.ceil(heroStats(start).movement / 2) };
+    expect(choose(noon, 'boars', 'tame')!.state.movement).toBe(0);
   });
 
   it('needs a company free in his line, but no leadership', () => {
@@ -132,7 +152,7 @@ describe('taming', () => {
     const s: GameState = { ...grown(beginCommission(province, 5, { ...start.campaign.start, hero: { ...start.hero, background: 'ranger' } }, 2, [], start.campaign.seed)), leadership: 2000 };
     const gate = locationById(s, 'guardian');
     const wolves = gate.enemy!.army.find((x) => x.troop === 'wolves')!.count;
-    expect(labels(s, 'guardian')).toContain('Tame their Wolves, and fight the rest');
+    expect(labels(s, 'guardian')).toContain('Tame their Wolves, and fight the rest (until dusk)');
     const after = choose(s, 'guardian', 'tame')!.state;
     expect(count(after, 'wolves')).toBe(wolves);
     const left = locationById(after, 'guardian');
@@ -146,7 +166,7 @@ describe('taming', () => {
 
   it('gives the ranger something to win over in the Fenmarch too', () => {
     const fen = beginCommission(FENMARCH, 1, { ...newGame(1066, ALDMOOR, 'ranger').campaign.start, leadership: 200 }, 1, []);
-    expect(labels(fen, 'boars')).toContain('Tame them');
+    expect(labels(fen, 'boars')).toContain('Tame them (until dusk)');
     expect(count(choose(fen, 'boars', 'tame')!.state, 'boars')).toBe(14);
   });
 });
