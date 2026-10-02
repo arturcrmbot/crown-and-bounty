@@ -77,7 +77,7 @@ shows as a word: few, several, pack, lots, horde, throng, swarm. The hero goes a
 (`MAP_HERO` 1) in his background's figure (`heroArtId` in `src/render/units.ts`), in a gold ring: the
 easiest thing to find on the map. The Knight rides Wesnoth's Horseman (about 64 px with our blue
 pennant); the others go on foot, about 45 px: the Wizard an Arch Mage, the Ranger Wesnoth's Ranger in
-his green hood (never to be mistaken for a Poacher), the Courtier a Master at Arms in a plumed hat.
+his green hood (never to be mistaken for a Poacher), the Courtier in a red coat and a broad red hat with a yellow plume.
 Their portraits agree with the figures. Buildings sit on the tile grid: huts are about 1 tile, mills
 and towers 2 to 3, castles 4.
 
