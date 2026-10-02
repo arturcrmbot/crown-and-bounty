@@ -52,6 +52,18 @@ const DELVING_SOUTH: Point = [668, 1744];
 /** The patrol's size: a gate that holds the bridge for about a week (see `rules/difficulty.ts` and `docs/BALANCE.md`). */
 const PATROL = { swordsmen: 70, crossbowmen: 40 };
 
+/**
+ * Young Pike's letter home, picked up on the bridge road (`letterPike`): carried to his mother's door, she
+ * gets it, whatever has happened to him since, and the journal ticks it off (#217).
+ */
+const pikeLetter = (...lines: string[]): ContentChoice => ({
+  id: 'letter',
+  label: 'Give her his letter',
+  when: { used: 'letterPike', notFlag: 'pikeLetter' },
+  effects: { xp: 50, flags: { pikeLetter: true } },
+  lines,
+});
+
 /** The old King's huntsmen, waiting at his hunt hall for someone to open it. */
 const HUNTSMEN = 12;
 
@@ -502,14 +514,25 @@ export const ALDMOOR: Province = {
               effects: { leadership: 20, xp: 100, flags: { mrsPike: 'word' } },
               lines: ['By teatime every mother in Westmere knows who brought Mrs Pike\u2019s boy home, and her sons are asking where to sign.'],
             },
+            pikeLetter('She reads it out to the whole table, and her boy goes red to the ears. *"A sergeant, with your own crossbow! You never said."*'),
           ],
         },
-        { id: 'fed', when: { flag: 'mrsPike' }, lines: ['Mrs Pike is feeding her boy, his patrol, and anyone else who stands still long enough.'], choices: [] },
+        {
+          id: 'fed',
+          when: { flag: 'mrsPike' },
+          lines: ['Mrs Pike is feeding her boy, his patrol, and anyone else who stands still long enough.'],
+          choices: [pikeLetter('She reads it out over supper, and the whole patrol cheers their sergeant until he hides under the table.')],
+        },
         {
           id: 'gone',
           when: { flag: 'patrolGone' },
           lines: ['*"The patrol\u2019s gone from the bridge, they say. And my boy with it, into Darkwood, of all places."*', 'She goes back inside. The coat stays on the line.'],
-          choices: [],
+          choices: [
+            pikeLetter(
+              'She reads it on the doorstep, and then again. *"Don\u2019t worry about me, he says. As if I could help it."*',
+              'She folds it very small, and keeps it in her apron pocket.',
+            ),
+          ],
         },
         {
           id: 'waiting',
@@ -517,7 +540,7 @@ export const ALDMOOR: Province = {
             'Mrs Pike is pegging out a sergeant\u2019s coat that nobody wears. *"My boy\u2019s in the Baron\u2019s patrol. On that bridge, in all weathers."*',
             '*"His father would have known what to say to him. Wrote everything down, his father did."*',
           ],
-          choices: [],
+          choices: [pikeLetter('*"A sergeant! With his own crossbow!"* She reads it twice, and props it on the mantelpiece where she can see it from the door.')],
         },
       ],
     },

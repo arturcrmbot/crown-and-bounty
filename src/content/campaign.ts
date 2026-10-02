@@ -182,7 +182,7 @@ export const COMMISSIONS: Commission[] = [
         who: 'a letter lost on the bridge road, from young Pike to his mother',
         words: 'Dear Mum, I am a sergeant now, with my own crossbow. We hold the old bridge for the Baron, and nobody gets over it. Don\u2019t worry about me.',
         heard: { used: 'letterPike' },
-        done: { flags: { pikeHome: true } },
+        done: { flags: { pikeLetter: true } },
       },
       {
         who: 'a letter in the Baron\u2019s hand, never sent',
