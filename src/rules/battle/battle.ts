@@ -519,6 +519,11 @@ const statusDefence = (f: Fighter) => f.status.reduce((sum, s) => sum + (STATUSE
 const statusAttack = (f: Fighter) => f.status.reduce((sum, s) => sum + (STATUSES[s].attackAdd ?? 0), 0);
 /** What a stack's statuses do to the damage it takes from a shot (a shield against arrows). */
 const statusShot = (f: Fighter) => f.status.reduce((times, s) => times * (STATUSES[s].rangedTaken ?? 1), 1);
+/** What a stack's armour does to the damage it takes from a shot (plate: half). */
+const plateShot = (f: Pick<Fighter, 'troop'>) => abilitiesOf(f.troop).reduce((times, a) => times * (a.shotsTaken ?? 1), 1);
+/** Whether another of the attacker's side already stands beside the target: its back is open to a backstab. */
+const engaged = (b: BattleState, attacker: Fighter, target: Fighter) =>
+  target.at >= 0 && b.fighters.some((o) => o.id !== attacker.id && o.side === attacker.side && onField(o) && NEIGHBOURS[target.at].includes(o.at));
 
 /** A stack's attack and defence as they stand, with the hero's help. */
 export function statsOf(b: BattleState, f: Fighter): { attack: number; defence: number } {
@@ -540,7 +545,7 @@ export function skillFactor(attack: number, defence: number): number {
 }
 
 /** Damage one stack deals another, times `bonus` (a charge). With `seed` it rolls; without, it's the average. */
-export function strike(b: BattleState, attacker: Fighter, target: Fighter, ranged: boolean, seed?: number, bonus = 1): { damage: number; seed?: number; lucky?: boolean } {
+export function strike(b: BattleState, attacker: Fighter, target: Fighter, ranged: boolean, seed?: number, bonus = 1): { damage: number; seed?: number; lucky?: boolean; plate?: boolean; backstab?: boolean } {
   const t = unitOf(attacker);
   const attack = t.attack + helpOf(b, attacker).attack + statusAttack(attacker);
   let defence = unitOf(target).defence + helpOf(b, target).defence + statusDefence(target);
@@ -568,9 +573,13 @@ export function strike(b: BattleState, attacker: Fighter, target: Fighter, range
   const inMelee = !ranged && t.shots ? (attacker.side === 'player' ? (b.hero.shooterMelee ?? SHOOTER_MELEE) : SHOOTER_MELEE) : 1;
   const skill = attacker.side === 'player' ? 1 + ((ranged ? b.hero.ranged : b.hero.melee) ?? 0) : 1;
   const armour = target.side === 'player' ? 1 - (b.hero.armour ?? 0) : 1;
-  const shield = ranged ? statusShot(target) : 1;
+  const plate = ranged ? plateShot(target) : 1;
+  const shield = ranged ? statusShot(target) * plate : 1;
   // A hunter knows his quarry: beasts take his shots and blows harder.
   const quarry = isBeast(target.troop) ? 1 + Math.max(0, ...abilitiesOf(attacker.troop).map((a) => a.hunts ?? 0)) : 1;
+  // A cutpurse's knife finds the back of a stack already busy with one of his side.
+  const stab = ranged ? 1 : Math.max(1, ...abilitiesOf(attacker.troop).map((a) => a.backstab ?? 1));
+  const backstab = stab > 1 && engaged(b, attacker, target) ? stab : 1;
   // A lucky blow lands twice as hard. Without a seed (the AI's look-ahead), the chance is spread over the average instead.
   const luckChance = luckOf(b, attacker);
   let lucky = false;
@@ -586,8 +595,8 @@ export function strike(b: BattleState, attacker: Fighter, target: Fighter, range
       }
     }
   }
-  const damage = Math.max(1, Math.round(attacker.count * perTroop * skillFactor(attack, defence) * inMelee * skill * armour * bonus * shield * quarry * luck));
-  return { damage, seed, ...(lucky ? { lucky } : {}) };
+  const damage = Math.max(1, Math.round(attacker.count * perTroop * skillFactor(attack, defence) * inMelee * skill * armour * bonus * shield * quarry * luck * backstab));
+  return { damage, seed, ...(lucky ? { lucky } : {}), ...(plate < 1 ? { plate: true } : {}), ...(backstab > 1 ? { backstab: true } : {}) };
 }
 
 /** What `damage` leaves of a stack. */
@@ -743,7 +752,7 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
         }
       }
     }
-    events.push({ type: 'hit', attacker: attacker.id, target: target.id, damage: rolled.damage, killed: w.killed, ranged, retaliation, ...(status ? { status } : {}), ...(charge ? { charge } : {}), ...(braced ? { braced: true } : {}), ...(rolled.lucky ? { lucky: true } : {}) });
+    events.push({ type: 'hit', attacker: attacker.id, target: target.id, damage: rolled.damage, killed: w.killed, ranged, retaliation, ...(status ? { status } : {}), ...(charge ? { charge } : {}), ...(braced ? { braced: true } : {}), ...(rolled.lucky ? { lucky: true } : {}), ...(rolled.plate ? { plate: true } : {}), ...(rolled.backstab ? { backstab: true } : {}) });
   };
 
   switch (action.type) {
