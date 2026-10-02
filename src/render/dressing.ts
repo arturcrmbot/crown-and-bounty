@@ -37,6 +37,10 @@ const SCENES: Record<string, Prop[]> = {
   mine: [['ore', 56, 10], ['wagon', -62, 12], ['logPile', 70, 30], ['rock', -50, 32]],
   shrine: [['bedPurple', -30, 12], ['bedPink', 30, 14], ['bedYellow', 0, 28]],
   event: [['bedPurple', -30, 12], ['bedPink', 30, 14]],
+  // A scroll stone (#240): two fallen stones of the old ring beside it, and flowers at its foot.
+  stone1: [['boulder3', -24, 4], ['rock', 24, 6], ['bedYellow', -6, 20], ['bedRed', 22, 22]],
+  stone2: [['boulder3', -24, 4], ['rock', 24, 6], ['bedPurple', -6, 20], ['bedPink', 22, 22]],
+  stone3: [['boulder2', -26, 4], ['boulder3', 26, 6], ['bedYellow', -8, 20], ['bedPurple', 22, 22]],
   chest: [['outcrop3', -6, -12], ['bedYellow', 22, 8]],
   gold: [['goldSmall', 20, 6]],
   stockade: [['bones', -58, 24], ['fire', 54, 22], ['crates', 62, -6], ['barrels', -60, -4]],

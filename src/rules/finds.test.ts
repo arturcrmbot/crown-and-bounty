@@ -1,4 +1,5 @@
 import type { SpellId } from '../content/spells';
+import { foundOf } from './heroSheet';
 import { describe, expect, it } from 'vitest';
 import { ALDMOOR } from '../content/aldmoor';
 import { FINDS } from '../content/aldmoorFinds';
@@ -37,6 +38,21 @@ const count = (army: GameState['army'], troop: string) => army.find((s) => s.tro
 const isExplored = (state: GameState, [x, y]: readonly [number, number]) => seenBit(state.explored, Math.floor(y / CELL) * gridSize(state.world).width + Math.floor(x / CELL));
 
 describe('Aldmoor\u2019s finds', () => {
+  it('a scroll stone teaches its spell to any hero, and gives one who knows it the notes in its margins (#240)', () => {
+    expect(fromAfar(fresh(), 'stoneBless').lines.join(' ')).toContain('first circle');
+    const knight = fresh();
+    expect(knight.hero.spells).toEqual([]);
+    expect(labels(knight, 'stoneBless')).toEqual(['Learn Bless']);
+    const learned = take(visit(knight, 'stoneBless').state, 'stoneBless', 'scroll/learn');
+    expect(learned.hero.spells).toEqual(['bless']);
+    expect(learned.locations.find((l) => l.id === 'stoneBless')!.done).toBe(true);
+    expect(foundOf(learned).find((f) => f.what === 'Scroll stones read')).toMatchObject({ got: 1 });
+    const wizard = fresh('wizard');
+    expect(labels(wizard, 'stoneArrow')).toEqual(['Read the notes in its margins']);
+    const there = visit(wizard, 'stoneArrow').state;
+    expect(take(there, 'stoneArrow', 'known/notes').hero.xp - there.hero.xp).toBe(100);
+  });
+
   it('asks before wearing the highwaymen\u2019s Black Banner', () => {
     const result = beat(fresh(), 'highwaymen', { title: 'Victory!', lines: [], reward: 0, xp: 0 });
     expect(result.state.hero.gear.banner).toBeUndefined();

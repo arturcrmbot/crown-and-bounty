@@ -38,6 +38,8 @@ PIECES = {
     'mews': ('wild', (103, 26, 165, 75), 50),
     'butts': ('wild', (179, 31, 242, 73), 50),
     'stones': ('wild', (14, 99, 82, 158), 56),
+    # One of the Grey Wethers on its own, a little bigger than it was drawn, to be seen from afar: the scroll stones' stone (#240).
+    'menhir': ('wild', (30, 128, 47, 155), 24),
     'tents': ('wild', (174, 99, 248, 159), 60),
     'cart': ('wild', (15, 174, 88, 244), 60),
     'pack': ('wild', (104, 190, 154, 239), 28),
@@ -268,6 +270,17 @@ def cut(sheet, box, width, name='', height=None, alone=False, cool=False):
         solid[30:, 27:] = False
         sh[30:, :12] = False
         sh[30:, 27:] = False
+    if name == 'menhir':
+        # The stone's darker greys are as flat as the sheet's shadow: everything inside its outline is stone.
+        lab, _ = nd.label(solid, structure=np.ones((3, 3)))
+        sizes = np.bincount(lab.ravel()); sizes[0] = 0
+        body = lab == sizes.argmax()
+        for y in range(body.shape[0]):
+            xs = np.nonzero(body[y])[0]
+            if len(xs):
+                body[y, xs[0]:xs[-1] + 1] = True
+        solid = body
+        sh &= ~solid
     if name.startswith('heather'):
         purple = (rgb[..., 2] > rgb[..., 1] + 10) & (rgb[..., 0] > rgb[..., 1])
         solid = nd.binary_closing(purple, iterations=1) & solid
