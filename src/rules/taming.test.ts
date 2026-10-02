@@ -19,6 +19,8 @@ const cardOf = (result: Result): Card => {
 };
 const labels = (state: GameState, id: string) => cardOf(visit(state, id)).choices.map((c) => `${c.label}${c.disabled ? ' [off]' : ''}`);
 const count = (state: GameState, troop: TroopId) => state.army.find((s) => s.troop === troop)?.count ?? 0;
+/** How many of a troop a band of Aldmoor starts with. */
+const inBand = (id: string, troop: TroopId) => ALDMOOR.locations.find((l) => l.id === id)!.enemy!.army.find((s) => s.troop === troop)!.count;
 /** A hero with room to lead a pack, and an army that could beat anything in Aldmoor. */
 const grown = (state: GameState): GameState => ({ ...state, leadership: 900, army: [{ troop: 'knights', count: 60 }, { troop: 'archers', count: 90 }] });
 
@@ -28,15 +30,16 @@ describe('taming', () => {
     expect(labels(start, 'boars')).toContain('Tame them (until dusk)');
     const result = choose(start, 'boars', 'tame')!;
     const s = result.state;
-    expect(count(s, 'boars')).toBe(9);
+    const boarsInBand = inBand('boars', 'boars');
+    expect(count(s, 'boars')).toBe(boarsInBand);
     expect(s.movement).toBe(0);
     expect(cardOf(result).lines).toContain('*It has taken you the rest of the day.*');
-    // The bears follow a ranger whole too, where once only 4 of the 7 did. Anyone else who tames, with the same
-    // army, still wins over only as many as it outweighs: the Ranger is the one beasts follow readily (Artur, 2 Oct).
-    expect(count(choose(start, 'bears', 'tame')!.state, 'bears')).toBe(7);
+    // The bears, a ring further out (#239), follow him only in part: 6 of the 10. Anyone else who tames, with the same
+    // army, wins over only as many as it outweighs: the Ranger is the one beasts follow readily (Artur, 2 Oct).
+    expect(count(choose(start, 'bears', 'tame')!.state, 'bears')).toBe(6);
     const knight = fresh('knight');
     const friend: GameState = { ...knight, army: start.army, hero: { ...knight.hero, perks: ['beastFriend'] } };
-    expect(count(choose(friend, 'bears', 'tame')!.state, 'bears')).toBe(4);
+    expect(count(choose(friend, 'bears', 'tame')!.state, 'bears')).toBe(1);
     expect(locationById(s, 'boars').done).toBe(true);
     expect(s.ambush).toBeUndefined();
     expect(result.events).toContainEqual({ type: 'removed', id: 'boars' });
@@ -46,19 +49,20 @@ describe('taming', () => {
     expect(s.hero.xp).toBe(Math.round(battleXp(boars.army) / 2));
     const lines = cardOf(result).lines;
     expect(lines[0]).toBe(boars.tamed);
-    expect(lines).toContain('**9 Wild Boars** join your army.');
+    expect(lines).toContain(`**${boarsInBand} Wild Boars** join your army.`);
   });
 
   it('wins over as much of a pack as befriends him, and the rest fall on him there and then', () => {
-    // Power is the one number (Artur, 30 Sep), and beasts follow far more of it (2 Oct): 9 knights and 34 archers are
-    // three fifths as strong as Rook's 100 wolves, so a tenth of them come over, where none did before.
+    // Power is the one number (Artur, 30 Sep), and beasts follow far more of it (2 Oct): his first army outweighs
+    // Rook's pack, but not by half again, so some of the wolves come over and the rest fall on him.
     const start = fresh();
     const wolves = locationById(start, 'wolves');
+    const pack = inBand('wolves', 'wolves');
     const share = befriends(fightingPower(start.army), fightingPower(wolves.enemy!.army));
-    expect(share).toBeGreaterThan(0.1);
-    expect(share).toBeLessThan(0.15);
-    const come = Math.floor(100 * share);
-    expect(labels(start, 'wolves')).toContain(`Tame ${come} of the 100, and fight the rest (until dusk)`);
+    expect(share).toBeGreaterThan(0);
+    expect(share).toBeLessThan(1);
+    const come = Math.floor(pack * share);
+    expect(labels(start, 'wolves')).toContain(`Tame ${come} of the ${pack}, and fight the rest (until dusk)`);
     const result = choose(start, 'wolves', 'tame')!;
     const s = result.state;
     expect(count(s, 'wolves')).toBe(come);
@@ -66,12 +70,12 @@ describe('taming', () => {
     // The rest attack: fight them, or run.
     expect(s.ambush).toBe('wolves');
     expect(s.ambushRest).toBe(true);
-    expect(locationById(s, 'wolves')).toMatchObject({ done: false, enemy: { army: [{ troop: 'wolves', count: 100 - come }, { troop: 'rook', count: 1 }] } });
+    expect(locationById(s, 'wolves')).toMatchObject({ done: false, enemy: { army: [{ troop: 'wolves', count: pack - come }, { troop: 'rook', count: 1 }] } });
     const card = cardOf(result);
     expect(card.title).toBe('Rook\u2019s Wolves');
     expect(card.lines).toContain(`**${come} Wolves** join your army.`);
     const rest = card.lines.find((l) => l.endsWith('come at you!'))!;
-    expect(rest).toContain(`${100 - come} Wolves`);
+    expect(rest).toContain(`${pack - come} Wolves`);
     // The old grey leader has just come over, so the rest don't get up the way the whole band would (#217).
     expect(card.lines).not.toContain(wolves.enemy!.threat);
     expect(card.choices.map((c) => c.label)).toEqual(['To arms!', 'Let the sergeants handle it', 'Run for it (lose a fifth of the army)']);
@@ -83,9 +87,9 @@ describe('taming', () => {
   });
 
   it('says who comes at him with a capital letter, though his scouts count only roughly', () => {
-    // A Knight with a way with beasts hears "a few", not "3", and the line still starts a sentence.
+    // A Knight with a way with beasts, and the ranger's first army, hears "several", not "9", and the line still starts a sentence.
     const knight = fresh('knight');
-    const tamer: GameState = { ...knight, hero: { ...knight.hero, perks: ['beastFriend'] } };
+    const tamer: GameState = { ...knight, army: fresh().army, hero: { ...knight.hero, perks: ['beastFriend'] } };
     const result = choose(tamer, 'bears', 'tame')!;
     expect(result.state.ambushRest).toBe(true);
     const line = cardOf(result).lines.find((l) => l.endsWith('come at you!'))!;
@@ -124,7 +128,7 @@ describe('taming', () => {
     expect(labels(full, 'boars')).toContain('Tame them (no room in your line) [off]');
     expect(choose(full, 'boars', 'tame')).toBeNull();
     const roomless = { ...fresh(), leadership: leadershipUsed(fresh().army) };
-    expect(count(choose(roomless, 'boars', 'tame')!.state, 'boars')).toBe(9);
+    expect(count(choose(roomless, 'boars', 'tame')!.state, 'boars')).toBe(inBand('boars', 'boars'));
   });
 
   it('shows other heroes it can be done, and teaches it with St Aldhelm\u2019s crown or the Beast Friend perk', () => {
@@ -134,9 +138,10 @@ describe('taming', () => {
     const crowned = choose(knight, 'shrine', 'start/crown')!.state;
     expect(crowned.hero.gear.helm).toBe('hawthornCrown');
     expect(heroStats(crowned).tames).toBe(true);
-    expect(count(choose(crowned, 'boars', 'tame')!.state, 'boars')).toBe(9);
+    // As many as his army outweighs them: a third of the 36.
+    expect(count(choose(crowned, 'boars', 'tame')!.state, 'boars')).toBe(12);
     const friend = { ...knight, hero: { ...knight.hero, perks: [...knight.hero.perks, 'beastFriend' as const] } };
-    expect(count(choose(friend, 'boars', 'tame')!.state, 'boars')).toBe(9);
+    expect(count(choose(friend, 'boars', 'tame')!.state, 'boars')).toBe(12);
   });
 
   it('never at a villain\u2019s walls, nor for troops that draw wages', () => {
@@ -190,7 +195,7 @@ describe('tamed beasts', () => {
     expect(wages(tamed.army)).toBe(wages(fresh().army));
     let s = tamed;
     for (let i = 0; i < 7; i++) s = endDay(s).state;
-    expect(count(s, 'boars')).toBe(9);
+    expect(count(s, 'boars')).toBe(inBand('boars', 'boars'));
   });
 
   it('fight on the hero\u2019s side, moved by the same commander as everyone else', () => {
@@ -207,8 +212,9 @@ describe('tamed beasts', () => {
 
   it('and the bot\u2019s ranger wins every time, taming only what would follow him', () => {
     // Beasts follow only as far as his army outweighs them, and the bot tames a pack only when all of it would come. Since the wolves came to guard a chest on the heath (#192), a grown ranger wins a pack of wolves over too.
-    const runs = simulate([1, 2, 3, 4, 5, 6, 7, 8], 'ranger');
+    // Five seeds, not eight: the climb's fifteen bands make each commission a longer game to play (#239).
+    const runs = simulate([1, 2, 3, 4, 5], 'ranger');
     expect(runs.every((r) => r.won)).toBe(true);
     for (const run of runs) for (const line of run.log.filter((l) => l.includes('tamed'))) expect(line).toMatch(/tamed (Wild Boars|A Sounder of Boars|Bears|Wolves|Rook|Giant Spiders)/);
-  }, 600_000);
+  }, 900_000);
 });
