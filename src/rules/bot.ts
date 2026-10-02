@@ -44,7 +44,7 @@ export function comfortable(state: GameState, place: Location): boolean {
 /** The skills a careful player takes at a level-up, the best first: the ones that multiply his army. */
 const PICKS: Record<BackgroundId, string[]> = {
   knight: ['skill:offence', 'skill:leadership', 'skill:armourer', 'skill:archery', 'perk:fortunesFavour'],
-  wizard: ['skill:sorcery', 'skill:mysticism', 'skill:leadership', 'skill:archery', 'skill:armourer'],
+  wizard: ['skill:sorcery', 'skill:spellcraft', 'skill:mysticism', 'skill:leadership', 'skill:archery', 'skill:armourer'],
   ranger: ['skill:archery', 'skill:leadership', 'skill:offence', 'skill:armourer', 'perk:fortunesFavour'],
   courtier: ['skill:leadership', 'skill:diplomacy', 'skill:archery', 'skill:offence', 'skill:estates'],
 };

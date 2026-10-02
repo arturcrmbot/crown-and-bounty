@@ -23,6 +23,12 @@ export type Bonus = {
   payday?: number;
   loot?: number;
   manaDiscount?: number;
+  /** Share more damage his spells do (0.15 is 15% more). */
+  spellDamage?: number;
+  /** Bless, Haste and Stone Skin, cast on one of his stacks, fall on every stack of his at once. */
+  massBlessings?: boolean;
+  /** Damage added to a burst (a Fireball) for every point of spell power. */
+  burstPower?: number;
   /** Extra attack and defence for one kind of troop. */
   troops?: Partial<Record<TroopId, { attack?: number; defence?: number; shots?: number }>>;
   /** Enemy troops that start every battle slowed. */
@@ -157,7 +163,7 @@ export const BACKGROUNDS: Record<BackgroundId, Background> = {
     spells: ['arrow', 'bless'],
     signature: { name: 'Hedge Magic', note: 'Every spell costs 2 less mana, you can cast two spells a round, and on the map you know Far Sight.', bonus: { manaDiscount: 2, casts: 1, mapSpells: ['farsight'] } },
     growth: { attack: 1, defence: 1, spellPower: 4, knowledge: 3 },
-    favours: ['sorcery', 'mysticism', 'scouting'],
+    favours: ['sorcery', 'mysticism', 'spellcraft'],
     wizardry: true,
   },
   ranger: {

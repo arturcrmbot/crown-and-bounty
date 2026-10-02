@@ -80,6 +80,9 @@ export type HeroStats = {
   payday: number;
   loot: number;
   manaDiscount: number;
+  spellDamage: number;
+  massBlessings: boolean;
+  burstPower: number;
   troops: Partial<Record<TroopId, { attack: number; defence: number; shots: number }>>;
   slows: TroopId[];
   wards: Partial<Record<TroopId, StatusId[]>>;
@@ -186,6 +189,9 @@ export function heroStats(state: GameState): HeroStats {
     payday: 0,
     loot: 0,
     manaDiscount: 0,
+    spellDamage: 0,
+    massBlessings: false,
+    burstPower: 0,
     troops: {},
     slows: [],
     wards: {},
@@ -242,6 +248,9 @@ export function heroStats(state: GameState): HeroStats {
     s.payday += b.payday ?? 0;
     s.loot += b.loot ?? 0;
     s.manaDiscount += b.manaDiscount ?? 0;
+    s.spellDamage += b.spellDamage ?? 0;
+    s.massBlessings ||= Boolean(b.massBlessings);
+    s.burstPower += b.burstPower ?? 0;
     for (const [troop, t] of Object.entries(b.troops ?? {}) as [TroopId, { attack?: number; defence?: number; shots?: number }][]) {
       const prev = s.troops[troop] ?? { attack: 0, defence: 0, shots: 0 };
       s.troops[troop] = { attack: prev.attack + (t.attack ?? 0), defence: prev.defence + (t.defence ?? 0), shots: prev.shots + (t.shots ?? 0) };

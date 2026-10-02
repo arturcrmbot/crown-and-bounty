@@ -597,6 +597,8 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   Magic Arrow, a new spell that does half a bolt's damage (10 a point of spell power, for 4 mana), and Bless. The
   Knight, the Ranger and the Courtier start with none, as might heroes in HoMM2 do, and learn every spell on the map.
   Every level-up offers one of his background's own three skills while any has a rank left, as well as a trick.
-  Wizardry (Sorcery, Mysticism, Battle Mage and Far Sight) is offered to the Wizard alone. Still to come in #240:
-  Spellcraft, the Wizard's third skill, and scroll stones of three circles on the map, with the Lightning Bolt on one
-  by the river.
+  Wizardry (Sorcery, Mysticism, Spellcraft, Battle Mage and Far Sight) is offered to the Wizard alone. Spellcraft
+  takes Scouting's place among his own three skills (#228's fix): Basic makes his damage spells do 15% more, Advanced
+  lays Bless, Haste and Stone Skin on every stack of his at once, and Expert makes his Fireball do 18 a point of spell
+  power, not 12. Still to come in #240: scroll stones of three circles on the map, with the Lightning Bolt on one by
+  the river.

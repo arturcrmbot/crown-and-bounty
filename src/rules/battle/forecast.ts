@@ -1,7 +1,7 @@
 import { SPELLS, STATUSES } from '../../content/spells';
 import { TROOPS } from '../../content/troops';
 import { coins, listed } from '../state';
-import { activeFighter, battleAct, bribeOffer, canJoin, fighterById, isLeader, type BattleAction, type BattleState, type Fighter, type Side } from './battle';
+import { activeFighter, battleAct, blessesAll, bribeOffer, canJoin, fighterById, isLeader, type BattleAction, type BattleState, type Fighter, type Side } from './battle';
 
 /** One stack's share of what an action would do: the damage it takes, and how many of it perish. */
 export type Blow = { fighter: number; damage: number; killed: number };
@@ -98,7 +98,8 @@ export function aimTag(b: BattleState, action: BattleAction): AimTag | null {
     if (effect.kind === 'status') {
       const status = STATUSES[effect.status];
       const already = aimed.status.includes(effect.status) && !status.rounds;
-      return { title, lines: [{ text: already ? (/ed$/.test(status.name) ? `They are already ${status.name.toLowerCase()}.` : `They already have ${status.name}.`) : spell.note }] };
+      const all = blessesAll(b, action.spell, action.by) ? ' With your Spellcraft, it falls on every stack of yours at once.' : '';
+      return { title, lines: [{ text: already && !all ? (/ed$/.test(status.name) ? `They are already ${status.name.toLowerCase()}.` : `They already have ${status.name}.`) : `${spell.note}${all}` }] };
     }
     if (effect.kind === 'heal') {
       const { healed = 0, raised = 0 } = forecast.target;

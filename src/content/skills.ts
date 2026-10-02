@@ -2,7 +2,7 @@ import type { Bonus } from './backgrounds';
 import type { TroopId } from './troops';
 
 /** Skills have three ranks: each rank adds its number, and Advanced and Expert also teach a trick. */
-export type SkillId = 'archery' | 'offence' | 'armourer' | 'logistics' | 'scouting' | 'leadership' | 'estates' | 'sorcery' | 'mysticism' | 'diplomacy';
+export type SkillId = 'archery' | 'offence' | 'armourer' | 'logistics' | 'scouting' | 'leadership' | 'estates' | 'sorcery' | 'mysticism' | 'spellcraft' | 'diplomacy';
 
 /** One rank of a skill: everything the skill does at that rank, in words and as a bonus. */
 export type SkillRank = { note: string; bonus: Bonus };
@@ -174,6 +174,24 @@ export const SKILLS: Record<SkillId, Skill> = {
       },
     ],
   },
+  // The Wizard's own (#240, #228): his spells hit harder, then his blessings fall on all his men, then his Fireball burns hotter.
+  spellcraft: {
+    id: 'spellcraft',
+    name: 'Spellcraft',
+    ranks: [
+      { note: 'Your spells that do damage do 15% more.', bonus: { spellDamage: 0.15 } },
+      {
+        note: 'Your spells that do damage do 15% more, and Bless, Haste and Stone Skin fall on every stack of yours at once.',
+        adds: 'Bless, Haste and Stone Skin fall on every stack of yours at once, so one spell does the work of many more.',
+        bonus: { spellDamage: 0.15, massBlessings: true },
+      },
+      {
+        note: 'Your spells that do damage do 15% more, Bless, Haste and Stone Skin fall on every stack of yours, and your Fireball does 18 damage for every point of spell power, not 12.',
+        adds: 'Your Fireball does another 6 damage for every point of spell power, 18 in all.',
+        bonus: { spellDamage: 0.15, massBlessings: true, burstPower: 6 },
+      },
+    ],
+  },
   diplomacy: {
     id: 'diplomacy',
     name: 'Diplomacy',
@@ -194,7 +212,7 @@ export const SKILLS: Record<SkillId, Skill> = {
 };
 
 /** Wizardry: the skills and perks a level-up offers only a wizard (#240). */
-export const WIZARDRY: readonly string[] = ['skill:sorcery', 'skill:mysticism', 'perk:battleMage', 'perk:farSight'];
+export const WIZARDRY: readonly string[] = ['skill:sorcery', 'skill:mysticism', 'skill:spellcraft', 'perk:battleMage', 'perk:farSight'];
 
 /** What a skill does at a rank (from 1), in words. */
 export const skillNote = (id: SkillId, rank: number) => SKILLS[id].ranks[Math.max(0, Math.min(RANKS.length, rank) - 1)].note;

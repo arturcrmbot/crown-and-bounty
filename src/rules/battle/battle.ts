@@ -61,6 +61,10 @@ export type Spellbook = {
   castsThisRound?: number;
   manaDiscount?: number;
   charges?: { spell: SpellId; uses: number }[];
+  /** Spellcraft (#240): share more damage, blessings on every stack, and a hotter burst. */
+  spellDamage?: number;
+  massBlessings?: boolean;
+  burstPower?: number;
 };
 
 /** The player's hero: skills for every stack, his spellbook, and himself on the field. */
@@ -641,11 +645,23 @@ export const isCharge = (b: BattleState, f: Fighter, from: number, moves = optio
 /** Damage a spell does, or 0 if it doesn't do damage. */
 export const spellDamage = (b: BattleState, spell: SpellId, by?: number) => {
   const effect = SPELLS[spell].effect;
-  return effect.kind === 'damage' || effect.kind === 'burst' ? effect.perPower * (bookOf(b, by)?.spellPower ?? 0) : 0;
+  const book = bookOf(b, by);
+  if (!book || (effect.kind !== 'damage' && effect.kind !== 'burst')) return 0;
+  const perPower = effect.perPower + (effect.kind === 'burst' ? (book.burstPower ?? 0) : 0);
+  return Math.round(perPower * book.spellPower * (1 + (book.spellDamage ?? 0)));
+};
+
+/** The blessings Spellcraft lays on every stack of his at once. */
+const BLESSINGS: StatusId[] = ['blessed', 'hasted', 'stoneskin'];
+/** Whether this blessing, in this caster's hands, falls on every stack of the side it's cast on (Spellcraft, #240). */
+export const blessesAll = (b: BattleState, spell: SpellId, by?: number) => {
+  const effect = SPELLS[spell].effect;
+  return effect.kind === 'status' && SPELLS[spell].on === 'friend' && BLESSINGS.includes(effect.status) && Boolean(bookOf(b, by)?.massBlessings);
 };
 
 /** Who a spell cast at `target` would hit: the target, and for a burst every stack next to it too. It passes over the leaders. */
-export function spellVictims(b: BattleState, spell: SpellId, target: Fighter): Fighter[] {
+export function spellVictims(b: BattleState, spell: SpellId, target: Fighter, by?: number): Fighter[] {
+  if (blessesAll(b, spell, by)) return [target, ...b.fighters.filter((f) => onField(f) && f.id !== target.id && f.side === target.side)];
   if (SPELLS[spell].effect.kind !== 'burst') return [target];
   const around = new Set([target.at, ...neighbours(target.at)]);
   return [target, ...b.fighters.filter((f) => onField(f) && f.id !== target.id && around.has(f.at))];
@@ -835,11 +851,9 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
       const power = book.spellPower;
       switch (effect.kind) {
         case 'status':
-          addStatus(target!, effect.status, b.round);
-          events.push({ type: 'spell', ...cast, target: target!.id, damage: 0, killed: 0 });
-          break;
         case 'mass': {
-          const on = fighters.filter((x) => onField(x) && (x.side === side) === (spell.on === 'friend'));
+          // A blessing in a hand with Spellcraft falls on all his stacks, the one he aimed at first.
+          const on = effect.kind === 'mass' ? fighters.filter((x) => onField(x) && (x.side === side) === (spell.on === 'friend')) : spellVictims(next, action.spell, target!, by);
           on.forEach((x, i) => {
             addStatus(x, effect.status, b.round);
             events.push({ type: 'spell', ...cast, target: x.id, damage: 0, killed: 0, ...(i > 0 ? { splash: true } : {}) });
@@ -875,8 +889,8 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
         }
         default: {
           next.struck = true;
-          for (const victim of spellVictims(next, action.spell, target!)) {
-            const damage = effect.perPower * power;
+          for (const victim of spellVictims(next, action.spell, target!, by)) {
+            const damage = spellDamage(next, action.spell, by);
             const w = wound(victim, damage);
             victim.count = w.count;
             victim.hp = w.hp;
