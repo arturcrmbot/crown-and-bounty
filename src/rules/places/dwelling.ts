@@ -6,6 +6,7 @@ import { bestChoice, firstPage, pageCard, takeChoice } from '../effects';
 import { addTroops, close, coins, fits, joinLine, leadershipUsed, locationById, troops, update, type Card, type Choice, type GameState, type Location, type Result } from '../state';
 import { aboutWords, found, option, priceOf, ride, say } from './common';
 import type { PlaceKind } from './kind';
+import { ransom } from '../ransom';
 
 /** Volunteers every castle and village finds on payday. */
 export const RESTOCK = 10;
@@ -196,12 +197,17 @@ function makeRoom(state: GameState, place: Location): { index: number; count: nu
 export const dwelling: PlaceKind = {
   about: (state, place) => ({ title: place.name, lines: aboutWords(state, place), choices: [ride(place, 'Visit'), close] }),
   arrive: (state, place) => {
-    const page = firstPage(state, place);
-    if (page) return found(state, place, pageCard(state, place, page));
+    // At his castle, the steward pays the Crown's price for the captains in the cells (#258).
+    const paid = place.kind === 'castle' ? ransom(state) : { state, lines: [] };
+    const page = firstPage(paid.state, place);
+    if (page) {
+      const card = pageCard(paid.state, place, page);
+      return found(paid.state, place, { ...card, lines: [...paid.lines, ...card.lines] });
+    }
     // The chapel's mana first, then the recruits, and the card's way out as ever.
-    const home = restAt(state, place);
+    const home = restAt(paid.state, place);
     const card = recruitCard(home.state, place);
-    return found(home.state, place, { ...card, lines: [...home.lines, ...card.lines] });
+    return found(home.state, place, { ...card, lines: [...paid.lines, ...home.lines, ...card.lines] });
   },
   card: (state, place, before) => recruitCard(state, place, before),
   choose(state, place, choice) {

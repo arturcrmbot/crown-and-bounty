@@ -13,6 +13,7 @@ import { oddsOf } from './places/enemy';
 import { heroStats, LEVELS, type StatId } from './hero';
 import { riddenOut } from './map/sortie';
 import { close, COMMISSION, coins, LAST_DAY, leadershipUsed, listed, locationById, PAYDAY_EVERY, roman, wages, type Card, type Found, type GameState, type Location, type Verdict } from './state';
+import { bandPrice, captainsOf } from './ransom';
 
 /** How mana comes back, in a few words: a quarter at dawn, for some heroes as they ride, and in full at a well or his castle. */
 export function manaBack(state: GameState): string {
@@ -137,6 +138,7 @@ const FINDS_TALLIED: { what: string; is: (l: Location) => boolean; got?: (state:
   { what: 'Things picked up by the way', is: (l) => l.kind === 'pickup' },
   { what: 'Lost geese sent home', is: (l) => l.kind === 'goose' },
   { what: 'Scroll stones read', is: (l) => /^stone\d$/.test(l.look ?? '') },
+  { what: 'Captains taken', is: (l) => captainsOf(l).length > 0, got: (state, l) => (state.captives ?? []).some((c) => c.place === l.id) },
   { what: 'Lookouts climbed', is: (l) => Boolean(climbOf(l)), got: (state, l) => Object.keys(climbOf(l)?.effects?.flags ?? {}).some((f) => state.flags?.[f] !== undefined) },
 ];
 
@@ -183,7 +185,8 @@ export function placeNote(state: GameState, id: string): string {
   const place = locationById(state, id);
   if (place.enemy && !place.done) {
     const force = forceLine(place.enemy.army, countsExactly(state)).replace(/\*\*/g, '');
-    return `${place.name}: ${force}${place.enemy.trailing ? ' \u00b7 on your trail!' : ''}${riddenOut(state, place) ? ' \u00b7 the gate is barred' : ''}`;
+    const price = bandPrice(place);
+    return `${place.name}: ${force}${price ? ` \u00b7 ${coins(price)} gold for the captain` : ''}${place.enemy.trailing ? ' \u00b7 on your trail!' : ''}${riddenOut(state, place) ? ' \u00b7 the gate is barred' : ''}`;
   }
   const later = laterNote(state, place);
   if (later) return `${place.name}: ${later}`;

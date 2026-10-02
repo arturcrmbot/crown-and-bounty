@@ -10,6 +10,7 @@ import { fleeHome, fleesHome } from './map/sortie';
 import { bardOf, battleEnd, bribeOffer, createBattle, isLeader, onField, SHOOTER_MELEE, survivors, type BattleHero, type BattleState, type Side } from './battle/battle';
 import { artifactChoices, foundNote, gainXp, giveArtifact, heroStats, namedBonuses } from './hero';
 import { addTroops, again, armyLine, armyPower, capital, close, coins, leadershipUsed, listed, locationById, MAX_STACKS, roll, roman, show, stillWithYou, troops, update, VANISHES, type Army, type BattleResultCard, type Choice, type GameEvent, type GameState, type Location, type Result } from './state';
+import { jail } from './ransom';
 
 export function heroInBattle(state: GameState): BattleHero {
   const s = heroStats(state);
@@ -288,7 +289,10 @@ export function beat(state: GameState, id: string, how: { title: string; lines: 
   if (place.enemy?.lair) next = fleeHome(next, place);
   if (place.enemy?.taken) next = { ...next, flags: { ...next.flags, ...place.enemy.taken } };
   const events: GameEvent[] = VANISHES.has(place.kind) ? [{ type: 'removed', id }] : [];
-  const spoils: string[] = [];
+  // Its captain goes back to the castle in irons, to be paid for there (#258).
+  const jailed = jail(next, place);
+  next = jailed.state;
+  const spoils: string[] = [...jailed.lines];
   const decisions = [...(how.choices ?? [])];
   if (place.artifact) {
     next = giveArtifact(next, place.artifact as ArtifactId);
