@@ -278,22 +278,22 @@ export const TROOPS: Record<TroopId, TroopDef> = {
   heroKnight: {
     id: 'heroKnight', name: 'Sir Aldric', one: 'Sir Aldric', hp: 80, attack: 5, defence: 5, damage: [12, 18], speed: 6, leadership: 99, wage: 0, abilities: ['leads', 'rides'],
     note: 'He carries the King\u2019s colours on his lance. He rides out from behind his men, charges, and is back before anyone can answer.',
-    hero: { background: 'knight', perLevel: { damage: 2 } },
+    hero: { background: 'knight', perLevel: { damage: 4 } },
   },
   heroWizard: {
     id: 'heroWizard', name: 'Aldric', one: 'Aldric', hp: 50, attack: 2, defence: 3, damage: [3, 5], speed: 4, shots: 10, leadership: 99, wage: 0, abilities: ['leads'],
     note: 'He throws bolts from his staff over his men\u2019s heads, as hard as his spell power.',
-    hero: { background: 'wizard', perLevel: { damage: 1 }, perPower: 3 },
+    hero: { background: 'wizard', perLevel: { damage: 2 }, perPower: 3 },
   },
   heroRanger: {
     id: 'heroRanger', name: 'Aldric', one: 'Aldric', hp: 60, attack: 5, defence: 3, damage: [8, 12], speed: 5, shots: 12, leadership: 99, wage: 0, abilities: ['leads'],
     note: 'He has a longbow, and the patience to use it from behind his men.',
-    hero: { background: 'ranger', perLevel: { damage: 2 } },
+    hero: { background: 'ranger', perLevel: { damage: 4 } },
   },
   heroCourtier: {
     id: 'heroCourtier', name: 'Lord Aldric', one: 'Lord Aldric', hp: 55, attack: 4, defence: 4, damage: [6, 10], speed: 6, leadership: 99, wage: 0, abilities: ['leads', 'bard'],
     note: 'He has a lute, a purse and a sharp tongue. He pays, jeers and sings, and leaves the fighting to his men.',
-    hero: { background: 'courtier', perLevel: { damage: 1 } },
+    hero: { background: 'courtier', perLevel: { damage: 2 } },
   },
 };
 

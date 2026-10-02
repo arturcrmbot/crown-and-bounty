@@ -297,6 +297,64 @@ Before, the careful player had only the gates to measure: the dig on day 8 or 9,
 - **The play-through's plain Knight,** played headless on the same route as `npm run e2e`, takes the patrol on day 45,
   the highwaymen and the wolves by day 59, and Grimsby on day 61, at level VIII.
 
+## Combat that doesn't snowball (2 Oct)
+
+Artur, after a Wizard's game that day (#254): *"It's very easy now to lose troops, which is fine, but your knights and
+archers are dropping because every enemy has a lot of ranged attack and ground units are extremely fast. If you're
+losing a lot of troops early on, you're going to be behind the power curve you need for what comes next. It also feels
+like almost every fight you're levelling up, and the impact of a level isn't really noticeable."*
+
+Measured on main at 08e417d. The careful bot played the Wizard and the Knight to day 21, 4 seeds each, and each of its
+121 fights was replayed 12 times by the sergeants, with every death put down to its cause.
+
+- **Wins cost a lot of the army, and it didn't come back.** A careful player won every fight he picked, but in rings 1
+  to 3, in days 1 to 9, each cost him 15% of his army, and the outlaws by the river cost the Wizard 38% on day 3. Only
+  10 of each troop came back a payday, and every background ended with 2,800 to 3,260 gold unspent. So the army stopped
+  growing after the first days, while the bands grew half as big again.
+- **Shooting and speed were how the troops died, not why.** With half the shooters, and the same worth in blades, a
+  fight cost as much, and without "Crossbows, fire!" nothing changed. Slowing only the wolves and the cutpurses made it
+  worse, because the cutpurses then arrived with everyone else and stabbed them in the back. The size of a band next to
+  the army decided the cost: a fifth smaller halved it.
+- **A level nearly every fight.** A fight taught about 400 experience at every stage, and the first levels needed 150
+  to 450, so 58% of fights gave a level, and each was worth 2 to 4% more strength.
+- **Rook.** Power left a band's hero out, so 37 of Rook's 50 wolves followed a day-1 Ranger whose odds against the band
+  were 0 in 16.
+
+What changed:
+
+| | Before | After |
+| --- | --- | --- |
+| Speeds (#260) | wolves 7, cutpurses 6, highwaymen and spiders 5 | 6, 5 and 4. Boars and bears stay at 5, as fast as the knights, who move first on a tie |
+| Rings 1 and 2 (#260) | | a fifth smaller. Ring 3 stays as it was, because a fifth smaller it was a day-1 fight |
+| The river's bears, the heath road's highwaymen, Darkwood's spiders (#260) | 10; 37, 28 and 25; 28 and 24 | 13; 41, 31 and 28; 31 and 26, so that slower, they're still out of reach on day I |
+| A band's power (#266) | its troops | its troops and its hero: his own worth, and what his level lends every troop |
+| A captain's pack (#266) | follows a Ranger as `befriends` says | leaves its captain only for an army that outweighs the whole band |
+| Levels (`LEVELS`) | II at 150, III 400, IV 750, V 1,200, X 6,000 | II at 300, III 800, IV 1,500, V 2,300, X 8,700 |
+| A level gives | 1 stat point, +5 leadership, Aldric +1 or +2 damage | 2 stat points, +10 leadership, Aldric +2 or +4 damage, and its card says what the points do |
+
+Replayed, a careful player's fights in rings 1 to 3, in days 1 to 9, now cost him 12% of his army (the Knight, was 15%)
+and 9% (the Wizard, was 15%). A level comes in about half the fights (was 58%), and he's level VIII or IX on day 21 (was
+X or XI).
+
+`npm run sim -- 5`, the careful player. Every run is won.
+
+| Grimsby falls (median, 90th percentile), and the level then | Before | After the speeds and bands | After the levels |
+| --- | --- | --- | --- |
+| Knight | day 16, 25; level 7.4 | day 17, 18; 7.6 | day 19, 24; 7.0 |
+| Wizard | day 12, 25; 7.2 | day 12, 18; 7.6 | day 14, 19; 5.6 |
+| Ranger | day 12, 13; 8.6 | day 7, 12; 8.8 | day 11, 11; 7.0 |
+| Courtier | day 12, 19; 7.0 | day 18, 25; 8.0 | day 18, 25; 6.0 |
+
+- A level needs more experience now, so the levels at the win aren't comparable: what took him to level VIII before
+  takes him to VII now, with more stat points and leadership and fewer skills.
+- The last column has #259's price on captains taken too, which the bot never spends at the castle.
+- A first try at the levels, with fewer still (HoMM2's curve, eased: II at 400, X at 11,600), left every hero weaker:
+  the Knight took Grimsby on day 24 and the Courtier on day 27. Fewer levels are fewer skills, and the Leadership
+  skill's ranks are worth more than the stat points.
+- **The bot is 3 to 4 times faster** (#266), with the same choices. 85% of a bot game was the careful bot asking the
+  odds of every band at every step. Now it works out the ride to every place first, and asks the odds of a band only
+  if its best worth could still beat the best stop found so far. A Knight's game takes 11 s instead of 35.
+
 ## The approach
 
 1. **A power budget for each commission.** Each commission has a target day for its villain and a reference hero:
@@ -355,8 +413,8 @@ moved with these levers:
 
 | Lever | Where it lives | What limits it |
 | --- | --- | --- |
-| Army | leadership (`heroStats`), recruits and prices (`places/dwelling.ts`), the King's pay (`COMMISSION`), the price on captains taken (`PRICE_A_LEVEL` in `rules/ransom.ts`: 4,200 gold for Aldmoor's ten, paid at the castle), hires and taming (`places/enemy.ts`), veterans (`campaign.ts`) | leadership: 5 a level (`RENOWN`), or 25 in place of a skill (`RALLY`), 20 for 500 gold at the castle (`MUSTER`), chests, banners, the Leadership skill; troops who draw no wages need none. Who comes over is power (`outweighs`) |
-| Stats | level-ups (`LEVELS`, each background's `growth`), the court's boons | 10% more damage per point of attack over defence, 5% less per point of defence (`skillFactor`) |
+| Army | leadership (`heroStats`), recruits and prices (`places/dwelling.ts`), the King's pay (`COMMISSION`), the price on captains taken (`PRICE_A_LEVEL` in `rules/ransom.ts`: 4,200 gold for Aldmoor's ten, paid at the castle), hires and taming (`places/enemy.ts`), veterans (`campaign.ts`) | leadership: 10 a level (`RENOWN`), or 25 in place of a skill (`RALLY`), 20 for 500 gold at the castle (`MUSTER`), chests, banners, the Leadership skill; troops who draw no wages need none. Who comes over is power (`outweighs`) |
+| Stats | level-ups (two points a level, from each background's `growth`), the court's boons | 10% more damage per point of attack over defence, 5% less per point of defence (`skillFactor`) |
 | Gear | `content/artifacts.ts`, sets | seven slots |
 | Spells | `content/spells.ts`, mana (ten a point of knowledge) | two casts a round (`MAX_CASTS`), mana at dawn (`endDay`) |
 | Experience | `battleXp` (a share, `TEACHES`, of the worth of what's beaten), finds, parleys | the level curve (`LEVELS`) |

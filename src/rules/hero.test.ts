@@ -5,7 +5,7 @@ import { BACKGROUNDS } from '../content/backgrounds';
 import { autoResolve } from './battle/ai';
 import { createBattle, strike } from './battle/battle';
 import { apply, heroInBattle, heroStats, levelUpCard, visit, winChance, type GameState } from './game';
-import { artifactChoices, equip, foundNote, gainXp, giveArtifact, learn, LEVELS, RALLY, RALLY_LEADERSHIP, RENOWN } from './hero';
+import { artifactChoices, equip, foundNote, gainXp, giveArtifact, learn, LEVELS, RALLY, RALLY_LEADERSHIP, RENOWN, type StatId } from './hero';
 import { newGame } from './scenario';
 
 const knight = () => newGame(1, ALDMOOR, 'knight');
@@ -37,7 +37,7 @@ describe('backgrounds', () => {
 });
 
 describe('levels', () => {
-  it('raises a stat and offers three different things to learn, and more leadership', () => {
+  it('raises two stats and offers three different things to learn, and more leadership', () => {
     const { state, events } = gainXp(knight(), LEVELS[3]);
     expect(state.hero.level).toBe(3);
     expect(events.filter((e) => e.type === 'levelUp')).toHaveLength(2);
@@ -48,7 +48,7 @@ describe('levels', () => {
     }
     const stats = state.hero.attack + state.hero.defence + state.hero.spellPower + state.hero.knowledge;
     const before = knight().hero;
-    expect(stats).toBe(before.attack + before.defence + before.spellPower + before.knowledge + 2);
+    expect(stats).toBe(before.attack + before.defence + before.spellPower + before.knowledge + 4);
   });
 
   it('rallies more men in place of learning something, at any level-up (Artur, 30 Sep)', () => {
@@ -88,11 +88,33 @@ describe('levels', () => {
     }
   });
 
-  it('brings five more leadership every level', () => {
+  it('brings ten more leadership every level', () => {
     const levelled = gainXp(knight(), LEVELS[5]).state;
     expect(heroStats(levelled).leadership - heroStats(knight()).leadership).toBe(4 * RENOWN);
-    expect(RENOWN).toBe(5);
-    expect(levelUpCard(levelled)!.lines[0]).toContain(`your leadership by **${RENOWN}**`);
+    expect(RENOWN).toBe(10);
+    expect(levelUpCard(levelled)!.lines).toContain(`Your leadership rises by **${RENOWN}**.`);
+  });
+
+  it('comes about every other fight, and says what each point does, in numbers (#254)', () => {
+    expect(LEVELS.slice(2, 11)).toEqual([300, 800, 1500, 2300, 3300, 4400, 5700, 7100, 8700]);
+    const offered = (state: GameState, stat: StatId, also?: StatId) => ({ ...state, hero: { ...state.hero, offers: [{ level: 2, stat, ...(also ? { also } : {}), options: [RALLY] }] } });
+    expect(levelUpCard(offered(knight(), 'attack', 'attack'))!.lines).toEqual([
+      'Your attack rises by **2**, so every stack of yours hits about 20% harder.',
+      `Your leadership rises by **${RENOWN}**.`,
+      'Choose something to learn, or rally more men.',
+    ]);
+    expect(levelUpCard(offered(knight(), 'defence', 'knowledge'))!.lines.slice(0, 2)).toEqual(['Your defence rises by **1**, so every stack of yours takes 5 to 10% less damage.', 'Your knowledge rises by **1**, so you hold 10 more mana.']);
+    // Spell power says what it does to the spells he knows that do damage.
+    const wizard = apply(knight(), { type: 'background', id: 'wizard' })!.state;
+    expect(levelUpCard(offered(wizard, 'spellPower'))!.lines[0]).toBe('Your spell power rises by **1**, so Magic Arrow does 10 more damage.');
+    expect(levelUpCard(offered(knight(), 'spellPower'))!.lines[0]).toBe('Your spell power rises by **1**, so the spells you learn will hit harder.');
+    // Every level gives two points, the same one twice if it comes up twice.
+    for (const seed of [1, 2, 3]) {
+      const levelled = gainXp({ ...knight(), seed }, LEVELS[2]).state;
+      const offer = levelled.hero.offers[0];
+      expect(offer.also).toBeDefined();
+      expect(levelUpCard(levelled)!.lines).toHaveLength(offer.stat === offer.also ? 3 : 4);
+    }
   });
 
   it('pays experience for beating an enemy and for finding places', () => {
