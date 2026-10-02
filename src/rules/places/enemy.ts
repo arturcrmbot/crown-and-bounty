@@ -9,6 +9,7 @@ import { riddenOut } from '../map/sortie';
 import { addTroops, capital, close, coins, fightingPower, fits, leadershipUsed, listed, locationById, roman, show, stillWithYou, troops, update, type Army, type Card, type Choice, type ContentChoice, type GameEvent, type GameState, type Location, type Result, type Verdict } from '../state';
 import { countsExactly, faceOf, forceLine, heroLines, note, option, ride, say, words } from './common';
 import type { PlaceKind } from './kind';
+import { jail, priceLines } from '../ransom';
 
 const retreat: Choice = { label: 'Retreat', action: { type: 'close' } };
 
@@ -204,9 +205,10 @@ function tame(state: GameState, place: Location): Result | null {
   const taken = gone && foe.taken ? { flags: foe.taken } : {};
   // Winning them over takes the rest of the day.
   const joined = applyEffects({ ...state, movement: 0 }, place, { troops: offer.joining, ...taken, ...(gone ? { done: true } : {}) });
-  let next = joined.state;
+  const jailed = gone ? jail(joined.state, place) : { state: joined.state, lines: [] };
+  let next = jailed.state;
   const words = offer.all ? (foe.tamed ?? offer.beasts.map((s) => TROOPS[s.troop].tamed).find(Boolean) ?? 'They decide you will do, and follow you.') : 'The biggest of them decide you will do, and follow you. The rest don\u2019t think much of your army.';
-  const lines = [words, ...joined.lines, '*It has taken you the rest of the day.*'];
+  const lines = [words, ...joined.lines, ...jailed.lines, '*It has taken you the rest of the day.*'];
   if (gone && place.artifact) {
     next = giveArtifact(next, place.artifact);
     lines.push(`They lead you to their den, where you find ${artifactPhrase(place.artifact)}. ${foundNote(next, place.artifact)}`);
@@ -371,7 +373,7 @@ export function enemy(kind: 'patrol' | 'hideout'): PlaceKind {
       // The verdict leads, so the odds are the first thing read; scouts who put a number on them say it from afar too.
       const odds = oddsOf(state, place);
       const scouts = odds && state.army.length && heroStats(state).odds ? [scoutsLine(winChance(state, place.id))] : [];
-      return { title: place.name, ...faceOf(e.army), ...(odds ? { verdict: odds } : {}), lines: [...away, line, ...heroLines(e.army), ...scouts, ...carriesLine(state, place), ...hunt], choices: [ride(place, 'Approach'), { label: 'Close', action: { type: 'close' } }] };
+      return { title: place.name, ...faceOf(e.army), ...(odds ? { verdict: odds } : {}), lines: [...away, line, ...heroLines(e.army), ...priceLines(state, place), ...scouts, ...carriesLine(state, place), ...hunt], choices: [ride(place, 'Approach'), { label: 'Close', action: { type: 'close' } }] };
     },
     arrive(state, place) {
       const foe = place.enemy!;
@@ -385,7 +387,7 @@ export function enemy(kind: 'patrol' | 'hideout'): PlaceKind {
         title: place.name,
         ...faceOf(foe.army),
         verdict: verdict(chance),
-        lines: [foe.threat, ...heroLines(foe.army), oddsLine(chance), likelyLossesLine(state, place.id), ...purseLines(state, place.id), ...scouts, ...carriesLine(state, place), ...tameLine(state, place), ...grumbleLines(state, place)],
+        lines: [foe.threat, ...heroLines(foe.army), oddsLine(chance), likelyLossesLine(state, place.id), ...purseLines(state, place.id), ...priceLines(state, place), ...scouts, ...carriesLine(state, place), ...tameLine(state, place), ...grumbleLines(state, place)],
         choices: [{ ...option(place, foe.charge ?? 'Fight', 'fight'), detail: FIGHT_NOTE }, { ...option(place, 'Let the sergeants handle it', 'auto'), detail: SERGEANTS_NOTE }, ...yields, ...hireButton(state, place), ...tameButton(state, place), ...parleys(state, place), retreat],
       });
     },

@@ -321,7 +321,12 @@ export type GameState = {
   ambushRest?: true;
   /** Weeks of rations in the baggage (Westmere's grain, caught on the road): each feeds the troops one payday instead of their wages. */
   rations?: number;
+  /** Enemy captains taken on this commission, in the castle's cells until the Crown's price is paid for them (#258). */
+  captives?: Captive[];
 };
+
+/** An enemy captain taken (#258): from which band, who, at what level, and where his price was paid, once it has been. */
+export type Captive = { place: string; troop: TroopId; level: number; paid?: 'castle' | 'court' };
 
 /** Sir Aldric: where he is, who he was, and what he has learned. Derived numbers come from `heroStats`. */
 export type Hero = {

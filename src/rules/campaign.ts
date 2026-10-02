@@ -9,6 +9,7 @@ import { unhumbled } from './map/sortie';
 import { heroStats, VETERANS } from './hero';
 import { beginCommission } from './scenario';
 import { addTroops, armyLine, close, coins, fits, leadershipUsed, listed, roll, roman, show, TROOPS, type Army, type BoonId, type Campaign, type Card, type Choice, type ContentChoice, type GameState, type Heard, type Location, type Page, type Result } from './state';
+import { gaolerLine, paidAtCourt, ransomAtCourt } from './ransom';
 
 /** Commissions in a campaign: the hand-made ones, then provinces generated for this campaign. */
 export const CAMPAIGN_LENGTH = 5;
@@ -258,7 +259,9 @@ export function toCourt(state: GameState): Result | null {
   if (state.campaign.court) return { state, events: [{ type: 'court' }] };
   const [boons, seed] = drawBoons(state, state.seed, 3 + heroStats(state).boons);
   const record = [...state.campaign.record, { chapter: state.campaign.chapter, days: state.day, level: state.hero.level }];
-  const next: GameState = { ...state, seed, gold: state.gold + commissionOf(state).reward, campaign: { ...state.campaign, record, court: { boons } } };
+  // The King pays for whichever of the villain's captains are still in the cells (#258).
+  const paid = ransomAtCourt(state);
+  const next: GameState = { ...paid, seed, gold: paid.gold + commissionOf(state).reward, campaign: { ...state.campaign, record, court: { boons } } };
   return { state: next, events: [{ type: 'court' }] };
 }
 
@@ -273,7 +276,7 @@ function boonChoice(id: BoonId): Choice {
 export function speechCard(state: GameState): Card {
   return {
     title: 'The King\u2019s Court',
-    lines: [commissionOf(state).praise, ...memoriesOf(state)],
+    lines: [commissionOf(state).praise, ...gaolerLine(state, commissionOf(state).villain), ...memoriesOf(state)],
     choices: [{ label: 'Your Majesty is too kind.', action: { type: 'close' } }],
   };
 }
@@ -284,10 +287,11 @@ export function courtCard(state: GameState): Card {
   if (court.chosen) return endsHere(state) ? closingCard(state) : briefingCard(state);
   const c = commissionOf(state);
   const done = state.campaign.record[state.campaign.record.length - 1];
+  const cells = paidAtCourt(state);
   return {
     title: 'The King\u2019s Thanks',
     wide: true,
-    lines: [`Commission ${roman(state.campaign.chapter + 1)} took **${done.days} ${done.days === 1 ? 'day' : 'days'}**. The King adds **${coins(c.reward)} gold** to your purse, and offers you a boon of your choice.`],
+    lines: [`Commission ${roman(state.campaign.chapter + 1)} took **${done.days} ${done.days === 1 ? 'day' : 'days'}**. The King adds **${coins(c.reward)} gold** to your purse${cells ? `, with **${coins(cells)} gold** more for the captains still in your cells` : ''}, and offers you a boon of your choice.`],
     choices: court.boons.map(boonChoice),
   };
 }

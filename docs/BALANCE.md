@@ -355,7 +355,7 @@ moved with these levers:
 
 | Lever | Where it lives | What limits it |
 | --- | --- | --- |
-| Army | leadership (`heroStats`), recruits and prices (`places/dwelling.ts`), the King's pay (`COMMISSION`), hires and taming (`places/enemy.ts`), veterans (`campaign.ts`) | leadership: 5 a level (`RENOWN`), or 25 in place of a skill (`RALLY`), 20 for 500 gold at the castle (`MUSTER`), chests, banners, the Leadership skill; troops who draw no wages need none. Who comes over is power (`outweighs`) |
+| Army | leadership (`heroStats`), recruits and prices (`places/dwelling.ts`), the King's pay (`COMMISSION`), the price on captains taken (`PRICE_A_LEVEL` in `rules/ransom.ts`: 4,200 gold for Aldmoor's ten, paid at the castle), hires and taming (`places/enemy.ts`), veterans (`campaign.ts`) | leadership: 5 a level (`RENOWN`), or 25 in place of a skill (`RALLY`), 20 for 500 gold at the castle (`MUSTER`), chests, banners, the Leadership skill; troops who draw no wages need none. Who comes over is power (`outweighs`) |
 | Stats | level-ups (`LEVELS`, each background's `growth`), the court's boons | 10% more damage per point of attack over defence, 5% less per point of defence (`skillFactor`) |
 | Gear | `content/artifacts.ts`, sets | seven slots |
 | Spells | `content/spells.ts`, mana (ten a point of knowledge) | two casts a round (`MAX_CASTS`), mana at dawn (`endDay`) |
