@@ -61,8 +61,11 @@ describe('taming', () => {
     expect(card.title).toBe('Bears');
     expect(card.lines).toContain('**4 Bears** join your army.');
     expect(card.lines).toContain('**3 Bears** come at you!');
+    // The biggest bear has just come over, so the rest don't get up the way the whole band would (#217).
+    expect(card.lines).not.toContain(bears.enemy!.threat);
     expect(card.choices.map((c) => c.label)).toEqual(['To arms!', 'Let the sergeants handle it', 'Run for it (lose a fifth of the army)']);
     expect(ambushCard(s).lines).toContain('**3 Bears** come at you!');
+    expect(ambushCard(s).lines).not.toContain(bears.enemy!.threat);
     const after = choose(s, 'bears', 'auto')!.state;
     expect(after.ambush).toBeUndefined();
     expect(after.ambushRest).toBeUndefined();

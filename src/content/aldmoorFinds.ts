@@ -588,8 +588,17 @@ export const FINDS: Location[] = [
           {
             id: 'look',
             label: 'Climb up to his seat',
+            when: { notUsed: 'bears' },
             effects: { reveal: { at: [2216, 1976], radius: 420 }, flags: { huntStand: true } },
             lines: ['From the old King\u2019s seat you can see the chase laid out below you, its rides, its clearings and its oaks, and something large asleep on the track to the lodge.'],
+          },
+          // Once the bears have gone from the track (tamed, beaten or paid off), the view says so.
+          {
+            id: 'lookClear',
+            label: 'Climb up to his seat',
+            when: { used: 'bears' },
+            effects: { reveal: { at: [2216, 1976], radius: 420 }, flags: { huntStand: true } },
+            lines: ['From the old King\u2019s seat you can see the chase laid out below you, its rides, its clearings and its oaks, and the track to the lodge, clear all the way now.'],
           },
           { id: 'leave', label: 'Leave it be' },
         ],

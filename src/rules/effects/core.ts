@@ -30,6 +30,7 @@ export function meets(state: GameState, needs: Needs | undefined): boolean {
   if (needs.notFlag && state.flags?.[needs.notFlag]) return false;
   if (needs.seen && !state.locations.find((l) => l.id === needs.seen)?.seen) return false;
   if (needs.used && !state.locations.find((l) => l.id === needs.used)?.done) return false;
+  if (needs.notUsed && state.locations.find((l) => l.id === needs.notUsed)?.done) return false;
   if (needs.gold && state.gold < needs.gold) return false;
   if (needs.mana && hero.mana < needs.mana) return false;
   if (needs.troop && countOf(state.army, needs.troop) < (needs.count ?? 1)) return false;
@@ -64,7 +65,7 @@ export function lacksLabel(state: GameState, needs: Needs | undefined, hint?: st
   if (!needs) return '';
   if (needs.background && state.hero.background !== needs.background) return ` (${BACKGROUNDS[needs.background].name})`;
   const short = (part: Needs) => !meets(state, part);
-  const { flag, notFlag, seen, used, notArtifact, notSpell } = needs;
+  const { flag, notFlag, seen, used, notUsed, notArtifact, notSpell } = needs;
   const parts = [
     needs.skill && short({ skill: needs.skill }) && SKILLS[needs.skill].name,
     needs.spellPower && short({ spellPower: needs.spellPower }) && `spell power ${needs.spellPower}`,
@@ -73,7 +74,7 @@ export function lacksLabel(state: GameState, needs: Needs | undefined, hint?: st
     needs.gold && short({ gold: needs.gold }) && `${coins(needs.gold)} gold`,
     needs.mana && short({ mana: needs.mana }) && `${needs.mana} mana`,
     needs.troop && short({ troop: needs.troop, count: needs.count }) && troops(needs.troop, needs.count ?? 1),
-    hint && short({ flag, notFlag, seen, used, notArtifact, notSpell }) && hint,
+    hint && short({ flag, notFlag, seen, used, notUsed, notArtifact, notSpell }) && hint,
     // A spell he knows already, with no hint to say otherwise.
     !hint && notSpell && short({ notSpell }) && 'you know it',
   ].filter(Boolean);

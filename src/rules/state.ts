@@ -150,6 +150,8 @@ export type Needs = {
   seen?: string;
   /** A place (by id) that must be done with: used up, or for a band, beaten, tamed or paid off. */
   used?: string;
+  /** A place (by id) that must not be done with yet: the bears still asleep on the track. */
+  notUsed?: string;
   gold?: number;
   troop?: TroopId;
   count?: number;

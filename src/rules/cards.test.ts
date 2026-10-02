@@ -59,9 +59,9 @@ describe('the castle', () => {
   it('says where a bought artifact went', () => {
     const rich = { ...knight(), gold: 5000 };
     const bought = apply(rich, { type: 'choose', id: 'castle', choice: 'buy:swordOfAldmoor' })!;
-    expect(cardOf(bought).lines[0]).toBe('The **Sword of Aldmoor** is yours, and you put it on straight away.');
+    expect(cardOf(bought).lines[0]).toBe('The **Sword of Aldmoor** is yours. You take it up.');
     const second = apply({ ...bought.state, locations: rich.locations }, { type: 'choose', id: 'castle', choice: 'buy:breastplate' })!;
-    expect(cardOf(second).lines[0]).toContain('you put it on');
+    expect(cardOf(second).lines[0]).toBe('The **Breastplate of the Crown** is yours. You put it on.');
     const armed = { ...rich, hero: { ...rich.hero, gear: { helm: 'crystalBall' as const } } };
     expect(cardOf(apply(armed, { type: 'choose', id: 'castle', choice: 'buy:helmOfFarSight' })).lines[0]).toContain('it goes in your pack');
   });

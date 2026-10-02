@@ -65,7 +65,11 @@ export function artifactPhrase(id: ArtifactId, start = false): string {
 /** A set of artifacts that do something more when all of them are worn. */
 export type SetId = 'regalia' | 'finery';
 
-export type Artifact = { id: ArtifactId; name: string; slot: ArtifactSlot; note: string; bonus: Bonus; drawback?: true; price?: number; set?: SetId };
+/**
+ * `worn` is what he does with it as he takes it to wear, when that isn't the usual for its slot (`wornLine` in
+ * rules/hero.ts): a hawk rides on his wrist, and boots are pulled on.
+ */
+export type Artifact = { id: ArtifactId; name: string; slot: ArtifactSlot; note: string; bonus: Bonus; drawback?: true; price?: number; set?: SetId; worn?: string };
 
 export const ARTIFACTS: Record<ArtifactId, Artifact> = {
   swordOfAldmoor: { id: 'swordOfAldmoor', name: 'Sword of Aldmoor', slot: 'weapon', note: 'It gives +2 attack. It came with the castle, like the damp.', bonus: { attack: 2 }, price: 900 },
@@ -91,7 +95,7 @@ export const ARTIFACTS: Record<ArtifactId, Artifact> = {
     bonus: { movement: 25, wages: -0.1 },
   },
   abbotsStaff: { id: 'abbotsStaff', name: 'The Abbot\u2019s Staff', slot: 'weapon', note: 'It gives +2 spell power. It still smells faintly of incense and eels.', bonus: { spellPower: 2 } },
-  eelskinBoots: { id: 'eelskinBoots', name: 'Eelskin Boots', slot: 'trinket', note: 'They give +30 movement a day. They are slippery, but only on the inside. *Wear them with the jerkin and the banner, and the fen takes you for one of its own.*', bonus: { movement: 30 }, set: 'finery' },
+  eelskinBoots: { id: 'eelskinBoots', name: 'Eelskin Boots', slot: 'trinket', note: 'They give +30 movement a day. They are slippery, but only on the inside. *Wear them with the jerkin and the banner, and the fen takes you for one of its own.*', bonus: { movement: 30 }, set: 'finery', worn: 'You pull them on.' },
   goblinCharm: { id: 'goblinCharm', name: 'Goblin Lucky Charm', slot: 'trinket', note: 'It gives +20% gold from treasure. Goblins are very good at finding things that aren\u2019t theirs.', bonus: { loot: 0.2 } },
   trollhide: { id: 'trollhide', name: 'Trollhide Jerkin', slot: 'armour', note: 'It gives +1 defence, and your troops take 10% less damage. It does not wash. *Wear it with the boots and the banner, and the fen takes you for one of its own.*', bonus: { defence: 1, armour: 0.1 }, set: 'finery' },
   harrowgateMail: { id: 'harrowgateMail', name: 'Harrowgate Mail', slot: 'armour', note: 'It gives +3 defence, and it is heavy enough to anchor a boat.', bonus: { defence: 3 }, price: 1600 },
@@ -114,8 +118,8 @@ export const ARTIFACTS: Record<ArtifactId, Artifact> = {
     note: 'It gives +1 spell power, and a second spell every round of battle, though nobody casts more than two. The two halves argue.',
     bonus: { spellPower: 1, casts: 1 },
   },
-  crystalBall: { id: 'crystalBall', name: 'Crystal of Far Sight', slot: 'helm', note: 'You can cast Far Sight on the map, and you see 40 paces further.', bonus: { mapSpells: ['farsight'], sight: 40 }, price: 800 },
-  silverSignet: { id: 'silverSignet', name: 'Silver Signet', slot: 'trinket', note: 'Bribes cost a third less, and small bands will take your coin and join you.', bonus: { bribes: 0.33, hires: true }, price: 900 },
+  crystalBall: { id: 'crystalBall', name: 'Crystal of Far Sight', slot: 'helm', note: 'You can cast Far Sight on the map, and you see 40 paces further.', bonus: { mapSpells: ['farsight'], sight: 40 }, price: 800, worn: 'You keep it close.' },
+  silverSignet: { id: 'silverSignet', name: 'Silver Signet', slot: 'trinket', note: 'Bribes cost a third less, and small bands will take your coin and join you.', bonus: { bribes: 0.33, hires: true }, price: 900, worn: 'You put it on your finger.' },
   hawthornCrown: {
     id: 'hawthornCrown',
     name: 'The Hawthorn Crown',
@@ -174,6 +178,7 @@ export const ARTIFACTS: Record<ArtifactId, Artifact> = {
     note: 'It gives +15 leadership, and every payday volunteers join your biggest company. Nobody can resist a good drum.',
     bonus: { leadership: 15, volunteers: 15 },
     price: 800,
+    worn: 'Your army marches to it now.',
   },
   surveyorsChain: {
     id: 'surveyorsChain',
@@ -205,6 +210,7 @@ export const ARTIFACTS: Record<ArtifactId, Artifact> = {
     note: 'Somebody won them off a card-sharp who swore they were fair. They give a 12% chance that a blow lands lucky, twice as hard, and a 12% chance that a stack\u2019s spirits win it another turn.',
     bonus: { luck: 0.12, morale: 0.12 },
     price: 700,
+    worn: 'You keep them about you.',
   },
   // Luck and morale, one each: the Aldmoor poachers' charm, and the Fenmarch castellan's pipes.
   rabbitsFoot: {
@@ -229,6 +235,7 @@ export const ARTIFACTS: Record<ArtifactId, Artifact> = {
     note: 'They give a 10% chance that a stack\u2019s spirits win it another turn before the round moves on, if only to get further from the noise. The castellan is very glad to see them go.',
     bonus: { morale: 0.1 },
     price: 500,
+    worn: 'You sling them over your shoulder.',
   },
   // The old King's falconer's last hawk, from his bothy on the heath.
   oldKingsHawk: {
@@ -237,6 +244,7 @@ export const ARTIFACTS: Record<ArtifactId, Artifact> = {
     slot: 'trinket',
     note: 'She flies ahead of you, so you see 80 paces further, and she counts every band you see.',
     bonus: { sight: 80, counts: true },
+    worn: 'She rides on your wrist.',
   },
 };
 

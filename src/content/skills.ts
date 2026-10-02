@@ -169,7 +169,7 @@ export const PERKS: Record<PerkId, Perk> = {
   nightRider: {
     id: 'nightRider',
     name: 'Night Rider',
-    note: 'You ride on after dark, so movement you leave unused today carries over to tomorrow, up to half a day\u2019s ride. The horse has opinions about this.',
+    note: 'You ride on after dark, so movement you leave unused today carries over to tomorrow, up to half a day\u2019s ride. The owls have opinions about this.',
     bonus: { carry: 0.5 },
   },
   gooseWhisperer: { id: 'gooseWhisperer', name: 'Goose Whisperer', note: 'The royal goose likes you, and word gets round. Every villain starts a battle slowed, looking over their shoulder.', bonus: { slows: ['baron', 'witch', 'bramble'] } },

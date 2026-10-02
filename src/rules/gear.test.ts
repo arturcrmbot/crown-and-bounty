@@ -7,7 +7,7 @@ import { createBattle, spellCost } from './battle/battle';
 import { withNewPlaces } from './campaign';
 import { afterVictory } from './fight';
 import { apply, commissionAt, heroInBattle, heroStats, locationById, priceOf, visit, type Card, type GameState, type Result } from './game';
-import { equip, giveArtifact, setLine, unequip, wornSets } from './hero';
+import { equip, foundNote, giveArtifact, setLine, unequip, wornLine, wornSets } from './hero';
 import { mapOf } from './map/maps';
 import { Terrain } from './map/model';
 import { costsFor } from './map/movement';
@@ -25,6 +25,22 @@ const cardOf = (result: Result): Card => {
 };
 const statusOf = (s: GameState, troop: 'swordsmen' | 'crossbowmen' | 'goblins' | 'trolls') =>
   createBattle({ place: 'x', seed: 1, player: s.army, enemy: [{ troop, count: 10 }], hero: heroInBattle(s), obstacles: 0 }).fighters.find((f) => f.side === 'enemy')!.status;
+
+describe('what he does with a find he wears', () => {
+  it('takes it up, puts it on, flies it or keeps it about him, by its kind, and never puts on a loaf (#217)', () => {
+    const found = (id: ArtifactId) => foundNote(giveArtifact(fresh('ranger'), id), id);
+    expect(found('millersLoaf')).toMatch(/^You keep it about you\. Nobody marches/);
+    expect(found('oldBanner')).toMatch(/^Your army marches under it now\./);
+    expect(found('oldKingsHawk')).toMatch(/^She rides on your wrist\./);
+    expect(found('carvingKnife')).toMatch(/^You take it up\./);
+    expect(found('breastplate')).toMatch(/^You put it on\./);
+    expect(found('dwarvenHelm')).toMatch(/^You put it on\./);
+    // Only what goes on his body is put on.
+    for (const a of Object.values(ARTIFACTS)) {
+      if (a.slot !== 'armour' && a.slot !== 'helm') expect(wornLine(a.id), a.id).not.toBe('You put it on.');
+    }
+  });
+});
 
 describe('sets', () => {
   it('Grimsby\u2019s Regalia: with all three worn, his men start every battle slowed', () => {

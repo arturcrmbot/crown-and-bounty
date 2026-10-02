@@ -233,6 +233,27 @@ describe('the old King\u2019s hunt hall', () => {
     expect(cardOf(visit(joined, 'hall')).lines.join(' ')).toMatch(/every one of the old King\u2019s huntsmen has gone with you/);
   });
 
+  it('knows what has happened since: the huntsmen have heard Rook is taken, and the stand sees the track clear once the bears are gone (#217)', () => {
+    const keyed = take(fresh(), 'lodge', 'nail/key');
+    expect(cardOf(choose(keyed, 'hall', 'door/open')!).lines.join(' ')).toMatch(/We\u2019d like a word with him/);
+    const rookTaken: GameState = { ...keyed, flags: { ...keyed.flags, rook: 'taken' } };
+    expect(labels(rookTaken, 'hall')).toEqual(['Open the hall']);
+    const welcomed = choose(rookTaken, 'hall', 'door/welcome')!;
+    expect(cardOf(welcomed).lines.join(' ')).toMatch(/you saw to Rook/);
+    expect(cardOf(welcomed).lines.join(' ')).not.toMatch(/a word with him/);
+    expect(locationById(welcomed.state, 'hall').recruits).toEqual({ troop: 'huntsmen', count: 12, price: 0, restock: 0 });
+    expect(choose(rookTaken, 'hall', 'door/open')).toBeNull();
+    // The bears asleep on the track, and the track once they're gone: one climb or the other, never both.
+    const climb = (state: GameState, choice: string) => choose(state, 'huntStand', `climb/${choice}`);
+    expect(labels(fresh(), 'huntStand')).toEqual(['Climb up to his seat', 'Leave it be']);
+    expect(cardOf(climb(fresh(), 'look')!).lines.join(' ')).toMatch(/something large asleep on the track/);
+    expect(climb(fresh(), 'lookClear')).toBeNull();
+    const cleared = update(fresh(), 'bears', { done: true });
+    expect(labels(cleared, 'huntStand')).toEqual(['Climb up to his seat', 'Leave it be']);
+    expect(cardOf(climb(cleared, 'lookClear')!).lines.join(' ')).toMatch(/clear all the way now/);
+    expect(climb(cleared, 'look')).toBeNull();
+  });
+
   it('lets the huntsmen join a hero with no leadership to spare: they draw no wages, and need none', () => {
     const keyed = take(fresh(), 'lodge', 'nail/key');
     const full = { ...keyed, leadership: leadershipUsed(keyed.army) };
