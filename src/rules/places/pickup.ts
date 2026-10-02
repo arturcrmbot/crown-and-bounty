@@ -1,7 +1,7 @@
 import { applyEffects } from '../effects/core';
 import { heroStats } from '../hero';
 import type { Point } from '../map/geometry';
-import { close, type GameEvent, type GameState, type Location, type Result } from '../state';
+import { close, show, type GameEvent, type GameState, type Location, type Result } from '../state';
 import { aboutWords, ride } from './common';
 import type { PlaceKind } from './kind';
 
@@ -22,12 +22,18 @@ function take(state: GameState, place: Location): Result {
   return { state: taken.state, events: [{ type: 'picked', id: place.id }, ...taken.events] };
 }
 
-/** Whatever lies within reach of where he stands now, he takes in passing. */
+/** Whether taking it now would give him nothing: crystals, and nothing else, with his mana full already. They wait for him (#211). */
+const wasted = (state: GameState, place: Location) => {
+  const g = place.gives ?? {};
+  return Boolean(g.mana) && Object.keys(g).every((k) => k === 'mana') && state.hero.mana >= heroStats(state).maxMana;
+};
+
+/** Whatever lies within reach of where he stands now, he takes in passing, unless it would do him no good yet. */
 export function pickUp(state: GameState, [x, y]: Point): Result {
   let next = state;
   const events: GameEvent[] = [];
   for (const place of state.locations) {
-    if (place.kind !== 'pickup' || place.done || Math.hypot(place.at[0] - x, place.at[1] - y) > REACH) continue;
+    if (place.kind !== 'pickup' || place.done || Math.hypot(place.at[0] - x, place.at[1] - y) > REACH || wasted(next, place)) continue;
     const taken = take(next, place);
     next = taken.state;
     events.push(...taken.events);
@@ -46,9 +52,16 @@ function worthOf(state: GameState, place: Location): number {
 const pickUpLabel = (place: Location) => (/^(A|An) /.test(place.name) ? 'Pick it up' : 'Pick them up');
 
 export const pickup: PlaceKind = {
-  about: (state, place) => ({ title: place.name, lines: aboutWords(state, place), choices: [ride(place, pickUpLabel(place)), close] }),
-  // Ridden up to, it's been taken on the way already, unless it lay where no way comes near enough.
-  arrive: (state, place) => (place.done ? { state, events: [] } : take(state, place)),
+  about: (state, place) =>
+    wasted(state, place)
+      ? { title: place.name, lines: [...aboutWords(state, place), '*Your mana is full already, so they can wait for another day.*'], choices: [close] }
+      : { title: place.name, lines: aboutWords(state, place), choices: [ride(place, pickUpLabel(place)), close] },
+  // Ridden up to, it's been taken on the way already, unless it lay where no way comes near enough, or would do him no good yet.
+  arrive: (state, place) => {
+    if (place.done) return { state, events: [] };
+    if (wasted(state, place)) return { state, events: [show({ title: place.name, lines: ['Your mana is full already, so you leave them where they are for another day.'], choices: [close] }, place.at, place.id)] };
+    return take(state, place);
+  },
   worth: (state, place) => (place.done ? null : worthOf(state, place)),
   bot: (state, place) => (place.done ? state : take(state, place).state),
 };
