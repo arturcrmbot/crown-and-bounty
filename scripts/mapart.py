@@ -153,6 +153,9 @@ FIGURES = {
     'huntsmen': ('units-c', (96, 130, 170, 252), 66), 'heroKnight': ('units-c', (170, 118, 256, 255), 96),
     'heroWizard': ('units-d', (13, 8, 82, 124), 72), 'heroRanger': ('units-d', (98, 14, 170, 125), 72), 'heroCourtier': ('units-d', (178, 6, 243, 125), 72),
     'rook': ('units-d', (170, 138, 254, 252), 68),
+    # The troops and captains that came later (#255), drawn the same way: the outlaws and Darkwood's spiders (units-e).
+    'cutpurses': ('units-e', (12, 25, 81, 128), 62), 'cutpurseCaptain': ('units-e', (94, 14, 161, 129), 68), 'highwaymanCaptain': ('units-e', (181, 8, 243, 129), 70),
+    'poacherCaptain': ('units-e', (13, 132, 82, 250), 69), 'spiders': ('units-e', (80, 172, 170, 245), 50),
 }
 FIGURES['hero'] = FIGURES['heroKnight']
 TROOPS_OUT = os.path.join(ROOT, 'public/assets/troops')

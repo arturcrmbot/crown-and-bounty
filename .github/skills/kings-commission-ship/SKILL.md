@@ -67,9 +67,10 @@ When you do play, try every background at least through its first fights. CI's b
 
 ## Scale bible
 
-The troops and the hero are Battle for Wesnoth's units, whose people stand about 43 px tall in their
-72 px frames (`src/render/scale.ts` holds the numbers). Each unit keeps the size Wesnoth gave it next
-to a person: goblins small, trolls big, knights on horseback wide.
+The troops and Aldric are painted figures (#178, #189, #255): one pose each, cut from Retro Diffusion sheets by
+`npm run mapart` to a height in battle (`FIGURES` in `scripts/mapart.py`), and moved in code. Under them lie Battle
+for Wesnoth's units, which time their blows and stand in until the paintings load (`src/render/scale.ts` holds their
+numbers). Each keeps its size next to a person: goblins small, trolls big, knights on horseback wide.
 
 On the map, one tile is 32 px. Every enemy stack is **one** creature (HoMM2 style) at `MAP_UNIT` 0.9:
 a person about 39 px tall, brightened a touch and inked round so it reads on the grass. Its size
@@ -104,8 +105,10 @@ nothing can reach them.
   and anything else new must load from an old save too (an optional field, say). If a change can't
   keep old saves, stop and say so rather than bump.
 - Browsers only allow sound after a click or key press; M mutes.
-- No image-generation models. The units are Battle for Wesnoth's (`npm run wesnoth`; every file is
-  credited in `public/assets/CREDITS.md`, and the game is GPL-2.0-or-later); all other art, and the
-  sound effects, are made in code. The music is yubatake's MIDI tunes (CC BY 4.0) on GeneralUser
-  GS's instruments, every file credited in `public/assets/CREDITS.md` too. A new unit or frame goes in `src/render/units.ts`, then
-  `npm run wesnoth -- --palette --credits`.
+- Image models only as Artur set them (#178, #255): Retro Diffusion sheets for the map, the battlefield and every
+  troop's, captain's and Aldric's figure, cut by `npm run mapart` (see the mapart skill). A new troop needs its painted
+  figure from a sheet, never Wesnoth's art as it comes, and `test/figures.test.ts` fails without one. Wesnoth's units
+  stay under the paintings (`npm run wesnoth`; every file is credited in `public/assets/CREDITS.md`, and the game is
+  GPL-2.0-or-later), so a new troop still gets its entry in `src/render/units.ts`, then
+  `npm run wesnoth -- --palette --credits`. All other art, and the sound effects, are made in code. The music is
+  yubatake's MIDI tunes (CC BY 4.0) on GeneralUser GS's instruments, every file credited in `public/assets/CREDITS.md` too.
