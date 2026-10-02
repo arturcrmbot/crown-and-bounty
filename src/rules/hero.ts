@@ -1,7 +1,7 @@
 import { ARTIFACTS, artifactPhrase, piecesOf, SETS, slotAcceptsArtifact, slotsForArtifact, type ArtifactId, type ArtifactSlot, type SetId, type Slot } from '../content/artifacts';
 import { BACKGROUNDS, type BackgroundId, type Bonus } from '../content/backgrounds';
 import { FRIENDS } from '../content/friends';
-import { PERKS, RANKS, SKILLS, type PerkId, type SkillId } from '../content/skills';
+import { PERKS, RANKS, SKILLS, WIZARDRY, type PerkId, type SkillId } from '../content/skills';
 import type { MapSpellId, SpellId, StatusId } from '../content/spells';
 import type { TroopId } from '../content/troops';
 import { SHOOTER_MELEE } from './battle/battle';
@@ -327,14 +327,16 @@ export function knowsTrick(state: GameState, b: Bonus): boolean {
 function candidates(state: GameState): string[] {
   const skills = (Object.keys(SKILLS) as SkillId[]).filter((id) => (state.hero.skills[id] ?? 0) < RANKS.length).map((id) => `skill:${id}`);
   const perks = (Object.keys(PERKS) as PerkId[]).filter((id) => !state.hero.perks.includes(id) && !hasTrick(state, id)).map((id) => `perk:${id}`);
-  return [...skills, ...perks];
+  // Wizardry is a wizard's alone (#240).
+  return [...skills, ...perks].filter((o) => BACKGROUNDS[state.hero.background].wizardry || !WIZARDRY.includes(o));
 }
 
 const isTrick = (option: string) => option.startsWith('perk:') && Boolean(PERKS[option.slice(5) as PerkId].trick);
 
 /**
  * Draws three different options (four for a scholar), favouring the background's skills and the
- * skills already learned. One is always a trick while any are left: something that changes how he plays.
+ * skills already learned. One is always one of the background's own skills while any has a rank left,
+ * and one a trick while any are left: something that changes how he plays.
  * `skip` is what he has just learned: its next rank waits for a later level-up, so a skill's ranks come
  * one at a time, not all three from one fight.
  */
@@ -355,6 +357,9 @@ function drawOptions(state: GameState, seed: number, skip?: string): { options: 
     pool.splice(pool.indexOf(chosen), 1);
     options.push(chosen.option);
   };
+  // One of his own skills while any has a rank left, so a wizard's levels make him more of a wizard (#240).
+  const own = pool.filter((p) => p.option.startsWith('skill:') && favours.includes(p.option.slice(6)));
+  if (own.length) take(own);
   const tricks = pool.filter((p) => isTrick(p.option));
   if (tricks.length) take(tricks);
   const wanted = 3 + heroStats(state).choices;

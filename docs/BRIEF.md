@@ -592,3 +592,11 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   has to take the rest. The bridge costs 2,700 gold to pay off, three times what it did. Taming stays before the fight,
   and the Ranger, the hero beasts follow, wins over far more of a pack (half of one as strong as his army, all of one
   two thirds as strong). Taming takes anyone the rest of the day, so it needs half a day left. The bigger design of the Ranger's beasts comes later.
+- **Spells are found, and a Wizard's skills are his own (2 Oct, #240):** Artur: *"You shouldn't start with all these
+  spells... you shouldn't get the amazing spells like the lightning bolt out of the gate."* The Wizard starts with
+  Magic Arrow, a new spell that does half a bolt's damage (10 a point of spell power, for 4 mana), and Bless. The
+  Knight, the Ranger and the Courtier start with none, as might heroes in HoMM2 do, and learn every spell on the map.
+  Every level-up offers one of his background's own three skills while any has a rank left, as well as a trick.
+  Wizardry (Sorcery, Mysticism, Battle Mage and Far Sight) is offered to the Wizard alone. Still to come in #240:
+  Spellcraft, the Wizard's third skill, and scroll stones of three circles on the map, with the Lightning Bolt on one
+  by the river.

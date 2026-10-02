@@ -25,6 +25,6 @@ describe('the first commission briefing', () => {
   });
 
   it('says what he rides out with as lists in words (#115)', () => {
-    expect(storyCard('wizard').lines.join(' ')).toContain('Archers, and Lightning Bolt, Bless, Slow and Haste in your spellbook.');
+    expect(storyCard('wizard').lines.join(' ')).toContain('You ride out with 8 Knights and 22 Archers, and Magic Arrow and Bless in your spellbook.');
   });
 });

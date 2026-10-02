@@ -28,6 +28,9 @@ import type { Display } from './display';
 import type { Screen, SideButton } from './screen';
 
 type Step = { duration: number; elapsed: number; started: boolean; start?: () => void; tick?: (t: number) => void; end?: () => void };
+/** How much of a Magic Arrow's flight passes before it strikes. */
+const MISSILE_FLIGHT = 0.9;
+
 /** What is left of each stack as an action's events play out: its count, and its top troop's health. */
 type Left = Map<number, { count: number; hp: number }>;
 /** What a click on a hex would do, for the stack whose turn it is. */
@@ -974,16 +977,22 @@ export class BattleController implements Screen {
           const colour = look.colour === 'blue' ? BLUE[6] : look.colour === 'red' ? RED[5] : GOLD[6];
           // One bolt or fireball at the target; a sparkle on each stack a spell on a whole side lands on.
           const struck = spell.effect.kind === 'mass' ? victims.map((x) => fighterById(this.battle, x.h.target)) : [target];
+          // A missile flies from whoever cast it, behind his line; the rest come down from the sky.
+          const caster = e.by ?? this.battle.fighters.find((f) => f.side === 'player' && isLeader(f))?.id;
           const shots = struck.map((x) => {
             const [tx, ty] = hexCentre(x.at);
-            return { from: [tx, 0] as [number, number], to: [tx, ty - 10] as [number, number], t: 0, kind: look.kind, color: colour };
+            if (look.kind === 'missile' && caster !== undefined) {
+              const [cx, cy] = this.spot(caster);
+              return { from: [cx, cy - 20] as [number, number], to: [tx, ty - 10] as [number, number], t: 0, kind: 'magic' as const, color: colour };
+            }
+            return { from: [tx, 0] as [number, number], to: [tx, ty - 10] as [number, number], t: 0, kind: look.kind === 'missile' ? ('bolt' as const) : look.kind, color: colour };
           });
           const status = spell.effect.kind === 'status' || spell.effect.kind === 'mass' ? STATUSES[spell.effect.status] : null;
           // A stack turned into something else stays itself till the spell lands, then goes in a puff.
           const changes = status?.look ? victims.map((x) => x.h.target) : [];
           for (const id of changes) v.looks.set(id, before.fighters.find((o) => o.id === id)?.status.map((st) => STATUSES[st].look).find(Boolean) ?? null);
           // A fireball has to fall before it bursts: the sound, the numbers, the flinch and the jolt land with the burst.
-          const land = look.kind === 'fire' ? FIRE_FALL : 0;
+          const land = look.kind === 'fire' ? FIRE_FALL : look.kind === 'missile' ? MISSILE_FLIGHT : 0;
           let landed = false;
           let sinceLanding = 0;
           const impact = () => {
@@ -1030,7 +1039,7 @@ export class BattleController implements Screen {
               play(victims.some((x) => x.h.killed) ? 'thump:heavy' : 'thump:light', this.panAt(this.spot(e.target)[0]));
             }
           };
-          const length = look.kind === 'fire' ? 0.95 : 0.4;
+          const length = look.kind === 'fire' ? 0.95 : look.kind === 'missile' ? 0.55 : 0.4;
           // Stacks it wipes out fall over before the spell is done (#190), together, crying out as
           // they go (two at most, not a whole choir): as the flames thin, or as the bolt strikes.
           const dead = victims.filter((x) => x.dies).map((x) => x.h.target);
