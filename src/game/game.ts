@@ -1,6 +1,6 @@
 import { heard, setAmbience } from '../audio/ambience';
-import { nowPlaying, setMusic, setMusicMood } from '../audio/music';
-import { battleMood, battleTune, CALM } from './tunes';
+import { nowPlaying, setMusic } from '../audio/music';
+import { battleTune } from './tunes';
 import { sting, type StingId } from '../audio/stings';
 import { SCREEN } from '../render/frame';
 import { Transition, type TransitionStyle } from '../render/transition';
@@ -272,10 +272,9 @@ export class Game {
       if (this.transition.done) this.transition = null;
     }
     this.top.update(dt, held);
-    // A battle's music is the villain's theme in his own fight, and follows how the fight goes.
+    // A battle's music is the villain's theme in his own fight.
     const fight = this.top instanceof BattleController ? this.top.battle : null;
     setMusic(fight ? battleTune(fight) : (this.top.music ?? null));
-    setMusicMood(fight ? battleMood(fight) : CALM);
     // On the map (and with the hero screen over it) the land makes its own sounds around the view.
     const map = this.stack[0] instanceof AdventureController && (this.top === this.stack[0] || this.top instanceof HeroController) ? this.stack[0] : null;
     setAmbience(this.top.ambience ?? null, map?.place ?? null);

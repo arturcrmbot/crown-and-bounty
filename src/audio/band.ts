@@ -6,8 +6,8 @@
  * as sound wakes.
  */
 
-export const MELODIC = ['flute', 'oboe', 'clarinet', 'recorder', 'horn', 'harp', 'harpsichord', 'pizzicato', 'glockenspiel', 'guitar', 'strings', 'upright'] as const;
-export const KIT = ['kick', 'stick', 'snare', 'hat', 'tom', 'crash', 'ride', 'tambourine'] as const;
+export const MELODIC = ['flute', 'oboe', 'recorder', 'horn', 'trumpet', 'trombone', 'harp', 'harpsichord', 'guitar', 'bells', 'timpani', 'strings', 'violin', 'viola', 'cello', 'upright'] as const;
+export const KIT = ['kick', 'stick', 'snare', 'tom', 'crash', 'ride'] as const;
 export type Melodic = (typeof MELODIC)[number];
 export type Drum = (typeof KIT)[number];
 export type BandInstrument = Melodic | Drum;
@@ -21,14 +21,18 @@ export const RANGES: Record<Melodic, [low: number, high: number]> = {
   flute: [60, 96],
   recorder: [60, 96],
   oboe: [58, 91],
-  clarinet: [50, 91],
   horn: [41, 77],
+  trumpet: [52, 84],
+  trombone: [40, 72],
   harp: [36, 96],
   harpsichord: [36, 96],
-  pizzicato: [36, 84],
-  glockenspiel: [67, 100],
   guitar: [40, 79],
+  bells: [60, 77],
+  timpani: [36, 57],
   strings: [40, 88],
+  violin: [53, 100],
+  viola: [40, 88],
+  cello: [36, 76],
   upright: [33, 64],
 };
 

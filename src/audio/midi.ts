@@ -1,11 +1,18 @@
 /**
  * Reads a Standard MIDI File into what the band needs: each part (a track, by its name) as notes
- * in seconds, with the tempo changes worked in, and where the music comes round again: the end of
- * the tune, on the nearest bar line.
+ * in seconds, with the tempo changes worked in, how loud the part swells and fades as it plays (its
+ * volume and expression), and where the music comes round again: the end of the tune, on the
+ * nearest bar line.
  */
 
 export type MidiNote = { at: number; length: number; key: number; velocity: number };
-export type MidiPart = { name: string; notes: MidiNote[] };
+/**
+ * A part's swells and fades: [seconds, level] each time its volume (controller 7) or expression
+ * (controller 11) changes, as a gain on the part. 1 is General MIDI's own level (volume 100, full
+ * expression), and each follows the square law notes' velocities do.
+ */
+export type Expression = [at: number, level: number][];
+export type MidiPart = { name: string; notes: MidiNote[]; expression?: Expression };
 export type Midi = {
   parts: MidiPart[];
   /** Where the tune ends and, if it loops, comes round again: the bar line nearest the end of its longest track, in seconds. */
@@ -37,7 +44,10 @@ class Reader {
   text = (n: number) => String.fromCharCode(...this.bytes.subarray(this.at, (this.at += n)));
 }
 
-type Event = { tick: number; kind: 'on' | 'off'; channel: number; key: number; velocity: number };
+type Event = { tick: number; kind: 'on' | 'off' | 'volume' | 'expression'; channel: number; key: number; velocity: number };
+
+/** A part's level from its volume and expression controllers, against General MIDI's defaults (100 and 127). */
+export const levelOf = (volume: number, expression: number) => (volume / 100) ** 2 * (expression / 127) ** 2;
 
 export function readMidi(bytes: Uint8Array): Midi {
   const r = new Reader(bytes);
@@ -97,6 +107,7 @@ export function readMidi(bytes: Uint8Array): Midi {
       const velocity = r.byte();
       if (kind === 0x90 && velocity > 0) events.push({ tick, kind: 'on', channel, key, velocity });
       else if (kind === 0x80 || kind === 0x90) events.push({ tick, kind: 'off', channel, key, velocity: 0 });
+      else if (kind === 0xb0 && (key === 7 || key === 11)) events.push({ tick, kind: key === 7 ? 'volume' : 'expression', channel, key, velocity });
     }
     r.at = end;
     lastTick = Math.max(lastTick, tick);
@@ -122,7 +133,18 @@ export function readMidi(bytes: Uint8Array): Midi {
   for (const { name, events } of raw) {
     const held = new Map<number, Event[]>();
     const notes: MidiNote[] = [];
+    const expression: Expression = [];
+    let [volume, swell] = [100, 127];
     for (const e of events) {
+      if (e.kind === 'volume' || e.kind === 'expression') {
+        if (e.kind === 'volume') volume = e.velocity;
+        else swell = e.velocity;
+        const at = seconds(e.tick);
+        // Two changes at one moment: the later one stands.
+        if (expression.length && expression[expression.length - 1][0] === at) expression.pop();
+        expression.push([at, levelOf(volume, swell)]);
+        continue;
+      }
       const id = e.channel * 128 + e.key;
       if (e.kind === 'on') {
         held.set(id, [...(held.get(id) ?? []), e]);
@@ -131,7 +153,7 @@ export function readMidi(bytes: Uint8Array): Midi {
       const on = held.get(id)?.shift();
       if (on) notes.push({ at: seconds(on.tick), length: seconds(e.tick) - seconds(on.tick), key: on.key, velocity: on.velocity });
     }
-    if (notes.length) parts.push({ name, notes: notes.sort((a, b) => a.at - b.at) });
+    if (notes.length) parts.push({ name, notes: notes.sort((a, b) => a.at - b.at), ...(expression.length ? { expression } : {}) });
   }
   beatsPerBar ||= 4;
   const bar = beatsPerBar * division;
