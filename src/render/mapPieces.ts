@@ -18,6 +18,7 @@ export const PIECE_FEET = {
   mews: 36,
   butts: 29,
   stones: 40,
+  menhir: 35,
   tents: 44,
   cart: 39,
   pack: 24,

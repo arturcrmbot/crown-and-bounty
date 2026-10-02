@@ -10,7 +10,7 @@ import { MINIMAP } from './frame';
 import { MapTiles } from './mapTiles';
 import { Minimap } from './minimap';
 import { hash } from './noise';
-import { GOLD, INK, RED, SILHOUETTE } from './palette';
+import { BLUE, GOLD, INK, NEUTRAL, PARCHMENT, RED, SILHOUETTE, WOOD } from './palette';
 import { animFrames, bodyHeight, everyFrame, STAND, troopFigure, type Figure } from './battleSprites';
 import { heroArtId } from './units';
 import {
@@ -185,6 +185,34 @@ function withGeese(pond: Bitmap, home: number): Bitmap {
   return out;
 }
 
+/** The seal on a scroll stone, by its circle: red wax for the 1st, blue for the 2nd, gold for the 3rd. */
+const SEALS = [RED[3], BLUE[4], GOLD[5]] as const;
+
+/** A standing stone with a scroll bound across its face, sealed in its circle's colour (#240). */
+function withScroll(stone: Bitmap, circle: number): Bitmap {
+  const out = new Bitmap(stone.width, stone.height);
+  out.data.set(stone.data);
+  const w = 18;
+  const [x0, y0] = [Math.floor((stone.width - w) / 2), 13];
+  const body = [PARCHMENT[6], PARCHMENT[5], PARCHMENT[5], PARCHMENT[4], PARCHMENT[2]];
+  const roll = [PARCHMENT[4], PARCHMENT[3], PARCHMENT[2], PARCHMENT[1], PARCHMENT[0]];
+  for (let x = x0; x < x0 + w; x++) {
+    const edge = x === x0 || x === x0 + w - 1;
+    const rolled = x <= x0 + 2 || x >= x0 + w - 3;
+    // The rolled ends stand a pixel proud of the sheet, above and below.
+    const [top, bottom] = rolled ? [y0 - 1, y0 + 5] : [y0, y0 + 4];
+    for (let y = top; y <= bottom; y++) out.set(x, y, edge || y === bottom ? INK : rolled ? roll[Math.min(4, y - top)] : body[y - y0]);
+  }
+  // The cord round it, and the seal over the cord.
+  const mid = x0 + Math.floor(w / 2);
+  for (let y = y0; y <= y0 + 3; y++) out.set(mid - 3, y, WOOD[2]);
+  const seal = SEALS[Math.max(0, Math.min(2, circle - 1))];
+  for (let dy = 0; dy < 4; dy++) for (let dx = -1; dx <= 1; dx++) if (!((dy === 0 || dy === 3) && dx !== 0)) out.set(mid + dx, y0 + dy, seal);
+  for (const [dx, dy] of [[-2, 1], [-2, 2], [2, 1], [2, 2]]) out.set(mid + dx, y0 + dy, INK);
+  out.set(mid, y0 + 1, NEUTRAL[7]);
+  return out;
+}
+
 /** One painted piece standing on another: `top`'s foot at `at` on `base` (the beacon's fire on its hill). */
 function stacked(base: { sprite: Bitmap; foot: number }, top: { sprite: Bitmap; foot: number }, at: Point): { frames: Bitmap[]; foot: number; animated: boolean } {
   const x0 = Math.min(0, at[0] - Math.floor(top.sprite.width / 2));
@@ -218,6 +246,11 @@ function landmark(l: Location, home = 0): { frames: Bitmap[]; foot: number; anim
     if (l.look === 'beacon') {
       const [hill, fire] = [piece('hill'), piece('fire')];
       if (hill && fire) return stacked(hill, fire, [Math.round(hill.sprite.width / 2), 9]);
+    }
+    // A scroll stone (#240): one standing stone, with a scroll bound across its face under a seal of its circle's colour.
+    if (l.look === 'stone1' || l.look === 'stone2' || l.look === 'stone3') {
+      const stone = piece('menhir');
+      if (stone) return { frames: [withScroll(stone.sprite, Number(l.look.slice(5)))], foot: stone.foot, animated: false };
     }
     // The hunt hall is drawn anew once it opens, so it's kept with the places that change.
     if (l.look === 'hall') return art(l.recruits ? 'hallOpen' : 'hallShut', true) ?? drawn(l);

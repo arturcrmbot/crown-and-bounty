@@ -209,6 +209,6 @@ describe('tamed beasts', () => {
     // Beasts follow only as far as his army outweighs them, and the bot tames a pack only when all of it would come. Since the wolves came to guard a chest on the heath (#192), a grown ranger wins a pack of wolves over too.
     const runs = simulate([1, 2, 3, 4, 5, 6, 7, 8], 'ranger');
     expect(runs.every((r) => r.won)).toBe(true);
-    for (const run of runs) for (const line of run.log.filter((l) => l.includes('tamed'))) expect(line).toMatch(/tamed (Wild Boars|Bears|Wolves|Rook)/);
+    for (const run of runs) for (const line of run.log.filter((l) => l.includes('tamed'))) expect(line).toMatch(/tamed (Wild Boars|A Sounder of Boars|Bears|Wolves|Rook)/);
   }, 600_000);
 });

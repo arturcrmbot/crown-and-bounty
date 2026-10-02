@@ -600,5 +600,8 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   Wizardry (Sorcery, Mysticism, Spellcraft, Battle Mage and Far Sight) is offered to the Wizard alone. Spellcraft
   takes Scouting's place among his own three skills (#228's fix): Basic makes his damage spells do 15% more, Advanced
   lays Bless, Haste and Stone Skin on every stack of his at once, and Expert makes his Fireball do 18 a point of spell
-  power, not 12. Still to come in #240: scroll stones of three circles on the map, with the Lightning Bolt on one by
-  the river.
+  power, not 12. Scroll stones stand on the map, as HoMM2's shrines of the 1st, 2nd and 3rd circle
+  do: a standing stone with a scroll bound to it under a seal of red wax, blue wax or gold, that teaches one spell to
+  any hero, or gives one who knows it the notes in its margins (100 experience). Bless's and Magic Arrow's, of the 1st
+  circle, stand by St Aldhelm's shrine and on the edge of the downs. Still to come: the Lightning Bolt's, of the 3rd
+  circle, by the river behind #239's outlaws, and Curse's, of the 2nd, on the heath.

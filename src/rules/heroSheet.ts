@@ -136,6 +136,7 @@ const FINDS_TALLIED: { what: string; is: (l: Location) => boolean; got?: (state:
   { what: 'Chests opened', is: (l) => l.kind === 'chest' },
   { what: 'Things picked up by the way', is: (l) => l.kind === 'pickup' },
   { what: 'Lost geese sent home', is: (l) => l.kind === 'goose' },
+  { what: 'Scroll stones read', is: (l) => /^stone\d$/.test(l.look ?? '') },
   { what: 'Lookouts climbed', is: (l) => Boolean(climbOf(l)), got: (state, l) => Object.keys(climbOf(l)?.effects?.flags ?? {}).some((f) => state.flags?.[f] !== undefined) },
 ];
 

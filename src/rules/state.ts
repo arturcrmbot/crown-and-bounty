@@ -261,6 +261,8 @@ export type PlaceLook =
   | 'abbey' | 'peathut' | 'windmill' | 'stilthut' | 'shrine' | 'camp' | 'cottage' | 'house' | 'stones' | 'range' | 'hall' | 'lodge' | 'cart' | 'mews'
   | 'pack' | 'hamper' | 'campfire' | 'fold' | 'boat' | 'skeps' | 'hayrick' | 'pond' | 'kiln' | 'nest'
   | 'purse' | 'oats' | 'crystals' | 'letter'
+  /** A scroll stone of the 1st, 2nd or 3rd circle (#240). */
+  | 'stone1' | 'stone2' | 'stone3'
   | 'beacon' | 'lonePine' | 'stand' | 'cairn';
 
 /** The campaign so far: which commission this is, how the others went, and how this one began. */
