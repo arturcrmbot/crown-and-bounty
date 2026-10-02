@@ -90,6 +90,32 @@ export function playCommission(start: GameState, map: MapModel, maxSteps = 20000
   const hunted = () => state.locations.find((l) => l.enemy?.trailing && !l.done && winChance(state, l.id, 8) < 0.6);
   /** Enemies it rode up to today and left alone: not again until tomorrow. */
   let passed = { day: state.day, ids: new Set<string>() };
+  /**
+   * The place most worth the ride: its worth for the ride to it. A careful bot's worth of a band takes simulated
+   * fights, so it asks only about the bands whose best worth could still beat the best stop found so far, the
+   * likeliest first. That's the same choice as asking about every band, several times faster (#254).
+   */
+  const bestStop = (): { id: string; route: number[]; score: number } | null => {
+    const stops = state.locations.flatMap((l, index) => {
+      if ((limits.allow && !limits.allow(l)) || passed.ids.has(l.id)) return [];
+      const most = careful && l.enemy ? (l.done ? null : l.kind === 'hideout' ? 5000 : l.enemy.reward + 200) : PLACE_KINDS[l.kind].worth(state, l);
+      if (most === null) return [];
+      const route = planRoute(state, map, l.at, Boolean(l.enemy));
+      if (!route) return [];
+      const ride = (route.length ? routeCosts(state, map, route).at(-1)! : 0) + 15;
+      return [{ l, index, route, ride, most }];
+    });
+    stops.sort((a, b) => b.most / b.ride - a.most / a.ride || a.index - b.index);
+    let best: { id: string; route: number[]; score: number; index: number } | null = null;
+    for (const stop of stops) {
+      if (best && stop.most / stop.ride < best.score) break;
+      const value = careful && stop.l.enemy ? carefulWorth(stop.l) : stop.most;
+      if (value === null) continue;
+      const score = value / stop.ride;
+      if (!best || score > best.score || (score === best.score && stop.index < best.index)) best = { id: stop.l.id, route: stop.route, score, index: stop.index };
+    }
+    return best && { id: best.id, route: best.route, score: best.score };
+  };
   for (let guard = 0; guard < 400 && !state.over && !limits.stop?.(state); guard++) {
     let best: { id: string; route: number[]; score: number } | null = null;
     const shelter = hunted() ? state.locations.filter((l) => l.kind === 'castle' || l.kind === 'village') : [];
@@ -100,17 +126,7 @@ export function playCommission(start: GameState, map: MapModel, maxSteps = 20000
       if (!best || score > best.score) best = { id: l.id, route, score };
     }
     if (passed.day !== state.day) passed = { day: state.day, ids: new Set() };
-    for (const l of best ? [] : state.locations) {
-      if (limits.allow && !limits.allow(l)) continue;
-      if (passed.ids.has(l.id)) continue;
-      const value = careful && l.enemy ? carefulWorth(l) : PLACE_KINDS[l.kind].worth(state, l);
-      if (value === null) continue;
-      const route = planRoute(state, map, l.at, Boolean(l.enemy));
-      if (!route) continue;
-      const cost = route.length ? routeCosts(state, map, route).at(-1)! : 0;
-      const score = value / (cost + 15);
-      if (!best || score > best.score) best = { id: l.id, route, score };
-    }
+    if (!best) best = bestStop();
     if (!best) {
       nextDay();
       continue;
