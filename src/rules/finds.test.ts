@@ -566,6 +566,29 @@ describe('old saves', () => {
     expect(fromAfar(home, 'falconer').lines.join(' ')).toMatch(/gone home to the hunt hall/);
   });
 
+  it('take choices added beside what a place he has seen offered him, and never take one back (#217)', () => {
+    const s = fresh();
+    // The hall and the hunting stand as a save from before #217 has them, seen and still to be opened and climbed.
+    const before = (l: Location): Location => {
+      const drop = l.id === 'hall' ? 'welcome' : 'lookClear';
+      const kept = l.id === 'hall' ? 'open' : 'look';
+      const pages = l.pages!.map((p) => ({ ...p, choices: p.choices.filter((c) => c.id !== drop).map((c) => (c.id === kept ? { ...c, when: undefined } : c)) }));
+      return { ...l, seen: true, pages: JSON.parse(JSON.stringify(pages)) };
+    };
+    const old = { ...s, locations: s.locations.map((l) => (l.id === 'hall' || l.id === 'huntStand' ? before(l) : l)) };
+    const loaded = { ...withNewPlaces(JSON.parse(JSON.stringify(old)) as GameState), flags: { huntKey: true, rook: 'taken' } };
+    expect(cardOf(choose(loaded, 'hall', 'door/welcome')!).lines.join(' ')).toMatch(/you saw to Rook/);
+    expect(choose(loaded, 'hall', 'door/open')).toBeNull();
+    const cleared = update(loaded, 'bears', { done: true });
+    expect(cardOf(choose(cleared, 'huntStand', 'climb/lookClear')!).lines.join(' ')).toMatch(/clear all the way now/);
+    expect(withNewPlaces(withNewPlaces(JSON.parse(JSON.stringify(old)) as GameState))).toEqual(withNewPlaces(JSON.parse(JSON.stringify(old)) as GameState));
+    // A seen place whose offer has changed since keeps what it offered him: the mill's loaf, at its old price.
+    const mill = locationById(s, 'mill');
+    const priced = { ...mill, seen: true, pages: mill.pages!.map((p) => ({ ...p, choices: p.choices.map((c) => ({ ...c, effects: { ...c.effects, gold: -1 } })) })) };
+    const kept = withNewPlaces(JSON.parse(JSON.stringify({ ...s, locations: s.locations.map((l) => (l.id === 'mill' ? priced : l)) })) as GameState);
+    expect(locationById(kept, 'mill').pages).toEqual(JSON.parse(JSON.stringify(priced.pages)));
+  });
+
   it('and a save that is up to date comes back as it was', () => {
     const s = fresh();
     expect(withNewPlaces(s)).toBe(s);

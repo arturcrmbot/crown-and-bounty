@@ -8,7 +8,7 @@ import { generateCommission } from './generate';
 import { unhumbled } from './map/sortie';
 import { heroStats, VETERANS } from './hero';
 import { beginCommission } from './scenario';
-import { addTroops, armyLine, close, coins, fits, leadershipUsed, listed, roll, roman, show, TROOPS, type Army, type BoonId, type Campaign, type Card, type Choice, type GameState, type Heard, type Location, type Result } from './state';
+import { addTroops, armyLine, close, coins, fits, leadershipUsed, listed, roll, roman, show, TROOPS, type Army, type BoonId, type Campaign, type Card, type Choice, type ContentChoice, type GameState, type Heard, type Location, type Page, type Result } from './state';
 
 /** Commissions in a campaign: the hand-made ones, then provinces generated for this campaign. */
 export const CAMPAIGN_LENGTH = 5;
@@ -45,13 +45,30 @@ const ENEMY_WORDS = ['lines', 'threat', 'flees', 'loot', 'tamed', 'parleys', 'sp
 const CAPTAINS_WAYS = ['behaviour', 'range', 'sight', 'wakes', 'bold', 'pace'] as const;
 const pick = <T extends object>(from: T | undefined, keys: readonly (keyof T)[]) => JSON.stringify(keys.map((k) => from?.[k] ?? null));
 
+/** What a choice offers: its name, what it needs and what it does. Its words, and when it shows, can change. */
+const offer = (c: ContentChoice) => JSON.stringify([c.id, c.label, c.needs ?? null, c.effects ?? null]);
+
+/**
+ * Whether a seen place's pages have only grown since the save: every page and choice it offered is
+ * still there, offering the same, and something is new (Mrs Pike's letter, the huntsmen who have
+ * heard Rook is taken, #217). Then it can take the newest pages without taking back an offer.
+ */
+function grown(saved: Page[] | undefined, now: Page[] | undefined): boolean {
+  if (!saved?.length || !now || JSON.stringify(saved) === JSON.stringify(now)) return false;
+  return saved.every((page) => {
+    const newer = now.find((p) => p.id === page.id);
+    return Boolean(newer) && page.choices.every((c) => newer!.choices.some((d) => offer(d) === offer(c)));
+  });
+}
+
 /**
  * Brings a saved commission up to date with its province. Places added since join it (Aldmoor's
  * archery butts); places never leave `locations`, so a missing one is newer than the save. Places
  * the hero hasn't used up yet take the province's newest words and choices (the tower's banner or
  * journal), keeping everything that has happened to them: where they stand, how many they are.
- * One he has seen keeps what it offered him, and only takes the newest words (`text`: what the old
- * delving says from afar once it's open). An enemy keeps the artifact it was carrying.
+ * One he has seen keeps what it offered him: it takes the newest words (`text`: what the old delving
+ * says from afar once it's open), and the newest pages only where they have grown beside it (`grown`).
+ * An enemy keeps the artifact it was carrying.
  */
 export function withNewPlaces(state: GameState): GameState {
   const province = provinceOf(state).locations;
@@ -82,9 +99,11 @@ export function withNewPlaces(state: GameState): GameState {
       return { ...l, name: now.name, text: structuredClone(now.text), enemy: { ...l.enemy!, ...words, army: [...l.enemy!.army, ...structuredClone(captains)] } };
     }
     if (l.seen) {
-      if (pick(l, ['text']) === pick(now, ['text'])) return l;
+      const words = pick(l, ['text']) !== pick(now, ['text']);
+      const pages = grown(l.pages, now.pages);
+      if (!words && !pages) return l;
       changed = true;
-      return { ...l, text: structuredClone(now.text) };
+      return { ...l, ...(words ? { text: structuredClone(now.text) } : {}), ...(pages ? { pages: structuredClone(now.pages) } : {}) };
     }
     let next: Location = l;
     if (!l.enemy && pick(l, WORDS) !== pick(now, WORDS)) next = { ...next, ...Object.fromEntries(WORDS.map((k) => [k, structuredClone(now[k])])) };
