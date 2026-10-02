@@ -173,7 +173,8 @@ describe('where the gear is', () => {
   it('in Aldmoor: the chain in the chest, the banner with the highwaymen, a hat at the shrine, a spyglass in the armoury', () => {
     const chest = apply(fresh(), { type: 'choose', id: 'chest', choice: 'keep' })!;
     expect(chest.state.hero.gear.trinket).toBe('surveyorsChain');
-    const fight = apply(fresh(), { type: 'choose', id: 'highwaymen', choice: 'auto' })!;
+    // The highwaymen are the climb's fourth ring: an army that could take them.
+    const fight = apply({ ...fresh(), army: [{ troop: 'knights', count: 60 }, { troop: 'archers', count: 60 }] }, { type: 'choose', id: 'highwaymen', choice: 'auto' })!;
     expect(cardOf(fight).choices.map((c) => c.label)).toContain('Wear the Black Banner');
     const beaten = apply(fight.state, { type: 'equip', artifact: 'blackBanner' })!.state;
     expect(beaten.hero.gear.banner).toBe('blackBanner');

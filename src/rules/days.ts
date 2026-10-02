@@ -13,13 +13,25 @@ import { again, close, COMMISSION, coins, LAST_DAY, locationById, PAYDAY_EVERY, 
 
 export { ambushCard };
 
-/** A villain recruits on payday; the villain himself stays one. */
+/**
+ * Payday's recruits: every band grows by a seventh through the climb's three weeks, as HoMM2's monsters
+ * do each week (fheroes2's `updateMonstersOnTile`), and a villain at his own rate (`grows`) for five;
+ * whoever leads them stays one. A convoy's escort and a villain's band out of his lair are someone
+ * else's men, who grow at home.
+ */
 function grow(l: Location): Location {
   const e = l.enemy;
-  if (!e?.grows || l.done || (e.grown ?? 0) >= MAX_GROWTH) return l;
-  const army = e.army.map((s) => (TROOPS[s.troop].leadership >= 99 ? s : { ...s, count: Math.round(s.count * (1 + e.grows!)) }));
-  return { ...l, enemy: { ...e, army, grown: (e.grown ?? 0) + 1 } };
+  const rate = e && !l.done && !e.convoy && !e.lair ? (e.grows ?? BAND_GROWTH) : 0;
+  if (!rate || (e!.grown ?? 0) >= (e!.grows ? MAX_GROWTH : BAND_PAYDAYS)) return l;
+  const army = e!.army.map((s) => (TROOPS[s.troop].leadership >= 99 ? s : { ...s, count: Math.round(s.count * (1 + rate)) }));
+  return { ...l, enemy: { ...e!, army, grown: (e!.grown ?? 0) + 1 } };
 }
+
+/** How much every band grows on payday, unless it says otherwise (`grows`): a seventh, as in HoMM2. */
+export const BAND_GROWTH = 1 / 7;
+
+/** Paydays a band goes on growing for: the three weeks of the climb, to the villain's day (docs/BALANCE.md). */
+const BAND_PAYDAYS = 3;
 
 /** Paydays a villain goes on recruiting for. */
 const MAX_GROWTH = 5;

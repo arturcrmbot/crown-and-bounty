@@ -5,7 +5,7 @@ import { COMMISSIONS } from '../content/campaign';
 import { FENMARCH } from '../content/fenmarch';
 import { withNewPlaces } from './campaign';
 import {
-  apply, briefingCard, CAMPAIGN_LENGTH, commissionAt, courtCard, heroStats, leadershipUsed, levelUpCard, locationById, nextArmy, provinceOf, veterans, visit, type GameState,
+  apply, briefingCard, CAMPAIGN_LENGTH, commissionAt, courtCard, heroStats, leadershipUsed, levelUpCard, locationById, nextArmy, provinceOf, veterans, visit, type GameState, type Location,
 } from './game';
 import { gainXp, giveArtifact, learn, unequip } from './hero';
 import { buildMap, CELL } from './map/model';
@@ -190,6 +190,37 @@ describe('the campaign', () => {
     expect(loaded.locations.find((l) => l.id === 'butts')?.recruits).toEqual({ troop: 'archers', count: 12, price: 30 });
     expect(loaded.gold).toBe(123);
     expect(withNewPlaces(played)).toBe(played);
+  });
+
+  it('brings a save from before the climb its bands as the climb has them, and keeps the ones beaten beaten (#239)', () => {
+    const played = { ...newGame(7, ALDMOOR, 'knight'), opening: undefined };
+    const NEW = ['cutpurses', 'outlaws', 'spiders', 'pickets'];
+    // As a save from before the climb has them: no new bands, the old ones small and of one kind, in tiers, with no hero and no ring.
+    const before = (l: Location): Location => {
+      if (!l.enemy?.ring) return l.guard && NEW.includes(l.guard) ? { ...l, guard: undefined } : l;
+      const { ring: _ring, gate: _gate, ...enemy } = l.enemy;
+      return { ...l, at: [l.at[0] + 20, l.at[1]], enemy: { ...enemy, tier: 'band', army: [{ troop: 'bandits', count: 9 }] } as Location['enemy'] };
+    };
+    const old = { ...played, locations: played.locations.filter((l) => !NEW.includes(l.id)).map(before).map((l) => (l.id === 'rustlers' ? { ...l, done: true } : l)) };
+    const loaded = withNewPlaces(JSON.parse(JSON.stringify(old)) as GameState);
+    for (const id of ['poachers', 'patrol', 'diggings', 'wolves', 'bears']) {
+      const band = locationById(loaded, id);
+      const now = locationById(played, id);
+      expect(band.enemy!.army, id).toEqual(now.enemy!.army);
+      expect(band.enemy!.ring, id).toBe(now.enemy!.ring);
+      // Wherever it has got to.
+      expect(band.at, id).toEqual([now.at[0] + 20, now.at[1]]);
+    }
+    expect(locationById(loaded, 'patrol').enemy!.gate).toBe(true);
+    expect(locationById(loaded, 'patrol').enemy!.army).toContainEqual({ troop: 'pike', count: 1, level: 5 });
+    // A band beaten before stays beaten, as it was.
+    expect(locationById(loaded, 'rustlers').done).toBe(true);
+    expect(locationById(loaded, 'rustlers').enemy!.army).toEqual([{ troop: 'bandits', count: 9 }]);
+    // The new bands join, and the chests they camp round are theirs to settle first.
+    for (const id of NEW) expect(locationById(loaded, id).enemy!.ring, id).toBeGreaterThan(0);
+    expect(locationById(loaded, 'riverChest').guard).toBe('outlaws');
+    expect(locationById(loaded, 'lonePine').guard).toBe('spiders');
+    expect(withNewPlaces(loaded)).toBe(loaded);
   });
 });
 

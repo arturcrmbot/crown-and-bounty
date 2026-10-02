@@ -50,8 +50,14 @@ const at = {
 const DELVING_NORTH: Point = [1212, 330];
 const DELVING_SOUTH: Point = [668, 1744];
 
-/** The patrol's size: a gate that holds the bridge for about a week (see `rules/difficulty.ts` and `docs/BALANCE.md`). */
-const PATROL = { swordsmen: 70, crossbowmen: 40 };
+/**
+ * Pike's patrol, holding the old bridge for the Baron: the step ahead in the climb's third ring, too
+ * strong at first, so a player comes back for it, or goes the long way round by the ford (`docs/BALANCE.md`).
+ */
+const PATROL = { swordsmen: 26, pikemen: 17, crossbowmen: 17, menAtArms: 5 };
+
+/** The poachers east of Westmere, in the climb's second ring: their numbers, for the Courtier who hires them all. */
+const POACHERS = { poachers: 49, cutpurses: 28 };
 
 /**
  * Young Pike's letter home, picked up on the bridge road (`letterPike`): carried to his mother's door, she
@@ -858,11 +864,19 @@ export const ALDMOOR: Province = {
       artifact: 'carvingKnife',
       enemy: {
         look: 'soldiers',
-        tier: 'gate',
+        ring: 3,
+        gate: true,
         lines: ['Grimsby\u2019s men wear goose feathers in their helmets. They hold the old bridge, and they are not in a hurry.'],
-        army: [{ troop: 'swordsmen', count: PATROL.swordsmen }, { troop: 'crossbowmen', count: PATROL.crossbowmen }],
+        army: [
+          { troop: 'swordsmen', count: PATROL.swordsmen },
+          { troop: 'pikemen', count: PATROL.pikemen },
+          { troop: 'crossbowmen', count: PATROL.crossbowmen },
+          { troop: 'menAtArms', count: PATROL.menAtArms },
+          { troop: 'pike', count: 1, level: 5 },
+        ],
         reward: 500,
         threat: 'They draw their swords.',
+        lastWords: 'All right, all right! Just don\u2019t tell my mum.',
         parleys: [
           {
             id: 'bribe',
@@ -908,7 +922,7 @@ export const ALDMOOR: Province = {
       done: true,
       enemy: {
         look: 'soldiers',
-        tier: 'band',
+        ring: 3,
         convoy: {
           from: 'patrol',
           share: 0.2,
@@ -917,7 +931,8 @@ export const ALDMOOR: Province = {
           leaves: 'In Westmere, a squad of Pike\u2019s lads is loading the village\u2019s grain onto a cart, for the Baron\u2019s stockade.',
         },
         lines: ['Westmere\u2019s grain is on its way to Grimsby\u2019s stockade, with a squad of Pike\u2019s lads from the bridge to see that it gets there.', '*The carter doesn\u2019t look happy about it. Nor does the ox.*'],
-        army: [{ troop: 'swordsmen', count: 10 }, { troop: 'crossbowmen', count: 6 }],
+        // Its escort is a fifth of the patrol, whoever is left of it, sent off each payday (`setOut`): this is a fifth of it as it starts.
+        army: [{ troop: 'swordsmen', count: 5 }, { troop: 'pikemen', count: 3 }, { troop: 'crossbowmen', count: 3 }, { troop: 'menAtArms', count: 1 }],
         reward: 100,
         threat: 'The carter whips up the ox. Pike\u2019s lads put themselves between you and the grain, rather apologetically.',
         // The rations are the grain kept, so they go in the baggage only once he says whose it is (#226).
@@ -957,13 +972,12 @@ export const ALDMOOR: Province = {
       artifact: 'goldenFeather',
       enemy: {
         look: 'stockade',
-        tier: 'boss',
         // He recruits 3% a payday, five times: enough that waiting costs something, not so much that he runs away from a hero beaten once at his walls.
         grows: 0.03,
         charge: 'Storm the stockade',
         lines: ['A muddy stockade stands deep in Darkwood. Someone inside is honking.'],
-        // Sized to the power budget: a hard fight for a careful player on day 21 (docs/BALANCE.md).
-        army: [{ troop: 'swordsmen', count: 69 }, { troop: 'crossbowmen', count: 36 }, { troop: 'baron', count: 1 }],
+        // The top of the climb: a hard fight for a careful player who reaches it on day 21 (docs/BALANCE.md).
+        army: [{ troop: 'swordsmen', count: 34 }, { troop: 'pikemen', count: 21 }, { troop: 'crossbowmen', count: 22 }, { troop: 'menAtArms', count: 8 }, { troop: 'baron', count: 1, level: 10 }],
         reward: 2000,
         threat: 'The Baron shouts from the palisade, *"Tell the King the goose is staying with me! She likes it here!"*',
         // Raid his dig, take his patrol off the bridge or his huntsman from his wolves, and he rides out with a fifth of his men to meet you.
@@ -1020,11 +1034,11 @@ export const ALDMOOR: Province = {
       artifact: 'rabbitsFoot',
       enemy: {
         look: 'soldiers',
-        tier: 'pest',
+        ring: 2,
         behaviour: 'roam',
         range: 60,
-        lines: ['A band of poachers is carrying off the King\u2019s deer.', '*Their leader keeps touching a rabbit\u2019s foot on a string, for luck.*'],
-        army: [{ troop: 'poachers', count: 16 }],
+        lines: ['A band of poachers is carrying off the King\u2019s deer, and some cutpurses have come along for whatever else is going.', '*Their leader keeps touching a rabbit\u2019s foot on a string, for luck.*'],
+        army: [{ troop: 'poachers', count: POACHERS.poachers }, { troop: 'cutpurses', count: POACHERS.cutpurses }, { troop: 'poacherCaptain', count: 1, level: 2 }],
         reward: 150,
         threat: 'They nock their arrows, a little guiltily.',
         parleys: [
@@ -1032,8 +1046,8 @@ export const ALDMOOR: Province = {
             id: 'hire',
             label: 'Offer them honest work',
             needs: { background: 'courtier' },
-            effects: { done: true, troops: [{ troop: 'poachers', count: 16 }], xp: 60 },
-            lines: ['"Scouting for the Crown? Paid? In advance?" The poachers can\u2019t sign up fast enough.'],
+            effects: { done: true, troops: [{ troop: 'poachers', count: POACHERS.poachers }, { troop: 'cutpurses', count: POACHERS.cutpurses }], xp: 60 },
+            lines: ['"Scouting for the Crown? Paid? In advance?" The poachers can\u2019t sign up fast enough, and the cutpurses sign up twice.'],
           },
           {
             id: 'spare',
@@ -1062,11 +1076,12 @@ export const ALDMOOR: Province = {
       text: { done: ['There are forty holes in the heather, and not one of them is the right one.'] },
       enemy: {
         look: 'soldiers',
-        tier: 'band',
+        ring: 4,
         lines: ['Grimsby\u2019s men are digging on the heath for the old King\u2019s treasure, and a good many more of them are standing guard. They have dug forty holes so far.', '*None of them is the right one.*'],
-        army: [{ troop: 'swordsmen', count: 30 }, { troop: 'crossbowmen', count: 14 }, { troop: 'peasants', count: 30 }],
+        army: [{ troop: 'swordsmen', count: 35 }, { troop: 'menAtArms', count: 10 }, { troop: 'crossbowmen', count: 18 }, { troop: 'peasants', count: 50 }, { troop: 'foreman', count: 1, level: 6 }],
         reward: 400,
         threat: 'The foreman waves his spade at you. *"Dig your own hole!"*',
+        lastWords: 'Forty holes, and not one of them deep enough to hide in.',
         spoils: { flags: { dig: 'raided' } },
         flees: 'The diggers drop their spades and run for Darkwood.',
         loot: 'In the biggest hole you find {gold} of the Baron\u2019s wages, and his orders, pinned to a spade. *"Keep digging. It isn\u2019t gold, so don\u2019t pocket it. You\u2019ll know it when you see it. G."*',
@@ -1081,16 +1096,18 @@ export const ALDMOOR: Province = {
       artifact: 'blackBanner',
       enemy: {
         look: 'soldiers',
-        tier: 'pest',
-        lines: ['Highwaymen stand in a line across the road to the watchtower, under a black banner with a skull on it.'],
-        army: [{ troop: 'bandits', count: 14 }],
-        reward: 200,
+        ring: 4,
+        behaviour: 'roam',
+        range: 90,
+        lines: ['Highwaymen work the road over the heath to the watchtower, under a black banner with a skull on it.', '*The cutpurses and poachers with them do the jobs a highwayman thinks are beneath him.*'],
+        army: [{ troop: 'bandits', count: 37 }, { troop: 'cutpurses', count: 28 }, { troop: 'poachers', count: 25 }, { troop: 'highwaymanCaptain', count: 1, level: 5 }],
+        reward: 300,
         threat: '*"Stand and deliver!"* They stand. Somebody has to deliver.',
         parleys: [
           {
             id: 'toll',
             label: 'Pay their toll',
-            needs: { gold: 120 },
+            needs: { gold: 400 },
             effects: { done: true },
             lines: ['They bite every coin, bow, and melt away into the heather.'],
           },
@@ -1108,11 +1125,11 @@ export const ALDMOOR: Province = {
       done: false,
       enemy: {
         look: 'wolves',
-        tier: 'pest',
+        ring: 2,
         behaviour: 'roam',
         range: 60,
         lines: ['Wild boars are rooting at the edge of the King\u2019s chase.'],
-        army: [{ troop: 'boars', count: 9 }],
+        army: [{ troop: 'boars', count: 36 }],
         reward: 80,
         threat: 'The biggest one lowers its tusks and scrapes the ground.',
         tamed: 'You lay a trail of acorns, and the boars follow it like a procession, all the way into your baggage train. They seem to think it was their idea.',
@@ -1128,9 +1145,9 @@ export const ALDMOOR: Province = {
       done: false,
       enemy: {
         look: 'wolves',
-        tier: 'band',
+        ring: 3,
         lines: ['Bears are asleep across the track to the old King\u2019s lodge.', '*The biggest one is snoring. The trees shake a little.*'],
-        army: [{ troop: 'bears', count: 7 }],
+        army: [{ troop: 'bears', count: 10 }],
         reward: 150,
         threat: 'The biggest bear gets up. It goes on getting up for quite a long time.',
         tamed: 'You sit down in the track, and wait. At dusk the biggest bear comes and sits beside you, and leans. *The others decide that makes you family.*',
@@ -1147,7 +1164,8 @@ export const ALDMOOR: Province = {
       artifact: 'greenwoodCloak',
       enemy: {
         look: 'wolves',
-        tier: 'gate',
+        ring: 5,
+        gate: true,
         // Rook the Huntsman, the Baron's captain (#15): his wolves hold the kennels in week 1, and from week 2 he
         // hunts whoever camps near their ground, if the pack could beat him.
         behaviour: 'hunt',
@@ -1155,7 +1173,7 @@ export const ALDMOOR: Province = {
         sight: 380,
         wakes: { day: 8, news: 'The Baron has told **Rook the Huntsman** to bring you in, and Rook has let his wolves off the leash.' },
         lines: ['Rook the Huntsman and the Baron\u2019s wolves are sitting on the path as if they own it.', '*Rook was the best poacher Aldmoor ever had, until the Baron gave him the old King\u2019s huntsmen\u2019s job.*'],
-        army: [{ troop: 'wolves', count: 100 }, { troop: 'rook', count: 1 }],
+        army: [{ troop: 'wolves', count: 50 }, { troop: 'rook', count: 1, level: 7 }],
         reward: 300,
         threat: 'Rook puts two fingers in his mouth and whistles, once. Every wolf in the pack looks at you.',
         lastWords: 'Don\u2019t tell the Baron! He\u2019ll give my job back to the old King\u2019s lot!',

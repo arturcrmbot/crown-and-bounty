@@ -4,7 +4,8 @@ import type { Location } from '../rules/state';
  * Small things along Aldmoor's rides (#124): wherever a player rides, something worth stopping for is
  * less than a day away, and on the roads there's something about every half day (`rules/map/rides.ts`
  * measures it). They're small on purpose, for the balance's sake: a line of gossip, a scrap of the
- * Baron's orders, a lost pack, a band to fight, pay or dodge. None of them answers a quest.
+ * Baron's orders, a lost pack. None of them answers a quest. The bands here are the climb's (#239),
+ * each in its ring (`ring` in rules/state.ts), as big as the ring says: see `docs/BALANCE.md`.
  */
 export const FINDS: Location[] = [
   // --- Chests (#192): they all look the same, as in King's Bounty, and each holds something different ---
@@ -42,7 +43,31 @@ export const FINDS: Location[] = [
     at: [436, 1276],
     done: false,
     gold: 200,
-    text: { about: ['A chest lies under the pines, green with moss, and its padlock has rusted right through.'] },
+    guard: 'spiders',
+    text: {
+      about: ['A chest lies under the pines, green with moss, and something has spun a web over it as thick as a blanket.'],
+      later: [{ when: { used: 'spiders' }, about: ['A chest lies under the pines, green with moss, and its padlock has rusted right through.'] }],
+    },
+  },
+  // Darkwood's spiders (#239), in the climb's fifth ring: their webs run from the chest under the pines to the lone pine.
+  {
+    id: 'spiders',
+    kind: 'patrol',
+    name: 'Giant Spiders',
+    at: [400, 1250],
+    done: false,
+    enemy: {
+      look: 'wolves',
+      ring: 5,
+      behaviour: 'guard',
+      lines: ['Giant spiders have strung their webs through the western pines, from a mossy old chest to the lone pine.', '*A pack of wolves sits round the edge of the webs, waiting for whatever falls out.*'],
+      army: [{ troop: 'spiders', count: 28 }, { troop: 'wolves', count: 24 }],
+      reward: 150,
+      threat: 'The biggest spider comes down on a thread to look at you, and the wolves get up.',
+      tamed: 'You stand very still in the webs all afternoon. At dusk the biggest spider decides you are not lunch, the rest follow it, and the wolves follow the spiders.',
+      flees: 'The spiders scuttle up into the pines, and the wolves slink off after something easier.',
+      loot: 'Wrapped up in the webs you find {gold}, a pedlar\u2019s hat and a great many buttons.',
+    },
   },
   {
     id: 'riverChest',
@@ -50,7 +75,11 @@ export const FINDS: Location[] = [
     name: 'A Chest by the River',
     at: [1815, 1089],
     done: false,
-    text: { about: ['A small chest sits on a flat stone by the river, dry as a bone, with a wax seal on its lid.'] },
+    guard: 'outlaws',
+    text: {
+      about: ['A small chest with a wax seal on its lid sits on a flat stone by the river, and a band of outlaws is camped round it.'],
+      later: [{ when: { used: 'outlaws' }, about: ['A small chest sits on a flat stone by the river, dry as a bone, with a wax seal on its lid.'] }],
+    },
     pages: [
       {
         id: 'scroll',
@@ -64,6 +93,25 @@ export const FINDS: Location[] = [
         choices: [{ id: 'notes', label: 'Read the notes in its margins', effects: { xp: 100, done: true }, lines: ['The notes are better than the charm.'] }],
       },
     ],
+  },
+  // Outlaws (#239), in the climb's third ring, camped round the chest by the river above the mill.
+  {
+    id: 'outlaws',
+    kind: 'patrol',
+    name: 'Outlaws',
+    at: [1858, 1050],
+    done: false,
+    enemy: {
+      look: 'soldiers',
+      ring: 3,
+      behaviour: 'guard',
+      lines: ['A band of outlaws has made camp by the river, round a little chest with a wax seal on its lid.', '*They have been arguing for a week about who gets to open it.*'],
+      army: [{ troop: 'bandits', count: 35 }, { troop: 'cutpurses', count: 27 }, { troop: 'poachers', count: 32 }, { troop: 'highwaymanCaptain', count: 1, level: 4 }],
+      reward: 250,
+      threat: 'The biggest outlaw puts his boot on the chest. *"Finders keepers."*',
+      flees: 'The outlaws scatter along the riverbank, still arguing.',
+      loot: 'In their camp you find {gold}, and the chest, still sealed.',
+    },
   },
   {
     id: 'downsChest',
@@ -107,11 +155,11 @@ export const FINDS: Location[] = [
     done: false,
     enemy: {
       look: 'wolves',
-      tier: 'band',
+      ring: 4,
       behaviour: 'guard',
       lines: ['A big pack of wolves lies round a gilded chest in the heather, and not one of them is asleep.'],
-      army: [{ troop: 'wolves', count: 45 }],
-      reward: 80,
+      army: [{ troop: 'wolves', count: 61 }],
+      reward: 150,
       threat: 'The biggest wolf gets up, stretches, and shows you all of its teeth.',
       tamed: 'You sit down in the heather and wait. One by one the wolves come and lie down at your feet, and the chest is yours.',
       flees: 'The wolves melt away into the heather.',
@@ -145,11 +193,11 @@ export const FINDS: Location[] = [
     done: false,
     enemy: {
       look: 'wolves',
-      tier: 'band',
+      ring: 3,
       behaviour: 'guard',
       lines: ['A sounder of boars is rooting round a chest under an old oak, and the old sow is watching you.'],
-      army: [{ troop: 'boars', count: 40 }],
-      reward: 60,
+      army: [{ troop: 'boars', count: 56 }],
+      reward: 100,
       threat: 'The old sow lowers her head and scrapes the ground, and the rest of them do as she does.',
       tamed: 'You scatter a pocketful of acorns, and the whole sounder follows them into your baggage train, the old sow first.',
       flees: 'The boars crash away into the chase.',
@@ -158,6 +206,26 @@ export const FINDS: Location[] = [
   },
 
   // --- On the roads ---------------------------------------------------------------------------
+  // Cutpurses (#239), the climb's first ring: the first fight on the King's road, between the castle and St Aldhelm's shrine.
+  {
+    id: 'cutpurses',
+    kind: 'patrol',
+    name: 'Cutpurses',
+    at: [2760, 944],
+    done: false,
+    enemy: {
+      look: 'soldiers',
+      ring: 1,
+      behaviour: 'roam',
+      range: 80,
+      lines: ['Cutpurses are working the King\u2019s road between the castle and St Aldhelm\u2019s shrine, with a few poachers to keep watch for them.', '*The pilgrims coming home from the shrine are a good deal lighter than when they set out.*'],
+      army: [{ troop: 'cutpurses', count: 25 }, { troop: 'poachers', count: 20 }, { troop: 'cutpurseCaptain', count: 1, level: 1 }],
+      reward: 100,
+      threat: 'The smallest of them tips his hat to you. The rest are already behind you.',
+      flees: 'The cutpurses scatter into the hedges.',
+      loot: 'You find {gold} in their pockets, and most of it belonged to the pilgrims.',
+    },
+  },
   {
     id: 'crossroads',
     kind: 'signpost',
@@ -249,6 +317,27 @@ export const FINDS: Location[] = [
       },
     ],
   },
+  // The Baron's pickets (#239), the climb's fifth ring: back from their rabbits, and walking Darkwood's west road.
+  {
+    id: 'pickets',
+    kind: 'patrol',
+    name: 'The Baron\u2019s Pickets',
+    at: [276, 1690],
+    done: false,
+    enemy: {
+      look: 'soldiers',
+      ring: 5,
+      behaviour: 'roam',
+      range: 120,
+      lines: ['The Baron\u2019s pickets are back from their rabbits, and are walking the road through Darkwood in their best plate.', '*Every one of them has a brace of rabbits on his belt, and none of them is sharing.*'],
+      army: [{ troop: 'menAtArms', count: 21 }, { troop: 'pikemen', count: 25 }, { troop: 'crossbowmen', count: 22 }, { troop: 'picketCaptain', count: 1, level: 8 }],
+      reward: 300,
+      threat: '*"Told you he\u2019d come,"* says one of the pickets, and the rest level their pikes.',
+      lastWords: 'I knew we should have stayed out after rabbits.',
+      flees: 'The pickets run for the stockade, dropping rabbits.',
+      loot: 'Among the rabbits they dropped you find {gold}, the pickets\u2019 pay.',
+    },
+  },
   {
     id: 'hamper',
     kind: 'gold',
@@ -318,18 +407,18 @@ export const FINDS: Location[] = [
     done: false,
     enemy: {
       look: 'soldiers',
-      tier: 'pest',
+      ring: 2,
       behaviour: 'roam',
       range: 80,
       lines: ['Rustlers are lying low in a hollow of the downs with a flock that isn\u2019t theirs, waiting for dark.', '*The sheep have a look of Old Tam\u2019s about them.*'],
-      army: [{ troop: 'bandits', count: 9 }],
-      reward: 90,
+      army: [{ troop: 'bandits', count: 39 }, { troop: 'cutpurses', count: 25 }, { troop: 'highwaymanCaptain', count: 1, level: 2 }],
+      reward: 120,
       threat: '*"These are our sheep,"* says the biggest. *"We\u2019ve had them for hours."*',
       parleys: [
         {
           id: 'buy',
           label: 'Buy the ewes back',
-          needs: { gold: 80 },
+          needs: { gold: 150 },
           effects: { done: true, flags: { ewes: true } },
           lines: ['They count your money, count the sheep, decide it comes out about even, and go off over the downs whistling. The ewes set off home to Old Tam\u2019s fold.'],
         },
@@ -386,18 +475,18 @@ export const FINDS: Location[] = [
     done: false,
     enemy: {
       look: 'soldiers',
-      tier: 'pest',
+      ring: 2,
       behaviour: 'roam',
       range: 90,
-      lines: ['The Baron\u2019s tax collectors are going from farm to farm with a very large ledger.', '*They are collecting the taxes the Baron owes the King, from the King\u2019s own farmers.*'],
-      army: [{ troop: 'swordsmen', count: 5 }, { troop: 'crossbowmen', count: 3 }],
-      reward: 120,
+      lines: ['The Baron\u2019s tax collectors are going from farm to farm with a very large ledger, and pikes to make their point.', '*They are collecting the taxes the Baron owes the King, from the King\u2019s own farmers.*'],
+      army: [{ troop: 'swordsmen', count: 29 }, { troop: 'pikemen', count: 23 }, { troop: 'crossbowmen', count: 21 }, { troop: 'sergeant', count: 1, level: 2 }],
+      reward: 150,
       threat: 'The one with the ledger licks his pencil. *"Name? Farm? Arrears?"*',
       parleys: [
         {
           id: 'pay',
           label: 'Pay what they say you owe',
-          needs: { gold: 100 },
+          needs: { gold: 200 },
           effects: { done: true },
           lines: ['The one with the ledger writes you down, underlines you twice, and gives you a receipt with the Baron\u2019s seal on it. They go off to bother somebody else.'],
         },
@@ -552,7 +641,11 @@ export const FINDS: Location[] = [
     name: 'The Lone Pine',
     at: [264, 1224],
     done: false,
-    text: { about: ['One pine stands head and shoulders above the rest of Darkwood, and somebody has nailed rungs up its trunk.'] },
+    guard: 'spiders',
+    text: {
+      about: ['One pine stands head and shoulders above the rest of Darkwood, with rungs nailed up its trunk and webs strung between the rungs.', '*They are not small webs.*'],
+      later: [{ when: { used: 'spiders' }, about: ['One pine stands head and shoulders above the rest of Darkwood, and somebody has nailed rungs up its trunk.'] }],
+    },
     pages: [
       {
         id: 'climb',

@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { ALDMOOR } from '../../content/aldmoor';
 import { newGame } from '../scenario';
+import type { GameState } from '../state';
 import { isExplored } from './fog';
 import { buildMap, cellCentre, cellIndex, Terrain } from './model';
-import { daysAway, facingEnemy, planRoute, routeCosts, stepAlong } from './movement';
+import { facingEnemy, planRoute, routeCosts, stepAlong } from './movement';
 
 const map = buildMap(ALDMOOR);
 
@@ -68,7 +69,9 @@ describe('riding', () => {
     const open = { ...state, locations: state.locations.map((l) => (l.id === 'patrol' ? { ...l, done: true } : l)) };
     const beaten = { ...open, locations: open.locations.map((l) => (l.id === 'wolves' ? { ...l, done: true } : l)) };
     expect(planRoute(state, map, hideout, true)).not.toBeNull();
-    expect(daysAway(beaten, map, hideout, true)!).toBeLessThan(daysAway(open, map, hideout, true)!);
+    // The way past the kennels is shorter than round the wolves, if only a little.
+    const ride = (s: GameState) => routeCosts(s, map, planRoute(s, map, hideout, true)!).at(-1)!;
+    expect(ride(beaten)).toBeLessThan(ride(open));
   });
 
   it('rides up to the patrol on the bridge from his own bank', () => {

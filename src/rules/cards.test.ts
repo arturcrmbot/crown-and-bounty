@@ -110,7 +110,7 @@ describe('the castle', () => {
   it('warns before tamed beasts fall in with the King\u2019s folk', () => {
     const ranger: GameState = { ...newGame(1066, ALDMOOR, 'ranger'), opening: undefined };
     const card = cardOf(visit(ranger, 'boars'));
-    expect(card.choices.map((c) => c.label)).toContain('Tame them (until dusk)');
+    expect(card.choices.some((c) => c.label.startsWith('Tame') && !c.disabled)).toBe(true);
     expect(card.lines).toContain('*Your Knights and Archers won\u2019t march happily beside Wild Boars, and all of them lose 10% morale.*');
   });
 });
@@ -119,7 +119,9 @@ describe('the odds', () => {
   it('lead the card with a verdict in plain words, and the army says what it thinks after the threat', () => {
     const card = cardOf(visit(knight(), 'patrol'));
     expect(card.verdict).toEqual({ odds: 'lose', words: 'You\u2019d likely lose.' });
-    expect(card.lines[1]).toBe('Your army looks at you. Then at them. Then at you.');
+    // After the threat, and what Sergeant Pike's level gives his men (#239).
+    expect(card.lines[1]).toMatch(/^\*\*Sergeant Pike\*\* is level V/);
+    expect(card.lines[2]).toBe('Your army looks at you. Then at them. Then at you.');
     const [fight, sergeants] = card.choices;
     expect(fight).toMatchObject({ label: 'Fight', detail: 'You command every stack yourself.' });
     expect(sergeants).toMatchObject({ label: 'Let the sergeants handle it', detail: 'They fight it out for you, by the same rules, in a moment.' });

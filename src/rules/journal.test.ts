@@ -26,6 +26,16 @@ describe('the journal', () => {
     expect(heardOf(payday.state)).toContainEqual({ who: 'the talk on payday', words: 'More men have joined **Grimsby\u2019s Hideout**.', done: false });
   });
 
+  it('hears once that every band has grown on payday, rather than once a band, and ticks it when they are all beaten (#239)', () => {
+    const payday = endDay({ ...fresh(), day: 7 }).state;
+    const bands = heardOf(payday).filter((h) => h.who === 'the talk on payday' && h.words.includes('every band'));
+    expect(bands).toEqual([{ who: 'the talk on payday', words: 'More have joined every band in Aldmoor since payday.', done: false }]);
+    // The wolves are more wolves, not more men.
+    expect(heardOf(payday).some((h) => h.words.includes('More men have joined **Wolves**'))).toBe(false);
+    const allBeaten = { ...payday, locations: payday.locations.map((l) => (l.enemy?.grown && !l.enemy.grows ? { ...l, done: true } : l)) };
+    expect(heardOf(allBeaten).find((h) => h.words.includes('every band'))?.done).toBe(true);
+  });
+
   it('opens on the commission: the poster pinned in, the reward, the day and the pieces of the old map', () => {
     const card = journalCard({ ...fresh(), day: 5 });
     expect(card.title).toBe('Journal');

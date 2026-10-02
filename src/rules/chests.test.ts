@@ -51,7 +51,7 @@ const WOLVES: Location = {
   name: 'A Pack of Wolves',
   at: [3040, 1100],
   done: false,
-  enemy: { look: 'wolves', tier: 'band', behaviour: 'guard', lines: ['Wolves lie round the chest.'], army: [{ troop: 'wolves', count: 12 }], reward: 40, threat: 'The wolves get up.', flees: 'The wolves run.', loot: 'You find {gold}.' },
+  enemy: { look: 'wolves', ring: 2, behaviour: 'guard', lines: ['Wolves lie round the chest.'], army: [{ troop: 'wolves', count: 12 }], reward: 40, threat: 'The wolves get up.', flees: 'The wolves run.', loot: 'You find {gold}.' },
 };
 const GUARDED: Location = {
   id: 'guardedChest',
@@ -119,10 +119,10 @@ describe('a treasure chest', () => {
 describe('Aldmoor\u2019s chests', () => {
   const chests = ALDMOOR.locations.filter((l) => l.kind === 'chest');
 
-  it('number nine, two of them guarded by a band that stands beside them', () => {
+  it('number nine, four of them guarded by a band that stands beside them', () => {
     expect(chests.length).toBe(9);
     const guarded = chests.filter((c) => c.guard);
-    expect(guarded.length).toBe(2);
+    expect(guarded.length).toBe(4);
     for (const chest of guarded) {
       const guard = ALDMOOR.locations.find((l) => l.id === chest.guard);
       expect(guard?.enemy, chest.id).toBeTruthy();

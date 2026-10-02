@@ -50,7 +50,11 @@ describe('Aldmoor\u2019s finds', () => {
     const wizard = fresh('wizard');
     expect(labels(wizard, 'stoneArrow')).toEqual(['Read the notes in its margins']);
     const there = visit(wizard, 'stoneArrow').state;
-    expect(take(there, 'stoneArrow', 'known/notes').hero.xp - there.hero.xp).toBe(100);
+    const read = take(there, 'stoneArrow', 'known/notes');
+    expect(read.hero.xp - there.hero.xp).toBe(100);
+    // The scroll is used up, once: nobody reads its notes twice, or learns from it after (#239's bot read them all day).
+    for (const used of [read, learned]) expect(labels(used, used === read ? 'stoneArrow' : 'stoneBless')).toEqual(['Close']);
+    expect(choose(read, 'stoneArrow', 'known/notes')).toBeNull();
     // Curse's stone, of the 2nd circle, is the heath wolves' to settle first.
     const guarded = visit(fresh(), 'stoneCurse');
     expect(cardOf(guarded).title).toBe('Wolves');
@@ -469,7 +473,7 @@ describe('Aldmoor\u2019s small finds along the rides (#124)', () => {
     expect(cardOf(visit(start, 'shepherd')).lines.join(' ')).toMatch(/Rustlers/);
     const beaten = beat(start, 'rustlers', { title: 'Victory!', lines: [], reward: 90, xp: 0 }).state;
     const bought = take(start, 'rustlers', 'parley/buy');
-    expect(bought.gold).toBe(start.gold - 80);
+    expect(bought.gold).toBe(start.gold - 150);
     // A courtier talks them round instead, so he's never offered them for hire, and the ewes still go home.
     const courtier = fresh('courtier');
     expect(hireOffer(courtier, locationById(courtier, 'rustlers'))).toBeNull();
@@ -485,7 +489,7 @@ describe('Aldmoor\u2019s small finds along the rides (#124)', () => {
 
   it('the Baron\u2019s tax collectors can be fought, paid off, or audited by a courtier, who can\u2019t hire them', () => {
     const knight = { ...fresh(), gold: 500 };
-    expect(labels(knight, 'collectors')).toContain('Pay what they say you owe (100 gold)');
+    expect(labels(knight, 'collectors')).toContain('Pay what they say you owe (200 gold)');
     expect(labels(knight, 'collectors')).toContain('Ask to see their sums (Courtier) [off]');
     expect(locationById(take(knight, 'collectors', 'parley/pay'), 'collectors').done).toBe(true);
     const courtier = fresh('courtier');
@@ -560,8 +564,8 @@ describe('old saves', () => {
     expect(locationById(loaded, 'mill').pages).toBeUndefined();
     const wolves = locationById(loaded, 'wolves');
     expect(wolves.at).toEqual([260, 704]);
-    // As many wolves as there were, and Rook the Huntsman, who has taken them over since, in his ways.
-    expect(wolves.enemy!.army).toEqual([{ troop: 'wolves', count: 90 }, { troop: 'rook', count: 1 }]);
+    // As many wolves as there were, and Rook the Huntsman, who has taken them over since, in his ways, at his level.
+    expect(wolves.enemy!.army).toEqual([{ troop: 'wolves', count: 90 }, ALDMOOR.locations.find((l) => l.id === 'wolves')!.enemy!.army.find((x) => x.troop === 'rook')]);
     expect(wolves.name).toBe('Rook\u2019s Wolves');
     expect(wolves.enemy!.behaviour).toBe('hunt');
     expect(wolves.enemy!.wakes?.day).toBe(8);
@@ -702,7 +706,7 @@ describe('Aldmoor, bigger', () => {
   it('has Grimsby\u2019s men digging on the heath: raiding them sets the flag Grimsby answers to', () => {
     const start = fresh();
     const dig = locationById(start, 'diggings');
-    expect(dig.enemy?.tier).toBe('band');
+    expect(dig.enemy?.ring).toBe(4);
     const raided = beat(start, 'diggings', { title: 'Victory!', lines: [], reward: dig.enemy!.reward, xp: 0 }).state;
     expect(raided.flags?.dig).toBe('raided');
   });

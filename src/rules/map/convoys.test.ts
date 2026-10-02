@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { ALDMOOR } from '../../content/aldmoor';
 import { apply, choose, endDay, fight, finishFight, heardOf, heroStats, locationById, startFight, wages, type Card, type GameState, type Result } from '../game';
+import { leads } from '../../content/troops';
+import { BAND_GROWTH } from '../days';
 import { newGame } from '../scenario';
 import { pointAlong } from './convoys';
 import { nearest, smooth, type Point } from './geometry';
@@ -8,8 +10,12 @@ import { nearest, smooth, type Point } from './geometry';
 const fresh = (): GameState => ({ ...newGame(1066, ALDMOOR, 'knight'), opening: undefined });
 const cart = (state: GameState) => locationById(state, 'cart');
 const patrol = (state: GameState) => locationById(state, 'patrol').enemy!.army;
-/** The patrol on the bridge as the content has it, and the share of it that goes with the cart. */
-const PATROL = ALDMOOR.locations.find((l) => l.id === 'patrol')!.enemy!.army;
+/**
+ * The patrol on the bridge as it stands after the first payday, grown by a seventh as every band does, Sergeant Pike
+ * at its head (#239), and the share of it that goes with the cart: his men, not him.
+ */
+const PATROL = ALDMOOR.locations.find((l) => l.id === 'patrol')!.enemy!.army.map((x) => (leads(x.troop) ? x : { ...x, count: Math.round(x.count * (1 + BAND_GROWTH)) }));
+const MEN = PATROL.filter((x) => !leads(x.troop));
 const SHARE = ALDMOOR.locations.find((l) => l.id === 'cart')!.enemy!.convoy!.share;
 const road = smooth(cart(fresh()).enemy!.convoy!.route);
 /** How far along its road the cart stands, and how far off it. */
@@ -39,10 +45,10 @@ describe('the grain cart', () => {
     const { state, last } = until(start, 8);
     expect(cart(state).done).toBe(false);
     expect(cart(state).at).toEqual(cart(start).enemy!.convoy!.route[0]);
-    const squad = PATROL.map((x) => ({ troop: x.troop, count: Math.round(x.count * SHARE) }));
+    const squad = MEN.map((x) => ({ troop: x.troop, count: Math.round(x.count * SHARE) }));
     expect(cart(state).enemy!.army).toEqual(squad);
-    // The squad comes from the bridge, which is that much weaker while it's out.
-    expect(patrol(state)).toEqual(PATROL.map((x, i) => ({ troop: x.troop, count: x.count - squad[i].count })));
+    // The squad comes from the bridge, which is that much weaker while it's out, Pike still there.
+    expect(patrol(state)).toEqual(PATROL.map((x) => (leads(x.troop) ? x : { ...x, count: x.count - squad.find((q) => q.troop === x.troop)!.count })));
     expect(last.events.some((e) => e.type === 'added' && e.id === 'cart')).toBe(true);
     // The talk on payday, in the journal rather than on payday's card (#155).
     expect(cardOf(last).lines.join(' ')).not.toMatch(/loading the village\u2019s grain/);
@@ -87,7 +93,7 @@ describe('the grain cart', () => {
     expect(card.lines.join(' ')).toMatch(/instead of drawing their wages/);
     expect(card.lines.join(' ')).not.toMatch(/rations/);
     // The squad never goes back to the bridge.
-    expect(patrol(caught.state)).toEqual(PATROL.map((x) => ({ troop: x.troop, count: x.count - Math.round(x.count * SHARE) })));
+    expect(patrol(caught.state)).toEqual(PATROL.map((x) => (leads(x.troop) ? x : { ...x, count: x.count - Math.round(x.count * SHARE) })));
   });
 
   it('feeds the troops on payday instead of their wages, or goes home to Westmere for its volunteers', () => {

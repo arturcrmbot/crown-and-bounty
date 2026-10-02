@@ -4,6 +4,7 @@ import { battleEnd, createBattle, type BattleState } from '../battle/battle';
 import { apply, choose, describe as about, endDay, finishFight, heroInBattle, locationById, placeOdds, startFight, visit, type GameEvent, type GameState } from '../game';
 import { withNewPlaces } from '../campaign';
 import { newGame } from '../scenario';
+import { listed, troops } from '../state';
 import { riddenOut } from './sortie';
 
 type Point = [number, number];
@@ -119,7 +120,8 @@ describe('Grimsby riding out', () => {
     expect(count(r.state, 'grimsby', 'swordsmen')).toBe(3);
     expect(count(r.state, 'grimsby', 'crossbowmen')).toBe(Math.round(MEN('crossbowmen') * GUARD));
     expect(count(r.state, 'grimsby', 'baron')).toBe(1);
-    expect(cardLines(r).at(-1)).toBe(`*Baron Grimsby has 3 Swordsmen and ${Math.round(MEN('crossbowmen') * GUARD)} Crossbowmen left.*`);
+    const left = locationById(r.state, 'grimsby').enemy!.army.filter((x) => x.troop !== 'baron');
+    expect(cardLines(r).at(-1)).toBe(`*Baron Grimsby has ${listed(left.map((x) => troops(x.troop, x.count)))} left.*`);
     // He can't find the hero, so he goes home, and the 3 go in with him.
     let s: GameState = { ...r.state, hero: { ...r.state.hero, at: [CASTLE[0], CASTLE[1] + 14] } };
     for (let i = 0; i < 12 && !band(s)!.done; i++) s = endDay(s).state;

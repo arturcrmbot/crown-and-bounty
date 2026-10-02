@@ -178,7 +178,8 @@ describe('Curse (#239)', () => {
 describe('your sergeants count an enemy hero\u2019s help (#239)', () => {
   /** A knight and four archers: a sure thing against the highwaymen, until a veteran leads them. */
   const aldmoor = (army: GameState['army'] = [{ troop: 'knights', count: 1 }, { troop: 'archers', count: 4 }]): GameState => ({ ...newGame(5, ALDMOOR, 'knight'), opening: undefined, army });
-  const led = (s: GameState, id: string, captain: Army[number]) => update(s, id, { enemy: { ...locationById(s, id).enemy!, army: [...locationById(s, id).enemy!.army, captain] } });
+  /** The highwaymen as they were before the climb (#239), fourteen of them, led by this captain. */
+  const led = (s: GameState, id: string, captain: Army[number]) => update(s, id, { enemy: { ...locationById(s, id).enemy!, army: [{ troop: 'bandits', count: 14 }, captain] } });
 
   it('in the odds on a fight, and in the battle as it goes', () => {
     const s = aldmoor();
@@ -202,7 +203,8 @@ describe('your sergeants count an enemy hero\u2019s help (#239)', () => {
 
 describe('an enemy hero on the map (#239)', () => {
   const courtier = (): GameState => ({ ...newGame(1066, ALDMOOR, 'courtier'), opening: undefined, gold: 10000, leadership: 600, army: [{ troop: 'knights', count: 40 }, { troop: 'archers', count: 40 }] });
-  const withCaptain = (s: GameState) => update(s, 'highwaymen', { enemy: { ...locationById(s, 'highwaymen').enemy!, army: [...locationById(s, 'highwaymen').enemy!.army, { troop: 'highwaymanCaptain', count: 1, level: 3 }] } });
+  /** The highwaymen as they were before the climb (#239), fourteen of them, with a captain at level III. */
+  const withCaptain = (s: GameState) => update(s, 'highwaymen', { enemy: { ...locationById(s, 'highwaymen').enemy!, army: [{ troop: 'bandits', count: 14 }, { troop: 'highwaymanCaptain', count: 1, level: 3 }] } });
   const cardOf = (r: Result) => r.events.flatMap((e) => (e.type === 'card' ? [e.card] : []))[0];
 
   it('a Courtier who hires his band buys the men, and their hero, left with nobody, is taken', () => {

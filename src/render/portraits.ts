@@ -69,6 +69,8 @@ const RECIPES: Record<Exclude<PortraitId, 'goose'>, Recipe> = {
   rook: { skin: SKIN, hair: DARK, hat: 'feathercap', hatColour: [LEAF[0], LEAF[1], EARTH[2], EARTH[4]], plume: [BLUE[1], INK], mask: [RED[1], RED[2], RED[3], RED[4]], clothes: [EARTH[1], EARTH[2], EARTH[3], EARTH[4]], eyes: GOLD[5], mood: 'sly' },
   // The Foreman of Grimsby's dig (#239), as Wesnoth's Thug: cropped grey hair, a great grey moustache and a leather jerkin.
   foreman: { skin: SKIN, hair: GREY, beard: 'moustache', beardColour: GREY, hat: 'none', clothes: [EARTH[0], EARTH[1], EARTH[2], EARTH[3]], collar: 'none', eyes: EARTH[2], mood: 'stern' },
+  // Captain Warren of the Baron's pickets (#239), as Wesnoth's Shock Trooper: a plain dark helm, a black moustache and plate.
+  warren: { skin: SKIN, hair: DARK, beard: 'moustache', beardColour: DARK, hat: 'helm', bare: true, hatColour: [SLATE[1], SLATE[3], STONE[3], STONE[5]], clothes: [STONE[1], STONE[2], STONE[3], STONE[5]], collar: 'mail', eyes: EARTH[2], mood: 'stern' },
 };
 
 const inEllipse = (x: number, y: number, cx: number, cy: number, rx: number, ry: number) => ((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2 <= 1;

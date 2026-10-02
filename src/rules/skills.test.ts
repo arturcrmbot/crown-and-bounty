@@ -298,8 +298,8 @@ describe('Diplomacy', () => {
   });
 
   it('Advanced: small bands take his coin; Expert: gatekeepers too, at six times the price', () => {
-    // An army more than twice as strong as the patrol, so that every one of them would come over.
-    const rich = (s: GameState) => ({ ...s, gold: 40000, leadership: 900, army: [{ troop: 'knights' as const, count: 80 }, { troop: 'archers' as const, count: 100 }] });
+    // An army more than twice as strong as the patrol, so that every one of them would come over, with room in his line for all four of its companies.
+    const rich = (s: GameState) => ({ ...s, gold: 40000, leadership: 1100, army: [{ troop: 'knights' as const, count: 160 }] });
     expect(hireOffer(rich(skilled({ diplomacy: 1 })), locationById(fresh(), 'highwaymen'))).toBeNull();
     const advanced = rich(skilled({ diplomacy: 2 }));
     // Three gold for every point of their power.

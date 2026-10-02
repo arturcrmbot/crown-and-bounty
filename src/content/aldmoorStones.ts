@@ -7,7 +7,7 @@ const CIRCLES = { 1: ['first', 'red wax'], 2: ['second', 'blue wax'], 3: ['third
 /**
  * A scroll stone (#240), as HoMM2's shrines of the 1st, 2nd and 3rd circle: a standing stone with a
  * scroll bound to it that teaches one spell, to any hero. One who knows the spell already reads the
- * notes in its margins instead, as at the river chest.
+ * notes in its margins instead, as at the river chest. Either way the scroll is used up, once.
  */
 export function scrollStone(id: string, at: Location['at'], spell: SpellId, circle: 1 | 2 | 3, guard?: string): Location {
   const [nth, seal] = CIRCLES[circle];
@@ -27,12 +27,13 @@ export function scrollStone(id: string, at: Location['at'], spell: SpellId, circ
     pages: [
       {
         id: 'scroll',
-        when: { notSpell: spell },
+        when: { notSpell: spell, notUsed: id },
         lines: [`You break the seal of ${seal}. The scroll on the stone teaches a spell, **${name}**. ${SPELLS[spell].note}`],
         choices: [{ id: 'learn', label: `Learn ${name}`, effects: { spell, done: true }, lines: ['You read the words aloud, and the scroll crumbles to dust as they go into your memory.'] }],
       },
       {
         id: 'known',
+        when: { notUsed: id },
         lines: [`You break the seal of ${seal}. The scroll teaches **${name}**, which you know already, and somebody has filled its margins with notes.`],
         choices: [{ id: 'notes', label: 'Read the notes in its margins', effects: { xp: 100, done: true }, lines: ['The notes are better than the spell.'] }],
       },

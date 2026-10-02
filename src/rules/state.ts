@@ -41,8 +41,14 @@ export type Enemy = {
   spoils?: Effects;
   /** Story flags its leader's capture sets, however he's taken: his band beaten, or won over from under him. */
   taken?: Record<string, FlagValue>;
-  /** How hard they are meant to be, for the balance checks: see `rules/difficulty.ts`. */
-  tier?: Tier;
+  /**
+   * Where they stand in the climb (`docs/BALANCE.md`), by the ride from the start: ring 1 round the
+   * castle, met on days 1 and 2, out to ring 5, Darkwood, on days 12 to 20 (`RINGS` in
+   * `rules/difficulty.ts`). The villain's lair is the top of it.
+   */
+  ring?: Ring;
+  /** They hold a way through (the old bridge, the kennels): only a diplomat can hire them, and dearly, and the bot fights them only when it's sure. */
+  gate?: boolean;
   /**
    * What they do at night. `guard` holds its ground (the default). `roam` wanders within `range` of
    * `home`. `hunt` roams too, but comes for a weaker hero who strays into its territory.
@@ -58,7 +64,10 @@ export type Enemy = {
   bold?: boolean;
   /** Movement points it has in a night, when it rides instead of walking at its slowest troop's pace. */
   pace?: number;
-  /** A share more troops every payday, up to five times: a villain recruiting while you dawdle. */
+  /**
+   * A share more troops every payday, up to five times: a villain recruiting while you dawdle. Every
+   * other band grows by a seventh for three paydays (`BAND_GROWTH` in rules/days.ts), as HoMM2's do each week.
+   */
   grows?: number;
   grown?: number;
   /** Nights left before a hunter that has fallen on the camp hunts again. */
@@ -129,10 +138,11 @@ export type Sortie = {
 };
 
 /**
- * How hard an enemy is meant to be: a `pest` is an easy first fight, a `band` a fair one, a `gate`
- * too strong at first (explore, grow, come back), and a `boss` needs the whole loop.
+ * The climb's five rings, by the ride from the start (`docs/BALANCE.md`): round the castle, the fields
+ * and the downs, the river and the chase, the heath and the crags, and Darkwood. In each, most bands
+ * are a fair fight a careful player wins with losses on the ring's days, and about one is a step ahead.
  */
-export type Tier = 'pest' | 'band' | 'gate' | 'boss';
+export type Ring = 1 | 2 | 3 | 4 | 5;
 
 /**
  * What a choice asks of the hero. Who he was, what he knows, what he carries and what has happened

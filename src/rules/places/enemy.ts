@@ -103,8 +103,8 @@ export function hireOffer(state: GameState, place: Location): HireOffer | null {
   const foe = place.enemy;
   const s = heroStats(state);
   if (!foe || place.done || place.kind === 'hideout' || !s.hires) return null;
-  // Small fry sell out to anyone who hires; gatekeepers only to a diplomat, and dearly.
-  const small = foe.tier === 'pest' || foe.tier === 'band';
+  // Small fry in the climb sell out to anyone who hires; those who hold a way through, and bands outside the climb, only to a diplomat, and dearly.
+  const small = Boolean(foe.ring) && !foe.gate;
   if (!small && !s.hiresGates) return null;
   if (foe.lair || menOf(foe.army).some((t) => !TROOPS[t.troop].wage)) return null;
   // Content with its own offer for this sort of hero knows better.
@@ -346,7 +346,7 @@ export function worthAFight(state: GameState, place: Location): boolean {
   if (!foe || place.done || riddenOut(state, place)) return false;
   const odds = winChance(state, place.id, 8);
   if (place.kind === 'hideout' && ((state.day > 50 && odds >= 0.5) || (state.day > 75 && odds >= 0.25))) return true;
-  const sure = foe.tier === 'gate' || place.kind === 'hideout';
+  const sure = Boolean(foe.gate) || place.kind === 'hideout';
   return odds >= (place.kind === 'hideout' ? 0.85 : 0.9) && (!sure || winChance(state, place.id, 16) >= 0.95);
 }
 
