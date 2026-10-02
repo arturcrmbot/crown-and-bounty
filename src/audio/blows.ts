@@ -1,19 +1,24 @@
 /**
- * The sounds of a fight, by kind of troop: the blow each strikes (a pitchfork's knock, a sword's
- * swish and cut, a wolf's snarl and snap, a troll's fist like a falling tree), the shot each looses
- * and the sound of it landing, the cry each gives when it's hurt and when it falls, and its feet as
- * it crosses the field. A blow on plate or mail rings. Which troop makes which is `TROOP_SOUNDS`.
+ * The sounds of a fight, by kind of troop (#257: recorded, by people). The blow each strikes is its
+ * own Battle for Wesnoth unit's weapon (a pitchfork's jab, a sword's cut, a wolf's bite, a troll's
+ * club), landing on flesh or, on a troop in steel, on armour (Will Leamon's hits); the shot each
+ * looses and the sound of it landing; the cry each gives when it's hurt and when it falls, and the
+ * body falling after it; its feet as it crosses the field; and the weight under a blow, as heavy as
+ * what it did. Which troop makes which is `TROOP_SOUNDS`; the recordings and how they're cut are
+ * `scripts/sfx.py`, and each is credited in `public/assets/CREDITS.md`.
  */
 import type { TroopId } from '../content/troops';
 import type { EffectDef, Loudness } from './effects';
-import { burst, crackle, rand, ring, STEEL, swish, tone, voice, WOOD } from './synth';
+import { playSample } from './samples';
 
-export type BlowKind = 'fork' | 'blade' | 'lance' | 'bite' | 'club' | 'fist' | 'spear' | 'tusk' | 'dagger' | 'staff';
+export type BlowKind = 'fork' | 'blade' | 'lance' | 'bite' | 'club' | 'mace' | 'fist' | 'spear' | 'tusk' | 'dagger' | 'staff';
 export type ShotKind = 'arrow' | 'quarrel' | 'hex' | 'magic';
-export type CryKind = 'man' | 'woman' | 'wolf' | 'goblin' | 'troll' | 'boar';
+export type CryKind = 'man' | 'woman' | 'wolf' | 'goblin' | 'spider' | 'troll' | 'bear' | 'boar';
 export type FeetKind = 'boots' | 'hooves' | 'paws' | 'stomp' | 'trotters' | 'patter';
+/** What a blow or a shot lands as: a cut, a crushing blow, a point going in, or a punch. */
+export type HitKind = 'sword' | 'hammer' | 'pierce' | 'punch';
 
-/** What a troop sounds like in a fight: its blow, its cry and its feet, and whether blows ring on its armour. Its shot is its missile (see `render/units.ts`). */
+/** What a troop sounds like in a fight: its blow, its cry and its feet, and whether it wears steel, which blows land on. Its shot is its missile (see `render/units.ts`). */
 export type TroopSounds = { blow: BlowKind; cry: CryKind; feet: FeetKind; armour?: boolean };
 
 export const TROOP_SOUNDS: Record<TroopId, TroopSounds> = {
@@ -31,20 +36,21 @@ export const TROOP_SOUNDS: Record<TroopId, TroopSounds> = {
   poachers: { blow: 'dagger', cry: 'man', feet: 'boots' },
   bandits: { blow: 'club', cry: 'man', feet: 'boots' },
   boars: { blow: 'tusk', cry: 'boar', feet: 'trotters' },
-  // A bear bites like a wolf, roars like a troll, and pads about on big soft paws.
-  bears: { blow: 'bite', cry: 'troll', feet: 'paws' },
+  // A bear bites like a wolf, roars as Wesnoth's bear does, and pads about on big soft paws.
+  bears: { blow: 'bite', cry: 'bear', feet: 'paws' },
   huntsmen: { blow: 'dagger', cry: 'man', feet: 'boots' },
   rook: { blow: 'dagger', cry: 'man', feet: 'boots' },
   pikemen: { blow: 'spear', cry: 'man', feet: 'boots', armour: true },
-  menAtArms: { blow: 'club', cry: 'man', feet: 'boots', armour: true },
+  // Men-at-arms carry maces, as Wesnoth's Heavy Infantrymen do.
+  menAtArms: { blow: 'mace', cry: 'man', feet: 'boots', armour: true },
   cutpurses: { blow: 'dagger', cry: 'man', feet: 'boots' },
-  // A giant spider bites, screeches like a goblin, and patters about on all eight feet.
-  spiders: { blow: 'bite', cry: 'goblin', feet: 'patter' },
+  // A giant spider bites, hisses as Wesnoth's does, and patters about on all eight feet.
+  spiders: { blow: 'bite', cry: 'spider', feet: 'patter' },
   // The enemy's heroes (#239) strike no blows from behind their line, but sound like what they carry.
   sergeant: { blow: 'blade', cry: 'man', feet: 'boots', armour: true },
   pike: { blow: 'spear', cry: 'man', feet: 'boots', armour: true },
   foreman: { blow: 'club', cry: 'man', feet: 'boots' },
-  picketCaptain: { blow: 'club', cry: 'man', feet: 'boots', armour: true },
+  picketCaptain: { blow: 'mace', cry: 'man', feet: 'boots', armour: true },
   cutpurseCaptain: { blow: 'dagger', cry: 'man', feet: 'boots' },
   highwaymanCaptain: { blow: 'club', cry: 'man', feet: 'boots' },
   poacherCaptain: { blow: 'dagger', cry: 'man', feet: 'boots' },
@@ -54,334 +60,117 @@ export const TROOP_SOUNDS: Record<TroopId, TroopSounds> = {
   heroCourtier: { blow: 'blade', cry: 'man', feet: 'boots' },
 };
 
-/** A blow's swing leads in: this long after it starts, it lands, and the armour rings and the cry comes after that. */
+/** A blow's swing leads in: this long after it starts, it lands, and the hit, the weight and the cry come with it. */
 export const CONTACT = 0.05;
 
-type Play = EffectDef['play'];
-
-/** Each blow: the swing through the air, then what it sounds like as it lands `CONTACT` later. */
-const BLOWS: Record<BlowKind, Play> = {
-  // A pitchfork: a short jab, the knock of its shaft, and its tines rattling.
-  fork: (ctx, dest, at) => {
-    swish(ctx, dest, at, 0.06, 1500, 700, 0.25);
-    const t = at + CONTACT;
-    ring(ctx, dest, t, rand(290, 350), WOOD, 0.14);
-    burst(ctx, dest, t, 0.12, 'lowpass', 700, 0.55, 1, 1, 0.004);
-    for (const d of [0, 0.013, 0.027]) burst(ctx, dest, t + d, 0.012, 'bandpass', 3000, 0.3, 1, 2);
-  },
-  // A sword: a swish, the edge biting, and the weight of the cut behind it.
-  blade: (ctx, dest, at) => {
-    swish(ctx, dest, at, 0.07, 2800, 1000, 0.35, 1.5);
-    const t = at + CONTACT;
-    burst(ctx, dest, t, 0.05, 'bandpass', 2500, 0.6, 0.7, 1);
-    burst(ctx, dest, t + 0.004, 0.13, 'lowpass', 900, 0.6, 1, 1, 0.004);
-    tone(ctx, dest, t + 0.006, 170, 0.12, 0.4, 'sine', 0.45, 0.004);
-  },
-  // A lance at the gallop: the crash of horse and man, and the shaft splintering.
-  lance: (ctx, dest, at) => {
-    swish(ctx, dest, at, 0.07, 900, 400, 0.3);
-    const t = at + CONTACT;
-    tone(ctx, dest, t, 120, 0.25, 0.9, 'sine', 0.4, 0.003);
-    burst(ctx, dest, t, 0.2, 'lowpass', 600, 0.9, 0.5);
-    crackle(ctx, dest, t, 0.13, 0.15, 700, 0.5, 'bandpass', 2200);
-    ring(ctx, dest, t, rand(170, 200), WOOD, 0.4);
-  },
-  // A wolf: a snarl, and the jaws snapping shut.
-  bite: (ctx, dest, at) => {
-    voice(ctx, dest, at, { pitch: [[0, 95], [1, 80]], length: CONTACT + 0.04, vowel: [500, 1400, 2600], growl: [28, 0.8], breath: 0.6, volume: 0.8 });
-    const t = at + CONTACT;
-    burst(ctx, dest, t, 0.02, 'bandpass', 3000, 0.5, 1, 1.5);
-    // The jaws ring a moment after the snap: together they'd crest near full scale (#208).
-    ring(ctx, dest, t + 0.004, rand(1600, 1800), [[1, 1, 0.025], [2.3, 0.5, 0.015]], 0.25);
-    burst(ctx, dest, t + 0.005, 0.1, 'lowpass', 600, 0.55, 1, 1, 0.004);
-  },
-  // A cudgel: a heavy swing, and a dull thud with the knock of the wood in it.
-  club: (ctx, dest, at) => {
-    swish(ctx, dest, at, 0.08, 1300, 500, 0.3);
-    const t = at + CONTACT;
-    tone(ctx, dest, t, 130, 0.14, 0.8, 'sine', 0.45, 0.003);
-    burst(ctx, dest, t, 0.13, 'lowpass', 450, 0.8, 1, 1, 0.004);
-    ring(ctx, dest, t, rand(210, 260), WOOD, 0.3);
-  },
-  // A troll's fist: a great arm swinging, a boom like a falling tree, a crunch, and the ground shaking.
-  fist: (ctx, dest, at) => {
-    swish(ctx, dest, at, 0.09, 700, 250, 0.35);
-    const t = at + CONTACT;
-    tone(ctx, dest, t, 85, 0.32, 1, 'sine', 0.4, 0.003);
-    burst(ctx, dest, t, 0.28, 'lowpass', 260, 1, 0.6);
-    crackle(ctx, dest, t, 0.1, 0.1, 700, 0.35, 'bandpass', 1400);
-    burst(ctx, dest, t + 0.02, 0.4, 'lowpass', 120, 0.5);
-  },
-  // A goblin's spear: a quick jab, a thin point going in.
-  spear: (ctx, dest, at) => {
-    swish(ctx, dest, at, 0.05, 3000, 1600, 0.5);
-    const t = at + CONTACT;
-    burst(ctx, dest, t, 0.1, 'lowpass', 900, 1.2, 1, 1, 0.004);
-    ring(ctx, dest, t, rand(1100, 1300), [[1, 1, 0.02], [2.6, 0.4, 0.012]], 0.22);
-  },
-  // A boar: a grunt, and its tusks going in low.
-  tusk: (ctx, dest, at) => {
-    voice(ctx, dest, at, { pitch: [[0, 110], [1, 85]], length: CONTACT + 0.05, vowel: [400, 1000, 2400], growl: [45, 0.9], breath: 0.4, volume: 0.9 });
-    const t = at + CONTACT;
-    tone(ctx, dest, t, 150, 0.12, 0.7, 'sine', 0.45, 0.003);
-    burst(ctx, dest, t, 0.1, 'lowpass', 550, 0.8);
-  },
-  // A knife: a quick, high swish and a cut.
-  dagger: (ctx, dest, at) => {
-    swish(ctx, dest, at, 0.05, 4000, 2000, 0.7, 1.8);
-    const t = at + CONTACT;
-    burst(ctx, dest, t, 0.05, 'bandpass', 3500, 1, 0.7, 1.2);
-    burst(ctx, dest, t + 0.004, 0.09, 'lowpass', 900, 0.9, 1, 1, 0.004);
-  },
-  // A staff: a swing, and the crack of hard wood.
-  staff: (ctx, dest, at) => {
-    swish(ctx, dest, at, 0.07, 1800, 800, 0.3);
-    const t = at + CONTACT;
-    ring(ctx, dest, t + 0.004, rand(470, 540), WOOD, 0.15);
-    burst(ctx, dest, t, 0.06, 'bandpass', 1800, 0.45, 1, 1.2, 0.004);
-    burst(ctx, dest, t + 0.008, 0.14, 'lowpass', 800, 0.45, 1, 1, 0.006);
-  },
+/** What each blow lands as. */
+export const BLOW_HITS: Record<BlowKind, HitKind> = {
+  fork: 'pierce',
+  blade: 'sword',
+  lance: 'punch',
+  bite: 'pierce',
+  club: 'hammer',
+  mace: 'hammer',
+  fist: 'punch',
+  spear: 'pierce',
+  tusk: 'pierce',
+  dagger: 'sword',
+  staff: 'hammer',
 };
 
-/** Each shot leaving: a bowstring, a crossbow's latch, a hex, a mage's bolt. */
-const LOOSE: Record<ShotKind, Play> = {
-  // The string's twang and thrum, and the arrow hissing away.
-  arrow: (ctx, dest, at) => {
-    burst(ctx, dest, at, 0.006, 'bandpass', 2500, 0.5, 1, 1);
-    tone(ctx, dest, at, rand(170, 190), 0.09, 0.4, 'triangle', 0.8, 0.002);
-    tone(ctx, dest, at, 360, 0.05, 0.12, 'sawtooth', 0.8, 0.002);
-    burst(ctx, dest, at, 0.25, 'bandpass', 2600, 0.25, 0.5, 2, 0.02);
-  },
-  // The latch's clack, a heavy string, and the bolt away, faster than an arrow.
-  quarrel: (ctx, dest, at) => {
-    burst(ctx, dest, at, 0.01, 'bandpass', 2600, 0.9, 1, 3);
-    ring(ctx, dest, at, 1900, [[1, 1, 0.03], [2.1, 0.5, 0.02]], 0.25);
-    tone(ctx, dest, at, 120, 0.08, 0.5, 'triangle', 0.7, 0.002);
-    burst(ctx, dest, at + 0.01, 0.16, 'bandpass', 3000, 0.25, 0.5, 2, 0.01);
-  },
-  // A hex: a warbling whine that sinks, and a hiss like a pot boiling over.
-  hex: (ctx, dest, at) => {
-    voice(ctx, dest, at, { pitch: [[0, 420], [1, 180]], length: 0.35, vowel: [], quaver: [11, 0.06], breath: 0.5, volume: 1, wave: 'triangle', attack: 0.05 });
-    burst(ctx, dest, at, 0.35, 'bandpass', 1200, 0.2, 2, 3, 0.1);
-  },
-  // A mage's bolt: a crackle of lightning, falling, over a bright shimmer.
-  magic: (ctx, dest, at) => {
-    tone(ctx, dest, at, 1400, 0.2, 0.25, 'sawtooth', 0.25, 0.003);
-    crackle(ctx, dest, at, 0.2, 0.2, 1500, 0.4, 'bandpass', 3500, 0.7);
-    tone(ctx, dest, at, 2100, 0.25, 0.08, 'sine', 1.5);
-  },
-};
+/** What each shot lands as, if anything: a spell's bolt lands as itself. */
+export const SHOT_HITS: Record<ShotKind, HitKind | null> = { arrow: 'pierce', quarrel: 'pierce', hex: null, magic: null };
 
-/** Each shot landing: an arrow's thock, a bolt's thunk, a hex bubbling, a bolt bursting. */
-const LAND: Record<ShotKind, Play> = {
-  arrow: (ctx, dest, at) => {
-    burst(ctx, dest, at, 0.09, 'bandpass', 1800, 1.2, 1, 1.5, 0.004);
-    ring(ctx, dest, at, rand(560, 640), [[1, 1, 0.05], [2.4, 0.4, 0.03]], 0.25);
-    burst(ctx, dest, at + 0.004, 0.09, 'lowpass', 500, 0.4, 1, 1, 0.004);
-  },
-  quarrel: (ctx, dest, at) => {
-    burst(ctx, dest, at, 0.06, 'bandpass', 1400, 0.6, 1, 1.2);
-    tone(ctx, dest, at + 0.005, 160, 0.11, 0.6, 'sine', 0.5, 0.004);
-    burst(ctx, dest, at + 0.004, 0.1, 'lowpass', 600, 0.5, 1, 1, 0.004);
-  },
-  hex: (ctx, dest, at) => {
-    for (let i = 0; i < 4; i++) tone(ctx, dest, at + i * 0.03, rand(300, 600), 0.06, 0.25, 'sine', 1.8, 0.004);
-    tone(ctx, dest, at, 130, 0.2, 0.5, 'sine', 0.5);
-    burst(ctx, dest, at, 0.15, 'bandpass', 900, 0.3, 0.5, 2);
-  },
-  magic: (ctx, dest, at) => {
-    ring(ctx, dest, at, rand(1500, 1700), [[1, 1, 0.3], [1.5, 0.6, 0.25], [2.01, 0.5, 0.2], [3.02, 0.3, 0.12]], 0.2);
-    burst(ctx, dest, at, 0.08, 'bandpass', 3000, 0.6, 0.5, 1.5);
-    tone(ctx, dest, at, 200, 0.12, 0.4, 'sine', 0.5);
-  },
-};
+type BattleEffectId =
+  | `blow:${BlowKind}`
+  | `loose:${ShotKind}`
+  | `land:${ShotKind}`
+  | `hurt:${CryKind}`
+  | `dies:${CryKind}`
+  | `feet:${FeetKind}`
+  | `thump:${'light' | 'heavy' | 'huge'}`
+  | `hit:${HitKind}`
+  | `hit:${Exclude<HitKind, 'punch'>}:armour`
+  | 'spell'
+  | 'bolt'
+  | 'whoosh'
+  | 'boom'
+  | 'luck'
+  | 'ready';
 
-/** A body going down: a thud, heavier for a bigger one. */
-const thud = (ctx: BaseAudioContext, dest: AudioNode, at: number, weight: number) => {
-  burst(ctx, dest, at, 0.12 + weight * 0.1, 'lowpass', 320 - weight * 150, 0.5 + weight * 0.3);
-  if (weight > 0.5) tone(ctx, dest, at, 60, 0.25, 0.6 * weight, 'sine', 0.7, 0.004);
-};
-
-/** Each kind's cries: a grunt or a yelp when a blow hurts it, and a longer cry as it falls. */
-const CRIES: Record<CryKind, { hurt: Play; dies: Play }> = {
-  man: {
-    hurt: (ctx, dest, at) => {
-      const f = rand(105, 150);
-      voice(ctx, dest, at, { pitch: [[0, f * 1.08], [0.3, f], [1, f * 0.8]], length: 0.16, vowel: [640, 1190, 2390], breath: 0.25, volume: 1 });
-    },
-    dies: (ctx, dest, at) => {
-      const f = rand(120, 160);
-      voice(ctx, dest, at, { pitch: [[0, f], [0.2, f * 1.3], [1, f * 0.7]], length: 0.55, vowel: [730, 1090, 2440], to: [570, 840, 2410], growl: [55, 0.3], breath: 0.35, volume: 1 });
-      thud(ctx, dest, at + 0.4, 0.3);
-    },
-  },
-  woman: {
-    hurt: (ctx, dest, at) => {
-      const f = rand(220, 260);
-      voice(ctx, dest, at, { pitch: [[0, f * 1.1], [0.3, f], [1, f * 0.85]], length: 0.16, vowel: [800, 1400, 2800], breath: 0.3, volume: 0.9 });
-    },
-    dies: (ctx, dest, at) => {
-      const f = rand(240, 280);
-      voice(ctx, dest, at, { pitch: [[0, f], [0.2, f * 1.35], [1, f * 0.65]], length: 0.6, vowel: [850, 1350, 2900], to: [600, 950, 2700], breath: 0.35, volume: 0.9 });
-      thud(ctx, dest, at + 0.45, 0.25);
-    },
-  },
-  // A yelp, and a whimper falling away.
-  wolf: {
-    hurt: (ctx, dest, at) => voice(ctx, dest, at, { pitch: [[0, 700], [0.2, 1150], [1, 600]], length: 0.16, vowel: [], breath: 0.2, volume: 1 }),
-    dies: (ctx, dest, at) => {
-      voice(ctx, dest, at, { pitch: [[0, 900], [0.15, 1200], [0.6, 700], [1, 420]], length: 0.7, vowel: [], quaver: [7, 0.03], breath: 0.15, volume: 0.8 });
-      thud(ctx, dest, at + 0.5, 0.2);
-    },
-  },
-  // A squeak, and a gibbering screech.
-  goblin: {
-    hurt: (ctx, dest, at) => voice(ctx, dest, at, { pitch: [[0, 380], [0.3, 520], [1, 300]], length: 0.13, vowel: [300, 2200, 3000], breath: 0.2, volume: 1 }),
-    dies: (ctx, dest, at) => {
-      voice(ctx, dest, at, { pitch: [[0, 450], [0.25, 700], [1, 220]], length: 0.42, vowel: [350, 2000, 2900], to: [700, 1200, 2600], quaver: [13, 0.05], volume: 1 });
-      thud(ctx, dest, at + 0.35, 0.1);
-    },
-  },
-  // A rumbling roar, and a long groan as it topples like a tree.
-  troll: {
-    hurt: (ctx, dest, at) => voice(ctx, dest, at, { pitch: [[0, 75], [0.3, 85], [1, 55]], length: 0.35, vowel: [450, 800, 2300], growl: [24, 0.7], breath: 0.5, volume: 1.2 }),
-    dies: (ctx, dest, at) => {
-      voice(ctx, dest, at, { pitch: [[0, 80], [0.2, 90], [1, 42]], length: 1.1, vowel: [500, 850, 2300], to: [320, 700, 2200], growl: [18, 0.6], breath: 0.5, volume: 1.2 });
-      thud(ctx, dest, at + 0.75, 1);
-    },
-  },
-  // A squeal, and a long one falling to a grunt.
-  boar: {
-    hurt: (ctx, dest, at) => voice(ctx, dest, at, { pitch: [[0, 650], [0.3, 950], [1, 700]], length: 0.22, vowel: [1000, 2000, 3200], quaver: [28, 0.06], breath: 0.3, volume: 0.9 }),
-    dies: (ctx, dest, at) => {
-      voice(ctx, dest, at, { pitch: [[0, 800], [0.2, 1000], [1, 380]], length: 0.6, vowel: [900, 1900, 3000], quaver: [22, 0.07], breath: 0.3, volume: 0.9 });
-      thud(ctx, dest, at + 0.5, 0.5);
-    },
-  },
-};
-
-/** Each kind's footfall as it crosses a hex of the field. */
-const FEET: Record<FeetKind, Play> = {
-  boots: (ctx, dest, at) => {
-    burst(ctx, dest, at, 0.05, 'lowpass', 350, 0.5);
-    burst(ctx, dest, at + 0.005, 0.015, 'bandpass', 2500, 0.1, 1, 1);
-  },
-  hooves: (ctx, dest, at) => {
-    for (const d of [0, 0.08]) {
-      burst(ctx, dest, at + d, 0.035, 'bandpass', 1100, 0.45, 1, 2);
-      tone(ctx, dest, at + d, 280, 0.04, 0.25, 'sine', 0.8, 0.002);
-    }
-  },
-  paws: (ctx, dest, at) => {
-    burst(ctx, dest, at, 0.03, 'lowpass', 450, 0.3);
-    burst(ctx, dest, at + 0.05, 0.03, 'lowpass', 450, 0.25);
-  },
-  stomp: (ctx, dest, at) => {
-    tone(ctx, dest, at, 70, 0.2, 0.8, 'sine', 0.55, 0.004);
-    burst(ctx, dest, at, 0.18, 'lowpass', 180, 0.7);
-  },
-  trotters: (ctx, dest, at) => {
-    for (const d of [0, 0.05]) burst(ctx, dest, at + d, 0.025, 'bandpass', 800, 0.35, 1, 2);
-  },
-  patter: (ctx, dest, at) => {
-    for (const d of [0, 0.035, 0.07]) burst(ctx, dest, at + d, 0.02, 'lowpass', 700, 0.25);
-  },
-};
+/** The hit a blow or a shot lands with, on flesh or on steel: a punch on steel rings as a crushing blow does. */
+export const hitOn = (hit: HitKind, armour: boolean | undefined): BattleEffectId => (armour ? `hit:${hit === 'punch' ? 'hammer' : hit}:armour` : `hit:${hit}`);
 
 /**
- * Weight under a blow (#190): a low thump that grows with what the blow did, `light` for a scratch,
- * `heavy` when men fall, and `huge` for a charge or a stack wiped out.
+ * Each recorded effect's mark in the mix, the level that brings it there (see
+ * `npm run listen -- effects`), and how far its pitch wanders from one time to the next (semitones).
+ * A blow, a shot landing and a death cry stand over the music (`hit`); the release of a shot, a hit on
+ * flesh or steel and a wince sit level with it; feet are faint.
  */
-export type ThumpKind = 'light' | 'heavy' | 'huge';
-const THUMPS: Record<ThumpKind, Play> = {
-  light: (ctx, dest, at) => {
-    tone(ctx, dest, at, 96, 0.11, 0.9, 'sine', 0.55, 0.003);
-    burst(ctx, dest, at, 0.07, 'lowpass', 240, 0.5);
-  },
-  heavy: (ctx, dest, at) => {
-    tone(ctx, dest, at, 82, 0.2, 1, 'sine', 0.5, 0.003);
-    tone(ctx, dest, at, 164, 0.08, 0.3, 'triangle', 0.5, 0.003);
-    burst(ctx, dest, at, 0.13, 'lowpass', 220, 0.8);
-  },
-  huge: (ctx, dest, at) => {
-    tone(ctx, dest, at, 66, 0.34, 1, 'sine', 0.45, 0.003);
-    tone(ctx, dest, at, 132, 0.14, 0.45, 'triangle', 0.5, 0.003);
-    burst(ctx, dest, at, 0.26, 'lowpass', 200, 1);
-  },
+const RECORDED: Record<BattleEffectId, [loud: Loudness, level: number, spread: number]> = {
+  'blow:fork': ['hit', 1.5, 0.8],
+  'blow:blade': ['hit', 1.6, 0.8],
+  'blow:lance': ['hit', 1.7, 0.6],
+  'blow:bite': ['hit', 1.5, 0.8],
+  'blow:club': ['hit', 1.4, 0.8],
+  'blow:mace': ['hit', 1.7, 0.8],
+  'blow:fist': ['hit', 1.4, 0.6],
+  'blow:spear': ['hit', 1.7, 0.8],
+  'blow:tusk': ['hit', 1.4, 0.8],
+  'blow:dagger': ['hit', 1.7, 0.8],
+  'blow:staff': ['hit', 1.6, 0.8],
+  'hit:sword': ['firm', 1.3, 1],
+  'hit:sword:armour': ['firm', 1.4, 1],
+  'hit:hammer': ['firm', 1.2, 1],
+  'hit:hammer:armour': ['firm', 1.4, 1],
+  'hit:pierce': ['firm', 1.1, 1],
+  'hit:pierce:armour': ['firm', 1.3, 1],
+  'hit:punch': ['firm', 1.3, 1],
+  'thump:light': ['faint', 0.2, 1],
+  'thump:heavy': ['soft', 0.58, 1],
+  'thump:huge': ['firm', 0.92, 0.6],
+  'loose:arrow': ['firm', 1.1, 0.8],
+  'loose:quarrel': ['firm', 1.2, 0.6],
+  'loose:hex': ['firm', 0.91, 0.6],
+  'loose:magic': ['firm', 0.98, 0.6],
+  'land:arrow': ['hit', 1.7, 1],
+  'land:quarrel': ['hit', 1.9, 0.8],
+  'land:hex': ['hit', 1.5, 0.6],
+  'land:magic': ['hit', 2.1, 0.8],
+  'hurt:man': ['firm', 0.99, 1],
+  'hurt:woman': ['firm', 1.1, 1],
+  'hurt:wolf': ['firm', 0.92, 1],
+  'hurt:goblin': ['firm', 1.1, 1],
+  'hurt:spider': ['firm', 0.89, 1],
+  'hurt:troll': ['firm', 0.97, 1],
+  'hurt:bear': ['firm', 0.88, 1],
+  'hurt:boar': ['firm', 0.94, 1],
+  'dies:man': ['hit', 1.5, 0.8],
+  'dies:woman': ['hit', 1.6, 0.8],
+  'dies:wolf': ['hit', 1.5, 0.8],
+  'dies:goblin': ['hit', 1.5, 0.8],
+  'dies:spider': ['hit', 1.5, 0.8],
+  'dies:troll': ['hit', 1.4, 0.6],
+  'dies:bear': ['hit', 1.4, 0.6],
+  'dies:boar': ['hit', 1.4, 0.8],
+  'feet:boots': ['faint', 0.16, 1.5],
+  'feet:hooves': ['faint', 0.14, 1],
+  'feet:paws': ['faint', 0.14, 1.5],
+  'feet:stomp': ['faint', 0.12, 1],
+  'feet:trotters': ['faint', 0.16, 1.5],
+  'feet:patter': ['faint', 0.17, 1.5],
+  spell: ['firm', 0.9, 0.5],
+  bolt: ['loud', 1.6, 0.3],
+  whoosh: ['soft', 0.47, 0.5],
+  boom: ['loud', 1.6, 0.3],
+  luck: ['firm', 0.88, 0.3],
+  ready: ['faint', 0.16, 1],
 };
 
-/** Steel on plate or mail: a clash that rings, played on top of whatever lands on an armoured troop. */
-const armour: Play = (ctx, dest, at) => {
-  ring(ctx, dest, at, rand(900, 1300), STEEL, 0.18);
-  burst(ctx, dest, at, 0.03, 'bandpass', 4500, 0.5, 1, 1.5);
-};
+/** Every sound of a fight, as effects: `blow:blade`, `hit:sword:armour`, `loose:arrow`, `land:arrow`, `hurt:wolf`, `dies:troll`, `feet:hooves`, `thump:heavy`, and the spells'. */
+export const BATTLE_EFFECTS = Object.fromEntries(
+  Object.entries(RECORDED).map(([id, [loud, level, spread]]) => [id, { loud, level, play: (ctx, dest, at) => playSample(ctx, dest, at, id, spread) } satisfies EffectDef]),
+) as Record<BattleEffectId, EffectDef>;
 
-type BattleEffectId = `blow:${BlowKind}` | `loose:${ShotKind}` | `land:${ShotKind}` | `hurt:${CryKind}` | `dies:${CryKind}` | `feet:${FeetKind}` | `thump:${ThumpKind}` | 'armour';
-
-/**
- * The level that brings each to its place in the mix (see `npm run listen -- effects`): blows and
- * shots landing level with the music, a lance or a troll's fist a little heavier and a knife a
- * little lighter, a shot's release under its landing, a cry of pain under the blow, feet faint.
- */
-const LEVELS: Record<BattleEffectId, number> = {
-  'blow:fork': 4.9,
-  'blow:blade': 2.5,
-  'blow:lance': 1,
-  'blow:bite': 3.9,
-  'blow:club': 1.2,
-  'blow:fist': 0.95,
-  'blow:spear': 2.9,
-  'blow:tusk': 1.6,
-  'blow:dagger': 2.4,
-  'blow:staff': 4,
-  'loose:arrow': 3.7,
-  'loose:quarrel': 3.1,
-  'loose:hex': 1.2,
-  'loose:magic': 1.8,
-  'land:arrow': 3.35,
-  'land:quarrel': 2.5,
-  'land:hex': 1.7,
-  'land:magic': 1.9,
-  'hurt:man': 1,
-  'hurt:woman': 0.9,
-  'hurt:wolf': 0.8,
-  'hurt:goblin': 1.1,
-  'hurt:troll': 0.9,
-  'hurt:boar': 0.34,
-  'dies:man': 1.4,
-  'dies:woman': 1.2,
-  'dies:wolf': 1.5,
-  'dies:goblin': 0.62,
-  'dies:troll': 1.4,
-  'dies:boar': 0.45,
-  'feet:boots': 3.8,
-  'feet:hooves': 0.64,
-  'feet:paws': 4.3,
-  'feet:stomp': 0.34,
-  'feet:trotters': 3.3,
-  'feet:patter': 3.8,
-  armour: 1.5,
-  'thump:light': 0.27,
-  'thump:heavy': 0.58,
-  'thump:huge': 1.2,
-};
-
-const entries = (prefix: string, plays: Record<string, Play>, loud: Loudness) =>
-  Object.entries(plays).map(([kind, play]) => {
-    const id = `${prefix}:${kind}` as BattleEffectId;
-    return [id, { loud, level: LEVELS[id], play }] as const;
-  });
-
-/** Every sound of a fight, as effects: `blow:blade`, `loose:arrow`, `land:arrow`, `hurt:wolf`, `dies:troll`, `feet:hooves`, `armour`, `thump:heavy`. */
-export const BATTLE_EFFECTS = Object.fromEntries([
-  ...entries('blow', BLOWS, 'firm'),
-  ...entries('loose', LOOSE, 'firm'),
-  ...entries('land', LAND, 'firm'),
-  ...entries('hurt', Object.fromEntries(Object.entries(CRIES).map(([kind, cry]) => [kind, cry.hurt])), 'soft'),
-  ...entries('dies', Object.fromEntries(Object.entries(CRIES).map(([kind, cry]) => [kind, cry.dies])), 'firm'),
-  ...entries('feet', FEET, 'faint'),
-  ['armour', { loud: 'soft', level: LEVELS.armour, play: armour }],
-  ['thump:light', { loud: 'faint', level: LEVELS['thump:light'], play: THUMPS.light }],
-  ['thump:heavy', { loud: 'soft', level: LEVELS['thump:heavy'], play: THUMPS.heavy }],
-  ['thump:huge', { loud: 'firm', level: LEVELS['thump:huge'], play: THUMPS.huge }],
-]) as Record<BattleEffectId, EffectDef>;
+/** The recorded effects of a fight, by id: what `scripts/sfx.py` must pack. */
+export const RECORDED_EFFECTS = Object.keys(RECORDED) as BattleEffectId[];

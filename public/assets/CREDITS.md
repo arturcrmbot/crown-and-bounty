@@ -119,10 +119,134 @@ v2.0.3, S. Christian Collins's General MIDI SoundFont, taken from
   brass; tails over a second or two faded out; resampled to 22 kHz; stored losslessly, one after another, in `band.flac`, with each sample's zones, tuning,
   loop and envelope in `band.json`.
 
+## The sounds of a fight: recordings made by people
+
+Every sound of a battle is a recording (#257): a troop's weapon, what it lands on, its cries, its feet,
+and the spells. `scripts/sfx.py` fetches each recording below from the address it names, cuts it,
+layers it as the game plays it (a blow with a hit on flesh or on armour under it, a death cry with a
+body falling after it), sets every take to one loudness with a gentle limiter on its peaks, and packs
+the takes losslessly, at 32 kHz, into `public/assets/sfx/battle.flac` with their index in
+`battle.json`. The game plays each at its level in the mix (`src/audio/blows.ts`), a little higher or
+lower each time. Thank you to everyone below.
+
+### Battle for Wesnoth's sounds
+
+From [its repository](https://github.com/wesnoth/wesnoth) at the tag `1.18.8`, `data/core/sounds/`,
+by the people its `copyrights.csv` names. Each troop's weapon and cries are its own Wesnoth unit's,
+as its pictures are. **Licence:** the [GNU GPL v2 or later](https://www.gnu.org/licenses/old-licenses/gpl-2.0.html).
+
+| File | By | Licence |
+| --- | --- | --- |
+| `bite-small.ogg` | Lari Nieminen | GPL v2+ |
+| `bite.ogg` | Lari Nieminen | GPL v2+ |
+| `bow.ogg` | Lari Nieminen | GPL v2+ |
+| `club.ogg` | Leonardo Magno Sampaio | GPL v2+ |
+| `crossbow.ogg` | Lari Nieminen | GPL v2+ |
+| `drake-die.ogg` | Lari Nieminen | GPL v2+ |
+| `explosion.ogg` | Lari Nieminen | GPL v2+ |
+| `goblin-die-1.ogg` | Lari Nieminen | GPL v2+ |
+| `goblin-die-2.ogg` | Lari Nieminen | GPL v2+ |
+| `goblin-hit-1.ogg` | Lari Nieminen | GPL v2+ |
+| `goblin-hit-2.ogg` | Lari Nieminen | GPL v2+ |
+| `goblin-hit-3.ogg` | Lari Nieminen | GPL v2+ |
+| `hiss-big.wav` | J.W. Bjerk | GPL v2+ |
+| `hiss-die.wav` | J.W. Bjerk | GPL v2+ |
+| `hiss-hit.wav` | J.W. Bjerk | GPL v2+ |
+| `human-die-1.ogg` | Lari Nieminen | GPL v2+ |
+| `human-die-2.ogg` | Lari Nieminen | GPL v2+ |
+| `human-die-3.ogg` | Lari Nieminen | GPL v2+ |
+| `human-female-die-1.ogg` | Lari Nieminen | GPL v2+ |
+| `human-female-die-2.ogg` | Lari Nieminen | GPL v2+ |
+| `human-female-die-3.ogg` | Lari Nieminen | GPL v2+ |
+| `human-female-hit-1.ogg` | Lari Nieminen | GPL v2+ |
+| `human-female-hit-2.ogg` | Lari Nieminen | GPL v2+ |
+| `human-female-hit-3.ogg` | Lari Nieminen | GPL v2+ |
+| `human-hit-1.ogg` | Lari Nieminen | GPL v2+ |
+| `human-hit-2.ogg` | Lari Nieminen | GPL v2+ |
+| `human-hit-3.ogg` | Lari Nieminen | GPL v2+ |
+| `human-hit-4.ogg` | Lari Nieminen | GPL v2+ |
+| `human-hit-5.ogg` | Lari Nieminen | GPL v2+ |
+| `knife.ogg` | Lari Nieminen | GPL v2+ |
+| `lightning.ogg` | Lari Nieminen | GPL v2+ |
+| `mace.ogg` | Leonardo Magno Sampaio | GPL v2+ |
+| `mace.wav` | Leonardo Magno Sampaio | GPL v2+ |
+| `magic-dark-big.ogg` | Lari Nieminen | GPL v2+ |
+| `magic-dark.ogg` | Lari Nieminen | GPL v2+ |
+| `magic-faeriefire.ogg` | Lari Nieminen | GPL v2+ |
+| `magic-holy-1.ogg` | Richard Kettering | GPL v2+ |
+| `magic-holy-2.ogg` | Richard Kettering | GPL v2+ |
+| `magic-missile-1.ogg` | Lari Nieminen | GPL v2+ |
+| `magic-missile-2.ogg` | Lari Nieminen | GPL v2+ |
+| `magic-missile-3.ogg` | Lari Nieminen | GPL v2+ |
+| `spear.ogg` | Lari Nieminen | GPL v2+ |
+| `spear.wav` | unknown | GPL v2+ |
+| `staff.wav` | Leonardo Magno Sampaio | GPL v2+ |
+| `sword-1.ogg` | Lari Nieminen | GPL v2+ |
+| `troll-die-1.ogg` | Lari Nieminen | GPL v2+ |
+| `troll-die-2.ogg` | Lari Nieminen | GPL v2+ |
+| `troll-die-3.ogg` | Lari Nieminen | GPL v2+ |
+| `troll-hit-1.ogg` | Lari Nieminen | GPL v2+ |
+| `troll-hit-2.ogg` | Lari Nieminen | GPL v2+ |
+| `troll-hit-3.ogg` | Lari Nieminen | GPL v2+ |
+| `troll-hit-4.ogg` | Lari Nieminen | GPL v2+ |
+| `tusker-charge.ogg` | Phil Barber | GPL v2+ |
+| `tusker-hit.ogg` | Phil Barber | GPL v2+ |
+| `wolf-die-1.ogg` | Lari Nieminen | GPL v2+ |
+| `wolf-die-3.ogg` | Lari Nieminen | GPL v2+ |
+| `wolf-hit-1.ogg` | Lari Nieminen | GPL v2+ |
+| `wolf-hit-2.ogg` | Lari Nieminen | GPL v2+ |
+| `wolf-hit-4.ogg` | Lari Nieminen | GPL v2+ |
+| `yeti-hit.ogg` | Lari Nieminen | GPL v2+ |
+
+### Will Leamon's Fleshy Fight Sounds
+
+[Fleshy Fight Sounds](https://opengameart.org/content/fleshy-fight-sounds) by Will Leamon, on
+OpenGameArt: the hit of a sword, a hammer, a point and a fist, each on flesh (`-1a`, `-1b`) and on
+armour (`-arm-2a`, `-arm-2b`), and his alternative punches (`punch_alt-2a`, `punch_alt-2b`), dull
+and low, for the weight under a heavy blow. Additional sound effects by Will Leamon.
+**Licence:** [OGA-BY 3.0](https://static.opengameart.org/OGA-BY-3.0.txt).
+
+`sword-1a.wav`, `sword-1b.wav`, `sword-arm-2a.wav`, `sword-arm-2b.wav`, `hammer-1a.wav`,
+`hammer-1b.wav`, `hammer-arm-2a.wav`, `hammer-arm-2b.wav`, `piercing-1a.wav`, `piercing-1b.wav`,
+`piercing-arm-2a.wav`, `piercing-arm-2b.wav`, `punch_1a.wav`, `punch_1b.wav`, `punch_alt-2a.wav`,
+`punch_alt-2b.wav`.
+
+### Kenney's sounds
+
+[Impact Sounds](https://kenney.nl/assets/impact-sounds) and [RPG Audio](https://kenney.nl/assets/rpg-audio)
+by Kenney (kenney.nl). **Licence:** [CC0](https://creativecommons.org/publicdomain/zero/1.0/).
+
+- Impact Sounds: `footstep_grass_000.ogg`, `footstep_grass_001.ogg`, `footstep_grass_002.ogg`,
+  `footstep_grass_003.ogg` and `footstep_grass_004.ogg` (boots, paws, trotters and patter on the
+  field); `impactSoft_medium_000.ogg`, `impactSoft_medium_001.ogg` and `impactSoft_medium_002.ogg`
+  (the weight under a scratch); `impactSoft_heavy_000.ogg` (a troll's blow and stomp);
+  `impactWood_heavy_000.ogg` (a lance's shaft); `impactWood_light_000.ogg`, `impactWood_light_001.ogg`
+  and `impactWood_light_002.ogg` (your turn).
+- RPG Audio: `knifeSlice.ogg`, `knifeSlice2.ogg` (a knife).
+
+### Freesound's recordings
+
+Each recorded by the person named, on [Freesound](https://freesound.org). **Licence:**
+[CC0](https://creativecommons.org/publicdomain/zero/1.0/), and credited all the same. The pack is cut
+from Freesound's high-quality previews of them.
+
+| Recording | By | Plays |
+| --- | --- | --- |
+| [SRS_Foley_Horse_Galloping.wav](https://freesound.org/s/165532/) | StephenSaldanha | a knight's hooves on the field |
+| [Arrow Impact](https://freesound.org/s/205938/) | Twisted_Euphoria | an arrow landing |
+| [Arrow Impact](https://freesound.org/s/521552/) | omerbhatti34 | an arrow landing |
+| [Bow Release (Bow and Arrow) 3](https://freesound.org/s/384918/) | Ali_6868 | an arrow loosed |
+| [Longbow Release 2.wav](https://freesound.org/s/394179/) | saturdaysoundguy | an arrow loosed |
+| [Crossbow Firing and Hitting Target](https://freesound.org/s/384919/) | Ali_6868 | a crossbow bolt, loosed and landing |
+| [Body fall.wav](https://freesound.org/s/417994/) | DylanTheFish | a body falling after a death cry |
+| [BODY FALL - V HVY - DIRT](https://freesound.org/s/504626/) | leonelmail | a heavy body falling, a troll's stomp, and the weight under a charge |
+| [Fireball](https://freesound.org/s/683179/) | NearTheAtmoshphere | a Fireball falling |
+
 ## Everything else
 
-The terrain, buildings, portraits, title painting, interface, icon, sound effects, stings and
-ambience are all made in code (`src/render/`, `src/audio/`). No image-generation models are used.
+The terrain, buildings, portraits, title painting, interface, icon, the sound effects outside a
+fight, the stings and the ambience are all made in code (`src/render/`, `src/audio/`). No
+image-generation models are used.
 
 ## Wesnoth files
 

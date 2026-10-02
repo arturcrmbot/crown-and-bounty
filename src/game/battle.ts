@@ -1,6 +1,6 @@
 import { needsTarget, SPELLS, STATUSES, type SpellId, type StatusDef } from '../content/spells';
 import { isBeast, TROOPS, troops } from '../content/troops';
-import { CONTACT, TROOP_SOUNDS } from '../audio/blows';
+import { BLOW_HITS, CONTACT, hitOn, SHOT_HITS, TROOP_SOUNDS } from '../audio/blows';
 import { chooseAction, finishEstimate, sergeantsAct } from '../rules/battle/ai';
 import { manaInBattle, signedShare, spiritsOf, uneasyWords } from '../rules/heroSheet';
 import { grumbleLine } from '../rules/army';
@@ -432,19 +432,21 @@ export class BattleController implements Screen {
 
   /**
    * What a blow or a shot sounds like as it lands: the attacker's weapon (a knight's charge is his
-   * lance), or the shot hitting home; steel ringing on the target's armour; and its cry, if it's
-   * hurt and still standing (one that falls gives its death cry as it goes).
+   * lance), or the shot hitting home; what it lands on, flesh or the target's steel (#257); and its
+   * cry, if it's hurt and still standing (one that falls gives its death cry as it goes).
    */
   private landSound(e: Extract<BattleEvent, { type: 'hit' }>, missile: Missile | null, dies: boolean, x: number) {
     const pan = this.panAt(x);
     const attacker = fighterById(this.battle, e.attacker);
     const target = TROOP_SOUNDS[fighterById(this.battle, e.target).troop];
+    const blow = e.charge && ART[attacker.troop].charge ? 'lance' : TROOP_SOUNDS[attacker.troop].blow;
     if (missile) play(`land:${missile}`, pan);
-    else play(`blow:${e.charge && ART[attacker.troop].charge ? 'lance' : TROOP_SOUNDS[attacker.troop].blow}`, pan);
+    else play(`blow:${blow}`, pan);
     const lands = missile ? 0 : CONTACT;
     // Weight under the blow, as heavy as what it did (#190).
     play(e.charge || dies ? 'thump:huge' : e.killed ? 'thump:heavy' : 'thump:light', pan, lands);
-    if (target.armour) play('armour', pan, lands);
+    const hit = missile ? SHOT_HITS[missile] : BLOW_HITS[blow];
+    if (hit) play(hitOn(hit, target.armour), pan, lands);
     if (!dies && e.damage > 0) play(`hurt:${target.cry}`, pan, lands + 0.06);
   }
 
@@ -969,16 +971,15 @@ export class BattleController implements Screen {
           let sinceLanding = 0;
           const impact = () => {
             landed = true;
-            play(look.kind === 'sparkle' ? 'spell' : look.kind === 'fire' ? 'boom' : 'bolt');
+            play(look.kind === 'sparkle' ? 'spell' : look.kind === 'fire' ? 'boom' : look.kind === 'missile' ? 'land:magic' : 'bolt');
             const [sx, sy] = hexCentre(target.at);
             if (look.kind === 'bolt' && e.damage) {
               // Lightning lights the whole field for a moment (#190), never more than once a second, and
-              // not at all with gentle effects; thunder rolls after it, and it leaves a scorch.
+              // not at all with gentle effects; its thunder rolls in the same recording, and it leaves a scorch.
               if (!isGentle() && v.time - this.flashed >= FLASH_GAP) {
                 v.flash = FLASH_TIME;
                 this.flashed = v.time;
               }
-              play('thunder', this.panAt(sx), 0.25);
               this.screen.markScorch(sx, sy + 12, false);
               this.burst('spark', [sx, sy + 12 - bodyHeight(target.troop, 'battle') * 0.5], 0.3, { size: 1.3, heading: Math.PI / 2 });
             }

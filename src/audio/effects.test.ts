@@ -100,7 +100,7 @@ describe('the sound effects', () => {
 
   it('each has its mark in the mix and a level to bring it there', () => {
     for (const [id, effect] of Object.entries(EFFECTS)) {
-      expect(['faint', 'soft', 'firm', 'loud'], id).toContain(effect.loud);
+      expect(['faint', 'soft', 'firm', 'hit', 'loud'], id).toContain(effect.loud);
       expect(effect.level > 0.05 && effect.level <= 10, `${id}: ${effect.level}`).toBe(true);
     }
   });

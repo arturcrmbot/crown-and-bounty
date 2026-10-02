@@ -3,11 +3,15 @@
  * each at its level. Browsers only allow sound after the player has clicked or pressed a key, so
  * the audio starts then. M mutes it, and that sticks.
  */
-import { audio, isMuted } from '../audio/context';
+import { audio, isMuted, whenAwake } from '../audio/context';
 import { babble, EFFECTS, type EffectDef, type EffectId, type Ground } from '../audio/effects';
 import { duckMusic } from '../audio/music';
+import { loadSamples } from '../audio/samples';
 import { sting } from '../audio/stings';
 import { Terrain } from '../rules/map/model';
+
+// The recorded effects load once sound is awake, in the background; until they're in, they're silent.
+whenAwake(() => void loadSamples().catch(() => {}));
 
 export type Sound = EffectId | 'victory' | 'defeat' | 'levelUp';
 

@@ -1,0 +1,69 @@
+/**
+ * The recorded sound effects (#257): takes cut from recordings made by people and packed by
+ * `scripts/sfx.py` into `public/assets/sfx/` (one lossless FLAC and its JSON index a pack). A pack is
+ * fetched and decoded once, after the first click, and each effect plays one of its takes at random,
+ * a little higher or lower each time, so a hundred blows in a fight never sound like one recording.
+ * Until its pack is in, an effect is silent.
+ */
+
+/** A pack's index: the rate its takes are stored at, and each effect's takes (where each starts, and how long it is, in the pack's samples). */
+export type SamplePack = { rate: number; effects: Record<string, { offset: number; length: number }[]> };
+
+export type PackId = 'battle';
+
+const takes = new Map<string, AudioBuffer[]>();
+const loading = new Map<PackId, Promise<void>>();
+
+export const samplesReady = (id: string) => takes.has(id);
+
+/**
+ * Fetches and decodes a pack, once (later calls wait on the first). FLAC is decoded at its own rate,
+ * so every take comes out exactly as it was cut.
+ */
+export function loadSamples(pack: PackId = 'battle', base = import.meta.env.BASE_URL): Promise<void> {
+  let p = loading.get(pack);
+  if (!p) {
+    p = (async () => {
+      const [index, bytes] = await Promise.all([
+        fetch(`${base}assets/sfx/${pack}.json`).then((r) => r.json() as Promise<SamplePack>),
+        fetch(`${base}assets/sfx/${pack}.flac`).then((r) => r.arrayBuffer()),
+      ]);
+      const decoded = await new OfflineAudioContext(1, 1, index.rate).decodeAudioData(bytes);
+      const all = decoded.getChannelData(0);
+      // Should a browser decode it at another rate after all, the takes still sit in proportion.
+      const scale = decoded.sampleRate / index.rate;
+      for (const [id, list] of Object.entries(index.effects)) {
+        takes.set(
+          id,
+          list.map(({ offset, length }) => {
+            const from = Math.round(offset * scale);
+            const n = Math.max(1, Math.round(length * scale));
+            const buffer = new AudioBuffer({ length: n, sampleRate: decoded.sampleRate, numberOfChannels: 1 });
+            buffer.copyToChannel(all.slice(from, from + n), 0);
+            return buffer;
+          }),
+        );
+      }
+    })().catch((e) => {
+      loading.delete(pack);
+      throw e;
+    });
+    loading.set(pack, p);
+  }
+  return p;
+}
+
+/**
+ * Plays one of an effect's takes at random into `dest` at `at`, its pitch moved by up to `spread`
+ * semitones either way (and its speed with it, as a recording played faster does). Silent until its
+ * pack is in.
+ */
+export function playSample(ctx: BaseAudioContext, dest: AudioNode, at: number, id: string, spread = 0) {
+  const list = takes.get(id);
+  if (!list?.length) return;
+  const source = ctx.createBufferSource();
+  source.buffer = list[Math.floor(Math.random() * list.length)];
+  source.playbackRate.value = 2 ** (((Math.random() * 2 - 1) * spread) / 12);
+  source.connect(dest);
+  source.start(at);
+}

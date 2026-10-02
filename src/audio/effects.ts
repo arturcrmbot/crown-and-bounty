@@ -1,15 +1,16 @@
 /**
- * Every sound effect, as data: how it sits in the mix, and how it's made, in code with no files.
- * Each plays into any context (the live one, or one rendered offline to be measured by
- * `npm run listen`) at a given time, and its `level` brings it to its mark there: `soft` under the
- * music (clicks, pages, footfalls), `firm` level with it (coins, blows, cries), `loud` over it (the
- * heralds' fanfare). The sounds of a fight, by kind of troop, are in `blows.ts`.
+ * Every sound effect, as data: how it sits in the mix, and how it's made. Each plays into any context
+ * (the live one, or one rendered offline to be measured by `npm run listen`) at a given time, and its
+ * `level` brings it to its mark there: `faint` (footfalls), `soft` under the music (clicks, pages),
+ * `firm` level with it (coins, cries), `hit` over it (a blow landing), `loud` over it (the heralds'
+ * fanfare, a Fireball). The sounds of a fight are recordings (#257), in `blows.ts`; the rest are made
+ * in code here, until their own recordings come.
  */
 import { BATTLE_EFFECTS } from './blows';
 import { playNote } from './instruments';
-import { burst, crackle, rand, tone, voice } from './synth';
+import { burst, rand, tone, voice } from './synth';
 
-export type Loudness = 'faint' | 'soft' | 'firm' | 'loud';
+export type Loudness = 'faint' | 'soft' | 'firm' | 'hit' | 'loud';
 export type EffectDef = {
   /** Its mark in the mix: `npm run listen` says how far from it each effect sits. */
   loud: Loudness;
@@ -162,7 +163,6 @@ const EVERYDAY = {
   falter: effect('firm', (ctx, dest, t) => tone(ctx, dest, t, 196, 0.5, 0.35, 'triangle', 0.7), 2.1),
   // A short call rising on the brass: good spirits, and a stack goes again.
   cheer: effect('firm', (ctx, dest, t) => brass(ctx, dest, t, [[62, 0, 0.09], [67, 0.1, 0.3]], 0.28), 1.1),
-  spell: effect('firm', (ctx, dest, t) => [660, 880, 1100, 1320].forEach((f, i) => tone(ctx, dest, t + i * 0.06, f, 0.25, 0.3)), 1.2),
   // Gear found: the harp runs up the chord of C, and a bell rings over it.
   find: effect('firm', (ctx, dest, t) => {
     [60, 64, 67, 72].forEach((midi, i) => playNote(ctx, dest, 'harp', t + i * 0.06, midi, 0.6, 0.4));
@@ -202,34 +202,6 @@ const EVERYDAY = {
     tone(ctx, dest, t, 2637, 0.07, 0.25, 'triangle');
     tone(ctx, dest, t + 0.01, 3520, 0.05, 0.1);
   }, 2),
-  // Good luck shining on a stack (#190): a bright run up the chord of E, with a shimmer over it, as the rainbow comes down.
-  luck: effect('firm', (ctx, dest, t) => {
-    [1319, 1661, 1976, 2637, 3322].forEach((f, i) => tone(ctx, dest, t + i * 0.045, f, 0.45 - i * 0.04, 0.22, 'triangle'));
-    burst(ctx, dest, t + 0.05, 0.4, 'highpass', 6500, 0.08, 1.2);
-  }, 1.2),
-  bolt: effect('firm', (ctx, dest, t) => {
-    burst(ctx, dest, t, 0.35, 'highpass', 1800, 0.8, 0.5);
-    tone(ctx, dest, t, 880, 0.3, 0.25, 'sawtooth', 0.25);
-  }, 0.78),
-  // The thunder after a Lightning Bolt (#190): a low roll that grumbles away.
-  thunder: effect('soft', (ctx, dest, t) => {
-    burst(ctx, dest, t, 0.9, 'lowpass', 160, 1, 0.6, 0.7, 0.05);
-    burst(ctx, dest, t + 0.12, 0.6, 'lowpass', 300, 0.5, 0.5, 0.7, 0.03);
-    tone(ctx, dest, t, 45, 0.7, 0.5, 'sine', 0.8, 0.04);
-  }, 0.62),
-  // A Fireball falling (#190): air rushing, rising as it comes.
-  whoosh: effect('soft', (ctx, dest, t) => burst(ctx, dest, t, 0.32, 'bandpass', 500, 0.7, 4, 1.2, 0.2), 1.3),
-  // A Fireball bursting (#190): a deep boom, and flames crackling after it.
-  boom: effect('firm', (ctx, dest, t) => {
-    tone(ctx, dest, t, 60, 0.45, 1, 'sine', 0.5, 0.004);
-    burst(ctx, dest, t, 0.5, 'lowpass', 420, 1, 0.4);
-    crackle(ctx, dest, t + 0.05, 0.6, 0.2, 60, 0.35, 'bandpass', 2400);
-  }, 1),
-  // One of your stacks is ready for orders (#190): a soft tap on a wood block.
-  ready: effect('faint', (ctx, dest, t) => {
-    tone(ctx, dest, t, 1180, 0.05, 0.3, 'triangle', 0.9, 0.002);
-    burst(ctx, dest, t, 0.02, 'bandpass', 2600, 0.2, 1, 2);
-  }, 1),
   // Footfalls under hoofbeats, and softer on grass and leaves than on a road or a bridge's boards.
   'foot:road': effect('faint', footfall('road', 0.65), 2),
   'foot:bridge': effect('faint', footfall('bridge', 0.65), 1.1),
