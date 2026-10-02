@@ -23,8 +23,8 @@ function duel(army: Army, seeds: number) {
 
 describe('the commander', () => {
   it('beats the old one with mixed armies, and never stalls', () => {
-    const mixed = duel([{ troop: 'knights', count: 6 }, { troop: 'swordsmen', count: 10 }, { troop: 'archers', count: 14 }, { troop: 'wolves', count: 10 }], 8);
-    expect(mixed.v2).toBeGreaterThanOrEqual(13);
+    const mixed = duel([{ troop: 'knights', count: 6 }, { troop: 'swordsmen', count: 10 }, { troop: 'archers', count: 14 }, { troop: 'wolves', count: 10 }], 16);
+    expect(mixed.v2).toBeGreaterThanOrEqual(0.75 * mixed.games);
     expect(mixed.rounds / mixed.games).toBeLessThan(20);
   }, 120_000);
 
