@@ -173,7 +173,7 @@ export type BattleEvent =
   | { type: 'move'; fighter: number; path: number[] }
   /** A leader who rode out to strike rides back behind his side's line, along his path. */
   | { type: 'back'; fighter: number; path: number[] }
-  | { type: 'hit'; attacker: number; target: number; damage: number; killed: number; ranged: boolean; retaliation: boolean; status?: StatusId; charge?: boolean; lucky?: boolean }
+  | { type: 'hit'; attacker: number; target: number; damage: number; killed: number; ranged: boolean; retaliation: boolean; status?: StatusId; charge?: boolean; lucky?: boolean; braced?: boolean; plate?: boolean; backstab?: boolean }
   /** Every shooter on a side looses at once: the ranger's archers before the battle, or at a villain's order (`spell`, `by`). */
   | { type: 'volley'; side?: Side; spell?: SpellId; by?: number }
   /** A fresh stack marches in from its side's edge of the field, called by a spell or an order. */
@@ -225,6 +225,8 @@ export const onField = (f: Fighter) => f.count > 0 && !LEADS.has(f.troop);
 export const hasTurn = (f: Fighter) => f.count > 0 && (!LEADS.has(f.troop) || f.shots > 0 || RIDES.has(f.troop) || BARDS.has(f.troop));
 /** A bard's repertoire (`bard` in content/troops.ts), if the fighter is one. */
 export const bardOf = (f: Pick<Fighter, 'troop'>) => (BARDS.has(f.troop) ? abilitiesOf(f.troop).find((a) => a.bard)!.bard! : null);
+/** Whether a stack sets itself against a charge (pikes): whatever charges it gets no charge. */
+export const braces = (f: Pick<Fighter, 'troop'>) => abilitiesOf(f.troop).some((a) => a.braces);
 export const fighterById = (b: BattleState, id: number) => b.fighters.find((f) => f.id === id)!;
 export const activeFighter = (b: BattleState): Fighter | null => (b.result || b.order.length === 0 ? null : fighterById(b, b.order[0]));
 export const hasStatus = (f: Fighter, status: StatusId) => f.status.includes(status);
@@ -622,10 +624,11 @@ export function canCast(b: BattleState, spell: SpellId, by?: number): boolean {
 /**
  * Whether a melee attack from `from` would be a charge: a charging troop with a run-up, riding far
  * enough first from a start clear of the enemy (circling a stack it is already fighting isn't one).
- * A leader who charges always has his run-up: he rides in from behind the line.
+ * A leader who charges always has his run-up: he rides in from behind the line. Nothing charges set
+ * pikes (`target`, when it's known).
  */
-export const isCharge = (b: BattleState, f: Fighter, from: number, moves = options(b).moves) =>
-  f.side === 'player' && (b.hero.charge ?? []).includes(f.troop) && (isLeader(f) || (from !== f.at && (moves.get(from)?.length ?? 0) >= CHARGE_HEXES && !adjacentEnemy(b, f)));
+export const isCharge = (b: BattleState, f: Fighter, from: number, moves = options(b).moves, target?: Pick<Fighter, 'troop'>) =>
+  f.side === 'player' && (b.hero.charge ?? []).includes(f.troop) && (isLeader(f) || (from !== f.at && (moves.get(from)?.length ?? 0) >= CHARGE_HEXES && !adjacentEnemy(b, f))) && !(target && braces(target));
 /** Damage a spell does, or 0 if it doesn't do damage. */
 export const spellDamage = (b: BattleState, spell: SpellId, by?: number) => {
   const effect = SPELLS[spell].effect;
@@ -722,7 +725,7 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
   const events: BattleEvent[] = [];
   const opts = options(b);
 
-  const hit = (attacker: Fighter, target: Fighter, ranged: boolean, retaliation: boolean, charge = false) => {
+  const hit = (attacker: Fighter, target: Fighter, ranged: boolean, retaliation: boolean, charge = false, braced = false) => {
     const rolled = strike(next, attacker, target, ranged, expected ? undefined : next.seed, charge ? CHARGE_BONUS : 1);
     if (!expected) next.seed = rolled.seed!;
     next.struck = true;
@@ -740,7 +743,7 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
         }
       }
     }
-    events.push({ type: 'hit', attacker: attacker.id, target: target.id, damage: rolled.damage, killed: w.killed, ranged, retaliation, ...(status ? { status } : {}), ...(charge ? { charge } : {}), ...(rolled.lucky ? { lucky: true } : {}) });
+    events.push({ type: 'hit', attacker: attacker.id, target: target.id, damage: rolled.damage, killed: w.killed, ranged, retaliation, ...(status ? { status } : {}), ...(charge ? { charge } : {}), ...(braced ? { braced: true } : {}), ...(rolled.lucky ? { lucky: true } : {}) });
   };
 
   switch (action.type) {
@@ -754,7 +757,10 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
     case 'melee': {
       const ok = opts.melee.some((m) => m.target === action.target && m.from === action.from);
       if (!ok) return { battle: b, events: [] };
-      const charge = isCharge(b, f, action.from, opts.moves);
+      const target = fighterById(next, action.target);
+      // A charge into set pikes is no charge: no bonus, no free blow, no winding, and the pikes strike first.
+      const rideIn = isCharge(b, f, action.from, opts.moves);
+      const charge = rideIn && !braces(target);
       // A leader rides out from behind the line to strike, and back again: he never stands on the field.
       const ride = isLeader(f) ? opts.rides?.get(action.from) : undefined;
       if (ride) events.push({ type: 'move', fighter: me.id, path: ride });
@@ -762,13 +768,12 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
         events.push({ type: 'move', fighter: me.id, path: opts.moves.get(action.from)! });
         me.at = action.from;
       }
-      const target = fighterById(next, action.target);
       // Spears and pikes strike first when they defend, unless the attacker has the same knack.
       // Nothing can reach a leader, so nothing strikes first at him, nor back.
       const untouched = charge || isLeader(f);
       const firstStrike = !untouched && abilitiesOf(target.troop).some((a) => a.firstStrike) && !abilitiesOf(me.troop).some((a) => a.firstStrike);
       if (firstStrike) hit(target, me, false, false);
-      if (alive(me)) hit(me, target, false, false, charge);
+      if (alive(me)) hit(me, target, false, false, charge, rideIn && !charge);
       // A charge winds the chargers: nobody strikes back at them now, and they strike back at nobody for the rest of this round and the next.
       if (charge && alive(me) && !isLeader(me)) addStatus(me, 'winded', next.round);
       // Nobody gets to swing back at a lance coming in at the gallop, nor a stack turned into newts,
