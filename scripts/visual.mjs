@@ -33,6 +33,8 @@ const SCENES = {
   downs: { query: '&reveal=1&x=2900&y=420' },
   chase: { query: '&reveal=1&x=2400&y=1900' },
   dig: { query: '&reveal=1&x=700&y=560' },
+  // The King's pennant beside places he has done with (#256): St Aldhelm's shrine prayed at, and the beacon on the downs climbed.
+  pennants: { query: '&hero=knight&reveal=1&x=2860&y=760&flags=aldhelm:prayed,beacon:true', steps: [] },
   // Land he has seen stays clear in any light (#125): the King's road in the evening, and at nightfall.
   evening: { query: '&hero=knight&movement=40&x=2760&y=960', steps: [] },
   nightfall: { query: '&hero=knight&movement=0&x=2760&y=960', steps: [] },

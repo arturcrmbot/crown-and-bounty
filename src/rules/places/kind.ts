@@ -20,4 +20,9 @@ export type PlaceKind = {
   worth(state: GameState, place: Location): number | null;
   /** What the bot does once it's there. */
   bot?(state: GameState, place: Location): GameState;
+  /**
+   * Whether the hero has had all this place has to give (#256), so the King's pennant flies beside it.
+   * Kinds he can always come back to (his castle, a village, a well, the mill, a signpost) have none.
+   */
+  finished?(state: GameState, place: Location): boolean;
 };

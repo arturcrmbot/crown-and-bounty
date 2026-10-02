@@ -142,6 +142,8 @@ describe('the minimap', () => {
     expect(after.patrol).toBeUndefined();
     expect(after.chest).toBe('spent');
     expect(after.tower).toBe('spent');
+    // A place under the King's pennant turns grey too (#256).
+    expect(Object.fromEntries(marksOf(state.locations, CLEAR, new Set(['shrine'])).map((m) => [m.id, m.kind])).shrine).toBe('spent');
     // When he rides out, the villain is marked where he rides, and his lair as his men's.
     const lair = state.locations.find((l) => l.id === 'hideout')!;
     const band: Location = { id: 'grimsbyRides', kind: 'patrol', name: 'Baron Grimsby', at: [2000, 1300], done: false, enemy: { ...lair.enemy!, lair: 'hideout' } };

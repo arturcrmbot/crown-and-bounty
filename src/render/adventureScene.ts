@@ -1,6 +1,6 @@
 import type { BackgroundId } from '../content/backgrounds';
 import { leads, troopPower, type TroopId } from '../content/troops';
-import { geeseHome, VANISHES, type Army, type GameState, type Location } from '../rules/game';
+import { finished, geeseHome, VANISHES, type Army, type GameState, type Location } from '../rules/game';
 import type { Point } from '../rules/map/geometry';
 import { forestAmount, Terrain, type MapModel } from '../rules/map/model';
 import { AdventureScreen, type Placed } from './adventureScreen';
@@ -16,7 +16,7 @@ import { heroArtId } from './units';
 import {
   abbey, boat, boulder, camp, campfire,
   butts, CART_GROUND as DRAWN_CART_GROUND, cottage, castle, standingStones, chest, crag, fold, goldPile, grainCart, hayrick, hideout, holes, huntHall, hut, kiln, lodge, mews, mill, mine, mirror, nest, oak, pack, peatHut, pine, pond, signpost, skeps, stiltHut, shrine,
-  stoneBridge, swimmingGoose, washingCottage, watchtower, wayside, well, willow, windmill, xMark, lostGoose, cairn,
+  stoneBridge, swimmingGoose, washingCottage, watchtower, wayside, well, willow, windmill, xMark, lostGoose, cairn, kingsPennant, PENNANT_FOOT,
 } from './sprites';
 import { TerrainPainter } from './terrain';
 import { dress } from './dressing';
@@ -112,6 +112,10 @@ export type AdventureScene = {
   pickups: Map<string, Placed>;
   /** Animated landmarks by place, so one that changes (the hunt hall, opened) can be drawn anew. */
   sights: Map<string, Placed>;
+  /** The King's pennant beside each place the hero has done with (#256), by place. */
+  pennants: Map<string, Placed>;
+  /** The places it flies at: a new set only when that changes, so the minimap marks them again only then. */
+  flown: ReadonlySet<string>;
 };
 
 const place = (sprite: Bitmap, [x, y]: Point, footFromTop: number): Placed => ({ sprite, x: x - sprite.width / 2, y: y - footFromTop });
@@ -436,6 +440,36 @@ export function addPlace(scene: AdventureScene, l: Location) {
   scene.hitboxes.push({ id: l.id, x0: o.x, y0: o.y, x1: o.x + o.sprite.width, y1: o.y + o.sprite.height });
 }
 
+/** The King's pennant, waving: the frames every pennant on the map takes turns through. */
+let pennantFrames: Bitmap[] | null = null;
+
+/**
+ * The King's pennant flies beside every place the hero has done with (#256), as HoMM2's mines fly their
+ * owner's flag, and comes down again if something new opens there. Returns the places it flies at.
+ */
+export function flyPennants(scene: AdventureScene, state: GameState): ReadonlySet<string> {
+  pennantFrames ??= animation((t) => kingsPennant(t * Math.PI * 2));
+  const ids = new Set(state.locations.filter((l) => finished(state, l)).map((l) => l.id));
+  for (const [id, o] of scene.pennants) {
+    if (ids.has(id)) continue;
+    scene.view.remove(o);
+    scene.pennants.delete(id);
+  }
+  for (const l of state.locations) {
+    const box = ids.has(l.id) && !scene.pennants.has(l.id) ? scene.hitboxes.find((b) => b.id === l.id) : undefined;
+    if (!box) continue;
+    // Planted just off its right side, each waving in its own time.
+    const turn = [...l.id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % FRAMES;
+    const frames = [...pennantFrames.slice(turn), ...pennantFrames.slice(0, turn)];
+    const o: Placed = { sprite: frames[0], frames, x: Math.round(box.x1) - 3 - PENNANT_FOOT[0], y: l.at[1] + 2 - PENNANT_FOOT[1] };
+    scene.view.animate(o);
+    scene.pennants.set(l.id, o);
+  }
+  const same = ids.size === scene.flown.size && [...ids].every((id) => scene.flown.has(id));
+  if (!same) scene.flown = ids;
+  return scene.flown;
+}
+
 /** The meadow's small things, by kind: bushes, flowers, grass and ferns, and the odd stump, log, mushrooms, stones or bramble. */
 const BUSHES = [0, 1, 2, 3, 4, 5, 26, 27, 28] as const;
 const FLOWERS = [6, 7, 8, 9, 10, 11] as const;
@@ -620,7 +654,7 @@ export function buildAdventureScene(map: MapModel, state: GameState): AdventureS
   const rig: HeroRig = { object: { ...place(figure.idle[0], state.hero.at, figure.foot), frames: figure.idle }, ...figure };
   if (state.hero.facing < 0) rig.object.frames = rig.idleLeft;
   view.animate(rig.object);
-  return { view, fog, minimap, hero: rig, hitboxes, pickups, sights };
+  return { view, fog, minimap, hero: rig, hitboxes, pickups, sights, pennants: new Map(), flown: new Set() };
 }
 
 /**

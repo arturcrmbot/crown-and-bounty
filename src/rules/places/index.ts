@@ -51,6 +51,9 @@ export const visit = (state: GameState, id: string): Result => {
   return guard ? PLACE_KINDS[guard.kind].arrive(state, guard) : PLACE_KINDS[place.kind].arrive(state, place);
 };
 
+/** Whether the hero has had all a place has to give (#256): then the King's pennant flies beside it. Never while its guard is still over it. */
+export const finished = (state: GameState, place: Location): boolean => !guardOf(state, place) && Boolean(PLACE_KINDS[place.kind].finished?.(state, place));
+
 /** A choice on a place's card: `page/choice` or `parley/id` for content, else the kind's own. */
 export function choose(state: GameState, id: string, choice: string): Result | null {
   const place = state.locations.find((l) => l.id === id);

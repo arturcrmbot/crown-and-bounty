@@ -47,14 +47,20 @@ const SIZE: Record<MarkKind, number> = { spent: 2, place: 2, treasure: 2, town: 
 /** How far the hero's diamond reaches from its heart, ink edge included. */
 const HERO_REACH = 3;
 
-/** `out` is whether a villain's band has ridden out of this place: then he's marked where he rides, and his lair as his men's. */
-function markOf(l: Location, out: boolean): MarkKind {
+/** No places done with: for the minimap of a province before anyone has had anything from it. */
+const NONE: ReadonlySet<string> = new Set();
+
+/**
+ * `out` is whether a villain's band has ridden out of this place: then he's marked where he rides, and his lair as his men's.
+ * A place under the King's pennant (`finished`, #256) is marked as used, like one done with.
+ */
+function markOf(l: Location, out: boolean, finished: ReadonlySet<string>): MarkKind {
   if (l.enemy?.lair && !l.done) return 'villain';
   if (l.kind === 'hideout') return l.done ? 'spent' : out ? 'foe' : 'villain';
   if (l.enemy && !l.done) return 'foe';
   if (l.kind === 'castle' || l.kind === 'village') return 'town';
   if (l.kind === 'chest' || l.kind === 'gold' || l.kind === 'dig') return l.done ? 'spent' : 'treasure';
-  return l.done ? 'spent' : 'place';
+  return l.done || finished.has(l.id) ? 'spent' : 'place';
 }
 
 /** Anything that says where the fog still lies, in map pixels: the adventure screen's own fog. */
@@ -64,11 +70,11 @@ export type Fog = { isFogged(x: number, y: number): boolean };
  * The places the hero has found, and the enemies he knows are there: whatever the map itself shows
  * clear of the fog. The small things lying by the roads aren't places, and aren't marked (#192).
  */
-export function marksOf(locations: readonly Location[], fog: Fog): Mark[] {
+export function marksOf(locations: readonly Location[], fog: Fog, finished: ReadonlySet<string> = NONE): Mark[] {
   const out = new Set(locations.filter((l) => l.enemy?.lair && !l.done).map((l) => l.enemy!.lair));
   return locations
     .filter((l) => l.kind !== 'pickup' && !(l.done && VANISHES.has(l.kind)) && !l.enemy?.unseen && !fog.isFogged(l.at[0], l.at[1] - 2))
-    .map((l) => ({ id: l.id, at: l.at, kind: markOf(l, out.has(l.id)) }))
+    .map((l) => ({ id: l.id, at: l.at, kind: markOf(l, out.has(l.id), finished) }))
     .sort((a, b) => ORDER[a.kind] - ORDER[b.kind]);
 }
 
@@ -132,8 +138,8 @@ export class Minimap {
   private readonly box: Bitmap;
   private readonly stub: Bitmap;
   private marks: Mark[] = [];
-  /** What was painted last: the fog's turn, the places, where the hero and the view were. */
-  private painted = { fog: -1, locations: null as readonly Location[] | null, key: '' };
+  /** What was painted last: the fog's turn, the places and those done with, where the hero and the view were. */
+  private painted = { fog: -1, locations: null as readonly Location[] | null, finished: null as ReadonlySet<string> | null, key: '' };
   private fogTurn = 0;
 
   constructor(map: MapModel, painter: TerrainPainter, fog: Fog, rect: Rect) {
@@ -230,16 +236,17 @@ export class Minimap {
   /**
    * Paints the minimap, in its moulding, if anything it shows has changed since last time: the fog,
    * the places, the hero's pixel or the view's frame. `view` is the part of the map on screen, in map
-   * pixels. Returns whether it painted. `draw` lays it over the map.
+   * pixels, and `finished` the places under the King's pennant. Returns whether it painted. `draw` lays
+   * it over the map.
    */
-  paint(locations: readonly Location[], hero: Point, view: Rect): boolean {
+  paint(locations: readonly Location[], hero: Point, view: Rect, finished: ReadonlySet<string> = NONE): boolean {
     const [hx, hy] = this.pixel(hero[0], hero[1]);
     const frame = this.frameOf(view);
     const key = `${hx},${hy}|${frame.join(',')}`;
-    const stale = this.painted.fog !== this.fogTurn || this.painted.locations !== locations;
+    const stale = this.painted.fog !== this.fogTurn || this.painted.locations !== locations || this.painted.finished !== finished;
     if (!stale && key === this.painted.key) return false;
-    if (stale) this.marks = marksOf(locations, this.fogged);
-    this.painted = { fog: this.fogTurn, locations, key };
+    if (stale) this.marks = marksOf(locations, this.fogged, finished);
+    this.painted = { fog: this.fogTurn, locations, finished, key };
     const { box, rect } = this;
     const [ox, oy] = this.origin();
     box.fill(TRIM, TRIM, rect.width, rect.height, INK);

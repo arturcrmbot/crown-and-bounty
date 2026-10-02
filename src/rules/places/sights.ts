@@ -40,6 +40,7 @@ export const tower: PlaceKind = {
   },
   worth: (state, place) => (place.done ? null : place.pages ? choiceWorth(state, place) : 400),
   bot: takeBest,
+  finished: (_, place) => place.done,
 };
 
 /** A stash to find once: the mine's forgotten ore cart, the peat cutters' wages. */
@@ -54,6 +55,7 @@ export const mine: PlaceKind = {
   },
   worth: (state, place) => (place.done ? null : place.pages ? choiceWorth(state, place) : (place.gold ?? 0)),
   bot: takeBest,
+  finished: (_, place) => place.done,
 };
 
 /** Flour for a longer day's march, once a week. */

@@ -62,6 +62,7 @@ export const chest: PlaceKind = {
     const short = heroStats(state).leadership - leadershipUsed(state.army) < 40;
     return openChest(state, place, short ? 'give' : 'keep')?.state ?? state;
   },
+  finished: (_, place) => place.done,
 };
 
 /**
