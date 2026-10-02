@@ -1711,19 +1711,33 @@ export class BattleController implements Screen {
     });
   }
 
+  /**
+   * The spellbook: each spell is its own button, with its price on it as the armoury's wares have
+   * theirs, and what it does under it (#226). One he can't cast now shows greyed, and its price says
+   * how much mana he is short.
+   */
   private openSpellbook() {
     const { hero } = this.battle;
     const spells = spellsOf(this.battle).map((id) => SPELLS[id]);
-    // A charge (a wand's bolt) costs no mana: the book says how many are left instead.
-    const cost = (id: SpellId) => {
+    const left = castsLeft(this.battle);
+    // A charge (a wand's bolt) costs no mana: its button says how many are left instead.
+    const price = (id: SpellId) => {
       const charge = chargeOf(this.battle, id);
-      return charge ? `has ${charge.uses} ${charge.uses === 1 ? 'charge' : 'charges'} left` : `costs ${spellCost(this.battle, id)} mana`;
+      return charge ? `${charge.uses} ${charge.uses === 1 ? 'charge' : 'charges'} left` : `${spellCost(this.battle, id)} mana`;
     };
+    const short = (id: SpellId) => (left > 0 && !chargeOf(this.battle, id) ? spellCost(this.battle, id) - hero.mana : 0);
+    const casts = (hero.casts ?? 1) > 1 ? (left > 0 ? `You can cast two spells a round, and have ${left} left this round.` : 'You can cast two spells a round, and you have cast both this round.') : left > 0 ? 'You can cast one spell a round.' : 'You can cast one spell a round, and you have cast it.';
     this.cards.show({
       title: 'Spellbook',
-      lines: [manaInBattle(hero.mana, hero.maxMana), `${(hero.casts ?? 1) > 1 ? `You can cast two spells a round, and have ${castsLeft(this.battle)} left this round.` : 'You can cast one spell a round.'}`, ...spells.map((s) => `**${s.name}** ${cost(s.id)}. ${s.note}`)],
+      lines: [manaInBattle(hero.mana, hero.maxMana), casts],
       choices: [
-        ...spells.filter((s) => canCast(this.battle, s.id)).map((s) => ({ label: `Cast ${s.name}`, action: { type: 'spell' as const, spell: s.id } })),
+        ...spells.map((s) => ({
+          // Too dear, the price says how far short he is, so the book still fits without scrolling.
+          label: `Cast ${s.name} (${price(s.id)}${short(s.id) > 0 ? `, ${short(s.id)} short` : ''})`,
+          detail: s.note,
+          disabled: !canCast(this.battle, s.id),
+          action: { type: 'spell' as const, spell: s.id },
+        })),
         { label: 'Close', action: { type: 'close' } },
       ],
     });

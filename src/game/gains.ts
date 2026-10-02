@@ -36,6 +36,11 @@ export function gainsOf(before: GameState, after: GameState): Gain[] {
     if (movement > 0) gains.push({ kind: 'movement', amount: movement, text: `+${movement} movement` });
   }
   if (sameDay && after.hero.mana > before.hero.mana) gains.push({ kind: 'mana', amount: after.hero.mana - before.hero.mana, text: `+${after.hero.mana - before.hero.mana} mana` });
+  // Mana spent on the map (Far Sight, a choice's price) goes in red, as spent gold does (#226). A battle's card says what it took.
+  else if (sameDay && !before.battle && after.hero.mana < before.hero.mana) {
+    const spent = before.hero.mana - after.hero.mana;
+    gains.push({ kind: 'mana', amount: -spent, text: `${sign(-spent)}${spent} mana` });
+  }
   for (const spell of after.hero.spells) if (!before.hero.spells.includes(spell)) gains.push({ kind: 'spell', amount: 1, text: `New spell: ${SPELLS[spell].name}` });
   const had = owned(before);
   for (const id of owned(after)) {

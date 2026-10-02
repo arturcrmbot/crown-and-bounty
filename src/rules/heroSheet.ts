@@ -30,9 +30,13 @@ export function manaNote(state: GameState): string {
   return `Mana ${mana}/${s.maxMana} · ${manaBack(state)}`;
 }
 
-/** The spellbook's mana line: none comes back in battle. `max` is missing from a battle saved before it was kept. */
+/**
+ * The spellbook's mana line: none comes back in battle. How it comes back on the map (at dawn, as he
+ * rides) is the map's to say, since a Wizard's comes back faster than a quarter at dawn (#226). `max`
+ * is missing from a battle saved before it was kept.
+ */
 export function manaInBattle(mana: number, max?: number): string {
-  return max === undefined ? `You have **${mana}** mana, and none comes back in battle.` : `You have **${mana}/${max}** mana. None comes back in battle, and only a quarter at dawn.`;
+  return `You have **${max === undefined ? mana : `${mana}/${max}`}** mana, and none comes back in battle.`;
 }
 
 /** The next payday: once a week, from day VIII (VIII, XV, XXII...). */
