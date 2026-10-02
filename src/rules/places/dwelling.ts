@@ -1,7 +1,7 @@
 import { ARTIFACTS, artifactPhrase, type ArtifactId } from '../../content/artifacts';
 import { troopPower } from '../../content/troops';
 import { dismiss, grumbleLine } from '../army';
-import { artifactChoices, giveArtifact, heroStats, salePrice, sell, slotTaken, wantedAt, wornLine } from '../hero';
+import { artifactChoices, giveArtifact, heroStats, nothingNew, salePrice, sell, slotTaken, wantedAt, wornLine } from '../hero';
 import { bestChoice, firstPage, pageCard, takeChoice } from '../effects';
 import { addTroops, close, coins, fits, joinLine, leadershipUsed, locationById, troops, update, type Card, type Choice, type GameState, type Location, type Result } from '../state';
 import { aboutWords, found, option, priceOf, ride, say } from './common';
@@ -126,7 +126,9 @@ function armouryCard(state: GameState, place: Location, before: string[] = [], d
         const short = price - state.gold;
         // "Buy a Scout's Spyglass", not "Buy A Scout's Spyglass".
         const name = ARTIFACTS[w].name.replace(/^A /, 'a ');
-        return { ...option(place, `Buy ${name} (${coins(price)} gold)`, `buy:${w}`, short > 0), detail: `${ARTIFACTS[w].note}${short > 0 ? ` You\u2019re ${coins(short)} gold short.` : ''}` };
+        // A Courtier is told that the Silver Signet does nothing for him, before he pays 900 gold for it (#231).
+        const had = nothingNew(state, ARTIFACTS[w].bonus, {}, 'it would change nothing for you', 'that part would change nothing for you');
+        return { ...option(place, `Buy ${name} (${coins(price)} gold)`, `buy:${w}`, short > 0), detail: `${ARTIFACTS[w].note}${had}${short > 0 ? ` You\u2019re ${coins(short)} gold short.` : ''}` };
       }),
       ...(state.hero.pack.length ? [option(place, 'Sell him your spares', 'spares')] : []),
       ...(decisions.length ? [] : [close]),

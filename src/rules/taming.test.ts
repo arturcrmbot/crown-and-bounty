@@ -84,7 +84,7 @@ describe('taming', () => {
 
   it('only for an army stronger than theirs: the wolves won\u2019t follow a fresh one, and all follow one twice as strong', () => {
     const start = fresh();
-    expect(labels(start, 'wolves')).toContain('Tame them (your army isn\u2019t strong enough yet) [off]');
+    expect(labels(start, 'wolves')).toContain('Tame them (they don\u2019t think much of your army yet) [off]');
     expect(cardOf(visit(start, 'wolves')).lines.some((l) => l.includes('Beasts follow only an army stronger than theirs'))).toBe(true);
     expect(choose(start, 'wolves', 'tame')).toBeNull();
     const card = cardOf(visit(grown(start), 'wolves'));

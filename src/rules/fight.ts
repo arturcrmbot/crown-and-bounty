@@ -7,9 +7,9 @@ import { applyEffects, choiceButton, meets } from './effects/core';
 import { bountyOf, CAMPAIGN_LENGTH, campaignLines, commissionOf, hasNextCommission, provinceOf } from './campaign';
 import { look, seeBands } from './map/sight';
 import { fleeHome, fleesHome } from './map/sortie';
-import { battleEnd, createBattle, isLeader, SHOOTER_MELEE, survivors, type BattleHero, type BattleState, type Side } from './battle/battle';
+import { bardOf, battleEnd, bribeOffer, createBattle, isLeader, onField, SHOOTER_MELEE, survivors, type BattleHero, type BattleState, type Side } from './battle/battle';
 import { artifactChoices, foundNote, gainXp, giveArtifact, heroStats, namedBonuses } from './hero';
-import { addTroops, again, armyLine, armyPower, close, coins, countOf, leadershipUsed, listed, locationById, roll, roman, show, stillWithYou, troops, update, VANISHES, type Army, type BattleResultCard, type Choice, type GameEvent, type GameState, type Location, type Result } from './state';
+import { addTroops, again, armyLine, armyPower, close, coins, countOf, leadershipUsed, listed, locationById, MAX_STACKS, roll, roman, show, stillWithYou, troops, update, VANISHES, type Army, type BattleResultCard, type Choice, type GameEvent, type GameState, type Location, type Result } from './state';
 
 export function heroInBattle(state: GameState): BattleHero {
   const s = heroStats(state);
@@ -318,6 +318,52 @@ export function beat(state: GameState, id: string, how: { title: string; lines: 
   return { state: next, events };
 }
 
+/**
+ * What a bard's gold did, for the card after a battle (#231): whom it sent home, whom it won over to
+ * his side, and what it cost. Those who went over to him came in as stacks of his own (`turncoat`);
+ * the rest of those who walked off went home.
+ */
+function bribeLines(battle: BattleState, paid: number): string[] {
+  if (!paid) return [];
+  const over = new Map<TroopId, number>();
+  for (const f of battle.fighters) if (f.side === 'player' && f.turncoat) over.set(f.troop, (over.get(f.troop) ?? 0) + f.startCount);
+  const home = new Map<TroopId, number>();
+  for (const f of battle.fighters) if (f.side === 'enemy' && f.left) home.set(f.troop, (home.get(f.troop) ?? 0) + f.left);
+  for (const [troop, count] of over) home.set(troop, (home.get(troop) ?? 0) - count);
+  const named = (who: Map<TroopId, number>) => listed([...who].filter(([, count]) => count > 0).map(([troop, count]) => `**${troops(troop, count)}**`));
+  const [sent, won] = [named(home), named(over)];
+  const did = sent && won ? `Your gold sent ${sent} home, and won ${won} over to your side.` : sent ? `Your gold sent ${sent} home.` : won ? `Your gold won ${won} over to your side.` : '';
+  return [...(did ? [did] : []), `Bribes cost you **${coins(paid)} gold**${battle.result === 'won' ? ', and those you paid off teach you half what beating them would' : ''}.`];
+}
+
+/**
+ * What a bard's purse could do in a fight, for its card (#231). His sergeants never spend his gold, so
+ * the odds leave it out: this says who of the enemy would take his gold as the battle begins, what
+ * sending them home would cost, and what winning them over would, if he has room for them all.
+ * Nothing for a hero who isn't a bard, or for an enemy that takes no gold at all.
+ */
+export function purseLines(state: GameState, id: string): string[] {
+  if (!bardOf({ troop: heroTroop(state.hero.background) }) || !state.army.length) return [];
+  const battle = startFight(state, id)?.state.battle;
+  const bard = battle?.fighters.find((f) => f.hero);
+  if (!battle || !bard) return [];
+  const paid = battle.fighters.filter((f) => f.side === 'enemy' && onField(f) && TROOPS[f.troop].wage);
+  if (!paid.length) return [];
+  const takers = paid.map((f) => ({ f, offer: bribeOffer(battle, bard, f)! })).filter((x) => x.offer.count > 0);
+  const odds = '*The sergeants\u2019 odds leave out your purse.*';
+  if (!takers.length) return [`${odds} In battle, none of them would take gold from an army no stronger than theirs.`];
+  // "16 of the 73 Swordsmen and all 38 Crossbowmen": a whole stack says so, so the share reads as one stack's.
+  const who = listed(takers.map(({ f, offer }) => (offer.count < f.count ? `${offer.count} of the ${troops(f.troop, f.count)}` : f.count === 1 ? `the ${TROOPS[f.troop].one}` : `all ${troops(f.troop, f.count)}`)));
+  const all = takers.length > 1 || takers[0].offer.count > 1 ? 'them' : 'him';
+  const home = takers.reduce((sum, x) => sum + x.offer.price, 0);
+  // Won over, they need room under his banner, all of them at once: leadership, and a place in his line.
+  const joins = takers.map(({ f }) => ({ f, offer: bribeOffer(battle, bard, f, true)! }));
+  const line = new Set(battle.fighters.filter((f) => f.side === 'player' && onField(f)).map((f) => f.troop));
+  const room = joins.reduce((sum, { f, offer }) => sum + offer.count * TROOPS[f.troop].leadership, 0) <= (battle.hero.room ?? 0) && new Set([...line, ...joins.map(({ f }) => f.troop)]).size <= MAX_STACKS;
+  const over = room ? `, or **${coins(joins.reduce((sum, x) => sum + x.offer.price, 0))} gold** would win ${all} over to your side` : '';
+  return [`${odds} In battle, ${who} would take your gold. **${coins(home)} gold** would send ${all} home${over}.`];
+}
+
 /** Turns a finished battle back into the map: survivors, rewards, and what the card says. */
 /**
  * What the hero's skills and gear do once a battle is won (`before` is his army as it rode in): a
@@ -359,7 +405,7 @@ export function finishFight(state: GameState): Result {
   const paid = Math.max(0, state.gold - (battle.hero.gold ?? state.gold));
   // And the villain's last words, on the card as on the field.
   const ended = end ? [`${end.army}, and **${end.leader}**.`, ...(battle.result === 'won' && battle.lastWords ? [`*\u201c${battle.lastWords}\u201d*`] : [])] : [];
-  const bribed = paid ? [`Bribes cost you **${coins(paid)} gold**${battle.result === 'won' ? ', and those you paid off teach you half what beating them would' : ''}.`] : [];
+  const bribed = bribeLines(battle, paid);
   // The battle rolled its own dice from the state's seed: carry on from where it stopped, not from the start again.
   const base: GameState = { ...state, seed: battle.seed, battle: undefined, army, gold: state.gold - paid, hero: { ...state.hero, mana: battle.hero.mana } };
   const manaSpent = Math.max(0, state.hero.mana - battle.hero.mana);

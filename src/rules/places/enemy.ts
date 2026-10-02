@@ -2,7 +2,7 @@ import { ARTIFACTS, artifactPhrase } from '../../content/artifacts';
 import { isBeast, leads, outweighs, TROOPS } from '../../content/troops';
 import { grumbleLine } from '../army';
 import { applyEffects, choiceButton, meets } from '../effects';
-import { battleXp, beat, expectedLosses, fight, startFight, winChance } from '../fight';
+import { battleXp, beat, expectedLosses, fight, purseLines, startFight, winChance } from '../fight';
 import { artifactChoices, foundNote, gainXp, giveArtifact, heroStats } from '../hero';
 import { asleep } from '../map/roaming';
 import { riddenOut } from '../map/sortie';
@@ -77,7 +77,7 @@ export function ambushCard(state: GameState, before: string[] = []): Card {
     { label: 'Run for it (lose a fifth of the army)', action: { type: 'choose', id: foe.id, choice: 'flee' } },
   ];
   const odds = oddsOf(state, foe);
-  const says = state.army.length ? [oddsLine(winChance(state, foe.id)), likelyLossesLine(state, foe.id)] : [];
+  const says = state.army.length ? [oddsLine(winChance(state, foe.id)), likelyLossesLine(state, foe.id), ...purseLines(state, foe.id)] : [];
   const how = state.ambushRest ? `${opening(forceLine(foe.enemy!.army, countsExactly(state)))} come at you!` : `At first light, **${foe.name}** fall on your camp!`;
   // The rest of a band don't greet him again: their threat was for the whole band, and the biggest of a pack may have just come over to him.
   const threat = state.ambushRest ? [] : [foe.enemy!.threat];
@@ -138,7 +138,7 @@ function hire(state: GameState, place: Location): Result | null {
 function hireButton(state: GameState, place: Location): Choice[] {
   const offer = hireOffer(state, place);
   if (!offer) return [];
-  if (!offer.share) return [option(place, 'Hire them (your army isn\u2019t strong enough yet)', 'hire', true)];
+  if (!offer.share) return [option(place, 'Hire them (they don\u2019t think much of your army yet)', 'hire', true)];
   if (!offer.joining.length) return [option(place, 'Hire them (no room to lead them)', 'hire', true)];
   // Who would come, by name: a band of several kinds sends some of each.
   const label = offer.all ? 'Hire them' : `Hire ${listed(offer.joining.map((s) => troops(s.troop, s.count)))}, and fight the rest`;
@@ -210,7 +210,7 @@ function tameButton(state: GameState, place: Location): Choice[] {
   const offer = tameOffer(state, place);
   const them = allBeasts(place) ? 'them' : `their ${TROOPS[beasts[0].troop].name}`;
   if (!offer) return [option(place, `Tame ${them} (a way with beasts)`, 'tame', true)];
-  if (!offer.share) return [option(place, `Tame ${them} (your army isn\u2019t strong enough yet)`, 'tame', true)];
+  if (!offer.share) return [option(place, `Tame ${them} (they don\u2019t think much of your army yet)`, 'tame', true)];
   if (!offer.joining.length) return [option(place, `Tame ${them} (no room in your line)`, 'tame', true)];
   const fight = !nobodyLeft(whoIsLeft(place.enemy!.army, offer.joining));
   const which = offer.all ? `Tame ${them}` : `Tame ${headcount(offer.joining)} of the ${headcount(offer.beasts)}`;
@@ -367,7 +367,7 @@ export function enemy(kind: 'patrol' | 'hideout'): PlaceKind {
         title: place.name,
         ...faceOf(foe.army),
         verdict: verdict(chance),
-        lines: [foe.threat, oddsLine(chance), likelyLossesLine(state, place.id), ...scouts, ...carriesLine(state, place), ...tameLine(state, place), ...grumbleLines(state, place)],
+        lines: [foe.threat, oddsLine(chance), likelyLossesLine(state, place.id), ...purseLines(state, place.id), ...scouts, ...carriesLine(state, place), ...tameLine(state, place), ...grumbleLines(state, place)],
         choices: [{ ...option(place, foe.charge ?? 'Fight', 'fight'), detail: FIGHT_NOTE }, { ...option(place, 'Let the sergeants handle it', 'auto'), detail: SERGEANTS_NOTE }, ...yields, ...hireButton(state, place), ...tameButton(state, place), ...parleys(state, place), retreat],
       });
     },

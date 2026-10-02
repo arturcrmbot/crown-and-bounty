@@ -375,12 +375,34 @@ export function describeOption(option: string, state: GameState): { label: strin
   if (kind === 'perk') return { label: `${PERKS[id as PerkId].name} (${PERKS[id as PerkId].trick ? 'new trick' : 'perk'})`, note: PERKS[id as PerkId].note };
   const rank = Math.min(state.hero.skills[id as SkillId] ?? 0, RANKS.length - 1);
   const next = SKILLS[id as SkillId].ranks[rank];
-  // A second cast is nothing new to a hero who casts two already: say so, rather than let him think it's a third.
-  const capped = next.bonus.casts && heroStats(state).casts >= MAX_CASTS ? ' *You cast two spells a round already, and nobody casts more, so that part changes nothing for you.*' : '';
-  const halved = next.bonus.bribes && heroStats(state).bribes >= MAX_BRIBES ? ' *No bribe is ever more than half off, and yours are already, so that part changes nothing for you.*' : '';
+  // What he has as far as it goes already is nothing new: say so, rather than let him think it is (#226, #231).
+  const before = rank > 0 ? SKILLS[id as SkillId].ranks[rank - 1].bonus : {};
+  const whole = rank < RANKS.length - 1 ? `this rank changes nothing for you, though you need it before ${RANKS[rank + 1]}` : 'this rank changes nothing for you';
+  const had = nothingNew(state, next.bonus, before, whole, 'that part changes nothing for you');
   // Advanced and Expert say what they add to the rank he has, not what the skill does in all (#226).
   const words = 'adds' in next ? next.adds : next.note;
-  return { label: `${RANKS[rank]} ${SKILLS[id as SkillId].name}`, note: `${words}${capped}${halved}` };
+  return { label: `${RANKS[rank]} ${SKILLS[id as SkillId].name}`, note: `${words}${had}` };
+}
+
+/**
+ * What of a bonus a hero has as far as it goes already, and why, as a note to put after what it does:
+ * a second cast for one who casts two, cheaper bribes for one whose are half off, bands that take
+ * his coin or surrender to him for one whose do already. `before` is the rank before, for a skill: only
+ * what changed counts. `whole` ends the note when none of it is new, and `part` when some of it isn't.
+ */
+export function nothingNew(state: GameState, bonus: Bonus, before: Bonus, whole: string, part: string): string {
+  const s = heroStats(state);
+  const why: Partial<Record<keyof Bonus, string>> = {
+    casts: s.casts >= MAX_CASTS ? 'you cast two spells a round already, and nobody casts more' : undefined,
+    bribes: s.bribes >= MAX_BRIBES ? 'your bribes are half off already, as low as they go' : undefined,
+    hires: s.hires ? 'small bands take your coin already' : undefined,
+    cows: s.cows ? 'weak bands surrender to you already' : undefined,
+  };
+  const changed = (Object.keys(bonus) as (keyof Bonus)[]).filter((k) => bonus[k] !== before[k]);
+  const reasons = changed.map((k) => why[k]).filter((w): w is string => Boolean(w));
+  if (!reasons.length) return '';
+  const said = reasons.join(', and ');
+  return ` *${said[0].toUpperCase()}${said.slice(1)}, so ${reasons.length === changed.length ? whole : part}.*`;
 }
 
 /** The card for the first level-up still waiting, or null. */
