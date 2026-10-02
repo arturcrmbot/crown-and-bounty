@@ -2,20 +2,28 @@ import { ARTIFACTS, artifactPhrase, piecesOf, SETS, slotAcceptsArtifact, slotsFo
 import { BACKGROUNDS, type BackgroundId, type Bonus } from '../content/backgrounds';
 import { FRIENDS } from '../content/friends';
 import { PERKS, RANKS, SKILLS, WIZARDRY, type PerkId, type SkillId } from '../content/skills';
-import type { MapSpellId, SpellId, StatusId } from '../content/spells';
+import { SPELLS, type MapSpellId, type SpellId, type StatusId } from '../content/spells';
 import type { TroopId } from '../content/troops';
 import { SHOOTER_MELEE } from './battle/battle';
-import { close, roll, roman, show, type Card, type Choice, type ContentChoice, type GameEvent, type GameState, type Location, type Needs, type Result } from './state';
+import { close, listed, roll, roman, show, type Card, type Choice, type ContentChoice, type GameEvent, type GameState, type Location, type Needs, type Result } from './state';
 
-/** A level-up waiting for the player to choose: skills (`skill:archery`) or perks (`perk:warchest`). */
-export type Offer = { level: number; stat: StatId; options: string[] };
+/**
+ * A level-up waiting for the player to choose: skills (`skill:archery`) or perks (`perk:warchest`). `stat` and
+ * `also` are the two points the level gave (#254), the same one twice if it came up twice. A level from before
+ * has only `stat`.
+ */
+export type Offer = { level: number; stat: StatId; also?: StatId; options: string[] };
 export type StatId = 'attack' | 'defence' | 'spellPower' | 'knowledge';
 
 export const BASE_MOVEMENT = 150;
 export const BASE_SIGHT = 150;
 
-/** XP needed for each level, from level 1. */
-export const LEVELS = [0, 0, 150, 400, 750, 1200, 1800, 2500, 3400, 4500, 6000, 8000, 10500, 13500, 17000, 21000];
+/**
+ * XP needed for each level, from level 1. A level comes about every other fight (#254), and each brings two
+ * stat points and twice the leadership it did, so it's worth noticing: about VIII or IX by the villain. The
+ * first comes with the first fight and a find or two.
+ */
+export const LEVELS = [0, 0, 200, 800, 1500, 2300, 3300, 4400, 5700, 7100, 8700, 10500, 12500, 14600, 17000, 19500];
 export const levelFor = (xp: number) => {
   let level = 1;
   while (level + 1 < LEVELS.length && xp >= LEVELS[level + 1]) level++;
@@ -141,9 +149,10 @@ export const MAX_INTEREST = 500;
 /** The hero's numbers with everything added up. The rules use these, never the raw fields. */
 /**
  * Leadership each level brings: troops follow a famous officer. Leadership caps the army, so it grows
- * slowly enough that he's still growing into the third week of a commission (docs/BALANCE.md).
+ * slowly enough that he's still growing into the third week of a commission (docs/BALANCE.md). Levels
+ * come half as often as they did, so each brings twice as much (#254).
  */
-export const RENOWN = 5;
+export const RENOWN = 10;
 
 /**
  * At every level-up he can rally more men in place of learning something (Artur, 30 Sep): a way to
@@ -422,6 +431,27 @@ export function nothingNew(state: GameState, bonus: Bonus, before: Bonus, whole:
   return ` *${said[0].toUpperCase()}${said.slice(1)}, so ${reasons.length === changed.length ? whole : part}.*`;
 }
 
+/** What the points a level gave do, in numbers (#254), so that he feels every level: two lines, or one for the same stat twice. */
+function risen(state: GameState, offer: Offer): string[] {
+  const stats = offer.also ? [offer.stat, offer.also] : [offer.stat];
+  return [...new Set(stats)].map((stat) => statLine(state, stat, stats.filter((x) => x === stat).length));
+}
+
+function statLine(state: GameState, stat: StatId, by: number): string {
+  const rise = `Your ${STAT_NAMES[stat].toLowerCase()} rises by **${by}**`;
+  if (stat === 'attack') return `${rise}, so every stack of yours hits about ${10 * by}% harder.`;
+  if (stat === 'defence') return `${rise}, so every stack of yours takes ${5 * by} to ${10 * by}% less damage.`;
+  if (stat === 'knowledge') return `${rise}, so you hold ${10 * by} more mana.`;
+  const s = heroStats(state);
+  const spells = s.spells.flatMap((id) => {
+    const effect = SPELLS[id].effect;
+    if (effect.kind !== 'damage' && effect.kind !== 'burst') return [];
+    const more = Math.round((effect.perPower + (effect.kind === 'burst' ? s.burstPower : 0)) * by * (1 + s.spellDamage));
+    return [`${SPELLS[id].name} does ${more} more damage`];
+  });
+  return spells.length ? `${rise}, so ${listed(spells)}.` : `${rise}, so the spells you learn will hit harder.`;
+}
+
 /** The card for the first level-up still waiting, or null. */
 export function levelUpCard(state: GameState): Card | null {
   const offer = state.hero.offers[0];
@@ -429,12 +459,12 @@ export function levelUpCard(state: GameState): Card | null {
   const options = offer.options.map((o) => ({ o, ...describeOption(o, state) }));
   return {
     title: `Level ${roman(offer.level)}!`,
-    lines: [`Your ${STAT_NAMES[offer.stat].toLowerCase()} rises by **1**, and your leadership by **${RENOWN}**. Choose something to learn, or rally more men.`],
+    lines: [...risen(state, offer), `Your leadership rises by **${RENOWN}**.`, 'Choose something to learn, or rally more men.'],
     choices: options.map((x) => ({ label: x.label, detail: x.note, action: { type: 'learn', option: x.o } })),
   };
 }
 
-/** Adds experience; every level gained raises a stat now and queues a choice for the player. */
+/** Adds experience; every level gained raises two stats now (or one twice) and queues a choice for the player. */
 export function gainXp(state: GameState, amount: number): Result {
   if (amount <= 0) return { state, events: [] };
   const xp = state.hero.xp + Math.round(amount);
@@ -442,11 +472,14 @@ export function gainXp(state: GameState, amount: number): Result {
   const events: GameEvent[] = [];
   let seed = next.seed;
   for (let level = state.hero.level + 1; level <= levelFor(xp); level++) {
-    const grown = growStat(next, seed);
-    const drawn = drawOptions(next, grown.seed);
+    const first = growStat(next, seed);
+    const second = growStat(next, first.seed);
+    const drawn = drawOptions(next, second.seed);
     seed = drawn.seed;
-    const hero = next.hero;
-    next = { ...next, hero: { ...hero, level, [grown.stat]: hero[grown.stat] + 1, offers: [...hero.offers, { level, stat: grown.stat, options: drawn.options }] } };
+    const hero = { ...next.hero, level };
+    hero[first.stat] += 1;
+    hero[second.stat] += 1;
+    next = { ...next, hero: { ...hero, offers: [...hero.offers, { level, stat: first.stat, also: second.stat, options: drawn.options }] } };
     events.push({ type: 'levelUp', level });
   }
   return { state: { ...next, seed }, events };

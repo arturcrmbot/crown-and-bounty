@@ -162,7 +162,7 @@ describe('the hero screen', () => {
     const sheet = heroSheet(wizard());
     expect(sheet.title).toBe('Aldric the Hedge Wizard');
     expect(sheet.level).toBe('Level I');
-    expect(sheet.xp).toEqual({ share: 0, line: '0 of 150 experience. He needs 150 more for level II, from fights and new places.' });
+    expect(sheet.xp).toEqual({ share: 0, line: '0 of 200 experience. He needs 200 more for level II, from fights and new places.' });
     expect(sheet.stats.map((s) => s.value)).toEqual([0, 1, 3, 3]);
     expect(sheet.stats[2].note).toContain('a Lightning Bolt does 60 damage');
     expect(sheet.mana).toEqual({ left: 30, max: 30, line: 'Mana 30/30 · full; a quarter back every dawn, and a holy well or your castle fills it', back: 'full' });
@@ -247,7 +247,7 @@ describe('the hero\u2019s own card', () => {
     expect(me.title).toBe('Sir Aldric, Knight of the Realm');
     expect(me.stats).toEqual([
       { name: 'Attack', value: '6', note: '5 as a fighter, +1 from his Attack' },
-      { name: 'Damage', value: '12\u201318', note: 'each blow: +2 a level' },
+      { name: 'Damage', value: '12\u201318', note: 'each blow: +4 a level' },
       { name: 'Speed', value: '6', note: 'hexes he rides out' },
     ]);
     const names = me.traits.map((t) => t.name);
@@ -261,7 +261,7 @@ describe('the hero\u2019s own card', () => {
 
   it('knows a caster\u2019s bolts grow with his spell power, and that a courtier is a bard who strikes no blow', () => {
     const w = leaderSheet(wizard());
-    expect(w.stats.find((s) => s.name === 'Damage')).toEqual({ name: 'Damage', value: '12\u201314', note: 'each blow: +1 a level, +3 per spell power' });
+    expect(w.stats.find((s) => s.name === 'Damage')).toEqual({ name: 'Damage', value: '12\u201314', note: 'each blow: +2 a level, +3 per spell power' });
     expect(w.traits[0]).toEqual({ name: 'Leads', note: 'Every stack fights with +1 defence.' });
     expect(w.stats.find((s) => s.name === 'Shots')).toEqual({ name: 'Shots', value: '10', note: 'a battle' });
     expect(w.traits.find((t) => t.name === 'Shooter')?.note).toBe('He shoots from behind the line, at any stack on the field.');
