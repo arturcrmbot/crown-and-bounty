@@ -48,7 +48,7 @@ describe('mana you can see', () => {
   it('goes into battle with its maximum, for the spellbook', () => {
     const w = wizard();
     expect(heroInBattle(w).maxMana).toBe(30);
-    expect(manaInBattle(12, 30)).toBe('You have **12/30** mana. None comes back in battle, and only a quarter at dawn.');
+    expect(manaInBattle(12, 30)).toBe('You have **12/30** mana, and none comes back in battle.');
     expect(manaInBattle(12)).toContain('none comes back');
   });
 });

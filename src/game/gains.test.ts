@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { apply } from '../rules/game';
 import { newGame } from '../rules/scenario';
 import { gainsOf } from './gains';
 
@@ -31,6 +32,16 @@ describe('what rises off the hero', () => {
   it('says mana he gains during the day', () => {
     const before = { ...start(), hero: { ...start().hero, mana: 4 } };
     expect(texts(before, { ...before, hero: { ...before.hero, mana: 20 } })).toEqual(['+16 mana']);
+  });
+
+  it('says mana spent on the map in red words, as a minus, and leaves what a battle took to its card (#226)', () => {
+    const wizard = { ...newGame(1066, undefined, 'wizard'), opening: undefined };
+    const cast = apply(wizard, { type: 'mapSpell', spell: 'farsight' })!;
+    // Far Sight brings no card to cover the mist rolling back: only the reveal, and the mana it cost rising off him.
+    expect(cast.events.map((e) => e.type)).toEqual(['reveal']);
+    expect(gainsOf(wizard, cast.state)).toEqual([{ kind: 'mana', amount: -10, text: '\u221210 mana' }]);
+    const fought = { ...wizard, battle: {} as NonNullable<typeof wizard.battle> };
+    expect(gainsOf(fought, { ...wizard, hero: { ...wizard.hero, mana: 4 } })).toEqual([]);
   });
 
   it('names a spell he learns', () => {
