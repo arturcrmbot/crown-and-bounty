@@ -75,6 +75,14 @@ const TROOP_ICONS: Record<TroopId, Bitmap> = {
   menAtArms: SWORD,
   cutpurses: SWORD,
   spiders: SPIDER,
+  // The enemy's heroes are never in Aldric's army either.
+  sergeant: SWORD,
+  pike: FORK,
+  foreman: SWORD,
+  picketCaptain: SWORD,
+  cutpurseCaptain: SWORD,
+  highwaymanCaptain: SWORD,
+  poacherCaptain: BOW,
   // Aldric is never in the army, but should he ever show there.
   heroKnight: SWORD,
   heroWizard: BOW,

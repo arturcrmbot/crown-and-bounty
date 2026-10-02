@@ -9,7 +9,7 @@ import { look, seeBands } from './map/sight';
 import { fleeHome, fleesHome } from './map/sortie';
 import { bardOf, battleEnd, bribeOffer, createBattle, isLeader, onField, SHOOTER_MELEE, survivors, type BattleHero, type BattleState, type Side } from './battle/battle';
 import { artifactChoices, foundNote, gainXp, giveArtifact, heroStats, namedBonuses } from './hero';
-import { addTroops, again, armyLine, armyPower, close, coins, countOf, leadershipUsed, listed, locationById, MAX_STACKS, roll, roman, show, stillWithYou, troops, update, VANISHES, type Army, type BattleResultCard, type Choice, type GameEvent, type GameState, type Location, type Result } from './state';
+import { addTroops, again, armyLine, armyPower, capital, close, coins, leadershipUsed, listed, locationById, MAX_STACKS, roll, roman, show, stillWithYou, troops, update, VANISHES, type Army, type BattleResultCard, type Choice, type GameEvent, type GameState, type Location, type Result } from './state';
 
 export function heroInBattle(state: GameState): BattleHero {
   const s = heroStats(state);
@@ -185,16 +185,13 @@ function fallen(battle: BattleState, side: Side): Army {
 
 /**
  * What an enemy that held the field has left once the battle is over: whoever of it still stands,
- * its leader too. Whatever it lost stays lost, as in HoMM2: the fallen, and those paid to go home or
- * to change sides. The guard a villain called to the field makes up his losses of its kind, and never
- * leaves him more of them than he brought; where he brought none of its kind, it stays as it stands.
+ * its leader too, at his level. Whatever it lost stays lost, as in HoMM2: the fallen, and those paid
+ * to go home or to change sides. It never has more of a troop than it brought.
  */
 function holding(battle: BattleState, brought: Army): Army {
   const standing = new Map<TroopId, number>();
   for (const f of battle.fighters) if (f.side === 'enemy' && f.count > 0) standing.set(f.troop, (standing.get(f.troop) ?? 0) + f.count);
-  const kept = brought.map((s) => ({ troop: s.troop, count: Math.min(s.count, standing.get(s.troop) ?? 0) }));
-  const more = [...standing].filter(([troop]) => !countOf(brought, troop)).map(([troop, count]) => ({ troop, count }));
-  return [...kept, ...more].filter((s) => s.count > 0);
+  return brought.map((s) => ({ ...s, count: Math.min(s.count, standing.get(s.troop) ?? 0) })).filter((s) => s.count > 0);
 }
 
 const headcount = (army: Army) => army.reduce((n, s) => n + s.count, 0);
@@ -203,7 +200,7 @@ const headcount = (army: Army) => army.reduce((n, s) => n + s.count, 0);
 function leftLine(army: Army): string {
   const leaders = army.filter((s) => leads(s.troop)).map((s) => TROOPS[s.troop].name);
   const who = leaders.length ? `${listed(leaders)} ${leaders.length > 1 ? 'have' : 'has'}` : 'They have';
-  return `*${who} ${armyLine(army.filter((s) => !leads(s.troop)))} left.*`;
+  return capital(`*${who} ${armyLine(army.filter((s) => !leads(s.troop)))} left.*`);
 }
 
 /**

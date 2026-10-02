@@ -58,7 +58,7 @@ export function rideOut(state: GameState): Night {
     const hurt = hurts(next, lair);
     if (!hurt.length) continue;
     const s = e.sortie;
-    const guard = e.army.map((x) => ({ troop: x.troop, count: leads(x.troop) ? x.count : Math.round(x.count * s.guard) })).filter((x) => x.count > 0);
+    const guard = e.army.map((x) => ({ ...x, count: leads(x.troop) ? x.count : Math.round(x.count * s.guard) })).filter((x) => x.count > 0);
     const band: Location = { ...structuredClone(s.band), done: false, enemy: { ...structuredClone(s.band.enemy!), army: guard, lair: lair.id, home: s.band.at } };
     // Out of his band's reach tonight (far off, or behind a town's walls), the hurt keeps till he is.
     if (!hunting(next, band)) continue;

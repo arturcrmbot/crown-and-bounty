@@ -41,6 +41,8 @@ export type Fighter = {
   turncoat?: true;
   /** A villain who leads his side as Aldric does his: his own spellbook, cast from behind his men. */
   book?: Spellbook;
+  /** An enemy hero's level, 1 to 10 (#239): it lends his side attack and defence (`heroHelp`), and grows his spells. */
+  level?: number;
 };
 
 /**
@@ -144,7 +146,20 @@ export type BattleState = {
   flees?: boolean;
   /** What the villain says when his army is beaten and he's taken: the fight stops on it. */
   lastWords?: string;
+  /** What the enemy's hero lends every stack of his side (#239), as Aldric's attack and defence do his: from his level. */
+  enemyHelp?: { attack: number; defence: number };
 };
+
+/** From this level an enemy hero knows his spells (#239). */
+export const SPELLS_FROM = 3;
+/**
+ * What an enemy hero's level lends every stack of his side (#239), as Aldric's levels grow his: a point
+ * of attack or defence for every level after the first, attack first. A level-I hero lends nothing yet.
+ */
+export const heroHelp = (level: number) => ({ attack: Math.floor(level / 2), defence: Math.floor((level - 1) / 2) });
+/** An enemy hero's spell power: a third of his level, rounded up. He has ten mana for every point of it, as Aldric has for every point of knowledge. */
+export const heroPower = (level: number) => Math.ceil(level / 3);
+export const heroMana = (level: number) => 10 * heroPower(level);
 
 /**
  * Rounds in a row with nobody hurt, and the enemy getting no closer, before the battle is called
@@ -180,8 +195,6 @@ export type BattleEvent =
   | { type: 'hit'; attacker: number; target: number; damage: number; killed: number; ranged: boolean; retaliation: boolean; status?: StatusId; charge?: boolean; lucky?: boolean; braced?: boolean; plate?: boolean; backstab?: boolean }
   /** Every shooter on a side looses at once: the ranger's archers before the battle, or at a villain's order (`spell`, `by`). */
   | { type: 'volley'; side?: Side; spell?: SpellId; by?: number }
-  /** A fresh stack marches in from its side's edge of the field, called by a spell or an order. */
-  | { type: 'summon'; fighter: number; spell: SpellId; by?: number }
   /** A stack loses its turn to a status (newts), which then wears off. */
   | { type: 'skip'; fighter: number; status: StatusId }
   /** A troll's wounds close up at the start of its turn. */
@@ -263,17 +276,6 @@ export function canCastAt(b: BattleState, by?: number): boolean {
 }
 /** The villains on the field who can cast for `side` right now. */
 export const castersOf = (b: BattleState, side: Side) => b.fighters.filter((f) => f.side === side && f.book && canCastAt(b, f.id));
-/** How much of a side's troops is left, as a share of the health they began with. Its leaders don't count: they can't be hurt. */
-export function sideShare(b: BattleState, side: Side): number {
-  let [left, start] = [0, 0];
-  for (const f of b.fighters) {
-    if (f.side !== side || isLeader(f)) continue;
-    const hp = unitOf(f).hp;
-    left += f.count > 0 ? (f.count - 1) * hp + f.hp : 0;
-    start += f.startCount * hp;
-  }
-  return start ? left / start : 0;
-}
 /** What a status's look is while it lasts (newts, frogs), if any. */
 export const lookOf = (f: Fighter) => f.status.map((s) => STATUSES[s].look).find(Boolean) ?? null;
 
@@ -354,8 +356,9 @@ export function createBattle(args: { place: string; seed: number; player: Army; 
         defending: false,
         waited: false,
         status: brought(s.troop, side),
-        // A villain leads his side with his own spellbook.
-        ...(side === 'enemy' && TROOPS[s.troop].caster ? { book: newBook(TROOPS[s.troop]) } : {}),
+        // An enemy hero leads his side at his level, and a villain or a hero who knows spells or orders with his own spellbook.
+        ...(side === 'enemy' && isLeader(s) && s.level ? { level: s.level } : {}),
+        ...(side === 'enemy' && TROOPS[s.troop].caster ? bookFor(TROOPS[s.troop], isLeader(s) ? s.level : undefined) : {}),
       });
     }
   };
@@ -385,13 +388,29 @@ export function createBattle(args: { place: string; seed: number; player: Army; 
   }
   const volley = Boolean(args.hero.volley) && fighters.some((f) => f.side === 'player' && f.shots > 0);
   const book: BattleHero = args.hero.charges ? { ...args.hero, charges: args.hero.charges.map((c) => ({ ...c })) } : args.hero;
-  return { place: args.place, round: 1, fighters, order: turnOrder(fighters), obstacles, seed, hero: book, ...(args.ground === 'fen' ? { ground: 'fen' as const } : {}), ...(volley ? { volley } : {}), ...(opening.length ? { opening } : {}), ...(args.flees ? { flees: true } : {}) };
+  // The enemy's hero lends his side his level's attack and defence; with two, each the better of theirs.
+  const helps = fighters.filter((f) => f.level).map((f) => heroHelp(f.level!));
+  const enemyHelp = helps.length ? { attack: Math.max(...helps.map((h) => h.attack)), defence: Math.max(...helps.map((h) => h.defence)) } : null;
+  const helped = enemyHelp && (enemyHelp.attack || enemyHelp.defence) ? { enemyHelp } : {};
+  return { place: args.place, round: 1, fighters, order: turnOrder(fighters), obstacles, seed, hero: book, ...(args.ground === 'fen' ? { ground: 'fen' as const } : {}), ...(volley ? { volley } : {}), ...(opening.length ? { opening } : {}), ...(args.flees ? { flees: true } : {}), ...helped };
 }
 
-/** A villain's spellbook as the battle opens, from his troop's data. */
-function newBook(t: TroopDef): Spellbook {
+/**
+ * A leader's spellbook as the battle opens, from his troop's data: a villain's spell power and mana as
+ * it gives them, or an enemy hero's from his `level` (#239), with his spells only from level 3. His
+ * orders he gives at any level. None for a hero who knows nothing yet. A hero whose troop gives no
+ * spell power of its own is level I if his band gives him none.
+ */
+function bookFor(t: TroopDef, level?: number): { book?: Spellbook } {
   const c = t.caster!;
-  return { name: t.one, spellPower: c.spellPower, mana: c.mana, maxMana: c.mana, spells: [...(c.spells ?? [])], castRound: 0, ...(c.casts ? { casts: c.casts } : {}), ...(c.charges ? { charges: c.charges.map((x) => ({ ...x })) } : {}) };
+  const charges = c.charges ? { charges: c.charges.map((x) => ({ ...x })) } : {};
+  const casts = c.casts ? { casts: c.casts } : {};
+  if (!level && c.spellPower !== undefined) return { book: { name: t.one, spellPower: c.spellPower, mana: c.mana ?? 0, maxMana: c.mana ?? 0, spells: [...(c.spells ?? [])], castRound: 0, ...casts, ...charges } };
+  const at = level ?? 1;
+  const spells = at >= SPELLS_FROM ? [...(c.spells ?? [])] : [];
+  if (!spells.length && !c.charges?.length) return {};
+  const mana = spells.length ? heroMana(at) : 0;
+  return { book: { name: t.one, spellPower: heroPower(at), mana, maxMana: mana, spells, castRound: 0, ...casts, ...charges } };
 }
 
 /** Sets when a status wears off, if it has `rounds`: it counts the round it began in. */
@@ -536,12 +555,14 @@ export function statsOf(b: BattleState, f: Fighter): { attack: number; defence: 
   return { attack: t.attack + extra.attack + statusAttack(f), defence: t.defence + extra.defence + statusDefence(f) };
 }
 
-/** Attack and defence the hero adds to a stack: his own, plus any bonus for that kind of troop. */
+/** Attack and defence a side's hero adds to a stack: Aldric's own, plus any bonus for that kind of troop, or the enemy hero's from his level. */
 function helpOf(b: BattleState, f: Fighter): { attack: number; defence: number } {
-  if (f.side !== 'player') return { attack: 0, defence: 0 };
+  if (f.side !== 'player') return b.enemyHelp ?? NO_HELP;
   const troop = b.hero.troops?.[f.troop];
   return { attack: b.hero.attack + (troop?.attack ?? 0), defence: b.hero.defence + (troop?.defence ?? 0) };
 }
+
+const NO_HELP = { attack: 0, defence: 0 };
 
 /** The attack-against-defence multiplier, HoMM2 style. */
 export function skillFactor(attack: number, defence: number): number {
@@ -621,17 +642,18 @@ export const castsLeft = (b: BattleState, by?: number) => {
 };
 /** A charge left for a spell (a wand's bolt, an order), if any. */
 export const chargeOf = (b: BattleState, spell: SpellId, by?: number) => bookOf(b, by)?.charges?.find((c) => c.spell === spell && c.uses > 0) ?? null;
-/** Every spell a caster could cast, if he had the mana and the round's casts: those he knows, and those he has charges for. */
+/**
+ * Every spell a caster could cast, if he had the mana and the round's casts: those he knows, and those he has charges for.
+ * A battle saved with an order since cut (the Baron's Call the Guard, #239) has it no more.
+ */
 export const spellsOf = (b: BattleState, by?: number): SpellId[] => {
   const book = bookOf(b, by);
-  return book ? [...new Set([...book.spells, ...(book.charges ?? []).filter((c) => c.uses > 0).map((c) => c.spell)])] : [];
+  return book ? [...new Set([...book.spells, ...(book.charges ?? []).filter((c) => c.uses > 0).map((c) => c.spell)])].filter((spell) => spell in SPELLS) : [];
 };
-/** Whether a caster may cast a spell now: a cast left this round, himself, a charge or the mana, and his men hurt enough if the spell asks it. */
+/** Whether a caster may cast a spell now: a cast left this round, himself, and a charge or the mana. */
 export function canCast(b: BattleState, spell: SpellId, by?: number): boolean {
   const book = bookOf(b, by);
-  if (!book || castsLeft(b, by) <= 0 || !canCastAt(b, by)) return false;
-  const hurt = SPELLS[spell].hurt;
-  if (hurt !== undefined && sideShare(b, casterSide(b, by)) > hurt) return false;
+  if (!book || !(spell in SPELLS) || castsLeft(b, by) <= 0 || !canCastAt(b, by)) return false;
   return Boolean(chargeOf(b, spell, by)) || (book.spells.includes(spell) && book.mana >= spellCost(b, spell, by));
 }
 /**
@@ -673,7 +695,7 @@ const addStatus = (f: Fighter, status: StatusId, round: number) => {
   wearsOff(f, status, round);
 };
 
-/** A free hex at a side's own edge of the field, for a stack that marches in: the line's rows first, then the next column in. */
+/** A free hex at a side's own edge of the field, for a stack that comes over to it: the line's rows first, then the next column in. */
 function edgeHex(b: BattleState, side: Side): number | null {
   for (let step = 0; step < COLS; step++) {
     const col = side === 'player' ? step : COLS - 1 - step;
@@ -697,14 +719,6 @@ function loose(next: BattleState, side: Side, fighters: Fighter[], hit: (a: Figh
   }
 }
 
-/** How many a summons brings: a share of how many of that troop the side began with, or as much fighting worth. */
-function summoned(b: BattleState, side: Side, troop: TroopId, share: number): number {
-  const own = b.fighters.filter((f) => f.side === side && f.troop === troop).reduce((sum, f) => sum + f.startCount, 0);
-  if (own > 0) return Math.max(1, Math.round(own * share));
-  const worth = b.fighters.filter((f) => f.side === side && !isLeader(f)).reduce((sum, f) => sum + f.startCount * powerOf(f), 0);
-  return Math.max(1, Math.round((worth * share) / unitPower(TROOPS[troop])));
-}
-
 /** A side's power on the field now: the fighting worth of its stacks still standing. */
 const powerOnField = (b: BattleState, side: Side) => b.fighters.filter((f) => f.side === side && onField(f)).reduce((sum, f) => sum + f.count * powerOf(f), 0);
 
@@ -718,7 +732,7 @@ const powerOnField = (b: BattleState, side: Side) => b.fighters.filter((f) => f.
  */
 export function bribeOffer(b: BattleState, bard: Fighter, target: Fighter, join = false): { count: number; price: number } | null {
   const art = bardOf(bard);
-  if (!art || bard.side !== 'player' || target.side === bard.side || !onField(target) || !TROOPS[target.troop].wage) return null;
+  if (!art?.price || bard.side !== 'player' || target.side === bard.side || !onField(target) || !TROOPS[target.troop].wage) return null;
   const count = Math.floor(target.count * outweighs(powerOnField(b, bard.side), target.count * powerOf(target)));
   const rate = join ? art.price.join : art.price.leave;
   return { count, price: count ? Math.max(10, Math.round((count * powerOf(target) * rate * (1 - (b.hero.bribes ?? 0))) / 10) * 10) : 0 };
@@ -877,16 +891,6 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
           next.struck = true;
           loose(next, side, fighters, hit);
           break;
-        case 'summon': {
-          const at = edgeHex(next, side);
-          const count = summoned(next, side, effect.troop, effect.share);
-          if (at === null || count <= 0) return { battle: b, events: [] };
-          const t = TROOPS[effect.troop];
-          fighters.push({ id: fighters.length, side, troop: effect.troop, count, startCount: count, hp: t.hp, at, shots: t.shots ?? 0, retaliated: false, defending: false, waited: false, status: [] });
-          markFeuds(fighters);
-          events.push({ type: 'summon', ...cast, fighter: fighters.length - 1 });
-          break;
-        }
         default: {
           next.struck = true;
           for (const victim of spellVictims(next, action.spell, target!, by)) {

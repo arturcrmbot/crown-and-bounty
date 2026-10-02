@@ -22,9 +22,13 @@ import { ARTIFACTS, slotsForArtifact, type ArtifactId } from './content/artifact
 import { beginCommission, commissionAt, equip, giveArtifact, hasNextCommission, newGame, startFight, update, CAMPAIGN_LENGTH, type GameState } from './rules/game';
 import { playCampaignStarts } from './rules/bot';
 
-/** "knights:20,archers:30" as an army, for the debug starts. */
+/** "knights:20,archers:30" as an army, for the debug starts, and "sergeant:1:5" an enemy hero at level 5. */
 const armyFrom = (text: string | null) =>
-  (text ?? '').split(',').map((part) => part.split(':')).filter(([troop, count]) => troop in TROOPS && Number(count) > 0).map(([troop, count]) => ({ troop: troop as TroopId, count: Number(count) }));
+  (text ?? '')
+    .split(',')
+    .map((part) => part.split(':'))
+    .filter(([troop, count]) => troop in TROOPS && Number(count) > 0)
+    .map(([troop, count, level]) => ({ troop: troop as TroopId, count: Number(count), ...(Number(level) > 0 ? { level: Number(level) } : {}) }));
 
 declare global {
   interface Window {
@@ -87,7 +91,8 @@ function debugStart(): GameState {
   // ?sceptre=1 (with ?commission=5): the last bounty is paid and the X is on the map.
   const x = commissionAt(first.campaign, chapter).province.sceptre;
   if (query.get('sceptre') === '1' && x) return { ...base, bounty: 'paid', locations: [...base.locations, { id: 'sceptre', kind: 'dig', name: 'X Marks the Spot', at: x, done: false }] };
-  // ?battle=patrol opens straight onto a fight, for checking the battle screen; &enemy=pikemen:30,spiders:10 sets who it's against.
+  // ?battle=patrol opens straight onto a fight, for checking the battle screen; &enemy=pikemen:30,spiders:10 sets who it's
+  // against, and &enemy=swordsmen:30,sergeant:1:5 puts a level-V sergeant at their head.
   const fightAt = query.get('battle');
   const foe = fightAt && query.has('enemy') ? base.locations.find((l) => l.id === fightAt)?.enemy : undefined;
   const staged = fightAt && foe ? update(base, fightAt, { enemy: { ...foe, army: armyFrom(query.get('enemy')) } }) : base;

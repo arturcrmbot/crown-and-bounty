@@ -1,12 +1,11 @@
-import type { TroopId } from './troops';
 /**
  * The hero's spells, and the statuses spells (and some troops) put on stacks. Everything a spell
  * or status does is written here as data; the battle engine and the AI read it, and never name a
  * spell themselves.
  */
-export type SpellId = 'arrow' | 'bolt' | 'bless' | 'slow' | 'haste' | 'fireball' | 'stoneskin' | OrderId | 'newts' | 'frogs' | 'brew';
+export type SpellId = 'arrow' | 'bolt' | 'bless' | 'slow' | 'haste' | 'fireball' | 'stoneskin' | 'curse' | OrderId | 'newts' | 'frogs' | 'brew';
 /** A villain's orders to his men: shouted, not cast, so they cost no mana, only a few uses a battle (see `charges`). */
-export type OrderId = 'shieldwall' | 'crossbows' | 'guard';
+export type OrderId = 'shieldwall' | 'crossbows';
 
 /** Spells for the adventure map, cast from the hero's card. */
 export type MapSpellId = 'farsight';
@@ -15,7 +14,7 @@ export const MAP_SPELLS: Record<MapSpellId, { id: MapSpellId; name: string; mana
 };
 
 /** Lasting effects on a stack. Each one changes numbers the engine already uses. */
-export type StatusId = 'blessed' | 'slowed' | 'hasted' | 'stoneskin' | 'shieldwall' | 'newts' | 'frogs' | 'poisoned' | 'jeered' | 'heartened' | 'charmed' | 'marked' | 'winded' | 'webbed';
+export type StatusId = 'blessed' | 'cursed' | 'slowed' | 'hasted' | 'stoneskin' | 'shieldwall' | 'newts' | 'frogs' | 'poisoned' | 'jeered' | 'heartened' | 'charmed' | 'marked' | 'winded' | 'webbed';
 
 export type StatusDef = {
   name: string;
@@ -59,6 +58,8 @@ export type StatusDef = {
 
 export const STATUSES: Record<StatusId, StatusDef> = {
   blessed: { name: 'Blessed', bestDamage: true },
+  // Bless the other way round (#239): an outlaw captain's curse, so the stack always rolls its worst damage.
+  cursed: { name: 'Cursed', worstDamage: true },
   // Two rounds, not the whole battle (#238): slowed for good, a band that fights as one stack never reached the archers.
   slowed: { name: 'Slowed', speedTimes: 0.5, rounds: 2, onHit: 'The hex slows them down.' },
   hasted: { name: 'Hasted', speedAdd: 2 },
@@ -92,12 +93,7 @@ export type SpellEffect =
   /** A status on every stack of one side at once. It needs no target. */
   | { kind: 'mass'; status: StatusId }
   /** Every shooter on the caster's side looses at once, where its shots take the most. It needs no target. */
-  | { kind: 'volley' }
-  /**
-   * A fresh stack of `troop` marches in from the caster's edge of the field: `share` of how many of
-   * them his side began with (or, with none of them, as much fighting worth). It needs no target.
-   */
-  | { kind: 'summon'; troop: TroopId; share: number };
+  | { kind: 'volley' };
 
 export type SpellDef = {
   id: SpellId;
@@ -110,12 +106,10 @@ export type SpellDef = {
   look: { kind: 'missile' | 'bolt' | 'fire' | 'sparkle'; colour: 'gold' | 'blue' | 'red' };
   /** An order: what the caster bellows, and how ("bellows", "roars"). The log says it that way. */
   shout?: { verb: string; words: string };
-  /** Only once the caster's troops are down to this share of the health they began with. */
-  hurt?: number;
 };
 
-/** Whether a spell is aimed at a stack; the others (a mass status, a volley, a summons) take the whole field. */
-export const needsTarget = (spell: SpellId) => !['mass', 'volley', 'summon'].includes(SPELLS[spell].effect.kind);
+/** Whether a spell is aimed at a stack; the others (a mass status, a volley) take the whole field. */
+export const needsTarget = (spell: SpellId) => !['mass', 'volley'].includes(SPELLS[spell].effect.kind);
 
 export const SPELLS: Record<SpellId, SpellDef> = {
   arrow: { id: 'arrow', name: 'Magic Arrow', mana: 4, on: 'enemy', note: 'It does ten damage for every point of spell power.', effect: { kind: 'damage', perPower: 10 }, look: { kind: 'missile', colour: 'blue' } },
@@ -133,6 +127,7 @@ export const SPELLS: Record<SpellId, SpellDef> = {
     look: { kind: 'fire', colour: 'red' },
   },
   stoneskin: { id: 'stoneskin', name: 'Stone Skin', mana: 5, on: 'friend', note: 'It gives the stack +3 defence for the rest of the battle.', effect: { kind: 'status', status: 'stoneskin' }, look: { kind: 'sparkle', colour: 'blue' } },
+  curse: { id: 'curse', name: 'Curse', mana: 5, on: 'enemy', note: 'The stack always rolls its worst damage, for the rest of the battle.', effect: { kind: 'status', status: 'cursed' }, look: { kind: 'sparkle', colour: 'red' } },
   // Villains' spells and orders. Heroes could learn them too.
   newts: {
     id: 'newts', name: 'Newts', mana: 6, on: 'enemy', effect: { kind: 'status', status: 'newts' }, look: { kind: 'sparkle', colour: 'gold' },
@@ -153,9 +148,5 @@ export const SPELLS: Record<SpellId, SpellDef> = {
   crossbows: {
     id: 'crossbows', name: 'Crossbows, Fire!', mana: 0, on: 'enemy', effect: { kind: 'volley' }, look: { kind: 'sparkle', colour: 'red' },
     shout: { verb: 'bellows', words: 'Crossbows, fire!' }, note: 'Every shooter of his looses at once, at whoever it would hurt most.',
-  },
-  guard: {
-    id: 'guard', name: 'Call the Guard', mana: 0, on: 'friend', effect: { kind: 'summon', troop: 'swordsmen', share: 0.3 }, look: { kind: 'sparkle', colour: 'red' },
-    shout: { verb: 'roars', words: 'Call the guard!' }, hurt: 0.6, note: 'Once his men are hurt, fresh swordsmen march in from his edge of the field, nearly a third as many as he began with.',
   },
 };

@@ -3,7 +3,12 @@ import type { PortraitId } from './portraits';
 import type { SpellId, StatusId } from './spells';
 
 /** Every kind of troop, with HoMM2-style numbers. Troops are just numbers: 400 peasants are 400 peasants. */
-export type TroopId = 'peasants' | 'archers' | 'knights' | 'swordsmen' | 'crossbowmen' | 'wolves' | 'baron' | 'goblins' | 'trolls' | 'witch' | 'bramble' | 'poachers' | 'bandits' | 'boars' | 'bears' | 'huntsmen' | 'rook' | 'pikemen' | 'menAtArms' | 'cutpurses' | 'spiders' | HeroId;
+export type TroopId = 'peasants' | 'archers' | 'knights' | 'swordsmen' | 'crossbowmen' | 'wolves' | 'baron' | 'goblins' | 'trolls' | 'witch' | 'bramble' | 'poachers' | 'bandits' | 'boars' | 'bears' | 'huntsmen' | 'rook' | 'pikemen' | 'menAtArms' | 'cutpurses' | 'spiders' | CaptainId | HeroId;
+/**
+ * The enemy's heroes (#239), who lead a band of men from behind its line, as Rook does his wolves. Each
+ * stands in his band's army with his level on his stack (`{ troop: 'sergeant', count: 1, level: 2 }`).
+ */
+export type CaptainId = 'sergeant' | 'pike' | 'foreman' | 'picketCaptain' | 'cutpurseCaptain' | 'highwaymanCaptain' | 'poacherCaptain';
 /** Aldric himself, as each background fights: one of a kind, like the villains, and never in the army. */
 export type HeroId = 'heroKnight' | 'heroWizard' | 'heroRanger' | 'heroCourtier';
 
@@ -39,7 +44,11 @@ export type TroopDef = {
    * ends of it. A caster's damage also grows by `perPower` for every point of spell power.
    */
   hero?: { background: BackgroundId; perLevel: { damage: number }; perPower?: number };
-  /** A villain who leads his side as a hero does: his spellbook, and his orders (see `Spellbook` in rules/battle/battle.ts). */
+  /**
+   * A leader who casts or gives orders: his spells, his orders, and his spell power and mana (see `Spellbook` in
+   * rules/battle/battle.ts). An enemy hero with a level has his spells only from level 3, and his spell power and
+   * mana from his level (`heroBook`); one with none, a villain, casts as this says.
+   */
   caster?: Caster;
   /** How a leader sounds when he speaks aloud: the pitch his babble runs around, in Hz (see `speak` in ui/sound.ts). */
   voice?: number;
@@ -69,10 +78,13 @@ export function feuding(a: TroopId, b: TroopId): boolean {
   return Boolean(x && y) && FEUDS.some(([p, q]) => (p === x && q === y) || (p === y && q === x));
 }
 
-/** A villain's magic: spell power, mana, spells he knows, and orders he can give a few times a battle for no mana. */
-export type Caster = { spellPower: number; mana: number; casts?: number; spells?: SpellId[]; charges?: { spell: SpellId; uses: number }[] };
+/**
+ * A leader's magic: spells he knows, and orders he can give a few times a battle for no mana. Spell power and mana
+ * are a villain's own, or an enemy hero's from his level.
+ */
+export type Caster = { spellPower?: number; mana?: number; casts?: number; spells?: SpellId[]; charges?: { spell: SpellId; uses: number }[] };
 
-export type Ability = 'regenerates' | 'hexes' | 'leads' | 'rides' | 'bard' | 'firstStrike' | 'stings' | 'pierce' | 'marks' | 'hunter' | 'setPikes' | 'plate' | 'backstab' | 'webs';
+export type Ability = 'regenerates' | 'hexes' | 'leads' | 'rides' | 'bard' | 'heckles' | 'firstStrike' | 'stings' | 'pierce' | 'marks' | 'hunter' | 'setPikes' | 'plate' | 'backstab' | 'webs';
 
 /**
  * Troop abilities, as data the battle engine reads at fixed moments. A new ability that uses
@@ -100,9 +112,10 @@ export type AbilityDef = {
    * A leader who fights with coin and words instead of blows, one move a turn: he pays a stack
    * `price.leave` gold for every point of its power to leave the field, or `price.join` to fight for
    * him if it fits under his banner, as many of it as his army outweighs (`outweighs`); he jeers a
-   * stack (`jeer`); or he sings one of his `songs` over his own.
+   * stack (`jeer`); or he sings one of his `songs` over his own. One with no `price` (an outlaw
+   * captain) only jeers and sings: Aldric's purse is the only one in a battle.
    */
-  bard?: { jeer: StatusId; songs: StatusId[]; price: { leave: number; join: number } };
+  bard?: { jeer: StatusId; songs: StatusId[]; price?: { leave: number; join: number } };
   /** It strikes first when it defends against a melee blow, unless the attacker has this too. */
   firstStrike?: boolean;
   /** Its blows cut this much off the target's defence, armour and all. */
@@ -122,6 +135,8 @@ export const ABILITIES: Record<Ability, AbilityDef> = {
   hexes: { name: 'Hexes', note: 'Her shots slow whatever they hit.', shotStatus: 'slowed' },
   leads: { name: 'Behind the line', note: 'He leads from behind his men, where no blow, shot or spell can reach him, so nobody strikes back at him. When his army is beaten, so is he.', leads: true },
   rides: { name: 'Rides out', note: 'He rides out from behind the line, strikes, and rides back, all in one move.', rides: true },
+  // An outlaw captain (#239) jeers and sings as the Courtier does, but pays nobody.
+  heckles: { name: 'Jeers and songs', note: 'He jeers your stacks until they lose heart, and sings his own men on.', bard: { jeer: 'jeered', songs: ['heartened', 'charmed'] } },
   bard: {
     name: 'Bard',
     note: 'He fights with coin and words instead of a blade. Each turn he can pay a stack to leave the field, or to fight for him if it fits under his banner. Only an army stronger than theirs can buy them, and the stronger it is, the more of them take the gold. He can also jeer one until it loses heart, or sing his own men on.',
@@ -154,7 +169,8 @@ export const TROOPS: Record<TroopId, TroopDef> = {
   baron: {
     id: 'baron', name: 'Baron Grimsby', one: 'Baron Grimsby', hp: 160, attack: 11, defence: 10, damage: [9, 14], speed: 4, leadership: 99, wage: 0,
     note: 'He carries the royal goose under one arm, and gives the orders with the other.', abilities: ['leads'],
-    caster: { spellPower: 2, mana: 15, spells: ['haste', 'slow'], charges: [{ spell: 'shieldwall', uses: 1 }, { spell: 'crossbows', uses: 2 }, { spell: 'guard', uses: 1 }] },
+    // He no longer calls the guard (#239): nobody heals or raises the fallen, on either side.
+    caster: { spellPower: 2, mana: 15, spells: ['haste', 'slow'], charges: [{ spell: 'shieldwall', uses: 1 }, { spell: 'crossbows', uses: 2 }] },
     voice: 104,
     face: 'grimsby',
   },
@@ -205,6 +221,57 @@ export const TROOPS: Record<TroopId, TroopDef> = {
     id: 'spiders', name: 'Giant Spiders', one: 'Giant Spider', hp: 30, attack: 7, defence: 4, damage: [4, 7], speed: 5, leadership: 0, wage: 0, people: 'wild', abilities: ['webs'],
     note: 'They are as big as ponies and a good deal hairier.',
     tamed: 'The biggest spider looks you over with all eight eyes, and decides you are not lunch. The rest follow it, which nobody else in your army enjoys.',
+  },
+  // The enemy's heroes (#239). Each leads a band of men from behind its line, at the level on his stack: every level
+  // after the first lends his men a point of attack or defence, and from level 3 he knows his spells (`heroBook` in
+  // rules/battle/battle.ts). Nothing can reach him, so only his speed counts, and his shots if he has any.
+  // The Baron's sergeants give his orders, as he does, and know Stone Skin and Haste. Pike is one of them.
+  sergeant: {
+    id: 'sergeant', name: 'the Sergeant', one: 'the Sergeant', hp: 50, attack: 6, defence: 6, damage: [4, 7], speed: 4, leadership: 99, wage: 0,
+    note: 'He is one of the Baron\u2019s sergeants. He shouts the Baron\u2019s orders, and once he has a few years in, he knows Stone Skin and Haste.', abilities: ['leads'],
+    caster: { spells: ['stoneskin', 'haste'], charges: [{ spell: 'shieldwall', uses: 1 }, { spell: 'crossbows', uses: 1 }] },
+    voice: 120,
+  },
+  pike: {
+    id: 'pike', name: 'Sergeant Pike', one: 'Sergeant Pike', hp: 60, attack: 7, defence: 7, damage: [5, 8], speed: 4, leadership: 99, wage: 0,
+    note: 'He keeps the old bridge for the Baron, by the book and in a clean shirt, because his mother is watching.', abilities: ['leads'],
+    caster: { spells: ['stoneskin', 'haste'], charges: [{ spell: 'shieldwall', uses: 1 }, { spell: 'crossbows', uses: 1 }] },
+    voice: 140,
+    face: 'sergeant',
+  },
+  // The Foreman and the pickets' captain give orders as the sergeants do, and know Lightning Bolt.
+  foreman: {
+    id: 'foreman', name: 'the Foreman', one: 'the Foreman', hp: 70, attack: 7, defence: 6, damage: [6, 9], speed: 3, leadership: 99, wage: 0,
+    note: 'He runs the Baron\u2019s dig under the crags. He shouts orders like a sergeant, and when the rock won\u2019t move, he calls down lightning on it.', abilities: ['leads'],
+    caster: { spells: ['bolt'], charges: [{ spell: 'shieldwall', uses: 1 }, { spell: 'crossbows', uses: 1 }] },
+    voice: 95,
+    face: 'foreman',
+  },
+  // The bands' PR names him, and gives him his face.
+  picketCaptain: {
+    id: 'picketCaptain', name: 'the Pickets\u2019 Captain', one: 'the Pickets\u2019 Captain', hp: 80, attack: 8, defence: 8, damage: [6, 10], speed: 4, leadership: 99, wage: 0,
+    note: 'He commands the Baron\u2019s pickets in Darkwood, when they aren\u2019t out after rabbits. He gives orders, and he knows Lightning Bolt.', abilities: ['leads'],
+    caster: { spells: ['bolt'], charges: [{ spell: 'shieldwall', uses: 1 }, { spell: 'crossbows', uses: 1 }] },
+    voice: 110,
+  },
+  // Outlaw captains jeer and sing as the Courtier does, and know Slow and Curse.
+  cutpurseCaptain: {
+    id: 'cutpurseCaptain', name: 'the Cutpurse Captain', one: 'the Cutpurse Captain', hp: 35, attack: 7, defence: 4, damage: [3, 6], speed: 6, leadership: 99, wage: 0,
+    note: 'He leads the cutpurses, mostly from behind. He jeers your men, sings his own on, and once he has the knack, he slows and curses you.', abilities: ['leads', 'heckles'],
+    caster: { spells: ['slow', 'curse'] },
+    voice: 190,
+  },
+  highwaymanCaptain: {
+    id: 'highwaymanCaptain', name: 'the Highwayman Captain', one: 'the Highwayman Captain', hp: 45, attack: 6, defence: 5, damage: [3, 6], speed: 5, leadership: 99, wage: 0,
+    note: 'He asks for your money or your life, and he is happy to sing about either. He jeers your men, sings his own on, and once he has the knack, he slows and curses you.', abilities: ['leads', 'heckles'],
+    caster: { spells: ['slow', 'curse'] },
+    voice: 130,
+  },
+  // A poacher captain shoots from behind his men, as Rook does, and casts nothing.
+  poacherCaptain: {
+    id: 'poacherCaptain', name: 'the Poacher Captain', one: 'the Poacher Captain', hp: 40, attack: 5, defence: 3, damage: [4, 7], speed: 4, shots: 10, leadership: 99, wage: 0,
+    note: 'He was the best shot in the poachers\u2019 camp, so now he shoots from behind them.', abilities: ['leads'],
+    voice: 160,
   },
   // Aldric in battle, as each background fights from behind the line. His numbers grow with him: see `hero`.
   heroKnight: {

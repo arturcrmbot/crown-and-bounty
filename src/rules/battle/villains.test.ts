@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import type { SpellId } from '../../content/spells';
 import { TROOPS, type TroopId } from '../../content/troops';
 import { finishFight, heroInBattle, startFight, type GameState } from '../game';
 import { newGame } from '../scenario';
 import { autoResolve, castActions } from './ai';
-import { activeFighter, battleAct, canCast, castsLeft, createBattle, fighterById, options, statsOf, type BattleHero, type BattleState, type Fighter } from './battle';
-import { COLS, neighbours } from './hex';
+import { activeFighter, battleAct, canCast, castsLeft, createBattle, fighterById, options, spellsOf, statsOf, type BattleHero, type BattleState, type Fighter } from './battle';
+import { neighbours } from './hex';
 
 const hero: BattleHero = { attack: 2, defence: 2, spellPower: 2, mana: 20, spells: ['bolt'], castRound: 0 };
 const army = (...stacks: [TroopId, number][]) => stacks.map(([troop, count]) => ({ troop, count }));
@@ -64,21 +65,15 @@ describe('villains who cast and give orders', () => {
     expect(activeFighter(battle)!.id).toBe(of(b, 'swordsmen').id);
   });
 
-  it('roars "Call the guard!" once his men are hurt: fresh swordsmen march in at his edge of the field, next round', () => {
-    let b = turnOf(baronFight(), 'swordsmen');
+  it('no longer calls the guard (#239): nobody heals or raises the fallen, on either side', () => {
+    const b = baronFight();
     const baron = of(b, 'baron');
-    expect(canCast(b, 'guard', baron.id)).toBe(false);
-    // 9 swordsmen of 20 and all 10 crossbowmen: under three fifths of the health they began with.
-    b = change(b, of(b, 'swordsmen').id, { count: 9 });
-    expect(canCast(b, 'guard', baron.id)).toBe(true);
-    const { battle, events } = battleAct(b, { type: 'cast', spell: 'guard', by: baron.id });
-    const summon = events.find((e) => e.type === 'summon')!;
-    expect(summon).toMatchObject({ spell: 'guard', by: baron.id });
-    const fresh = fighterById(battle, (summon as { fighter: number }).fighter);
-    expect(fresh).toMatchObject({ side: 'enemy', troop: 'swordsmen', count: 6, startCount: 6 });
-    expect(fresh.at % COLS).toBe(COLS - 1);
-    expect(battle.order).not.toContain(fresh.id);
-    expect(canCast(battle, 'guard', baron.id)).toBe(false);
+    expect(spellsOf(b, baron.id).sort()).toEqual(['crossbows', 'haste', 'shieldwall', 'slow']);
+    // A battle saved with the old order in his book goes on without it.
+    const saved = change(b, baron.id, { book: { ...baron.book!, charges: [...baron.book!.charges!, { spell: 'guard' as SpellId, uses: 1 }] } });
+    expect(spellsOf(saved, baron.id)).not.toContain('guard');
+    expect(canCast(saved, 'guard' as SpellId, baron.id)).toBe(false);
+    expect(castActions(turnOf(saved, 'swordsmen')).some((a) => a.type === 'cast' && (a.spell as string) === 'guard')).toBe(false);
   });
 
   it('casts from behind his men, on his own side\u2019s turns, and takes no turn of his own', () => {

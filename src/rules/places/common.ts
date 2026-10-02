@@ -1,9 +1,11 @@
 import { artifactPhrase } from '../../content/artifacts';
 import type { PortraitId } from '../../content/portraits';
-import { crowd } from '../../content/troops';
+import { SPELLS } from '../../content/spells';
+import { crowd, leads } from '../../content/troops';
+import { heroHelp, SPELLS_FROM } from '../battle/battle';
 import { artifactChoices, foundNote, gainXp, giveArtifact, heroStats } from '../hero';
 import { meets } from '../effects/core';
-import { close, listed, locationById, show, TROOPS, troops, update, type Army, type Card, type Choice, type GameEvent, type GameState, type Location, type PlaceText, type Result } from '../state';
+import { capital, close, listed, locationById, roman, show, TROOPS, troops, update, type Army, type Card, type Choice, type GameEvent, type GameState, type Location, type PlaceText, type Result } from '../state';
 
 /** Experience for finding a place for the first time. */
 export const DISCOVERY_XP = 40;
@@ -49,6 +51,24 @@ export function forceLine(army: Army, exact = true): string {
     .filter((s) => s.count > 0)
     .map((s) => (TROOPS[s.troop].leadership >= 99 ? `**${TROOPS[s.troop].one}**` : `**${exact ? troops(s.troop, s.count) : crowd(s.troop, s.count)}**`));
   return parts.length ? listed(parts) : 'nobody';
+}
+
+/**
+ * What an enemy hero's level does for his band (#239), for its cards: "**The Sergeant** is level II, so his band
+ * fights with +1 attack." From level 3 it says what he knows. Nothing for a leader with no level.
+ */
+export function heroLines(army: Army): string[] {
+  return army
+    .filter((s) => s.count > 0 && s.level && leads(s.troop))
+    .map((s) => {
+      const level = s.level!;
+      const { attack, defence } = heroHelp(level);
+      const lends = listed([attack ? `+${attack} attack` : '', defence ? `+${defence} defence` : ''].filter(Boolean));
+      const spells = level >= SPELLS_FROM ? (TROOPS[s.troop].caster?.spells ?? []).map((id) => SPELLS[id].name) : [];
+      const knows = spells.length ? `, and he knows ${listed(spells)}` : '';
+      const name = `**${TROOPS[s.troop].name}**`;
+      return capital(lends ? `${name} is level ${roman(level)}, so his band fights with ${lends}${knows}.` : `${name} is only level ${roman(level)}, so his band fights on its own numbers${knows}.`);
+    });
 }
 
 /** The face of whoever leads an army, a villain or a captain, for its cards: none for a band with no leader, or none drawn. */

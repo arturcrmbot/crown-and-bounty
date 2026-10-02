@@ -14,8 +14,11 @@ import type { Point } from './map/geometry';
 export type { Point, TroopId };
 export { TROOPS, troops };
 
-/** One company in an army: a kind of troop and how many. */
-export type Stack = { troop: TroopId; count: number };
+/**
+ * One company in an army: a kind of troop and how many. An enemy hero (#239), who leads his band from
+ * behind its line, has his level on his stack, 1 to 10: `{ troop: 'sergeant', count: 1, level: 2 }`.
+ */
+export type Stack = { troop: TroopId; count: number; level?: number };
 /** Up to five stacks, as in HoMM2. */
 export type Army = Stack[];
 export const MAX_STACKS = 5;
@@ -462,6 +465,8 @@ export const show = (card: Card, at: Point | null = null, place?: string): GameE
 export const coins = (n: number) => Math.round(n).toLocaleString('en-GB');
 
 /** A list in words: "3 Knights", "3 Knights and 2 Archers", "3 Knights, 2 Archers and 1 Swordsman". */
+/** A line that opens a sentence starts with a capital, inside any bold or italics: "**The Sergeant** is level II." */
+export const capital = (line: string) => line.replace(/^([*_]*)(\p{Ll})/u, (_, marks: string, first: string) => marks + first.toUpperCase());
 export const listed = (items: readonly string[]) => (items.length > 1 ? `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}` : (items[0] ?? ''));
 
 export function roman(n: number): string {

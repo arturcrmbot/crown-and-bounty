@@ -197,7 +197,9 @@ function troopWorth(b: BattleState, f: Fighter): number {
   const t = unitOf(f);
   const { attack, defence } = statsOf(b, f);
   const [min, max] = t.damage;
-  const damage = f.status.some((s) => STATUSES[s].bestDamage) ? max : (min + max) / 2;
+  // A blessing rolls the best damage, a curse the worst; both at once cancel out.
+  const lean = (f.status.some((s) => STATUSES[s].bestDamage) ? 1 : 0) - (f.status.some((s) => STATUSES[s].worstDamage) ? 1 : 0);
+  const damage = lean > 0 ? max : lean < 0 ? min : (min + max) / 2;
   const player = f.side === 'player';
   const skill = player ? 1 + Math.max(b.hero.melee ?? 0, f.shots > 0 ? (b.hero.ranged ?? 0) : 0) : 1;
   const armour = player ? 1 / (1 - (b.hero.armour ?? 0)) : 1;
@@ -219,7 +221,7 @@ const healShare = (troop: Fighter['troop']) => {
 };
 
 /**
- * What a caster (Aldric, or a villain) is worth to his side besides his blows: the spells his mana
+ * What a caster (Aldric, a villain or an enemy hero) is worth to his side besides his blows: the spells his mana
  * can still cast, and his charges (orders) at `CHARGE` mana each. Each
  * point counts as this much fighting worth for every point of spell power: about half what a bolt
  * takes with it, so a good spell is still worth its mana.
@@ -361,16 +363,21 @@ export function evaluate(b: BattleState, side: Side, w: Weights = CAREFUL): numb
  */
 export function stackActions(b: BattleState): BattleAction[] {
   const opts = options(b);
-  const f = activeFighter(b);
-  const bard = f && bardOf(f);
   return [
     ...opts.shoot.map((target): BattleAction => ({ type: 'shoot', target })),
     ...opts.melee.map((m): BattleAction => ({ type: 'melee', target: m.target, from: m.from })),
     ...[...opts.moves.keys()].map((to): BattleAction => ({ type: 'move', to })),
     { type: 'defend' },
-    ...(bard ? b.fighters.filter((o) => onField(o) && o.side !== f.side).map((o): BattleAction => ({ type: 'jeer', target: o.id })) : []),
-    ...(bard ? bard.songs.map((song): BattleAction => ({ type: 'sing', song })) : []),
+    ...bardActions(b),
   ];
+}
+
+/** A bard's jeers at every stack of the other side, and his songs: the Courtier's, or an outlaw captain's (#239). Never a bribe. */
+export function bardActions(b: BattleState): BattleAction[] {
+  const f = activeFighter(b);
+  const bard = f && bardOf(f);
+  if (!bard) return [];
+  return [...b.fighters.filter((o) => onField(o) && o.side !== f.side).map((o): BattleAction => ({ type: 'jeer', target: o.id })), ...bard.songs.map((song): BattleAction => ({ type: 'sing', song }))];
 }
 
 /** Every spell the hero could cast now, on every stack it could be cast on. */
@@ -463,7 +470,11 @@ export function onslaught(b: BattleState): BattleAction {
   if (opts.shoot.length > 0) return best(b, opts.shoot.map((target): BattleAction => ({ type: 'shoot', target })), side, STRIKE)!.action;
   const blow = best(b, opts.melee.map((m): BattleAction => ({ type: 'melee', target: m.target, from: m.from })), side, STRIKE);
   // A leader never walks the field: he strikes if he can reach anyone, and otherwise waits for his next turn.
-  if (isLeader(f)) return blow?.action ?? { type: 'defend' };
+  // An outlaw captain jeers your stacks or sings to his own, whichever helps most, if that beats letting his turn pass (#239).
+  if (isLeader(f)) {
+    const words = best(b, [...bardActions(b), { type: 'defend' }], side, STRIKE);
+    return (blow && (!words || blow.score >= words.score) ? blow : words)?.action ?? { type: 'defend' };
+  }
   if (f.shots > 0) {
     // Caught in melee: step clear if it can get out of reach, since a shot next turn beats a blow at half strength now.
     const melee = opts.melee.map((m): BattleAction => ({ type: 'melee', target: m.target, from: m.from }));
