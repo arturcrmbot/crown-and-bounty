@@ -1,0 +1,21 @@
+[
+  {
+    "out": "art/map/sheets/units-e.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 215,
+    "prompt": "a sheet of six: a skinny cutpurse in a grey cap and a patched russet jerkin, crouching, with a dagger in one hand and a fat stolen purse in the other; a swaggering cutpurse captain in a battered feathered cap and a patched purple coat, with a long dagger and a jingling purse at his belt; a tall highwayman captain in a black mask, a big black tricorn hat with a red feather and a long dark coat with a red sash, with a sabre; a weathered old poacher captain in a broad-brimmed brown hat and a leather jerkin, with a longbow and a brace of rabbits at his belt; a giant hairy brown spider as big as a pony, with eight shiny black eyes and striped legs; a giant hairy black and grey spider as big as a pony, with eight shiny eyes, each a full-body figure standing, facing right, drawn in exactly the art style of the reference 1996 DOS fantasy strategy game battle screens: charming, friendly, clearly readable, bright colours, painted shading reduced to 256 colours, soft dithering, a little character in every face, two rows of three figures, each separate and not touching, on a plain flat grey background",
+    "reference_images": [
+      "~/.config/retro-diffusion/refs/battle_hero.png",
+      "~/.config/retro-diffusion/refs/battle_troops.png",
+      "~/.config/retro-diffusion/refs/battle_wide.png",
+      "~/.config/retro-diffusion/refs/r1.png",
+      "art/map/sheets/units-a.png",
+      "art/map/sheets/units-b.png",
+      "art/map/sheets/units-c.png",
+      "art/map/sheets/units-d.png"
+    ]
+  }
+]

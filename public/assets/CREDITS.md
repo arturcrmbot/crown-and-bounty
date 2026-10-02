@@ -18,9 +18,14 @@ The payday feast's people and things (`public/assets/feast/`, #191) were made th
 with our own unit and place sheets as the reference: Aldric as each background, the troops celebrating, the fire,
 the roast, the tents and the horses (`feast-1.png` to `feast-4.png` in `art/map/sheets/`).
 
+The troops and captains that came later were drawn the same way on 2 October 2026 (#255), with HoMM2's battle screens
+and our own unit sheets as the reference: the cutpurses, the outlaws' captains and Darkwood's giant spiders
+(`units-e.png`). The request for each sheet is kept in `art/map/jobs/`.
+
 ## The units: Battle for Wesnoth
 
-The troops and the hero are units from [Battle for Wesnoth](https://www.wesnoth.org/) 1.18, taken
+Under the painted figures, the troops and the hero are units from [Battle for Wesnoth](https://www.wesnoth.org/) 1.18:
+Wesnoth's frames time each troop's blows, and stand in for a painted figure until it loads. They're taken
 from [its official repository](https://github.com/wesnoth/wesnoth) at the pinned tag `1.18.8`. Thank
 you to Wesnoth's artists: the full list is in Wesnoth's
 [`data/core/about.cfg`](https://github.com/wesnoth/wesnoth/blob/1.18.8/data/core/about.cfg), and each

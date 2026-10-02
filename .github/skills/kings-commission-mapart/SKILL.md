@@ -1,6 +1,6 @@
 ---
 name: kings-commission-mapart
-description: How to dress and paint Crown & Bounty's maps and battlefields in the spirit of Heroes of Might and Magic II - how HoMM2 composes a map, our art pipeline (Retro Diffusion sheets cut by scripts/mapart.py), the scale table, where each kind of dressing is placed in code, and the critique checklist to run before showing Artur. Use for any change to the map's or the battle's look, new pieces, or a new province.
+description: How to dress and paint Crown & Bounty's maps, battlefields and figures in the spirit of Heroes of Might and Magic II - how HoMM2 composes a map, our art pipeline (Retro Diffusion sheets drawn by scripts/retro.py and cut by scripts/mapart.py), the scale table, where each kind of dressing is placed in code, how to paint a new troop or captain, and the critique checklist to run before showing Artur. Use for any change to the map's or the battle's look, new pieces, a new province, or any new troop, captain or villain (every one needs a painted figure, never Wesnoth's art as it comes).
 ---
 
 # Map art in HoMM2's spirit
@@ -53,7 +53,8 @@ trees along the top cut by the frame, clumps in the corners, and obstacles at ba
 - **Sheets** are made with Retro Diffusion (`rd_pro__spritesheet`, 256×256, up to 9 reference images,
   about $0.18 a sheet and 10-30 matching pieces), with HoMM2's screens as the style reference. Each sheet
   is objects on one flat grey with a flatter grey shadow. They're kept as they came in
-  `art/map/sheets/` and credited in `public/assets/CREDITS.md`. Spend only where it clearly pays.
+  `art/map/sheets/` and credited in `public/assets/CREDITS.md`. The requests for the later ones (#255 on) are kept in
+  `art/map/jobs/`, and `python3 scripts/retro.py <job>` draws them. Spend only where it clearly pays.
 - **`npm run mapart`** (`scripts/mapart.py`) cuts them: `PIECES` (name: sheet, box, width on the map),
   the bright trees (`GROVES`, `CONIFERS`, cut to a height, their kind found from their colour), the
   troops (`FIGURES`, cut to a battle height), and the seamless grounds (`GROUND`). To find a new sheet's
@@ -67,6 +68,34 @@ trees along the top cut by the frame, clumps in the corners, and obstacles at ba
 - **The payday feast** (#191) has its own sheets (`feast-1` to `feast-4`): `FEAST` in mapart.py cuts them at the
   size they were drawn, with no shadow (the feast lays its own, away from its fire), into `public/assets/feast/`, and
   lists them as `FEAST_PIECES`. Its fire is cut without its painted flames: the feast draws its own, behind the logs.
+
+## A new troop or captain (#255)
+
+#244 and #248 shipped eleven figures in Wesnoth's art as it comes, and Artur found them jarring ("they look like
+anime"). Every troop, captain and Aldric is painted, and `test/figures.test.ts` fails for one that isn't. To paint one:
+
+1. **Write its sheet's job** in `art/map/jobs/` (see `units-e.json`): six figures to a 256×256 `rd_pro__spritesheet`
+   sheet, a seed of its own, and #189's prompt word for word around them: `a sheet of six: A; B; C; D; E; F, each a
+   full-body figure standing, facing right, drawn in exactly the art style of the reference 1996 DOS fantasy strategy
+   game battle screens: charming, friendly, clearly readable, bright colours, painted shading reduced to 256 colours,
+   soft dithering, a little character in every face, two rows of three figures, each separate and not touching, on a
+   plain flat grey background`. Describe each by what he wears and carries, the way his card and his portrait already
+   say, so that the faces agree. Keep him apart from Aldric's four: no green hood like the Ranger's, no red coat and
+   plumed hat like the Courtier's. Give a spare slot to the figure hardest to get right (a beast), and use the better one.
+2. **References:** HoMM2's battle and map crops (`battle_hero`, `battle_troops`, `battle_wide`, `r1`), which stay on
+   this Mac in `~/.config/retro-diffusion/refs/` and never go in the repo, and our own `units-a` to `units-d`.
+3. **Draw it:** `python3 scripts/retro.py art/map/jobs/<sheet>.json`, with the key in `~/.config/retro-diffusion/key`.
+   A sheet costs $0.18. Look at it at 3× beside `units-a` to `units-d` before cutting anything.
+4. **Cut it:** label the sheet's figures (`layers` gives the masks: `nd.label(nd.binary_dilation(~back, iterations=2))`,
+   then sort the boxes by row) and add each to `FIGURES` with its box and its height in battle. Cut a man at the scale
+   the others were cut at, about 0.6 of his height on the sheet: a person about 65 px, a captain like Rook (68), and a
+   villain a quarter taller. Where his weapon rises over his head, the height covers it, so give the man himself 65.
+   Then `npm run mapart` and `git status`: only his PNGs, the `FIGURES` line and your files may change.
+5. **Check him** at 2× beside the painted troops, in battle (`?battle=patrol&enemy=<troop>:20`), behind the line if he
+   leads (`&enemy=<men>:20,<captain>:1:3`), and in his band on the map. Then credit the sheet in
+   `public/assets/CREDITS.md` and approve the visual scenes he changes.
+
+He still needs his Wesnoth entry in `src/render/units.ts`, which times his blows and stands in until the paintings load.
 
 ## Where the dressing is placed
 
