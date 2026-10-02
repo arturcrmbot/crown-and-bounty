@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { TroopId } from '../../content/troops';
-import { battleAct, createBattle, fighterById, isCharge, options, strike, type BattleEvent, type BattleHero, type BattleState } from './battle';
+import { battleAct, createBattle, fighterById, isCharge, options, speedOf, strike, type BattleEvent, type BattleHero, type BattleState } from './battle';
 import { hexIndex, neighbours } from './hex';
 
 const hero: BattleHero = { attack: 1, defence: 1, spellPower: 2, mana: 20, spells: [], castRound: 0 };
@@ -76,5 +76,26 @@ describe('Backstab', () => {
   it('is the cutpurses\u2019 own: swordsmen beside a friend hit no harder', () => {
     const b = field([['knights', 10]], [['swordsmen', 30], ['cutpurses', 10]], { 0: knights, 1: beside, 2: other }, [1, 0, 2]);
     expect(strike(b, fighterById(b, 1), fighterById(b, 0), false).backstab).toBeUndefined();
+  });
+});
+
+describe('Webs', () => {
+  it('holds whatever a spider bites still: no speed, no move, though it can still strike, until the round after next', () => {
+    const b = field([['knights', 10]], [['spiders', 12]], { 0: hexIndex(4, 4), 1: hexIndex(5, 4) }, [1, 0]);
+    const bitten = battleAct(b, { type: 'melee', target: 0, from: hexIndex(5, 4) }, true);
+    expect(hits(bitten.events).find((e) => e.attacker === 1)).toMatchObject({ status: 'webbed' });
+    const knights = fighterById(bitten.battle, 0);
+    expect(knights.status).toContain('webbed');
+    expect(speedOf(knights)).toBe(0);
+    // The knights' own turn comes: nowhere to go, but the spiders beside them are still in reach.
+    expect(bitten.battle.order[0]).toBe(0);
+    const opts = options(bitten.battle);
+    expect(opts.moves.size).toBe(0);
+    expect(opts.melee.some((m) => m.target === 1)).toBe(true);
+    // Two rounds on, the web has worn off.
+    let next = bitten.battle;
+    for (let i = 0; i < 6 && next.round < b.round + 2; i++) next = battleAct(next, { type: 'defend' }, true).battle;
+    expect(next.round).toBe(b.round + 2);
+    expect(fighterById(next, 0).status).not.toContain('webbed');
   });
 });
