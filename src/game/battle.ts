@@ -780,10 +780,13 @@ export class BattleController implements Screen {
           play('charge');
         }
         if (e.lucky) this.float(e.attacker, 'Lucky!', GOLD[5], from);
+        if (e.backstab) this.float(e.attacker, 'Backstab!', GOLD[6], from);
+        if (e.braced) this.float(e.target, 'Pikes set!', GOLD[6]);
+        if (e.plate) this.float(e.target, 'Glances off!', GOLD[5]);
         this.pop(e.target, e.killed, e.damage);
         // Said as a spell's line is: "for 156 damage, and 7 perish."
         const fell = e.killed ? `, and ${perish(e.killed)}` : '';
-        v.log = `${blow} for ${e.damage} damage${fell}.${e.lucky ? ' A lucky blow!' : ''}${e.status ? ` ${STATUSES[e.status].onHit ?? ''}` : ''}`;
+        v.log = `${blow} for ${e.damage} damage${fell}.${e.lucky ? ' A lucky blow!' : ''}${e.backstab ? ' A backstab!' : ''}${e.braced ? ' The pikes stop the charge.' : ''}${e.plate ? ' Half of it glances off their plate.' : ''}${e.status ? ` ${STATUSES[e.status].onHit ?? ''}` : ''}`;
       },
       tick: (t) => {
         swing(hit);
@@ -1559,7 +1562,7 @@ export class BattleController implements Screen {
       for (const caught of spellVictims(this.battle, action.spell, fighterById(this.battle, action.target))) lit.set(caught.id, harms && caught.side === f.side ? 'danger' : 'target');
     } else if (action.type === 'melee' || action.type === 'shoot' || action.type === 'jeer') lit.set(action.target, 'target');
     const tag = action.type === 'jeer' ? bardTag(this.battle, fighterById(this.battle, action.target)) : action.type === 'move' ? { title: 'Move here', lines: [] } : aimTag(this.battle, action);
-    const charge = action.type === 'melee' && isCharge(this.battle, f, action.from);
+    const charge = action.type === 'melee' && isCharge(this.battle, f, action.from, undefined, fighterById(this.battle, action.target));
     this.aim = { battle: this.battle, key, tag, lit, line: this.forecast(action), charge };
     return this.aim;
   }
