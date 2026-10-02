@@ -4,7 +4,7 @@ import type { TroopId } from './troops';
  * or status does is written here as data; the battle engine and the AI read it, and never name a
  * spell themselves.
  */
-export type SpellId = 'bolt' | 'bless' | 'slow' | 'haste' | 'fireball' | 'stoneskin' | OrderId | 'newts' | 'frogs' | 'brew';
+export type SpellId = 'arrow' | 'bolt' | 'bless' | 'slow' | 'haste' | 'fireball' | 'stoneskin' | OrderId | 'newts' | 'frogs' | 'brew';
 /** A villain's orders to his men: shouted, not cast, so they cost no mana, only a few uses a battle (see `charges`). */
 export type OrderId = 'shieldwall' | 'crossbows' | 'guard';
 
@@ -106,8 +106,8 @@ export type SpellDef = {
   on: 'enemy' | 'friend';
   note: string;
   effect: SpellEffect;
-  /** How it looks and sounds: a bolt from the sky, a ball of fire, or a sparkle in a colour. */
-  look: { kind: 'bolt' | 'fire' | 'sparkle'; colour: 'gold' | 'blue' | 'red' };
+  /** How it looks and sounds: a missile from the caster, a bolt from the sky, a ball of fire, or a sparkle in a colour. */
+  look: { kind: 'missile' | 'bolt' | 'fire' | 'sparkle'; colour: 'gold' | 'blue' | 'red' };
   /** An order: what the caster bellows, and how ("bellows", "roars"). The log says it that way. */
   shout?: { verb: string; words: string };
   /** Only once the caster's troops are down to this share of the health they began with. */
@@ -118,6 +118,7 @@ export type SpellDef = {
 export const needsTarget = (spell: SpellId) => !['mass', 'volley', 'summon'].includes(SPELLS[spell].effect.kind);
 
 export const SPELLS: Record<SpellId, SpellDef> = {
+  arrow: { id: 'arrow', name: 'Magic Arrow', mana: 4, on: 'enemy', note: 'It does ten damage for every point of spell power.', effect: { kind: 'damage', perPower: 10 }, look: { kind: 'missile', colour: 'blue' } },
   bolt: { id: 'bolt', name: 'Lightning Bolt', mana: 7, on: 'enemy', note: 'It does twenty damage for every point of spell power.', effect: { kind: 'damage', perPower: 20 }, look: { kind: 'bolt', colour: 'gold' } },
   bless: { id: 'bless', name: 'Bless', mana: 5, on: 'friend', note: 'The stack always rolls its best damage, for the rest of the battle.', effect: { kind: 'status', status: 'blessed' }, look: { kind: 'sparkle', colour: 'gold' } },
   slow: { id: 'slow', name: 'Slow', mana: 5, on: 'enemy', note: 'It halves the stack\u2019s speed for this round and the next.', effect: { kind: 'status', status: 'slowed' }, look: { kind: 'sparkle', colour: 'blue' } },

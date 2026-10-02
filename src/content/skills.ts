@@ -193,6 +193,9 @@ export const SKILLS: Record<SkillId, Skill> = {
   },
 };
 
+/** Wizardry: the skills and perks a level-up offers only a wizard (#240). */
+export const WIZARDRY: readonly string[] = ['skill:sorcery', 'skill:mysticism', 'perk:battleMage', 'perk:farSight'];
+
 /** What a skill does at a rank (from 1), in words. */
 export const skillNote = (id: SkillId, rank: number) => SKILLS[id].ranks[Math.max(0, Math.min(RANKS.length, rank) - 1)].note;
 /** Perks are taken once and bend a rule, in the game's voice. */

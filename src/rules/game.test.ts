@@ -86,7 +86,7 @@ suite('places', () => {
 suite('fights', () => {
   it('shows the fallen from both sides and the mana spent', () => {
     const fresh = newGame(7, undefined, 'wizard');
-    const state = { ...fresh, army: [{ troop: 'knights' as const, count: 10 }], hero: { ...fresh.hero, mana: 30 } };
+    const state = { ...fresh, army: [{ troop: 'knights' as const, count: 10 }], hero: { ...fresh.hero, mana: 30, spells: [...fresh.hero.spells, 'bolt' as const] } };
     const started = startFight(state, 'poachers')!.state;
     const battle = started.battle!;
     const player = battle.fighters.find((fighter) => fighter.side === 'player' && !fighter.hero)!;
@@ -123,7 +123,7 @@ suite('fights', () => {
 
   it('counts the mana you cast yourself as yours, and what the sergeants cast while they had command as theirs', () => {
     const fresh = newGame(7, undefined, 'wizard');
-    const state = { ...fresh, army: [{ troop: 'knights' as const, count: 10 }], hero: { ...fresh.hero, mana: 30 } };
+    const state = { ...fresh, army: [{ troop: 'knights' as const, count: 10 }], hero: { ...fresh.hero, mana: 30, spells: [...fresh.hero.spells, 'bolt' as const] } };
     const started = startFight(state, 'poachers')!.state;
     // On to the next of your stacks' turns (in a round after `after`, if given): yours defend, theirs fight.
     const onTo = (b: BattleState, after?: number) => {

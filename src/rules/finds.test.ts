@@ -1,3 +1,4 @@
+import type { SpellId } from '../content/spells';
 import { describe, expect, it } from 'vitest';
 import { ALDMOOR } from '../content/aldmoor';
 import { FINDS } from '../content/aldmoorFinds';
@@ -16,6 +17,7 @@ import { hireOffer } from './places/enemy';
 import { beginCommission, newGame } from './scenario';
 
 const fresh = (background: BackgroundId = 'knight'): GameState => ({ ...newGame(1066, ALDMOOR, background), opening: undefined });
+const knowing = (state: GameState, spell: SpellId): GameState => ({ ...state, hero: { ...state.hero, spells: [...state.hero.spells, spell] } });
 const fen = (background: BackgroundId = 'knight'): GameState => beginCommission(FENMARCH, 1, newGame(1066, ALDMOOR, background).campaign.start, 1, []);
 const choose = (state: GameState, id: string, choice: string) => apply(state, { type: 'choose', id, choice });
 const take = (state: GameState, id: string, choice: string) => {
@@ -120,8 +122,8 @@ describe('Aldmoor\u2019s finds', () => {
     expect(has(charm, 'millersLoaf')).toBe(false);
     expect(choose(charm, 'mill', 'miller/loaf')).toBeNull();
     expect(cardOf(visit(charm, 'mill')).choices.map((c) => c.label)).toEqual(['Close']);
-    // A wizard knows the charm already, so only the loaf is his to take.
-    expect(labels(fresh('wizard'), 'mill')).toContain('Learn the fair-wind charm (you know it) [off]');
+    // A hero who knows the charm already has only the loaf to take.
+    expect(labels(knowing(fresh('wizard'), 'haste'), 'mill')).toContain('Learn the fair-wind charm (you know it) [off]');
   });
 
   it('St Aldhelm answers a prayer for the goose at Grimsby\u2019s walls, or lends his crown', () => {
@@ -314,7 +316,7 @@ describe('the Fenmarch\u2019s finds', () => {
   it('Brother Anselm spares his staff, a thunderbolt, or a letter to his big sister, the witch', () => {
     expect(take(fen(), 'abbey', 'anselm/staff').hero.gear.weapon).toBe('abbotsStaff');
     expect(take(fen(), 'abbey', 'anselm/bolt').hero.spells).toContain('bolt');
-    expect(labels(fen('wizard'), 'abbey')).toContain('Learn the thunderbolt prayer (you know it) [off]');
+    expect(labels(knowing(fen('wizard'), 'bolt'), 'abbey')).toContain('Learn the thunderbolt prayer (you know it) [off]');
     const letter = take(fen(), 'abbey', 'anselm/letter');
     expect(has(letter, 'abbotsStaff')).toBe(false);
     const before = locationById(letter, 'hideout').enemy!.army;

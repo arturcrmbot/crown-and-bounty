@@ -121,7 +121,7 @@ describe('Aldric behind the line', () => {
     expect(hasTurn(lord)).toBe(true);
     const his = options({ ...court, order: [lord.id] });
     expect([...his.melee, ...his.shoot, ...his.moves.keys()]).toEqual([]);
-    expect(canCast(court, 'bless')).toBe(true);
+    expect(canCast(court, 'bless')).toBe(false);
   });
 
   it('counts the quarter lost on the way back from a retreat among the fallen', () => {
@@ -201,7 +201,7 @@ describe('Aldric behind the line', () => {
     const state = hero('wizard');
     const old = createBattle({ place: 'highwaymen', seed: 5, player: state.army, enemy: state.locations.find((l) => l.id === 'highwaymen')!.enemy!.army, hero: { ...heroInBattle(state), unit: undefined } });
     expect(heroOnField(old)).toBeNull();
-    expect(canCast(old, 'bolt')).toBe(true);
+    expect(canCast(old, 'arrow')).toBe(true);
     const won = autoResolve(old);
     expect(won.result).toBe('won');
     const done = finishFight({ ...state, battle: won });

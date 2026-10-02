@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { ALDMOOR } from '../content/aldmoor';
-import type { BackgroundId } from '../content/backgrounds';
+import { BACKGROUNDS, type BackgroundId } from '../content/backgrounds';
 import { FENMARCH } from '../content/fenmarch';
-import { RANKS, SKILLS, type HigherRank, type SkillId } from '../content/skills';
+import { RANKS, SKILLS, WIZARDRY, type HigherRank, type SkillId } from '../content/skills';
 import { createBattle, statsOf } from './battle/battle';
 import { apply, battleXp, describe as about, endDay, fightingPower, heroInBattle, heroStats, levelUpCard, locationById, nextArmy, visit, winChance, type Card, type GameState, type Result } from './game';
 import { gainXp, giveArtifact, LEVELS } from './hero';
@@ -63,6 +63,24 @@ describe('skills', () => {
     expect(heroStats({ ...wizard, hero: { ...wizard.hero, skills: { sorcery: 3 } } }).spellPower).toBe(heroStats(wizard).spellPower + 1);
     expect(heroSheet(offered).skills).toEqual([{ name: 'Advanced Sorcery', note: SKILLS.sorcery.ranks[1].note }]);
   });
+
+  it('offer one of his own skills at every level-up, and wizardry only to a wizard (#240)', () => {
+    for (const background of ['knight', 'wizard', 'ranger', 'courtier'] as const) {
+      const own = BACKGROUNDS[background].favours.map((id) => `skill:${id}`);
+      let wizardry = 0;
+      for (let seed = 1; seed <= 60; seed++) {
+        for (const offer of gainXp({ ...fresh(background), seed }, LEVELS[10]).state.hero.offers) {
+          expect(offer.options.some((o) => own.includes(o)), `${background} ${seed} ${offer.options}`).toBe(true);
+          wizardry += offer.options.filter((o) => WIZARDRY.includes(o)).length;
+        }
+      }
+      if (background === 'wizard') expect(wizardry).toBeGreaterThan(0);
+      else expect(wizardry, background).toBe(0);
+    }
+    // Once he has all three of his own at Expert, the draw goes on without them.
+    const master = skilled({ offence: 3, armourer: 3, leadership: 3 });
+    expect(gainXp(master, LEVELS[3]).state.hero.offers.every((o) => o.options.length === 4)).toBe(true);
+  }, 60_000);
 
   it('still count for heroes saved with the old nine', () => {
     const old = skilled({ archery: 2, sorcery: 3, mysticism: 1 });

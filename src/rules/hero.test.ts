@@ -32,7 +32,7 @@ describe('backgrounds', () => {
   it('can be chosen on the opening card', () => {
     const wizard = apply(knight(), { type: 'background', id: 'wizard' })!.state;
     expect(wizard.hero.background).toBe('wizard');
-    expect(wizard.hero.spells).toContain('haste');
+    expect(wizard.hero.spells).toEqual(['arrow', 'bless']);
   });
 });
 

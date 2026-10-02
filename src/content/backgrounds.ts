@@ -115,8 +115,10 @@ export type Background = {
   signature: { name: string; note: string; bonus: Bonus; brief?: string };
   /** Which stat grows on a level-up, as weights. */
   growth: { attack: number; defence: number; spellPower: number; knowledge: number };
-  /** Skills this background is drawn to: they're offered more often. */
+  /** His own three skills: every level-up offers one while any has a rank left, and they're offered more often. */
   favours: string[];
+  /** He is a wizard: only he is offered wizardry (`WIZARDRY` in `skills.ts`). */
+  wizardry?: boolean;
 };
 
 export const BACKGROUNDS: Record<BackgroundId, Background> = {
@@ -131,7 +133,7 @@ export const BACKGROUNDS: Record<BackgroundId, Background> = {
     leadership: 140,
     gold: 1000,
     army: [{ troop: 'knights', count: 10 }, { troop: 'archers', count: 20 }],
-    spells: ['bless'],
+    spells: [],
     signature: {
       name: 'Banner of the Realm',
       brief: 'Your knights get +1 attack and +1 defence, and charge as you do. A long charge hits a quarter harder, and nobody strikes back.',
@@ -147,15 +149,16 @@ export const BACKGROUNDS: Record<BackgroundId, Background> = {
     title: 'Aldric the Hedge Wizard',
     short: 'Aldric',
     pitch: 'Fewer swords, more lightning. Spells are cheaper and hit much harder.',
-    playstyle: 'Win with magic. You know four spells, you can cast two a round, and on the map you can cast Far Sight.',
+    playstyle: 'Win with magic. You know two spells and find more on the map, you can cast two a round, and on the map you can cast Far Sight.',
     stats: { attack: 0, defence: 1, spellPower: 3, knowledge: 3 },
     leadership: 110,
     gold: 1250,
     army: [{ troop: 'knights', count: 8 }, { troop: 'archers', count: 22 }],
-    spells: ['bolt', 'bless', 'slow', 'haste'],
+    spells: ['arrow', 'bless'],
     signature: { name: 'Hedge Magic', note: 'Every spell costs 2 less mana, you can cast two spells a round, and on the map you know Far Sight.', bonus: { manaDiscount: 2, casts: 1, mapSpells: ['farsight'] } },
     growth: { attack: 1, defence: 1, spellPower: 4, knowledge: 3 },
     favours: ['sorcery', 'mysticism', 'scouting'],
+    wizardry: true,
   },
   ranger: {
     id: 'ranger',
@@ -168,7 +171,7 @@ export const BACKGROUNDS: Record<BackgroundId, Background> = {
     leadership: 120,
     gold: 1000,
     army: [{ troop: 'knights', count: 9 }, { troop: 'archers', count: 34 }],
-    spells: ['slow'],
+    spells: [],
     signature: {
       name: 'Pathfinder',
       brief: 'You ride through the woods, where nothing on the map can follow you, and your archers loose a free volley before every battle. Beasts may follow you instead of fighting, and they draw no wages.',
@@ -189,7 +192,7 @@ export const BACKGROUNDS: Record<BackgroundId, Background> = {
     leadership: 125,
     gold: 2400,
     army: [{ troop: 'knights', count: 10 }, { troop: 'archers', count: 20 }],
-    spells: ['bless', 'slow'],
+    spells: [],
     signature: {
       name: 'Silver Tongue',
       note: 'Recruits cost a fifth less, every payday brings 250 more gold, bribes cost half, and small bands will take your coin and join you.',

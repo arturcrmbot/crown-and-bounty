@@ -264,6 +264,16 @@ describe('a battle', () => {
     expect(battleAct(cast.battle, { type: 'cast', spell: 'bolt', target: 1 }).events).toHaveLength(0);
   });
 
+  it('casts Magic Arrow for half a bolt\u2019s damage and 4 mana, 2 with hedge magic (#240)', () => {
+    const b = battle(['knights'], [10], ['swordsmen'], [30]);
+    const arrow = { ...b, hero: { ...b.hero, spells: ['arrow' as const] } };
+    const cast = battleAct(arrow, { type: 'cast', spell: 'arrow', target: 1 });
+    expect(cast.events[0]).toMatchObject({ type: 'spell', spell: 'arrow', damage: 20 });
+    expect(cast.battle.hero.mana).toBe(16);
+    const hedge = { ...arrow, hero: { ...arrow.hero, manaDiscount: 2 } };
+    expect(battleAct(hedge, { type: 'cast', spell: 'arrow', target: 1 }).battle.hero.mana).toBe(18);
+  });
+
   it('always gives the AI a legal move, and plays to a finish the same way every time', () => {
     const b = battle(['knights', 'archers'], [12, 25], ['swordsmen', 'crossbowmen'], [18, 12], 3);
     const action = chooseAction(b);

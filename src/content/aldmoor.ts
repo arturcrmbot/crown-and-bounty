@@ -1063,7 +1063,7 @@ export const ALDMOOR: Province = {
         look: 'soldiers',
         tier: 'band',
         lines: ['Grimsby\u2019s men are digging on the heath for the old King\u2019s treasure, and a good many more of them are standing guard. They have dug forty holes so far.', '*None of them is the right one.*'],
-        army: [{ troop: 'swordsmen', count: 32 }, { troop: 'crossbowmen', count: 14 }, { troop: 'peasants', count: 30 }],
+        army: [{ troop: 'swordsmen', count: 30 }, { troop: 'crossbowmen', count: 14 }, { troop: 'peasants', count: 30 }],
         reward: 400,
         threat: 'The foreman waves his spade at you. *"Dig your own hole!"*',
         spoils: { flags: { dig: 'raided' } },

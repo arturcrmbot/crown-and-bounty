@@ -168,8 +168,8 @@ describe('the hero screen', () => {
     expect(sheet.mana).toEqual({ left: 30, max: 30, line: 'Mana 30/30 · full; a quarter back every dawn, and a holy well or your castle fills it', back: 'full' });
     expect(sheet.leadership.used).toBe(84);
     expect(sheet.signature.name).toBe('Hedge Magic');
-    expect(sheet.spells.map((s) => s.name)).toEqual(['Lightning Bolt', 'Bless', 'Slow', 'Haste']);
-    expect(sheet.spells[0].note.startsWith('It costs 5 mana.')).toBe(true);
+    expect(sheet.spells.map((s) => s.name)).toEqual(['Magic Arrow', 'Bless']);
+    expect(sheet.spells[0].note.startsWith('It costs 2 mana.')).toBe(true);
     expect(sheet.mapSpells).toEqual([{ spell: 'farsight', label: 'Cast Far Sight (10 mana)', note: expect.any(String), disabled: false }]);
     const skilled = { ...wizard(), hero: { ...wizard().hero, attack: 1, skills: { sorcery: 2 } } };
     const again = heroSheet(giveArtifact(skilled, 'swordOfAldmoor'));
@@ -254,7 +254,7 @@ describe('the hero\u2019s own card', () => {
     expect(names.slice(0, 5)).toEqual(['Leads', 'Spells', 'Charge', 'Behind the line', 'Rides out']);
     expect(names.filter((n) => n === 'Charge')).toHaveLength(1);
     expect(me.traits[2].note.startsWith('When he and his Knights charge')).toBe(true);
-    expect(me.traits[1].note).toBe('He casts one spell a round, from the 1 in his book. He has 10/10 mana, and none comes back in battle.');
+    expect(me.traits[1].note).toBe('He has none in his book yet, but a teacher or a shrine could help.');
     expect(me.lines[0]).toBe('In battle Sir Aldric stands behind his men, where no blow, shot or spell can reach him.');
     expect(me.lines[1]).toBe('If his army is beaten, he retreats, and rides home to raise another.');
   });
