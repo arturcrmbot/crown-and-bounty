@@ -79,7 +79,9 @@ export function ambushCard(state: GameState, before: string[] = []): Card {
   const odds = oddsOf(state, foe);
   const says = state.army.length ? [oddsLine(winChance(state, foe.id)), likelyLossesLine(state, foe.id)] : [];
   const how = state.ambushRest ? `${opening(forceLine(foe.enemy!.army, countsExactly(state)))} come at you!` : `At first light, **${foe.name}** fall on your camp!`;
-  return { title: state.ambushRest ? foe.name : `An ambush on day ${roman(state.day)}!`, ...faceOf(foe.enemy!.army), ...(odds ? { verdict: odds } : {}), lines: [...before, how, foe.enemy!.threat, ...says], choices };
+  // The rest of a band don't greet him again: their threat was for the whole band, and the biggest of a pack may have just come over to him.
+  const threat = state.ambushRest ? [] : [foe.enemy!.threat];
+  return { title: state.ambushRest ? foe.name : `An ambush on day ${roman(state.day)}!`, ...faceOf(foe.enemy!.army), ...(odds ? { verdict: odds } : {}), lines: [...before, how, ...threat, ...says], choices };
 }
 
 /** The rest of a band that came over only in part fall on him where he stands: fight them, or run. */

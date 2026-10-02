@@ -1,4 +1,4 @@
-import { ARTIFACTS, piecesOf, SETS, slotAcceptsArtifact, slotsForArtifact, type ArtifactId, type SetId, type Slot } from '../content/artifacts';
+import { ARTIFACTS, piecesOf, SETS, slotAcceptsArtifact, slotsForArtifact, type ArtifactId, type ArtifactSlot, type SetId, type Slot } from '../content/artifacts';
 import { BACKGROUNDS, type BackgroundId, type Bonus } from '../content/backgrounds';
 import { FRIENDS } from '../content/friends';
 import { PERKS, RANKS, SKILLS, type PerkId, type SkillId } from '../content/skills';
@@ -456,11 +456,23 @@ export function artifactChoices(state: GameState, id: ArtifactId): Choice[] {
 /** Why a find without a drawback went into the pack: its slot is taken, or all three trinket slots are. */
 export const slotTaken = (id: ArtifactId) => (ARTIFACTS[id].slot === 'trinket' ? 'all three trinket slots are taken' : 'you wear something there already');
 
+/** What he does with a find he wears at once, by its slot: a sword is taken up, a banner flown, a loaf kept about him. */
+const WORN: Record<ArtifactSlot, string> = {
+  weapon: 'You take it up.',
+  armour: 'You put it on.',
+  helm: 'You put it on.',
+  banner: 'Your army marches under it now.',
+  trinket: 'You keep it about you.',
+};
+
+/** What he does with a find as he takes it to wear: its own words if it has them (Meg rides on his wrist), else its slot's. */
+export const wornLine = (id: ArtifactId) => ARTIFACTS[id].worn ?? WORN[ARTIFACTS[id].slot];
+
 /** Says where a just-found artifact went: on him, or into the pack until he chooses to wear it. */
 export function foundNote(state: GameState, id: ArtifactId): string {
   const a = ARTIFACTS[id];
   const set = setLine(state, id);
-  const note = Object.values(state.hero.gear).includes(id) ? `You put it on. ${a.note}` : a.drawback
+  const note = Object.values(state.hero.gear).includes(id) ? `${wornLine(id)} ${a.note}` : a.drawback
     ? `${a.note} It goes in your pack until you choose whether to wear it.`
     : `${a.note} It goes in your pack, since ${slotTaken(id)}. Press **H** to swap.`;
   return set ? `${note} ${set}` : note;

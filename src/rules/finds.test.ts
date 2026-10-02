@@ -233,6 +233,27 @@ describe('the old King\u2019s hunt hall', () => {
     expect(cardOf(visit(joined, 'hall')).lines.join(' ')).toMatch(/every one of the old King\u2019s huntsmen has gone with you/);
   });
 
+  it('knows what has happened since: the huntsmen have heard Rook is taken, and the stand sees the track clear once the bears are gone (#217)', () => {
+    const keyed = take(fresh(), 'lodge', 'nail/key');
+    expect(cardOf(choose(keyed, 'hall', 'door/open')!).lines.join(' ')).toMatch(/We\u2019d like a word with him/);
+    const rookTaken: GameState = { ...keyed, flags: { ...keyed.flags, rook: 'taken' } };
+    expect(labels(rookTaken, 'hall')).toEqual(['Open the hall']);
+    const welcomed = choose(rookTaken, 'hall', 'door/welcome')!;
+    expect(cardOf(welcomed).lines.join(' ')).toMatch(/you saw to Rook/);
+    expect(cardOf(welcomed).lines.join(' ')).not.toMatch(/a word with him/);
+    expect(locationById(welcomed.state, 'hall').recruits).toEqual({ troop: 'huntsmen', count: 12, price: 0, restock: 0 });
+    expect(choose(rookTaken, 'hall', 'door/open')).toBeNull();
+    // The bears asleep on the track, and the track once they're gone: one climb or the other, never both.
+    const climb = (state: GameState, choice: string) => choose(state, 'huntStand', `climb/${choice}`);
+    expect(labels(fresh(), 'huntStand')).toEqual(['Climb up to his seat', 'Leave it be']);
+    expect(cardOf(climb(fresh(), 'look')!).lines.join(' ')).toMatch(/something large asleep on the track/);
+    expect(climb(fresh(), 'lookClear')).toBeNull();
+    const cleared = update(fresh(), 'bears', { done: true });
+    expect(labels(cleared, 'huntStand')).toEqual(['Climb up to his seat', 'Leave it be']);
+    expect(cardOf(climb(cleared, 'lookClear')!).lines.join(' ')).toMatch(/clear all the way now/);
+    expect(climb(cleared, 'look')).toBeNull();
+  });
+
   it('lets the huntsmen join a hero with no leadership to spare: they draw no wages, and need none', () => {
     const keyed = take(fresh(), 'lodge', 'nail/key');
     const full = { ...keyed, leadership: leadershipUsed(keyed.army) };
@@ -543,6 +564,29 @@ describe('old saves', () => {
     const home = { ...withNewPlaces(JSON.parse(JSON.stringify(old)) as GameState), flags: { huntsmen: true, falconer: 'home', watHome: true } };
     expect(fromAfar(home, 'hall').lines.join(' ')).toMatch(/a hawk sits on the antlers/);
     expect(fromAfar(home, 'falconer').lines.join(' ')).toMatch(/gone home to the hunt hall/);
+  });
+
+  it('take choices added beside what a place he has seen offered him, and never take one back (#217)', () => {
+    const s = fresh();
+    // The hall and the hunting stand as a save from before #217 has them, seen and still to be opened and climbed.
+    const before = (l: Location): Location => {
+      const drop = l.id === 'hall' ? 'welcome' : 'lookClear';
+      const kept = l.id === 'hall' ? 'open' : 'look';
+      const pages = l.pages!.map((p) => ({ ...p, choices: p.choices.filter((c) => c.id !== drop).map((c) => (c.id === kept ? { ...c, when: undefined } : c)) }));
+      return { ...l, seen: true, pages: JSON.parse(JSON.stringify(pages)) };
+    };
+    const old = { ...s, locations: s.locations.map((l) => (l.id === 'hall' || l.id === 'huntStand' ? before(l) : l)) };
+    const loaded = { ...withNewPlaces(JSON.parse(JSON.stringify(old)) as GameState), flags: { huntKey: true, rook: 'taken' } };
+    expect(cardOf(choose(loaded, 'hall', 'door/welcome')!).lines.join(' ')).toMatch(/you saw to Rook/);
+    expect(choose(loaded, 'hall', 'door/open')).toBeNull();
+    const cleared = update(loaded, 'bears', { done: true });
+    expect(cardOf(choose(cleared, 'huntStand', 'climb/lookClear')!).lines.join(' ')).toMatch(/clear all the way now/);
+    expect(withNewPlaces(withNewPlaces(JSON.parse(JSON.stringify(old)) as GameState))).toEqual(withNewPlaces(JSON.parse(JSON.stringify(old)) as GameState));
+    // A seen place whose offer has changed since keeps what it offered him: the mill's loaf, at its old price.
+    const mill = locationById(s, 'mill');
+    const priced = { ...mill, seen: true, pages: mill.pages!.map((p) => ({ ...p, choices: p.choices.map((c) => ({ ...c, effects: { ...c.effects, gold: -1 } })) })) };
+    const kept = withNewPlaces(JSON.parse(JSON.stringify({ ...s, locations: s.locations.map((l) => (l.id === 'mill' ? priced : l)) })) as GameState);
+    expect(locationById(kept, 'mill').pages).toEqual(JSON.parse(JSON.stringify(priced.pages)));
   });
 
   it('and a save that is up to date comes back as it was', () => {

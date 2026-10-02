@@ -690,10 +690,22 @@ export const ALDMOOR: Province = {
             {
               id: 'open',
               label: 'Open the hall',
+              when: { notFlag: 'rook' },
               effects: { flags: { huntsmen: true }, recruits: { troop: 'huntsmen', count: HUNTSMEN, restock: 0 }, xp: 100 },
               lines: [
                 'Inside there is dust, and the long table where his huntsmen used to eat. By evening the fires are lit, and grey, lean men are at the door. *The old King\u2019s huntsmen have come home.*',
                 '*"Grimsby gave our job to Rook,"* says the eldest. *"We\u2019d like a word with him. We\u2019ll come with you for nothing, sir, if you\u2019re going his way."*',
+              ],
+            },
+            // Rook taken before the hall is opened: the huntsmen have heard.
+            {
+              id: 'welcome',
+              label: 'Open the hall',
+              when: { flag: 'rook' },
+              effects: { flags: { huntsmen: true }, recruits: { troop: 'huntsmen', count: HUNTSMEN, restock: 0 }, xp: 100 },
+              lines: [
+                'Inside there is dust, and the long table where his huntsmen used to eat. By evening the fires are lit, and grey, lean men are at the door. *The old King\u2019s huntsmen have come home.*',
+                '*"Grimsby gave our job to Rook,"* says the eldest, *"and you saw to Rook, they say. We\u2019ll come with you for nothing, sir, wherever you\u2019re going."*',
               ],
             },
           ],
