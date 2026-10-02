@@ -318,14 +318,25 @@ export class BattleController implements Screen {
 
   /** A bard's songs, and what each does for every stack of yours, before he sings. */
   private songCard() {
-    const art = bardOf(activeFighter(this.battle)!)!;
+    const bard = activeFighter(this.battle)!;
+    const art = bardOf(bard)!;
+    // A song still on his stacks says how long it has left, so he doesn't sing it again not knowing (#231).
+    const running = art.songs.flatMap((id) => {
+      const until = this.battle.fighters.filter((x) => x.side === bard.side && onField(x) && x.status.includes(id)).map((x) => x.until?.[id] ?? 0);
+      if (!until.length) return [];
+      const left = Math.max(...until) - this.battle.round;
+      return [`*Your ${STATUSES[id].song!.replace(/^a /, '')} is still on your stacks ${left > 1 ? 'for this round and the next' : 'for the rest of this round'}.*`];
+    });
     this.cards.show({
       title: 'Sing',
-      lines: art.songs.map((id) => {
-        const s = STATUSES[id];
-        const what = s.luck ? 'which gives each blow a chance to land twice as hard' : 'which gives each stack a chance to go again before the round moves on';
-        return `**${s.song![0].toUpperCase()}${s.song!.slice(1)}** gives every stack of yours ${spirits(s)} for ${s.rounds} rounds, ${what}.`;
-      }),
+      lines: [
+        ...art.songs.map((id) => {
+          const s = STATUSES[id];
+          const what = s.luck ? 'which gives each blow a chance to land twice as hard' : 'which gives each stack a chance to go again before the round moves on';
+          return `**${s.song![0].toUpperCase()}${s.song!.slice(1)}** gives every stack of yours ${spirits(s)} for ${s.rounds} rounds, ${what}.`;
+        }),
+        ...running,
+      ],
       choices: [...art.songs.map((id) => ({ label: `Sing ${STATUSES[id].song}`, action: { type: 'sing' as const, song: id } })), { label: 'Close', action: { type: 'close' } }],
     });
   }

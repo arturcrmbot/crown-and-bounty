@@ -37,6 +37,8 @@ export type Fighter = {
   hero?: boolean;
   /** How many walked off the field without a blow: paid to go home, or gone over to the other side. */
   left?: number;
+  /** A stack a bard's gold bought over from the other side, for the card that says what his gold did. */
+  turncoat?: true;
   /** A villain who leads his side as Aldric does his: his own spellbook, cast from behind his men. */
   book?: Spellbook;
 };
@@ -897,7 +899,7 @@ export function battleAct(b: BattleState, action: BattleAction, expected = false
       let joined: number | undefined;
       if (action.join) {
         joined = fighters.length;
-        fighters.push({ id: joined, side: f.side, troop: target.troop, count, startCount: count, hp: whole ? target.hp : unitOf(target).hp, at: at!, shots: target.shots, retaliated: false, defending: false, waited: false, status: [] });
+        fighters.push({ id: joined, side: f.side, troop: target.troop, count, startCount: count, hp: whole ? target.hp : unitOf(target).hp, at: at!, shots: target.shots, retaliated: false, defending: false, waited: false, status: [], turncoat: true });
         next.hero.room = (b.hero.room ?? 0) - count * TROOPS[target.troop].leadership;
         // Turncoats of a people his army won't march beside are still grumbled at.
         markFeuds(fighters);
