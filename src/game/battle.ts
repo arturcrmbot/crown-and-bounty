@@ -8,7 +8,7 @@ import { coins, listed } from '../rules/state';
 import { activeFighter, bardOf, battleAct, battleEnd, bribeOffer, canCast, canJoin, casterOf, castsLeft, chargeOf, fighterById, isCharge, isLeader, onField, options, ridesOut, spellCost, spellDamage, spellsOf, spellVictims, unitOf, wound, type BattleAction, type BattleEvent, type BattleState, type Fighter } from '../rules/battle/battle';
 import { aimTag, bardTag, forecastOf, type AimTag } from '../rules/battle/forecast';
 import { paintBanner } from '../render/banner';
-import { BattleScreen, BUTTONS, FIRE_FALL, FLOAT_LIFE, FLOAT_RISE, hexAt, hexCentre, leaderAt, LOG_BOTTOM, spotOf, type BattleView, type Shot } from '../render/battleScreen';
+import { BattleScreen, BUTTONS, FIRE_FALL, FLOAT_LIFE, FLOAT_RISE, hexAt, hexCentre, leaderAt, LOG_BOTTOM, sideAt, spotOf, type BattleView, type Shot } from '../render/battleScreen';
 import { CUE_PING, cueBounce, FLASH_GAP, FLASH_TIME, FRAME, holdFrames, kickLeft, kickOf, POP_LIFE, ROLL, TOPPLE_TIME, toppleAngle, victoryHop, volleyOf, type Blow } from '../render/juice';
 import { hash } from '../render/noise';
 import { animLength, bodyHeight, hitTime, STAND, type AnimName } from '../render/battleSprites';
@@ -113,6 +113,8 @@ export class BattleController implements Screen {
   /** The last turn of yours the cue played for (#190), and whether anything has happened yet: the first turn of a fight has none. */
   private cued: string | null = null;
   private acted = false;
+  /** Sir Aldric letting a turn pass with nobody in his reach (#211), as it plays: quietly on the fight's first turn, where the ribbon teaches. */
+  private passing: { fighter: number; quiet: boolean } | null = null;
   /** A Fireball's light on the ground, fading over the burst. */
   private lightAge = 0;
   private think = 0;
@@ -201,12 +203,25 @@ export class BattleController implements Screen {
     return (first && this.turnLine(first.id)) ?? (touch() ? 'To battle! Tap a hex to move, or an enemy to attack, and tap it again to go.' : 'To battle! Click a hex to move, or an enemy to attack.');
   }
 
-  /** What one of your leaders can do as his turn comes: he never walks the field. */
+  /** What one of your leaders can do as his turn comes: he never walks the field. Sir Aldric with nobody in his reach does nothing, and lets the turn pass. */
   private turnLine(id: number): string | null {
     const f = fighterById(this.battle, id);
     if (f.side !== 'player' || !isLeader(f)) return null;
     if (bardOf(f)) return `${this.fighterName(id)} can pay or jeer any of their stacks. ${touch() ? 'Tap' : 'Click'} one, or ${touch() ? '' : 'press '}Sing. Or Wait.`;
+    if (activeFighter(this.battle)?.id === id && this.idleRider(f)) return null;
     return `${this.fighterName(id)} ${ridesOut(f) ? 'can ride out at any stack in reach, strike, and ride back' : 'can shoot any stack from behind the line'}. Or Wait.`;
+  }
+
+  /**
+   * Sir Aldric, when he rides out, on his turn with nobody in his reach and nothing to shoot: there is
+   * nothing for him to do but wait, so his turn passes by itself (#211). The spellbook is open on every
+   * one of your stacks' turns, so nothing is lost.
+   */
+  private idleRider(f: Fighter): boolean {
+    // Asked while the view is still being built, too, for the fight's first words.
+    if (f.side !== 'player' || this.auto || !isLeader(f) || !ridesOut(f) || this.view?.targeting || this.cards.isOpen) return false;
+    const opts = options(this.battle);
+    return opts.melee.length === 0 && opts.shoot.length === 0;
   }
 
   /**
@@ -1048,10 +1063,15 @@ export class BattleController implements Screen {
         case 'defend': {
           // A leader has nothing to defend against: he lets his turn pass.
           const passes = e.type === 'defend' && isLeader(fighterById(this.battle, e.fighter));
+          // Sir Aldric with nobody in his reach says so, unless the ribbon is still teaching the fight's first turn.
+          const idle = this.passing?.fighter === e.fighter ? this.passing : null;
+          const words = idle ? `Nobody is within ${this.fighterName(e.fighter)}\u2019s reach${e.type === 'wait' ? ' yet, so he waits' : ', so he bides his time'}.` : null;
+          // On the fight's first turn it goes by unseen, so the first of your stacks is ready the moment the field opens.
+          if (idle?.quiet) break;
           this.step(e.type === 'defend' && !passes ? 0.45 : 0.25, {
             start: () => {
               this.float(e.fighter, e.type === 'wait' || passes ? 'waits' : 'defends', NEUTRAL[7]);
-              v.log = `${this.fighterName(e.fighter)} ${this.verb(e.fighter, e.type === 'wait' ? 'wait for a better moment' : passes ? 'bide his time' : this.named(e.fighter) ? 'stand guard' : 'raise their shields')}.`;
+              v.log = words ?? `${this.fighterName(e.fighter)} ${this.verb(e.fighter, e.type === 'wait' ? 'wait for a better moment' : passes ? 'bide his time' : this.named(e.fighter) ? 'stand guard' : 'raise their shields')}.`;
               if (e.type === 'defend' && !passes) v.poses.set(e.fighter, { anim: 'defend', ms: 0 });
             },
             end: () => v.poses.delete(e.fighter),
@@ -1393,6 +1413,14 @@ export class BattleController implements Screen {
           this.think = 0;
           this.perform(chooseAction(this.battle), f.side === 'player');
         }
+      } else if (f && this.idleRider(f)) {
+        // Nobody in Sir Aldric's reach: he waits, and once he has waited, the rules let the round go by (#211).
+        // It isn't one of your moves, so the fight's first turn of yours still has no cue, and the ribbon still says what to do.
+        const first = !this.acted;
+        this.passing = { fighter: f.id, quiet: first };
+        this.perform({ type: 'wait' });
+        this.passing = null;
+        this.acted = !first;
       }
     }
     if (this.queue.length === 0) this.updateFinishOffer();
@@ -1478,12 +1506,8 @@ export class BattleController implements Screen {
       if (opts.shoot.includes(occupant.id)) return { action: { type: 'shoot', target: occupant.id }, kind: 'shoot' };
       const sides = opts.melee.filter((m) => m.target === occupant.id);
       if (sides.length > 0) {
-        const best = sides.reduce((a, b) => {
-          const [ax, ay] = hexCentre(a.from);
-          const [bx, by] = hexCentre(b.from);
-          return Math.hypot(ax - x, ay - y) <= Math.hypot(bx - x, by - y) ? a : b;
-        });
-        return { action: { type: 'melee', target: occupant.id, from: best.from }, kind: 'melee' };
+        const from = sideAt(x, y, occupant.at, sides.map((m) => m.from), f.at)!;
+        return { action: { type: 'melee', target: occupant.id, from }, kind: 'melee' };
       }
       return null;
     }
@@ -1803,7 +1827,11 @@ export class BattleController implements Screen {
     return {
       battle: () => this.battle,
       auto: () => this.button('auto'),
-      busy: () => this.queue.length > 0,
+      // Sir Aldric's turn with nobody in his reach passes by itself, so a script waits for it as for any move.
+      busy: () => {
+        const f = activeFighter(this.battle);
+        return this.queue.length > 0 || (!!f && !this.battle.result && !this.battle.volley && this.idleRider(f));
+      },
       log: () => this.view.log,
       act: (action: BattleAction) => this.perform(action),
       moves: () => [...options(this.battle).moves.keys()],

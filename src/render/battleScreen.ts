@@ -1,7 +1,8 @@
 import { abilitiesOf, TROOPS, type TroopId } from '../content/troops';
 import { SPELLS, STATUSES, type SpellId } from '../content/spells';
 import { canCast, hasTurn, isLeader, lookOf, luckOf, moraleOf, speedOf, statsOf, unitOf, type BattleState, type Fighter } from '../rules/battle/battle';
-import { COLS, colOf, HEXES, hexIndex, ROWS, rowOf } from '../rules/battle/hex';
+import { HEXES, hexIndex, ROWS } from '../rules/battle/hex';
+import { FIELD_W, HALF_H, HEX_W, hexAt, hexCentre, insideHex, ROW_H, sideAt, X0, Y0 } from './battleHexes';
 import { Bitmap, blit, SHADOW } from './bitmap';
 import { critters, critterSprite, type Critter } from './critters';
 import { animLength, bodyHeight, corpseSprite, hurtSprite, standard, STAND, toppledFigure, troopFigure, whiteSprite, type Pose, type Standard } from './battleSprites';
@@ -43,34 +44,6 @@ function fidget(troop: TroopId, id: number, time: number): Pose {
   const period = 6 + ((id * 2.3) % 5);
   const ms = (((time + id * 1.7) % period) - (period - animLength(troop, 'idle') / 1000)) * 1000;
   return ms >= 0 ? { anim: 'idle', ms } : STAND;
-}
-
-/** Pointy-top hexes, squashed for HoMM2's oblique view: 64 wide, rows 44 apart. */
-const HEX_W = 64;
-const ROW_H = 44;
-const HALF_H = 29;
-const FIELD_W = COLS * HEX_W + HEX_W / 2;
-const X0 = MAP_VIEW.x + (MAP_VIEW.width - FIELD_W) / 2;
-const Y0 = MAP_VIEW.y + 34;
-
-export function hexCentre(i: number): [number, number] {
-  const row = rowOf(i);
-  return [X0 + HEX_W / 2 + colOf(i) * HEX_W + (row % 2 === 1 ? HEX_W / 2 : 0), Y0 + HALF_H + row * ROW_H];
-}
-
-/** Whether (x, y) falls inside the hex centred at (cx, cy). */
-function insideHex(x: number, y: number, cx: number, cy: number) {
-  const dx = Math.abs(x - cx);
-  const dy = Math.abs(y - cy);
-  return dx <= HEX_W / 2 && dy <= HALF_H - (dx / (HEX_W / 2)) * (HALF_H / 2);
-}
-
-export function hexAt(x: number, y: number): number | null {
-  for (let i = 0; i < HEXES; i++) {
-    const [cx, cy] = hexCentre(i);
-    if (insideHex(x, y, cx, cy)) return i;
-  }
-  return null;
 }
 
 /** The rows a side's leaders stand level with, behind its line: the first in the middle, any more below and above. */
@@ -1284,4 +1257,4 @@ export class BattleScreen {
   }
 }
 
-export { HEXES };
+export { HEXES, hexAt, hexCentre, sideAt };
