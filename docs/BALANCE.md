@@ -150,7 +150,8 @@ your army."*
   comes while your army is no stronger than theirs, all of them once it's twice as strong, and in between, as much as
   it outweighs them. Whoever doesn't come attacks at once. That's the same for beasts tamed, bands hired and a stack
   paid off in battle. A stack paid to go home costs 2 gold for every point of its power, or 6 to come over, and no
-  bribe is ever more than half off. So a day-one Courtier can't buy Grimsby's swordsmen (they're twice his army) until
+  bribe is ever more than half off. Whoever comes teaches half what beating him would, and a band hired whole hands
+  over what it carried, as one that surrenders does: its takings, its gear and its story (#231). So a day-one Courtier can't buy Grimsby's swordsmen (they're twice his army) until
   his army outweighs them, and a Ranger's day-one army wins 4 of the 7 bears and fights the other 3.
 - **Troops who draw no wages need no leadership:** beasts, and the old King's huntsmen. They still need one of the five
   companies.

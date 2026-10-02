@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { ALDMOOR } from '../content/aldmoor';
 import { bribeOffer, battleAct, type BattleState } from './battle/battle';
-import { apply, finishFight, levelUpCard, locationById, startFight, visit, type Card, type GameState, type Result } from './game';
+import { apply, battleXp, finishFight, levelUpCard, locationById, startFight, visit, type Card, type GameState, type Result } from './game';
 import { purseLines } from './fight';
+import { hireOffer } from './places/enemy';
+import { leadershipUsed } from './state';
 import { newGame } from './scenario';
 
 /** What the Courtier's playtest asked for (#231): his gold, told plainly on the cards. */
@@ -81,6 +83,59 @@ describe('what a Courtier has already is nothing new (#231)', () => {
     const signet = (s: GameState) => cardOf(apply(s, { type: 'choose', id: 'castle', choice: 'armoury' })).choices.find((c) => c.label.startsWith('Buy Silver Signet'))!.detail;
     expect(signet(fresh())).toContain('*Your bribes are half off already, as low as they go, and small bands take your coin already, so it would change nothing for you.*');
     expect(signet(fresh('knight'))).not.toContain('change nothing');
+  });
+});
+
+describe('a band he hires hands over what it carried (#231)', () => {
+  /** A courtier whose army outweighs these bands twice over, with room to lead them and gold to pay them. */
+  const strong = (s: GameState = fresh()): GameState => ({ ...s, gold: 10000, leadership: 600, army: [{ troop: 'knights', count: 40 }, { troop: 'archers', count: 40 }] });
+  const hireCard = (s: GameState, id: string) => cardOf(apply(s, { type: 'choose', id, choice: 'hire' }));
+
+  it('the highwaymen, hired whole, hand over their takings, the Baron\u2019s letter and their black banner, and teach him half', () => {
+    const s = fresh();
+    const offer = hireOffer(s, locationById(s, 'highwaymen'))!;
+    expect(offer.all).toBe(true);
+    const r = apply(s, { type: 'choose', id: 'highwaymen', choice: 'hire' })!;
+    const half = Math.round(battleXp(locationById(s, 'highwaymen').enemy!.army) / 2);
+    expect(r.state.gold).toBe(s.gold - offer.price + 200);
+    expect(r.state.hero.xp).toBe(s.hero.xp + half);
+    expect(r.state.flags?.orders).toBe(true);
+    expect(r.state.hero.pack).toContain('blackBanner');
+    expect(r.state.army.find((x) => x.troop === 'bandits')?.count).toBe(14);
+    expect(locationById(r.state, 'highwaymen').done).toBe(true);
+    expect(r.events).toContainEqual({ type: 'removed', id: 'highwaymen' });
+    const card = cardOf(r);
+    expect(card.lines).toContain('Their takings come to **200 gold**, and among them is a letter with the Baron\u2019s seal. *"All patrols back to the stockade if the King\u2019s man comes. G."*');
+    expect(card.lines).toContain(`You gain **${half} experience**.`);
+    expect(card.choices.map((c) => c.label)).toEqual(['Wear it', 'Keep it in your pack']);
+    // The letter opens the patrol's way past, as it does for a hero who beats them.
+    expect(cardOf(visit({ ...r.state, hero: { ...r.state.hero, at: locationById(s, 'patrol').at } }, 'patrol')).choices.map((c) => c.label)).toContain('Show them the Baron\u2019s orders');
+  });
+
+  it('Grimsby\u2019s dig, hired whole, counts as raided, and the grain cart\u2019s escort leaves the carter asking whose grain it is now', () => {
+    const dug = apply(strong(), { type: 'choose', id: 'diggings', choice: 'hire' })!.state;
+    expect(dug.flags?.dig).toBe('raided');
+    const s = strong();
+    const onTheRoad = { ...s, locations: s.locations.map((l) => (l.id === 'cart' ? { ...l, done: false } : l)) };
+    const card = hireCard(onTheRoad, 'cart');
+    expect(card.lines).toContain('*The carter would like to know whose grain it is now.*');
+    expect(card.choices.map((c) => c.label)).toEqual(['Take it home to Westmere', 'Keep it for your men']);
+  });
+
+  it('those who come over from a band that only half comes teach him half, and the rest attack', () => {
+    const s = strong();
+    // Room under his banner for only some of the dig's swordsmen.
+    const tight = { ...s, leadership: leadershipUsed(s.army) + 30 };
+    const offer = hireOffer(tight, locationById(tight, 'diggings'))!;
+    expect(offer.all).toBe(false);
+    const r = apply(tight, { type: 'choose', id: 'diggings', choice: 'hire' })!;
+    const half = Math.round(battleXp(offer.joining) / 2);
+    expect(r.state.hero.xp).toBe(tight.hero.xp + half);
+    expect(r.state.gold).toBe(tight.gold - offer.price);
+    expect(r.state.ambush).toBe('diggings');
+    expect(locationById(r.state, 'diggings').done).toBe(false);
+    expect(r.state.flags?.dig).toBeUndefined();
+    expect(cardOf(r).lines).toContain(`You gain **${half} experience**.`);
   });
 });
 

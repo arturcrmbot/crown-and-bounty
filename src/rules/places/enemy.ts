@@ -119,19 +119,29 @@ const HIRE_PRICE = 3;
 /** Gatekeepers cost this many times as much to buy. */
 const GATE_PRICE = 2;
 
+/**
+ * They take his gold and come over, as many as the offer says, and teach him half what beating them
+ * would, as a bribe on the field does. A band that comes over whole hands over whatever it carried,
+ * as one that surrenders does: its takings, its gear and its story (#231). The rest attack.
+ */
 function hire(state: GameState, place: Location): Result | null {
   const offer = hireOffer(state, place);
   if (!offer || !offer.joining.length || state.gold < offer.price) return null;
-  const rest = whoIsLeft(place.enemy!.army, offer.joining);
-  const gone = nobodyLeft(rest);
-  const done = applyEffects({ ...state, gold: state.gold - offer.price }, place, { troops: offer.joining, ...(gone ? { done: true } : {}) });
+  const foe = place.enemy!;
+  const rest = whoIsLeft(foe.army, offer.joining);
+  const joined = applyEffects({ ...state, gold: state.gold - offer.price }, place, { troops: offer.joining });
   const lines = [
     offer.all ? 'They count your gold twice, bite a coin, and fall in behind your banner.' : 'Some of them count your gold twice, bite a coin, and fall in behind your banner.',
     `You pay **${coins(offer.price)} gold**.`,
-    ...done.lines,
+    ...joined.lines,
   ];
-  if (!gone) return theRestAttack(done.state, place, rest, lines, done.events);
-  return { state: done.state, events: [...done.events, show({ title: place.name, lines, choices: [close] }, place.at, place.id)] };
+  const xp = Math.round(battleXp(offer.joining) / 2);
+  if (nobodyLeft(rest)) {
+    const won = beat(joined.state, place.id, { title: place.name, lines: [...lines, foe.loot.replace('{gold}', `**${coins(foe.reward)} gold**`)], reward: foe.reward, xp });
+    return { state: won.state, events: [...joined.events, ...won.events] };
+  }
+  const grown = gainXp(joined.state, xp);
+  return theRestAttack(grown.state, place, rest, [...lines, `You gain **${coins(xp)} experience**.`], [...joined.events, ...grown.events]);
 }
 
 /** The courtier's offer, as a button: greyed out when his purse is too light, or his army too weak. */
