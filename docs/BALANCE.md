@@ -329,7 +329,7 @@ What changed:
 | The river's bears, the heath road's highwaymen, Darkwood's spiders (#260) | 10; 37, 28 and 25; 28 and 24 | 13; 41, 31 and 28; 31 and 26, so that slower, they're still out of reach on day I |
 | A band's power (#266) | its troops | its troops and its hero: his own worth, and what his level lends every troop |
 | A captain's pack (#266) | follows a Ranger as `befriends` says | leaves its captain only for an army that outweighs the whole band |
-| Levels (`LEVELS`) | II at 150, III 400, IV 750, V 1,200, X 6,000 | II at 300, III 800, IV 1,500, V 2,300, X 8,700 |
+| Levels (`LEVELS`) | II at 150, III 400, IV 750, V 1,200, X 6,000 | II at 200, III 800, IV 1,500, V 2,300, X 8,700 |
 | A level gives | 1 stat point, +5 leadership, Aldric +1 or +2 damage | 2 stat points, +10 leadership, Aldric +2 or +4 damage, and its card says what the points do |
 
 Replayed, a careful player's fights in rings 1 to 3, in days 1 to 9, now cost him 12% of his army (the Knight, was 15%)
@@ -348,6 +348,7 @@ X or XI).
 - A level needs more experience now, so the levels at the win aren't comparable: what took him to level VIII before
   takes him to VII now, with more stat points and leadership and fewer skills.
 - The last column has #259's price on captains taken too, which the bot never spends at the castle.
+- The sims ran with level II at 300. It's 200, so that the first fight and a find still bring the first level.
 - A first try at the levels, with fewer still (HoMM2's curve, eased: II at 400, X at 11,600), left every hero weaker:
   the Knight took Grimsby on day 24 and the Courtier on day 27. Fewer levels are fewer skills, and the Leadership
   skill's ranks are worth more than the stat points.

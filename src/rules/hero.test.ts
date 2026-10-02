@@ -96,7 +96,7 @@ describe('levels', () => {
   });
 
   it('comes about every other fight, and says what each point does, in numbers (#254)', () => {
-    expect(LEVELS.slice(2, 11)).toEqual([300, 800, 1500, 2300, 3300, 4400, 5700, 7100, 8700]);
+    expect(LEVELS.slice(2, 11)).toEqual([200, 800, 1500, 2300, 3300, 4400, 5700, 7100, 8700]);
     const offered = (state: GameState, stat: StatId, also?: StatId) => ({ ...state, hero: { ...state.hero, offers: [{ level: 2, stat, ...(also ? { also } : {}), options: [RALLY] }] } });
     expect(levelUpCard(offered(knight(), 'attack', 'attack'))!.lines).toEqual([
       'Your attack rises by **2**, so every stack of yours hits about 20% harder.',

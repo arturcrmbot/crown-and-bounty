@@ -162,7 +162,7 @@ describe('the hero screen', () => {
     const sheet = heroSheet(wizard());
     expect(sheet.title).toBe('Aldric the Hedge Wizard');
     expect(sheet.level).toBe('Level I');
-    expect(sheet.xp).toEqual({ share: 0, line: '0 of 300 experience. He needs 300 more for level II, from fights and new places.' });
+    expect(sheet.xp).toEqual({ share: 0, line: '0 of 200 experience. He needs 200 more for level II, from fights and new places.' });
     expect(sheet.stats.map((s) => s.value)).toEqual([0, 1, 3, 3]);
     expect(sheet.stats[2].note).toContain('a Lightning Bolt does 60 damage');
     expect(sheet.mana).toEqual({ left: 30, max: 30, line: 'Mana 30/30 · full; a quarter back every dawn, and a holy well or your castle fills it', back: 'full' });

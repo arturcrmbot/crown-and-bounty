@@ -20,9 +20,10 @@ export const BASE_SIGHT = 150;
 
 /**
  * XP needed for each level, from level 1. A level comes about every other fight (#254), and each brings two
- * stat points and twice the leadership it did, so it's worth noticing: about VIII or IX by the villain.
+ * stat points and twice the leadership it did, so it's worth noticing: about VIII or IX by the villain. The
+ * first comes with the first fight and a find or two.
  */
-export const LEVELS = [0, 0, 300, 800, 1500, 2300, 3300, 4400, 5700, 7100, 8700, 10500, 12500, 14600, 17000, 19500];
+export const LEVELS = [0, 0, 200, 800, 1500, 2300, 3300, 4400, 5700, 7100, 8700, 10500, 12500, 14600, 17000, 19500];
 export const levelFor = (xp: number) => {
   let level = 1;
   while (level + 1 < LEVELS.length && xp >= LEVELS[level + 1]) level++;
