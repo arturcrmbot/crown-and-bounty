@@ -175,6 +175,7 @@ export class Game {
 
   private makeAdventure(state: GameState): AdventureController {
     const adventure = new AdventureController(this.display, mapOf(state), state, this.speed);
+    adventure.rolls = this.transitions;
     // Into battle with a drum roll and a clash of steel; to court with the heralds' trumpets.
     adventure.onBattle = () => this.change('clash', 'battle', () => this.pushBattle());
     adventure.onCourt = () => this.change('fade', 'court', () => this.pushCourt());

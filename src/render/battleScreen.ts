@@ -78,6 +78,8 @@ const FLOAT_FADE = 0.25;
 /** The message ribbon across the top of the field. */
 const LOG_TOP = MAP_VIEW.y + 6;
 export const LOG_BOTTOM = LOG_TOP + 18;
+/** The bottom of the strip of next turns under the ribbon: words over the field stay under it (#211). */
+export const stripBottom = () => LOG_BOTTOM + 2 + (bigLettering() ? 24 : 20);
 /**
  * A missile, a spell or a burst. A spark's `size` scales it, and its `heading` (radians) is the way
  * the blow went, for the chips it flings; dust's `size` is how wide it spreads along the ground. An
@@ -739,7 +741,7 @@ export class BattleScreen {
       const f = b.fighters.find((x) => x.id === id);
       if (!f || isLeader(f)) continue;
       const [cx, cy] = view.positions.get(id) ?? spotOf(b, f);
-      drawPops(this.screen, list, Math.round(cx + (f.side === 'player' ? 14 : -14)), Math.round(cy + 8), MAP_VIEW);
+      drawPops(this.screen, list, Math.round(cx + (f.side === 'player' ? 14 : -14)), Math.round(cy + 8), MAP_VIEW, stripBottom() + 2);
     }
   }
 
@@ -832,10 +834,10 @@ export class BattleScreen {
     const labelWidth = big ? 46 : 34;
     const cellWidth = big ? 48 : 38;
     const width = labelWidth + next.length * cellWidth + 6;
-    const height = big ? 24 : 20;
+    const y0 = LOG_BOTTOM + 2;
+    const height = stripBottom() - y0;
     const words = big ? 4 : 5;
     const x0 = MAP_VIEW.x + Math.floor((MAP_VIEW.width - width) / 2);
-    const y0 = LOG_BOTTOM + 2;
     screen.fill(x0, y0, width, height, WOOD[1]);
     for (let x = x0; x < x0 + width; x++) {
       screen.set(x, y0, GOLD[4]);

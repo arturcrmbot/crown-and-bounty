@@ -174,7 +174,7 @@ describe('where the gear is', () => {
     const chest = apply(fresh(), { type: 'choose', id: 'chest', choice: 'keep' })!;
     expect(chest.state.hero.gear.trinket).toBe('surveyorsChain');
     const fight = apply(fresh(), { type: 'choose', id: 'highwaymen', choice: 'auto' })!;
-    expect(cardOf(fight).choices.map((c) => c.label)).toContain('Wear it');
+    expect(cardOf(fight).choices.map((c) => c.label)).toContain('Wear the Black Banner');
     const beaten = apply(fight.state, { type: 'equip', artifact: 'blackBanner' })!.state;
     expect(beaten.hero.gear.banner).toBe('blackBanner');
     const shrine = cardOf(visit(fresh(), 'shrine'));

@@ -196,7 +196,7 @@ async function sight(id) {
     }, id, { timeout: 60_000 });
     if (!(await lost())) break;
     if ((await status()).tired) {
-      await press('End the day');
+      if (!(await press('End the day'))) await endDay();
       await close();
     }
   }

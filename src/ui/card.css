@@ -419,6 +419,33 @@
 .kc-card.poster .choices button {
   text-align: center;
 }
+/* By touch the face is smaller and stands beside the words, so the crime and the reward show without "more" (#155). */
+.kc-touch .kc-card.poster {
+  width: 420px;
+}
+.kc-touch .kc-card.poster h3 {
+  font-size: 32px;
+  margin-bottom: 8px;
+  text-align: center;
+}
+.kc-touch .kc-card.poster .kc-card-body {
+  text-align: left;
+}
+.kc-touch .kc-card.poster img.portrait {
+  width: 96px;
+  height: 96px;
+}
+.kc-touch .kc-card.poster .mugshot {
+  float: left;
+  width: 100px;
+  margin: 2px 14px 4px 0;
+}
+.kc-touch .kc-card.poster .stamp {
+  padding: 2px 6px 0 9px;
+  font-size: 26px;
+  letter-spacing: 3px;
+  border-width: 4px;
+}
 
 /* The journal, open at two pages: the commission on the left, its WANTED poster pinned in, and on the
    right what's been heard on the road, each ticked off in red ink once it has paid off. */

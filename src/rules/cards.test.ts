@@ -76,7 +76,7 @@ describe('the castle', () => {
     const bought = apply(rich, { type: 'choose', id: 'castle', choice: 'buy:headsmansAxe' })!;
     expect(bought.state.hero.gear.weapon).toBeUndefined();
     expect(bought.state.hero.pack).toContain('headsmansAxe');
-    expect(cardOf(bought).choices.map((c) => c.label)).toContain('Wear it');
+    expect(cardOf(bought).choices.map((c) => c.label)).toContain('Wear the Headsman\u2019s Axe');
     expect(cardOf(bought).choices.map((c) => c.label)).toContain('Keep it in your pack');
   });
 

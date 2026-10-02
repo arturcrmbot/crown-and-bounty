@@ -4,7 +4,7 @@ import { leads, TROOPS } from '../content/troops';
 import { autoResolve } from './battle/ai';
 import { battleAct, battleEnd, createBattle, fighterById, isLeader, options, REAR, statsOf, type BattleState } from './battle/battle';
 import { withNewPlaces } from './campaign';
-import { choose, describe as about, endDay, fight, heroInBattle, locationById, startFight, visit, type GameEvent, type GameState } from './game';
+import { choose, describe as about, endDay, heardOf, fight, heroInBattle, locationById, startFight, visit, type GameEvent, type GameState } from './game';
 import { hunting } from './map/roaming';
 import { tameOffer } from './places/enemy';
 import { newGame } from './scenario';
@@ -81,9 +81,10 @@ describe('Rook the Huntsman, Grimsby\u2019s captain', () => {
     let s = until(weak, 7);
     expect(locationById(s, 'wolves').at).toEqual(home);
     expect(s.ambush).toBeUndefined();
-    // Day VIII: word gets about, and the hunt is on.
+    // Day VIII: word gets about, in the journal on payday (#155), and the hunt is on.
     const dawn = endDay(s);
-    expect(cardLines(dawn.events).join(' ')).toContain('**Rook the Huntsman** to bring you in');
+    expect(cardLines(dawn.events).join(' ')).not.toContain('**Rook the Huntsman** to bring you in');
+    expect(heardOf(dawn.state).map((h) => h.words).join(' ')).toContain('**Rook the Huntsman** to bring you in');
     s = dawn.state;
     expect(hunting(s, locationById(s, 'wolves'))).toBe(true);
     s = until(s, 12);

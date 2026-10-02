@@ -107,8 +107,9 @@ export function withNewPlaces(state: GameState): GameState {
     }
     let next: Location = l;
     if (!l.enemy && pick(l, WORDS) !== pick(now, WORDS)) next = { ...next, ...Object.fromEntries(WORDS.map((k) => [k, structuredClone(now[k])])) };
-    if (l.enemy && now.enemy && pick(l.enemy, ENEMY_WORDS) !== pick(now.enemy, ENEMY_WORDS)) {
-      next = { ...next, text: structuredClone(now.text), enemy: { ...l.enemy, ...Object.fromEntries(ENEMY_WORDS.map((k) => [k, structuredClone(now.enemy![k])])) } };
+    // A band's pages come with its words, as its spoils may ask one of them (the grain cart's question).
+    if (l.enemy && now.enemy && (pick(l.enemy, ENEMY_WORDS) !== pick(now.enemy, ENEMY_WORDS) || pick(l, ['pages']) !== pick(now, ['pages']))) {
+      next = { ...next, text: structuredClone(now.text), pages: structuredClone(now.pages), enemy: { ...l.enemy, ...Object.fromEntries(ENEMY_WORDS.map((k) => [k, structuredClone(now.enemy![k])])) } };
     }
     if (next !== l) changed = true;
     return next;
@@ -168,7 +169,15 @@ function holds(state: GameState, clue: Clue, heard = false): boolean {
 /** What's been heard on this commission's road, for the journal: the open things first, then those that have paid off. */
 export function heardOf(state: GameState): Heard[] {
   const heard = (commissionOf(state).heard ?? []).filter((r) => holds(state, r.heard, true)).map((r) => ({ who: r.who, words: r.words, done: Boolean(r.done && holds(state, r.done)) }));
-  return [...heard.filter((h) => !h.done), ...heard.filter((h) => h.done)];
+  // The talk on payday goes here rather than on payday's card (#155): who has more men since he came, a band
+  // let loose, and a convoy on the road.
+  const said = (words: string, done: boolean): Heard => ({ who: 'the talk on payday', words, done });
+  const talk = state.locations.flatMap((l) => [
+    ...(l.enemy?.grown ? [said(`More men have joined **${l.name}**.`, l.done)] : []),
+    ...(l.enemy?.wakes && state.day >= l.enemy.wakes.day ? [said(l.enemy.wakes.news, l.done)] : []),
+    ...(l.enemy?.convoy && !l.done ? [said(l.enemy.convoy.leaves, false)] : []),
+  ]);
+  return [...heard.filter((h) => !h.done), ...talk.filter((h) => !h.done), ...heard.filter((h) => h.done), ...talk.filter((h) => h.done)];
 }
 
 /** The King remembers at most this many things you did. */

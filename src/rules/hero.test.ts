@@ -136,7 +136,9 @@ describe('skills and gear', () => {
       expect(state.hero.gear[ARTIFACTS[id].slot]).toBeUndefined();
       expect(state.hero.pack).toContain(id);
       const choices = artifactChoices(state, id);
-      expect(choices.map((choice) => choice.label)).toEqual(['Wear it', 'Keep it in your pack']);
+      // The button names the find, with "the" where it reads that way (#155).
+      const named = { bramblesLadle: 'Aunt Bramble\u2019s Ladle', headsmansAxe: 'the Headsman\u2019s Axe', kingsPlate: 'the King\u2019s Plate', friarsHabit: 'a Friar\u2019s Habit', blackBanner: 'the Black Banner' }[id];
+      expect(choices.map((choice) => choice.label)).toEqual([`Wear ${named}`, 'Keep it in your pack']);
       const worn = apply(state, choices[0].action)!.state;
       expect(worn.hero.gear[ARTIFACTS[id].slot]).toBe(id);
       expect(worn.hero.pack).not.toContain(id);

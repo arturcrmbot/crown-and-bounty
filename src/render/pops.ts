@@ -57,18 +57,24 @@ export function popSprite(words: string, colour: number, size: number, skull: bo
  * Draws a stack's pops over its badge, whose middle is at `cx` and top at `top`: the newest at the
  * badge, the older ones above it, each popping in large, holding, rising a little and dithering away.
  */
-export function drawPops(screen: Bitmap, pops: readonly Pop[], cx: number, top: number, clip: { x: number; y: number; width: number; height: number }) {
+export function drawPops(screen: Bitmap, pops: readonly Pop[], cx: number, top: number, clip: { x: number; y: number; width: number; height: number }, ceiling = clip.y) {
   // Newest first, so it sits at the badge and the older ones make room above it.
   let above = 0;
-  for (const p of [...pops].sort((a, b) => a.age - b.age)) {
+  const placed = [...pops].sort((a, b) => a.age - b.age).map((p) => {
     const scale = popScale(p.age);
     const sprite = popSprite(p.words, p.colour, Math.round((p.skull ? KILL_SIZE : WOUND_SIZE) * scale), p.skull);
     const settled = popSprite(p.words, p.colour, p.skull ? KILL_SIZE : WOUND_SIZE, p.skull);
-    const shown = popShown(p.age);
-    const x0 = Math.round(Math.min(Math.max(cx - sprite.width / 2, clip.x + 2), clip.x + clip.width - sprite.width - 2));
     // Its foot stays on the badge as it pops, whatever its size.
     const y0 = Math.round(top + 3 - sprite.height - popRise(p.age) - above);
     above += settled.height - 4;
+    return { p, sprite, y0 };
+  });
+  // A stack on the top row keeps its pops under `ceiling` (the strip of next turns), all of them moved down together.
+  const under = Math.max(0, ceiling - Math.min(...placed.map((x) => x.y0)));
+  for (const { p, sprite, y0: popped } of placed) {
+    const shown = popShown(p.age);
+    const x0 = Math.round(Math.min(Math.max(cx - sprite.width / 2, clip.x + 2), clip.x + clip.width - sprite.width - 2));
+    const y0 = popped + under;
     for (let j = 0; j < sprite.height; j++) {
       const y = y0 + j;
       if (y < clip.y || y >= clip.y + clip.height) continue;

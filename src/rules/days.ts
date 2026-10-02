@@ -51,10 +51,11 @@ export function endDay(state: GameState): Result {
     // The mill's flour is news only once he has found a mill.
     const mill = state.locations.some((l) => l.kind === 'mill' && l.seen);
     lines.push(`**Payday!** The King sends **${coins(commission)} gold**. ${paid}`, ...estates.rents, mill ? 'The mill has flour again, and there are fresh volunteers.' : 'There are fresh volunteers to recruit.', ...estates.lines);
-    for (const l of state.locations) if (l.enemy?.grows && !l.done && (l.enemy.grown ?? 0) < MAX_GROWTH) lines.push(`You hear that more men have joined **${l.name}**.`);
+    // Who has more men now is the talk on payday, which goes in the journal (`heardOf`), so the card fits a phone (#155).
   }
-  // Bands that wake today start to roam or hunt, and word gets about.
-  for (const l of next.locations) if (l.enemy?.wakes?.day === day && !l.done) lines.push(l.enemy.wakes.news);
+  // Bands that wake today start to roam or hunt, and word gets about: in the journal (`heardOf`), and on
+  // the day's card too unless it's payday's, which keeps to payday so it fits a phone (#155).
+  if (!payday) for (const l of next.locations) if (l.enemy?.wakes?.day === day && !l.done) lines.push(l.enemy.wakes.news);
   const events: GameEvent[] = [{ type: 'day', day, payday }];
   if (day > LAST_DAY && state.bounty === 'open') {
     next = { ...next, over: 'lost' };
@@ -77,7 +78,8 @@ export function endDay(state: GameState): Result {
   const morning = heroMorning(loseSight(next, convoys.state), state);
   next = morning.state;
   events.push(...out.events, ...hauled.events, ...night.events, ...home.events, ...convoys.events, ...morning.events);
-  lines.push(...out.lines, ...home.lines, ...convoys.lines);
+  // A convoy setting out is the talk on payday, in the journal (`heardOf`), not on its card (#155).
+  lines.push(...out.lines, ...home.lines);
   // A hero who rides through woodland is told the trees will hide him too: nothing can follow him there (#217).
   const shelter = heroStats(next).forestWalk ? 'shelter in a town or among the trees' : 'shelter in a town';
   for (const l of trailedBy(next)) lines.push(`**${l.name}** are on your trail. Camp near them tonight and they’ll fall on you at dawn, so ride clear, ${shelter}, or turn and fight.`);

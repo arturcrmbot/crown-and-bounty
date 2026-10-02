@@ -13,6 +13,7 @@ import { barNote } from '../rules/heroSheet';
 import type { Point } from '../rules/map/geometry';
 import { amongTrees, trailedBy } from '../rules/map/roaming';
 import { CELL, cellCentre, type MapModel, type Terrain } from '../rules/map/model';
+import { revealDisc } from '../rules/map/fog';
 import { daysAway, facingEnemy, planRoute, routeCosts, stepAlong } from '../rules/map/movement';
 import { artifactIcon, statIcon } from '../render/artifactIcons';
 import { CardView } from '../ui/card';
@@ -107,6 +108,10 @@ const TWINKLES: ReadonlySet<string> = new Set(['chest', 'gold', 'pickup']);
 const PICK_NOTES = ['pick0', 'pick1', 'pick2', 'pick3', 'pick4', 'pick5'] as const;
 /** A reveal this wide is a lookout's, a map's or a spell's: the mist rolls back with a gust of wind (#192). */
 const WIDE_REVEAL = 300;
+/** How a hint starts. */
+const HINT = '**Hint.** ';
+/** Seconds the mist takes to roll back from a wide reveal in sight; a card that comes with it waits for it (#211). */
+const ROLL = 1.4;
 /** How far from land he has seen treasure under the mist glints through its edge now and then. */
 const MIST_EDGE = 48;
 
@@ -139,7 +144,9 @@ export class AdventureController implements Screen {
    * enemy is falling on his camp, and the view goes with him.
    */
   private dawnRide = false;
+  /** Whether this evening's tiredness has been shown, and whether this ride's card has (#155: once a ride, not every evening of it). */
   private tiredShown = false;
+  private tiredCarded = false;
   private cardAnchor: Point | null = null;
   private hudMovement = -1;
   /** Where each thing on the bottom bar sits, as last painted, and which one the pointer is on. */
@@ -162,8 +169,15 @@ export class AdventureController implements Screen {
   /** How much faster than life scripts run the map (?speed=8). */
   private readonly pace: number;
   private banner: { sprite: Bitmap; age: number; y: number } | null = null;
-  /** A card that came while the province's name was up, waiting for its turn. */
+  /** A card that came while the province's name was up, or while the mist rolls back, waiting for its turn. */
   private held: { card: Card; at: Point | null } | null = null;
+  /**
+   * The mist rolling back from a wide reveal in sight (a lookout's): how far along it is, the cells it
+   * clears, and the treasure under them, to glint as they come into sight.
+   */
+  private rolling: { at: Point; radius: number; t: number; clears: number[]; hidden: Location[] } | null = null;
+  /** Whether the mist rolls back at all: not while the clock stands still for exact screenshots. */
+  rolls = true;
   /** What the hero just gained, waiting for the card on screen to close before it rises off him. */
   private gains: Rising[] = [];
   /** Gold he has gained that hasn't landed on the bar yet: the count shows his gold less this, and rolls up as the coins land. */
@@ -301,7 +315,7 @@ export class AdventureController implements Screen {
   showCard(card: Card, at: Point | null) {
     this.reading = false;
     // A new province's name gets its moment across the sky before any card covers it.
-    if (this.banner && this.banner.age < BANNER_HOLD) {
+    if ((this.banner && this.banner.age < BANNER_HOLD) || this.rolling) {
       this.held = { card, at };
       return;
     }
@@ -335,7 +349,7 @@ export class AdventureController implements Screen {
     const before = this.state;
     // The first thing heard on the road says where it has gone.
     const heard = heardOf(result.state).length > heardOf(before).length;
-    const told = heard ? this.teach(result, 'journal', touch() ? '**Hint.** What you hear on the road goes in your journal. Tap **Journal**, at the side.' : '**Hint.** What you hear on the road goes in your journal. Press **J**, or click the book on the bar.') : result;
+    const told = heard ? this.teach(result, 'journal', touch() ? '**Hint.** What you hear goes in your **Journal**.' : '**Hint.** What you hear on the road goes in your journal. Press **J**, or click the book on the bar.') : result;
     this.state = told.state;
     if (this.state.gold > before.gold) play('coins');
     // Something new in the journal: a page turns, and the book on the bar lights up for a moment.
@@ -356,9 +370,14 @@ export class AdventureController implements Screen {
     if (card) return { state: taught.state, events: [...result.events, { type: 'card', card: { ...card, lines: [line] }, at }] };
     const events = [...result.events];
     const index = events.findIndex((event) => event.type === 'card');
-    if (index >= 0) {
-      const event = events[index];
-      if (event.type === 'card') events[index] = { ...event, card: { ...event.card, lines: [...event.card.lines, line] } };
+    const event = events[index];
+    if (event?.type === 'card') {
+      const lines = [...event.card.lines];
+      const last = lines.at(-1);
+      // A second hint on the same card joins the first, so the card stays short enough for a phone (#155).
+      if (last?.startsWith(HINT) && line.startsWith(HINT)) lines[lines.length - 1] = `${last} ${line.slice(HINT.length)}`;
+      else lines.push(line);
+      events[index] = { ...event, card: { ...event.card, lines } };
     }
     return { state: taught.state, events };
   }
@@ -456,6 +475,40 @@ export class AdventureController implements Screen {
     this.view.effects.puff(box.x0 + 4 + hash(n, 8, 502) * Math.max(0, box.x1 - box.x0 - 8), box.y0 + 2 + hash(n, 9, 503) * (box.y1 - box.y0) * 0.4, kind);
   }
 
+  /** Treasure the mist hides within `radius` of a point. */
+  private hiddenBy(at: Point, radius: number): Location[] {
+    return this.state.locations.filter((l) => !l.done && TWINKLES.has(l.kind) && Math.hypot(l.at[0] - at[0], l.at[1] - at[1]) <= radius + 8 && this.scene.fog.isFogged(l.at[0], l.at[1] - 4));
+  }
+
+  /** Starts the mist rolling back from a wide reveal: the cells it clears are those he has seen now and the fog hasn't shown yet. */
+  private startRoll(at: Point, radius: number) {
+    const before = this.scene.fog.seen;
+    const clears = this.state.explored.map((word, i) => word & ~(before[i] ?? 0));
+    this.rolling = { at, radius, t: 0, clears, hidden: this.hiddenBy(at, radius) };
+  }
+
+  /**
+   * The mist rolling back from a lookout, out from where he stands, over a moment (#211): what it
+   * has still to clear stays under it, and treasure glints as it comes into sight. Then the card.
+   */
+  private rollMist(dt: number) {
+    const r = this.rolling;
+    if (!r) return;
+    r.t = Math.min(ROLL, r.t + dt);
+    const done = r.t >= ROLL;
+    const reach = r.radius * (1 - (1 - r.t / ROLL) ** 2);
+    const near = revealDisc(new Array(r.clears.length).fill(0), this.state.world, r.at[0], r.at[1], reach).bits;
+    const bits = done ? this.state.explored : this.state.explored.map((word, i) => word & ~(r.clears[i] & ~(near[i] ?? 0)));
+    this.scene.fog.reveal(bits, r.at[0], r.at[1], done ? r.radius : reach + CELL * 4);
+    for (const l of r.hidden.filter((l) => !this.scene.fog.isFogged(l.at[0], l.at[1] - 4))) {
+      r.hidden.splice(r.hidden.indexOf(l), 1);
+      this.glint(l, 'twinkle');
+    }
+    if (!done) return;
+    this.scene.minimap.refog({ at: r.at, radius: r.radius });
+    this.rolling = null;
+  }
+
   /** Shows events that happened elsewhere, like the arrival card of a new commission. */
   play(events: GameEvent[]) {
     this.handle(events);
@@ -478,6 +531,9 @@ export class AdventureController implements Screen {
   private handle(events: GameEvent[]) {
     countEvents(this.state, events);
     const feast = this.feastCard(events);
+    // A wide reveal in sight starts rolling the mist back before any card of the same moment can cover it.
+    const roll = this.rolls ? events.find((e): e is Extract<GameEvent, { type: 'reveal' }> => e.type === 'reveal' && e.radius >= WIDE_REVEAL && this.inView(e.at)) : undefined;
+    if (roll) this.startRoll(roll.at, roll.radius);
     for (const [i, e] of events.entries()) {
       switch (e.type) {
         case 'court':
@@ -500,12 +556,13 @@ export class AdventureController implements Screen {
           if (!this.fromBattle && (e.card.title === 'Victory!' || e.card.title === 'Defeat')) sting(e.card.title === 'Defeat' ? 'defeat' : 'victory');
           break;
         case 'reveal': {
+          if (e.radius >= WIDE_REVEAL) play('gust');
+          if (e === roll) break;
           // Treasure the mist was hiding glints once as it comes into sight (#192).
-          const hidden = this.state.locations.filter((l) => !l.done && TWINKLES.has(l.kind) && Math.hypot(l.at[0] - e.at[0], l.at[1] - e.at[1]) <= e.radius + 8 && this.scene.fog.isFogged(l.at[0], l.at[1] - 4));
+          const hidden = this.hiddenBy(e.at, e.radius);
           this.scene.fog.reveal(this.state.explored, e.at[0], e.at[1], e.radius);
           this.scene.minimap.refog(e);
           for (const l of hidden) if (!this.scene.fog.isFogged(l.at[0], l.at[1] - 4)) this.glint(l, 'twinkle');
-          if (e.radius >= WIDE_REVEAL) play('gust');
           break;
         }
         case 'added': {
@@ -705,7 +762,7 @@ export class AdventureController implements Screen {
         this.hideCard();
         const result = apply(this.state, action);
         const payday = action.type === 'endDay' && result?.events.some((event) => event.type === 'day' && event.payday);
-        this.run(result && payday ? this.teach(result, 'payday', '**Hint.** Payday comes round every seven days. The King pays you first, and then the army takes its wages.') : result);
+        this.run(result && payday ? this.teach(result, 'payday', '**Hint.** Payday comes every seven days.') : result);
       }
     }
   }
@@ -714,7 +771,7 @@ export class AdventureController implements Screen {
   plan(target: Point, visitId: string | null) {
     const facing = visitId ? locationById(this.state, visitId) : null;
     const approach = Boolean(facing?.enemy && !facing.done);
-    const to = visitId && !approach ? this.doorOf(visitId) : target;
+    const to = visitId ? (approach ? target : this.doorOf(visitId)) : this.clearOf(target);
     const route = planRoute(this.state, this.map, to, approach);
     if (!route) {
       this.showCard({ title: 'No way through', lines: ['Not even a goat could get there from here.'], choices: [] }, target);
@@ -727,6 +784,7 @@ export class AdventureController implements Screen {
     this.focus = null;
     this.dawnRide = false;
     this.tiredShown = false;
+    this.tiredCarded = false;
     if (route.length) {
       const taught = this.teach(
         { state: this.state, events: [] },
@@ -796,6 +854,34 @@ export class AdventureController implements Screen {
     return best?.at ?? place.at;
   }
 
+  /**
+   * Where a plain ride stops: where he was sent, unless he'd stand in front of a band there and hide it
+   * under his hat or his horse (#211). Then he stops as near as he can where it still shows: a little
+   * further down, or beside it.
+   */
+  private clearOf(target: Point): Point {
+    const figure = this.heroReach();
+    const bands = this.scene.hitboxes.filter((b) => {
+      const l = this.state.locations.find((x) => x.id === b.id);
+      return l?.enemy && !l.done && !l.enemy.unseen;
+    });
+    const hides = (at: Point) => bands.filter((b) => hiddenShare(b, figure, at) >= HIDES);
+    const route = planRoute(this.state, this.map, target);
+    const end = route && this.routeEnd(route);
+    const hidden = end ? hides(end) : [];
+    if (!end || !hidden.length) return target;
+    const spots: Point[] = [...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((k): Point => [end[0], end[1] + k * CELL]), ...hidden.flatMap((b) => doorsOf(b, end[1], figure))];
+    let best: { at: Point; off: number } | null = null;
+    for (const spot of spots) {
+      const there = planRoute(this.state, this.map, spot);
+      const stop = there && this.routeEnd(there);
+      if (!stop || Math.hypot(stop[0] - spot[0], stop[1] - spot[1]) > CELL * 1.5 || hides(stop).length) continue;
+      const off = Math.hypot(stop[0] - target[0], stop[1] - target[1]);
+      if (!best || off < best.off) best = { at: stop, off };
+    }
+    return best?.at ?? target;
+  }
+
   // --- Each frame -------------------------------------------------------------------------
 
   /**
@@ -803,7 +889,7 @@ export class AdventureController implements Screen {
    * Once a commission is over, what comes next (court, or trying again) comes back if hidden.
    */
   private promptPending() {
-    if (this.cards.isOpen || this.celebrating > 0) return;
+    if (this.cards.isOpen || this.celebrating > 0 || this.held || this.rolling) return;
     if (this.state.ambush) {
       const foe = locationById(this.state, this.state.ambush);
       return this.showCard(ambushCard(this.state), this.anchorOf(foe.id));
@@ -818,7 +904,8 @@ export class AdventureController implements Screen {
     this.sinceDawn += dt;
     this.view.sky = skyOf(this.state, Boolean(this.map.province.fen), this.dayGone, this.night, this.clock, this.sinceDawn);
     if (this.banner && (this.banner.age += dt * this.pace) > BANNER_TIME) this.banner = null;
-    if (this.held && (!this.banner || this.banner.age >= BANNER_HOLD)) {
+    this.rollMist(dt * this.pace);
+    if (this.held && !this.rolling && (!this.banner || this.banner.age >= BANNER_HOLD)) {
       const { card, at } = this.held;
       this.held = null;
       this.showCard(card, at);
@@ -998,12 +1085,12 @@ export class AdventureController implements Screen {
         if (!this.tiredShown) {
           this.tiredShown = true;
           saveGame(this.state);
-          this.run(tiredResult(
-            this.state,
-            Boolean(ART[heroArtId(this.state.hero.background)].rides),
-            [this.drawn.x, this.drawn.y - this.scene.hero.foot],
-            touch(),
-          ));
+          const rides = Boolean(ART[heroArtId(this.state.hero.background)].rides);
+          // The card comes once a ride. On the evenings after it, the words rise off him and End day carries on.
+          if (!this.tiredCarded) {
+            this.tiredCarded = true;
+            this.run(tiredResult(this.state, rides, [this.drawn.x, this.drawn.y - this.scene.hero.foot], touch()));
+          } else this.view.effects.floatText(this.drawn.x, this.drawn.y - this.scene.hero.head - 12, rides ? 'Your horse is spent' : 'Your legs are spent', PARCHMENT[6]);
         }
       }
       if (d === 0) break;
