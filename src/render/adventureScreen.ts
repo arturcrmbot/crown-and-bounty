@@ -1,4 +1,5 @@
 import { Bitmap, blit } from './bitmap';
+import { LIT_REACH, ringOf } from './lit';
 import { Effects } from './effects';
 import { BAR_DIVIDERS, MAP_VIEW as VIEW, paintFrame, SCREEN } from './frame';
 import type { Point } from '../rules/map/geometry';
@@ -32,6 +33,8 @@ export class AdventureScreen {
   /** For each pixel of the screen, the fog's colour there plus one, or 0 where the land is known: see `Weather.light`. */
   private readonly veil = new Uint16Array(SCREEN.width * SCREEN.height);
   private readonly animated: Placed[] = [];
+  /** The place under the pointer (#256): its pictures, each lit round its outside as it's drawn now. */
+  lit: readonly Placed[] = [];
   readonly camera = { x: 0, y: 0 };
   readonly effects = new Effects();
   /** How far night has fallen over the map, 0 to 1, while a day ends. */
@@ -137,6 +140,11 @@ export class AdventureScreen {
       if (o.hidden || this.isFogged(o.x + o.sprite.width / 2, footY(o) - 2)) continue;
       const image = o.frames ? o.frames[(o.frame ?? tick) % o.frames.length] : o.sprite;
       blit(screen, image, VIEW.x + Math.round(o.x) - cx, VIEW.y + Math.round(o.y) - cy, VIEW);
+    }
+    for (const o of this.lit) {
+      if (o.hidden) continue;
+      const image = o.frames ? o.frames[(o.frame ?? tick) % o.frames.length] : o.sprite;
+      blit(screen, ringOf(image), VIEW.x + Math.round(o.x) - cx - LIT_REACH, VIEW.y + Math.round(o.y) - cy - LIT_REACH, VIEW);
     }
     const seen = (x: number, y: number) => !this.isFogged(x, y);
     this.weather?.drawSmoke(screen, VIEW.x - cx, VIEW.y - cy, VIEW, this.sky, seen);
