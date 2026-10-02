@@ -2,7 +2,7 @@ import type { BackgroundId } from '../content/backgrounds';
 import { Bitmap, blit, outline, SHADOW } from './bitmap';
 import { BAR, MAP_VIEW, paintFrame, SCREEN } from './frame';
 import { bayer, hash, noise, shade } from './noise';
-import { BLUE, CYCLE_FIRE, GOLD, INK, LEAF, LIGHT_LUT, NEUTRAL, PARCHMENT, RED, ROCK, SHADOW_LUT, SKIN, STONE, WOOD } from './palette';
+import { BLUE, CYCLE_FIRE, EARTH, GOLD, INK, LEAF, LIGHT_LUT, NEUTRAL, PARCHMENT, RED, ROCK, SHADOW_LUT, SKIN, STONE, WOOD } from './palette';
 import { drawText } from './text';
 
 /** Where the wall meets the floor, and where the lines of the floor meet, in room pixels. */
@@ -293,12 +293,13 @@ export function goose(phase: number): Bitmap {
  * Aldric kneeling on the carpet, seen from behind, as his figure is on the map: the Knight in a red
  * cape, steel helm and pauldrons, his sword laid by; the Wizard in a grey robe and a blue hood, his
  * staff beside him; the Ranger in his green hooded cloak with a quiver, his bow laid down; the
- * Courtier in a blue cape, blond under a black plumed hat, his sabre on the carpet.
+ * Courtier in his red coat trimmed with gold, brown locks on a lace collar, under a broad red hat
+ * with a great yellow plume, his sabre on the carpet.
  */
 function kneeling(background: BackgroundId): Bitmap {
   const s = new Bitmap(60, 70);
   const cx = 30;
-  const cloth = { knight: RED, wizard: [ROCK[2], ROCK[3], ROCK[4], ROCK[5], ROCK[6]], ranger: [LEAF[0], LEAF[1], LEAF[2], LEAF[3], LEAF[4]], courtier: BLUE }[background];
+  const cloth = { knight: RED, wizard: [ROCK[2], ROCK[3], ROCK[4], ROCK[5], ROCK[6]], ranger: [LEAF[0], LEAF[1], LEAF[2], LEAF[3], LEAF[4]], courtier: [RED[0], RED[1], RED[2], RED[3], RED[4]] }[background];
   // The cape (or robe, or cloak) falls from the shoulders and pools on the floor.
   for (let y = 20; y < 66; y++) {
     for (let x = 2; x < 58; x++) {
@@ -306,6 +307,7 @@ function kneeling(background: BackgroundId): Bitmap {
       if (Math.abs(x - cx) > half || (y > 60 && Math.abs(x - cx) > half - (y - 60) * 1.5)) continue;
       const fold = Math.sin((x - cx) / 3.4) * 0.12;
       s.set(x, y, shade(cloth, 0.52 + fold - (x - cx) / 90 - (y - 20) * 0.004, x, y));
+      // The gold trim round the hem of his coat.
       if (background === 'courtier' && y > 57 && y < 60 && Math.abs(x - cx) < half - 1) s.set(x, y, y === 58 ? GOLD[5] : GOLD[3]);
     }
   }
@@ -325,12 +327,20 @@ function kneeling(background: BackgroundId): Bitmap {
     for (let y = 8; y < 40; y++) for (let x = cx + 5; x < cx + 11; x++) if (Math.abs(x - (cx + 8) + (y - 24) * 0.25) < 2.6) s.set(x, y, y < 14 ? (x % 2 ? NEUTRAL[7] : RED[4]) : shade(WOOD, 0.45 - (x - cx - 8) / 10, x, y));
     hood([LEAF[0], LEAF[1], LEAF[2], LEAF[3], LEAF[4]]);
   } else {
-    // A lace collar, blond hair, and a broad black hat with the King's blue plume.
-    for (let y = 15; y < 30; y++) for (let x = cx - 20; x <= cx + 20; x++) if (inEllipse(x, y, cx, 22, 19, 6.5)) s.set(x, y, shade(BLUE, 0.62 - (x - cx) / 36, x, y));
-    for (let x = cx - 7; x <= cx + 7; x++) s.set(x, 17, x % 2 ? NEUTRAL[7] : NEUTRAL[6]);
-    for (let y = 7; y < 19; y++) for (let x = cx - 8; x <= cx + 8; x++) if (inEllipse(x, y, cx, 13, 7.5, 6.5)) s.set(x, y, shade(GOLD, 0.62 - (x - cx) / 22 + ((x + y) % 3 === 0 ? 0.1 : 0), x, y));
-    for (let y = 3; y < 13; y++) for (let x = cx - 15; x <= cx + 15; x++) if (inEllipse(x, y, cx, 9, 14.5, 2.6) || inEllipse(x, y, cx, 6, 7, 4.5)) s.set(x, y, shade([INK, NEUTRAL[0], NEUTRAL[1], NEUTRAL[2]], 0.6 - (x - cx) / 30 - (y - 3) * 0.02, x, y));
-    for (let k = 0; k < 14; k++) for (const dy of [0, 1]) s.set(cx - 3 - k, 3 - Math.round(Math.sin((k / 14) * Math.PI) * 3) + dy + (k > 10 ? k - 10 : 0), dy ? BLUE[3] : BLUE[5]);
+    // The coat's shoulders and a lace collar, long brown hair over it, and a broad red hat with a gold band and a great yellow plume.
+    const coat = [RED[0], RED[1], RED[2], RED[3], RED[4]];
+    for (let y = 15; y < 30; y++) for (let x = cx - 20; x <= cx + 20; x++) if (inEllipse(x, y, cx, 22, 19, 6.5)) s.set(x, y, shade(coat, 0.62 - (x - cx) / 36, x, y));
+    for (let y = 15; y < 21; y++) for (let x = cx - 12; x <= cx + 12; x++) if (inEllipse(x, y, cx, 18, 11.5, 2.6)) s.set(x, y, (x + y) % 3 === 0 ? NEUTRAL[5] : x < cx ? NEUTRAL[7] : NEUTRAL[6]);
+    const hair = [EARTH[1], EARTH[2], EARTH[3], EARTH[4], EARTH[5]];
+    for (let y = 8; y < 28; y++) for (let x = cx - 10; x <= cx + 10; x++) if (Math.abs(x + 0.5 - cx) < 7.5 + (y - 8) * 0.12 && y < 25 + ((x >> 1) % 2) + (Math.abs(x - cx) > 5 ? 1 : 0)) s.set(x, y, shade(hair, 0.62 - (x - cx) / 22 - (y - 8) * 0.01 + (((x >> 1) % 2) - 0.5) * 0.24, x, y));
+    for (let y = 1; y < 15; y++) for (let x = cx - 18; x <= cx + 18; x++) if (inEllipse(x, y, cx, 11, 17.5, 3.2) || (inEllipse(x, y, cx, 7, 8.5, 5.5) && y <= 11)) s.set(x, y, shade(coat, 0.66 - (x - cx) / 30 - (y - 2) * 0.02, x, y));
+    for (let x = cx - 8; x <= cx + 8; x++) for (const y of [9, 10]) s.set(x, y, y === 9 ? GOLD[5] : GOLD[3]);
+    for (let x = cx - 17; x <= cx + 17; x++) s.set(x, 13, x < cx ? GOLD[4] : GOLD[3]);
+    for (let k = 0; k < 18; k++) {
+      const t = k / 17;
+      const [px, py, r] = [cx + 1 - t * 21, 3.5 - Math.sin(t * Math.PI * 0.7) * 3 + t * t * 9, 2.7 - Math.abs(t - 0.35) * 2];
+      for (let y = Math.floor(py - r); y <= py + r; y++) for (let x = Math.floor(px - r); x <= px + r; x++) if (y >= 0 && inEllipse(x, y, px, py, r, r * 0.85)) s.set(x, y, (x - y * 2) % 4 === 0 ? GOLD[3] : y < py ? GOLD[6] : GOLD[5]);
+    }
   }
   // Boot soles, and what he fights with laid on the carpet beside him.
   for (let y = 62; y < 68; y++) for (let x = cx + 12; x < cx + 24; x++) if (y > 64 || x < cx + 19) s.set(x, y, STONE[2]);

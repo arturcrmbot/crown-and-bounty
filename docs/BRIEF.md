@@ -100,7 +100,9 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   The others go on foot, since Wesnoth has no mounted mage and each should read as himself at a glance: the
   Hedge Wizard is an Arch Mage (hood, beard, orb and staff), the Ranger is Wesnoth's own Ranger in his green hood
   (nothing like the red poachers), and the Courtier is a Master at Arms in a plumed hat, who doffs it with a bow
-  now and then. A tired hero on foot hears that his legs are spent, not his horse.
+  now and then. A tired hero on foot hears that his legs are spent, not his horse. Since #189 the heroes are painted
+  figures, and the Courtier wears a red coat trimmed with gold and a broad red hat with a big yellow plume over his
+  long brown hair. His portrait and his kneeling figure at court wear the same (2 Oct, #231).
 - **Heroes and captains behind the line (29 Sep, #36; before, from 28 Sep, Aldric fought in the line and could
   be carried off):** Aldric, the villains and the enemy's captains lead from behind their troops, and nothing can
   reach them there: no blow, shot or spell, friend or foe (a Fireball passes over them), so their blows get no
