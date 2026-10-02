@@ -570,6 +570,145 @@ Frames and timings from `data/core/units/monsters/Giant_Spider.cfg`.
 | `monsters/spider-melee-12.png` | GPL-2.0-or-later | beetlenaut | 2010-03-20 | 2010-03-20 |
 | `monsters/spider-melee-13.png` | GPL-2.0-or-later | beetlenaut | 2010-03-20 | 2010-03-20 |
 
+### Lieutenant (our sergeant)
+
+Frames and timings from `data/core/units/humans/Loyalist_Lieutenant.cfg`.
+
+| File | Licence | Artists, from the history | Added | Last changed |
+| --- | --- | --- | --- | --- |
+| `human-loyalists/lieutenant.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-07-11 |
+| `human-loyalists/lieutenant-defend-2.png` | CC BY-SA 4.0 | doofus-01 | 2022-07-11 | 2022-07-11 |
+| `human-loyalists/lieutenant-attack-sword-1.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-07-11 |
+| `human-loyalists/lieutenant-attack-sword-2.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-07-11 |
+| `human-loyalists/lieutenant-attack-sword-3.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-07-11 |
+| `human-loyalists/lieutenant-die-1.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-07-11 |
+| `human-loyalists/lieutenant-die-2.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-07-11 |
+| `human-loyalists/lieutenant-die-3.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-07-11 |
+| `human-loyalists/lieutenant-die-4.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-07-11 |
+| `human-loyalists/lieutenant-die-5.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-07-11 |
+| `human-loyalists/lieutenant-die-6.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-07-11 |
+| `human-loyalists/lieutenant-die-7.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-07-11 |
+| `human-loyalists/lieutenant-die-8.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-07-11 |
+| `human-loyalists/lieutenant-die-9.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-07-11 |
+
+### Halberdier (our pike)
+
+Frames and timings from `data/core/units/humans/Loyalist_Halberdier.cfg`.
+
+| File | Licence | Artists, from the history | Added | Last changed |
+| --- | --- | --- | --- | --- |
+| `human-loyalists/halberdier.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-07-11 |
+| `human-loyalists/halberdier-defend-2.png` | CC BY-SA 4.0 | doofus-01 | 2022-07-11 | 2022-07-11 |
+| `human-loyalists/halberdier-idle-1.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-06-04 |
+| `human-loyalists/halberdier-idle-2.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-06-04 |
+| `human-loyalists/halberdier-idle-3.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-06-04 |
+| `human-loyalists/halberdier-idle-4.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-06-04 |
+| `human-loyalists/halberdier-idle-5.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-06-04 |
+| `human-loyalists/halberdier-idle-6.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-06-04 |
+| `human-loyalists/halberdier-idle-7.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-06-04 |
+| `human-loyalists/halberdier-idle-8.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-06-04 |
+| `human-loyalists/halberdier-idle-9.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-06-04 |
+| `human-loyalists/halberdier-idle-10.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-06-04 |
+| `human-loyalists/halberdier-idle-11.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-06-04 |
+| `human-loyalists/halberdier-idle-12.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-06-04 |
+| `human-loyalists/halberdier-slash-se-1.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-07-11 |
+| `human-loyalists/halberdier-slash-se-2.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-07-11 |
+| `human-loyalists/halberdier-slash-se-3.png` | CC BY-SA 4.0 | doofus-01 | 2022-07-11 | 2022-07-11 |
+| `human-loyalists/halberdier-slash-se-4.png` | CC BY-SA 4.0 | doofus-01 | 2022-07-11 | 2022-07-11 |
+
+### Thug (our foreman)
+
+Frames and timings from `data/core/units/humans/Outlaw_Thug.cfg`.
+
+| File | Licence | Artists, from the history | Added | Last changed |
+| --- | --- | --- | --- | --- |
+| `human-outlaws/thug.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering, Ignacio R. Morelle | 2007-05-16 | 2022-04-29 |
+| `human-outlaws/thug-defend-2.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2009-08-14 | 2022-04-29 |
+| `human-outlaws/thug-idle-1.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering, Lari Nieminen | 2007-12-25 | 2022-04-29 |
+| `human-outlaws/thug-idle-2.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering, Lari Nieminen | 2007-12-25 | 2022-04-29 |
+| `human-outlaws/thug-idle-3.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering, Lari Nieminen | 2007-12-25 | 2022-04-29 |
+| `human-outlaws/thug-idle-4.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering, Lari Nieminen | 2007-12-25 | 2022-04-29 |
+| `human-outlaws/thug-idle-5.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering, Lari Nieminen | 2007-12-25 | 2022-04-29 |
+| `human-outlaws/thug-melee-1.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2009-08-14 | 2022-04-29 |
+| `human-outlaws/thug-melee-2.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2009-08-14 | 2022-04-29 |
+| `human-outlaws/thug-melee-3.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2009-08-14 | 2022-04-29 |
+| `human-outlaws/thug-melee-4.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2009-08-14 | 2022-04-29 |
+| `human-outlaws/thug-melee-5.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2009-08-14 | 2022-04-29 |
+| `human-outlaws/thug-melee-6.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2009-08-14 | 2022-04-29 |
+| `human-outlaws/thug-melee-7.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2009-08-14 | 2022-04-29 |
+| `human-outlaws/thug-melee-8.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2009-08-14 | 2022-04-29 |
+
+### Shock Trooper (our picketCaptain)
+
+Frames and timings from `data/core/units/humans/Loyalist_Shock_Trooper.cfg`.
+
+| File | Licence | Artists, from the history | Added | Last changed |
+| --- | --- | --- | --- | --- |
+| `human-loyalists/shocktrooper.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Charles Dang, Richard Kettering | 2007-05-16 | 2022-06-04 |
+| `human-loyalists/shocktrooper-defend-1.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Charles Dang, Richard Kettering | 2007-05-16 | 2022-06-04 |
+| `human-loyalists/shocktrooper-attack-1.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Charles Dang, Richard Kettering | 2007-05-16 | 2022-06-04 |
+| `human-loyalists/shocktrooper-attack-2.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Charles Dang, Richard Kettering | 2007-05-16 | 2022-06-04 |
+| `human-loyalists/shocktrooper-attack-3.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Charles Dang, Richard Kettering | 2007-05-16 | 2022-06-04 |
+| `human-loyalists/shocktrooper-attack-4.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Charles Dang, Richard Kettering | 2007-05-16 | 2022-06-04 |
+| `human-loyalists/shocktrooper-attack-5.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Charles Dang, Richard Kettering | 2007-05-16 | 2022-06-04 |
+| `human-loyalists/shocktrooper-attack-6.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Charles Dang, Richard Kettering | 2007-05-16 | 2022-06-04 |
+
+### Rogue (our cutpurseCaptain)
+
+Frames and timings from `data/core/units/humans/Outlaw_Rogue.cfg`.
+
+| File | Licence | Artists, from the history | Added | Last changed |
+| --- | --- | --- | --- | --- |
+| `human-outlaws/rogue.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Charles Dang, thespaceinvader | 2007-05-16 | 2022-04-29 |
+| `human-outlaws/rogue-defend-1.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Charles Dang | 2016-08-21 | 2022-04-29 |
+
+### Highwayman (our highwaymanCaptain)
+
+Frames and timings from `data/core/units/humans/Outlaw_Highwayman.cfg`.
+
+| File | Licence | Artists, from the history | Added | Last changed |
+| --- | --- | --- | --- | --- |
+| `human-outlaws/highwayman.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering, thespaceinvader, Lari Nieminen | 2007-07-22 | 2022-04-29 |
+| `human-outlaws/highwayman-defend-2.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2010-04-23 | 2022-04-29 |
+| `human-outlaws/highwayman-melee-1.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2010-04-23 | 2022-04-29 |
+| `human-outlaws/highwayman-melee-2.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2010-04-23 | 2022-04-29 |
+| `human-outlaws/highwayman-melee-3.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2010-04-23 | 2022-04-29 |
+| `human-outlaws/highwayman-melee-4.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2010-04-23 | 2022-04-29 |
+| `human-outlaws/highwayman-melee-5.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2010-04-23 | 2022-04-29 |
+| `human-outlaws/highwayman-melee-6.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2010-04-23 | 2022-04-29 |
+| `human-outlaws/highwayman-melee-7.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2010-04-23 | 2022-04-29 |
+| `human-outlaws/highwayman-melee-8.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2010-04-23 | 2022-04-29 |
+
+### Woodsman (our poacherCaptain)
+
+Frames and timings from `data/core/units/humans/Woodsman.cfg`.
+
+| File | Licence | Artists, from the history | Added | Last changed |
+| --- | --- | --- | --- | --- |
+| `human-peasants/woodsman.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-04-29 |
+| `human-peasants/woodsman-defend.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-04-29 |
+| `human-peasants/woodsman-bow-defend.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2009-08-15 | 2022-04-29 |
+| `human-peasants/woodsman-idle-1.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2010-03-29 | 2022-04-29 |
+| `human-peasants/woodsman-idle-2.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2010-03-29 | 2022-04-29 |
+| `human-peasants/woodsman-idle-3.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2010-03-29 | 2022-04-29 |
+| `human-peasants/woodsman-idle-4.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2010-03-29 | 2022-04-29 |
+| `human-peasants/woodsman-idle-5.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2010-03-29 | 2022-04-29 |
+| `human-peasants/woodsman-idle-6.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2010-03-29 | 2022-04-29 |
+| `human-peasants/woodsman-idle-7.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2010-03-29 | 2022-04-29 |
+| `human-peasants/woodsman-idle-8.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2010-03-29 | 2022-04-29 |
+| `human-peasants/woodsman-idle-9.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2010-03-29 | 2022-04-29 |
+| `human-peasants/woodsman-idle-10.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2010-03-29 | 2022-04-29 |
+| `human-peasants/woodsman-idle-11.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2010-03-29 | 2022-04-29 |
+| `human-peasants/woodsman-idle-12.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2010-03-29 | 2022-04-29 |
+| `human-peasants/woodsman-idle-13.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2010-03-29 | 2022-04-29 |
+| `human-peasants/woodsman-idle-14.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2010-03-29 | 2022-04-29 |
+| `human-peasants/woodsman-melee-1.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2007-05-16 | 2022-04-29 |
+| `human-peasants/woodsman-bow.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2009-08-15 | 2022-04-29 |
+| `human-peasants/woodsman-bow-attack-1.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2009-08-15 | 2022-04-29 |
+| `human-peasants/woodsman-bow-attack-2.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2009-08-15 | 2022-04-29 |
+| `human-peasants/woodsman-bow-attack-3.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2009-08-15 | 2022-04-29 |
+| `human-peasants/woodsman-bow-attack-4.png` | GPL-2.0-or-later, changes since 2017 CC BY-SA 4.0 | doofus-01, Richard Kettering | 2009-08-15 | 2022-04-29 |
+
 ### Horseman (our hero, as a Knight)
 
 Frames and timings from `data/core/units/humans/Horseman.cfg`.
