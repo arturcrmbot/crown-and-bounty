@@ -168,7 +168,7 @@ export const BACKGROUNDS: Record<BackgroundId, Background> = {
     spells: ['slow'],
     signature: {
       name: 'Pathfinder',
-      note: 'He rides through the woods, where nothing on the map can follow him. He gets +30 movement a day and sees further, and his scouts count every enemy exactly. His archers get +1 attack and +4 shots, and loose a free volley before every battle. Beasts follow him instead of fighting, the more of them the stronger his army is than theirs, and the rest attack. Beasts draw no wages and need no leadership.',
+      note: 'He rides through the woods, where nothing on the map can follow him. He gets +30 movement a day and sees further, and his scouts count every enemy exactly. His archers get +1 attack and +4 shots, and loose a free volley before every battle, except at a villain\u2019s walls. Beasts follow him instead of fighting, the more of them the stronger his army is than theirs, and the rest attack. Beasts draw no wages and need no leadership.',
       bonus: { movement: 30, sight: 50, counts: true, troops: { archers: { attack: 1, shots: 4 } }, volley: true, forestWalk: true, tames: true },
     },
     growth: { attack: 3, defence: 2, spellPower: 1, knowledge: 1 },

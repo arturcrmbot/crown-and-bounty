@@ -68,6 +68,17 @@ describe('taming', () => {
     expect(after.ambushRest).toBeUndefined();
   });
 
+  it('says who comes at him with a capital letter, though his scouts count only roughly', () => {
+    // A Knight with a way with beasts hears "a few", not "3", and the line still starts a sentence.
+    const knight = fresh('knight');
+    const tamer: GameState = { ...knight, hero: { ...knight.hero, perks: ['beastFriend'] } };
+    const result = choose(tamer, 'bears', 'tame')!;
+    expect(result.state.ambushRest).toBe(true);
+    const line = cardOf(result).lines.find((l) => l.endsWith('come at you!'))!;
+    expect(line).toMatch(/^\*\*[A-Z]/);
+    expect(ambushCard(result.state).lines).toContain(line);
+  });
+
   it('only for an army stronger than theirs: the wolves won\u2019t follow a fresh one, and all follow one twice as strong', () => {
     const start = fresh();
     expect(labels(start, 'wolves')).toContain('Tame them (your army isn\u2019t strong enough yet) [off]');

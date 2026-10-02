@@ -131,4 +131,17 @@ describe('on the map', () => {
     expect(labels(courtier, 'patrol').some((l) => l.startsWith('Hire'))).toBe(false);
     expect(labels({ ...newGame(1066, ALDMOOR, 'knight'), opening: undefined }, 'highwaymen').some((l) => l.startsWith('Hire'))).toBe(false);
   });
+
+  it('a courtier\u2019s offer names who of a mixed band would come over, as taming does', () => {
+    const courtier: GameState = { ...newGame(1066, ALDMOOR, 'courtier'), opening: undefined };
+    const strong: GameState = { ...courtier, army: [{ troop: 'knights', count: 40 }, { troop: 'archers', count: 60 }] };
+    // Room under his banner for only some of them: 6 swordsmen at 3 leadership each, and then 1 crossbowman at 2.
+    const tight: GameState = {
+      ...strong,
+      leadership: leadershipUsed(strong.army) + 20,
+      locations: strong.locations.map((l) => (l.id === 'highwaymen' ? { ...l, enemy: { ...l.enemy!, army: [{ troop: 'swordsmen' as const, count: 14 }, { troop: 'crossbowmen' as const, count: 8 }] } } : l)),
+    };
+    const offer = cardOf(visit(tight, 'highwaymen')).choices.find((c) => c.label.startsWith('Hire'));
+    expect(offer?.label).toMatch(/^Hire 6 Swordsmen and 1 Crossbowman, and fight the rest \([\d,]+ gold\)$/);
+  });
 });
