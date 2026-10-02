@@ -58,12 +58,21 @@ export function hunting(state: GameState, l: Location): boolean {
 /** A band that holds its ground till the day it wakes (`wakes`). */
 export const asleep = (state: GameState, l: Location) => Boolean(l.enemy?.wakes && state.day < l.enemy.wakes.day);
 
-/** A ranger among the trees leaves no track that anything on the map can follow. */
-function inTheWoods(state: GameState): boolean {
+/**
+ * Whether a hero who rides through woodland (a ranger, or anyone in the Greenwood Cloak) would be among
+ * the trees at this point, where he leaves no track that anything on the map can follow (#217).
+ */
+export function amongTrees(state: GameState, [x, y]: Point): boolean {
   if (!heroStats(state).forestWalk) return false;
   const map = mapOf(state);
-  return map.terrain[cellIndex(map, state.hero.at[0], state.hero.at[1])] === Terrain.Forest;
+  return map.terrain[cellIndex(map, x, y)] === Terrain.Forest;
 }
+
+/** A ranger among the trees leaves no track that anything on the map can follow. */
+const inTheWoods = (state: GameState) => amongTrees(state, state.hero.at);
+
+/** The bands on his trail tonight: camp near them and they fall on him at dawn. */
+export const trailedBy = (state: GameState): Location[] => state.locations.filter((l) => l.enemy?.trailing && !l.done);
 
 /** Every roamer and hunter takes its night's walk. Returns the stacks that are now on the hero's doorstep. */
 export function moveEnemies(state: GameState, map: MapModel): { state: GameState; events: GameEvent[]; ambush: string | null } {

@@ -4,7 +4,8 @@ import { FENMARCH } from '../../content/fenmarch';
 import { apply, endDay, locationById, type GameState } from '../game';
 import { beginCommission, newGame } from '../scenario';
 import { buildMap, cellIndex } from './model';
-import { AMBUSH_REACH, hunting } from './roaming';
+import { AMBUSH_REACH, amongTrees, hunting } from './roaming';
+import { cellCentre, Terrain } from './model';
 
 const aldmoor = (): GameState => ({ ...newGame(3, ALDMOOR, 'knight'), opening: undefined });
 const fen = (army: GameState['army'], at: [number, number]): GameState => {
@@ -80,6 +81,27 @@ describe('enemies on the map', () => {
     const town = weak.locations.find((l) => l.kind === 'village')!;
     const safe = { ...weak, hero: { ...weak.hero, at: town.at } };
     expect(hunting(safe, locationById(safe, 'goblins'))).toBe(false);
+  });
+
+  it('tell a ranger the trees will hide him too, and they do (#217)', () => {
+    const weak = fen([{ troop: 'peasants', count: 10 }], [470, 590]);
+    const map = buildMap(FENMARCH);
+    const ranger: GameState = { ...weak, hero: { ...weak.hero, background: 'ranger' } };
+    // Out in the open the goblins pick up his trail, and the warning names the trees as well as a town.
+    const open = cellCentre(map, map.terrain.findIndex((t, i) => t === Terrain.Grass && Math.hypot(cellCentre(map, i)[0] - 470, cellCentre(map, i)[1] - 590) < 40));
+    const exposed = { ...ranger, hero: { ...ranger.hero, at: open } };
+    expect(amongTrees(exposed, open)).toBe(false);
+    const warned = endDay(exposed).events.find((e) => e.type === 'card');
+    expect(warned?.type === 'card' && warned.card.lines.find((l) => l.includes('on your trail'))).toMatch(/shelter in a town or among the trees, or turn and fight/);
+    // A knight hears only of a town.
+    const knight = endDay({ ...weak, hero: { ...weak.hero, at: open } }).events.find((e) => e.type === 'card');
+    expect(knight?.type === 'card' && knight.card.lines.find((l) => l.includes('on your trail'))).toMatch(/shelter in a town, or turn and fight/);
+    // Among the trees, nothing hunts him at all.
+    const trees = cellCentre(map, map.terrain.findIndex((t) => t === Terrain.Forest));
+    const hidden = { ...ranger, hero: { ...ranger.hero, at: trees } };
+    expect(amongTrees(hidden, trees)).toBe(true);
+    expect(amongTrees({ ...weak, hero: { ...weak.hero, at: trees } }, trees)).toBe(false);
+    expect(hunting(hidden, locationById(hidden, 'goblins'))).toBe(false);
   });
 
   it('let villains recruit every payday, though the villain stays one', () => {

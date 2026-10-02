@@ -11,6 +11,7 @@ import type { BattleState } from '../rules/battle/battle';
 import { ambushCard, apply, bountyCard, commissionOf, describe, finishFight, geeseHome, heardOf, heroStats, journalCard, levelUpCard, locationById, placeNote, placeOdds, roman, spent, VANISHES, visit, whenThere, type Action, type Card, type GameEvent, type GameState, type Location, type Result, type Verdict } from '../rules/game';
 import { barNote } from '../rules/heroSheet';
 import type { Point } from '../rules/map/geometry';
+import { amongTrees, trailedBy } from '../rules/map/roaming';
 import { CELL, cellCentre, type MapModel, type Terrain } from '../rules/map/model';
 import { daysAway, facingEnemy, planRoute, routeCosts, stepAlong } from '../rules/map/movement';
 import { artifactIcon, statIcon } from '../render/artifactIcons';
@@ -955,7 +956,8 @@ export class AdventureController implements Screen {
     r.asOf = asOf;
     const days = daysAway(this.state, this.map, r.place && !r.approach ? this.doorOf(r.place) : r.point, r.approach);
     if (r.name) r.text = `${r.name} \u00b7 ${days === null ? 'no way through yet' : whenThere(days)}`;
-    else r.text = days === null ? 'No way through' : `Ride here: ${whenThere(days)}`;
+    // While a band is on his trail, a ranger is shown which ground would hide him tonight (#217).
+    else r.text = days === null ? 'No way through' : `Ride here: ${whenThere(days)}${trailedBy(this.state).length && amongTrees(this.state, r.point) ? ' \u00b7 among the trees' : ''}`;
     this.label.show(r.text, r.client[0], r.client[1], r.place ? placeOdds(this.state, r.place) : null);
   }
 
