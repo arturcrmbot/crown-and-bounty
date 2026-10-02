@@ -507,11 +507,12 @@ def land():
     }
 
 
-# Each pack, made only when it's built: the lowest it keeps, and its rate. The map's and the land's
-# recordings carry a rumble under 40 Hz (wind, handling, a thud no phone or laptop plays) that would
-# only be measured, not heard, so their packs keep what's over 50 Hz, the weight of a hoof or a spade
-# included. The land's play quietly under the music, so 24 kHz (up to 12 kHz) keeps all they have.
-PACKS = {'battle': (battle, 0, 32000), 'map': (everyday, 50, 32000), 'land': (land, 50, 24000)}
+# Each pack, made only when it's built: the lowest it keeps, and its rate. Many recordings carry a
+# rumble under 40 Hz (wind, handling, a thud no phone or laptop plays) that would only be measured,
+# not heard, so a take made mostly of it would play all but silent. Every pack keeps what's over
+# 50 Hz, the weight of a blow, a hoof or a spade included. The land's play quietly under the music,
+# so 24 kHz (up to 12 kHz) keeps all they have.
+PACKS = {'battle': (battle, 50, 32000), 'map': (everyday, 50, 32000), 'land': (land, 50, 24000)}
 
 
 def build(name):
