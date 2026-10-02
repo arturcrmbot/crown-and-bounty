@@ -232,6 +232,71 @@ guard, because nobody heals or raises the fallen, on either side.
 | Before | 15, 17 | 12, 17 | 12, 14 | 14, 21 |
 | After | 15, 17 | 12, 16 | 9, 15 | 13, 15 |
 
+## The bands and the climb (2 Oct)
+
+The third of #239's three PRs, built to the design agreed with Artur that day. Aldmoor has fifteen bands now, in five
+rings by the ride from the start, and the difficulty model's tiers are those rings (`ring` on each band, `RINGS` in
+`rules/difficulty.ts`). Each ring lies further out than the one before (`climb.test.ts` measures the rides).
+
+| Ring | Days | Its bands (a step ahead in bold) |
+| --- | --- | --- |
+| 1, round the castle | 1 and 2 | the cutpurses on the King's road |
+| 2, the fields and the downs | 2 to 5 | the poachers, the rustlers, **the Baron's tax collectors**, the wild boars |
+| 3, the river and the chase | 4 to 9 | the sounder of boars, the bears, the outlaws by the river chest, **Pike's patrol** |
+| 4, the heath and the crags | 8 to 14 | the highwaymen, the wolves round the gilded chest, **Grimsby's dig** |
+| 5, Darkwood | 12 to 20 | Rook's wolves, the giant spiders, **the Baron's pickets** under Captain Warren |
+| The top | 21 | Grimsby's stockade, with the Baron at level X |
+
+- **Every band of men has its hero,** at the design's level, from a cutpurse captain at level I to Captain Warren at
+  VIII. The bridge and the kennels are the gates (`gate`): only a diplomat hires them, and dearly.
+- **Every band grows by a seventh each payday** for three paydays, as HoMM2's do (`BAND_GROWTH` in `rules/days.ts`), so
+  it's half as big again by day 22. The villain recruits 3% a payday for five, as before.
+- **A fight teaches 0.6 of the worth of what it beat** (`TEACHES` in `rules/fight.ts`), so a careful player reaches level
+  IX to XI by day 21, a level every two or three days, instead of three at once at the bridge.
+- **The sizes are a first pass.** Each band was measured against a careful player on its ring's middle day: the multiple
+  of it that his strongest army so far beats half the time. Most bands are about half of that, a step ahead about four
+  fifths, and Grimsby about two thirds on day 21 with everything the player found. Then rings 4 and 5 and Grimsby came
+  down a quarter, because the bot's army on those days is more worn than its strongest. A balance pass tunes them.
+- **What the difficulty test holds,** for every background: on day I the first ring is a fair fight, and everything from
+  the river on, and Grimsby, is out of reach; once the first two rings are done, the river and the chase are mostly a
+  fair fight, and Grimsby still isn't. Every band grows about as fast as a careful player does, so what keeps Darkwood for
+  later is the ride to it, behind the bridge and the kennels.
+- **The scroll stones** (#240) are read once. Read and left, a stone kept offering its notes for 100 experience, and the
+  careful bot read them all day.
+
+`npm run sim:curve -- 3`, a careful player, before (main on 2 Oct, before #246) and after. After, the Knight and the
+Courtier are measured on this PR as it merges. The Wizard and the Ranger were measured just before rings 4 and 5 and
+Grimsby came down a quarter, so they climb faster now than this says.
+
+| In Grimsbys [Grimsby as he stands] | day 1 | day 3 | day 7 | day 10 | day 14 | day 21 | Grimsby on day 21: all / army alone |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Knight, before | 0.61 [1.50] | 0.90 | 1.02 | 1.19 | 2.07 | 3.48 [1.59] | 100% / 100% |
+| Knight, after | 0.62 [1.30] | 0.94 | 0.87 | 1.81 | 1.36 | 2.29 [1.38] | 100% / 0% |
+| Courtier, before | 0.62 [1.50] | 1.08 | 1.19 | 1.32 | 2.23 | 3.14 [1.59] | 100% / 100% |
+| Courtier, after | 0.81 [1.30] | 0.92 | 0.97 | 1.10 | 0.97 | 1.32 [1.38] | 0% / 0% |
+| Wizard, after (before the last trim) | 0.64 [1.63] | 1.08 | 0.94 | 1.19 | 1.19 | 1.32 [1.71] | 0% / 0% |
+| Ranger, after (before the last trim) | 0.69 [1.63] | 0.90 | 1.55 | 2.29 | 2.68 | 3.14 [1.71] | 100% / 75% |
+
+| Level, and bands beaten | day 1 | day 3 | day 7 | day 10 | day 14 | day 21 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Knight, before | I | II | V | VII | IX | X |
+| Knight, after | II, 1 | III, 1 | IV, 2 | VI, 4 | IX, 9 | XI, 15 |
+| Courtier, before | I | II | V | VII | IX | X |
+| Courtier, after | II, 1 | III, 2 | IV, 2 | VI, 4 | VII, 8 | X, 13 |
+| Wizard, after (before the last trim) | I, 0 | III, 1 | VI, 5 | VII, 7 | VIII, 7 | IX, 9 |
+| Ranger, after (before the last trim) | II, 1 | IV, 2 | VII, 6 | IX, 11 | XI, 15 | XI, 15 |
+
+The median day each ring's bands fall, after: the Knight 1, 18, 15, 11 and 13, and the Courtier 1, 13, 12, 17 and 22.
+Before, the careful player had only the gates to measure: the dig on day 8 or 9, the bridge and the wolves on days 9 to
+13. What's left for the balance pass:
+
+- **The second ring falls late,** because its bands roam the fields and the downs, and the careful bot rides to them
+  late. A player meets them on the way.
+- **Grimsby on day 21** is a fight the Knight wins with everything he found and loses on his army alone, as the budget
+  meant, but the Courtier and the Wizard can't take him that day yet.
+- **The play-through's plain Knight,** played headless on the same route as `npm run e2e`, takes the patrol on day 45,
+  the highwaymen and the wolves by day 59, and Grimsby on day 61, at level VIII.
+
 ## The approach
 
 1. **A power budget for each commission.** Each commission has a target day for its villain and a reference hero:
@@ -262,10 +327,10 @@ four. Artur: *"since you get new army after it should be a hard fight... a coin 
 equipment / artifacts / quest rewards etc."* Losses at the lair don't matter: the army goes home afterwards. Before
 the target day, he's out of reach, as now: 5% at most on day 1.
 
-**Gates** are too strong at first (35% at most) and beatable once you've explored (75% or better), as now. With the
-budget, "explored" moves to where a player really is when he reaches the gate.
-
-**Pests and bands** stay as they are: pests are won from the start, and bands are fair fights.
+**The rings** (#239). The first ring is a fair fight from the start, and everything from the river on is out of reach
+on day I. Once the first two rings are done, the river and the chase are mostly a fair fight. In each ring most bands
+are a fair fight a careful player wins with losses, and about one is a step ahead, so he comes back for it. The gates,
+the bridge and the kennels, are steps ahead.
 
 **Every commission** follows the same rule (#101), at its own target day, for the hero the campaign carried there. Generated
 provinces stop growing by a flat fifth, and each is sized to the reference hero it expects. The crooks of commissions
@@ -294,8 +359,8 @@ moved with these levers:
 | Stats | level-ups (`LEVELS`, each background's `growth`), the court's boons | 10% more damage per point of attack over defence, 5% less per point of defence (`skillFactor`) |
 | Gear | `content/artifacts.ts`, sets | seven slots |
 | Spells | `content/spells.ts`, mana (ten a point of knowledge) | two casts a round (`MAX_CASTS`), mana at dawn (`endDay`) |
-| Experience | `battleXp` (the worth of what's beaten), finds, parleys | the level curve (`LEVELS`) |
-| Enemies | each province's content, `grows`, `strengthFor` | the budget |
+| Experience | `battleXp` (a share, `TEACHES`, of the worth of what's beaten), finds, parleys | the level curve (`LEVELS`) |
+| Enemies | each province's content and its rings, heroes' levels, `BAND_GROWTH`, `grows`, `strengthFor` | the budget |
 
 **The caps:**
 
@@ -307,7 +372,8 @@ moved with these levers:
 ## How it's measured
 
 - **`npm run sim:curve`** (#94) prints the table above for every background in Aldmoor, by day, for a careful player (or
-  `--bot`, the old reckless one), with Grimsby as he stands, the day each gate falls, and his odds on day 21.
+  `--bot`, the old reckless one), with Grimsby as he stands, the day each ring of the climb falls, the player's level,
+  leadership and bands beaten by day, and Grimsby's odds on day 21.
 - **`npm run difficulty`** also reports a careful player on day 21 in Aldmoor, who has done everything but the villain:
   his odds at Grimsby's gate with everything he found, and on his army alone. A report, not a target.
 - **The bot plays like a person** (#94, which takes over #14). It fights with a margin instead of at the cliff's edge, and
