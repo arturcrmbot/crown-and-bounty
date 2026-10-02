@@ -1,5 +1,5 @@
 import { needsTarget, SPELLS, STATUSES, type SpellId, type StatusId } from '../../content/spells';
-import { ABILITIES, abilitiesOf, feuding, isBeast, outweighs, TROOPS, unitPower, type TroopDef, type TroopId } from '../../content/troops';
+import { ABILITIES, abilitiesOf, feuding, heroHelp, isBeast, outweighs, TROOPS, unitPower, type TroopDef, type TroopId } from '../../content/troops';
 import { listed, MAX_STACKS, roll, type Army } from '../state';
 import { COLS, HEXES, hexIndex, NEIGHBOURS, neighbours, reachable, ROWS } from './hex';
 
@@ -152,11 +152,7 @@ export type BattleState = {
 
 /** From this level an enemy hero knows his spells (#239). */
 export const SPELLS_FROM = 3;
-/**
- * What an enemy hero's level lends every stack of his side (#239), as Aldric's levels grow his: a point
- * of attack or defence for every level after the first, attack first. A level-I hero lends nothing yet.
- */
-export const heroHelp = (level: number) => ({ attack: Math.floor(level / 2), defence: Math.floor((level - 1) / 2) });
+export { heroHelp };
 /** An enemy hero's spell power: a third of his level, rounded up. He has ten mana for every point of it, as Aldric has for every point of knowledge. */
 export const heroPower = (level: number) => Math.ceil(level / 3);
 export const heroMana = (level: number) => 10 * heroPower(level);
@@ -727,13 +723,17 @@ const powerOnField = (b: BattleState, side: Side) => b.fighters.filter((f) => f.
  * `join` fight for him, and for how much. Power decides it (Artur, 30 Sep): only as many as his army
  * outweighs them take any gold (`outweighs`, none at all from an army no stronger than they are), and
  * each asks the bard's price for every point of its power, less the hero's share off every bribe, to
- * the nearest ten. Null for troops who take no gold (beasts), for a leader (nothing can reach him),
- * and for a bard who isn't yours: the gold is your purse.
+ * the nearest ten. Their power counts what their hero lends them (#254), as a band's does on the map,
+ * but they're paid for their own: whoever takes the gold leaves him. Null for troops who take no gold
+ * (beasts), for a leader (nothing can reach him), and for a bard who isn't yours: the gold is your purse.
  */
 export function bribeOffer(b: BattleState, bard: Fighter, target: Fighter, join = false): { count: number; price: number } | null {
   const art = bardOf(bard);
   if (!art?.price || bard.side !== 'player' || target.side === bard.side || !onField(target) || !TROOPS[target.troop].wage) return null;
-  const count = Math.floor(target.count * outweighs(powerOnField(b, bard.side), target.count * powerOf(target)));
+  const help = b.enemyHelp ?? NO_HELP;
+  const own = unitOf(target);
+  const helped = unitPower({ ...own, attack: own.attack + help.attack, defence: own.defence + help.defence });
+  const count = Math.floor(target.count * outweighs(powerOnField(b, bard.side), target.count * helped));
   const rate = join ? art.price.join : art.price.leave;
   return { count, price: count ? Math.max(10, Math.round((count * powerOf(target) * rate * (1 - (b.hero.bribes ?? 0))) / 10) * 10) : 0 };
 }
