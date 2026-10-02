@@ -442,7 +442,8 @@ try {
   await close();
   check((await beatWhenReady('wolves')) === 'Victory!', 'the sergeants beat the wolves');
   await close();
-  await beatWhenReady('hideout', 8);
+  // The plain player takes Grimsby late: on main he did it on his eighth weekly try (day 69), so he gets a few more (#238).
+  await beatWhenReady('hideout', 12);
   const final = await kc.state();
   check(final.over === 'won' && final.bounty === 'paid', `the commission is won on day ${final.day}`);
   check(final.hero.level >= 3, `Sir Aldric grew to level ${final.hero.level} (${learned.join(', ')})`);

@@ -59,7 +59,8 @@ export type StatusDef = {
 
 export const STATUSES: Record<StatusId, StatusDef> = {
   blessed: { name: 'Blessed', bestDamage: true },
-  slowed: { name: 'Slowed', speedTimes: 0.5, onHit: 'The hex slows them down.' },
+  // Two rounds, not the whole battle (#238): slowed for good, a band that fights as one stack never reached the archers.
+  slowed: { name: 'Slowed', speedTimes: 0.5, rounds: 2, onHit: 'The hex slows them down.' },
   hasted: { name: 'Hasted', speedAdd: 2 },
   stoneskin: { name: 'Stone Skin', defenceAdd: 3 },
   shieldwall: { name: 'Shield Wall', defenceAdd: 3, rounds: 2 },
@@ -117,7 +118,7 @@ export const needsTarget = (spell: SpellId) => !['mass', 'volley', 'summon'].inc
 export const SPELLS: Record<SpellId, SpellDef> = {
   bolt: { id: 'bolt', name: 'Lightning Bolt', mana: 7, on: 'enemy', note: 'It does twenty damage for every point of spell power.', effect: { kind: 'damage', perPower: 20 }, look: { kind: 'bolt', colour: 'gold' } },
   bless: { id: 'bless', name: 'Bless', mana: 5, on: 'friend', note: 'The stack always rolls its best damage, for the rest of the battle.', effect: { kind: 'status', status: 'blessed' }, look: { kind: 'sparkle', colour: 'gold' } },
-  slow: { id: 'slow', name: 'Slow', mana: 5, on: 'enemy', note: 'It halves the stack\u2019s speed for the rest of the battle.', effect: { kind: 'status', status: 'slowed' }, look: { kind: 'sparkle', colour: 'blue' } },
+  slow: { id: 'slow', name: 'Slow', mana: 5, on: 'enemy', note: 'It halves the stack\u2019s speed for this round and the next.', effect: { kind: 'status', status: 'slowed' }, look: { kind: 'sparkle', colour: 'blue' } },
   haste: { id: 'haste', name: 'Haste', mana: 5, on: 'friend', note: 'It gives the stack +2 speed for the rest of the battle.', effect: { kind: 'status', status: 'hasted' }, look: { kind: 'sparkle', colour: 'gold' } },
   fireball: {
     id: 'fireball',

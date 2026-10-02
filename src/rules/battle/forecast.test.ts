@@ -89,9 +89,12 @@ describe('the forecast by the pointer', () => {
 
   it('says what a spell that hurts nobody does, and when it would be wasted', () => {
     const b = field([['knights', 10]], [['wolves', 12]], {}, [0, 1]);
-    expect(texts(aimTag(b, { type: 'cast', spell: 'slow', target: 1 }))).toEqual(['It halves the stack\u2019s speed for the rest of the battle.']);
+    expect(texts(aimTag(b, { type: 'cast', spell: 'slow', target: 1 }))).toEqual(['It halves the stack\u2019s speed for this round and the next.']);
+    // Slow wears off (#238), so casting it again renews it: the tag says what it does, not that it's wasted.
     const slowed = { ...b, fighters: b.fighters.map((f) => (f.id === 1 ? { ...f, status: ['slowed' as const] } : f)) };
-    expect(texts(aimTag(slowed, { type: 'cast', spell: 'slow', target: 1 }))).toEqual(['They are already slowed.']);
+    expect(texts(aimTag(slowed, { type: 'cast', spell: 'slow', target: 1 }))).toEqual(['It halves the stack\u2019s speed for this round and the next.']);
+    const blessed = { ...b, fighters: b.fighters.map((f) => (f.id === 0 ? { ...f, status: ['blessed' as const] } : f)) };
+    expect(texts(aimTag(blessed, { type: 'cast', spell: 'bless', target: 0 }))).toEqual(['They are already blessed.']);
     const hurt = { ...b, fighters: b.fighters.map((f) => (f.id === 0 ? { ...f, count: 7 } : f)) };
     expect(texts(aimTag(hurt, { type: 'cast', spell: 'brew', target: 0 }))).toEqual(['They get 30 health back, and 1 gets up again.']);
     const peasants = field([['peasants', 40]], [['wolves', 12]], {}, [0, 1]);
