@@ -411,8 +411,8 @@ try {
   await go('gold', 'Take');
   await close();
 
-  // The highwaymen are the long way round, by the ford: a fight by hand, by touch.
-  await go('highwaymen', 'Approach');
+  // The cutpurses on the King's road, the climb's first ring (#239): a fight by hand, by touch.
+  await go('cutpurses', 'Approach');
   await look('fight-card');
   await press('Fight');
   await page.waitForFunction(() => window.__kc.screen() === 'battle', null, { timeout: 10_000 });
@@ -532,20 +532,14 @@ try {
     await go('mine', 'Enter');
     check(await press('Take the cart'), 'the dwarf gives up his ore cart');
     await close();
-    await go('boars', 'Approach');
-    await press('Let the sergeants');
-    check((await title()) === 'Victory!', 'the sergeants see off the boars');
-    await close();
     await go('castle', 'Visit');
     await look('castle');
     check(await press('Recruit'), 'the castle recruits knights');
     await look('recruit');
-    // The armourer buys the spare he carries (the highwaymen's Black Banner), as the play-through does: gold for the weeks ahead.
-    const [spare] = (await state()).hero.pack;
-    if (spare) {
-      const purse = (await state()).gold;
-      check((await press('Visit the armoury')) && (await press('Sell him your spares')) && (await press('Sell ')) && (await state()).gold > purse, `the armourer buys his spare (${spare})`);
-    }
+    await close();
+    await go('boars', 'Approach');
+    await press('Let the sergeants');
+    check((await title()) === 'Victory!', 'the sergeants see off the boars');
     await close();
     await go('poachers', 'Approach');
     await press('Let the sergeants');
@@ -566,6 +560,17 @@ try {
     if ((await state()).locations.some((l) => l.id === 'deserters')) {
       await go('deserters', 'Visit');
       await press('Recruit');
+      await close();
+    }
+    // The highwaymen on the heath road, the climb's fourth ring, once the odds are on his side.
+    check((await beatWhenReady('highwaymen')) === 'Victory!', 'the sergeants beat the highwaymen on the heath road');
+    await close();
+    // The armourer buys the spare he carries (the highwaymen's Black Banner), as the play-through does: gold for the weeks ahead.
+    const [spare] = (await state()).hero.pack;
+    if (spare) {
+      await go('castle', 'Visit');
+      const purse = (await state()).gold;
+      check((await press('Visit the armoury')) && (await press('Sell him your spares')) && (await press('Sell ')) && (await state()).gold > purse, `the armourer buys his spare (${spare})`);
       await close();
     }
     check((await beatWhenReady('wolves')) === 'Victory!', 'the sergeants beat the wolves');

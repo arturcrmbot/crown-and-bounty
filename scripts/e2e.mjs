@@ -297,13 +297,11 @@ try {
   check(gate.includes('looks at you') && /^(The odds are against you|You\u2019d likely lose)\./.test(gate), `the patrol is too strong at first, and its card leads with the odds (${gate.split(' / ')[0]})`);
   await kc.choose('Retreat');
 
-  // The patrol holds the bridge, so the highwaymen on the heath's tower road are the long way round, by the ford.
-  const beforeFord = await kc.state();
-  await go('highwaymen', 'Approach');
-  check((await kc.state()).day >= beforeFord.day + 2, `the far side of the river is days away by the ford (day ${(await kc.state()).day})`);
+  // The first ring of the climb (#239): cutpurses working the King's road by the castle, the first fight, by hand.
+  await go('cutpurses', 'Approach');
   await kc.choose('Fight');
   await page.waitForTimeout(200);
-  check((await kc.call(() => window.__kc.screen())) === 'battle', 'fighting the highwaymen opens the battlefield');
+  check((await kc.call(() => window.__kc.screen())) === 'battle', 'fighting the cutpurses opens the battlefield');
   // Wait for the first turn of one of our stacks, then move it by clicking a hex it can reach. Sir
   // Aldric leads from behind the line and never walks the field: on his turns, he waits.
   for (let guard = 0; guard < 10; guard++) {
@@ -332,17 +330,20 @@ try {
   check(!!moved && field.fighters.find((f) => f.id === moved.id).at === moved.target, 'a stack moves where you point it');
   await kc.call(() => window.__kc.battle().auto());
   await page.waitForFunction(() => window.__kc.screen() === 'adventure', null, { timeout: 60_000 });
-  check((await kc.title()) === 'Victory!', 'the highwaymen are beaten on the battlefield');
+  check((await kc.title()) === 'Victory!', 'the cutpurses are beaten on the battlefield');
   const din = await heard();
-  check(din.includes('feet:hooves') && din.some((e) => e === 'blow:lance' || e === 'blow:blade') && din.includes('dies:man'), 'the battle sounds like who fought it: the knights\u2019 hooves and steel, and the highwaymen crying out as they fall');
+  check(din.includes('feet:hooves') && din.some((e) => e === 'blow:lance' || e === 'blow:blade') && din.includes('dies:man'), 'the battle sounds like who fought it: the knights\u2019 hooves and steel, and the cutpurses crying out as they fall');
   await close();
-  // What they carried goes in the journal, in its own words, still to be used.
+  // What he picked up on the bridge road goes in the journal, in its own words, still to be used.
   await page.keyboard.press('j');
   const written = await kc.call(() => [...document.querySelectorAll('.kc-card-wrap:not([hidden]) .heard li')].map((li) => `${li.className === 'done' ? '[x]' : '[ ]'} ${li.textContent}`));
-  check(written.some((l) => l.startsWith('[ ]') && l.includes('All patrols back to the stockade')), `the Baron\u2019s letter goes in the journal, as it was written (${written.join(' / ')})`);
+  check(written.some((l) => l.startsWith('[ ]') && l.includes('Dear Mum')), `young Pike\u2019s letter goes in the journal, as it was written (${written.join(' / ')})`);
   await close();
 
+  // The patrol holds the bridge, so the watchtower on the heath is the long way round, by the ford.
+  const beforeFord = await kc.state();
   const tower = await go('tower', 'Enter');
+  check((await kc.state()).day >= beforeFord.day + 2, `the far side of the river is days away by the ford (day ${(await kc.state()).day})`);
   check(tower === 'Old Watchtower', 'the fogged watchtower can be reached and entered');
   check((await kc.lines()).includes('take one') && (await kc.choose('Take the banner')), 'the crows let him take the banner or the journal');
   const tops = await kc.state();
@@ -387,21 +388,12 @@ try {
   check(await kc.choose('Take the cart'), 'the dwarf gives up his ore cart');
   await close();
   check(learned.length > 0 && (await kc.state()).hero.level >= 2, `a first fight and some finds bring a level-up (${learned.join(', ')})`);
+  await go('castle', 'Visit');
+  check(await kc.choose('Recruit'), 'the castle offers knights');
+  await close();
   await go('boars', 'Approach');
   await kc.choose('Let the sergeants');
   check((await kc.title()) === 'Victory!', 'the sergeants see off the boars at the edge of the King\u2019s chase');
-  await close();
-  await go('castle', 'Visit');
-  check(await kc.choose('Recruit'), 'the castle offers knights');
-  // The armoury buys spares: the highwaymen's Black Banner waits in the pack, kept rather than worn.
-  const [spare] = (await kc.state()).hero.pack;
-  check(Boolean(spare) && (await kc.choose('Visit the armoury')) && (await kc.choose('Sell him your spares')), `the armourer offers to buy his spares (${spare})`);
-  const purse = (await kc.state()).gold;
-  const offer = await kc.call(() => [...document.querySelectorAll('.kc-card-wrap:not([hidden]) button:not(:disabled)')].map((b) => b.textContent).find((t) => t.startsWith('Sell ')) ?? '');
-  const [, paid = ''] = offer.match(/\(([\d,]+) gold\)$/) ?? [];
-  check(Boolean(paid) && (await kc.choose(offer)), `with the price on its button: ${offer}`);
-  const sold = await kc.state();
-  check(sold.gold === purse + Number(paid.replace(/,/g, '')) && !sold.hero.pack.includes(spare) && (await kc.lines()).includes(`is his, for ${paid} gold`), `and pays ${paid} gold for it`);
   await close();
   await go('poachers', 'Approach');
   await kc.choose('Let the sergeants');
@@ -434,11 +426,32 @@ try {
     check(met.title === 'Victory!' && met.lines.includes('Baron Grimsby flees home'), `beaten in the open, Grimsby flees home to his stockade (${met.title})`);
     const stockade = (await kc.state()).locations.find((l) => l.id === 'hideout');
     const swordsmen = stockade.enemy.army.find((s) => s.troop === 'swordsmen')?.count ?? 0;
-    check(!stockade.enemy.humbled && stockade.enemy.army.some((s) => s.troop === 'baron') && swordsmen >= 46, `and his guard straggles home after him (${swordsmen} swordsmen behind his walls)`);
+    const atFirst = start.locations.find((l) => l.id === 'hideout').enemy.army.find((s) => s.troop === 'swordsmen').count;
+    check(!stockade.enemy.humbled && stockade.enemy.army.some((s) => s.troop === 'baron') && swordsmen >= atFirst, `and his guard straggles home after him (${swordsmen} swordsmen behind his walls)`);
   }
   check((await kc.state()).locations.some((l) => l.id === 'deserters'), 'deserters make camp by the crossroads');
   await go('deserters', 'Visit');
   check(await kc.choose('Recruit'), 'the deserters\u2019 camp offers swordsmen');
+  await close();
+  // The highwaymen on the heath road, the climb's fourth ring, once the sergeants like the odds.
+  check((await beatWhenReady('highwaymen')) === 'Victory!', 'the sergeants beat the highwaymen on the heath road');
+  // Their Black Banner has a drawback, so it waits in the pack, kept rather than worn.
+  if (await kc.choose('Keep it in your pack')) await settle();
+  else await close();
+  await page.keyboard.press('j');
+  const orders = await kc.call(() => [...document.querySelectorAll('.kc-card-wrap:not([hidden]) .heard li')].map((li) => li.textContent));
+  check(orders.some((l) => l.includes('All patrols back to the stockade')), 'what they carried goes in the journal too: the Baron\u2019s letter, as it was written');
+  await close();
+  // The armoury buys spares: the highwaymen's Black Banner waits in the pack, kept rather than worn.
+  await go('castle', 'Visit');
+  const [spare] = (await kc.state()).hero.pack;
+  check(Boolean(spare) && (await kc.choose('Visit the armoury')) && (await kc.choose('Sell him your spares')), `the armourer offers to buy his spares (${spare})`);
+  const purse = (await kc.state()).gold;
+  const offer = await kc.call(() => [...document.querySelectorAll('.kc-card-wrap:not([hidden]) button:not(:disabled)')].map((b) => b.textContent).find((t) => t.startsWith('Sell ')) ?? '');
+  const [, paid = ''] = offer.match(/\(([\d,]+) gold\)$/) ?? [];
+  check(Boolean(paid) && (await kc.choose(offer)), `with the price on its button: ${offer}`);
+  const sold = await kc.state();
+  check(sold.gold === purse + Number(paid.replace(/,/g, '')) && !sold.hero.pack.includes(spare) && (await kc.lines()).includes(`is his, for ${paid} gold`), `and pays ${paid} gold for it`);
   await close();
   check((await beatWhenReady('wolves')) === 'Victory!', 'the sergeants beat the wolves');
   await close();

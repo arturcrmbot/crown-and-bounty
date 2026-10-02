@@ -247,12 +247,13 @@ export const TROOPS: Record<TroopId, TroopDef> = {
     voice: 95,
     face: 'foreman',
   },
-  // The bands' PR names him, and gives him his face.
+  // Captain Warren of the Baron's pickets, whose men keep going off after rabbits.
   picketCaptain: {
-    id: 'picketCaptain', name: 'the Pickets\u2019 Captain', one: 'the Pickets\u2019 Captain', hp: 80, attack: 8, defence: 8, damage: [6, 10], speed: 4, leadership: 99, wage: 0,
+    id: 'picketCaptain', name: 'Captain Warren', one: 'Captain Warren', hp: 80, attack: 8, defence: 8, damage: [6, 10], speed: 4, leadership: 99, wage: 0,
     note: 'He commands the Baron\u2019s pickets in Darkwood, when they aren\u2019t out after rabbits. He gives orders, and he knows Lightning Bolt.', abilities: ['leads'],
     caster: { spells: ['bolt'], charges: [{ spell: 'shieldwall', uses: 1 }, { spell: 'crossbows', uses: 1 }] },
     voice: 110,
+    face: 'warren',
   },
   // Outlaw captains jeer and sing as the Courtier does, and know Slow and Curse.
   cutpurseCaptain: {
