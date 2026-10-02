@@ -1,6 +1,7 @@
 import { abilitiesOf, TROOPS, type TroopId } from '../content/troops';
 import { SPELLS, STATUSES, type SpellId } from '../content/spells';
 import { canCast, hasTurn, isLeader, lookOf, luckOf, moraleOf, speedOf, statsOf, unitOf, type BattleState, type Fighter } from '../rules/battle/battle';
+import { capital, roman } from '../rules/state';
 import { HEXES, hexIndex, ROWS } from '../rules/battle/hex';
 import { FIELD_W, HALF_H, HEX_W, hexAt, hexCentre, insideHex, ROW_H, sideAt, X0, Y0 } from './battleHexes';
 import { Bitmap, blit, SHADOW } from './bitmap';
@@ -32,9 +33,9 @@ const LEADER_BOX = { half: 34, above: 96, below: 14 };
 /** Whose standard flies over the enemy: Grimsby's goose (over his huntsman's wolves too), the fen's moon, a skull for outlaws; beasts carry none. */
 function standardOf(troops: TroopId[]): Standard | null {
   const has = (...ids: TroopId[]) => troops.some((t) => ids.includes(t));
-  if (has('baron', 'rook', 'swordsmen', 'crossbowmen')) return { cloth: [RED[1], RED[2], RED[3], RED[4]], emblem: 'goose' };
+  if (has('baron', 'rook', 'swordsmen', 'crossbowmen', 'pikemen', 'menAtArms', 'sergeant', 'pike', 'foreman', 'picketCaptain')) return { cloth: [RED[1], RED[2], RED[3], RED[4]], emblem: 'goose' };
   if (has('witch', 'bramble', 'goblins', 'trolls')) return { cloth: [PLUM[1], PLUM[2], PLUM[3], PLUM[4]], emblem: 'moon' };
-  if (has('bandits', 'poachers')) return { cloth: [LEAF[0], LEAF[1], LEAF[2], LEAF[3]], emblem: 'skull' };
+  if (has('bandits', 'poachers', 'cutpurses', 'cutpurseCaptain', 'highwaymanCaptain', 'poacherCaptain')) return { cloth: [LEAF[0], LEAF[1], LEAF[2], LEAF[3]], emblem: 'skull' };
   return null;
 }
 
@@ -155,7 +156,7 @@ export type BattleView = {
   light: { x: number; y: number; radius: number; strength: number } | null;
   /** One of your stacks is ready for orders (#190): its hex pings and it bounces, `age` seconds in. */
   cue: { fighter: number; age: number } | null;
-  /** Stacks the rules have on the field that haven't got there yet: a summoned stack, till it marches in. */
+  /** Stacks the rules have on the field that haven't got there yet: one a bard's gold bought over, till it comes in. */
   hidden: Set<number>;
   /** What a stack looks like while a change plays out (newts, or null for itself), instead of what its statuses say. */
   looks: Map<number, Critter | null>;
@@ -1195,8 +1196,8 @@ export class BattleScreen {
       const tags = tagged(named);
       const { attack, defence } = statsOf(b, f);
       const count = countOf(f);
-      // A named foe is one of a kind: "Baron Grimsby", not "1 Baron Grimsby".
-      const who = t.name === t.one ? t.name : `${count} ${count === 1 ? t.one : t.name}`;
+      // A named foe is one of a kind: "Baron Grimsby", not "1 Baron Grimsby". An enemy hero says his level (#239).
+      const who = t.name === t.one ? `${capital(t.name)}${f.level ? `, level ${roman(f.level)}` : ''}` : `${count} ${count === 1 ? t.one : t.name}`;
       // Nothing reaches a leader, so he has no defence or health to speak of, only his own blows, if he strikes at all.
       const blows = isLeader(f) && !f.shots && !abilitiesOf(f.troop).some((a) => a.rides) ? '' : ` Att ${attack}${isLeader(f) ? '' : ` Def ${defence}`} Dmg ${t.damage[0]}-${t.damage[1]}`;
       const numbers = `${who}  ·${blows}${isLeader(f) ? '' : ` HP ${view.health.get(f.id) ?? f.hp}/${t.hp}`}${hasTurn(f) ? ` Spd ${speedOf(f)}` : ''}${f.shots ? ` Shots ${f.shots}` : ''}`;

@@ -211,6 +211,27 @@ a measurement, and the bot never sings or pays a gate off, so it sees mostly the
 | Before | 18, 25 | 10, 16 | 8, 12 | 17, 20 |
 | After | 15, 16 | 11, 17 | 10, 11 | 12, 20 |
 
+## Enemy heroes, and no more Call the Guard (2 Oct)
+
+The second of #239's three PRs, built to the design agreed with Artur that day. A band of men can now have a hero
+behind its line, a leader troop in its army with his level on his stack. Every level after the first lends his band a
+point of attack or defence, attack first, so a hero at level 5 gives his band +2 attack and +2 defence, and one at
+level 10 gives +5 and +4 (`heroHelp`). From level 3 he knows his people's spells, with spell power a third of his level, rounded up,
+and ten mana for every point of it, and he gives his orders at any level. The odds and the sergeants count all of it,
+because they fight the battle out by the same rules.
+
+No band in Aldmoor has a hero with a level yet. The third PR puts them in, so these levels are its levers, with each
+band's size and how much less a fight teaches. The one change Aldmoor sees now is that the Baron no longer calls the
+guard, because nobody heals or raises the fallen, on either side.
+
+`npm run sim -- 5`, the careful player, before and after, both measured on main as it stood before #240's Magic Arrow
+(#246). Every run is won both times, and Grimsby falls a little sooner without his guard.
+
+| Days to take Grimsby: median, 90th percentile | Knight | Wizard | Ranger | Courtier |
+| --- | --- | --- | --- | --- |
+| Before | 15, 17 | 12, 17 | 12, 14 | 14, 21 |
+| After | 15, 17 | 12, 16 | 9, 15 | 13, 15 |
+
 ## The approach
 
 1. **A power budget for each commission.** Each commission has a target day for its villain and a reference hero:

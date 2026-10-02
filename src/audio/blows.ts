@@ -40,6 +40,14 @@ export const TROOP_SOUNDS: Record<TroopId, TroopSounds> = {
   cutpurses: { blow: 'dagger', cry: 'man', feet: 'boots' },
   // A giant spider bites, screeches like a goblin, and patters about on all eight feet.
   spiders: { blow: 'bite', cry: 'goblin', feet: 'patter' },
+  // The enemy's heroes (#239) strike no blows from behind their line, but sound like what they carry.
+  sergeant: { blow: 'blade', cry: 'man', feet: 'boots', armour: true },
+  pike: { blow: 'spear', cry: 'man', feet: 'boots', armour: true },
+  foreman: { blow: 'club', cry: 'man', feet: 'boots' },
+  picketCaptain: { blow: 'club', cry: 'man', feet: 'boots', armour: true },
+  cutpurseCaptain: { blow: 'dagger', cry: 'man', feet: 'boots' },
+  highwaymanCaptain: { blow: 'club', cry: 'man', feet: 'boots' },
+  poacherCaptain: { blow: 'dagger', cry: 'man', feet: 'boots' },
   heroKnight: { blow: 'lance', cry: 'man', feet: 'hooves', armour: true },
   heroWizard: { blow: 'staff', cry: 'man', feet: 'boots' },
   heroRanger: { blow: 'blade', cry: 'man', feet: 'boots' },

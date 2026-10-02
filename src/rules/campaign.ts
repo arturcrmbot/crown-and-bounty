@@ -90,6 +90,12 @@ export function withNewPlaces(state: GameState): GameState {
       changed = true;
       l = unhumbled(l);
     }
+    // A hero leads his band at the level the province gives him now (#239): it's who leads them, not something that happened to them.
+    const levelled = l.enemy && now.enemy ? atLevels(l.enemy.army, now.enemy.army) : null;
+    if (levelled) {
+      changed = true;
+      l = { ...l, enemy: { ...l.enemy!, army: levelled } };
+    }
     // A captain who has taken a band over since leads it now (Rook, the Baron's wolves), under his name, in his ways
     // and with his words, even if the hero has met the band before: who leads it isn't something that happened to it.
     const captains = l.kind === 'patrol' && l.enemy ? (now.enemy?.army ?? []).filter((s) => leads(s.troop) && !l.enemy!.army.some((x) => x.troop === s.troop)) : [];
@@ -115,6 +121,19 @@ export function withNewPlaces(state: GameState): GameState {
     return next;
   });
   return changed ? { ...state, locations: [...locations, ...structuredClone(added)] } : state;
+}
+
+/** A saved band's leaders at the levels its province gives them now (#239), or null if none of them has changed. */
+function atLevels(saved: Army, now: Army): Army | null {
+  let changed = false;
+  const army = saved.map((s) => {
+    const there = leads(s.troop) ? now.find((x) => x.troop === s.troop) : undefined;
+    if (!there || there.level === s.level) return s;
+    changed = true;
+    const { level: _, ...rest } = s;
+    return there.level ? { ...rest, level: there.level } : rest;
+  });
+  return changed ? army : null;
 }
 
 /** The share of every stack that stays on between commissions, before the hero's skills. */

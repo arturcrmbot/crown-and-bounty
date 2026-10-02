@@ -6,8 +6,8 @@ import { battleXp, beat, expectedLosses, fight, purseLines, startFight, winChanc
 import { artifactChoices, foundNote, gainXp, giveArtifact, heroStats } from '../hero';
 import { asleep } from '../map/roaming';
 import { riddenOut } from '../map/sortie';
-import { addTroops, close, coins, fightingPower, fits, leadershipUsed, listed, locationById, roman, show, stillWithYou, troops, update, type Army, type Card, type Choice, type ContentChoice, type GameEvent, type GameState, type Location, type Result, type Verdict } from '../state';
-import { countsExactly, faceOf, forceLine, note, option, ride, say, words } from './common';
+import { addTroops, capital, close, coins, fightingPower, fits, leadershipUsed, listed, locationById, roman, show, stillWithYou, troops, update, type Army, type Card, type Choice, type ContentChoice, type GameEvent, type GameState, type Location, type Result, type Verdict } from '../state';
+import { countsExactly, faceOf, forceLine, heroLines, note, option, ride, say, words } from './common';
 import type { PlaceKind } from './kind';
 
 const retreat: Choice = { label: 'Retreat', action: { type: 'close' } };
@@ -60,9 +60,8 @@ const whoIsLeft = (army: Army, gone: Army): Army => army.map((s) => ({ ...s, cou
 
 /** Nobody left in a band but whoever led it. */
 const nobodyLeft = (army: Army) => !army.some((s) => !leads(s.troop));
-
-/** A line that opens a sentence starts with a capital, inside any bold: "**Several Wolves** come at you!" */
-const opening = (line: string) => line.replace(/^(\**)(\p{Ll})/u, (_, bold: string, first: string) => bold + first.toUpperCase());
+/** A band's men: everyone but whoever leads them, who can't be hired or tamed. */
+const menOf = (army: Army) => army.filter((s) => !leads(s.troop));
 
 /**
  * The card while an enemy has fallen on him: fight, or run. It stays until answered, and it leads with
@@ -78,7 +77,7 @@ export function ambushCard(state: GameState, before: string[] = []): Card {
   ];
   const odds = oddsOf(state, foe);
   const says = state.army.length ? [oddsLine(winChance(state, foe.id)), likelyLossesLine(state, foe.id), ...purseLines(state, foe.id)] : [];
-  const how = state.ambushRest ? `${opening(forceLine(foe.enemy!.army, countsExactly(state)))} come at you!` : `At first light, **${foe.name}** fall on your camp!`;
+  const how = state.ambushRest ? `${capital(forceLine(foe.enemy!.army, countsExactly(state)))} come at you!` : `At first light, **${foe.name}** fall on your camp!`;
   // The rest of a band don't greet him again: their threat was for the whole band, and the biggest of a pack may have just come over to him.
   const threat = state.ambushRest ? [] : [foe.enemy!.threat];
   return { title: state.ambushRest ? foe.name : `An ambush on day ${roman(state.day)}!`, ...faceOf(foe.enemy!.army), ...(odds ? { verdict: odds } : {}), lines: [...before, how, ...threat, ...says], choices };
@@ -96,7 +95,9 @@ export type HireOffer = { price: number; joining: Army; all: boolean; share: num
 /**
  * What a band asks to change sides, and who of it would come: only troops that draw wages will (no
  * beasts, no villains), and only small fry. As many come as his army outweighs them (`outweighs`), and
- * as many of those as he can lead; he pays for each of them by its power, and the rest attack.
+ * as many of those as he can lead; he pays for each of them by its power, and the rest attack. He buys
+ * the men, not their hero (#239), who is taken once nobody is left to follow him. A villain's own
+ * guard, out with him, won't sell him.
  */
 export function hireOffer(state: GameState, place: Location): HireOffer | null {
   const foe = place.enemy;
@@ -105,13 +106,13 @@ export function hireOffer(state: GameState, place: Location): HireOffer | null {
   // Small fry sell out to anyone who hires; gatekeepers only to a diplomat, and dearly.
   const small = foe.tier === 'pest' || foe.tier === 'band';
   if (!small && !s.hiresGates) return null;
-  if (foe.army.some((t) => !TROOPS[t.troop].wage)) return null;
+  if (foe.lair || menOf(foe.army).some((t) => !TROOPS[t.troop].wage)) return null;
   // Content with its own offer for this sort of hero knows better.
   if (foe.parleys?.some((p) => p.needs?.background === state.hero.background)) return null;
   const share = shareOf(state, place);
-  const joining = joiners(state, sharing(foe.army, share));
+  const joining = joiners(state, sharing(menOf(foe.army), share));
   const price = Math.round((fightingPower(joining) * HIRE_PRICE * (small ? 1 : GATE_PRICE)) / 10) * 10;
-  const all = foe.army.every((t) => joining.find((j) => j.troop === t.troop)?.count === t.count);
+  const all = menOf(foe.army).every((t) => joining.find((j) => j.troop === t.troop)?.count === t.count);
   return { price, joining, all, share };
 }
 /** Gold for every point of a band's power, to buy it off its old employer: about what recruiting as much would cost. */
@@ -320,10 +321,10 @@ function carriesLine(state: GameState, place: Location): string[] {
   return [`*Your scouts have seen that they carry* ${artifactPhrase(place.artifact)}. ${a.note}`];
 }
 
-/** A band of people (no beasts, no villain) far weaker than him lays down its arms to a diplomat. */
+/** A band of people (no beasts, no villain) far weaker than him lays down its arms to a diplomat, its hero too (#239). */
 function cowed(state: GameState, place: Location, chance: number): boolean {
   const foe = place.enemy;
-  return Boolean(foe) && !place.done && place.kind === 'patrol' && heroStats(state).cows && chance >= SAFE && foe!.army.every((t) => TROOPS[t.troop].wage > 0);
+  return Boolean(foe) && !place.done && place.kind === 'patrol' && heroStats(state).cows && chance >= SAFE && !foe!.lair && menOf(foe!.army).every((t) => TROOPS[t.troop].wage > 0);
 }
 
 /** They surrender: their gold and everything they carried, and half what a fight would have taught. */
@@ -370,7 +371,7 @@ export function enemy(kind: 'patrol' | 'hideout'): PlaceKind {
       // The verdict leads, so the odds are the first thing read; scouts who put a number on them say it from afar too.
       const odds = oddsOf(state, place);
       const scouts = odds && state.army.length && heroStats(state).odds ? [scoutsLine(winChance(state, place.id))] : [];
-      return { title: place.name, ...faceOf(e.army), ...(odds ? { verdict: odds } : {}), lines: [...away, line, ...scouts, ...carriesLine(state, place), ...hunt], choices: [ride(place, 'Approach'), { label: 'Close', action: { type: 'close' } }] };
+      return { title: place.name, ...faceOf(e.army), ...(odds ? { verdict: odds } : {}), lines: [...away, line, ...heroLines(e.army), ...scouts, ...carriesLine(state, place), ...hunt], choices: [ride(place, 'Approach'), { label: 'Close', action: { type: 'close' } }] };
     },
     arrive(state, place) {
       const foe = place.enemy!;
@@ -384,7 +385,7 @@ export function enemy(kind: 'patrol' | 'hideout'): PlaceKind {
         title: place.name,
         ...faceOf(foe.army),
         verdict: verdict(chance),
-        lines: [foe.threat, oddsLine(chance), likelyLossesLine(state, place.id), ...purseLines(state, place.id), ...scouts, ...carriesLine(state, place), ...tameLine(state, place), ...grumbleLines(state, place)],
+        lines: [foe.threat, ...heroLines(foe.army), oddsLine(chance), likelyLossesLine(state, place.id), ...purseLines(state, place.id), ...scouts, ...carriesLine(state, place), ...tameLine(state, place), ...grumbleLines(state, place)],
         choices: [{ ...option(place, foe.charge ?? 'Fight', 'fight'), detail: FIGHT_NOTE }, { ...option(place, 'Let the sergeants handle it', 'auto'), detail: SERGEANTS_NOTE }, ...yields, ...hireButton(state, place), ...tameButton(state, place), ...parleys(state, place), retreat],
       });
     },

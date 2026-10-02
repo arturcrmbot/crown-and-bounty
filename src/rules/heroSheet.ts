@@ -441,7 +441,7 @@ function chargeLine(state: GameState): string {
 /** What a bard pays to send a stack home, or bring it over, for its power: after his share off every bribe. */
 function bribes(state: GameState): Note[] {
   const art = (TROOPS[heroFighter(state).troop].abilities ?? []).map((a) => ABILITIES[a].bard).find(Boolean);
-  if (!art) return [];
+  if (!art?.price) return [];
   const off = heroStats(state).bribes;
   const less = off ? `, with ${Math.round(off * 100)}% off` : '';
   return [{ name: 'Bribes', note: `He pays ${art.price.leave} gold for every point of a stack\u2019s power to send it home, or ${art.price.join} to bring it over if it fits under his banner${less}. Only an army stronger than theirs can buy them, and the stronger it is, the more of them take the gold. Bought, not beaten, they teach him half what beating them would. Beasts take no gold, and villains and captains can\u2019t be bought. His sergeants never spend his gold.` }];

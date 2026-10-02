@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { TroopId } from '../../content/troops';
+import { blockedMask, threat } from './ai';
 import { battleAct, createBattle, fighterById, isCharge, options, speedOf, strike, type BattleEvent, type BattleHero, type BattleState } from './battle';
 import { hexIndex, neighbours } from './hex';
 
@@ -37,6 +38,21 @@ describe('Set Pikes', () => {
     const plain = hits(battleAct(close, blow, true).events)[1];
     expect(plain.braced).toBeUndefined();
     expect(knights.damage).toBe(plain.damage);
+  });
+
+  it('is known to the sergeants\u2019 look-ahead (#239): a charge into pikes counts as a plain blow, after the pikes strike first', () => {
+    // Twenty knights a ride away from forty pikemen, with the charge and without it: they mean the same to the pikes.
+    const charging = run('pikemen');
+    const plain = field([['knights', 20]], [['pikemen', 40]], { 0: hexIndex(2, 4), 1: hexIndex(6, 4) }, [0, 1]);
+    const mask = blockedMask(charging);
+    expect(threat(charging, 'player', mask).now).toBeCloseTo(threat(plain, 'player', mask).now);
+    // Against swordsmen, the charge counts for more.
+    const swords = run('swordsmen');
+    const walk = field([['knights', 20]], [['swordsmen', 40]], { 0: hexIndex(2, 4), 1: hexIndex(6, 4) }, [0, 1]);
+    expect(threat(swords, 'player', mask).now).toBeGreaterThan(threat(walk, 'player', mask).now);
+    // One knight is dead before he strikes, so he threatens the pikes with nothing.
+    const alone = field([['knights', 1]], [['pikemen', 40]], { 0: hexIndex(2, 4), 1: hexIndex(6, 4) }, [0, 1], { charge: ['knights'] });
+    expect(threat(alone, 'player', mask).now).toBe(0);
   });
 });
 

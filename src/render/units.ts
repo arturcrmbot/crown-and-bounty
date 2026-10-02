@@ -258,6 +258,70 @@ const TROOP_ART: Record<Exclude<TroopId, HeroId>, UnitArt> = {
     melee: attack(400, frames('monsters/', 'spider-melee-[1~13].png', 50)),
     defend: 'monsters/spider.png',
   },
+  // The enemy's heroes (#239), each the elder of his men's Wesnoth unit where Wesnoth has one. They stand behind
+  // the line and strike nothing (but the poacher captain's arrows), so their blows are only for the look of them.
+  // The Baron's sergeant: Wesnoth's Lieutenant, the crossbowmen's Sergeant grown up.
+  sergeant: {
+    unit: 'Lieutenant',
+    cfg: 'humans/Loyalist_Lieutenant.cfg',
+    stand: LOYAL + 'lieutenant.png',
+    melee: attack(225, one(LOYAL, 'lieutenant.png', 50), frames(LOYAL, 'lieutenant-attack-sword-[1~3].png', '75,150,100')),
+    defend: LOYAL + 'lieutenant-defend-2.png',
+    death: frames(LOYAL, 'lieutenant-die-[1~9].png', 75),
+  },
+  // Sergeant Pike: Wesnoth's Halberdier, the pikemen's elder. His fidget is in Wesnoth's files, though its .cfg leaves it out.
+  pike: {
+    unit: 'Halberdier',
+    cfg: 'humans/Loyalist_Halberdier.cfg',
+    stand: LOYAL + 'halberdier.png',
+    idle: frames(LOYAL, 'halberdier-idle-[1~12,2,1].png', 100),
+    melee: attack(380, frames(LOYAL, 'halberdier-slash-se-[1~4,1].png', '130,100,100,125,100'), one(LOYAL, 'halberdier.png', 75)),
+    defend: LOYAL + 'halberdier-defend-2.png',
+  },
+  // The Foreman of Grimsby's dig: Wesnoth's Thug and his club.
+  foreman: {
+    unit: 'Thug',
+    cfg: 'humans/Outlaw_Thug.cfg',
+    stand: OUTLAW + 'thug.png',
+    idle: frames(OUTLAW, 'thug-idle-[1~5,4,5,4,5,2,1].png', '100*3,400,300,400,300,600,100*3'),
+    melee: attack(500, frames(OUTLAW, 'thug-melee-[1~8].png', 100)),
+    defend: OUTLAW + 'thug-defend-2.png',
+  },
+  // The pickets' captain: Wesnoth's Shock Trooper, the men-at-arms' elder.
+  picketCaptain: {
+    unit: 'Shock Trooper',
+    cfg: 'humans/Loyalist_Shock_Trooper.cfg',
+    stand: LOYAL + 'shocktrooper.png',
+    melee: attack(260, frames(LOYAL, 'shocktrooper-attack-[1~6].png', '85,100,125,50*3')),
+    defend: LOYAL + 'shocktrooper-defend-1.png',
+  },
+  // The cutpurses' captain: Wesnoth's Rogue, the Thief's elder.
+  cutpurseCaptain: {
+    unit: 'Rogue',
+    cfg: 'humans/Outlaw_Rogue.cfg',
+    stand: OUTLAW + 'rogue.png',
+    melee: attack(200, one(OUTLAW, 'rogue.png', 400)),
+    defend: OUTLAW + 'rogue-defend-1.png',
+  },
+  // The highwaymen's captain: Wesnoth's Highwayman, the Bandit's elder, as our highwaymen are Bandits.
+  highwaymanCaptain: {
+    unit: 'Highwayman',
+    cfg: 'humans/Outlaw_Highwayman.cfg',
+    stand: OUTLAW + 'highwayman.png',
+    melee: attack(500, frames(OUTLAW, 'highwayman-melee-[1~8].png', 100)),
+    defend: OUTLAW + 'highwayman-defend-2.png',
+  },
+  // The poachers' captain: Wesnoth's Woodsman, in his broad hat with his bow. The Poacher's elders are Rook and the old King's huntsmen.
+  poacherCaptain: {
+    unit: 'Woodsman',
+    cfg: 'humans/Woodsman.cfg',
+    stand: 'human-peasants/woodsman.png',
+    idle: frames('human-peasants/', 'woodsman-idle-[1~14,3~1].png', '100,150,200,150*2,200,1200,200,1200,150*2,100*2,1300,200*2,150'),
+    melee: attack(250, one('human-peasants/', 'woodsman.png', 100), one('human-peasants/', 'woodsman-melee-1.png', 200), one('human-peasants/', 'woodsman.png', 100)),
+    ranged: { ...attack(445, one('human-peasants/', 'woodsman-bow.png', 65), frames('human-peasants/', 'woodsman-bow-attack-[1~4,1].png', '75*2,100,130,65')), missile: 'arrow' },
+    defend: 'human-peasants/woodsman-defend.png',
+    defendRanged: 'human-peasants/woodsman-bow-defend.png',
+  },
 };
 
 const HORSE = 'human-loyalists/horseman/';

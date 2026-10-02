@@ -4,8 +4,8 @@ import { CONTACT, TROOP_SOUNDS } from '../audio/blows';
 import { chooseAction, finishEstimate, sergeantsAct } from '../rules/battle/ai';
 import { manaInBattle, signedShare, spiritsOf, uneasyWords } from '../rules/heroSheet';
 import { grumbleLine } from '../rules/army';
-import { coins, listed } from '../rules/state';
-import { activeFighter, bardOf, battleAct, battleEnd, blessesAll, bribeOffer, canCast, canJoin, casterOf, castsLeft, chargeOf, fighterById, isCharge, isLeader, onField, options, ridesOut, spellCost, spellDamage, spellsOf, spellVictims, unitOf, wound, type BattleAction, type BattleEvent, type BattleState, type Fighter } from '../rules/battle/battle';
+import { capital, coins, listed, roman } from '../rules/state';
+import { activeFighter, bardOf, battleAct, battleEnd, blessesAll, bribeOffer, canCast, canJoin, casterOf, castsLeft, chargeOf, fighterById, heroHelp, isCharge, isLeader, onField, options, ridesOut, spellCost, spellDamage, spellsOf, spellVictims, unitOf, wound, type BattleAction, type BattleEvent, type BattleState, type Fighter } from '../rules/battle/battle';
 import { aimTag, bardTag, forecastOf, type AimTag } from '../rules/battle/forecast';
 import { paintBanner } from '../render/banner';
 import { BattleScreen, BUTTONS, FIRE_FALL, FLOAT_LIFE, FLOAT_RISE, hexAt, hexCentre, leaderAt, LOG_BOTTOM, sideAt, spotOf, stripBottom, type BattleView, type Shot } from '../render/battleScreen';
@@ -74,6 +74,8 @@ const pulse = (k: number) => (k > 0.05 && k < 0.35) || (k > 0.55 && k < 0.85);
 const LAST_WORDS = 3.2;
 /** What a bard shouts at a stack he jeers. */
 const JEERS = ['Call that a sword?', 'Boo! Hiss!', 'Go home to mother!', 'Nice hat!', 'Is that all?', 'My goose fights better!'];
+/** What an outlaw captain shouts at a stack of yours (#239). */
+const HECKLES = ['Run home to the King!', 'Call that an army?', 'Nice horse! Is it stolen?', 'I\u2019ve seen fiercer sheep!', 'Your mother wants you home!', 'Is that the best the King could find?'];
 /** A share as a whole percentage: "25%". */
 const pct = (x: number) => `${Math.round(Math.abs(x) * 100)}%`;
 /** What a song or a jeer does to spirits, in words: "+25% morale", "−30% morale", "+20% luck". */
@@ -366,7 +368,7 @@ export class BattleController implements Screen {
 
   private fighterName(id: number, count?: number) {
     const f = fighterById(this.battle, id);
-    if (this.named(id)) return TROOPS[f.troop].name;
+    if (this.named(id)) return capital(TROOPS[f.troop].name);
     const who = f.side === 'player' ? 'Your' : 'Their';
     return count === undefined ? `${who} ${TROOPS[f.troop].name}` : `${who} ${troops(f.troop, count)}`;
   }
@@ -382,9 +384,9 @@ export class BattleController implements Screen {
     return this.named(id) ? phrase.replace(/^(\w+)/, '$1s') : phrase;
   }
 
-  /** "their Trolls" mid-sentence, but "Mother Mirrow" keeps her capital. */
+  /** "their Trolls" and "the Sergeant" mid-sentence, but "Mother Mirrow" keeps her capital. */
   private objectName(id: number) {
-    return this.fighterName(id).replace(/^(Your|Their) /, (m) => m.toLowerCase());
+    return this.fighterName(id).replace(/^(Your|Their|The) /, (m) => m.toLowerCase());
   }
 
   /** Who casts from a book: Aldric (no `by`), or the villain. */
@@ -603,36 +605,6 @@ export class BattleController implements Screen {
       end: () => {
         if (!shout) v.shots.splice(v.shots.indexOf(glow), 1);
         v.poses.delete(caster.id);
-      },
-    });
-  }
-
-  /** A stack called to the field marches in from its side's edge. */
-  private marchIn(e: Extract<BattleEvent, { type: 'summon' }>) {
-    const v = this.view;
-    const f = fighterById(this.battle, e.fighter);
-    const [x, y] = hexCentre(f.at);
-    const edge = f.side === 'player' ? MAP_VIEW.x + 8 : MAP_VIEW.x + MAP_VIEW.width - 8;
-    const frames = !!ART[f.troop].move;
-    const length = 0.25 + Math.abs(edge - x) / 160;
-    v.hidden.add(f.id);
-    this.step(length, {
-      start: () => {
-        v.hidden.delete(f.id);
-        v.facings.set(f.id, this.facingOf(f));
-        play('march');
-        v.log = `${this.fighterName(f.id, f.count)} march in from the edge of the field!`;
-      },
-      tick: (t) => {
-        const hop = frames ? 0 : Math.abs(Math.sin(t * Math.PI * 4)) * 3;
-        v.positions.set(f.id, [edge + (x - edge) * t, y - hop]);
-        v.poses.set(f.id, frames ? { anim: 'move', ms: t * length * 1000 } : { anim: 'stand', ms: 0 });
-      },
-      end: () => {
-        v.positions.delete(f.id);
-        v.poses.delete(f.id);
-        v.facings.delete(f.id);
-        this.float(f.id, `+${f.count}`, f.side === 'player' ? GOLD[6] : RED[5]);
       },
     });
   }
@@ -1194,7 +1166,8 @@ export class BattleController implements Screen {
           break;
         }
         case 'jeer': {
-          const jeer = JEERS[(e.target + this.battle.round) % JEERS.length];
+          const said = fighterById(this.battle, e.fighter).side === 'player' ? JEERS : HECKLES;
+          const jeer = said[(e.target + this.battle.round) % said.length];
           this.flourish(e.fighter, 'cast', () => {
             play('jeer');
             this.float(e.fighter, jeer, NEUTRAL[7]);
@@ -1218,7 +1191,8 @@ export class BattleController implements Screen {
           });
           this.flourish(e.fighter, 'idle', () => {
             play(status.luck ? 'luckySong' : 'song');
-            v.log = `${this.fighterName(e.fighter)} strikes up ${status.song}, and ${status.luck ? 'your stacks feel lucky' : 'your stacks take heart'}.`;
+            const whose = fighterById(this.battle, e.fighter).side === 'player' ? 'your' : 'their';
+            v.log = `${this.fighterName(e.fighter)} strikes up ${status.song}, and ${whose} stacks ${status.luck ? 'feel lucky' : 'take heart'}.`;
           });
           this.step(0.9, {
             start: () => {
@@ -1238,10 +1212,6 @@ export class BattleController implements Screen {
           // An order: he bellows it, and the shots that follow are his men's.
           if (e.spell) this.cast(e.spell, before, e.by);
           else this.step(0.3, { start: () => (v.log = 'From the treeline, your archers loose a volley before anyone moves!') });
-          break;
-        case 'summon':
-          this.cast(e.spell, before, e.by);
-          this.marchIn(e);
           break;
         case 'skip': {
           const status = STATUSES[e.status];
@@ -1277,7 +1247,7 @@ export class BattleController implements Screen {
             start: () => {
               const [title, line] =
                 e.result === 'won' ? ['VICTORY', end?.leader ?? (e.rout ? 'The rest of them run for it' : 'The field is yours')] : e.result === 'lost' ? ['DEFEAT', end?.leader ?? 'Your army breaks and scatters'] : ['RETREAT', 'You live to fight another day'];
-              v.banner = { sprite: paintBanner(title, line), age: 0, life: 2.2 };
+              v.banner = { sprite: paintBanner(title, capital(line)), age: 0, life: 2.2 };
               v.log = end
                 ? `${end.army}, and ${end.leader}.`
                 : e.rout
@@ -1550,7 +1520,7 @@ export class BattleController implements Screen {
     v.inspect = leader ? leader.id : hex === null ? null : (this.battle.fighters.find((f) => onField(f) && f.at === hex)?.id ?? null);
     const under = v.inspect === null ? null : fighterById(this.battle, v.inspect);
     const aim = this.aimAt(intent);
-    v.preview = aim ? aim.line : under?.book ? this.bookLine(under.id) : under ? this.spiritsLine(under.id) : null;
+    v.preview = aim ? aim.line : under?.book || under?.level ? this.leaderLine(under.id) : under ? this.spiritsLine(under.id) : null;
     v.lit = aim?.lit ?? UNLIT;
     const pointer = this.pointerFor(intent, aim, hex !== null || leader !== null, x, y);
     this.setCursor(pointer.css, pointer.name);
@@ -1646,12 +1616,22 @@ export class BattleController implements Screen {
     return `${this.fighterName(id)}: ${shares.join(', ')}${why ? ` (${why})` : ''}.`;
   }
 
-  /** A villain's spells and orders, for when you look him over. */
-  private bookLine(id: number) {
-    const book = fighterById(this.battle, id).book!;
-    const spells = book.spells.map((s) => SPELLS[s].name);
-    const orders = (book.charges ?? []).filter((c) => c.uses > 0).map((c) => `${SPELLS[c.spell].shout?.words ?? SPELLS[c.spell].name}${c.uses > 1 ? ` x${c.uses}` : ''}`);
-    return `${this.fighterName(id)}: ${[spells.length ? `spells ${spells.join(', ')} (${book.mana} mana)` : '', orders.length ? `orders ${orders.join(' ')}` : ''].filter(Boolean).join('; ')}`;
+  /**
+   * A villain's or an enemy hero's spells and orders, for when you look him over, and a hero's level and
+   * what it lends his men (#239): "The Sergeant, level V: +2 attack and +2 defence for his men. Orders Shield wall!"
+   */
+  private leaderLine(id: number) {
+    const f = fighterById(this.battle, id);
+    const book = f.book;
+    const spells = (book?.spells ?? []).map((s) => SPELLS[s].name);
+    const orders = (book?.charges ?? []).filter((c) => c.uses > 0 && c.spell in SPELLS).map((c) => `${SPELLS[c.spell].shout?.words ?? SPELLS[c.spell].name}${c.uses > 1 ? ` x${c.uses}` : ''}`);
+    // His mana is on the bar below while you look him over, so a hero's line leaves it out and fits the ribbon.
+    const magic = (mana: boolean) => [spells.length ? `spells ${spells.join(', ')}${mana ? ` (${book!.mana} mana)` : ''}` : '', orders.length ? `orders ${orders.join(' ')}` : ''].filter(Boolean).join('; ');
+    if (!f.level) return `${this.fighterName(id)}: ${magic(true)}`;
+    const { attack, defence } = heroHelp(f.level);
+    const lends = listed([attack ? `+${attack} attack` : '', defence ? `+${defence} defence` : ''].filter(Boolean));
+    const knows = magic(false);
+    return `${this.fighterName(id)}, level ${roman(f.level)}: ${lends ? `${lends} for his men` : 'nothing yet for his men'}.${knows ? ` ${capital(knows)}${/[.!?]$/.test(knows) ? '' : '.'}` : ''}`;
   }
 
   /**
@@ -1794,7 +1774,7 @@ export class BattleController implements Screen {
     if (intent && this.tag.text) return;
     const v = this.view;
     const under = v.inspect === null ? null : fighterById(this.battle, v.inspect);
-    const who = under ? (this.named(under.id) ? TROOPS[under.troop].name : this.fighterName(under.id, under.count)) : null;
+    const who = under ? (this.named(under.id) ? capital(TROOPS[under.troop].name) : this.fighterName(under.id, under.count)) : null;
     // Without the tag, the label says it all, and what a second tap does.
     const text = [intent?.kind === 'move' ? 'Move here.' : (v.preview ?? who), intent ? SECOND_TAP[intent.kind] : ''].filter(Boolean).join(' ');
     if (!text) return;
