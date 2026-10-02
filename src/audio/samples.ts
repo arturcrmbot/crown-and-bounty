@@ -9,11 +9,13 @@
 /** A pack's index: the rate its takes are stored at, and each effect's takes (where each starts, and how long it is, in the pack's samples). */
 export type SamplePack = { rate: number; effects: Record<string, { offset: number; length: number }[]> };
 
-/** The sounds of a fight, and those of the map, the cards and the hero screen. */
-export type PackId = 'battle' | 'map';
+/** The sounds of a fight; those of the map, the cards and the hero screen; and the land's own, under the music. */
+export type PackId = 'battle' | 'map' | 'land';
 
 const takes = new Map<string, AudioBuffer[]>();
 const loading = new Map<PackId, Promise<void>>();
+/** Loops asked for before their pack was in, each waiting to start once it is. */
+const waiting = new Map<string, (() => void)[]>();
 
 export const samplesReady = (id: string) => takes.has(id);
 
@@ -44,6 +46,8 @@ export function loadSamples(pack: PackId, base = import.meta.env.BASE_URL): Prom
             return buffer;
           }),
         );
+        for (const start of waiting.get(id) ?? []) start();
+        waiting.delete(id);
       }
     })().catch((e) => {
       loading.delete(pack);
@@ -67,4 +71,30 @@ export function playSample(ctx: BaseAudioContext, dest: AudioNode, at: number, i
   source.playbackRate.value = 2 ** ((semitones + (Math.random() * 2 - 1) * spread) / 12);
   source.connect(dest);
   source.start(at);
+}
+
+/**
+ * Plays one of an effect's takes round and round into `dest`, from a random point in it (so two
+ * places with the same water never run together), until the stop it returns is called. Asked for
+ * before its pack is in, it starts as soon as the pack is.
+ */
+export function loopSample(ctx: BaseAudioContext, dest: AudioNode, id: string): () => void {
+  let source: AudioBufferSourceNode | null = null;
+  let stopped = false;
+  const start = () => {
+    const list = takes.get(id);
+    if (stopped || !list?.length) return;
+    const buffer = list[Math.floor(Math.random() * list.length)];
+    source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+    source.connect(dest);
+    source.start(ctx.currentTime, Math.random() * buffer.duration);
+  };
+  if (takes.has(id)) start();
+  else waiting.set(id, [...(waiting.get(id) ?? []), start]);
+  return () => {
+    stopped = true;
+    source?.stop();
+  };
 }

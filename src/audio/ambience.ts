@@ -6,9 +6,16 @@
  * abbey, wind whistling over high ground, birds in the woods, frogs at the fen's pools, a creaking
  * mill and a pick in the mine. Each is louder the nearer it is and panned to its side. When the
  * day's riding is spent and night falls, the birds go quiet and the crickets and an owl come out.
+ *
+ * Since 2 Oct (#257) the land's sounds are recordings made by people, in the land's pack (cut by
+ * `scripts/sfx.py`, credited in `public/assets/CREDITS.md`): the water, the wind on the downs, the
+ * rain, the crickets and the fire go round and round, and the birds, the smithy, the mine, the mill,
+ * the butts and the abbey's bell come now and then. The faint wind under everything, the cuckoo, a
+ * drop in the brook, the villagers' talk and the brothers' chant are still made here.
  */
 import { audio, whenAwake } from './context';
 import { deepen, duck, type Duck } from './music';
+import { loopSample, playSample } from './samples';
 
 export type AmbienceId = 'heath' | 'fen' | 'fire';
 
@@ -161,155 +168,85 @@ function wind(ctx: BaseAudioContext, dest: AudioNode, cold: boolean): () => void
 
 // --- Layers: sounds that go on as long as you're near ----------------------------------------
 
-/** Running water: a rush of noise, and resonances wandering through it like a brook's babble. */
-function brook(ctx: BaseAudioContext, dest: AudioNode): () => void {
-  const source = noiseLoop(ctx, 3);
-  const rush = filter(ctx, 'bandpass', 1100, 0.5);
-  const rushGain = ctx.createGain();
-  rushGain.gain.value = 0.16;
-  source.connect(rush).connect(rushGain).connect(dest);
-  const lfos: OscillatorNode[] = [];
-  for (const [f, rate, depth] of [[700, 0.61, 260], [1250, 1.13, 380], [1900, 1.87, 500]] as const) {
-    const band = filter(ctx, 'bandpass', f, 9);
+/** A recording from the land's pack going round and round, at the level that sits it in the land's mix (`npm run listen -- ambience`). */
+const looped =
+  (id: string, level: number) =>
+  (ctx: BaseAudioContext, dest: AudioNode): (() => void) => {
     const g = ctx.createGain();
-    g.gain.value = 0.3;
-    source.connect(band).connect(g).connect(dest);
-    lfos.push(wobble(ctx, band.frequency, rate, depth));
-  }
-  return () => {
-    source.stop();
-    for (const l of lfos) l.stop();
+    g.gain.value = level;
+    g.connect(dest);
+    const stop = loopSample(ctx, g, id);
+    return () => {
+      stop();
+      g.disconnect();
+    };
   };
-}
 
-/** A waterfall: a deep, steady roar with spray on top. */
-function falls(ctx: BaseAudioContext, dest: AudioNode): () => void {
-  const source = noiseLoop(ctx, 5);
-  const roar = filter(ctx, 'lowpass', 900, 0.6);
-  const roarGain = ctx.createGain();
-  roarGain.gain.value = 0.55;
-  const spray = filter(ctx, 'highpass', 3200, 0.5);
-  const sprayGain = ctx.createGain();
-  sprayGain.gain.value = 0.05;
-  source.connect(roar).connect(roarGain).connect(dest);
-  source.connect(spray).connect(sprayGain).connect(dest);
-  const lfo = wobble(ctx, roarGain.gain, 0.23, 0.06);
-  return () => {
-    source.stop();
-    lfo.stop();
-  };
-}
-
-/** Wind over high ground: a narrow howl that wanders in pitch, and gusts. */
-function gale(ctx: BaseAudioContext, dest: AudioNode): () => void {
-  const source = noiseLoop(ctx, 4);
-  const howl = filter(ctx, 'bandpass', 720, 7);
-  const g = ctx.createGain();
-  g.gain.value = 0.5;
-  source.connect(howl).connect(g).connect(dest);
-  const pitch = wobble(ctx, howl.frequency, 0.11, 260);
-  const gusts = wobble(ctx, g.gain, 0.083, 0.35);
-  return () => {
-    source.stop();
-    pitch.stop();
-    gusts.stop();
-  };
-}
-
-/** A shower: a hiss of rain, and the patter of big drops close by. */
-function shower(ctx: BaseAudioContext, dest: AudioNode): () => void {
-  const source = noiseLoop(ctx, 3);
-  const hiss = filter(ctx, 'highpass', 2200, 0.5);
-  const hissGain = ctx.createGain();
-  hissGain.gain.value = 0.1;
-  const body = filter(ctx, 'bandpass', 900, 0.6);
-  const bodyGain = ctx.createGain();
-  bodyGain.gain.value = 0.085;
-  source.connect(hiss).connect(hissGain).connect(dest);
-  source.connect(body).connect(bodyGain).connect(dest);
-  const lfo = wobble(ctx, hissGain.gain, 0.17, 0.025);
-  return () => {
-    source.stop();
-    lfo.stop();
-  };
-}
-
-/** Crickets: two of them, high chirps in trills, a little apart. */
-function crickets(ctx: BaseAudioContext, dest: AudioNode): () => void {
-  const nodes: (OscillatorNode | AudioBufferSourceNode)[] = [];
-  for (const [f, trill, chirp, level, pan] of [[4400, 29, 1.25, 0.1, -0.4], [4750, 33, 0.9, 0.08, 0.45]] as const) {
-    const o = ctx.createOscillator();
-    o.frequency.value = f;
-    const t = ctx.createGain();
-    t.gain.value = 0.5;
-    const trillLfo = ctx.createOscillator();
-    trillLfo.type = 'square';
-    trillLfo.frequency.value = trill;
-    const td = ctx.createGain();
-    td.gain.value = 0.5;
-    trillLfo.connect(td).connect(t.gain);
-    const c = ctx.createGain();
-    c.gain.value = level / 2;
-    const chirpLfo = ctx.createOscillator();
-    chirpLfo.type = 'square';
-    chirpLfo.frequency.value = chirp;
-    const cd = ctx.createGain();
-    cd.gain.value = level / 2;
-    chirpLfo.connect(cd).connect(c.gain);
-    const p = ctx.createStereoPanner();
-    p.pan.value = pan;
-    o.connect(t).connect(c).connect(p).connect(dest);
-    for (const n of [o, trillLfo, chirpLfo]) {
-      n.start();
-      nodes.push(n);
-    }
-  }
-  return () => {
-    for (const n of nodes) n.stop();
-  };
-}
+/** Running water: a brook over stones (recorded by kurt). */
+const brook = looped('brook', 0.65);
+/** A waterfall: a deep, steady roar (kurt's too). */
+const falls = looped('falls', 0.63);
+/** Wind over high ground, gusting (recorded by Luke.RUSTLTD). */
+const gale = looped('gale', 0.49);
+/** A shower of rain (recorded by Ylmir). */
+const shower = looped('shower', 0.72);
+/** Crickets in the grass at night (recorded by FreethinkerAnon). */
+const crickets = looped('crickets', 0.28);
+/** A fire burning in the hearth at court, and in the camp at the feast (recorded for Battle for Wesnoth by Iris Morelle). */
+const fire = looped('fire', 0.42);
 
 // --- One-offs: a sound from a spot, now and then ---------------------------------------------
 
-/** A songbird: a few quick whistles sliding up or down. */
-function songbird(ctx: BaseAudioContext, dest: AudioNode, at: number) {
-  const notes = 2 + Math.floor(Math.random() * 4);
-  const base = rand(2600, 4200);
-  for (let i = 0; i < notes; i++) {
-    const t = at + i * rand(0.07, 0.13);
-    const o = ctx.createOscillator();
-    o.frequency.setValueAtTime(base * rand(0.9, 1.15), t);
-    o.frequency.exponentialRampToValueAtTime(base * (Math.random() < 0.5 ? 1.3 : 0.75), t + 0.06);
+/** A recording from the land's pack, once, at `level`, a little higher or lower each time. */
+const called =
+  (id: string, level: number, spread = 1) =>
+  (ctx: BaseAudioContext, dest: AudioNode, at: number) => {
     const g = ctx.createGain();
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(0.07, t + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
-    o.connect(g).connect(dest);
-    o.start(t);
-    o.stop(t + 0.1);
-  }
-}
+    g.gain.value = level;
+    g.connect(dest);
+    playSample(ctx, g, at, id, spread);
+  };
 
-/** A blackbird in the wood: a few fluty notes, lower and slower than the little birds. */
-function blackbird(ctx: BaseAudioContext, dest: AudioNode, at: number) {
-  let t = at;
-  const notes = 3 + Math.floor(Math.random() * 4);
-  for (let i = 0; i < notes; i++) {
-    const f = rand(1400, 2700);
-    const length = rand(0.07, 0.2);
-    const o = ctx.createOscillator();
-    o.frequency.setValueAtTime(f, t);
-    o.frequency.linearRampToValueAtTime(f * rand(0.85, 1.2), t + length);
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(0.06, t + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + length);
-    o.connect(g).connect(dest);
-    o.start(t);
-    o.stop(t + length + 0.02);
-    t += length + rand(0.02, 0.09);
-  }
-}
+/** A recording struck again and again: `blows` of them (a few, at random), `gap` seconds or so apart, the later ones a little softer. */
+const struck =
+  (id: string, level: number, blows: [number, number], gap: [number, number]) =>
+  (ctx: BaseAudioContext, dest: AudioNode, at: number) => {
+    const count = blows[0] + Math.floor(Math.random() * (blows[1] - blows[0] + 1));
+    let t = at;
+    for (let i = 0; i < count; i++) {
+      called(id, level * (i ? rand(0.7, 1) : 1), 0.5)(ctx, dest, t);
+      t += rand(gap[0], gap[1]);
+    }
+  };
+
+/** Songbirds in the woods (recorded for Battle for Wesnoth by Karol Nowak). */
+const songbird = called('songbird', 0.13);
+/** A blackbird in the wood, lower and slower than the little birds (recorded by Kinoton). */
+const blackbird = called('blackbird', 0.13);
+/** A woodpecker drumming on hollow wood (DjangoAltona). */
+const woodpecker = called('woodpecker', 0.09);
+/** A skylark over the open heath (Kinoton). */
+const skylark = called('skylark', 0.13, 0.5);
+/** A crow cawing (Jofae and nigelcoop). */
+const crow = called('crow', 0.13);
+/** A frog croaking (betterchinese). */
+const frog = called('frog', 0.06, 1.5);
+/** The smith at his anvil: a few ringing blows, then a rest (michorvath). */
+const anvil = struck('anvil', 0.32, [2, 5], [0.42, 0.55]);
+/** A pick at work in the mine: steady blows on stone (abstraktgeneriert). */
+const pick = struck('pick', 0.16, [2, 4], [0.7, 0.9]);
+/** The mill's sails turning, squeaking (felix.blume). */
+const creak = called('creak', 0.11);
+/** At the butts, an arrow into the straw (dleigh). */
+const arrow = called('arrow', 0.07);
+/** The abbey's bell, for the hours (kgeshev). */
+const chapelBell = struck('chapelBell', 0.36, [3, 5], [1.4, 1.4]);
+/** A tawny owl at night: "hoo... hu, hu-hu-hoooo" (Breviceps). */
+const owl = called('owl', 0.28, 0.5);
+/** A cockerel at first light (BenjaminNelan). */
+const cockerel = called('cockerel', 0.21, 0.5);
+/** A log settling in the fire, with a pop or two (forfie). */
+const crackle = called('crackle', 0.18);
 
 /** A cuckoo, deep in the trees: two soft notes, falling a third. */
 function cuckoo(ctx: BaseAudioContext, dest: AudioNode, at: number) {
@@ -323,100 +260,6 @@ function cuckoo(ctx: BaseAudioContext, dest: AudioNode, at: number) {
     o.connect(g).connect(dest);
     o.start(at + t);
     o.stop(at + t + 0.28);
-  }
-}
-
-/** A woodpecker drumming: a quick run of knocks on hollow wood. */
-function woodpecker(ctx: BaseAudioContext, dest: AudioNode, at: number) {
-  const knocks = 10 + Math.floor(Math.random() * 8);
-  const rate = rand(15, 20);
-  for (let i = 0; i < knocks; i++) {
-    const t = at + i / rate;
-    const o = ctx.createOscillator();
-    o.frequency.value = rand(900, 1000);
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.06 * (1 - i / knocks / 2), t);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.03);
-    o.connect(g).connect(dest);
-    o.start(t);
-    o.stop(t + 0.04);
-  }
-}
-
-/** A skylark over the open heath: a long, fast, high warble. */
-function skylark(ctx: BaseAudioContext, dest: AudioNode, at: number) {
-  const o = ctx.createOscillator();
-  const length = rand(1.2, 2.2);
-  let t = at;
-  o.frequency.setValueAtTime(rand(3000, 4000), t);
-  while (t < at + length) {
-    t += rand(0.03, 0.07);
-    o.frequency.linearRampToValueAtTime(rand(2800, 5000), t);
-  }
-  const g = ctx.createGain();
-  g.gain.setValueAtTime(0.0001, at);
-  g.gain.exponentialRampToValueAtTime(0.018, at + 0.2);
-  g.gain.setValueAtTime(0.018, at + length - 0.2);
-  g.gain.exponentialRampToValueAtTime(0.0001, at + length);
-  const flutter = wobble(ctx, g.gain, 23, 0.012);
-  o.connect(g).connect(dest);
-  o.start(at);
-  o.stop(at + length + 0.05);
-  flutter.stop(at + length + 0.05);
-}
-
-/** A crow: a harsh caw or two, falling. */
-function crow(ctx: BaseAudioContext, dest: AudioNode, at: number) {
-  const caws = 1 + Math.floor(Math.random() * 3);
-  const pitch = rand(520, 680);
-  for (let i = 0; i < caws; i++) {
-    const t = at + i * rand(0.32, 0.42);
-    const o = ctx.createOscillator();
-    o.type = 'sawtooth';
-    o.frequency.setValueAtTime(pitch, t);
-    o.frequency.exponentialRampToValueAtTime(pitch * 0.78, t + 0.26);
-    const rough = ctx.createGain();
-    rough.gain.value = 0.7;
-    const r = wobble(ctx, rough.gain, 70, 0.3);
-    const band = filter(ctx, 'bandpass', 1300, 1.8);
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(0.24, t + 0.03);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
-    o.connect(rough).connect(band).connect(g).connect(dest);
-    o.start(t);
-    o.stop(t + 0.3);
-    r.stop(t + 0.3);
-  }
-}
-
-/** A frog: a low croak, rattling. */
-function frog(ctx: BaseAudioContext, dest: AudioNode, at: number) {
-  const pitch = rand(110, 200);
-  const croaks = 1 + Math.floor(Math.random() * 3);
-  for (let i = 0; i < croaks; i++) {
-    const t = at + i * 0.22;
-    const o = ctx.createOscillator();
-    o.type = 'square';
-    o.frequency.setValueAtTime(pitch, t);
-    o.frequency.exponentialRampToValueAtTime(pitch * 0.8, t + 0.14);
-    const rattle = ctx.createOscillator();
-    rattle.frequency.value = 38;
-    const am = ctx.createGain();
-    am.gain.value = 0;
-    const depth = ctx.createGain();
-    depth.gain.value = 0.05;
-    rattle.connect(depth).connect(am.gain);
-    const band = filter(ctx, 'bandpass', pitch * 3);
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(1, t + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
-    o.connect(band).connect(am).connect(g).connect(dest);
-    for (const n of [o, rattle]) {
-      n.start(t);
-      n.stop(t + 0.2);
-    }
   }
 }
 
@@ -468,112 +311,6 @@ function chatter(ctx: BaseAudioContext, dest: AudioNode, at: number) {
   o.stop(t + 0.05);
 }
 
-/** The smith at his anvil: a few ringing blows, then a rest. */
-function anvil(ctx: BaseAudioContext, dest: AudioNode, at: number) {
-  const blows = 2 + Math.floor(Math.random() * 4);
-  const pitch = rand(1900, 2400);
-  for (let i = 0; i < blows; i++) {
-    const t = at + i * rand(0.42, 0.55);
-    for (const [ratio, level, ring] of [[1, 0.09, 0.5], [1.63, 0.055, 0.35], [2.41, 0.04, 0.2]] as const) {
-      const o = ctx.createOscillator();
-      o.frequency.value = pitch * ratio;
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(level, t);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + ring);
-      o.connect(g).connect(dest);
-      o.start(t);
-      o.stop(t + ring + 0.02);
-    }
-    thump(ctx, dest, t, 0.08);
-  }
-}
-
-/** A short knock of noise: the dull part of a blow. */
-function thump(ctx: BaseAudioContext, dest: AudioNode, at: number, level: number, frequency = 600) {
-  const source = ctx.createBufferSource();
-  source.buffer = noiseBuffer(ctx, 0.25);
-  const band = filter(ctx, 'bandpass', frequency, 1.2);
-  const g = ctx.createGain();
-  g.gain.setValueAtTime(level, at);
-  g.gain.exponentialRampToValueAtTime(0.0001, at + 0.07);
-  source.connect(band).connect(g).connect(dest);
-  source.start(at);
-  source.stop(at + 0.1);
-}
-
-/** A pick (or a peat spade) at work: steady blows on stone. */
-function pick(ctx: BaseAudioContext, dest: AudioNode, at: number) {
-  const blows = 2 + Math.floor(Math.random() * 3);
-  for (let i = 0; i < blows; i++) {
-    const t = at + i * rand(0.7, 0.9);
-    thump(ctx, dest, t, 0.25, 1800);
-    const o = ctx.createOscillator();
-    o.frequency.value = rand(700, 900);
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.05, t);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
-    o.connect(g).connect(dest);
-    o.start(t);
-    o.stop(t + 0.06);
-  }
-}
-
-/** A mill turning: a wooden creak, and water off the wheel. */
-function creak(ctx: BaseAudioContext, dest: AudioNode, at: number) {
-  const o = ctx.createOscillator();
-  o.type = 'sawtooth';
-  const f = rand(90, 140);
-  o.frequency.setValueAtTime(f, at);
-  o.frequency.linearRampToValueAtTime(f * rand(1.2, 1.5), at + 0.45);
-  const band = filter(ctx, 'bandpass', 420, 3);
-  const g = ctx.createGain();
-  g.gain.setValueAtTime(0.0001, at);
-  g.gain.exponentialRampToValueAtTime(0.12, at + 0.1);
-  g.gain.exponentialRampToValueAtTime(0.0001, at + 0.5);
-  const judder = wobble(ctx, g.gain, 31, 0.04);
-  o.connect(band).connect(g).connect(dest);
-  o.start(at);
-  o.stop(at + 0.55);
-  judder.stop(at + 0.55);
-  thump(ctx, dest, at + 0.5, 0.05, 1100);
-}
-
-/** At the butts: an arrow's hiss, and the thock as it goes into the straw. */
-function arrow(ctx: BaseAudioContext, dest: AudioNode, at: number) {
-  const source = ctx.createBufferSource();
-  source.buffer = noiseBuffer(ctx, 0.25);
-  const band = filter(ctx, 'bandpass', 2600, 2);
-  band.frequency.setValueAtTime(2600, at);
-  band.frequency.exponentialRampToValueAtTime(900, at + 0.2);
-  const g = ctx.createGain();
-  g.gain.setValueAtTime(0.0001, at);
-  g.gain.exponentialRampToValueAtTime(0.09, at + 0.08);
-  g.gain.exponentialRampToValueAtTime(0.0001, at + 0.2);
-  source.connect(band).connect(g).connect(dest);
-  source.start(at);
-  source.stop(at + 0.22);
-  thump(ctx, dest, at + 0.22, 0.4, 350);
-}
-
-/** The abbey's little bell, for the hours. */
-function chapelBell(ctx: BaseAudioContext, dest: AudioNode, at: number) {
-  const strokes = 3 + Math.floor(Math.random() * 3);
-  for (let i = 0; i < strokes; i++) {
-    const t = at + i * 1.4;
-    for (const [ratio, level, ring] of [[1, 0.1, 2.4], [2.4, 0.04, 1.3], [3.9, 0.025, 0.7], [0.5, 0.03, 2.8]] as const) {
-      const o = ctx.createOscillator();
-      o.frequency.value = 784 * ratio;
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(level, t + 0.01);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + ring);
-      o.connect(g).connect(dest);
-      o.start(t);
-      o.stop(t + ring + 0.05);
-    }
-  }
-}
-
 /** The brothers at their office: a slow line of plainchant, in the fen's own D Dorian, on "ah" and "oh". */
 function chant(ctx: BaseAudioContext, dest: AudioNode, at: number) {
   const lines = [
@@ -603,60 +340,6 @@ function chant(ctx: BaseAudioContext, dest: AudioNode, at: number) {
       o.stop(t + length + 0.1);
     }
     t += length;
-  }
-}
-
-/** A tawny owl: "hoo... hoo-hoo-hoooo". */
-function owl(ctx: BaseAudioContext, dest: AudioNode, at: number) {
-  for (const [t, length, f] of [[0, 0.45, 420], [1.1, 0.12, 400], [1.35, 0.14, 410], [1.6, 0.7, 395]] as const) {
-    const o = ctx.createOscillator();
-    o.frequency.setValueAtTime(f * 1.04, at + t);
-    o.frequency.exponentialRampToValueAtTime(f, at + t + length);
-    const vib = wobble(ctx, o.frequency, 9, f * 0.012);
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.0001, at + t);
-    g.gain.exponentialRampToValueAtTime(0.09, at + t + Math.min(0.08, length / 2));
-    g.gain.exponentialRampToValueAtTime(0.0001, at + t + length);
-    o.connect(g).connect(dest);
-    o.start(at + t);
-    o.stop(at + t + length + 0.05);
-    vib.stop(at + t + length + 0.05);
-  }
-}
-
-/** A cockerel at first light: "cock-a-doodle-doo". */
-function cockerel(ctx: BaseAudioContext, dest: AudioNode, at: number) {
-  const o = ctx.createOscillator();
-  o.type = 'sawtooth';
-  const band = filter(ctx, 'bandpass', 1600, 2.5);
-  const g = ctx.createGain();
-  g.gain.value = 0.0001;
-  o.connect(band).connect(g).connect(dest);
-  let t = at;
-  for (const [f, length] of [[520, 0.12], [700, 0.12], [760, 0.14], [650, 0.55]] as const) {
-    o.frequency.setValueAtTime(f, t);
-    if (length > 0.3) o.frequency.linearRampToValueAtTime(f * 0.8, t + length);
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(0.14, t + 0.03);
-    g.gain.setValueAtTime(0.12, t + length - 0.04);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + length);
-    t += length + 0.03;
-  }
-  o.start(at);
-  o.stop(t + 0.05);
-}
-
-/** A log settling in the fire: a few sharp pops. */
-function crackle(ctx: BaseAudioContext, dest: AudioNode, at: number) {
-  for (let i = 0; i < 3 + Math.floor(Math.random() * 5); i++) {
-    const t = at + Math.random() * 0.4;
-    const source = ctx.createBufferSource();
-    source.buffer = noiseBuffer(ctx, 0.25);
-    const high = filter(ctx, 'highpass', rand(1500, 4500));
-    const g = ctx.createGain();
-    g.gain.value = rand(0.05, 0.15);
-    source.connect(high).connect(g).connect(dest);
-    source.start(t, Math.random() * 0.2, 0.02);
   }
 }
 
@@ -828,7 +511,7 @@ function tick() {
       gain.gain.value = 0;
       gain.gain.setTargetAtTime(1, a.ctx.currentTime, 0.6);
       gain.connect(dipBus(a));
-      const stops = wanted === 'fire' ? [] : [wind(a.ctx, gain, wanted === 'fen')];
+      const stops = [wanted === 'fire' ? fire(a.ctx, gain) : wind(a.ctx, gain, wanted === 'fen')];
       current = { id: wanted, gain, stops, layers: scape ? startLayers(a.ctx, gain, scape) : null, scape };
       wasNight = false;
     }
@@ -838,7 +521,8 @@ function tick() {
   if (current.layers && wantedPlace) mix(a, wantedPlace);
   else if (current.id === 'heath' && Math.random() < 0.05 * (TICK / 0.2)) songbird(a.ctx, current.gain, t);
   else if (current.id === 'fen' && Math.random() < 0.06 * (TICK / 0.2)) frog(a.ctx, current.gain, t);
-  if (current.id === 'fire' && Math.random() < 0.12 * (TICK / 0.2)) crackle(a.ctx, current.gain, t);
+  // The fire crackles as it burns, and now and then a log settles in it.
+  if (current.id === 'fire' && Math.random() < 0.06 * (TICK / 0.2)) crackle(a.ctx, current.gain, t);
 }
 
 /**
@@ -865,5 +549,8 @@ const CALL_NAMES = new Map<OneOff, string>(Object.entries(AMBIENT_CALLS).map(([n
 
 /** And the layers that go on while you're near. */
 export const AMBIENT_LAYERS = { brook, falls, gale, crickets, shower };
-/** And the beds under a whole screen: the wind on the heath, and the fen's colder one. */
-export const AMBIENT_BEDS = { heath: (ctx: BaseAudioContext, dest: AudioNode) => wind(ctx, dest, false), fen: (ctx: BaseAudioContext, dest: AudioNode) => wind(ctx, dest, true) };
+/** And the beds under a whole screen: the wind on the heath, the fen's colder one, and the fire at court. */
+export const AMBIENT_BEDS = { heath: (ctx: BaseAudioContext, dest: AudioNode) => wind(ctx, dest, false), fen: (ctx: BaseAudioContext, dest: AudioNode) => wind(ctx, dest, true), fire };
+
+/** The recordings the land plays, which its pack must hold. */
+export const LAND_SAMPLES = ['brook', 'falls', 'gale', 'shower', 'crickets', 'fire', 'songbird', 'blackbird', 'woodpecker', 'skylark', 'crow', 'frog', 'anvil', 'pick', 'creak', 'arrow', 'chapelBell', 'owl', 'cockerel', 'crackle'];
