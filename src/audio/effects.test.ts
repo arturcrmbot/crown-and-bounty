@@ -3,9 +3,7 @@ import { TROOPS, type TroopId } from '../content/troops';
 import { UNIT_ART } from '../render/units';
 import { TROOP_SOUNDS } from './blows';
 import { EFFECTS } from './effects';
-import { playNote } from './instruments';
-import { midiOf } from './score';
-import { STINGS } from './stings';
+import { playSting, STINGS } from './stings';
 
 /**
  * A stand-in for Web Audio, as strict as a browser: an exponential ramp to nothing, a time before
@@ -109,7 +107,7 @@ describe('the sound effects', () => {
     for (const [id, sting] of Object.entries(STINGS)) {
       const faults: string[] = [];
       const ctx = fakeContext(faults);
-      for (const [instrument, at, note, length, volume] of sting.hits) playNote(ctx, ctx.createGain(), instrument, 0.05 + at, instrument === 'tabor' || instrument === 'rim' ? 0 : midiOf(note), length, volume);
+      playSting(ctx, ctx.createGain(), sting, 0.05);
       expect(faults, id).toEqual([]);
     }
   });

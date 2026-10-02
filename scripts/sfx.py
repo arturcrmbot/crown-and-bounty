@@ -338,6 +338,9 @@ def battle():
         'luck': [take(layer(wesnoth('magic-faeriefire.ogg')))],
         # One of your stacks is ready: a light knock on wood.
         'ready': each(lambda k: take(layer(kenney('impact', f'impactWood_light_00{k}'), HIT)), '012'),
+        # Into battle: a war horn calls three times (the sting). And the knights' charge: a horse breaking into a gallop, under the band's horn.
+        'sting:battle': [take(layer(wesnoth('horn-signals/horn-1.ogg')))],
+        'charge:gallop': [take(layer(freesound(165532), ('span', 0.6, 1.1)))],
     }
 
 

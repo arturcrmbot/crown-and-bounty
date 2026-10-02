@@ -38,8 +38,10 @@ export type Tune = {
   under?: number;
 };
 
-const drums = (map: Record<number, Drum>, volume: number): Voice => ({ drums: map, volume });
-const play = (instrument: Melodic, volume: number, more: { octave?: number } = {}): Voice => ({ instrument, volume, ...more });
+/** His drum notes played on our drums, at a volume. */
+export const drums = (map: Record<number, Drum>, volume: number): Voice => ({ drums: map, volume });
+/** His part played on one of our instruments, at a volume. */
+export const play = (instrument: Melodic, volume: number, more: { octave?: number } = {}): Voice => ({ instrument, volume, ...more });
 
 export const TUNES: Record<TuneId, Tune> = {
   // Aldmoor's: the isles' folk tune and a lilting three-time field, as Artur kept them on 2 Oct.
