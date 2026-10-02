@@ -16,6 +16,24 @@ const hits = (events: BattleEvent[]) => events.filter((e): e is Extract<BattleEv
 const texts = (tag: AimTag | null) => tag!.lines.map((l) => l.text);
 
 describe('the forecast by the pointer', () => {
+  it('says when set pikes take the charge out of a charge, and when shots glance off plate', () => {
+    const pikes = field([['knights', 20]], [['pikemen', 40]], { 0: hexIndex(2, 4), 1: hexIndex(6, 4) }, [0, 1], { charge: ['knights'] });
+    const action = { type: 'melee' as const, target: 1, from: hexIndex(5, 4) };
+    expect(forecastOf(pikes, action)!.charge).toBe(false);
+    const tag = aimTag(pikes, action)!;
+    expect(tag.title).toBe('Attack their pikemen');
+    expect(texts(tag)).toContain('Their pikes are set against a charge.');
+    expect(texts(tag).some((t) => t.startsWith('They strike first'))).toBe(true);
+    const plate = field([['archers', 30]], [['menAtArms', 20]], {}, [0, 1]);
+    expect(texts(aimTag(plate, { type: 'shoot', target: 1 }))).toContain('Half of it glances off their plate.');
+  });
+
+  it('says when your own cutpurses would backstab', () => {
+    // Your cutpurses (0) and knights (1) on their swordsmen (2): the knights are at them already.
+    const b = field([['cutpurses', 20], ['knights', 10]], [['swordsmen', 30]], { 0: hexIndex(4, 3), 1: hexIndex(5, 5), 2: hexIndex(5, 4) }, [0, 1, 2]);
+    expect(texts(aimTag(b, { type: 'melee', target: 2, from: hexIndex(4, 3) }))).toContain('One of yours is at them already, so it lands twice as hard.');
+  });
+
   it('reckons a blow as the rules would strike it, and their answer', () => {
     const b = field([['knights', 10]], [['swordsmen', 30]], { 0: hexIndex(5, 4), 1: hexIndex(6, 4) }, [0, 1]);
     const action = { type: 'melee' as const, target: 1, from: hexIndex(5, 4) };

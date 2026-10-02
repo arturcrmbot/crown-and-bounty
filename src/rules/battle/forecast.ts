@@ -21,6 +21,10 @@ export type Forecast = {
   caught: (Blow & { side: Side })[];
   /** A charge: nobody strikes back at it, and it winds the chargers. */
   charge: boolean;
+  /** Set pikes took the charge out of it; plate halved the shot; the blow is a backstab. */
+  braced?: boolean;
+  plate?: boolean;
+  backstab?: boolean;
 };
 
 /** What `action` would do, for a blow, a shot or a spell aimed at a stack: null for anything else, or anything the rules wouldn't allow. */
@@ -35,6 +39,9 @@ export function forecastOf(b: BattleState, action: BattleAction): Forecast | nul
     if (e.type === 'hit' && e.attacker === f.id && e.target === aimed.id) {
       forecast.target = { ...forecast.target, damage: e.damage, killed: e.killed };
       forecast.charge = Boolean(e.charge);
+      if (e.braced) forecast.braced = true;
+      if (e.plate) forecast.plate = true;
+      if (e.backstab) forecast.backstab = true;
     } else if (e.type === 'hit' && e.attacker === aimed.id && e.target === f.id) forecast[e.retaliation ? 'back' : 'first'] = { fighter: f.id, damage: e.damage, killed: e.killed };
     else if (e.type === 'spell' && e.target === aimed.id) forecast.target = { ...forecast.target, damage: e.damage, killed: e.killed, ...(e.healed !== undefined ? { healed: e.healed, raised: e.raised ?? 0 } : {}) };
     else if (e.type === 'spell') forecast.caught.push({ fighter: e.target, damage: e.damage, killed: e.killed, side: fighterById(b, e.target).side });
@@ -114,6 +121,9 @@ export function aimTag(b: BattleState, action: BattleAction): AimTag | null {
   const ranged = action.type === 'shoot';
   const title = ranged ? `Shoot ${whose(aimed)}` : forecast.charge ? `Charge ${whose(aimed)}!` : `Attack ${whose(aimed)}`;
   const lines: TagLine[] = [{ text: `About ${damage} damage ${kills(killed, count, aimed)}.` }];
+  if (forecast.plate) lines.push({ text: 'Half of it glances off their plate.' });
+  if (forecast.backstab) lines.push({ text: 'One of yours is at them already, so it lands twice as hard.' });
+  if (forecast.braced) lines.push({ text: 'Their pikes are set against a charge.' });
   if (forecast.first) lines.push(answer('strike first', forecast.first, f));
   if (!ranged) {
     const back = forecast.back ? answer('strike back', forecast.back, f) : noAnswer(f, aimed, forecast);
