@@ -769,8 +769,9 @@ export class BattleController implements Screen {
         }
         if (e.lucky) this.float(e.attacker, 'Lucky!', GOLD[5], from);
         this.pop(e.target, e.killed, e.damage);
-        const fell = !e.killed ? '.' : `. ${perish(e.killed)}.`;
-        v.log = `${blow} for ${e.damage}${fell}${e.lucky ? ' A lucky blow!' : ''}${e.status ? ` ${STATUSES[e.status].onHit ?? ''}` : ''}`;
+        // Said as a spell's line is: "for 156 damage, and 7 perish."
+        const fell = e.killed ? `, and ${perish(e.killed)}` : '';
+        v.log = `${blow} for ${e.damage} damage${fell}.${e.lucky ? ' A lucky blow!' : ''}${e.status ? ` ${STATUSES[e.status].onHit ?? ''}` : ''}`;
       },
       tick: (t) => {
         swing(hit);

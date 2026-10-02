@@ -1188,7 +1188,7 @@ export class BattleScreen {
       const share = (x: number) => `${x > 0 ? '+' : '\u2212'}${Math.round(Math.abs(x) * 100)}%`;
       const [luck, morale] = [luckOf(b, f), moraleOf(b, f)];
       const spirits = [Math.round(luck * 100) ? `Luck ${share(luck)}` : '', Math.round(morale * 100) ? `Morale ${share(morale)}` : ''];
-      const named = [...spirits, ...abilitiesOf(f.troop).map((a) => a.name), ...f.status.filter((s) => s !== 'hasted').map((s) => STATUSES[s].name), f.defending ? 'Defending' : ''].filter(Boolean);
+      const named = [...spirits, ...abilitiesOf(f.troop).map((a) => a.name), ...f.status.map((s) => STATUSES[s].name), f.defending ? 'Defending' : ''].filter(Boolean);
       const tagged = (list: string[]) => list.map((tag) => ` ${tag}`).join('');
       const tags = tagged(named);
       const { attack, defence } = statsOf(b, f);

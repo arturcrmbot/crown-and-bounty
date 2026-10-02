@@ -132,7 +132,7 @@ export const BACKGROUNDS: Record<BackgroundId, Background> = {
     spells: ['bless'],
     signature: {
       name: 'Banner of the Realm',
-      note: 'Knights get +1 attack and +1 defence, and they charge, as Sir Aldric does himself. After a run-up of 3 hexes or more, started clear of the enemy, they hit a quarter harder and nobody can strike back. The charge winds them, though, so they can\u2019t strike back themselves for the rest of that round and the next.',
+      note: 'Your knights get +1 attack and +1 defence, and they charge, as you do yourself. After a run-up of 3 hexes or more, started clear of the enemy, they hit a quarter harder and nobody can strike back. The charge winds them, though, so they can\u2019t strike back themselves for the rest of that round and the next.',
       bonus: { troops: { knights: { attack: 1, defence: 1 } }, charge: ['knights', 'heroKnight'] },
     },
     growth: { attack: 4, defence: 4, spellPower: 1, knowledge: 1 },
@@ -150,7 +150,7 @@ export const BACKGROUNDS: Record<BackgroundId, Background> = {
     gold: 1250,
     army: [{ troop: 'knights', count: 8 }, { troop: 'archers', count: 22 }],
     spells: ['bolt', 'bless', 'slow', 'haste'],
-    signature: { name: 'Hedge Magic', note: 'Every spell costs 2 less mana, he can cast two spells a round, and on the map he knows Far Sight.', bonus: { manaDiscount: 2, casts: 1, mapSpells: ['farsight'] } },
+    signature: { name: 'Hedge Magic', note: 'Every spell costs 2 less mana, you can cast two spells a round, and on the map you know Far Sight.', bonus: { manaDiscount: 2, casts: 1, mapSpells: ['farsight'] } },
     growth: { attack: 1, defence: 1, spellPower: 4, knowledge: 3 },
     favours: ['sorcery', 'mysticism', 'scouting'],
   },
@@ -168,7 +168,7 @@ export const BACKGROUNDS: Record<BackgroundId, Background> = {
     spells: ['slow'],
     signature: {
       name: 'Pathfinder',
-      note: 'He rides through the woods, where nothing on the map can follow him. He gets +30 movement a day and sees further, and his scouts count every enemy exactly. His archers get +1 attack and +4 shots, and loose a free volley before every battle, except at a villain\u2019s walls. Beasts follow him instead of fighting, the more of them the stronger his army is than theirs, and the rest attack. Beasts draw no wages and need no leadership.',
+      note: 'You ride through the woods, where nothing on the map can follow you. You get +30 movement a day and see further, and your scouts count every enemy exactly. Your archers get +1 attack and +4 shots, and loose a free volley before every battle, except at a villain\u2019s walls. Beasts follow you instead of fighting, the more of them the stronger your army is than theirs, and the rest attack. Beasts draw no wages and need no leadership.',
       bonus: { movement: 30, sight: 50, counts: true, troops: { archers: { attack: 1, shots: 4 } }, volley: true, forestWalk: true, tames: true },
     },
     growth: { attack: 3, defence: 2, spellPower: 1, knowledge: 1 },
@@ -188,7 +188,7 @@ export const BACKGROUNDS: Record<BackgroundId, Background> = {
     spells: ['bless', 'slow'],
     signature: {
       name: 'Silver Tongue',
-      note: 'Recruits cost a fifth less, every payday brings 250 more gold, bribes cost half, and small bands will take his coin and join him.',
+      note: 'Recruits cost a fifth less, every payday brings 250 more gold, bribes cost half, and small bands will take your coin and join you.',
       bonus: { recruitPrice: -0.2, payday: 250, bribes: 0.5, hires: true },
     },
     growth: { attack: 2, defence: 2, spellPower: 2, knowledge: 2 },

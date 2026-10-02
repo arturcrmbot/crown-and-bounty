@@ -2,10 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { ALDMOOR } from '../content/aldmoor';
 import type { BackgroundId } from '../content/backgrounds';
 import { FENMARCH } from '../content/fenmarch';
-import { RANKS, SKILLS, type SkillId } from '../content/skills';
+import { RANKS, SKILLS, type HigherRank, type SkillId } from '../content/skills';
 import { createBattle, statsOf } from './battle/battle';
 import { apply, battleXp, describe as about, endDay, fightingPower, heroInBattle, heroStats, levelUpCard, locationById, nextArmy, visit, winChance, type Card, type GameState, type Result } from './game';
 import { gainXp, giveArtifact, LEVELS } from './hero';
+import { heroSheet } from './heroSheet';
 import { mapOf } from './map/maps';
 import { Terrain } from './map/model';
 import { costsFor, planRoute, stepAlong } from './map/movement';
@@ -42,8 +43,25 @@ describe('skills', () => {
   it('offer the next rank on a level-up, in words', () => {
     const s = { ...skilled({ archery: 1 }), hero: { ...skilled({ archery: 1 }).hero, offers: [{ level: 2, stat: 'attack' as const, options: ['skill:archery', 'skill:diplomacy', 'perk:warchest'] }] } };
     const choices = levelUpCard(s)!.choices;
-    expect(choices).toContainEqual(expect.objectContaining({ label: 'Advanced Archery', detail: SKILLS.archery.ranks[1].note }));
+    expect(choices).toContainEqual(expect.objectContaining({ label: 'Advanced Archery', detail: SKILLS.archery.ranks[1].adds }));
     expect(choices).toContainEqual(expect.objectContaining({ label: 'Basic Diplomacy', detail: SKILLS.diplomacy.ranks[0].note }));
+  });
+
+  it('say on a level-up what Advanced and Expert add to the rank before, and on the hero screen what they do in all (#226)', () => {
+    for (const skill of Object.values(SKILLS)) {
+      for (const rank of skill.ranks.slice(1) as HigherRank[]) {
+        expect(rank.adds).toMatch(/another|\bmore\b/);
+        expect(rank.adds).not.toBe(rank.note);
+      }
+    }
+    // A wizard with Advanced Sorcery has +2 spell power and his spells a mana cheaper already: Expert adds one more, and no discount.
+    const wizard = skilled({ sorcery: 2 }, 'wizard');
+    const offered = { ...wizard, hero: { ...wizard.hero, offers: [{ level: 9, stat: 'knowledge' as const, options: ['skill:sorcery', 'skill:archery', 'perk:warchest'] }] } };
+    const expert = levelUpCard(offered)!.choices[0].detail!;
+    expect(expert).toContain('another +1 spell power, +3 in all');
+    expect(expert).not.toContain('mana less');
+    expect(heroStats({ ...wizard, hero: { ...wizard.hero, skills: { sorcery: 3 } } }).spellPower).toBe(heroStats(wizard).spellPower + 1);
+    expect(heroSheet(offered).skills).toEqual([{ name: 'Advanced Sorcery', note: SKILLS.sorcery.ranks[1].note }]);
   });
 
   it('still count for heroes saved with the old nine', () => {
