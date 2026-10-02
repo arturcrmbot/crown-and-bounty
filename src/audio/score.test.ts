@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { RANGES, type Melodic } from './band';
 import { readMidi } from './midi';
-import { fold, gateLevel, lapsOf, lengthOf, midiOf, moodLevel, notesOf, TRACKS, TUNES, TURN, type TrackId, type TuneId } from './score';
+import { arrange, fold, laneLevel, lapsOf, lengthOf, midiOf, notesOf, TRACKS, TUNES, TURN, whereIn, type TrackId, type TuneId } from './score';
 
 const FILES = import.meta.glob<string>('../../public/assets/music/*.mid', { query: '?inline', import: 'default', eager: true });
 /** One of Yubatake's files, as the game reads it. */
@@ -42,23 +42,35 @@ describe('the music', () => {
     for (const t of Object.values(TRACKS)) expect(t.tunes.length, t.id).toBeGreaterThan(0);
   });
 
-  it('a map turns through several tunes, and takes many minutes to come round again', () => {
+  it('a map has two tunes that take turns, and each plays for minutes before the other', () => {
     for (const id of MAPS) {
       const t = TRACKS[id];
-      expect(new Set(t.tunes).size, id).toBeGreaterThanOrEqual(4);
-      const minutes = t.tunes.reduce((sum, tune) => {
+      expect(new Set(t.tunes).size, id).toBe(2);
+      expect(t.resumes, id).toBe(true);
+      for (const tune of t.tunes) {
         const seconds = lengthOf(TUNES[tune], tuneFile(tune));
-        return sum + seconds * lapsOf(seconds);
-      }, 0) / 60;
-      expect(minutes, id).toBeGreaterThan(6);
+        expect(seconds * lapsOf(seconds), `${id} ${tune}`).toBeGreaterThanOrEqual(TURN);
+      }
     }
+    // A battle plays its one tune, and picks up nowhere: it begins on the downbeat after the sting.
+    expect(TRACKS.battle.tunes).toEqual(['theRide']);
+    expect(TRACKS.battle.resumes).toBeUndefined();
   });
 
-  it('a short tune plays through twice (or more) before the next one has its turn', () => {
-    expect(lapsOf(150)).toBe(1);
-    expect(lapsOf(TURN)).toBe(1);
-    expect(lapsOf(60)).toBe(2);
-    expect(lapsOf(20)).toBe(5);
+  it('a tune plays through twice (or more) before the next one has its turn', () => {
+    expect(lapsOf(400)).toBe(2);
+    expect(lapsOf(TURN)).toBe(2);
+    expect(lapsOf(121)).toBe(2);
+    expect(lapsOf(60)).toBe(4);
+    expect(lapsOf(24)).toBe(10);
+  });
+
+  it('a map picks up where it was', () => {
+    expect(whereIn(100, 60, 100)).toEqual({ lap: 0, offset: 0 });
+    expect(whereIn(100, 60, 130)).toEqual({ lap: 0, offset: 30 });
+    expect(whereIn(100, 60, 175)).toEqual({ lap: 1, offset: 15 });
+    // Before it began: the top.
+    expect(whereIn(100, 60, 90)).toEqual({ lap: 0, offset: 0 });
   });
 
   it('a note out of an instrument\'s keys moves by octaves into them', () => {
@@ -68,45 +80,24 @@ describe('the music', () => {
     expect(fold(70, RANGES.flute)).toBe(70);
   });
 
-  it("a villain's lair plays his theme sparer, brought up to the mark, and his whole band in his battle", () => {
-    const [calm, fight] = [{ intensity: 0, balance: 0 }, { intensity: 0.25, balance: 0 }];
-    for (const t of Object.values(TRACKS)) {
-      if (t.calm === undefined) {
-        expect(moodLevel(t, calm), t.id).toBe(1);
-        continue;
-      }
-      // Some of his band waits for the fight.
-      const voices = t.tunes.flatMap((id) => Object.values(TUNES[id].parts).flat());
-      expect(voices.some((v) => v.gate?.from !== undefined && v.gate.from <= 0.25), t.id).toBe(true);
-      expect(moodLevel(t, calm), t.id).toBe(t.calm);
-      expect(moodLevel(t, fight), t.id).toBe(1);
+  it('The Ride swells and fades as yubatake wrote it, each player through a lane of his own', () => {
+    const { notes, lanes } = arrange(TUNES.theRide, tuneFile('theRide'));
+    expect(lanes.length).toBe(8);
+    for (const lane of lanes) {
+      expect(lane.length).toBeGreaterThan(100);
+      for (const [at, level] of lane) expect(at >= 0 && level >= 0 && level <= 1.7, `${at} ${level}`).toBe(true);
     }
+    // Every note plays through a lane, on the quartet's own instruments.
+    for (const n of notes) expect(n.lane !== undefined && n.lane < lanes.length).toBe(true);
+    expect(new Set(notes.map((n) => n.instrument))).toEqual(new Set(['violin', 'viola', 'cello']));
+    // Before a part's first change it plays at General MIDI's own level; after, at its last.
+    expect(laneLevel([[1, 0.5], [2, 0.8]], 0.5)).toBe(1);
+    expect(laneLevel([[1, 0.5], [2, 0.8]], 1.5)).toBe(0.5);
+    expect(laneLevel([[1, 0.5], [2, 0.8]], 9)).toBe(0.8);
   });
 
-  it('a battle builds, and turns with the fight', () => {
-    const notes = notesOf(TUNES.battle, tuneFile('battle'));
-    const playing = (mood: { intensity: number; balance: number }) => new Set(notes.filter((n) => gateLevel(n.gate, mood) > 0.5).map((n) => n.instrument));
-    const start = playing({ intensity: 0.25, balance: 0 });
-    expect(start.has('horn') && !start.has('snare')).toBe(true);
-    expect(playing({ intensity: 0.8, balance: 0 }).has('snare')).toBe(true);
-    expect(playing({ intensity: 0.8, balance: 0.6 }).has('glockenspiel')).toBe(true);
-    const losing = playing({ intensity: 0.8, balance: -0.6 });
-    expect(losing.has('oboe') && !losing.has('horn')).toBe(true);
-  });
-
-  it('parts come and go with the mood', () => {
-    const map = { intensity: 0, balance: 0 };
-    const fight = { intensity: 0.8, balance: 0 };
-    expect(gateLevel(undefined, map)).toBe(1);
-    expect(gateLevel({ from: 0.55 }, map)).toBe(0);
-    expect(gateLevel({ from: 0.55 }, fight)).toBe(1);
-    expect(gateLevel({ below: 0.2 }, map)).toBe(1);
-    expect(gateLevel({ below: 0.2 }, fight)).toBe(0);
-    expect(gateLevel({ mood: 'win' }, { intensity: 0.5, balance: 0.5 })).toBe(1);
-    expect(gateLevel({ mood: 'win' }, { intensity: 0.5, balance: 0 })).toBe(0);
-    expect(gateLevel({ mood: 'lose' }, { intensity: 0.5, balance: -0.5 })).toBe(1);
-    expect(gateLevel({ mood: 'steady' }, { intensity: 0.5, balance: -0.5 })).toBe(0);
-    expect(gateLevel({ mood: 'steady' }, { intensity: 0.5, balance: 0.1 })).toBe(1);
+  it('no other tune has lanes, so it plays as it always has', () => {
+    for (const id of Object.keys(TUNES) as TuneId[]) if (id !== 'theRide') expect(arrange(TUNES[id], tuneFile(id)).lanes, id).toEqual([]);
   });
 
   it('reads note names, for the stings', () => {

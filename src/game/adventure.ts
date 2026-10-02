@@ -23,7 +23,7 @@ import { play, playStep, type Sound } from '../ui/sound';
 import { sting } from '../audio/stings';
 import type { Place, Soundscape } from '../audio/ambience';
 import { soundscapeOf } from './soundscape';
-import { lairTune, provinceTune } from './tunes';
+import { provinceTune } from './tunes';
 import { skyOf, weatherOf } from './skies';
 import type { TrackId } from '../audio/score';
 import { HoverLabel } from '../ui/label';
@@ -269,11 +269,11 @@ export class AdventureController implements Screen {
   }
 
   /**
-   * The province's own tunes, taking turns; and a villain's theme near his lair. A castle's or a
-   * village's card leaves the music as it is: it changes only between the map and a battle.
+   * The province's own two tunes, taking turns. A castle's or a village's card leaves the music as it
+   * is, and so does riding near a villain's lair: it changes only between the map and a battle (#257).
    */
   get music(): TrackId {
-    return lairTune(this.state, [this.drawn.x, this.drawn.y]) ?? provinceTune(this.state.campaign.chapter, Boolean(this.map.province.fen));
+    return provinceTune(this.state.campaign.chapter, Boolean(this.map.province.fen));
   }
 
   get ambience() {

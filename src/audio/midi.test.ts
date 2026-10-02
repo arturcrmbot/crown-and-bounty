@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readMidi } from './midi';
+import { levelOf, readMidi } from './midi';
 
 /** A variable-length quantity, as MIDI writes delta times. */
 function vlq(n: number): number[] {
@@ -29,6 +29,20 @@ describe('reading a MIDI file', () => {
     expect(second.velocity).toBe(80);
     // One bar of three beats: two at 120 and one at 60.
     expect(midi.seconds).toBeCloseTo(2);
+  });
+
+  it('reads how a part swells and fades, from its volume and expression', () => {
+    // Volume 100 and expression 127 (General MIDI's own level), then expression half way, then volume up.
+    const lead = [0, ...name('Lead'), 0, 0xb0, 7, 100, 0, 0xb0, 11, 127, 0, 0x90, 60, 100, ...vlq(96), 0xb0, 11, 64, 0, 0x80, 60, 0, ...vlq(96), 0xb0, 7, 127, 0, 0xff, 0x2f, 0];
+    const bytes = new Uint8Array([...chunk('MThd', [0, 1, 0, 1, 0, 96]), ...chunk('MTrk', lead)]);
+    const [part] = readMidi(bytes).parts;
+    // Two changes at the very start leave one level there.
+    expect(part.expression?.map(([at]) => at)).toEqual([0, 0.5, 1]);
+    const [first, second, third] = part.expression!.map(([, level]) => level);
+    expect(first).toBeCloseTo(levelOf(100, 127));
+    expect(first).toBeCloseTo(1);
+    expect(second).toBeCloseTo((64 / 127) ** 2);
+    expect(third).toBeCloseTo((127 / 100) ** 2 * (64 / 127) ** 2);
   });
 
   it('refuses what is not a MIDI file', () => {

@@ -70,30 +70,26 @@ device, Android phones included, which have no Palatino of their own.
 
 The music is yubatake's: tunes from the
 [JRPG Collection](https://opengameart.org/content/jrpg-collection), the
-[JRPG Collection 2](https://opengameart.org/content/jrpg-collection-2) and
-[Northern Isles](https://opengameart.org/content/northern-isles), on OpenGameArt. Thank you to them.
+[JRPG Collection 2](https://opengameart.org/content/jrpg-collection-2),
+[Northern Isles](https://opengameart.org/content/northern-isles) and
+[The Ride](https://opengameart.org/content/the-ride), on OpenGameArt. Thank you to them.
 
 - **Licence.** [Creative Commons BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 - **Unchanged files.** The MIDI files are kept exactly as they come in each page's download, in
   `public/assets/music/`.
 - **Changes, made in code as the game plays them** (`src/audio/score.ts`): we chose a General MIDI
   instrument for each of his parts, and how loud it plays; some notes move by octaves into their
-  instrument's range; some parts play only in a battle, or as it heats up, or while you're winning or
-  losing; each tune is set to a common loudness; and the band plays in a small room's echo.
+  instrument's range; each tune is set to a common loudness; and the band plays in a small room's echo.
 
 | File | Tune | From | Licence | Plays |
 | --- | --- | --- | --- | --- |
 | `JRPG_mainTheme.mid` | Main Theme | JRPG Collection | CC BY 4.0 | the title |
+| `NorthernIsles.mid` | Northern Isles | Northern Isles | CC BY 4.0 | Aldmoor, the Fenmarch, and two later lands |
 | `JRPG_fields.mid` | Fields | JRPG Collection | CC BY 4.0 | Aldmoor, and two later lands |
-| `JRPG_town.mid` | Town | JRPG Collection | CC BY 4.0 | Aldmoor, and two later lands |
-| `JRPG_mysticIsle.mid` | Mystic Isle | JRPG Collection 2 | CC BY 4.0 | the Fenmarch, and a later land |
-| `NorthernIsles.mid` | Northern Isles | Northern Isles | CC BY 4.0 | Aldmoor, the Fenmarch, and three later lands |
-| `JRPG_docks.mid` | Docks | JRPG Collection 2 | CC BY 4.0 | Aldmoor, the Fenmarch, and two later lands |
-| `JRPG_temple.mid` | Temple | JRPG Collection | CC BY 4.0 | Aldmoor, the Fenmarch, and two later lands |
-| `JRPG_battle.mid` | Battle | JRPG Collection | CC BY 4.0 | battles |
-| `JRPG_battleBoss.mid` | Boss Battle | JRPG Collection 2 | CC BY 4.0 | Baron Grimsby, by his lair and in his battle |
-| `JRPG_labyrinth.mid` | Labyrinth | JRPG Collection | CC BY 4.0 | Aldmoor, and Mother Mirrow, by her lair and in her battle |
-| `JRPG_dungeon.mid` | Dungeon | JRPG Collection | CC BY 4.0 | Aunt Bramble, by her lair and in her battle |
+| `JRPG_mysticIsle.mid` | Mystic Isle | JRPG Collection 2 | CC BY 4.0 | the Fenmarch, and two later lands |
+| `TheRide.mid` | The Ride | The Ride | CC BY 4.0 | battles, on violins, viola and cello |
+| `JRPG_battleBoss.mid` | Boss Battle | JRPG Collection 2 | CC BY 4.0 | Baron Grimsby's battle |
+| `JRPG_dungeon.mid` | Dungeon | JRPG Collection | CC BY 4.0 | Mother Mirrow's and Aunt Bramble's battles |
 
 ## The court's music: the Mutopia Project
 
@@ -117,10 +113,10 @@ v2.0.3, S. Christian Collins's General MIDI SoundFont, taken from
 
 - **Licence.** GeneralUser GS License v2.0, which lets software use it and change it:
   `public/assets/music/GeneralUser-GS-LICENSE.txt`.
-- **Changes** (`scripts/soundfont.py`): cut down to the twelve instruments and eight drums the music
+- **Changes** (`scripts/soundfont.py`): cut down to the sixteen instruments and six drums the music
   uses, and to the keys it plays; one velocity layer, one layer of a layered sound and one side of a
-  stereo sample; every other sample of the strings and the flute; tails over a second or two faded
-  out; resampled to 22 kHz; stored losslessly, one after another, in `band.flac`, with each sample's zones, tuning,
+  stereo sample; every other sample (or every third) of the strings, the flute, the guitar and the
+  brass; tails over a second or two faded out; resampled to 22 kHz; stored losslessly, one after another, in `band.flac`, with each sample's zones, tuning,
   loop and envelope in `band.json`.
 
 ## Everything else

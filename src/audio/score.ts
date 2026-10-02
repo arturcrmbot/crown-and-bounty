@@ -1,39 +1,26 @@
 /**
- * The music: Yubatake's tunes from his "JRPG Collection" and his "Northern Isles" (CC-BY 4.0), as he wrote them, in MIDI
- * (`public/assets/music/`), played on the band's General MIDI instruments (`band.ts`) as our
- * arrangement has it here: for each tune, which instrument plays each of his parts, how loud, and in
- * which mood. And for each place in the game, the tunes that take turns there: on a map each plays
- * through (twice, if it's short), and after a breath the next begins, so the music never stays on
- * one tune for long. Some parts only play in the right mood: as a battle builds, when you're winning
- * or losing, or once a villain's fight has started, his lair's quieter arrangement filling out (see
- * `Gate`). Which place's music plays when is `game/tunes.ts`.
+ * The music: yubatake's tunes (CC BY 4.0), as he wrote them, in MIDI (`public/assets/music/`), played
+ * on the band's General MIDI instruments (`band.ts`) as our arrangement has it here: for each tune,
+ * which instrument plays each of his parts, and how loud. And for each place in the game, the tunes
+ * that play there. A map has two that take turns, each playing through at least twice and for a few
+ * minutes, so the music stays put (Artur, 2 Oct, #257: "it's very jarring that the music changes
+ * constantly"); a battle has one. Which place's music plays when is `game/tunes.ts`.
  */
 import { RANGES, type Drum, type Melodic } from './band';
-import type { Midi } from './midi';
+import type { Expression, Midi } from './midi';
 
 export type TrackId = 'title' | 'heath' | 'fen' | 'weald' | 'marsh' | 'reach' | 'battle' | 'court' | 'feast' | 'grimsby' | 'mirrow' | 'bramble';
 
-/**
- * When a part plays: from an intensity up (a battle building, or a villain's fight begun), below
- * one (gone once the fighting starts), or in a mood: winning, losing, or anything but losing.
- */
-export type Gate = { from?: number; below?: number; mood?: 'win' | 'lose' | 'steady' };
-
-/** The music's mood: how hard the fighting is (0 on the map, rising through a battle), and who's winning (-1 to 1). */
-export type Mood = { intensity: number; balance: number };
-
-/** One note to play, in seconds from the top of its tune. */
-export type Note = { at: number; length: number; key: number; instrument: Melodic | Drum; volume: number; gate?: Gate };
+/** One note to play, in seconds from the top of its tune, and the lane of swells and fades it plays through, if its part has one. */
+export type Note = { at: number; length: number; key: number; instrument: Melodic | Drum; volume: number; lane?: number };
 
 /**
  * Who plays one of his parts: an instrument, its notes moved `octave` octaves and folded into the
  * instrument's keys (`RANGES`), or the drums, each of his drum notes played on one of ours.
  */
-export type Voice = ({ instrument: Melodic; octave?: number } | { drums: Record<number, Drum> }) & { volume: number; gate?: Gate };
+export type Voice = ({ instrument: Melodic; octave?: number } | { drums: Record<number, Drum> }) & { volume: number };
 
-export type TuneId =
-  | 'fields' | 'town' | 'mysticIsle' | 'northernIsles' | 'docks' | 'temple'
-  | 'mainTheme' | 'battle' | 'battleBoss' | 'labyrinth' | 'dungeon' | 'belle' | 'unquiet' | 'saltarello';
+export type TuneId = 'fields' | 'mysticIsle' | 'northernIsles' | 'mainTheme' | 'theRide' | 'battleBoss' | 'dungeon' | 'belle' | 'unquiet' | 'saltarello';
 
 export type Tune = {
   /** His file, in `public/assets/music/`, and his name for it. */
@@ -45,43 +32,21 @@ export type Tune = {
   level: number;
   /** He wrote it to come round again with no pause; otherwise it ends, and the next tune starts after a breath. */
   loops?: boolean;
+  /** His parts swell and fade as his file says (its volume and expression), each through a lane of its own. */
+  expression?: boolean;
 };
 
-const drums = (map: Record<number, Drum>, volume: number, gate?: Gate): Voice => ({ drums: map, volume, gate });
-const play = (instrument: Melodic, volume: number, more: { octave?: number; gate?: Gate } = {}): Voice => ({ instrument, volume, ...more });
-
-/** Into a villain's fight: the parts his lair's quieter arrangement leaves out. */
-const FIGHT: Gate = { from: 0.2 };
+const drums = (map: Record<number, Drum>, volume: number): Voice => ({ drums: map, volume });
+const play = (instrument: Melodic, volume: number, more: { octave?: number } = {}): Voice => ({ instrument, volume, ...more });
 
 export const TUNES: Record<TuneId, Tune> = {
-  // The maps': a lilting three-time field and the town (Aldmoor's turn also has the isles' folk tune, the docks, the temple and the labyrinth, as Artur chose on 1 Oct).
+  // Aldmoor's: the isles' folk tune and a lilting three-time field, as Artur kept them on 2 Oct.
   fields: {
     file: 'JRPG_fields.mid',
     title: 'Fields',
     parts: { Lead_Square: play('flute', 0.9), Middle_Pulse: play('harp', 0.6), Bass_Tri: play('upright', 0.8), Mid_Aux: play('strings', 0.35) },
     level: 0.93,
     loops: true,
-  },
-  town: {
-    file: 'JRPG_town.mid',
-    title: 'Town',
-    parts: {
-      Lead_Pulse: play('oboe', 0.8),
-      Middle_Pulse: play('harp', 0.55),
-      Middle_Pulse_Extra: play('glockenspiel', 0.3),
-      Bass_Short: play('pizzicato', 0.6),
-      Bass_Long: play('upright', 0.7),
-      Percussion: drums({ 52: 'tambourine' }, 0.28),
-    },
-    level: 1.1,
-    loops: true,
-  },
-  // The Fenmarch's: mist on the water, a folk tune from the isles, the boats at the jetty, and a quiet shrine.
-  mysticIsle: {
-    file: 'JRPG_mysticIsle.mid',
-    title: 'Mystic Isle',
-    parts: { Lead_Tri: play('flute', 0.9), ChordsUpper_Pulse: play('strings', 0.4), ChordsLower_Pulse: play('harp', 0.55), Bass_Tri: play('upright', 0.8) },
-    level: 1.2,
   },
   northernIsles: {
     file: 'NorthernIsles.mid',
@@ -95,18 +60,12 @@ export const TUNES: Record<TuneId, Tune> = {
     },
     level: 0.71,
   },
-  docks: {
-    file: 'JRPG_docks.mid',
-    title: 'Docks',
-    parts: { Lead_Square: play('clarinet', 0.85), Middle_Square: play('harp', 0.55), Bass_Tri: play('upright', 0.8), Percussion: drums({ 57: 'hat' }, 0.28) },
-    level: 1.4,
-    loops: true,
-  },
-  temple: {
-    file: 'JRPG_temple.mid',
-    title: 'Temple',
-    parts: { Lead_Square: play('oboe', 0.8), Middle_Square: play('harp', 0.55), Bass_Tri: play('strings', 0.5) },
-    level: 1.3,
+  // The Fenmarch's: mist on the water.
+  mysticIsle: {
+    file: 'JRPG_mysticIsle.mid',
+    title: 'Mystic Isle',
+    parts: { Lead_Tri: play('flute', 0.9), ChordsUpper_Pulse: play('strings', 0.4), ChordsLower_Pulse: play('harp', 0.55), Bass_Tri: play('upright', 0.8) },
+    level: 1.2,
   },
   // The court's since 1 Oct (#178): older music, made by people, as a small Renaissance consort would
   // play it (recorder, shawm, lute and viol), from the Mutopia Project's public-domain editions.
@@ -114,13 +73,13 @@ export const TUNES: Record<TuneId, Tune> = {
     file: 'Arbeau_BelleQui.mid',
     title: 'Belle qui tiens ma vie (Arbeau)',
     parts: { D: play('recorder', 0.8), Tr: play('oboe', 0.6), T: play('guitar', 0.6), B: play('strings', 0.5), tambour: drums({ 53: 'tom' }, 0.35) },
-    level: 0.19,
+    level: 0.2,
   },
   unquiet: {
     file: 'Dowland_UnquietThoughts.mid',
     title: 'Unquiet Thoughts (Dowland)',
     parts: { cantus: play('flute', 0.8), altus: play('recorder', 0.6), tenor: play('guitar', 0.65), bass: play('strings', 0.5) },
-    level: 0.21,
+    level: 0.22,
   },
   // The payday feast's (#191): a quick Italian dance for the lute, from the Mutopia Project's public-domain edition.
   // The harp plays his line as he wrote it, and the lute doubles it, its lowest notes an octave up.
@@ -128,57 +87,54 @@ export const TUNES: Record<TuneId, Tune> = {
     file: 'Galilei_Saltarello.mid',
     title: 'Saltarello (Galilei)',
     parts: { 'staff:staff first voice': [play('harp', 0.45), play('guitar', 0.75)] },
-    level: 0.47,
+    level: 0.5,
   },
-  // The title's, and the court's.
+  // The title's.
   mainTheme: {
     file: 'JRPG_mainTheme.mid',
     title: 'Main Theme',
     parts: { Lead_Square: play('flute', 0.9), Middle_Pulse: play('harp', 0.6), Bass_Tri: play('upright', 0.8) },
     level: 0.65,
   },
-  // A battle: the horn leads, the drums come in as it heats up, strings join the fight, a
-  // glockenspiel rings over the tune while you're winning, and the oboe takes it over while you're losing.
-  battle: {
-    file: 'JRPG_battle.mid',
-    title: 'Battle',
+  // Every battle's (#257): a brisk string quartet, each of his parts on its own instrument. Each
+  // player has two parts, one for the quick notes and one for the long notes that swell and fade.
+  theRide: {
+    file: 'TheRide.mid',
+    title: 'The Ride',
     parts: {
-      Lead_Square: [play('horn', 0.85, { gate: { mood: 'steady' } }), play('oboe', 0.85, { gate: { mood: 'lose' } }), play('glockenspiel', 0.3, { gate: { mood: 'win' } })],
-      Middle_Pulse: play('pizzicato', 0.5),
-      Bass_Tri: [play('upright', 0.85), play('strings', 0.35, { gate: { from: 0.55 } })],
-      Percussion: drums({ 55: 'kick', 57: 'snare' }, 0.4, { from: 0.35 }),
+      ViolinI: play('violin', 0.85),
+      ViolinIFades: play('violin', 0.75),
+      ViolinII: play('violin', 0.7),
+      ViolinIIFades: play('violin', 0.65),
+      Viola: play('viola', 0.75),
+      ViolaFades: play('viola', 0.7),
+      Cello: play('cello', 0.85),
+      CelloFades: play('cello', 0.8),
     },
-    level: 0.95,
-    loops: true,
+    level: 0.52,
+    expression: true,
   },
-  // The villains' themes: by the lair, only some of the band, and all of it once his fight begins.
+  // The villains' themes, in their own fights.
   battleBoss: {
     file: 'JRPG_battleBoss.mid',
     title: 'Boss Battle',
     parts: {
-      Lead_Square: [play('oboe', 0.8), play('horn', 0.6, { gate: { from: 0.55 } })],
+      Lead_Square: [play('oboe', 0.8), play('horn', 0.6)],
       Middle_PulsePiano: play('harpsichord', 0.45),
       Middle_PulsePianoExtra: play('harpsichord', 0.45),
       Bass_Tri: play('upright', 0.85),
-      WhiteNoiseDrum: drums({ 45: 'snare' }, 0.4, FIGHT),
-      PinkNoiseRing: drums({ 45: 'ride' }, 0.25, FIGHT),
-      PinkNoiseGong: drums({ 30: 'tom', 31: 'tom', 34: 'tom', 35: 'tom' }, 0.45, FIGHT),
+      WhiteNoiseDrum: drums({ 45: 'snare' }, 0.4),
+      PinkNoiseRing: drums({ 45: 'ride' }, 0.25),
+      PinkNoiseGong: drums({ 30: 'tom', 31: 'tom', 34: 'tom', 35: 'tom' }, 0.45),
     },
-    level: 1.1,
-    loops: true,
-  },
-  labyrinth: {
-    file: 'JRPG_labyrinth.mid',
-    title: 'Labyrinth',
-    parts: { Lead_Pulse: play('clarinet', 0.85), Middle_Pulse: play('harp', 0.55, { gate: FIGHT }), Bass_Tri: play('pizzicato', 0.8), Percussion: drums({ 51: 'kick', 52: 'stick' }, 0.4, FIGHT) },
-    level: 1.15,
+    level: 0.9,
     loops: true,
   },
   dungeon: {
     file: 'JRPG_dungeon.mid',
     title: 'Dungeon',
-    parts: { Lead_Pulse: play('oboe', 0.8), Middle_Pulse: play('harpsichord', 0.45, { gate: FIGHT }), Bass_Tri: play('upright', 0.8), Percussion: drums({ 51: 'kick', 52: 'stick' }, 0.4, FIGHT) },
-    level: 1.1,
+    parts: { Lead_Pulse: play('oboe', 0.8), Middle_Pulse: play('harpsichord', 0.45), Bass_Tri: play('upright', 0.8), Percussion: drums({ 51: 'kick', 52: 'stick' }, 0.4) },
+    level: 1.2,
     loops: true,
   },
 };
@@ -187,33 +143,34 @@ export const TUNES: Record<TuneId, Tune> = {
 export type TrackDef = {
   id: TrackId;
   tunes: TuneId[];
-  /**
-   * Scales a villain's theme by his lair, on the map, where it's his quieter arrangement: up to
-   * the mark, as his whole band is in his battle.
-   */
-  calm?: number;
+  /** Coming back to it (from a battle, say), it picks up the tune where it was, rather than starting the next. */
+  resumes?: boolean;
 };
 
 export const TRACKS: Record<TrackId, TrackDef> = {
   title: { id: 'title', tunes: ['mainTheme'] },
-  // Each commission's land has its own turn of tunes: Aldmoor's farms, the Fenmarch's meres, then the three beyond.
-  heath: { id: 'heath', tunes: ['northernIsles', 'fields', 'docks', 'town', 'temple', 'labyrinth'] },
-  fen: { id: 'fen', tunes: ['mysticIsle', 'northernIsles', 'docks', 'temple'] },
-  weald: { id: 'weald', tunes: ['fields', 'town', 'northernIsles', 'temple'] },
-  marsh: { id: 'marsh', tunes: ['docks', 'mysticIsle', 'temple', 'northernIsles'] },
-  reach: { id: 'reach', tunes: ['town', 'fields', 'docks', 'northernIsles'] },
+  // Each commission's land has two tunes that take turns: Aldmoor's, the Fenmarch's, then the three beyond.
+  heath: { id: 'heath', tunes: ['northernIsles', 'fields'], resumes: true },
+  fen: { id: 'fen', tunes: ['mysticIsle', 'northernIsles'], resumes: true },
+  weald: { id: 'weald', tunes: ['fields', 'northernIsles'], resumes: true },
+  marsh: { id: 'marsh', tunes: ['mysticIsle', 'fields'], resumes: true },
+  reach: { id: 'reach', tunes: ['northernIsles', 'mysticIsle'], resumes: true },
   court: { id: 'court', tunes: ['belle', 'unquiet'] },
   feast: { id: 'feast', tunes: ['saltarello'] },
-  battle: { id: 'battle', tunes: ['battle'] },
-  grimsby: { id: 'grimsby', tunes: ['battleBoss'], calm: 1 },
-  mirrow: { id: 'mirrow', tunes: ['labyrinth'], calm: 1 },
-  bramble: { id: 'bramble', tunes: ['dungeon'], calm: 1.25 },
+  battle: { id: 'battle', tunes: ['theRide'] },
+  grimsby: { id: 'grimsby', tunes: ['battleBoss'] },
+  // Mother Mirrow's and Aunt Bramble's, until commission II is made again.
+  mirrow: { id: 'mirrow', tunes: ['dungeon'] },
+  bramble: { id: 'bramble', tunes: ['dungeon'] },
 };
 
-/** A tune shorter than this plays through twice before the next one's turn. */
-export const TURN = 90;
+/** A tune plays through at least twice, and for at least this long, before the next one's turn. */
+export const TURN = 240;
 /** The breath between one tune's end and the next, or a tune that doesn't loop and its next time round. */
 export const BREATH = 2.5;
+
+/** How many times a tune plays through before the next one's turn. */
+export const lapsOf = (seconds: number) => Math.max(2, Math.ceil(TURN / seconds));
 
 /** A key moved by octaves into a range. */
 export function fold(key: number, [low, high]: [number, number]): number {
@@ -231,53 +188,63 @@ export function lengthOf(tune: Tune, midi: Midi): number {
   return Math.max(midi.seconds, ...midi.parts.flatMap((p) => p.notes.map((n) => n.at + n.length)));
 }
 
+/** A tune as our band plays it: every note, and the lanes of swells and fades its parts play through. */
+export type Arrangement = { notes: Note[]; lanes: Expression[] };
+
 /**
  * Every note of a tune, from his MIDI file as our band plays it: each part's notes for each of its
  * voices, folded into the instrument's keys, at a volume from its velocity (the square law General
  * MIDI asks for), its voice and the tune's level. A tune that loops leaves out a last note on the
- * bar line it comes round at: its first note plays there.
+ * bar line it comes round at: its first note plays there. A tune with `expression` gives each of its
+ * parts that swell and fade a lane, and its notes play through it.
  */
-export function notesOf(tune: Tune, midi: Midi): Note[] {
+export function arrange(tune: Tune, midi: Midi): Arrangement {
   const notes: Note[] = [];
+  const lanes: Expression[] = [];
   const end = lengthOf(tune, midi);
   for (const part of midi.parts) {
     const voices = tune.parts[part.name];
     if (!voices) continue;
+    let lane: number | undefined;
+    if (tune.expression && part.expression) {
+      lane = lanes.length;
+      lanes.push(part.expression.filter(([at]) => at < end));
+    }
     for (const voice of Array.isArray(voices) ? voices : [voices]) {
       for (const n of part.notes) {
         if (n.at >= end - 0.01) continue;
         const volume = voice.volume * (n.velocity / 127) ** 2 * tune.level;
+        const where = lane === undefined ? {} : { lane };
         if ('drums' in voice) {
           const drum = voice.drums[n.key];
-          if (drum) notes.push({ at: n.at, length: n.length, key: n.key, instrument: drum, volume, gate: voice.gate });
+          if (drum) notes.push({ at: n.at, length: n.length, key: n.key, instrument: drum, volume, ...where });
           continue;
         }
-        notes.push({ at: n.at, length: n.length, key: fold(n.key + 12 * (voice.octave ?? 0), RANGES[voice.instrument]), instrument: voice.instrument, volume, gate: voice.gate });
+        notes.push({ at: n.at, length: n.length, key: fold(n.key + 12 * (voice.octave ?? 0), RANGES[voice.instrument]), instrument: voice.instrument, volume, ...where });
       }
     }
   }
-  return notes.sort((a, b) => a.at - b.at);
+  return { notes: notes.sort((a, b) => a.at - b.at), lanes };
 }
 
-/** How many times a tune plays through before the next one's turn: once, or twice if it's short. */
-export const lapsOf = (seconds: number) => (seconds < TURN / 2 ? Math.ceil(TURN / seconds) : seconds < TURN ? 2 : 1);
+/** Every note of a tune, as `arrange` has it. */
+export const notesOf = (tune: Tune, midi: Midi): Note[] => arrange(tune, midi).notes;
 
-/** How loud the whole track plays in a mood: its `calm` level on the map, giving way to 1 as a fight begins (as a lair's parts give way to the battle's). */
-export function moodLevel(track: TrackDef, mood: Mood): number {
-  return track.calm === undefined ? 1 : 1 + (track.calm - 1) * gateLevel({ below: 0.2 }, mood);
-}
-
-/** How loudly a gated note plays in a mood: 0 not at all, 1 fully, fading in over a little of the way. */
-export function gateLevel(gate: Gate | undefined, mood: Mood): number {
-  if (!gate) return 1;
-  const ramp = (v: number) => Math.max(0, Math.min(1, v));
+/** A lane's level at a moment of its tune: its last change before then, or General MIDI's own level before its first. */
+export function laneLevel(lane: Expression, at: number): number {
   let level = 1;
-  if (gate.from !== undefined) level *= ramp((mood.intensity - gate.from) / 0.12 + 1);
-  if (gate.below !== undefined) level *= ramp((gate.below - mood.intensity) / 0.12);
-  if (gate.mood === 'win') level *= ramp((mood.balance - 0.2) / 0.2);
-  if (gate.mood === 'lose') level *= ramp((-mood.balance - 0.2) / 0.2);
-  if (gate.mood === 'steady') level *= 1 - ramp((-mood.balance - 0.2) / 0.2);
+  for (const [t, v] of lane) {
+    if (t > at) break;
+    level = v;
+  }
   return level;
+}
+
+/** How far into its tune a track was at a moment: which time round, and how far into it. */
+export function whereIn(start: number, loop: number, now: number): { lap: number; offset: number } {
+  const gone = Math.max(0, now - start);
+  const lap = Math.floor(gone / loop);
+  return { lap, offset: gone - lap * loop };
 }
 
 const NAMES: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };

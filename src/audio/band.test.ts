@@ -54,7 +54,8 @@ describe('the band', () => {
     expect(info.samples).toBe(at);
   });
 
+  // The strings, brass and timpani for the battle and the stings came in on 2 Oct (#257), with fidelity first.
   it('stays light enough for a phone to fetch', () => {
-    expect(pack.length).toBeLessThan(2_000_000);
+    expect(pack.length).toBeLessThan(2_500_000);
   });
 });

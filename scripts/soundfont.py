@@ -30,22 +30,22 @@ OUT = os.path.join(os.path.dirname(__file__), '..', 'public', 'assets', 'music')
 
 # Our name for each instrument, and its General MIDI program (bank 0).
 MELODIC = {
-    'flute': 73, 'oboe': 68, 'clarinet': 71, 'recorder': 74, 'horn': 60,
-    'harp': 46, 'harpsichord': 6, 'pizzicato': 45, 'glockenspiel': 9, 'guitar': 24,
-    'strings': 48, 'upright': 32,
+    'flute': 73, 'oboe': 68, 'recorder': 74, 'horn': 60, 'trumpet': 56, 'trombone': 57,
+    'harp': 46, 'harpsichord': 6, 'guitar': 24, 'bells': 14, 'timpani': 47,
+    'strings': 48, 'violin': 40, 'viola': 41, 'cello': 42, 'upright': 32,
 }
 # The drums, from the standard kit (bank 128, program 0): our name and its General MIDI key.
-DRUMS = {'kick': 36, 'stick': 37, 'snare': 38, 'hat': 42, 'tom': 45, 'crash': 49, 'ride': 51, 'tambourine': 54}
+DRUMS = {'kick': 36, 'stick': 37, 'snare': 38, 'tom': 45, 'crash': 49, 'ride': 51}
 # The keys each instrument plays, as `RANGES` in src/audio/band.ts has them (its test checks the two agree).
 RANGES = {
-    'flute': (60, 96), 'recorder': (60, 96), 'oboe': (58, 91), 'clarinet': (50, 91), 'horn': (41, 77),
-    'harp': (36, 96), 'harpsichord': (36, 96), 'pizzicato': (36, 84), 'glockenspiel': (67, 100),
-    'guitar': (40, 79), 'strings': (40, 88), 'upright': (33, 64),
+    'flute': (60, 96), 'recorder': (60, 96), 'oboe': (58, 91), 'horn': (41, 77), 'trumpet': (52, 84), 'trombone': (40, 72),
+    'harp': (36, 96), 'harpsichord': (36, 96), 'guitar': (40, 79), 'bells': (60, 77), 'timpani': (36, 57),
+    'strings': (40, 88), 'violin': (53, 100), 'viola': (40, 88), 'cello': (36, 76), 'upright': (33, 64),
 }
 # Keep every Nth sample of these: their notes are a few keys apart, and a pad or a flute bends further well.
-STRIDE = {'strings': 2, 'flute': 2}
+STRIDE = {'strings': 2, 'flute': 2, 'guitar': 2, 'trumpet': 2, 'trombone': 2, 'violin': 2, 'viola': 3, 'cello': 3}
 RATE = 22050
-TAIL = {'crash': 1.6, 'ride': 1.4, 'tom': 1.0}
+TAIL = {'crash': 1.6, 'ride': 1.4, 'tom': 1.0, 'timpani': 1.6, 'bells': 2.2}
 
 # Generators (SoundFont 2.04, section 8.1.2).
 START, END, LOOP_START, LOOP_END, START_COARSE = 0, 1, 2, 3, 4
