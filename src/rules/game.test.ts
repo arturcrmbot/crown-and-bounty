@@ -1,6 +1,6 @@
 import { describe as suite, expect, it } from 'vitest';
 import { apply, armyPower, countOf, endDay, fight, finishFight, leadershipUsed, locationById, manaLine, roman, startFight, visit, wages, type Result } from './game';
-import { chooseAction, sergeantsAct } from './battle/ai';
+import { chooseAction, sergeantsAct, wonAlready } from './battle/ai';
 import { activeFighter, battleAct, onField, spellCost, type BattleState } from './battle/battle';
 import { isExplored } from './map/fog';
 import { buildMap, cellIndex } from './map/model';
@@ -164,6 +164,21 @@ suite('fights', () => {
     expect(report.manaSpent).toBeGreaterThan(0);
     expect(report.sergeantsSpent).toBe(report.manaSpent);
     expect(manaLine(report)).toMatch(/^The sergeants used /);
+  });
+
+  it('keeps your mana in a fight the sergeants have won already, for the next one (#211)', () => {
+    const fresh = newGame(7, undefined, 'wizard');
+    // An army that outweighs the poachers many times over: none of your mana is spent on them.
+    const strong = { ...fresh, army: [{ troop: 'knights' as const, count: 40 }, { troop: 'archers' as const, count: 60 }], hero: { ...fresh.hero, mana: 30 } };
+    const won = cardOf(fight(strong, 'poachers')!);
+    expect(won.title).toBe('Victory!');
+    expect(won.battleResult!.manaSpent).toBe(0);
+    expect(manaLine(won.battleResult!)).toBe('You spent no mana.');
+    const battle = startFight(strong, 'poachers')!.state.battle!;
+    expect(wonAlready(battle)).toBe(true);
+    // A close fight is no such thing.
+    const close = { ...fresh, army: [{ troop: 'peasants' as const, count: 30 }] };
+    expect(wonAlready(startFight(close, 'poachers')!.state.battle!)).toBe(false);
   });
 
   it('beats the poachers with the starting army, with light losses', () => {
