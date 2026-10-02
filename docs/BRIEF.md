@@ -603,5 +603,6 @@ TypeScript and Vite, drawing to a 2D canvas. HTML/CSS for menus, panels and dial
   power, not 12. Scroll stones stand on the map, as HoMM2's shrines of the 1st, 2nd and 3rd circle
   do: a standing stone with a scroll bound to it under a seal of red wax, blue wax or gold, that teaches one spell to
   any hero, or gives one who knows it the notes in its margins (100 experience). Bless's and Magic Arrow's, of the 1st
-  circle, stand by St Aldhelm's shrine and on the edge of the downs. Still to come: the Lightning Bolt's, of the 3rd
-  circle, by the river behind #239's outlaws, and Curse's, of the 2nd, on the heath.
+  circle, stand by St Aldhelm's shrine and on the edge of the downs. Curse's, of the 2nd circle, stands on the heath behind
+  the wolves round the gilded chest. Still to come: the Lightning Bolt's, of the 3rd circle, by the river behind
+  #239's outlaws.
