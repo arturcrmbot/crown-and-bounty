@@ -51,6 +51,11 @@ describe('Aldmoor\u2019s finds', () => {
     expect(labels(wizard, 'stoneArrow')).toEqual(['Read the notes in its margins']);
     const there = visit(wizard, 'stoneArrow').state;
     expect(take(there, 'stoneArrow', 'known/notes').hero.xp - there.hero.xp).toBe(100);
+    // Curse's stone, of the 2nd circle, is the heath wolves' to settle first.
+    const guarded = visit(fresh(), 'stoneCurse');
+    expect(cardOf(guarded).title).toBe('Wolves');
+    const free = { ...fresh(), locations: fresh().locations.map((l) => (l.id === 'heathWolves' ? { ...l, done: true } : l)) };
+    expect(take(visit(free, 'stoneCurse').state, 'stoneCurse', 'scroll/learn').hero.spells).toEqual(['curse']);
   });
 
   it('asks before wearing the highwaymen\u2019s Black Banner', () => {

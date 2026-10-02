@@ -42,10 +42,12 @@ export function scrollStone(id: string, at: Location['at'], spell: SpellId, circ
 
 /**
  * Aldmoor's scroll stones (#240). The 1st circle's lie near the castle, free for the taking. The
- * Lightning Bolt's, of the 3rd circle, stands by the river behind its outlaws, and Curse's, of the 2nd,
- * on the heath: both come with #239's bands.
+ * Curse's, of the 2nd, stands on the heath behind its wolves. The Lightning Bolt's, of the 3rd circle,
+ * stands by the river behind its outlaws, once #239's bands bring them.
  */
 export const STONES: Location[] = [
   scrollStone('stoneBless', [2850, 1010], 'bless', 1),
   scrollStone('stoneArrow', [2600, 560], 'arrow', 1),
+  // Behind the heath's wolves, beside the gilded chest they lie round.
+  scrollStone('stoneCurse', [1236, 1140], 'curse', 2, 'heathWolves'),
 ];
