@@ -27,6 +27,19 @@ const FORK = icon(
   ['.t.t.t.', '.t.t.t.', '.ttttt.', '...h...', '...h...', '...h...', '...h...', '...h...'],
   { t: STONE[5], h: WOOD[3] },
 );
+/** The beasts a ranger tames, each its own face on the bar, so a pack of them reads at a glance (#217). */
+const WOLF = icon(
+  ['.o.....o.', 'oSo...oSo', 'oSSoooSSo', 'oSSSSSSSo', 'oSkSSSkSo', '.oSSSSSo.', '..oWWWo..', '...oko...'],
+  { o: INK, S: STONE[6], W: STONE[7], k: INK },
+);
+const BOAR = icon(
+  ['.o.....o.', 'oBo...oBo', 'oBBoooBBo', 'oBkBBBkBo', 'oBBBBBBBo', 'ToBPPPBoT', '.ToPkPoT.', '..ooooo..'],
+  { o: INK, B: WOOD[4], P: WOOD[6], T: NEUTRAL[7], k: INK },
+);
+const BEAR = icon(
+  ['oo.....oo', 'oBo...oBo', '.oBoooBo.', 'oBBBBBBBo', 'oBkBBBkBo', 'oBBPPPBBo', '.oBPkPBo.', '..ooooo..'],
+  { o: INK, B: WOOD[3], P: WOOD[5], k: INK },
+);
 const HORSESHOE = icon(
   ['.oooooo.', 'oiiooiio', 'oio..oio', 'oio..oio', 'oio..oio', 'oo....oo'],
   { o: INK, i: STONE[6] },
@@ -43,15 +56,15 @@ const TROOP_ICONS: Record<TroopId, Bitmap> = {
   archers: BOW,
   crossbowmen: BOW,
   peasants: FORK,
-  wolves: FORK,
+  wolves: WOLF,
   goblins: FORK,
   trolls: SWORD,
   witch: BOW,
   bramble: BOW,
   poachers: BOW,
   bandits: SWORD,
-  boars: FORK,
-  bears: FORK,
+  boars: BOAR,
+  bears: BEAR,
   huntsmen: BOW,
   rook: BOW,
   // Aldric is never in the army, but should he ever show there.

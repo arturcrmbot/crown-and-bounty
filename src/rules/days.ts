@@ -4,7 +4,7 @@ import { TROOPS } from '../content/troops';
 import { heroStats, rested } from './hero';
 import { mapOf } from './map/maps';
 import { haul, setOut } from './map/convoys';
-import { moveEnemies } from './map/roaming';
+import { moveEnemies, trailedBy } from './map/roaming';
 import { loseSight } from './map/sight';
 import { rideHome, rideOut } from './map/sortie';
 import { payday as reopen } from './places';
@@ -78,8 +78,9 @@ export function endDay(state: GameState): Result {
   next = morning.state;
   events.push(...out.events, ...hauled.events, ...night.events, ...home.events, ...convoys.events, ...morning.events);
   lines.push(...out.lines, ...home.lines, ...convoys.lines);
-  const trailing = next.locations.filter((l) => l.enemy?.trailing && !l.done);
-  for (const l of trailing) lines.push(`**${l.name}** are on your trail. Camp near them tonight and they’ll fall on you at dawn, so ride clear, shelter in a town, or turn and fight.`);
+  // A hero who rides through woodland is told the trees will hide him too: nothing can follow him there (#217).
+  const shelter = heroStats(next).forestWalk ? 'shelter in a town or among the trees' : 'shelter in a town';
+  for (const l of trailedBy(next)) lines.push(`**${l.name}** are on your trail. Camp near them tonight and they’ll fall on you at dawn, so ride clear, ${shelter}, or turn and fight.`);
   if (night.ambush) {
     next = { ...next, ambush: night.ambush, ambushRest: undefined };
     const foe = locationById(next, night.ambush);
