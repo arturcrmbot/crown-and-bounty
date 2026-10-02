@@ -15,12 +15,13 @@ export const MASTER = 0.9;
 /**
  * Where everything sits in the mix, as a listener hears loudness (LUFS, through its bus and the
  * master; `npm run listen -- --check` holds each to these). Every track plays at the music's mark,
- * so no screen is louder than another. A sting stands over the music, which ducks under it, and
- * each effect is `faint` (footfalls), `soft` under the music (clicks, cards, a cry of pain), `firm`
- * level with it (coins, blows, death cries) or `loud` over it (fanfares). The land's ambience lies
- * beneath it all.
+ * so no screen is louder than another (a fight's a little under it, so its blows stand out). A sting
+ * stands over the music, which ducks under it, and each effect is `faint` (footfalls), `soft` under
+ * the music (clicks, cards), `firm` level with it (coins, a wince, a hit on steel), `hit` over it (a
+ * blow, a shot landing, a death cry: #257) or `loud` over that (fanfares, a Fireball). The land's
+ * ambience lies beneath it all.
  */
-export const MARKS = { music: -19.5, sting: -17, faint: -38, soft: -28, firm: -20, loud: -15, ambience: -31 };
+export const MARKS = { music: -19.5, sting: -17, faint: -38, soft: -28, firm: -20, hit: -16, loud: -15, ambience: -31 };
 
 /** The ceiling's curve covers inputs this far over full scale, so even a pile-up of sounds is rounded off, not cut. */
 const HEADROOM = 4;

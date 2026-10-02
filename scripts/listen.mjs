@@ -26,8 +26,10 @@ try {
     const { AMBIENT_BEDS, AMBIENT_CALLS, AMBIENT_LAYERS } = await import('/src/audio/ambience.ts');
     const { EFFECTS } = await import('/src/audio/effects.ts');
     const { duck, deepen, DUCK_IN, loadTune, tuneMidi, scoreChain } = await import('/src/audio/music.ts');
-    // The band's samples and every tune, as the game loads them.
+    const { loadSamples } = await import('/src/audio/samples.ts');
+    // The band's samples, every tune and the recorded effects, as the game loads them.
     await loadBand();
+    await loadSamples();
     for (const id of Object.keys(TUNES)) await loadTune(id);
     // BS.1770's K-weighting filters are given for 48 kHz.
     const RATE = 48000;
@@ -277,17 +279,19 @@ try {
       const whole = integrated(await stretch(0, loop));
       // The seam, for a tune that loops: the last seconds and the first of the next time round.
       const seam = tune.loops ? await stretch(loop - 3, loop + 3) : null;
-      const off = round(whole - MARKS.music);
+      // A fight's music sits a little under the mark, so its blows stand out (`under`).
+      const mark = MARKS.music - (tune.under ?? 0);
+      const off = round(whole - mark);
       // The level that would put it right on its mark.
       const fit = Number((tune.level * 10 ** (-off / 20)).toPrecision(2));
-      out.tracks.push({ id, seconds: Math.round(loop), loudness: whole, off, level: tune.level, fit, passes, seamBefore: seam ? integrated(seam.subarray(0, 3 * RATE)) : null, seamAfter: seam ? integrated(seam.subarray(3 * RATE)) : null });
+      out.tracks.push({ id, seconds: Math.round(loop), loudness: whole, mark, off, level: tune.level, fit, passes, seamBefore: seam ? integrated(seam.subarray(0, 3 * RATE)) : null, seamAfter: seam ? integrated(seam.subarray(3 * RATE)) : null });
     }
     return out;
   }, only);
   const sign = (v) => (v > 0 ? `+${v}` : `${v}`);
   const { marks } = report;
   if (report.tracks.length) {
-    console.log(`\nTunes, as a player hears them (music bus, the score's room and the master; LUFS, gated): the whole tune against the music's mark (${marks.music}), the level that would put it there, each quarter, and the seam of one that loops`);
+    console.log(`\nTunes, as a player hears them (music bus, the score's room and the master; LUFS, gated): the whole tune against the music's mark (${marks.music}, a fight's a little under it), the level that would put it there, each quarter, and the seam of one that loops`);
     for (const t of report.tracks) {
       console.log(`${t.id.padEnd(13)} ${String(t.seconds).padStart(4)}s  ${String(t.loudness).padStart(5)} (${sign(t.off)})  fit ${t.fit}  quarters ${t.passes.map((p) => p.loudness).join(' ')}${t.seamBefore === null ? '' : `  seam ${t.seamBefore} -> ${t.seamAfter}`}`);
     }
@@ -316,7 +320,7 @@ try {
     // near its mark and none near clipping, and nothing in the ambience louder than its mark.
     const faults = [];
     const near = (what, value, mark, give) => Math.abs(value - mark) > give && faults.push(`${what}: ${value} LUFS, its mark ${mark} (\u00b1${give})`);
-    for (const t of report.tracks) near(t.id, t.loudness, marks.music, 1);
+    for (const t of report.tracks) near(t.id, t.loudness, t.mark, 1);
     for (const s of report.stings) near(`sting ${s.id}`, s.loudness, marks.sting, 1.5);
     const GIVE = { faint: 4, soft: 3, firm: 3, loud: 3 };
     for (const e of report.effects) {

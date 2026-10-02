@@ -34,6 +34,8 @@ export type Tune = {
   loops?: boolean;
   /** His parts swell and fade as his file says (its volume and expression), each through a lane of its own. */
   expression?: boolean;
+  /** Plays this many dB under the music's mark: a fight's music, so its blows stand out over it (#257). */
+  under?: number;
 };
 
 const drums = (map: Record<number, Drum>, volume: number): Voice => ({ drums: map, volume });
@@ -111,7 +113,8 @@ export const TUNES: Record<TuneId, Tune> = {
       Cello: play('cello', 0.85),
       CelloFades: play('cello', 0.8),
     },
-    level: 0.52,
+    level: 0.41,
+    under: 2,
     expression: true,
   },
   // The villains' themes, in their own fights.
@@ -127,14 +130,16 @@ export const TUNES: Record<TuneId, Tune> = {
       PinkNoiseRing: drums({ 45: 'ride' }, 0.25),
       PinkNoiseGong: drums({ 30: 'tom', 31: 'tom', 34: 'tom', 35: 'tom' }, 0.45),
     },
-    level: 0.9,
+    level: 0.71,
+    under: 2,
     loops: true,
   },
   dungeon: {
     file: 'JRPG_dungeon.mid',
     title: 'Dungeon',
     parts: { Lead_Pulse: play('oboe', 0.8), Middle_Pulse: play('harpsichord', 0.45), Bass_Tri: play('upright', 0.8), Percussion: drums({ 51: 'kick', 52: 'stick' }, 0.4) },
-    level: 1.2,
+    level: 0.95,
+    under: 2,
     loops: true,
   },
 };
