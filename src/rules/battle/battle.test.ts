@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { STATUSES, type StatusDef, type StatusId } from '../../content/spells';
+import { STATUSES, type StatusDef, type SpellId, type StatusId } from '../../content/spells';
 import { TROOPS, feuding } from '../../content/troops';
 import { autoResolve, chooseAction, evaluate, finishEstimate } from './ai';
-import { activeFighter, battleAct, createBattle, enemyReach, fighterById, GRUMBLE, grumblesAt, isCharge, moraleOf, options, QUIET_ROUNDS, skillFactor, spellDamage, statsOf, strike, wound, type BattleHero, type BattleEvent, type BattleState } from './battle';
+import { activeFighter, battleAct, createBattle, enemyReach, fighterById, GRUMBLE, grumblesAt, isCharge, moraleOf, onField, options, QUIET_ROUNDS, skillFactor, spellDamage, statsOf, strike, wound, type BattleHero, type BattleEvent, type BattleState } from './battle';
 import { colOf, distance, hexIndex, neighbours, reachable } from './hex';
 
 const hero: BattleHero = { attack: 1, defence: 1, spellPower: 2, mana: 20, spells: ['bolt', 'bless', 'slow'], castRound: 0 };
@@ -272,6 +272,21 @@ describe('a battle', () => {
     expect(cast.battle.hero.mana).toBe(16);
     const hedge = { ...arrow, hero: { ...arrow.hero, manaDiscount: 2 } };
     expect(battleAct(hedge, { type: 'cast', spell: 'arrow', target: 1 }).battle.hero.mana).toBe(18);
+  });
+
+  it('Spellcraft: harder spells, blessings on every stack, and a hotter Fireball (#240)', () => {
+    const b = battle(['knights', 'archers'], [10, 20], ['swordsmen', 'crossbowmen'], [30, 20]);
+    const crafted = (extra: Partial<BattleHero>) => ({ ...b, hero: { ...b.hero, spells: ['bolt', 'bless', 'slow', 'fireball'] as SpellId[], mana: 40, ...extra } });
+    expect(spellDamage(crafted({ spellDamage: 0.15 }), 'bolt')).toBe(46);
+    expect(spellDamage(crafted({ burstPower: 6 }), 'fireball')).toBe(36);
+    expect(spellDamage(crafted({}), 'fireball')).toBe(24);
+    const mass = crafted({ massBlessings: true });
+    const blessed = battleAct(mass, { type: 'cast', spell: 'bless', target: 1 }).battle;
+    expect(blessed.fighters.filter((f) => f.side === 'player' && onField(f)).every((f) => f.status.includes('blessed'))).toBe(true);
+    const slowed = battleAct(mass, { type: 'cast', spell: 'slow', target: 2 }).battle;
+    expect(slowed.fighters.filter((f) => f.status.includes('slowed')).map((f) => f.id)).toEqual([2]);
+    const one = battleAct(crafted({}), { type: 'cast', spell: 'bless', target: 1 }).battle;
+    expect(one.fighters.filter((f) => f.status.includes('blessed')).map((f) => f.id)).toEqual([1]);
   });
 
   it('always gives the AI a legal move, and plays to a finish the same way every time', () => {

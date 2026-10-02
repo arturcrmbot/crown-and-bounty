@@ -5,7 +5,7 @@ import { chooseAction, finishEstimate, sergeantsAct } from '../rules/battle/ai';
 import { manaInBattle, signedShare, spiritsOf, uneasyWords } from '../rules/heroSheet';
 import { grumbleLine } from '../rules/army';
 import { coins, listed } from '../rules/state';
-import { activeFighter, bardOf, battleAct, battleEnd, bribeOffer, canCast, canJoin, casterOf, castsLeft, chargeOf, fighterById, isCharge, isLeader, onField, options, ridesOut, spellCost, spellDamage, spellsOf, spellVictims, unitOf, wound, type BattleAction, type BattleEvent, type BattleState, type Fighter } from '../rules/battle/battle';
+import { activeFighter, bardOf, battleAct, battleEnd, blessesAll, bribeOffer, canCast, canJoin, casterOf, castsLeft, chargeOf, fighterById, isCharge, isLeader, onField, options, ridesOut, spellCost, spellDamage, spellsOf, spellVictims, unitOf, wound, type BattleAction, type BattleEvent, type BattleState, type Fighter } from '../rules/battle/battle';
 import { aimTag, bardTag, forecastOf, type AimTag } from '../rules/battle/forecast';
 import { paintBanner } from '../render/banner';
 import { BattleScreen, BUTTONS, FIRE_FALL, FLOAT_LIFE, FLOAT_RISE, hexAt, hexCentre, leaderAt, LOG_BOTTOM, sideAt, spotOf, stripBottom, type BattleView, type Shot } from '../render/battleScreen';
@@ -663,7 +663,7 @@ export class BattleController implements Screen {
   private spellLine(e: Extract<BattleEvent, { type: 'spell' }>, stacks: number) {
     const spell = SPELLS[e.spell];
     const who = this.casterName(e.by);
-    if (spell.effect.kind === 'mass') return `${who} casts ${spell.name} on ${stacks === 1 ? this.objectName(e.target) : `all ${stacks} of ${fighterById(this.battle, e.target).side === 'player' ? 'your' : 'their'} stacks`}.`;
+    if (spell.effect.kind === 'mass' || (spell.effect.kind === 'status' && stacks > 1)) return `${who} casts ${spell.name} on ${stacks === 1 ? this.objectName(e.target) : `all ${stacks} of ${fighterById(this.battle, e.target).side === 'player' ? 'your' : 'their'} stacks`}.`;
     if (e.healed) return `${who} casts ${spell.name} on ${this.objectName(e.target)}. They get ${e.healed} health back${e.raised ? `, and ${e.raised} ${e.raised === 1 ? 'gets' : 'get'} up again` : ''}.`;
     return `${who} casts ${spell.name} on ${this.objectName(e.target)}${e.damage ? ` for ${e.damage} damage${e.killed ? `, and ${perish(e.killed)}` : ''}` : ''}.`;
   }
@@ -976,7 +976,7 @@ export class BattleController implements Screen {
           const look = spell.look;
           const colour = look.colour === 'blue' ? BLUE[6] : look.colour === 'red' ? RED[5] : GOLD[6];
           // One bolt or fireball at the target; a sparkle on each stack a spell on a whole side lands on.
-          const struck = spell.effect.kind === 'mass' ? victims.map((x) => fighterById(this.battle, x.h.target)) : [target];
+          const struck = spell.effect.kind === 'mass' || (spell.effect.kind === 'status' && victims.length > 1) ? victims.map((x) => fighterById(this.battle, x.h.target)) : [target];
           // A missile flies from whoever cast it, behind his line; the rest come down from the sky.
           const caster = e.by ?? this.battle.fighters.find((f) => f.side === 'player' && isLeader(f))?.id;
           const shots = struck.map((x) => {
@@ -1568,7 +1568,7 @@ export class BattleController implements Screen {
     const lit = new Map<number, 'target' | 'danger'>();
     if (action.type === 'cast' && action.target !== undefined) {
       const harms = SPELLS[action.spell].on === 'enemy';
-      for (const caught of spellVictims(this.battle, action.spell, fighterById(this.battle, action.target))) lit.set(caught.id, harms && caught.side === f.side ? 'danger' : 'target');
+      for (const caught of spellVictims(this.battle, action.spell, fighterById(this.battle, action.target), action.by)) lit.set(caught.id, harms && caught.side === f.side ? 'danger' : 'target');
     } else if (action.type === 'melee' || action.type === 'shoot' || action.type === 'jeer') lit.set(action.target, 'target');
     const tag = action.type === 'jeer' ? bardTag(this.battle, fighterById(this.battle, action.target)) : action.type === 'move' ? { title: 'Move here', lines: [] } : aimTag(this.battle, action);
     const charge = action.type === 'melee' && isCharge(this.battle, f, action.from, undefined, fighterById(this.battle, action.target));
@@ -1668,7 +1668,7 @@ export class BattleController implements Screen {
     const whom = `${target.side === 'player' ? 'your' : 'their'} ${t.name.toLowerCase()}`;
     if (action.type === 'cast') {
       const damage = spellDamage(this.battle, action.spell);
-      if (!damage) return `${SPELLS[action.spell].name} on ${whom}.`;
+      if (!damage) return `${SPELLS[action.spell].name} on ${blessesAll(this.battle, action.spell, action.by) ? 'every stack of yours' : whom}.`;
       const [, ...caught] = spellVictims(this.battle, action.spell, target);
       const ours = caught.filter((c) => c.side === 'player').map((c) => TROOPS[c.troop].name.toLowerCase());
       const theirs = caught.length - ours.length;
