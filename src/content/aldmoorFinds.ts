@@ -89,7 +89,7 @@ export const FINDS: Location[] = [
     guard: 'heathWolves',
     text: {
       about: ['A gilded chest stands in the heather, and a pack of wolves lies round it as if it were theirs.'],
-      later: [{ when: { seen: 'heathWolves' }, about: ['A gilded chest stands in the heather where the wolves were lying.'] }],
+      later: [{ when: { used: 'heathWolves' }, about: ['A gilded chest stands in the heather where the wolves were lying.'] }],
     },
     pages: [
       {
@@ -127,7 +127,7 @@ export const FINDS: Location[] = [
     guard: 'chaseBoars',
     text: {
       about: ['A chest lies among the roots of an old oak, and a sounder of boars is rooting all round it.'],
-      later: [{ when: { seen: 'chaseBoars' }, about: ['A chest lies among the roots of an old oak, in ground the boars have turned over.'] }],
+      later: [{ when: { used: 'chaseBoars' }, about: ['A chest lies among the roots of an old oak, in ground the boars have turned over.'] }],
     },
     pages: [
       {

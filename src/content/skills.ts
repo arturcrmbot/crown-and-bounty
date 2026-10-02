@@ -26,7 +26,7 @@ export const SKILLS: Record<SkillId, Skill> = {
       { note: 'Every shot hits 15% harder.', bonus: { ranged: 0.15 } },
       { note: 'Every shot hits 30% harder, and your archers plant stakes, so wolves, boars and goblins start every battle slowed.', bonus: { ranged: 0.3, slows: RUSHERS } },
       {
-        note: 'Every shot hits 45% harder, your archers get +1 attack, the stakes slow wolves, boars and goblins, and your shooters loose a free volley before every battle.',
+        note: 'Every shot hits 45% harder, your archers get +1 attack, the stakes slow wolves, boars and goblins, and your shooters loose a free volley before every battle, except at a villain\u2019s walls.',
         bonus: { ranged: 0.45, slows: RUSHERS, volley: true, troops: { archers: { attack: 1 } } },
       },
     ],
@@ -196,7 +196,7 @@ export const PERKS: Record<PerkId, Perk> = {
     bonus: { charge: ['knights'] },
     trick: true,
   },
-  firstVolley: { id: 'firstVolley', name: 'First Volley', note: 'Your archers loose a free volley before every battle.', bonus: { volley: true }, trick: true },
+  firstVolley: { id: 'firstVolley', name: 'First Volley', note: 'Your archers loose a free volley before every battle, except at a villain\u2019s walls.', bonus: { volley: true }, trick: true },
   woodsman: { id: 'woodsman', name: 'Woodsman', note: 'You ride through the woods, where nothing on the map can follow or hunt you.', bonus: { forestWalk: true }, trick: true },
   battleMage: { id: 'battleMage', name: 'Battle Mage', note: 'You cast a second spell every round of battle.', bonus: { casts: 1 }, trick: true },
   silverTongue: { id: 'silverTongue', name: 'Silver Tongue', note: 'Bribes cost a third less, and small bands will take your coin and join you.', bonus: { bribes: 0.33, hires: true }, trick: true },

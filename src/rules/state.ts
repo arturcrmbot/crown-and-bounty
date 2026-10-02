@@ -148,6 +148,8 @@ export type Needs = {
   notFlag?: string;
   /** A place (by id) the hero must have been to. */
   seen?: string;
+  /** A place (by id) that must be done with: used up, or for a band, beaten, tamed or paid off. */
+  used?: string;
   gold?: number;
   troop?: TroopId;
   count?: number;
@@ -518,3 +520,5 @@ export const locationById = (state: GameState, id: string) => {
 
 /** Objects that vanish from the map once their place is done. A chest stays, open and empty, and a lost goose goes home (#192). */
 export const VANISHES = new Set<LocationKind>(['gold', 'patrol', 'pickup', 'goose']);
+/** A place done with and nothing left to point at: gone from the map, or a chest left open and empty. A click there finds the land. */
+export const spent = (l: Pick<Location, 'kind' | 'done'>) => l.done && (l.kind === 'chest' || VANISHES.has(l.kind));

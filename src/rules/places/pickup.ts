@@ -42,8 +42,11 @@ function worthOf(state: GameState, place: Location): number {
   return (g.gold ?? 0) + (g.treasure ?? 0) + (g.movement ?? 0) + Math.min(g.mana ?? 0, room) * 4 + (g.xp ?? 0);
 }
 
+/** What his button says: a purse or a letter is "it", and crystals are "them". */
+const pickUpLabel = (place: Location) => (/^(A|An) /.test(place.name) ? 'Pick it up' : 'Pick them up');
+
 export const pickup: PlaceKind = {
-  about: (state, place) => ({ title: place.name, lines: aboutWords(state, place), choices: [ride(place, 'Pick it up'), close] }),
+  about: (state, place) => ({ title: place.name, lines: aboutWords(state, place), choices: [ride(place, pickUpLabel(place)), close] }),
   // Ridden up to, it's been taken on the way already, unless it lay where no way comes near enough.
   arrive: (state, place) => (place.done ? { state, events: [] } : take(state, place)),
   worth: (state, place) => (place.done ? null : worthOf(state, place)),

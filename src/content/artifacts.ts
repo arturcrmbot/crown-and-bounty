@@ -98,7 +98,7 @@ export const ARTIFACTS: Record<ArtifactId, Artifact> = {
   fenBanner: { id: 'fenBanner', name: 'Banner of the Fens', slot: 'banner', note: 'It gives +35 leadership. The heron on it is either noble or hungry. *Wear it with the boots and the jerkin, and the fen takes you for one of its own.*', bonus: { leadership: 35 }, price: 1200, set: 'finery' },
   astrolabe: { id: 'astrolabe', name: 'Brass Astrolabe', slot: 'trinket', note: 'It gives +1 spell power and +1 knowledge. It points at stars, mostly the wrong ones.', bonus: { spellPower: 1, knowledge: 1 }, price: 1400 },
   // Relics: each carries one hero's trick, so anyone can learn to win another way.
-  poachersHorn: { id: 'poachersHorn', name: 'The Poacher\u2019s Horn', slot: 'trinket', note: 'Your archers loose a free volley before every battle, as a ranger\u2019s do.', bonus: { volley: true } },
+  poachersHorn: { id: 'poachersHorn', name: 'The Poacher\u2019s Horn', slot: 'trinket', note: 'Like a ranger\u2019s, your archers loose a free volley before every battle, except at a villain\u2019s walls.', bonus: { volley: true } },
   greenwoodCloak: { id: 'greenwoodCloak', name: 'Greenwood Cloak', slot: 'armour', note: 'It gives +1 defence, and you ride through the woods like a ranger, where nothing can follow.', bonus: { defence: 1, forestWalk: true } },
   brannocsLance: {
     id: 'brannocsLance',

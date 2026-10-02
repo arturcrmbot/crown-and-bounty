@@ -8,7 +8,7 @@ import { clickable, GOLD_AT, paintHud, type HudHit } from '../render/hud';
 import { feastArtReady } from '../render/mapArt';
 import { ART, heroArtId } from '../render/units';
 import type { BattleState } from '../rules/battle/battle';
-import { ambushCard, apply, bountyCard, commissionOf, describe, finishFight, geeseHome, heardOf, heroStats, journalCard, levelUpCard, locationById, placeNote, placeOdds, roman, VANISHES, visit, whenThere, type Action, type Card, type GameEvent, type GameState, type Location, type Result, type Verdict } from '../rules/game';
+import { ambushCard, apply, bountyCard, commissionOf, describe, finishFight, geeseHome, heardOf, heroStats, journalCard, levelUpCard, locationById, placeNote, placeOdds, roman, spent, VANISHES, visit, whenThere, type Action, type Card, type GameEvent, type GameState, type Location, type Result, type Verdict } from '../rules/game';
 import { barNote } from '../rules/heroSheet';
 import type { Point } from '../rules/map/geometry';
 import { CELL, cellCentre, type MapModel, type Terrain } from '../rules/map/model';
@@ -1085,9 +1085,10 @@ export class AdventureController implements Screen {
     const h = this.scene.hero.object;
     const width = this.scene.hero.idle[0].width;
     const onHero = x >= h.x + 6 && x < h.x + width - 6 && y >= h.y + 4 && y < h.y + this.scene.hero.foot + 4;
+    // What has vanished from the map, a goose sent home or a purse picked up, isn't there to point at, and nor is a chest already opened.
     const gone = (id: string) => {
       const l = this.state.locations.find((p) => p.id === id);
-      return !!l && l.done && (l.kind === 'chest' || l.kind === 'gold' || l.kind === 'patrol');
+      return !!l && spent(l);
     };
     // A band out of sight isn't there to point at: the land where it stood is.
     const hits = this.scene.hitboxes.filter((b) => x >= b.x0 && x < b.x1 && y >= b.y0 && y < b.y1 && !gone(b.id) && !this.scene.pickups.get(b.id)?.hidden);

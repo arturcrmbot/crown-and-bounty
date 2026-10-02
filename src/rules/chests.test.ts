@@ -140,4 +140,18 @@ describe('Aldmoor\u2019s chests', () => {
     const gold = chests.filter((c) => c.id !== 'chest').reduce((sum, c) => sum + (c.gold ?? 0), 0);
     expect(gold).toBeLessThanOrEqual(700);
   });
+
+  it('say their guard has gone once it has, however it went, and not before', () => {
+    const start = fresh();
+    for (const chest of chests.filter((c) => c.guard)) {
+      const words = (s: GameState) => PLACE_KINDS.chest.about(s, placeOf(s, chest.id)).lines[0];
+      // Ridden up to and left standing, the band is still there.
+      const met = update(start, chest.guard!, { seen: true });
+      expect(words(met), chest.id).toBe(words(start));
+      // Beaten, tamed or paid off, it's gone, and the chest says so.
+      const gone = update(start, chest.guard!, { done: true });
+      expect(words(gone), chest.id).not.toBe(words(start));
+      expect(words(gone), chest.id).toBe(chest.text!.later![0].about[0]);
+    }
+  });
 });

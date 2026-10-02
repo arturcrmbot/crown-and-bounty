@@ -3,7 +3,7 @@ import { ALDMOOR, landOf, LANDS, type Land } from '../content/aldmoor';
 import { GEESE } from '../content/aldmoorGeese';
 import { gainsOf } from '../game/gains';
 import { heardOf, withNewPlaces } from './campaign';
-import { apply, DISCOVERY_XP, geeseHome, visit, type Card, type GameState, type Result } from './game';
+import { apply, DISCOVERY_XP, geeseHome, locationById, spent, visit, type Card, type GameState, type Result } from './game';
 import { foundOf } from './heroSheet';
 import { buildMap, CELL } from './map/model';
 import { newGame } from './scenario';
@@ -31,6 +31,12 @@ describe('the lost geese (#192)', () => {
     expect(tally(first.state, 'Lost geese sent home')).toEqual({ what: 'Lost geese sent home', got: 1, of: GEESE.length });
     // Ridden up to again, she's gone.
     expect(cardOf(visit(first.state, 'gooseReeds')).lines).toEqual(['There is nothing here now but a feather.']);
+    // And the map has nothing left there to click, as it has nothing left of a purse picked up.
+    expect(spent(locationById(start, 'gooseReeds'))).toBe(false);
+    expect(spent(locationById(first.state, 'gooseReeds'))).toBe(true);
+    expect(spent(locationById(visit(start, 'purseKingsRoad').state, 'purseKingsRoad'))).toBe(true);
+    // A place he can still go back to stays there to click.
+    expect(spent({ kind: 'tower', done: true })).toBe(false);
   });
 
   it('all home, the goose-girl gives him her lucky feather, and the King hears of it', () => {

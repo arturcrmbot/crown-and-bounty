@@ -50,9 +50,10 @@ export type AimTag = { title: string; lines: TagLine[] };
 /** "their wolves", "your archers". */
 const whose = (f: Fighter) => `${f.side === 'player' ? 'your' : 'their'} ${TROOPS[f.troop].name.toLowerCase()}`;
 
-/** "kills 3 of the 12", "kills all 12", "kills none of the 12", and for a stack of one, "kills it". */
-function kills(killed: number, count: number) {
-  if (count === 1) return killed ? 'kills it' : 'doesn\u2019t kill it';
+/** "kills 3 of the 12", "kills all 12", "kills none of the 12", and for a stack of one, "kills the swordsman". */
+function kills(killed: number, count: number, aimed: Fighter) {
+  const one = `the ${TROOPS[aimed.troop].one.toLowerCase()}`;
+  if (count === 1) return killed ? `kills ${one}` : `doesn\u2019t kill ${one}`;
   if (killed >= count) return `kills all ${count}`;
   return killed ? `kills ${killed} of the ${count}` : `kills none of the ${count}`;
 }
@@ -96,7 +97,7 @@ export function aimTag(b: BattleState, action: BattleAction): AimTag | null {
       const { healed = 0, raised = 0 } = forecast.target;
       return { title, lines: [{ text: healed ? `They get ${healed} health back${raised ? `, and ${raised} ${raised === 1 ? 'gets' : 'get'} up again` : ''}.` : 'They have all their health already.' }] };
     }
-    const lines: TagLine[] = [{ text: `${damage} damage ${kills(killed, count)}.` }];
+    const lines: TagLine[] = [{ text: `${damage} damage ${kills(killed, count, aimed)}.` }];
     const theirs = forecast.caught.filter((c) => c.side !== f.side);
     const ours = forecast.caught.filter((c) => c.side === f.side);
     const dead = (blows: Blow[]) => blows.reduce((n, c) => n + c.killed, 0);
@@ -112,7 +113,7 @@ export function aimTag(b: BattleState, action: BattleAction): AimTag | null {
   }
   const ranged = action.type === 'shoot';
   const title = ranged ? `Shoot ${whose(aimed)}` : forecast.charge ? `Charge ${whose(aimed)}!` : `Attack ${whose(aimed)}`;
-  const lines: TagLine[] = [{ text: `About ${damage} damage ${kills(killed, count)}.` }];
+  const lines: TagLine[] = [{ text: `About ${damage} damage ${kills(killed, count, aimed)}.` }];
   if (forecast.first) lines.push(answer('strike first', forecast.first, f));
   if (!ranged) {
     const back = forecast.back ? answer('strike back', forecast.back, f) : noAnswer(f, aimed, forecast);

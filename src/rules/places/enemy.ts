@@ -6,7 +6,7 @@ import { battleXp, beat, expectedLosses, fight, startFight, winChance } from '..
 import { artifactChoices, foundNote, gainXp, giveArtifact, heroStats } from '../hero';
 import { asleep } from '../map/roaming';
 import { riddenOut } from '../map/sortie';
-import { addTroops, close, coins, fightingPower, fits, leadershipUsed, locationById, roman, show, stillWithYou, update, type Army, type Card, type Choice, type ContentChoice, type GameEvent, type GameState, type Location, type Result, type Verdict } from '../state';
+import { addTroops, close, coins, fightingPower, fits, leadershipUsed, listed, locationById, roman, show, stillWithYou, troops, update, type Army, type Card, type Choice, type ContentChoice, type GameEvent, type GameState, type Location, type Result, type Verdict } from '../state';
 import { countsExactly, faceOf, forceLine, note, option, ride, say, words } from './common';
 import type { PlaceKind } from './kind';
 
@@ -61,6 +61,9 @@ const whoIsLeft = (army: Army, gone: Army): Army => army.map((s) => ({ ...s, cou
 /** Nobody left in a band but whoever led it. */
 const nobodyLeft = (army: Army) => !army.some((s) => !leads(s.troop));
 
+/** A line that opens a sentence starts with a capital, inside any bold: "**Several Wolves** come at you!" */
+const opening = (line: string) => line.replace(/^(\**)(\p{Ll})/u, (_, bold: string, first: string) => bold + first.toUpperCase());
+
 /**
  * The card while an enemy has fallen on him: fight, or run. It stays until answered, and it leads with
  * the odds, as every card about a fight does. It's a band that found his camp at dawn, or the rest of
@@ -75,7 +78,7 @@ export function ambushCard(state: GameState, before: string[] = []): Card {
   ];
   const odds = oddsOf(state, foe);
   const says = state.army.length ? [oddsLine(winChance(state, foe.id)), likelyLossesLine(state, foe.id)] : [];
-  const how = state.ambushRest ? `${forceLine(foe.enemy!.army, countsExactly(state))} come at you!` : `At first light, **${foe.name}** fall on your camp!`;
+  const how = state.ambushRest ? `${opening(forceLine(foe.enemy!.army, countsExactly(state)))} come at you!` : `At first light, **${foe.name}** fall on your camp!`;
   return { title: state.ambushRest ? foe.name : `An ambush on day ${roman(state.day)}!`, ...faceOf(foe.enemy!.army), ...(odds ? { verdict: odds } : {}), lines: [...before, how, foe.enemy!.threat, ...says], choices };
 }
 
@@ -135,7 +138,8 @@ function hireButton(state: GameState, place: Location): Choice[] {
   if (!offer) return [];
   if (!offer.share) return [option(place, 'Hire them (your army isn\u2019t strong enough yet)', 'hire', true)];
   if (!offer.joining.length) return [option(place, 'Hire them (no room to lead them)', 'hire', true)];
-  const label = offer.all ? 'Hire them' : `Hire ${headcount(offer.joining)} of them, and fight the rest`;
+  // Who would come, by name: a band of several kinds sends some of each.
+  const label = offer.all ? 'Hire them' : `Hire ${listed(offer.joining.map((s) => troops(s.troop, s.count)))}, and fight the rest`;
   return [option(place, `${label} (${coins(offer.price)} gold)`, 'hire', state.gold < offer.price)];
 }
 
