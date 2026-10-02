@@ -3,12 +3,12 @@ import { ALDMOOR, landOf, LANDS, type Land } from '../content/aldmoor';
 import { PICKUPS } from '../content/aldmoorPickups';
 import { heardOf, withNewPlaces } from './campaign';
 import { playCommission } from './bot';
-import { visit, type GameState, type Location } from './game';
+import { describe as describePlace, heroStats, visit, type GameState, type Location } from './game';
 import { buildMap, CELL } from './map/model';
 import { mapOf } from './map/maps';
 import { planRoute, stepAlong } from './map/movement';
 import { foundOf } from './heroSheet';
-import { REACH } from './places/pickup';
+import { pickUp, REACH } from './places/pickup';
 import { newGame } from './scenario';
 
 const fresh = (): GameState => ({ ...newGame(1066, ALDMOOR, 'knight'), opening: undefined });
@@ -88,6 +88,31 @@ describe('things lying by the way (#192)', () => {
     const start = { ...newGame(3, ALDMOOR, 'knight'), opening: undefined };
     const run = playCommission(start, mapOf(start), 4000, { allow: (l) => l.kind !== 'hideout', stop: (s) => s.day > 3 });
     expect(run.state.locations.filter((l) => l.kind === 'pickup' && l.done).length).toBeGreaterThan(0);
+  });
+
+  it('crystals wait for him while his mana is full, and he takes them once he has room (#211)', () => {
+    const start = fresh();
+    const crystals = placeOf(start, 'crystalsFord');
+    const full: GameState = { ...start, hero: { ...start.hero, mana: heroStats(start).maxMana } };
+    // Riding past, he leaves them lying.
+    const passed = pickUp(full, crystals.at);
+    expect(passed.events).toEqual([]);
+    expect(placeOf(passed.state, crystals.id).done).toBe(false);
+    // Their card says why, and offers no ride to them.
+    const about = describePlace(full, crystals.id);
+    expect(about.lines.at(-1)).toContain('Your mana is full already');
+    expect(about.choices.map((c) => c.label)).toEqual(['Close']);
+    // Ridden to on purpose, he says so there, and leaves them.
+    const ridden = visit(full, crystals.id);
+    expect(placeOf(ridden.state, crystals.id).done).toBe(false);
+    expect(ridden.events.some((e) => e.type === 'card' && e.card.lines[0].startsWith('Your mana is full already'))).toBe(true);
+    // With room for them, he takes them as he passes.
+    const low: GameState = { ...full, hero: { ...full.hero, mana: 0 } };
+    expect(placeOf(pickUp(low, crystals.at).state, crystals.id).done).toBe(true);
+    expect(describePlace(low, crystals.id).choices.map((c) => c.label)).toEqual(['Pick them up', 'Close']);
+    // Anything else lying by the way he takes whatever his mana.
+    const purse = placeOf(full, 'purseKingsRoad');
+    expect(placeOf(pickUp(full, purse.at).state, purse.id).done).toBe(true);
   });
 
   it('reach a saved game from before them', () => {
