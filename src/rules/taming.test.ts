@@ -139,10 +139,10 @@ describe('taming', () => {
     const crowned = choose(knight, 'shrine', 'start/crown')!.state;
     expect(crowned.hero.gear.helm).toBe('hawthornCrown');
     expect(heroStats(crowned).tames).toBe(true);
-    // As many as his army outweighs them: a third of the 36.
-    expect(count(choose(crowned, 'boars', 'tame')!.state, 'boars')).toBe(12);
+    // As many as his army outweighs them: two thirds of the 29.
+    expect(count(choose(crowned, 'boars', 'tame')!.state, 'boars')).toBe(19);
     const friend = { ...knight, hero: { ...knight.hero, perks: [...knight.hero.perks, 'beastFriend' as const] } };
-    expect(count(choose(friend, 'boars', 'tame')!.state, 'boars')).toBe(12);
+    expect(count(choose(friend, 'boars', 'tame')!.state, 'boars')).toBe(19);
   });
 
   it('never at a villain\u2019s walls, nor for troops that draw wages', () => {

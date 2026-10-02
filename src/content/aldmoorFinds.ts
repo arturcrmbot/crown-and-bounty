@@ -219,7 +219,7 @@ export const FINDS: Location[] = [
       behaviour: 'roam',
       range: 80,
       lines: ['Cutpurses are working the King\u2019s road between the castle and St Aldhelm\u2019s shrine, with a few poachers to keep watch for them.', '*The pilgrims coming home from the shrine are a good deal lighter than when they set out.*'],
-      army: [{ troop: 'cutpurses', count: 25 }, { troop: 'poachers', count: 20 }, { troop: 'cutpurseCaptain', count: 1, level: 1 }],
+      army: [{ troop: 'cutpurses', count: 20 }, { troop: 'poachers', count: 16 }, { troop: 'cutpurseCaptain', count: 1, level: 1 }],
       reward: 100,
       threat: 'The smallest of them tips his hat to you. The rest are already behind you.',
       flees: 'The cutpurses scatter into the hedges.',
@@ -411,7 +411,7 @@ export const FINDS: Location[] = [
       behaviour: 'roam',
       range: 80,
       lines: ['Rustlers are lying low in a hollow of the downs with a flock that isn\u2019t theirs, waiting for dark.', '*The sheep have a look of Old Tam\u2019s about them.*'],
-      army: [{ troop: 'bandits', count: 39 }, { troop: 'cutpurses', count: 25 }, { troop: 'highwaymanCaptain', count: 1, level: 2 }],
+      army: [{ troop: 'bandits', count: 31 }, { troop: 'cutpurses', count: 20 }, { troop: 'highwaymanCaptain', count: 1, level: 2 }],
       reward: 120,
       threat: '*"These are our sheep,"* says the biggest. *"We\u2019ve had them for hours."*',
       parleys: [
@@ -479,7 +479,7 @@ export const FINDS: Location[] = [
       behaviour: 'roam',
       range: 90,
       lines: ['The Baron\u2019s tax collectors are going from farm to farm with a very large ledger, and pikes to make their point.', '*They are collecting the taxes the Baron owes the King, from the King\u2019s own farmers.*'],
-      army: [{ troop: 'swordsmen', count: 29 }, { troop: 'pikemen', count: 23 }, { troop: 'crossbowmen', count: 21 }, { troop: 'sergeant', count: 1, level: 2 }],
+      army: [{ troop: 'swordsmen', count: 23 }, { troop: 'pikemen', count: 18 }, { troop: 'crossbowmen', count: 17 }, { troop: 'sergeant', count: 1, level: 2 }],
       reward: 150,
       threat: 'The one with the ledger licks his pencil. *"Name? Farm? Arrears?"*',
       parleys: [

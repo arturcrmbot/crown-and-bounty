@@ -57,7 +57,7 @@ const DELVING_SOUTH: Point = [668, 1744];
 const PATROL = { swordsmen: 26, pikemen: 17, crossbowmen: 17, menAtArms: 5 };
 
 /** The poachers east of Westmere, in the climb's second ring: their numbers, for the Courtier who hires them all. */
-const POACHERS = { poachers: 49, cutpurses: 28 };
+const POACHERS = { poachers: 39, cutpurses: 22 };
 
 /**
  * Young Pike's letter home, picked up on the bridge road (`letterPike`): carried to his mother's door, she
@@ -1129,7 +1129,7 @@ export const ALDMOOR: Province = {
         behaviour: 'roam',
         range: 60,
         lines: ['Wild boars are rooting at the edge of the King\u2019s chase.'],
-        army: [{ troop: 'boars', count: 36 }],
+        army: [{ troop: 'boars', count: 29 }],
         reward: 80,
         threat: 'The biggest one lowers its tusks and scrapes the ground.',
         tamed: 'You lay a trail of acorns, and the boars follow it like a procession, all the way into your baggage train. They seem to think it was their idea.',
