@@ -220,6 +220,44 @@ const TROOP_ART: Record<Exclude<TroopId, HeroId>, UnitArt> = {
     defend: OUTLAW + 'huntsman-defend.png',
     defendRanged: OUTLAW + 'huntsman-bow-defend.png',
   },
+  // The Baron's pikemen (#239): Wesnoth's Pikeman, striking south-east as the swordsmen do. His idle and
+  // fall are in Wesnoth's files, though its .cfg leaves them out.
+  pikemen: {
+    unit: 'Pikeman',
+    cfg: 'humans/Loyalist_Pikeman.cfg',
+    stand: LOYAL + 'pikeman.png',
+    idle: frames(LOYAL, 'pikeman-idle-[1~4,3~1].png', '100*3,1000,100*3'),
+    melee: attack(250, one(LOYAL, 'pikeman.png', 100), one(LOYAL, 'pikeman-attack-se.png', 250), one(LOYAL, 'pikeman.png', 75)),
+    defend: LOYAL + 'pikeman-defend-2.png',
+    death: frames(LOYAL, 'pikeman-die-[1~5].png', 80),
+  },
+  // The Baron's men-at-arms (#239): Wesnoth's Heavy Infantryman and his mace.
+  menAtArms: {
+    unit: 'Heavy Infantryman',
+    cfg: 'humans/Loyalist_Heavy_Infantryman.cfg',
+    stand: LOYAL + 'heavyinfantry.png',
+    melee: attack(550, frames(LOYAL, 'heavyinfantry-attack-[1~15].png', '70*5,50*4,100,75,50*4'), one(LOYAL, 'heavyinfantry.png', 100)),
+    defend: LOYAL + 'heavyinfantry-defend-1.png',
+  },
+  // Cutpurses (#239): Wesnoth's Thief.
+  cutpurses: {
+    unit: 'Thief',
+    cfg: 'humans/Outlaw_Thief.cfg',
+    stand: OUTLAW + 'thief.png',
+    idle: frames(OUTLAW, 'thief-idle-[1~7,6~1].png', '100*4,200,150,500,150,200,100*4'),
+    melee: attack(150, one(OUTLAW, 'thief.png', 50), one(OUTLAW, 'thief-attack.png', 200), one(OUTLAW, 'thief.png', 50)),
+    defend: OUTLAW + 'thief-defend.png',
+    death: frames(OUTLAW, 'thief-die-[1~7].png', 100),
+  },
+  // Darkwood's giant spiders (#239): Wesnoth's Giant Spider, biting. It has no frame of its own for a
+  // blow landing on it, so it flinches in its standing one, as Rook does.
+  spiders: {
+    unit: 'Giant Spider',
+    cfg: 'monsters/Giant_Spider.cfg',
+    stand: 'monsters/spider.png',
+    melee: attack(400, frames('monsters/', 'spider-melee-[1~13].png', 50)),
+    defend: 'monsters/spider.png',
+  },
 };
 
 const HORSE = 'human-loyalists/horseman/';

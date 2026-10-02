@@ -174,7 +174,7 @@ describe('taming', () => {
 describe('tamed beasts', () => {
   it('are every wild thing that draws no wages and follows no villain, and each says how it feels about joining', () => {
     const beasts = (Object.keys(TROOPS) as TroopId[]).filter(isBeast);
-    expect(beasts.sort()).toEqual(['bears', 'boars', 'wolves']);
+    expect(beasts.sort()).toEqual(['bears', 'boars', 'spiders', 'wolves']);
     for (const b of beasts) expect(TROOPS[b].tamed, b).toBeTruthy();
     // The old King's huntsmen draw no wages either, but nobody tames them: they say why they serve.
     expect(TROOPS.huntsmen.wage).toBe(0);

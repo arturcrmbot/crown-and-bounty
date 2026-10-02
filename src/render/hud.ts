@@ -40,6 +40,10 @@ const BEAR = icon(
   ['oo.....oo', 'oBo...oBo', '.oBoooBo.', 'oBBBBBBBo', 'oBkBBBkBo', 'oBBPPPBBo', '.oBPkPBo.', '..ooooo..'],
   { o: INK, B: WOOD[3], P: WOOD[5], k: INK },
 );
+const SPIDER = icon(
+  ['o.o...o.o', '.o.ooo.o.', '..oSSSo..', '.oSkSkSo.', 'ooSSSSSoo', '..oSSSo..', '.o.ooo.o.', 'o.......o'],
+  { o: INK, S: STONE[3], k: RED[5] },
+);
 const HORSESHOE = icon(
   ['.oooooo.', 'oiiooiio', 'oio..oio', 'oio..oio', 'oio..oio', 'oo....oo'],
   { o: INK, i: STONE[6] },
@@ -67,6 +71,10 @@ const TROOP_ICONS: Record<TroopId, Bitmap> = {
   bears: BEAR,
   huntsmen: BOW,
   rook: BOW,
+  pikemen: FORK,
+  menAtArms: SWORD,
+  cutpurses: SWORD,
+  spiders: SPIDER,
   // Aldric is never in the army, but should he ever show there.
   heroKnight: SWORD,
   heroWizard: BOW,
