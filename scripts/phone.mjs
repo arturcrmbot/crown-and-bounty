@@ -415,12 +415,6 @@ try {
   await go('highwaymen', 'Approach');
   await look('fight-card');
   await press('Fight');
-  // A tap that comes to nothing (it happens on CI's slower machine) gets another, as a player's would.
-  const fighting = () => page.waitForFunction(() => window.__kc.screen() === 'battle', null, { timeout: 3000 }).then(() => true, () => false);
-  if (!(await fighting()) && !(await title())) {
-    await go('highwaymen', 'Approach');
-    await press('Fight');
-  }
   await page.waitForFunction(() => window.__kc.screen() === 'battle', null, { timeout: 10_000 });
   await wait(600);
   const battleRails = await call(() => [...document.querySelectorAll('.kc-rail:not([hidden]) button')].map((b) => b.getAttribute('aria-label')));

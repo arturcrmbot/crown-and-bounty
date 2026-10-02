@@ -1051,12 +1051,28 @@ export class AdventureController implements Screen {
   }
 
   /**
+   * Where the view will come to rest gliding by itself (see `update`), as far as the map's edge lets it;
+   * null if it's still. Following the hero, it stops once it has caught up with him, if it can, and
+   * glides on to a card's point if there is one.
+   */
+  private glideTarget(): { x: number; y: number } | null {
+    const { tiles } = this.view;
+    const on = ([x, y]: Point) => ({ x: Math.max(0, Math.min(tiles.width - VIEW.width, x - VIEW.width / 2)), y: Math.max(0, Math.min(tiles.height - VIEW.height, y - VIEW.height / 2 - 20)) });
+    if (!this.follow) return this.focus ? on(this.focus) : null;
+    const him = on([this.drawn.x, this.drawn.y]);
+    const catchesUp = !this.isRiding() && Math.hypot(him.x - (this.drawn.x - VIEW.width / 2), him.y - (this.drawn.y - VIEW.height / 2 - 20)) < 2;
+    return this.focus && catchesUp ? on(this.focus) : him;
+  }
+
+  /**
    * Keeps the open card hanging above whatever it describes, or beside it, never over it; one about
-   * nothing in particular keeps clear of the hero.
+   * nothing in particular keeps clear of the hero. While the view glides by itself, the card is placed
+   * where the glide will leave it, and the land slides in under it: a card moving as it opens would
+   * slip out from under a finger reaching for its button, and the tap would land on the map (#209).
    */
   placeCard() {
     const a = this.cardAnchor;
-    const { camera } = this.view;
+    const camera = this.glideTarget() ?? this.view.camera;
     const point = a && this.display.toPage(VIEW.x + a[0] - camera.x, VIEW.y + a[1] - camera.y);
     const hero = this.scene.hero;
     const heroBox = { x0: hero.object.x, y0: hero.object.y, x1: hero.object.x + hero.idle[0].width, y1: hero.object.y + hero.foot + 6 };
