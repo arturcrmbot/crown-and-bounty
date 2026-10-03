@@ -11,6 +11,7 @@ import './mix.css';
 import { isGentle, setGentle } from './gentle';
 import { bitmapUrl } from './pixels';
 import { SOUND_AT, SOUND_SIZE } from './mute';
+import { translate } from '../i18n';
 
 /** Three bars of a little equaliser, the knob's icon. */
 function bars(): Bitmap {
@@ -45,8 +46,8 @@ export class MixPanel {
 
   constructor() {
     this.button.className = 'kc-mix';
-    this.button.title = 'Mix: music, effects and ambience volumes, and gentle effects in battle';
-    this.button.setAttribute('aria-label', 'Open the mix panel');
+    this.button.title = translate('Mix: music, effects and ambience volumes, and gentle effects in battle');
+    this.button.setAttribute('aria-label', translate('Open the mix panel'));
     const icon = document.createElement('img');
     icon.src = bitmapUrl(bars());
     icon.alt = '';
@@ -58,7 +59,7 @@ export class MixPanel {
       const row = document.createElement('label');
       row.className = 'kc-mix-row';
       const name = document.createElement('span');
-      name.textContent = label;
+      name.textContent = translate(label);
       const slider = document.createElement('input');
       slider.type = 'range';
       slider.min = '0';
@@ -71,9 +72,9 @@ export class MixPanel {
     // Less shaking and flashing in battle, for players sensitive to motion or flashing light (#190).
     const gentle = document.createElement('label');
     gentle.className = 'kc-mix-row kc-mix-gentle';
-    gentle.title = 'Less shaking and flashing in battle';
+    gentle.title = translate('Less shaking and flashing in battle');
     const words = document.createElement('span');
-    words.textContent = 'Gentle effects';
+    words.textContent = translate('Gentle effects');
     const box = document.createElement('input');
     box.type = 'checkbox';
     box.checked = isGentle();

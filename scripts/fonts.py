@@ -35,12 +35,12 @@ FACES = [
     ('bolditalic', 'bold-italic', 'Bold Italic'),
 ]
 
-# Basic Latin, Latin-1 (accents, the middle dot, the times sign), dashes and quotes, the dagger, bullet
-# and ellipsis, primes, single guillemets, arrows, the minus sign, and the triangles and diamond the
-# cards and the hero screen use.
+# Basic Latin, Latin-1, Latin Extended-A for Polish, dashes and quotes, the dagger, bullet and ellipsis,
+# primes, single guillemets, arrows, the minus sign, and the triangles and diamond the cards and hero screen use.
 UNICODES = [
     *range(0x20, 0x7F),
     *range(0xA0, 0x100),
+    *range(0x100, 0x180),
     *range(0x2010, 0x2016),
     *range(0x2018, 0x201F),
     0x2020, 0x2021, 0x2022, 0x2026, 0x2032, 0x2033, 0x2039, 0x203A,

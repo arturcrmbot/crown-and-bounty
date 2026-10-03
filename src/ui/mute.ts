@@ -3,6 +3,7 @@ import type { Display } from '../game/display';
 import { Bitmap } from '../render/bitmap';
 import { SCREEN } from '../render/frame';
 import { GOLD, PARCHMENT, RED } from '../render/palette';
+import { translate } from '../i18n';
 import './mute.css';
 import { bitmapUrl } from './pixels';
 
@@ -71,10 +72,10 @@ export class MuteButton {
     if (muted !== this.shown) {
       this.shown = muted;
       this.icon.src = muted ? this.icons.off : this.icons.on;
-      this.label.textContent = muted ? 'Muted' : 'Sound';
+      this.label.textContent = translate(muted ? 'Muted' : 'Sound');
       this.button.classList.toggle('off', muted);
-      this.button.title = muted ? 'Sound is off: click (or press M) to turn it on' : 'Sound is on: click (or press M) to mute';
-      this.button.setAttribute('aria-label', muted ? 'Unmute sound' : 'Mute sound');
+      this.button.title = translate(muted ? 'Sound is off: click (or press M) to turn it on' : 'Sound is on: click (or press M) to mute');
+      this.button.setAttribute('aria-label', translate(muted ? 'Unmute sound' : 'Mute sound'));
     }
     const { x, y } = display.toPage(AT.x, AT.y);
     const s = display.scale;

@@ -11,6 +11,7 @@ import './heroScreen.css';
 import { bitmapUrl, PARCHMENT_SHADOW } from './pixels';
 import { play } from './sound';
 import { touch } from './touch';
+import { translate } from '../i18n';
 
 /** Size of the sheet in screen pixels: it covers the map, and scales with the page as the canvas does. */
 export const SHEET = { x: 24, y: 30, width: 912, height: 446 };
@@ -33,7 +34,7 @@ function parse(key: string | undefined): Place | null {
   return kind === 'hero' ? { kind } : null;
 }
 
-const escape = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const escape = (text: string) => translate(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const format = (text: string) => escape(text).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\*(.+?)\*/g, '<i>$1</i>').replace(/\n/g, '<br>');
 
 /** Pictures for the page, drawn once through the palette. */
@@ -225,20 +226,20 @@ export class HeroScreen {
           <h2>${escape(sheet.title)}</h2>
           <div class="level" data-tip="${escape(sheet.xp.line)}"><b>${sheet.level}</b>${bar('xp', sheet.xp.share)}<small>${escape(sheet.xp.line)}</small></div>
           <div class="when" data-tip="${escape(sheet.piecesNote)}">${escape(sheet.day)} \u00b7 ${escape(sheet.pieces)}</div>
-          ${sheet.company.length ? `<div class="company"><small>Riding with him:</small>${chips(sheet.company, '')}</div>` : ''}
+          ${sheet.company.length ? `<div class="company"><small>${escape('Riding with him:')}</small>${chips(sheet.company, '')}</div>` : ''}
         </div>
       </div>
       <div class="stats">${sheet.stats.map(stat).join('')}</div>
       <div class="gauges">
-        <div class="gauge${changed(4)}" data-tip="${escape(mana.line)}"><span class="label"><b>Mana</b><small>${mana.max ? escape(mana.back) : ''}</small><span>${mana.left}/${mana.max}</span></span>${bar('mana', mana.max ? mana.left / mana.max : 0)}</div>
-        <div class="gauge${changed(6)}" data-tip="${escape(movement.line)}"><span class="label"><b>Movement</b><small>today</small><span>${movement.left}/${movement.max}</span></span>${bar('move', movement.max ? movement.left / movement.max : 0)}</div>
-        <div class="gauge${changed(5)}${leadership.used > leadership.max ? ' too-many' : ''}" data-tip="${escape(leadership.line)}"><span class="label"><b>Leadership</b><small>in use</small><span>${leadership.used}/${leadership.max}</span></span>${bar('lead', leadership.max ? leadership.used / leadership.max : 0)}</div>
+        <div class="gauge${changed(4)}" data-tip="${escape(mana.line)}"><span class="label"><b>${escape('Mana')}</b><small>${mana.max ? escape(mana.back) : ''}</small><span>${mana.left}/${mana.max}</span></span>${bar('mana', mana.max ? mana.left / mana.max : 0)}</div>
+        <div class="gauge${changed(6)}" data-tip="${escape(movement.line)}"><span class="label"><b>${escape('Movement')}</b><small>${escape('today')}</small><span>${movement.left}/${movement.max}</span></span>${bar('move', movement.max ? movement.left / movement.max : 0)}</div>
+        <div class="gauge${changed(5)}${leadership.used > leadership.max ? ' too-many' : ''}" data-tip="${escape(leadership.line)}"><span class="label"><b>${escape('Leadership')}</b><small>${escape('in use')}</small><span>${leadership.used}/${leadership.max}</span></span>${bar('lead', leadership.max ? leadership.used / leadership.max : 0)}</div>
       </div>
       <div class="learned">
-        <div class="row"><h4>Signature</h4>${chips([sheet.signature], '')}</div>
-        <div class="row"><h4>Skills</h4>${chips(sheet.skills, 'none yet, but a level brings a choice')}</div>
-        <div class="row"><h4>Perks</h4>${chips(sheet.perks, 'none yet')}</div>
-        <div class="row"><h4>Spells</h4>${chips(sheet.spells, 'none yet, but a teacher or a shrine could help')}</div>
+        <div class="row"><h4>${escape('Signature')}</h4>${chips([sheet.signature], '')}</div>
+        <div class="row"><h4>${escape('Skills')}</h4>${chips(sheet.skills, 'none yet, but a level brings a choice')}</div>
+        <div class="row"><h4>${escape('Perks')}</h4>${chips(sheet.perks, 'none yet')}</div>
+        <div class="row"><h4>${escape('Spells')}</h4>${chips(sheet.spells, 'none yet, but a teacher or a shrine could help')}</div>
       </div>
     </section>`;
   }
@@ -273,9 +274,9 @@ export class HeroScreen {
     }).join('');
     const hint = this.held ? this.holdingHint(this.held) : pack.length ? (touch() ? 'tap one, then tap where it goes' : 'drag to wear, or click, then click where') : 'finds go here when their slot is taken';
     return `<section class="gear">
-      <h3>Equipment</h3>
+      <h3>${escape('Equipment')}</h3>
       <div class="doll"><img class="figure" alt="" draggable="false" src="${unitUrl(heroArtId(this.state.hero.background), 2)}">${slots}</div>
-      <p class="caption"><b>Pack</b> <small>${escape(hint)}</small></p>
+      <p class="caption"><b>${escape('Pack')}</b> <small>${escape(hint)}</small></p>
       <div class="pack">${squares}</div>
     </section>`;
   }
@@ -307,15 +308,15 @@ export class HeroScreen {
     const leaderTip = `**${sheet.title}**\nHe leads from behind the line, where nothing can reach him. Every stack adds his attack and defence to its own, and he casts from there.\n*${touch() ? 'Tap' : 'Click'} for his numbers.*`;
     const open = this.card?.kind === 'hero' ? ' open' : '';
     return `<section class="army">
-      <h3>Army <small>${touch() ? 'tap one for its card, or drag to reorder' : 'drag to reorder'}. The first stands in the middle of the battle line, and the rest above and below.</small></h3>
+      <h3>${escape('Army')} <small>${escape(touch() ? 'tap one for its card, or drag to reorder' : 'drag to reorder')}. ${escape('The first stands in the middle of the battle line, and the rest above and below.')}</small></h3>
       <div class="strip">
-        <button class="tile leader${open}" data-place="hero" data-tip="${escape(leaderTip)}" aria-label="${escape(sheet.title)}"><img alt="" draggable="false" src="${unitUrl(heroArtId(this.state.hero.background))}"><span class="count">Leader</span></button>
+        <button class="tile leader${open}" data-place="hero" data-tip="${escape(leaderTip)}" aria-label="${escape(sheet.title)}"><img alt="" draggable="false" src="${unitUrl(heroArtId(this.state.hero.background))}"><span class="count">${escape('Leader')}</span></button>
         <span class="sep"></span>
         ${tiles}
         <div class="totals">
-          <div data-tip="${escape(sheet.leadership.line)}"><b>Leadership</b> ${leadershipUsed(army)} / ${s.leadership}</div>
-          <div data-tip="Paid once a week, from day VIII, with the King\u2019s money"><b>Wages</b> ${coins(pay)} gold a week</div>
-          <div><b>Stacks</b> ${army.length} of 5</div>
+          <div data-tip="${escape(sheet.leadership.line)}"><b>${escape('Leadership')}</b> ${leadershipUsed(army)} / ${s.leadership}</div>
+          <div data-tip="${escape('Paid once a week, from day VIII, with the King’s money')}"><b>${escape('Wages')}</b> ${coins(pay)} ${escape('gold a week')}</div>
+          <div><b>${escape('Stacks')}</b> ${army.length} ${escape('of 5')}</div>
         </div>
       </div>
     </section>`;
@@ -325,9 +326,9 @@ export class HeroScreen {
     const spells = sheet.mapSpells.map((m) => `<button class="act" data-act="spell:${m.spell}" data-tip="${escape(m.note)}"${m.disabled ? ' disabled' : ''}>${escape(m.label)}</button>`).join('');
     return `<footer>
       ${spells}
-      <button class="act" data-act="endDay" data-tip="Rest, and at dawn you get fresh legs and a quarter of your mana back">End the day${touch() ? '' : ' (E)'}</button>
+      <button class="act" data-act="endDay" data-tip="${escape('Rest, and at dawn you get fresh legs and a quarter of your mana back')}">${escape('End the day')}${touch() ? '' : ' (E)'}</button>
       <span class="spacer"></span>
-      <button class="act" data-act="close">Close${touch() ? '' : ' (H)'}</button>
+      <button class="act" data-act="close">${escape('Close')}${touch() ? '' : ' (H)'}</button>
     </footer>`;
   }
 
@@ -353,8 +354,8 @@ export class HeroScreen {
     const stats = this.statList(info.stats);
 
     const acts = this.confirming
-      ? `<span class="ask">Send the ${escape(info.title)} home for good?</span><button class="act" data-act="dismiss-yes">Dismiss them</button><button class="act" data-act="dismiss-no">Keep them</button>`
-      : `<button class="act" data-act="left"${i === 0 ? ' disabled' : ''}>\u25C0 Move left</button><button class="act" data-act="right"${i >= last ? ' disabled' : ''}>Move right \u25B6</button><button class="act" data-act="dismiss"${info.canDismiss ? '' : ' disabled'} data-tip="${info.canDismiss ? 'They go home, and take no more wages' : 'Your last company stays with you'}">Dismiss\u2026</button><span class="spacer"></span><button class="act" data-act="card-close">Close</button>`;
+      ? `<span class="ask">${escape(`Send the ${info.title} home for good?`)}</span><button class="act" data-act="dismiss-yes">${escape('Dismiss them')}</button><button class="act" data-act="dismiss-no">${escape('Keep them')}</button>`
+      : `<button class="act" data-act="left"${i === 0 ? ' disabled' : ''}>\u25C0 ${escape('Move left')}</button><button class="act" data-act="right"${i >= last ? ' disabled' : ''}>${escape('Move right')} \u25B6</button><button class="act" data-act="dismiss"${info.canDismiss ? '' : ' disabled'} data-tip="${info.canDismiss ? 'They go home, and take no more wages' : 'Your last company stays with you'}">${escape('Dismiss…')}</button><span class="spacer"></span><button class="act" data-act="card-close">${escape('Close')}</button>`;
     return `<div class="kc-hero-card" role="dialog" aria-label="${escape(info.title)}">
       <img class="pic" alt="" draggable="false" src="${unitUrl(info.troop, 2)}">
       <div class="head"><h3>${escape(info.title)}</h3><p><i>${escape(info.note)}</i></p></div>

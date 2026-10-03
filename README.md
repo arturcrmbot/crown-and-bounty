@@ -8,6 +8,8 @@ Ride out for King Osric across five commissions, as a Knight who charges, a Rang
 
 **Play it:** https://arturcrmbot.github.io/crown-and-bounty/
 
+To play with the Polish localization, add `?lang=pl` to the address.
+
 The live game counts visits, and how far players get, with [GoatCounter](https://www.goatcounter.com/). It sets no cookies, and nothing personal is sent: no saves, no IDs and no names. A copy you build or run yourself counts nothing.
 
 To run it locally: `npm install`, then `npm run dev` and open http://127.0.0.1:5188. `AGENTS.md` lists the commands, and `docs/` holds the design and the plan.

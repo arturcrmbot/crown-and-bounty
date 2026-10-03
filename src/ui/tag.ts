@@ -1,6 +1,7 @@
 import './tag.css';
 import type { AimTag } from '../rules/battle/forecast';
 import { uiScale } from './scale';
+import { translate } from '../i18n';
 
 /** A box on the page, in page pixels. */
 export type PageBox = { left: number; top: number; right: number; bottom: number };
@@ -31,9 +32,9 @@ export class ForecastTag {
     const said = JSON.stringify([tag, hint]);
     if (said !== this.said) {
       this.said = said;
-      const line = (text: string, kind?: string) => Object.assign(document.createElement('p'), { textContent: text, className: kind ?? '' });
+      const line = (text: string, kind?: string) => Object.assign(document.createElement('p'), { textContent: translate(text), className: kind ?? '' });
       this.el.replaceChildren(
-        Object.assign(document.createElement('b'), { textContent: tag.title }),
+        Object.assign(document.createElement('b'), { textContent: translate(tag.title) }),
         ...tag.lines.map((l) => line(l.text, l.danger ? 'danger' : undefined)),
         ...(hint ? [line(hint, 'hint')] : []),
       );

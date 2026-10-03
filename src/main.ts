@@ -1,6 +1,7 @@
 import { BACKGROUNDS, type BackgroundId } from './content/backgrounds';
 import { SPELLS, type SpellId } from './content/spells';
 import { TROOPS, type TroopId } from './content/troops';
+import { setLanguage } from './i18n';
 import { Game } from './game/game';
 import { Display } from './game/display';
 import { Input } from './game/input';
@@ -41,8 +42,11 @@ declare global {
 /** HoMM2 advanced its palette cycles about eight times a second. */
 const TICK_MS = 120;
 
-// ?fresh=1 ignores the save, ?freeze=1 also stops the clock for exact screenshots, ?speed=8 rides faster.
+// ?lang=pl uses Polish; ?fresh=1 ignores the save, ?freeze=1 also stops the clock, and ?speed=8 rides faster.
 const query = new URLSearchParams(window.location.search);
+const language = query.get('lang') === 'pl' ? 'pl' : 'en';
+setLanguage(language);
+document.documentElement.lang = language;
 const chapterNumber = Number(query.get('chapter'));
 const requestedChapter = Number.isInteger(chapterNumber) && chapterNumber >= 2 && chapterNumber <= CAMPAIGN_LENGTH ? chapterNumber : null;
 const frozen = query.get('freeze') === '1';

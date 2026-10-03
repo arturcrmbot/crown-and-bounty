@@ -17,6 +17,7 @@ import { speaker } from './mute';
 import { bitmapUrl } from './pixels';
 import { play } from './sound';
 import { touch, upright } from './touch';
+import { translate } from '../i18n';
 import './rail.css';
 
 export type RailIcon = 'hero' | 'journal' | 'map' | 'day' | 'spells' | 'wait' | 'defend' | 'sing' | 'auto' | 'retreat' | 'sound' | 'muted' | 'full' | 'unfull';
@@ -184,14 +185,14 @@ export class Rail {
     el.disabled = !b.enabled;
     el.classList.toggle('on', Boolean(b.on));
     el.classList.toggle('muted', b.icon === 'muted');
-    el.setAttribute('aria-label', b.label);
+    el.setAttribute('aria-label', translate(b.label));
     const p = picture(b.icon);
     const img = document.createElement('img');
     img.alt = '';
     img.src = p.url;
     Object.assign(img.style, { width: `${p.width}px`, height: `${p.height}px` });
     const word = document.createElement('span');
-    word.textContent = b.label;
+    word.textContent = translate(b.label);
     el.append(img, word);
     return el;
   }

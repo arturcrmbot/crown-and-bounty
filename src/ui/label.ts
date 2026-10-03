@@ -1,6 +1,7 @@
 import type { Verdict } from '../rules/state';
 import { uiScale } from './scale';
 import { touch } from './touch';
+import { translate } from '../i18n';
 
 /**
  * The name of whatever is under the pointer, like HoMM2's status line; played by touch, what a finger
@@ -25,12 +26,12 @@ export class HoverLabel {
     const shown = `${text}\n${odds?.odds ?? ''}\n${odds?.words ?? ''}`;
     if (shown !== this.shown) {
       this.shown = shown;
-      this.said = odds ? `${text} \u00b7 ${odds.words}` : text;
-      this.el.textContent = text;
+      this.said = odds ? `${translate(text)} \u00b7 ${translate(odds.words)}` : translate(text);
+      this.el.textContent = translate(text);
       if (odds) {
         const tag = document.createElement('span');
         tag.className = `kc-odds ${odds.odds}`;
-        tag.textContent = odds.words;
+        tag.textContent = translate(odds.words);
         this.el.append(tag);
       }
     }

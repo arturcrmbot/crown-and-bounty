@@ -10,6 +10,7 @@ import { bitmapUrl, PARCHMENT_SHADOW } from './pixels';
 import { uiRoom, uiScale } from './scale';
 import { play } from './sound';
 import { touch } from './touch';
+import { translate } from '../i18n';
 
 type ScreenPoint = { x: number; y: number };
 /** A card's padding and border, top and bottom (CSS pixels): `max-height` doesn't count them. */
@@ -30,14 +31,14 @@ const STAMP_LANDS = 470;
 /** A box on the page (page pixels) that a card with nowhere in particular to be should keep clear of. */
 export type Keepout = { x0: number; y0: number; x1: number; y1: number };
 
-const escape = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const escape = (text: string) => translate(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const format = (text: string) => escape(text).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\*(.+?)\*/g, '<i>$1</i>');
 
 /** A button's or a link's words: its label (with an arrow, for a link that opens a new tab), and the smaller line under it. */
 function wordsOf(label: string, detail?: string, out = false): HTMLSpanElement {
   const words = document.createElement('span');
   words.className = 'words';
-  words.textContent = label;
+  words.textContent = translate(label);
   if (out) {
     const arrow = document.createElement('span');
     arrow.className = 'out';
@@ -90,9 +91,9 @@ function battleResultMarkup(card: NonNullable<Card['battleResult']>): string {
  */
 function heardMarkup(heard: Heard[], found: Found[] = []): string {
   const items = heard.map((h) => `<li${h.done ? ' class="done"' : ''}><span class="words">\u201c${format(h.words)}\u201d</span><small>${escape(h.who)}</small></li>`).join('');
-  const list = heard.length ? `<ul>${items}</ul>` : '<p class="none">You have heard nothing yet. What you hear on the road goes down here.</p>';
-  const tally = found.length ? `<h4 class="found">Things found</h4><ul class="found">${found.map((f) => `<li><span>${escape(f.what)}</span><i></i><b>${f.got} of ${f.of}</b></li>`).join('')}</ul>` : '';
-  return `<section class="heard"><h4>Things heard</h4>${list}${tally}</section>`;
+  const list = heard.length ? `<ul>${items}</ul>` : `<p class="none">${escape('You have heard nothing yet. What you hear on the road goes down here.')}</p>`;
+  const tally = found.length ? `<h4 class="found">${escape('Things found')}</h4><ul class="found">${found.map((f) => `<li><span>${escape(f.what)}</span><i></i><b>${f.got} of ${f.of}</b></li>`).join('')}</ul>` : '';
+  return `<section class="heard"><h4>${escape('Things heard')}</h4>${list}${tally}</section>`;
 }
 
 /**
@@ -136,7 +137,7 @@ export class CardView {
     this.card.className = 'kc-card';
     this.body.className = 'kc-card-body';
     this.more.className = 'kc-card-more';
-    this.more.innerHTML = '<span>more \u25be</span>';
+    this.more.innerHTML = `<span>${escape('more \u25be')}</span>`;
     this.more.setAttribute('aria-hidden', 'true');
     this.card.append(this.body, this.more);
     this.wrap.append(this.card);
@@ -208,7 +209,7 @@ export class CardView {
     const words = [...lines.slice(0, at), battle, ...lines.slice(at)].join('');
     if (card.journal) {
       // Two pages: the commission, with its poster pinned in (stamped long since, so it doesn't land again), and what's been heard.
-      const pinned = `<div class="pinned"><b>WANTED</b><div class="mugshot">${face}${stamp}</div></div>`;
+      const pinned = `<div class="pinned"><b>${escape('WANTED')}</b><div class="mugshot">${face}${stamp}</div></div>`;
       this.body.innerHTML = `<div class="page">${title}${pinned}${words}</div>${heardMarkup(card.journal.heard, card.journal.found)}`;
     } else this.body.innerHTML = card.poster ? `${title}<div class="mugshot">${face}${stamp}</div>${words}${inset}` : `${face}${title}${verdict}${words}${inset}`;
     if (fresh && card.stamp && !card.journal) setTimeout(() => play('stamp'), STAMP_LANDS);

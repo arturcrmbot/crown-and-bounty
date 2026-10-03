@@ -1,4 +1,5 @@
 import { Bitmap } from './bitmap';
+import { translate } from '../i18n';
 
 const scratch = document.createElement('canvas');
 const context = scratch.getContext('2d', { willReadFrequently: true })!;
@@ -42,6 +43,7 @@ export const bigLettering = () => lettering !== 1;
 
 /** Which pixels a line of text covers: the browser renders it once, and every pixel more than half covered counts. */
 export function textMask(text: string, size: number, spacing = 0) {
+  text = translate(text);
   const font = `bold ${size}px ${FACE}`;
   context.font = font;
   context.letterSpacing = `${spacing}px`;
