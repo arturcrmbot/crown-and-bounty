@@ -28,7 +28,7 @@ built, and none of it is built yet.
 | **Bounty** | 2,000 | 3,000 | 4,000 | 5,000 |
 | **The egg** | a smell | a sound | room to grow | warm |
 
-The armies go from rabble (many, cheap and tricky) to skill (shooters, healers, walking trees), to armour (shields,
+The armies go from rabble (many, cheap and tricky) to skill (shooters, casters, walking trees), to armour (shields,
 thunderers, berserkers, gryphons), to the best of everything. The wild monsters are dragonflies and boars in the fen,
 giant spiders in the Wychwood, gryphons on Silverfell and great wolves on the downs. The bog goblins and the troll
 leave the Fenmarch for Act II, as WORLD.md's table has it.

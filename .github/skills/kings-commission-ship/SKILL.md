@@ -33,7 +33,6 @@ work; GitHub Actions does the long checks. Fix what a player would hate.
    put `Fixes #N` (or `Part of #N`) in the PR. Once CI's three PR jobs are green
    (`gh pr checks N --watch`), merge it yourself with `gh pr merge N --squash`, and main deploys a few
    minutes later. If main breaks, an issue labelled `ci` opens itself. `gh run watch` follows a run.
-   Don't run `npm run deploy`.
 5. **Report** in a line: what changed, and the live link.
 
 Visual scenes are approved on a Mac (`npm run visual -- --approve`, after looking at the PNGs). CI
@@ -110,5 +109,6 @@ nothing can reach them.
   figure from a sheet, never Wesnoth's art as it comes, and `test/figures.test.ts` fails without one. Wesnoth's units
   stay under the paintings (`npm run wesnoth`; every file is credited in `public/assets/CREDITS.md`, and the game is
   GPL-2.0-or-later), so a new troop still gets its entry in `src/render/units.ts`, then
-  `npm run wesnoth -- --palette --credits`. All other art, and the sound effects, are made in code. The music is
+  `npm run wesnoth -- --palette --credits`. The sound effects are recordings made by people, cut by `scripts/sfx.py`
+  and credited by name in `public/assets/CREDITS.md`, and the rest of the art is made in code. The music is
   yubatake's MIDI tunes (CC BY 4.0) on GeneralUser GS's instruments, every file credited in `public/assets/CREDITS.md` too.

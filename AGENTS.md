@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Crown & Bounty is a browser game: King's Bounty (1990) rebuilt with modern tech and the charm of Heroes of Might and Magic 2, and The Old King's Treasure is its first act. Until 30 Sep 2026 it was called King's Commission (#147), and the saves' storage keys (`kings-commission/`) and the skills' folders keep that name. Read `docs/BRIEF.md` for the design and every decision made so far, `docs/PLAN.md` for the structure, testing and milestones, `docs/WORLD.md` for the story and the world, and `docs/BALANCE.md` for the power budget: what a proper challenge is, the levers, and how the sims measure it.
+Crown & Bounty is a browser game: King's Bounty (1990) rebuilt with modern tech and the charm of Heroes of Might and Magic 2, and The Old King's Treasure is its first act. Until 30 Sep 2026 it was called King's Commission (#147), and the saves' storage keys (`kings-commission/`) and the skills' folders keep that name. Read `docs/BRIEF.md` for the design and the test layers, `docs/WORLD.md` for the story and the world, `docs/act1/` for Aldmoor and the crooks still to come, and `docs/BALANCE.md` for the climb: what the tests hold, the levers, and how the sims measure it.
 
 ## Working with Artur
 
@@ -81,5 +81,5 @@ Change, run the tests, open the game in the browser panel, screenshot, fix.
   - **By hand only:** the visual scenes (Run workflow > visual, on a Mac, report only). Approve baselines locally on a Mac.
   - Screenshots are the run's artifacts, and results go in its summary. If main breaks, an issue labelled `ci` opens itself, and it closes when main is green.
   - The repo is public, so Actions minutes are free. If it's ever private again (Pro: 3,000 minutes a month, Mac minutes count 10×), watch them. Either way, don't add jobs that run twice for one commit.
-  - `gh run list`, `gh run watch`. `npm run deploy` now only prints a note saying this.
+  - `gh run list`, `gh run watch`.
 - **Merging:** the session that opened a PR merges it with `gh pr merge N --squash` once CI's three PR jobs are green ("Typecheck, unit tests, build", "The bot plays whole commissions", "Play-through and playtests"; `gh pr checks N --watch` waits for them). Main's ruleset requires those three checks for merges; admins bypass it, so wait for green, and never push to main. The merge starts CI on main, which deploys.
