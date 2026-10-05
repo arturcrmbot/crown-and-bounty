@@ -1,6 +1,8 @@
 # Crown & Bounty: the world
 
-Broad strokes (29 Sep 2026). The details get settled as each act is built, and they'll change.
+Broad strokes, agreed on 29 Sep 2026. The details get settled as each act is built. Commission I, Aldmoor, is built as
+it says here. Commissions II to V are still the old ones in the code (the Fenmarch with Mother Mirrow, then three
+generated provinces) until they're rebuilt as [act1/crooks.md](act1/crooks.md) plans.
 
 **Tone:** storybook fantasy in the spirit of HoMM2 and King's Bounty. It's funny and not too serious, with real
 villains and stakes that start small and grow, all the way to dragons. Nobody turns anyone into a frog.
@@ -36,7 +38,6 @@ sceptre, buried it, and tore its map into five pieces for five friends to keep. 
 
 ## Act I first
 
-What changes in today's game:
 
 - **Aldmoor stays, and grows** (see [act1/aldmoor.md](act1/aldmoor.md)), with Grimsby, the goose and its people.
   Grimsby is now the grandson of one of the old King's friends, and the only crook who knows what the treasure
@@ -60,8 +61,6 @@ What changes in today's game:
 5. **Back at court,** the King remembers what you did, and a boon can carry someone forward (Old Nan's charm, for
    instance). Then comes the next piece of the map.
 
-This comes from playtest 01 (the Courtier in Aldmoor).
-
 ## Artur's rules
 
 - **Hint, don't tell.** Clues are quiet. *"Whatever you find, don't let it get cold"* was far too loud.
@@ -70,8 +69,8 @@ This comes from playtest 01 (the Courtier in Aldmoor).
   casts; the Knight rides out, strikes and rides back. Villains and captains fight the same way, each in his own
   style. No blow and no spell can reach them, friend or foe (a Fireball passes over them), so their blows get no
   strike back. Each needs his army: when it's beaten, so is he. Aldric retreats, and a villain is taken.
-- **The Courtier is a bard** (#42). He has no attack: he bribes, taunts and sings. Whether he's renamed the Bard,
-  with a new face and lines, is still open.
+- **The Courtier is a bard** (#42). He has no attack: he bribes, taunts and sings.
 - **Captains are the enemy's** (#15). Aldric is the only hero you ever have. Every villain has captains (Rook the
   Huntsman leads Grimsby's wolves) who fight the same way.
+- **Nobody heals in a fight** (#239), on either side, because it only makes fights longer.
 - **No gimmicks** that cost code and add little. Scarecrows that spy for Grimsby were one.

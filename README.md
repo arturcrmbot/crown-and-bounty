@@ -2,20 +2,38 @@
 
 [![CI](https://github.com/arturcrmbot/crown-and-bounty/actions/workflows/ci.yml/badge.svg)](https://github.com/arturcrmbot/crown-and-bounty/actions/workflows/ci.yml)
 
-A small browser game: King's Bounty (1990) rebuilt with the charm of Heroes of Might and Magic 2. The troops are Battle for Wesnoth's hand-painted units; every other pixel is made in code. The music is yubatake's tunes, played on GeneralUser GS's instruments.
-
-Ride out for King Osric across five commissions, as a Knight who charges, a Ranger who rides the woods, a Hedge Wizard who casts twice a round, or a Courtier who buys his way through. Commission I is out now, and the other four are on their way.
+A small browser game: King's Bounty (1990) rebuilt with the charm of Heroes of Might and Magic II. Commission I, The
+Old King's Treasure, is open to play, and the next commissions are on their way.
 
 **Play it:** https://arturcrmbot.github.io/crown-and-bounty/
 
-The live game counts visits, and how far players get, with [GoatCounter](https://www.goatcounter.com/). It sets no cookies, and nothing personal is sent: no saves, no IDs and no names. A copy you build or run yourself counts nothing.
+## Run it
 
-To run it locally: `npm install`, then `npm run dev` and open http://127.0.0.1:5188. `AGENTS.md` lists the commands, and `docs/` holds the design and the plan.
+You need Node 20 or later. Run `npm install`, then `npm run dev`, and open http://127.0.0.1:5188.
 
-Bugs and ideas: [Issues](https://github.com/arturcrmbot/crown-and-bounty/issues). Every push to `main` is tested and deployed by [GitHub Actions](https://github.com/arturcrmbot/crown-and-bounty/actions).
+- `npm run typecheck` and `npm run test:fast` are the quick checks. `npm test` adds the bot playing whole commissions.
+- `npm run e2e` plays the commission through the real UI, and `npm run phone` does the same by touch.
+- `npm run build` makes the site in `dist/`.
 
-## Licence
+`AGENTS.md` lists every command, the debug links (`?quick=1`, `?battle=patrol`, `?reveal=1` and more) and where each
+part of the game lives. `docs/` holds the design (`BRIEF.md`), the story (`WORLD.md`), the difficulty (`BALANCE.md`)
+and the voice of its words (`VOICE.md`). Bugs and ideas go in
+[Issues](https://github.com/arturcrmbot/crown-and-bounty/issues), and every merge to `main` is tested and deployed by
+GitHub Actions.
 
-Crown & Bounty is free software under the GNU General Public License, version 2 or (at your option) any later version: see `LICENSE`.
+The live game counts visits, and how far players get, with [GoatCounter](https://www.goatcounter.com/). It sets no
+cookies and sends nothing personal, and a copy you build yourself counts nothing.
 
-The troops and the hero are units from [Battle for Wesnoth](https://www.wesnoth.org/), by its artists, under the GPL v2 or later or, for newer images, CC BY-SA 4.0. `public/assets/CREDITS.md` lists every file with its licence and artists.
+## Credits and licences
+
+Crown & Bounty is free software under the GNU General Public License, version 2 or any later version (`LICENSE`).
+
+- The map, the battlefield and the figures are painted from [Retro Diffusion](https://www.retrodiffusion.ai/) sheets,
+  over units from [Battle for Wesnoth](https://www.wesnoth.org/) (GPL-2.0-or-later, or CC BY-SA 4.0).
+- The music is yubatake's (CC BY 4.0), played on the GeneralUser GS instruments. The court's and the feast's tunes
+  are Renaissance pieces from the Mutopia Project (public domain).
+- The sounds are recordings by Battle for Wesnoth, Will Leamon, Kenney, Little Robot Sound Factory, Freesound's
+  recordists and others, each under its own licence.
+- The lettering is cut from TeX Gyre Pagella (GUST Font License).
+
+[`public/assets/CREDITS.md`](public/assets/CREDITS.md) names every file, its author and its licence.

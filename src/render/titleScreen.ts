@@ -367,7 +367,7 @@ export class TitleScreen {
 
     // The name, with the first act's title under it in smaller letters.
     this.logo = stack([this.paintLogo(textMask('CROWN & BOUNTY', 72, 3)), this.paintLogo(textMask('THE OLD KING\u2019S TREASURE', 26, 4))], 4);
-    drawText(b, 'This game is a tribute to King\u2019s Bounty (1990) and Heroes of Might and Magic II, and its units come from Battle for Wesnoth (GPL, CC BY-SA).', BAR.x + 12, BAR.y + 5, PARCHMENT[6], INK);
+    drawText(b, 'This game is a tribute to King\u2019s Bounty (1990) and Heroes of Might and Magic II, and its figures are painted over Wesnoth\u2019s units (GPL, CC BY-SA).', BAR.x + 12, BAR.y + 5, PARCHMENT[6], INK);
     this.base = b;
   }
 

@@ -2,6 +2,9 @@
   "name": "crown-and-bounty",
   "private": true,
   "version": "0.0.0",
+  "description": "King's Bounty (1990) rebuilt with the charm of Heroes of Might and Magic II, in the browser.",
+  "homepage": "https://arturcrmbot.github.io/crown-and-bounty/",
+  "repository": "github:arturcrmbot/crown-and-bounty",
   "license": "GPL-2.0-or-later",
   "type": "module",
   "scripts": {
@@ -20,7 +23,6 @@
     "sim:boss": "node scripts/bossmargin.mjs",
     "rides": "node scripts/rides.mjs",
     "sim:curve": "node scripts/curve.mjs",
-    "deploy": "node scripts/deploy.mjs",
     "difficulty": "node scripts/difficulty.mjs",
     "wesnoth": "node scripts/wesnoth.mjs",
     "listen": "node scripts/listen.mjs",

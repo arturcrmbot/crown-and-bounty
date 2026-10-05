@@ -336,11 +336,12 @@ from Freesound's high-quality previews of them.
 
 ## Everything else
 
-The terrain, buildings, portraits, title painting, interface and icon are all made in code
-(`src/render/`), and so are a few sounds (`src/audio/`): the people's speech, the faint wind under
+The portraits, the title painting, the interface, the icon, and any land that isn't one of the painted pieces above
+are made in code (`src/render/`), and so are a few sounds (`src/audio/`): the people's speech, the faint wind under
 the map, the cuckoo, a drop in the brook, the villagers' talk and the brothers' chant. So are the
 notes the band plays for the heralds, the curtain, a new day, a province's fanfare, the charge's
-horn, cheers, falters, jeers and the bard's songs. No image-generation models are used.
+horn, cheers, falters, jeers and the bard's songs. The only image model used is Retro Diffusion, for the
+sheets at the top of this file.
 
 ## Wesnoth files
 

@@ -1,26 +1,18 @@
-# Aldmoor, bigger
+# Aldmoor
 
-The first commission, rebuilt with room to ride. Artur picked these ideas on 29 Sep.
+The first commission, built with room to ride, from the ideas Artur picked on 29 Sep (#75 to #79, #105, #124). It is all
+in the game now, in `src/content/aldmoor.ts` and the files beside it. Since 2 Oct its bands stand in five rings, a climb
+from the castle to Darkwood ([BALANCE.md](../BALANCE.md)). Something worth stopping for lies less than a day's ride from
+anywhere, and about every half day along the roads, and `npm run rides` measures it.
 
-**Built (#77):** the space, the regions, the river with its bridge and ford, today's places in the new land, Mrs Pike
-in Westmere, and Grimsby's dig on the heath (raiding it sets `flags.dig`).
-**Built (#79):** the court that remembers what you did, the bounty paid with a scene, and the Courtier's parley at
-Grimsby's walls: Old Nan's lullaby, for half the bounty.
-**Built (#75):** Grimsby rides out to meet you when you raid his dig or take his patrol off the bridge, and flees home
-when his guard is beaten.
-**Built (#15):** Rook the Huntsman, Grimsby's captain, leads the wolves from the kennels, and hunts you from week 2.
-**Built (#76):** the hunt hall by the bridge, Old Nan's word, the lodge in the chase with its bears, and the huntsmen.
-**Built (#78):** the grain cart on payday, which a squad of Pike's patrol takes from Westmere to the stockade.
-**Built (#105):** the old King's falconer on the south-west heath, with a clue, his hawk, and a way home to the hall.
-**Built (#124):** something worth stopping for less than a day's ride from anywhere, and about every half day on the
-roads: eighteen small finds (`content/aldmoorFinds.ts`), and `npm run rides` to measure it.
+The sketch below is the plan the land was built from. `aldmoor.ts` cites it for the names of the lands.
 
 ![Aldmoor, bigger](aldmoor.svg)
 
 ![Legend](legend.svg)
 
-**Space.** About 2.5 times as wide and as tall as today's Aldmoor, roughly 100 by 75 tiles. Today a day's ride on a
-road crosses the whole province; now it takes three. You start at the edge, on the King's road. The river is a
+**Space.** About 2.5 times as wide and as tall as the first Aldmoor, roughly 100 by 75 tiles, and it takes about
+three days to ride across it on a road. You start at the edge, on the King's road. The river is a
 real barrier: Pike's patrol holds the bridge, and the ford in the north is the long way round.
 
 **Grimsby's people move.**
