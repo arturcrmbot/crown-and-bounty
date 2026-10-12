@@ -1,0 +1,20 @@
+{
+  "issue": 285,
+  "date": "2026-10-12",
+  "currency": "USD",
+  "total": 2.16,
+  "attempts": [
+    { "sheet": "map-boars.png", "balance_cost": 0.18, "used": true, "inspection": "The grey bristles, tusks and stocky body match. Four quadruped travel poses precede two planted sniffing rests." },
+    { "sheet": "map-bears.png", "balance_cost": 0.18, "used": false, "inspection": "The brown fur and face match, but the first walking leg silhouettes are too close to standing. Correct the first four legs while retaining the body." },
+    { "sheet": "map-spiders.png", "balance_cost": 0.18, "used": true, "inspection": "The original brown hairy spider has alternating leg groups and restrained planted front-joint and palp changes. The separately drawn smaller resting row is calibrated once by abdomen size against the standing figure, not fitted per frame." },
+    { "sheet": "map-goblins.png", "balance_cost": 0.18, "used": false, "inspection": "The green face and walking legs match, but the last two rests replace the spear head with fork prongs. Correct only those weapon heads." },
+    { "sheet": "map-trolls.png", "balance_cost": 0.18, "used": false, "inspection": "The grey troll matches, but several poses lower or lift the club like an attack rather than a quiet walk or rest." },
+    { "sheet": "map-witch.png", "balance_cost": 0.18, "used": true, "inspection": "The original purple hat, gown, face and staff remain. Hem, feet and staff walk; planted rests change fingers and hat folds gently." },
+    { "sheet": "map-bramble.png", "balance_cost": 0.18, "used": true, "inspection": "The original green hat, robe, beard and staff remain. Walking hems and boots and quiet planted rests are distinct." },
+    { "sheet": "map-bears-edit.png", "balance_cost": 0.18, "used": true, "inspection": "The unchanged heavy body now has contact and passing paws through the first four travel poses. The last two remain quiet rests with all paws planted." },
+    { "sheet": "map-trolls-edit.png", "balance_cost": 0.18, "used": false, "inspection": "The edit still retains some lowered clubs. Start from copies of the original shoulder-carried-club figure instead of treating these as a finished idle." },
+    { "sheet": "map-goblins-edit.png", "balance_cost": 0.18, "used": true, "inspection": "Only the last two weapon heads change back to the original single spear point. Walking legs and grounded resting feet are retained." },
+    { "sheet": "map-trolls-move-atlas.png", "balance_cost": 0.18, "used": true, "inspection": "Copies of the original figure preserve the shoulder-carried club in every frame. Legs take distinct contact and passing poses without a body lift." },
+    { "sheet": "map-trolls-idle-atlas.png", "balance_cost": 0.18, "used": true, "inspection": "Both feet remain planted and the original club stays on the shoulder. Small face, free-hand and belly-fold changes provide quiet life." }
+  ]
+}

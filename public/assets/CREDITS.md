@@ -57,6 +57,21 @@ and two gentle resting poses each. Both members of a led band use their own pose
 inspection notes are in `art/map/jobs/map-outlaws*.json`, with actual spend of $1.44. The poses remain
 map-only, in the existing palette and under the game's licence.
 
+The remaining map people, captains, villains and beasts (#285) were painted on 12 October 2026 in the
+same style, using their original isolated figures. Their requests and every inspected correction
+are in `art/map/jobs/map-soldiers*.json`, `map-wild*.json`, `map-allies*.json`, `map-pike-final.json`,
+`map-pose-corrections.json` and `map-rest-atlases.json`. The original-figure atlases are references
+assembled from our own art, not other generations. The pikemen retain their full original pikes,
+trolls their shoulder-carried clubs and archers their original blue tunics. New map art for #285
+cost $8.28 in all, including unused attempts and corrections, recorded in the five `map-*.costs.json`
+ledgers. These poses remain map-only and use the existing palette and licence.
+
+The Knights troop reuses the matching chestnut-horse gait and `knights-rest.png` from the Knight
+owner's work (#283). The latter keeps all four hooves planted through four gentle resting poses,
+instead of freezing a running cell. Its request is `art/map/jobs/knights-rest.json`, and its spend
+is recorded with the rest of that owner's work, not charged again to #285. The Knight hero keeps
+his separate white horse. No additional generation was made for these shared poses.
+
 ## The units: Battle for Wesnoth
 
 Under the painted figures, the troops and the hero are units from [Battle for Wesnoth](https://www.wesnoth.org/) 1.18:

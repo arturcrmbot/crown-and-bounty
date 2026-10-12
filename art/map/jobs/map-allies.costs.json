@@ -1,0 +1,15 @@
+{
+  "issue": 285,
+  "date": "2026-10-12",
+  "currency": "USD",
+  "total": 0.54,
+  "attempts": [
+    { "sheet": "map-archers.png", "balance_cost": 0.18, "used": "move only", "inspection": "The first four blue-tunic archers walk with their original bow. The two idle figures grow a long coat, so replace only their resting set from the original reference." },
+    { "sheet": "map-huntsmen.png", "balance_cost": 0.18, "used": true, "inspection": "The older face, green hood and coat remain distinct from the young Ranger and brown poacher. Four walking poses and two planted listening rests match." },
+    { "sheet": "map-archers-idle-atlas.png", "balance_cost": 0.18, "used": true, "inspection": "Copies of the original archer retain his original short blue tunic and planted boots. Only face, fingers, sleeves and quiver strap change gently." }
+  ],
+  "reuse": {
+    "knights": "Matching chestnut-horse gait and four grounded resting poses come from the Knight owner's published art. Their actual generation costs belong to art/map/knights-review.json, not this issue's additional spend.",
+    "hero": "The legacy alias is not selected by any map character and is deliberately excluded."
+  }
+}

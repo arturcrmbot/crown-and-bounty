@@ -1,0 +1,24 @@
+[
+  {
+    "out": "art/map/sheets/map-archers.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28563,
+    "bypass_prompt_expansion": true,
+    "prompt": "Six poses of the exact SAME archer in the isolated reference and top middle of units-a. Keep his friendly clean-shaven face and brown hair, BLUE tunic over mail, brown belt, trousers and boots, wooden longbow held low and quiver on his back. Same face, body scale, proportions, clothes and equipment in every pose, facing right in the same three-quarter view. TWO rows of THREE separate complete full-body figures. A near boot planted well forward and far boot trailing. B far knee and boot passing under the body. C FAR boot planted well forward and NEAR boot trailing, opposite lead to A. D near knee and boot passing under the body, returning to A. Four visibly different leg silhouettes forming a grounded WALK, bow carried low, no shooting, jumping or sliding. E waits quietly with BOTH boots planted and bow lowered. F keeps BOTH boots planted in the same positions, blinks and relaxes his supporting fingers, sleeve and quiver strap settle subtly. Last TWO are gentle IDLE, not whole-picture bounce. Match the original charming painted 1996 DOS fantasy strategy game art exactly, bright colours, painted shading reduced to 256 colours and soft dithering, not anime. Plain flat grey background with flatter grey ground shadows. No arrows fired, text, labels or effects.",
+    "reference_images": ["art/map/references/archers.png", "art/map/sheets/units-a.png", "~/.config/retro-diffusion/refs/battle_troops.png"]
+  },
+  {
+    "out": "art/map/sheets/map-huntsmen.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28564,
+    "bypass_prompt_expansion": true,
+    "prompt": "Six poses of the exact SAME old King's huntsman in the isolated reference and bottom middle of units-c. Keep his friendly bearded weathered face, GREEN cloth hood, long GREEN coat over brown leather, brown belt and pouch, brown boots and long wooden bow carried low. He is the old huntsman, not the young Ranger hero or a brown-hooded poacher. Same face, body scale, proportions, colours and equipment in every pose, facing right in the same three-quarter view. TWO rows of THREE complete separate full-body figures. A near boot planted forward and far boot trailing. B far knee and boot passing under the coat, coat and bow rock gently. C FAR boot planted forward and NEAR boot trailing, opposite leg and coat folds. D near knee and boot passing under the coat, returning to A. Four distinctly different grounded walking leg and hem poses, no firing, jump or skating. E rests on BOTH planted boots, bow lowered and watching ahead. F keeps BOTH boots planted in the same positions, listens with a slight chin turn and blink, beard, free fingers and hood edge settle. Last TWO are gentle IDLE, no whole-picture bounce. Match the original charming painted 1996 DOS fantasy strategy game art exactly, bright colours, 256-colour painted shading and soft dithering, not anime. Plain flat grey background with flatter grey shadows. No text, labels or effects.",
+    "reference_images": ["art/map/references/huntsmen.png", "art/map/sheets/units-c.png", "~/.config/retro-diffusion/refs/battle_troops.png"]
+  }
+]

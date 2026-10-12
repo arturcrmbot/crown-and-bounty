@@ -1,0 +1,79 @@
+[
+  {
+    "out": "art/map/sheets/map-boars.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28550,
+    "bypass_prompt_expansion": true,
+    "prompt": "Six poses of the exact SAME stocky GREY wild boar from the isolated reference and top right of units-c. Keep its bristly grey back, big head, dark snout, curved pale tusks, pointed ears, short legs and hooves, curled tail, body proportions and painted identity. All face right in the same three-quarter view at identical body and head size. TWO rows of THREE complete separate boars. A near forehoof planted well forward and near hindhoof behind, far legs under the body. B near legs pass beneath the belly while far hooves carry the weight. C FAR forehoof planted forward and FAR hindhoof behind, near legs bent under the belly, the opposite lead to A. D far legs pass beneath the belly while near hooves carry the weight, returning to A. First FOUR are a clearly different, grounded four-legged WALKING gait, body level, not leaping, rearing or sliding. E rests with ALL FOUR hooves planted and snout calmly ahead. F keeps ALL FOUR hooves planted in the same places, sniffs with a slight snout and ear movement, tail softly flicks and bristles settle. Last TWO are gentle IDLE, no whole-picture bounce. Match the original charming painted 1996 DOS fantasy strategy game art exactly: bright colours, 256-colour painted shading and soft dithering, not anime. Plain flat grey background with flatter grey shadows. No text, labels, extra animals or effects.",
+    "reference_images": ["art/map/references/boars.png", "art/map/sheets/units-c.png", "~/.config/retro-diffusion/refs/battle_troops.png"]
+  },
+  {
+    "out": "art/map/sheets/map-bears.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28551,
+    "bypass_prompt_expansion": true,
+    "prompt": "Six poses of the exact SAME large shaggy BROWN bear from the isolated reference and bottom left of units-c. Keep its rich brown fur, powerful rounded shoulders, small round ears, dark nose, broad muzzle and big paws. A bear on FOUR legs, not standing upright or wearing anything. Same body and head size, proportions, fur and painted identity throughout, all facing right in the same three-quarter view. TWO rows of THREE complete separate bears. A near front paw planted well forward and near rear paw behind, far paws beneath the belly. B near paws pass beneath the belly while far paws carry the weight. C FAR front paw planted forward and FAR rear paw behind, near paws beneath the belly, opposite lead to A. D far paws pass beneath the belly while near paws carry the weight, returning to A. First FOUR are a complete grounded heavy walking gait with distinctly different legs and paws, body level, no jumping or rearing. E rests quietly with ALL FOUR paws planted. F keeps ALL FOUR paws planted in the same positions, lowers its muzzle slightly to sniff, turns one ear and quietly breathes out, neck and fur settle. Last TWO are gentle IDLE, no whole-picture bounce. Exact original charming painted 1996 DOS fantasy strategy game style: bright colours, painted shading reduced to 256 colours, soft dithering, not anime. Flat grey background and flatter grey shadows. No text, labels or effects.",
+    "reference_images": ["art/map/references/bears.png", "art/map/sheets/units-c.png", "~/.config/retro-diffusion/refs/battle_troops.png"]
+  },
+  {
+    "out": "art/map/sheets/map-spiders.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28552,
+    "bypass_prompt_expansion": true,
+    "prompt": "Six poses of the exact SAME giant hairy BROWN spider from the isolated reference and bottom middle of units-e. Keep its rounded brown hairy abdomen, dark brown head, eight shiny black eyes, small fangs and EIGHT striped brown jointed legs. Not the black-grey spare spider. Same body size, leg length, colours and proportions in all six, facing right in the same three-quarter view. TWO rows of THREE complete separate spiders. A front near legs reach forward and rear near legs trail, alternate far legs planted. B lifted near legs pass beneath the low body while far legs hold it level. C opposite group of FAR legs reaches forward, near legs planted, distinctly different silhouette from A. D far legs pass beneath the body, near legs hold it level, returning to A. First FOUR are a complete grounded creeping gait with visibly alternating leg groups and a LEVEL body, not hopping, skating, attacking or spinning webs. E rests on all eight planted feet, alert. F keeps its body and planted feet in the same positions, flexes only the front leg joints slightly and moves its small palps, hair and abdomen settle subtly. Last TWO are restrained IDLE, no whole-picture bounce. Match the original charming painted 1996 DOS fantasy strategy game style: bright colours, 256-colour painted shading and soft dithering, not anime. Plain flat grey background with flatter grey shadows. No text, labels, webs, extra creatures or effects.",
+    "reference_images": ["art/map/references/spiders.png", "art/map/sheets/units-e.png", "~/.config/retro-diffusion/refs/battle_troops.png"]
+  },
+  {
+    "out": "art/map/sheets/map-goblins.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28553,
+    "bypass_prompt_expansion": true,
+    "prompt": "Six poses of the exact SAME small GREEN goblin from the isolated reference and top middle of units-b. Keep the green skin, large pointed ears, long nose, cheeky friendly face, small brown loincloth and wooden SPEAR with silver point. Same head, body proportions, weapon, colours and small stature throughout, all facing right in the same three-quarter view. TWO rows of THREE complete separate goblins. A near bare foot planted forward, far foot behind, bent knees. B far foot passes under him and free arm swings. C FAR foot planted forward and NEAR foot behind, opposite arm and knee folds. D near foot passes under him, returning to A. First FOUR form a clearly different grounded sneaking walking cycle, not an attack, leap or slide. E waits on BOTH planted feet with spear low and ears alert. F keeps BOTH feet planted in the same places, blinks and tilts one ear, grin and spear grip change slightly. Last TWO are gentle IDLE with small real internal changes, no whole-picture bounce. Match the original charming painted 1996 DOS fantasy strategy game style exactly: bright colours, painted shading reduced to 256 colours, soft dithering, not anime. Plain flat grey background with flatter grey shadows. No text, labels or effects.",
+    "reference_images": ["art/map/references/goblins.png", "art/map/sheets/units-b.png", "~/.config/retro-diffusion/refs/battle_troops.png"]
+  },
+  {
+    "out": "art/map/sheets/map-trolls.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28554,
+    "bypass_prompt_expansion": true,
+    "prompt": "Six poses of the exact SAME large GREY troll from the isolated reference and top right of units-b. Keep its stony grey skin, long nose, heavy brow, friendly lumbering face, broad belly, powerful arms, short loincloth, bare big feet and huge rough stone club over the shoulder. Same body size, proportions, face, colours and club throughout, all facing right in the same three-quarter view. TWO rows of THREE complete separate trolls. A near foot planted forward and far foot behind. B far foot passes beneath the heavy body, free arm swings and club stays on the shoulder. C FAR foot planted forward and NEAR foot behind, opposite knees and arm movement. D near foot passes beneath the body, returning to A. First FOUR form a complete grounded heavy walking gait with distinctly different legs, not jumping, rearing, sliding or swinging the club. E rests on BOTH planted feet with club on the shoulder. F keeps BOTH feet planted in the same positions, quietly breathes out, relaxes one shoulder and tilts its head slightly, belly and fingers settle. Last TWO are gentle IDLE, no whole-picture bounce. Match the original charming painted 1996 DOS fantasy strategy game art exactly: bright colours, painted shading reduced to 256 colours, soft dithering, not anime. Flat grey background with flatter grey ground shadows. No text, labels or effects.",
+    "reference_images": ["art/map/references/trolls.png", "art/map/sheets/units-b.png", "~/.config/retro-diffusion/refs/battle_troops.png"]
+  },
+  {
+    "out": "art/map/sheets/map-witch.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28555,
+    "bypass_prompt_expansion": true,
+    "prompt": "Six poses of the exact SAME Witch from the isolated reference and bottom left of units-b. Keep her friendly pale face, brown hair, tall bent PURPLE pointed hat, long deep PURPLE gown with belt, brown shoes and crooked wooden walking STAFF. Same face, costume, staff length, body proportions and size throughout, all facing right in the same three-quarter view. TWO rows of THREE complete separate figures. A near shoe planted forward beneath the ankle-length hem, far shoe behind, staff planted ahead. B far shoe passes beneath the body, hem folds and staff lifts gently. C FAR shoe planted forward and NEAR shoe behind, opposite hem folds, staff moves ahead. D near shoe passes beneath the body, returning to A. First FOUR form a grounded repeatable walking cycle with visibly different boots, robe hem and staff poses, no jumping, sliding or casting. E rests on BOTH planted shoes with staff planted at her side. F keeps BOTH shoes and staff planted in the same positions, glances slightly aside, fingers, hair and hat-tip fold subtly differently. Last TWO are gentle IDLE, no whole-picture bounce. Exact original charming painted 1996 DOS fantasy strategy game art, bright colours, 256-colour painted shading and soft dithering, not anime. Flat grey background with flatter grey ground shadows. No magic, labels, text, extra people or effects.",
+    "reference_images": ["art/map/references/witch.png", "art/map/sheets/units-b.png", "~/.config/retro-diffusion/refs/battle_hero.png"]
+  },
+  {
+    "out": "art/map/sheets/map-bramble.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28556,
+    "bypass_prompt_expansion": true,
+    "prompt": "Six poses of the exact SAME Bramble from the isolated reference and bottom middle of units-b. Keep his elderly friendly bearded face, tall bent GREEN pointed hat, long deep GREEN robe and cloak, brown shoes and crooked wooden STAFF with its round brown top. Never a blue wizard or purple witch. Same identity, colours, clothes, staff length, body size and proportions in every pose, all facing right in the same three-quarter view. TWO rows of THREE complete separate figures. A near shoe planted forward beneath the long hem, far shoe behind, staff planted ahead. B far shoe passes beneath the robe, hem and cloak folds move, staff lifts slightly. C FAR shoe planted forward and NEAR shoe behind, opposite hem folds, staff moves ahead. D near shoe passes beneath the robe, returning to A. First FOUR form a grounded repeatable walk with distinctly different feet, hem and staff positions, not hopping, skating or casting. E rests on BOTH planted shoes, staff planted beside him. F keeps BOTH shoes and staff planted in the same places, quietly lowers his chin a little and relaxes his free fingers, beard and hat-tip settle subtly. Last TWO are gentle IDLE, not whole-picture bounce. Exact original charming painted 1996 DOS fantasy strategy game art, bright colours, painted shading reduced to 256 colours and soft dithering, not anime. Plain flat grey background and flatter grey ground shadows. No text, labels, spells or effects.",
+    "reference_images": ["art/map/references/bramble.png", "art/map/sheets/units-b.png", "~/.config/retro-diffusion/refs/battle_hero.png"]
+  }
+]

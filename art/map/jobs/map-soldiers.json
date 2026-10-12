@@ -1,0 +1,112 @@
+[
+  {
+    "out": "art/map/sheets/map-swordsmen.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28530,
+    "bypass_prompt_expansion": true,
+    "prompt": "Six poses of the exact SAME swordsman in the isolated reference and bottom left of units-a. Keep his friendly face, silver helmet and white plume, steel mail, BLUE sleeves, brown breeches and boots, silver sword and blue steel shield. Same body size, equipment and proportions throughout, all facing right in the same three-quarter view. TWO rows of THREE separate complete figures. A near boot planted forward, far boot trailing. B far boot passing under the body, shield and sword carried steadily. C FAR boot planted forward and NEAR boot trailing, opposite legs and sleeve folds. D near boot passing under the body, completing a grounded repeatable four-pose walk. No attack, jump or sliding. E stands at ease with BOTH boots planted, sword and shield held quietly. F keeps BOTH boots planted in the same places, quietly breathes out and relaxes his shield grip, plume and sleeve folds shift subtly. Last TWO are gentle IDLE with real small internal changes, not whole-picture bounce. Match the original charming painted 1996 DOS fantasy strategy game style exactly: bright colours, painted shading reduced to 256 colours, soft dithering, friendly readable face, not anime. Plain flat grey background with flatter grey ground shadows. No text, labels or effects.",
+    "reference_images": ["art/map/references/swordsmen.png", "art/map/sheets/units-a.png", "~/.config/retro-diffusion/refs/battle_troops.png"]
+  },
+  {
+    "out": "art/map/sheets/map-crossbowmen.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28531,
+    "bypass_prompt_expansion": true,
+    "prompt": "Six poses of the exact SAME crossbowman in the isolated reference and bottom middle of units-a. Keep his friendly face, rounded silver helmet, beige padded coat over mail, brown belt, trousers and boots, and the same wooden CROSSBOW held across his waist, not a longbow. Same body scale, proportions, clothes and weapon in every pose, all facing right in the same three-quarter view. TWO rows of THREE complete separate figures. A near boot planted forward, far boot trailing. B far boot passes under him, coat folds and crossbow rock gently. C FAR boot planted forward and NEAR boot behind, opposite coat and leg folds. D near boot passes under him, completing a grounded repeatable walk. No firing, raised weapon, jump or sliding. E stands quietly with BOTH boots planted and crossbow lowered at his waist. F keeps BOTH boots planted in the same places, glances slightly downward and adjusts his supporting fingers, shoulders and coat folds settle. Last TWO are gentle IDLE, not whole-body bounce. Match the original charming painted 1996 DOS fantasy strategy game style: bright colours, painted shading reduced to 256 colours, soft dithering, friendly readable face, not anime. Plain flat grey background with flatter grey shadows. No lettering, labels or effects.",
+    "reference_images": ["art/map/references/crossbowmen.png", "art/map/sheets/units-a.png", "~/.config/retro-diffusion/refs/battle_troops.png"]
+  },
+  {
+    "out": "art/map/sheets/map-pikemen.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28532,
+    "bypass_prompt_expansion": true,
+    "prompt": "Six poses of the exact SAME pikeman from the isolated reference and top left of units-f. Keep his silver helmet and white plume, RED tunic with GOLD trim, mail sleeves, brown trousers and boots, and the same LONG wooden PIKE with small silver steel point carried diagonally forward and down. Preserve the whole pike, not a sword or halberd. Same face, body proportions, equipment and scale throughout. All face right in the same three-quarter view. TWO rows of THREE complete figures, separate with their full weapons not touching a neighbor. A near boot planted forward, far boot behind. B far boot passes beneath him, pike stays steady. C FAR boot planted forward and NEAR boot behind, opposite leg and tunic folds. D near boot passes beneath him, completing a grounded repeatable four-pose walk. No attack, leap or skating. E rests with BOTH boots planted and pike quietly held. F keeps BOTH boots planted in the same positions, eases his hands on the shaft and slightly relaxes his shoulders, plume and tunic settle. Last TWO are gentle IDLE with small genuine changes inside the body, not a whole-picture bounce. Exact original charming painted 1996 DOS fantasy strategy game style, bright colours, 256-colour painted shading and soft dithering, no anime. Plain flat grey background and flatter grey shadows. No text, labels or effects.",
+    "reference_images": ["art/map/references/pikemen.png", "art/map/sheets/units-f.png", "~/.config/retro-diffusion/refs/battle_troops.png"]
+  },
+  {
+    "out": "art/map/sheets/map-menAtArms.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28533,
+    "bypass_prompt_expansion": true,
+    "prompt": "Six poses of the exact SAME man-at-arms from the isolated reference and top middle of units-f. Keep his silver closed helmet and white plume, full STEEL plate armour and greaves, RED tabard with GOLD edging, RED and GOLD kite shield, long silver sword. Same body size, face, armour, shield and sword in every pose, all facing right in the same three-quarter view. TWO rows of THREE complete separate figures. A near steel boot planted forward, far boot behind. B far boot passes under him, sword and shield carried quietly. C FAR boot planted forward and NEAR boot behind, opposite legs and tabard folds. D near boot passes under him, returning to A. A grounded repeatable four-pose walk, not an attack, jump or slide. E stands at ease on BOTH boots with shield and sword still. F keeps BOTH boots planted in the same positions, subtly adjusts his shield grip and tilts his helmet a little to listen, plume and tabard fold differently. Last TWO are gentle IDLE, no whole-body bounce. Preserve the original charming painted 1996 DOS fantasy strategy game style, bright colours, painted shading reduced to 256 colours and soft dithering, not anime. Flat grey background and flatter grey shadows. No text, labels or effects.",
+    "reference_images": ["art/map/references/menAtArms.png", "art/map/sheets/units-f.png", "~/.config/retro-diffusion/refs/battle_troops.png"]
+  },
+  {
+    "out": "art/map/sheets/map-sergeant.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28534,
+    "bypass_prompt_expansion": true,
+    "prompt": "Six poses of the exact SAME sergeant from the isolated reference and top right of units-f. Keep his bearded friendly face, silver helmet and white plume, RED long coat with GOLD edging, mail sleeves, brown breeches and boots, and silver sword carried upward as in the reference. No shield or new weapon. Same character, equipment, body proportions and size in every pose, all facing right in the same three-quarter view. TWO rows of THREE complete separate figures. A nearer boot planted forward, far boot trailing. B far boot passes beneath him while free arm and coat folds move. C FAR boot planted forward, NEAR boot trailing, opposite arm and coat motion. D near boot passes beneath him, returning to A. First FOUR are one grounded repeatable walking cycle, not an attack, leap or slide. E rests with BOTH boots planted, looking ahead. F keeps BOTH boots planted in the same places, quietly lowers his chin a little and relaxes his free hand at his belt, beard and plume settle. Last TWO are gentle IDLE, no whole-picture bounce. Exact original charming painted 1996 DOS fantasy strategy game style, bright colours, painted shading reduced to 256 colours and soft dithering, not anime. Flat grey background with flatter grey ground shadows. No text, labels or effects.",
+    "reference_images": ["art/map/references/sergeant.png", "art/map/sheets/units-f.png", "~/.config/retro-diffusion/refs/battle_hero.png"]
+  },
+  {
+    "out": "art/map/sheets/map-pike.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28535,
+    "bypass_prompt_expansion": true,
+    "prompt": "Six poses of the exact SAME Captain Pike from the isolated reference and bottom left of units-f. Keep his friendly moustached face, silver helmet, RED long tunic with GOLD edging, mail sleeves, brown breeches and boots, and tall wooden HALBERD with the same silver axe blade and point, held at his side. Same face, weapon, colours, proportions and body size in every pose, all facing right in the same three-quarter view. TWO rows of THREE complete separate figures with the full halberd visible. A near boot planted forward, far boot behind. B far boot passes beneath him, tunic folds swing and halberd rocks slightly. C FAR boot planted forward and NEAR boot behind, opposite leg and tunic folds. D near boot passes beneath him, returning to A. First FOUR form a grounded repeatable walk, no attack, jump or skating. E stands quietly on BOTH planted boots, halberd at rest. F keeps BOTH boots planted in the same positions, slightly shifts his fingers on the shaft and turns his chin to listen, mail sleeve and tunic settle. Last TWO are gentle IDLE, no whole-picture bounce. Match the original charming painted 1996 DOS fantasy strategy game style exactly: bright colours, painted shading reduced to 256 colours and soft dithering, not anime. Plain flat grey background and flatter grey ground shadows. No text, labels or effects.",
+    "reference_images": ["art/map/references/pike.png", "art/map/sheets/units-f.png", "~/.config/retro-diffusion/refs/battle_hero.png"]
+  },
+  {
+    "out": "art/map/sheets/map-picketCaptain.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28536,
+    "bypass_prompt_expansion": true,
+    "prompt": "Six poses of the exact SAME picket captain in the isolated reference and bottom middle of units-f. Keep his silver steel helmet, friendly face, full steel plate arms and legs, RED tabard with GOLD border, brown belt and sword carried LOW. No new shield or equipment. Same body size and proportions, colours, clothes and weapon throughout, all facing right in the same three-quarter view. TWO rows of THREE complete separate full-body figures. A near boot planted ahead, far boot behind. B far boot passes beneath him, free arm and red tabard fold gently. C FAR boot planted ahead and NEAR boot behind, opposite leg and tabard folds. D near boot passes beneath him, returning to A. First FOUR form a grounded repeatable walk, not an attack, jump or slide. E rests with BOTH boots planted, sword low. F keeps BOTH boots planted in the same positions, subtly lifts his chin and relaxes the free hand on his belt, tabard and mail folds settle. Last TWO are restrained IDLE, no whole-body bounce. Match the original charming painted 1996 DOS fantasy strategy game art exactly: bright colours, painted shading reduced to 256 colours and soft dithering, friendly readable face, not anime. Flat grey background and flatter grey shadows. No text, labels or effects.",
+    "reference_images": ["art/map/references/picketCaptain.png", "art/map/sheets/units-f.png", "~/.config/retro-diffusion/refs/battle_hero.png"]
+  },
+  {
+    "out": "art/map/sheets/map-foreman.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28537,
+    "bypass_prompt_expansion": true,
+    "prompt": "Six poses of the exact SAME burly foreman in the isolated reference and bottom right of units-f. Keep his friendly bearded face and short hair, RED shirt, BROWN leather work jerkin and belt, brown trousers and boots, and steel PICK on its wooden handle held over his shoulder. No helmet or new weapon. Same face, clothes, pick, body size and proportions throughout, all facing right in the same three-quarter view. TWO rows of THREE complete separate figures. A near boot planted forward, far boot behind. B far boot passes under him, free arm and jerkin folds move, pick stays on shoulder. C FAR boot planted forward and NEAR boot behind, opposite leg and arm motion. D near boot passes under him, returning to A. First FOUR make a grounded repeatable walk, not swinging the pick, jumping or sliding. E stands quietly on BOTH planted boots with the pick on his shoulder. F keeps BOTH boots planted in the same positions, eases his fingers on the handle and rolls one shoulder slightly, beard and leather folds settle. Last TWO are gentle IDLE, no whole-picture bounce. Preserve the original charming painted 1996 DOS fantasy strategy game art, bright colours, painted shading reduced to 256 colours, soft dithering, friendly readable face, not anime. Flat grey background with flatter grey shadows. No labels, text or effects.",
+    "reference_images": ["art/map/references/foreman.png", "art/map/sheets/units-f.png", "~/.config/retro-diffusion/refs/battle_hero.png"]
+  },
+  {
+    "out": "art/map/sheets/map-peasants.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28538,
+    "bypass_prompt_expansion": true,
+    "prompt": "Six poses of the exact SAME peasant in the isolated reference and top left of units-a. Keep his friendly face, simple brown cap, BROWN rough tunic and belt, grey-brown breeches, brown shoes and tall wooden PITCHFORK with three silver tines carried at his side. Same face, body size, proportions, colours, clothes and pitchfork throughout, all facing right in the same three-quarter view. TWO rows of THREE complete separate figures. A nearer shoe planted ahead, far shoe behind. B far shoe passes beneath him, free arm and tunic folds move, pitchfork rocks gently. C FAR shoe planted ahead and NEAR shoe behind, opposite arm and tunic motion. D near shoe passes beneath him, completing a grounded repeatable walk. No attack, jumping or sliding. E rests on BOTH planted feet with pitchfork still. F keeps BOTH feet planted in the same positions, blinks and relaxes his shoulders, fingers shift a little on the shaft and tunic folds settle. Last TWO are gentle IDLE, no whole-body bounce. Match the original charming painted 1996 DOS fantasy strategy game art, bright colours, painted shading reduced to 256 colours and soft dithering, friendly readable face, not anime. Plain flat grey background and flatter grey shadows. No labels, lettering or effects.",
+    "reference_images": ["art/map/references/peasants.png", "art/map/sheets/units-a.png", "~/.config/retro-diffusion/refs/battle_troops.png"]
+  },
+  {
+    "out": "art/map/sheets/map-baron.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28539,
+    "bypass_prompt_expansion": true,
+    "prompt": "Six poses of the exact SAME Baron Grimsby in the isolated reference and top left of units-b. Keep his round friendly pompous face, broad BLACK hat with GOLD trim and large WHITE plume, bright RED coat with GOLD trim and buttons, yellow-gold waistcoat, brown breeches, pale stockings and dark buckled shoes, hands at his hips and exact stout proportions. Same costume, face and body size in every pose, all facing right in the same three-quarter view. TWO rows of THREE complete separate figures. A near shoe planted forward and far shoe behind, coat-tail swings. B far shoe passes beneath his stout body, arm and plume move gently. C FAR shoe planted forward and NEAR shoe trailing, opposite coat and arm motion. D near shoe passes beneath him, completing a grounded repeatable walk. No attack, running, jump or sliding. E rests pompously on BOTH planted feet with a hand at his waist. F keeps BOTH feet planted in the same positions, quietly breathes out and lifts his chin a little, white plume and gold-edged coat folds shift subtly. Last TWO are gentle IDLE, no whole-picture bounce. Match the original charming painted 1996 DOS fantasy strategy game style exactly: bright colours, painted shading reduced to 256 colours and soft dithering, friendly readable face, not anime. Plain flat grey background and flatter grey shadows. No text, labels or effects.",
+    "reference_images": ["art/map/references/baron.png", "art/map/sheets/units-b.png", "~/.config/retro-diffusion/refs/battle_hero.png"]
+  }
+]

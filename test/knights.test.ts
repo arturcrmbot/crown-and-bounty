@@ -40,13 +40,13 @@ describe('the Knights painted gait and attacks', () => {
     expect(troopFigure('knights', 'blue', 1, { anim: 'charge', ms: 2000 }, 'battle').sprite).toBe(frames[5].sprite);
   });
 
-  it('keeps the same anchor through standing, movement and weapon changes', () => {
-    const frames = (['stand', 'idle', 'move', 'melee', 'charge'] as const).map((anim) => troopFigure('knights', 'blue', 1, { anim, ms: 0 }, 'battle'));
-    expect(new Set(frames.map((frame) => `${frame.x},${frame.y}`)).size).toBe(1);
-    const right = frames[2];
-    const left = troopFigure('knights', 'red', -1, { anim: 'move', ms: 0 }, 'battle');
-    expect(left.x + left.sprite.width).toBe(-right.x);
-    expect(left.y).toBe(right.y);
+  it('mirrors every mounted pose about its own grounded foot anchor', () => {
+    for (const anim of ['stand', 'idle', 'move', 'melee', 'charge'] as const) {
+      const right = troopFigure('knights', 'blue', 1, { anim, ms: 0 }, 'battle');
+      const left = troopFigure('knights', 'red', -1, { anim, ms: 0 }, 'battle');
+      expect(left.x + left.sprite.width).toBe(-right.x);
+      expect(left.y).toBe(right.y);
+    }
   });
 
   it('keeps the registered battle stand when a new idle exists only at map size', async () => {

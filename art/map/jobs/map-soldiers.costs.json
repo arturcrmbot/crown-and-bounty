@@ -1,0 +1,25 @@
+{
+  "issue": 285,
+  "date": "2026-10-12",
+  "currency": "USD",
+  "total": 2.52,
+  "attempts": [
+    { "sheet": "map-swordsmen.png", "balance_cost": 0.18, "used": true, "inspection": "Original blue sleeves, mail, plume, sword and shield remain. Walking legs alternate; two rests have planted boots and small grip and plume changes." },
+    { "sheet": "map-crossbowmen.png", "balance_cost": 0.18, "used": false, "inspection": "The identity matches, but the first four legs stay too close to the standing silhouette. Correct the legs through an image edit." },
+    { "sheet": "map-pikemen.png", "balance_cost": 0.18, "used": false, "inspection": "Walking pikes cross cell edges and the idle copies a neighboring captain's halberd. Do not cut these as completed poses." },
+    { "sheet": "map-menAtArms.png", "balance_cost": 0.18, "used": true, "inspection": "The plate armour, red tabard and red-and-gold shield match. Four walking poses and quiet planted rests retain the original equipment." },
+    { "sheet": "map-sergeant.png", "balance_cost": 0.18, "used": true, "inspection": "The beard, red-and-gold coat and sword match. Walking and resting use different legs, hands and plume folds without a whole-picture bounce." },
+    { "sheet": "map-pike.png", "balance_cost": 0.18, "used": true, "inspection": "Pike keeps his original halberd and mail. Four walking poses and planted rests match. Small source labels are outside the selected body crops." },
+    { "sheet": "map-picketCaptain.png", "balance_cost": 0.18, "used": true, "inspection": "The silver plate, red tabard and low sword match. Quiet planted rests remain distinct from walking." },
+    { "sheet": "map-foreman.png", "balance_cost": 0.18, "used": true, "inspection": "The brown work clothes, red shirt, beard and shoulder-carried pick match. Legs walk; hands and shoulders settle at rest." },
+    { "sheet": "map-peasants.png", "balance_cost": 0.18, "used": true, "inspection": "The original brown cap, tunic and pitchfork remain. Four walking poses and two planted rests are selected." },
+    { "sheet": "map-baron.png", "balance_cost": 0.18, "used": true, "inspection": "Four walking figures occupy the top row and three larger rests the bottom. The stout body, hat and red-and-gold coat match. Each separately drawn animation row is calibrated once against the original body, never frame by frame." },
+    { "sheet": "map-crossbowmen-edit.png", "balance_cost": 0.18, "used": true, "inspection": "The unchanged upper body and crossbow now have separated contact legs and passing knees through a real walk. The original two grounded rests remain." },
+    { "sheet": "map-pikemen-edit.png", "balance_cost": 0.18, "used": false, "inspection": "Some pikes remain clipped and the final idle adds an extra upright pole. Rebuild from the original isolated pikeman instead of editing this inconsistent sheet again." },
+    { "sheet": "map-pikemen-move-edit.png", "balance_cost": 0.18, "used": true, "inspection": "A supported 256-square atlas of four original figures preserves the full single pike and original costume. Only walking legs and tunic folds change." },
+    { "sheet": "map-pikemen-idle-edit.png", "balance_cost": 0.18, "used": true, "inspection": "Four quiet rests keep both boots planted and the exact original full pike. Plume, face and fingers change gently." }
+  ],
+  "request_rejections": [
+    { "job": "map-pose-corrections.json", "sheet": "map-pikemen-atlas-edit.png", "used": false, "reported_cost": null, "inspection": "The 512 by 256 request was rejected with invalid_style_dimensions before a task or image was created. The original request is retained; the accepted replacement uses two 256-square atlases." }
+  ]
+}
