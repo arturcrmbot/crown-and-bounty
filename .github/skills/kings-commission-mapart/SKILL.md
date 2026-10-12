@@ -65,6 +65,20 @@ trees along the top cut by the frame, clumps in the corners, and obstacles at ba
   is turned to one it has before snapping (`cool`), never added.
 - **It writes** `public/assets/map/*.png`, `public/assets/troops/*-{battle,map}.png` and
   `src/render/mapPieces.ts` (`PIECE_FEET`, `GROVE_TREES`). `src/render/mapArt.ts` loads them.
+- **Optional painted poses** (#278) are `FIGURE_ANIMATIONS` in `scripts/mapart.py`. Each animation names its
+  `sheet`, one fixed source-to-battle `scale`, its `sizes`, and `frames` of `(box, foot, ms)`. The box and foot
+  are absolute sheet pixels. Calibrate the body against the standing figure once, never fit each frame to its
+  total height, which changes when a weapon lowers. Map scaling remains 2/3 for `hero*` and 0.6 for troops.
+  The cutter packs a common canvas and foot anchor, without baked shadows, into
+  `public/assets/troops/<id>-<anim>-<index>-<size>.png` and writes their manifest in `mapPieces.ts`.
+  `mapArt.ts` exposes a sequence only when every frame is loaded. `troopFigure` reads it through the existing
+  `Pose`; move and idle loop, other poses hold the last frame. Missing sets keep the old painted or Wesnoth
+  fallback. Every attack supplies `hit`, the visible contact time in milliseconds, which `hitTime` and
+  `animLength` pass to the battle's strike and sound. A map move supplies `stride` in map pixels per full cycle
+  and `footfalls` in cycle milliseconds. The map converts both frame boundaries and contacts to travelled
+  distance, including bends and Shift, and lays its shadow and ring at a stable foot anchor for both facings.
+  The wizard's six walk frames are the first set. Jobs, inspected attempts and actual spend are recorded beside
+  the sheet's request in `art/map/jobs/`; our own cropped character reference can live in `art/map/references/`.
 - **The payday feast** (#191) has its own sheets (`feast-1` to `feast-4`): `FEAST` in mapart.py cuts them at the
   size they were drawn, with no shadow (the feast lays its own, away from its fire), into `public/assets/feast/`, and
   lists them as `FEAST_PIECES`. Its fire is cut without its painted flames: the feast draws its own, behind the logs.

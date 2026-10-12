@@ -16,11 +16,11 @@ import { heroArtId } from './units';
 import {
   abbey, boat, boulder, camp, campfire,
   butts, CART_GROUND as DRAWN_CART_GROUND, cottage, castle, standingStones, chest, crag, fold, goldPile, grainCart, hayrick, hideout, holes, huntHall, hut, kiln, lodge, mews, mill, mine, mirror, nest, oak, pack, peatHut, pine, pond, signpost, skeps, stiltHut, shrine,
-  stoneBridge, swimmingGoose, washingCottage, watchtower, wayside, well, willow, windmill, xMark, lostGoose, cairn, kingsPennant, PENNANT_FOOT,
+  stoneBridge, swimmingGoose, washingCottage, watchtower, wayside, well, willow, windmill, xMark, lostGoose, cairn, kingsPennant, PENNANT_FOOT, shadowOval,
 } from './sprites';
 import { TerrainPainter } from './terrain';
 import { dress } from './dressing';
-import { mapArtReady, paintedFigure, piece } from './mapArt';
+import { mapArtReady, paintedAnimation, paintedFigure, piece } from './mapArt';
 import type { PieceName } from './mapPieces';
 
 /**
@@ -87,6 +87,7 @@ function silhouette(sprite: Bitmap): Bitmap {
 }
 
 /** Everything the controller needs to ride the hero around. */
+type Gait = { stride: number; frames: readonly number[]; footfalls: readonly number[] };
 export type HeroRig = {
   object: Placed;
   idle: Bitmap[];
@@ -96,7 +97,17 @@ export type HeroRig = {
   /** Pixels from the sprite's top to his feet (or the hooves), and from his feet to the top of his head. */
   foot: number;
   head: number;
+  gait?: Gait;
 };
+
+/** A gait's frame boundaries and contacts are map distances, so turns and Shift keep the same steps. */
+export function walkFrame(distance: number, gait?: Gait): number {
+  return gait ? gait.frames.findIndex((end) => distance % gait.stride < end) : Math.floor(distance / 5);
+}
+
+export function walkFootfalls(from: number, to: number, gait: Gait): number {
+  return gait.footfalls.reduce((count, phase) => count + Math.floor((to - phase) / gait.stride) - Math.floor((from - phase) / gait.stride), 0);
+}
 
 /** A clickable area in map pixels, for one location of the rules. */
 export type Hitbox = { id: string; x0: number; y0: number; x1: number; y1: number };
@@ -663,18 +674,59 @@ export function buildAdventureScene(map: MapModel, state: GameState): AdventureS
 /**
  * The hero's frames on the map, in his background's figure. He fidgets now and then as he waits, as
  * his Wesnoth unit does (the Knight's pennant flutters; those Wesnoth gave no fidget just breathe).
- * A rider gallops when he rides; anyone on foot steps along, bobbing with each stride.
+ * A painted gait keeps its anchors, shadow and ring on the ground; figures without one keep their
+ * existing walk and fidget.
  */
 function heroFrames(background: BackgroundId): Omit<HeroRig, 'object'> {
   const art = heroArtId(background);
   const still = troopFigure(art, 'blue', 1, STAND, 'map');
+  const moving = paintedAnimation(art, 'map', 'move');
+  if (moving?.stride && moving.footfalls) {
+    const duration = moving.frames.reduce((total, frame) => total + frame.ms, 0);
+    let ms = 0;
+    const poses = moving.frames.map((frame) => {
+      const pose = { anim: 'move', ms } as const;
+      ms += frame.ms;
+      return pose;
+    });
+    const right = [still, ...poses.map((pose) => troopFigure(art, 'blue', 1, pose, 'map'))];
+    const left = [troopFigure(art, 'blue', -1, STAND, 'map'), ...poses.map((pose) => troopFigure(art, 'blue', -1, pose, 'map'))];
+    const all = [...right, ...left];
+    const half = Math.max(...all.flatMap((frame) => [-frame.x, frame.x + frame.sprite.width]));
+    const foot = Math.max(...all.map((frame) => -frame.y));
+    const height = foot + Math.max(4, ...all.map((frame) => frame.y + frame.sprite.height));
+    const grounded = (frame: Figure): Bitmap => {
+      const out = new Bitmap(half * 2, height);
+      for (let y = 0; y < frame.sprite.height; y++) {
+        for (let x = 0; x < frame.sprite.width; x++) {
+          const v = frame.sprite.get(x, y);
+          if (v !== 0 && v !== SHADOW) out.set(half + frame.x + x, foot + frame.y + y, v);
+        }
+      }
+      // The sun's shadow stays on the same side even when the body turns.
+      shadowOval(out, half + 2, foot + 1, Math.max(4, still.sprite.width * 0.3), 2);
+      return ringed(out, foot, GOLD, still.sprite.width);
+    };
+    let end = 0;
+    const stride = moving.stride;
+    return {
+      idle: [grounded(right[0])], walk: right.slice(1).map(grounded),
+      idleLeft: [grounded(left[0])], walkLeft: left.slice(1).map(grounded),
+      foot, head: bodyHeight(art, 'map'),
+      gait: {
+        stride,
+        frames: moving.frames.map((frame) => (end += frame.ms) / duration * stride),
+        footfalls: moving.footfalls.map((contact) => contact / duration * stride),
+      },
+    };
+  }
   const foot = -still.y;
   const fidget = animFrames(art, 'idle').length > 1 && !paintedFigure(art, 'map') ? everyFrame(art, 'idle', 'blue', 1, 'map', 120) : Array<Bitmap>(4).fill(raised(still.sprite));
   // Still for at least half again as long as the fidget lasts, so it comes now and then.
   const idle = [...Array<Bitmap>(Math.max(16, Math.round(fidget.length * 1.5))).fill(still.sprite), ...fidget].map((f) => ringed(f, foot));
   const up = raised(still.sprite);
   const stride = [still.sprite, still.sprite, up, raised(up), raised(up), up];
-  // A painted figure is one picture: it trots by bobbing, as a Wesnoth unit with no walk frames does.
+  // Until a figure has a painted gait, keep its existing bob.
   const walk = (!paintedFigure(art, 'map') && animFrames(art, 'move').length > 1 ? everyFrame(art, 'move', 'blue', 1, 'map', 70) : stride).map((f) => ringed(f, foot));
   return { idle, walk, idleLeft: idle.map(mirror), walkLeft: walk.map(mirror), foot, head: bodyHeight(art, 'map') };
 }
@@ -683,7 +735,8 @@ function heroFrames(background: BackgroundId): Omit<HeroRig, 'object'> {
 export function setHeroFigure(scene: AdventureScene, background: BackgroundId, facing: 1 | -1) {
   const rig = scene.hero;
   const feet = rig.object.y + rig.foot;
-  Object.assign(rig, heroFrames(background));
+  const figure = heroFrames(background);
+  Object.assign(rig, figure, { gait: figure.gait });
   rig.object.frames = facing < 0 ? rig.idleLeft : rig.idle;
   rig.object.sprite = rig.idle[0];
   rig.object.y = feet - rig.foot;

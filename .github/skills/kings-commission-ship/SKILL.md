@@ -66,10 +66,12 @@ When you do play, try every background at least through its first fights. CI's b
 
 ## Scale bible
 
-The troops and Aldric are painted figures (#178, #189, #255): one pose each, cut from Retro Diffusion sheets by
-`npm run mapart` to a height in battle (`FIGURES` in `scripts/mapart.py`), and moved in code. Under them lie Battle
-for Wesnoth's units, which time their blows and stand in until the paintings load (`src/render/scale.ts` holds their
-numbers). Each keeps its size next to a person: goblins small, trolls big, knights on horseback wide.
+The troops and Aldric are painted figures (#178, #189, #255): a standing pose each, cut from Retro Diffusion sheets by
+`npm run mapart` to a height in battle (`FIGURES` in `scripts/mapart.py`). Optional painted pose sequences
+(`FIGURE_ANIMATIONS`, #278) keep one body scale and explicit foot anchors; the wizard's map walk is the first.
+Under them lie Battle for Wesnoth's units, which time a blow until a painted sequence has its own contact time,
+and stand in until the paintings load (`src/render/scale.ts` holds their numbers). Each keeps its size next to
+a person: goblins small, trolls big, knights on horseback wide.
 
 On the map, one tile is 32 px. Every enemy stack is **one** creature (HoMM2 style) at `MAP_UNIT` 0.9:
 a person about 39 px tall, brightened a touch and inked round so it reads on the grass. Its size

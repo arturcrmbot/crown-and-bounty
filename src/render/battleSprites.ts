@@ -4,10 +4,10 @@ import { flat, mirror, shadowOval } from './sprites';
 import { unitLift, unitScale, type Size } from './scale';
 import { ART, type ArtId, type Frame } from './units';
 import { nearestTint, unitBitmap, unitImage, type Team } from './wesnoth';
-import { paintedFigure } from './mapArt';
+import { paintedAnimation, paintedFigure } from './mapArt';
 import { paintedBox, rotateAbout } from './rotate';
 
-/** What a stack is doing, and how far into it: a Wesnoth animation and the milliseconds since it began. */
+/** What a stack is doing, and the milliseconds since its animation began. */
 export type AnimName = 'stand' | 'idle' | 'move' | 'melee' | 'charge' | 'cast' | 'ranged' | 'defend' | 'defendRanged' | 'death';
 export type Pose = { anim: AnimName; ms: number };
 export const STAND: Pose = { anim: 'stand', ms: 0 };
@@ -41,24 +41,29 @@ export function animFrames(troop: ArtId, anim: AnimName): Frame[] {
 }
 
 /** How long an animation runs, in milliseconds. */
-export const animLength = (troop: ArtId, anim: AnimName) => animFrames(troop, anim).reduce((t, f) => t + f.ms, 0);
+export const animLength = (troop: ArtId, anim: AnimName) => (paintedAnimation(troop, 'battle', anim)?.frames ?? animFrames(troop, anim)).reduce((t, f) => t + f.ms, 0);
 
 /** When an attack's blow lands (or its shot or spell arrives), in milliseconds from its start. */
 export function hitTime(troop: ArtId, anim: 'melee' | 'charge' | 'ranged'): number {
+  const painted = paintedAnimation(troop, 'battle', anim)?.hit;
+  if (painted !== undefined) return painted;
   const art = ART[troop];
   return (anim === 'charge' ? (art.charge ?? art.melee) : anim === 'ranged' ? (art.ranged ?? art.melee) : art.melee).hit;
 }
 
 /** The image an animation shows at `ms`: moves and fidgets loop, everything else holds its last frame. */
 export function imageAt(troop: ArtId, { anim, ms }: Pose): string {
-  const list = animFrames(troop, anim);
+  return frameAt(animFrames(troop, anim), { anim, ms }).image;
+}
+
+function frameAt<T extends { ms: number }>(list: readonly T[], { anim, ms }: Pose): T {
   const total = list.reduce((t, f) => t + f.ms, 0);
   let t = anim === 'move' || anim === 'idle' ? ms % total : Math.min(ms, total - 1);
   for (const f of list) {
-    if (t < f.ms) return f.image;
+    if (t < f.ms) return f;
     t -= f.ms;
   }
-  return list[list.length - 1].image;
+  return list[list.length - 1];
 }
 
 /** A frame, and where its top left goes from the point where the troop stands. */
@@ -108,16 +113,17 @@ export function bodyHeight(troop: ArtId, size: Size): number {
   return Math.round(measure(troop).head * unitScale(size, troop));
 }
 
-const paintedSprites = new Map<string, { sprite: Bitmap; foot: number }>();
+const paintedSprites = new Map<string, { sprite: Bitmap; foot: number; x: number }>();
 /**
- * A troop's painted figure (#178) doing `pose`: one picture, which the game moves itself, as the 90s
- * games did. It breathes as it waits, bobs as it walks, lunges into a blow, rocks back from a shot or
- * a spell, and flinches when hit. Its colours are its own, whichever side it's on.
+ * Painted poses use their own frames and anchors when present. Until then the standing painting
+ * breathes, bobs, lunges or flinches as before. Its colours are its own, whichever side it's on.
  */
 function paintedPose(troop: ArtId, facing: 1 | -1, { anim, ms }: Pose, size: Size): Figure | null {
-  const base = paintedFigure(troop, size);
+  const animation = paintedAnimation(troop, size, anim);
+  const frame = animation ? frameAt(animation.frames, { anim, ms }) : null;
+  const base = frame?.sprite ?? paintedFigure(troop, size);
   if (!base) return null;
-  const key = `${troop}|${facing}|${size}`;
+  const key = `${frame?.name ?? troop}|${facing}|${size}`;
   let made = paintedSprites.get(key);
   if (!made) {
     // A few clear rows over the head, as Wesnoth's frames have, so a bob or a lift never clips it.
@@ -126,9 +132,11 @@ function paintedPose(troop: ArtId, facing: 1 | -1, { anim, ms }: Pose, size: Siz
     for (let y = 0; y < base.height; y++) padded.data.set(base.data.subarray(y * base.width, (y + 1) * base.width), (y + HEADROOM) * padded.width + 1);
     let sprite = size === 'map' ? outline(padded, INK) : padded;
     if (facing < 0) sprite = mirror(sprite);
-    made = { sprite, foot: rows(sprite)[1] + 1 };
+    const anchor = animation ? animation.foot[0] + 1 : Math.round(sprite.width / 2);
+    made = { sprite, foot: animation ? animation.foot[1] + HEADROOM : rows(sprite)[1] + 1, x: facing > 0 ? -anchor : anchor - sprite.width };
     paintedSprites.set(key, made);
   }
+  if (frame) return { sprite: made.sprite, x: made.x, y: -made.foot };
   const reach = size === 'battle' ? 10 : 4;
   let [dx, dy] = [0, 0];
   if (anim === 'idle') dy = Math.floor(ms / 400) % 2 ? -1 : 0;
