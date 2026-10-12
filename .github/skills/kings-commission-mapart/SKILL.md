@@ -79,6 +79,12 @@ trees along the top cut by the frame, clumps in the corners, and obstacles at ba
   distance, including bends and Shift, and lays its shadow and ring at a stable foot anchor for both facings.
   The wizard's six walk frames are the first set. Jobs, inspected attempts and actual spend are recorded beside
   the sheet's request in `art/map/jobs/`; our own cropped character reference can live in `art/map/references/`.
+- **Map characters** (#285) share `figureFrames` in `adventureScene.ts`. Their idle frames keep the sheet's
+  durations on the existing 120 ms map clock, with long quiet rests between small changes. `bandFrames` animates
+  the captain and his companion, or the convoy escort, on one common canvas, with the companion behind either
+  facing. Each band has its own phase. `Walks` selects travel by actual distance along the night path, turns at
+  its bends and restores idle at the stop; the hit area follows the same position. A character's `Placed.foot`
+  is its actual ground anchor, not the bottom of the padded canvas, so padding cannot move its fog test.
 - **The payday feast** (#191) has its own sheets (`feast-1` to `feast-4`): `FEAST` in mapart.py cuts them at the
   size they were drawn, with no shadow (the feast lays its own, away from its fire), into `public/assets/feast/`, and
   lists them as `FEAST_PIECES`. Its fire is cut without its painted flames: the feast draws its own, behind the logs.
