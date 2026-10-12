@@ -5,8 +5,8 @@ import { BAR_DIVIDERS, MAP_VIEW as VIEW, paintFrame, SCREEN } from './frame';
 import type { Point } from '../rules/map/geometry';
 import type { FogMask } from './fog';
 import type { MapTiles } from './mapTiles';
-import { bayer, hash, noise } from './noise';
-import { FOG_LUT, GRAIN_LUT, SHADOW_LUT } from './palette';
+import { bayer } from './noise';
+import { FOG_LUT, SHADOW_LUT } from './palette';
 import { drawRoute, type RouteMark } from './route';
 import { TILE } from './terrain';
 import { CLEAR, type Sky, type Weather } from './weather';
@@ -30,7 +30,6 @@ export class AdventureScreen {
   readonly screen = new Bitmap(SCREEN.width, SCREEN.height);
   readonly frame: Bitmap;
   private readonly overlay: Bitmap;
-  private readonly grain: Uint32Array;
   /** For each pixel of the screen, the fog's colour there plus one, or 0 where the land is known: see `Weather.light`. */
   private readonly veil = new Uint16Array(SCREEN.width * SCREEN.height);
   private readonly animated: Placed[] = [];
@@ -56,13 +55,6 @@ export class AdventureScreen {
     this.overlay = overlay;
     this.tiles = tiles;
     this.fog = fog;
-    const specks: number[] = [];
-    for (let y = VIEW.y; y < VIEW.y + VIEW.height; y++) {
-      for (let x = VIEW.x; x < VIEW.x + VIEW.width; x++) {
-        if (hash(x, y, 201) < 0.035 + noise(x / 26, y / 26, 202) * 0.07) specks.push(y * SCREEN.width + x);
-      }
-    }
-    this.grain = Uint32Array.from(specks);
   }
 
   animate(object: Placed) {
@@ -155,7 +147,6 @@ export class AdventureScreen {
     this.weather?.light(screen, this.sky, this.camera, VIEW, veil);
     this.weather?.drawAir(screen, VIEW.x - cx, VIEW.y - cy, VIEW, this.sky, seen);
     this.effects.drawWords(screen, VIEW.x - cx, VIEW.y - cy, VIEW);
-    for (const i of this.grain) screen.data[i] = GRAIN_LUT[screen.data[i]];
     if (this.dusk > 0) {
       // Night falls over the map, and lifts again, in a dither of shadow.
       for (let y = VIEW.y; y < VIEW.y + VIEW.height; y++) {
