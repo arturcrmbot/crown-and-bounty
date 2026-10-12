@@ -166,6 +166,9 @@ function tint(f: (r: number, g: number, b: number) => [number, number, number], 
 const clampByte = (v: number) => Math.max(0, Math.min(255, v));
 const toDeep = (i: number) => (CYCLE_SHALLOW.includes(i) ? CYCLE_DEEP[CYCLE_SHALLOW.indexOf(i)] : i);
 
+/** Rolling ground is lit more gently than reachable hexes and action targets. */
+export const GROUND_LIGHT_LUT = tint((r, g, b) => [r * 1.1 + 3, g * 1.1 + 4, b * 1.05 + 2]);
+
 /** Early morning: a touch brighter and cooler, the dew still on everything. */
 export const MORNING_LUT = tint((r, g, b) => [r * 1.04 + 10, g * 1.1 + 14, b * 1.22 + 26]);
 /** Danger: the same colour gone red, under your own stacks a spell would catch. */

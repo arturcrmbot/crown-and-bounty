@@ -49,6 +49,7 @@ on the story, WORLD.md wins.
 - **Painted art** (#178, #255). Aldmoor's map, the battlefield, the feast, and every troop's, captain's and Aldric's
   figure are painted from Retro Diffusion sheets and cut by `npm run mapart`. It's the only image model the game uses.
   Battle for Wesnoth's units lie under the paintings, where they time the blows and stand in until the paintings load.
+  The ground's light and small decoration stay quieter than the figures and action marks.
   Everything else (the portraits, the title painting, the interface) is drawn in code.
 - **Recorded sound** (#257). Every sound effect, and most of the land's sounds, is a recording made by a named person,
   cut by `scripts/sfx.py`. Only speech and a few small things are still made in code.

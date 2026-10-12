@@ -1,5 +1,5 @@
 import { Bitmap, SHADOW } from './bitmap';
-import { COLORS, CYCLING, SILHOUETTE } from './palette';
+import { COLORS, CYCLING, GRAIN_LUT, SILHOUETTE } from './palette';
 import { decodePng, type Rgba } from './png';
 import { FEAST_PIECES, FIGURE_ANIMATIONS, FIGURES, GROUNDS, PIECE_FEET, type FeastPieceName, type FigureAnimation, type GroundName, type PieceName } from './mapPieces';
 import type { AnimName } from './battleSprites';
@@ -13,6 +13,7 @@ import type { Size } from './scale';
  */
 
 const pieces = new Map<string, Bitmap>();
+const subdued = new Map<PieceName, Bitmap>();
 const grounds = new Map<GroundName, Bitmap>();
 const figures = new Map<string, Bitmap>();
 const feast = new Map<FeastPieceName, Bitmap>();
@@ -121,6 +122,19 @@ export function loadMapArt(read: (file: string) => Promise<Uint8Array> = fetchPi
 export function piece(name: PieceName): { sprite: Bitmap; foot: number } | null {
   const sprite = pieces.get(name);
   return sprite ? { sprite, foot: PIECE_FEET[name] } : null;
+}
+
+/** Small background decoration, a shade quieter; places and the original paintings stay unchanged. */
+export function subduedPiece(name: PieceName): { sprite: Bitmap; foot: number } | null {
+  const original = piece(name);
+  if (!original) return null;
+  let sprite = subdued.get(name);
+  if (!sprite) {
+    sprite = new Bitmap(original.sprite.width, original.sprite.height);
+    sprite.data.set(original.sprite.data.map((c) => (c === 0 || c === SHADOW ? c : GRAIN_LUT[c])));
+    subdued.set(name, sprite);
+  }
+  return { sprite, foot: original.foot };
 }
 
 /** A ground's seamless square, if it's loaded. */
