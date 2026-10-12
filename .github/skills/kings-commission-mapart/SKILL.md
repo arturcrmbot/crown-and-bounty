@@ -85,6 +85,11 @@ trees along the top cut by the frame, clumps in the corners, and obstacles at ba
   facing. Each band has its own phase. `Walks` selects travel by actual distance along the night path, turns at
   its bends and restores idle at the stop; the hit area follows the same position. A character's `Placed.foot`
   is its actual ground anchor, not the bottom of the padded canvas, so padding cannot move its fog test.
+  Every `TroopId`, including the four hero backgrounds and possible troop figures, needs a real map gait
+  and separately painted grounded idle. `test/figures.test.ts` names any remaining coverage and rejects
+  a resting bitmap copied from a gait. This is only the mechanical guard: inspect the legs, original
+  equipment and planted idle feet too. A sheet whose rows were drawn at different body sizes is calibrated
+  once per animation against the standing body's size, never by each frame's changing weapon bounds.
 - **The payday feast** (#191) has its own sheets (`feast-1` to `feast-4`): `FEAST` in mapart.py cuts them at the
   size they were drawn, with no shadow (the feast lays its own, away from its fire), into `public/assets/feast/`, and
   lists them as `FEAST_PIECES`. Its fire is cut without its painted flames: the feast draws its own, behind the logs.
