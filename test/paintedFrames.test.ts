@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import { bodyHeight, STAND, troopFigure } from '../src/render/battleSprites';
+import { bodyHeight, corpseSprite, STAND, troopFigure } from '../src/render/battleSprites';
 import { loadMapArt, paintedAnimation } from '../src/render/mapArt';
 import { FIGURES } from '../src/render/mapPieces';
 import type { Bitmap } from '../src/render/bitmap';
@@ -88,6 +88,33 @@ describe('painted walking figures', () => {
     ['heroCourtier', 'cast', [31, -50]],
   ] as const)('launches %s %s from its visible bow, staff or hand', (id, anim, launch) => {
     expect(paintedAnimation(id, 'battle', anim)?.launch).toEqual(launch);
+  });
+
+  it.each(['swordsmen', 'wolves', 'archers', 'peasants', 'crossbowmen', 'pikemen', 'menAtArms'] as const)('gives %s actual flinch and fall poses, and leaves its painted final pose on the same ground anchor', (id) => {
+    for (const anim of ['defend', 'defendRanged', 'death'] as const) {
+      const sequence = paintedAnimation(id, 'battle', anim);
+      expect(sequence, `${id} needs painted ${anim} frames`).not.toBeNull();
+      expect(new Set(sequence!.frames.map((frame) => picture(frame.sprite))).size).toBeGreaterThan(1);
+    }
+    for (const facing of [1, -1] as const) {
+      const last = troopFigure(id, 'blue', facing, { anim: 'death', ms: 10000 }, 'battle');
+      const fallen = corpseSprite(id, 'blue', facing);
+      expect([fallen.x, fallen.y, fallen.sprite.width, fallen.sprite.height]).toEqual([last.x, last.y, last.sprite.width, last.sprite.height]);
+      expect([...fallen.sprite.data].map((pixel) => pixel !== 0)).toEqual([...last.sprite.data].map((pixel) => pixel !== 0));
+    }
+  });
+
+  it.each(['archers', 'peasants', 'crossbowmen', 'pikemen', 'menAtArms'] as const)('takes %s from its existing quiet pose through a matching weapon strike and back to a real quiet recovery', (id) => {
+    const sequence = paintedAnimation(id, 'battle', 'melee');
+    expect(sequence?.frames).toHaveLength(4);
+    expect(new Set(sequence!.frames.map((frame) => picture(frame.sprite))).size).toBe(4);
+  });
+
+  it('lets the crossbowman visibly aim and loose the quarrel from his crossbow', () => {
+    const sequence = paintedAnimation('crossbowmen', 'battle', 'ranged');
+    expect(sequence?.frames).toHaveLength(4);
+    expect(sequence?.launch).toHaveLength(2);
+    expect(new Set(sequence!.frames.map((frame) => picture(frame.sprite))).size).toBe(4);
   });
 
   describe('optional painted sequences', () => {

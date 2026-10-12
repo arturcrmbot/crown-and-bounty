@@ -221,7 +221,7 @@ export function hurtSprite(sprite: Bitmap): Bitmap {
 const corpses = new Map<string, Figure>();
 
 /**
- * A fallen stack: the last frame of its death where Wesnoth drew one, otherwise its flinch laid on
+ * A fallen stack: its final painted death pose, or Wesnoth's where no painting loaded, otherwise its flinch laid on
  * its back (head away from the enemy). Dimmed, and with no shadow when laid down.
  */
 export function corpseSprite(troop: ArtId, team: Team, facing: 1 | -1): Figure {
@@ -231,7 +231,7 @@ export function corpseSprite(troop: ArtId, team: Team, facing: 1 | -1): Figure {
     dim ??= tint(([r, g, b]) => [Math.round(r * 0.7), Math.round(g * 0.7), Math.round(b * 0.76)]);
     const shade = (v: number) => (v === SHADOW ? SHADOW : dim![v]);
     const painted = paintedPose(troop, facing, STAND, 'battle');
-    if (!painted && ART[troop].death) {
+    if (paintedAnimation(troop, 'battle', 'death') || (!painted && ART[troop].death)) {
       const last = troopFigure(troop, team, facing, { anim: 'death', ms: animLength(troop, 'death') }, 'battle');
       const sprite = new Bitmap(last.sprite.width, last.sprite.height);
       for (let i = 0; i < sprite.data.length; i++) sprite.data[i] = shade(last.sprite.data[i]);

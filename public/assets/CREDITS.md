@@ -86,6 +86,16 @@ anchor. Shots leave their painted bow, staff or hand on the release frame, befor
 Requests, selected cells and actual spend of $1.08 are recorded in `art/map/jobs/battle-first*.json`.
 These battle poses use the existing palette and game licence.
 
+The next battle cohort (#279) was painted the same way on 12 October 2026. Swordsmen and wolves
+gain hurt and fallen poses; archers gain their close-quarters sidearm, hurt and fallen poses;
+peasants thrust their pitchforks, pikemen their full pikes, and men-at-arms their original swords.
+Crossbowmen keep their crossbows when shooting and draw a short sidearm up close. The eight original
+requests and two inspected corrections are in `art/map/jobs/battle-second*.json`, with actual spend
+of $1.80. Their input atlases repeat our existing grounded character crops without repainting them.
+The `battle-*-sequence.png` sheets pack selected new cells with the existing quiet poses at their
+fixed battle body scale. They are cut by the same `npm run mapart` pipeline and keep the game's
+palette and licence. The complete painted fallen pose remains on the same ground anchor.
+
 ## The units: Battle for Wesnoth
 
 Under the painted figures, the troops and the hero are units from [Battle for Wesnoth](https://www.wesnoth.org/) 1.18:

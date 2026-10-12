@@ -442,7 +442,7 @@ export class BattleController implements Screen {
     const pan = this.panAt(x);
     const attacker = fighterById(this.battle, e.attacker);
     const target = TROOP_SOUNDS[fighterById(this.battle, e.target).troop];
-    const blow = e.charge && ART[attacker.troop].charge ? 'lance' : TROOP_SOUNDS[attacker.troop].blow;
+    const blow = TROOP_SOUNDS[attacker.troop].blow;
     if (missile) play(`land:${missile}`, pan);
     else if (!prepared) play(`blow:${blow}`, pan);
     const lands = missile || prepared ? 0 : CONTACT;
@@ -501,19 +501,24 @@ export class BattleController implements Screen {
    */
   private faller(id: number) {
     const v = this.view;
+    const f = fighterById(this.battle, id);
+    const death = paintedAnimation(f.troop, 'battle', 'death');
+    const duration = death ? animLength(f.troop, 'death') * MS : TOPPLE_TIME;
     let landed = false;
     return {
+      duration,
       start: () => {
-        const f = fighterById(this.battle, id);
         v.fallen.set(id, v.facings.get(id) ?? this.facingOf(f));
         v.offsets.delete(id);
-        v.topple.set(id, toppleAngle(0));
+        if (death) v.poses.set(id, { anim: 'death', ms: 0 });
+        else v.topple.set(id, toppleAngle(0));
         this.react(f.side);
       },
       tick: (elapsed: number) => {
         const angle = toppleAngle(elapsed);
-        v.topple.set(id, angle);
-        if (!landed && angle >= 90) {
+        if (death) v.poses.set(id, { anim: 'death', ms: elapsed / MS });
+        else v.topple.set(id, angle);
+        if (!landed && (death ? elapsed >= (death.hit ?? duration / MS) * MS : angle >= 90)) {
           landed = true;
           this.landed(id);
         }
@@ -739,7 +744,7 @@ export class BattleController implements Screen {
       },
     });
     if (leading) this.step(leading * MS, {
-      start: () => play(`blow:${e.charge ? 'lance' : TROOP_SOUNDS[attacker.troop].blow}`, this.panAt(ax)),
+      start: () => play(`blow:${TROOP_SOUNDS[attacker.troop].blow}`, this.panAt(ax)),
       tick: (t) => swing(prepare + t * leading),
     });
     if (missile) {
@@ -802,7 +807,7 @@ export class BattleController implements Screen {
     });
     // The last of a stack falls over as the attacker draws back, instead of reeling (#190).
     const falls = dies ? this.faller(e.target) : null;
-    const length = Math.max(after * MS, falls ? TOPPLE_TIME + FRAME : 0);
+    const length = Math.max(after * MS, falls ? falls.duration + FRAME : 0);
     this.step(length, {
       start: () => falls?.start(),
       tick: (t) => {
@@ -814,6 +819,7 @@ export class BattleController implements Screen {
           falls.tick(t * length);
           return;
         }
+        v.poses.set(e.target, { anim: flinch(), ms });
         v.flashing[pulse(ms / 300) ? 'add' : 'delete'](e.target);
         const k = Math.sin(Math.min(1, (ms / after) * 1.8) * Math.PI) * (1 - (ms / after) * 0.4);
         v.offsets.set(e.target, [ux * reel * k, uy * reel * k]);
@@ -1062,7 +1068,9 @@ export class BattleController implements Screen {
           // they go (two at most, not a whole choir): as the flames thin, or as the bolt strikes.
           const dead = victims.filter((x) => x.dies).map((x) => x.h.target);
           const fallers = dead.map((id) => this.faller(id));
-          const fallFrom = Math.max(land, 1 - (TOPPLE_TIME + FRAME) / length);
+          const fallLength = Math.max(0, ...fallers.map((f) => f.duration));
+          const fallFrom = Math.max(land, 1 - (fallLength + FRAME) / length);
+          const fallTail = Math.max(0, fallLength - (1 - fallFrom) * length);
           let falling = false;
           this.step(length, {
             start: () => {
@@ -1086,6 +1094,7 @@ export class BattleController implements Screen {
               const white = landed && (sinceLanding++ < 1 || (t - land) * length < FRAME);
               for (const { h } of victims) {
                 if (!h.damage) continue;
+                if (landed && !dead.includes(h.target)) v.poses.set(h.target, { anim: 'defendRanged', ms: Math.max(0, (t - land) * length / MS) });
                 if (!white) v.whites.delete(h.target);
                 v.flashing[!white && pulse(k) ? 'add' : 'delete'](h.target);
               }
@@ -1097,6 +1106,14 @@ export class BattleController implements Screen {
                 v.whites.delete(h.target);
                 if (!dies) v.poses.delete(h.target);
               }
+              if (!fallTail) for (const f of fallers) f.end();
+            },
+          });
+          if (fallTail) this.step(fallTail + FRAME, {
+            tick: (t) => {
+              for (const f of fallers) f.tick((1 - fallFrom) * length + t * (fallTail + FRAME));
+            },
+            end: () => {
               for (const f of fallers) f.end();
             },
           });
@@ -1117,6 +1134,9 @@ export class BattleController implements Screen {
               this.float(e.fighter, e.type === 'wait' || passes ? 'waits' : 'defends', NEUTRAL[7]);
               v.log = words ?? `${this.fighterName(e.fighter)} ${this.verb(e.fighter, e.type === 'wait' ? 'wait for a better moment' : passes ? 'bide his time' : this.named(e.fighter) ? 'stand guard' : 'raise their shields')}.`;
               if (e.type === 'defend' && !passes) v.poses.set(e.fighter, { anim: 'defend', ms: 0 });
+            },
+            tick: (t) => {
+              if (e.type === 'defend' && !passes) v.poses.set(e.fighter, { anim: 'defend', ms: t * 0.45 / MS });
             },
             end: () => v.poses.delete(e.fighter),
           });
