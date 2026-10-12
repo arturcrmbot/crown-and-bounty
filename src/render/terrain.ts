@@ -4,7 +4,7 @@ import { Bitmap } from './bitmap';
 import { ground as groundArt } from './mapArt';
 import type { GroundName } from './mapPieces';
 import { fbm, hash, noise, rng, shade } from './noise';
-import { CYCLE_BOG, CYCLE_DEEP, CYCLE_FALL, CYCLE_SHALLOW, DIRT, EARTH, GOLD, GRASS, LEAF, LIGHT_LUT, NEUTRAL, PLUM, RED, REED, ROCK, SAND, SHADOW_LUT, WATER } from './palette';
+import { CYCLE_BOG, CYCLE_DEEP, CYCLE_FALL, CYCLE_SHALLOW, DIRT, EARTH, GOLD, GRAIN_LUT, GRASS, GROUND_LIGHT_LUT, LEAF, LIGHT_LUT, NEUTRAL, PLUM, RED, REED, ROCK, SAND, SHADOW_LUT, WATER } from './palette';
 import type { Region } from '../content/types';
 
 /** What each painted pixel is, for placing details. The rules keep their own, coarser map. */
@@ -244,10 +244,10 @@ export class TerrainPainter {
     const n = (px: number, py: number) => fbm(px / 150, py / 110, 2, 501);
     const slope = (n(x - 10, y - 10) - n(x + 10, y + 10)) * 9 * height;
     const b = hash(x, y, 507);
-    if (slope > 0.12 && b < Math.min(0.5, (slope - 0.12) * 0.8)) return LIGHT_LUT[c];
-    if (slope < -0.12 && b < Math.min(0.45, (-slope - 0.12) * 0.7)) return SHADOW_LUT[c];
+    if (slope > 0.12 && b < Math.min(0.3, (slope - 0.12) * 0.8)) return GROUND_LIGHT_LUT[c];
+    if (slope < -0.12 && b < Math.min(0.3, (-slope - 0.12) * 0.7)) return GRAIN_LUT[c];
     const swale = fbm(x / 80, y / 64, 2, 503);
-    if (swale > 0.66 && b < Math.min(0.3, (swale - 0.66) * 4)) return SHADOW_LUT[c];
+    if (swale > 0.66 && b < Math.min(0.3, (swale - 0.66) * 4)) return GRAIN_LUT[c];
     return c;
   }
 

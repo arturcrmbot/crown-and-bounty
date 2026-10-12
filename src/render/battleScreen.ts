@@ -16,9 +16,9 @@ import { bayer, fbm, hash, noise, shade } from './noise';
 import { CUE_PING, FRAME, rolled } from './juice';
 import { rotateAbout } from './rotate';
 import { drawPops, type Pop } from './pops';
-import { ground, paintedAnimation, piece } from './mapArt';
+import { ground, paintedAnimation, piece, subduedPiece } from './mapArt';
 import type { PieceName } from './mapPieces';
-import { BLUE, CYCLE_BOG, DANGER_LUT, EARTH, GOLD, GRASS, INK, LEAF, LIGHT_LUT, NEUTRAL, PARCHMENT, PLUM, RED, REED, SHADOW_LUT, STONE, WOOD } from './palette';
+import { BLUE, CYCLE_BOG, DANGER_LUT, EARTH, GOLD, GRAIN_LUT, GRASS, GROUND_LIGHT_LUT, INK, LEAF, LIGHT_LUT, NEUTRAL, PARCHMENT, PLUM, RED, REED, SHADOW_LUT, STONE, WOOD } from './palette';
 import { boulder, mirror, oak, pine, shadowOval, willow } from './sprites';
 import { bigLettering, drawText, lettered, textMask } from './text';
 
@@ -219,11 +219,11 @@ const BEDS: PieceName[] = ['bedYellow', 'bedYellow2', 'bedRed', 'bedRed2', 'bedR
 function paintedField(obstacles: number[], seed: number): Bitmap | null {
   const grass = ground('grass');
   const dirt = ground('dirt');
-  const art = (names: readonly PieceName[]) => names.map((n) => piece(n)).filter((p): p is { sprite: Bitmap; foot: number } => Boolean(p));
+  const art = (names: readonly PieceName[], read = piece) => names.map((n) => read(n)).filter((p): p is { sprite: Bitmap; foot: number } => Boolean(p));
   const rocks = art(OBSTACLES);
   const edge = art(EDGE_TREES);
-  const sprigs = art(SPRIGS);
-  const beds = art(BEDS);
+  const sprigs = art(SPRIGS, subduedPiece);
+  const beds = art(BEDS, subduedPiece);
   if (!grass || !dirt || rocks.length < OBSTACLES.length || edge.length < EDGE_TREES.length) return null;
   const field = new Bitmap(SCREEN.width, SCREEN.height);
   const sx = seed * 3;
@@ -235,13 +235,13 @@ function paintedField(obstacles: number[], seed: number): Bitmap | null {
       // Worn paths curling across the grass, where the troops have trodden: a band of earth with a ragged edge.
       const worn = Math.abs(fbm(gx / 230, gy / 150, 2, 610) - 0.5) + (noise(gx / 6, gy / 6, 611) - 0.5) * 0.02;
       if (worn < 0.009) c = dirt.data[(gy % dirt.height) * dirt.width + (gx % dirt.width)];
-      else if (worn < 0.022 && hash(gx, gy, 612) < 0.45) c = LIGHT_LUT[c];
+      else if (worn < 0.022 && hash(gx, gy, 612) < 0.45) c = GROUND_LIGHT_LUT[c];
       // The swells: slopes towards the light (top left) a shade brighter, those away a shade darker, stippled.
       const n = (px: number, py: number) => fbm(px / 120, py / 80, 2, 613);
       const slope = (n(gx - 8, gy - 8) - n(gx + 8, gy + 8)) * 9;
       const r = hash(gx, gy, 614);
-      if (slope > 0.1 && r < Math.min(0.5, (slope - 0.1) * 0.8)) c = LIGHT_LUT[c];
-      else if (slope < -0.1 && r < Math.min(0.45, (-slope - 0.1) * 0.7)) c = SHADOW_LUT[c];
+      if (slope > 0.1 && r < Math.min(0.3, (slope - 0.1) * 0.8)) c = GROUND_LIGHT_LUT[c];
+      else if (slope < -0.1 && r < Math.min(0.3, (-slope - 0.1) * 0.7)) c = GRAIN_LUT[c];
       // Beyond the hexes the land falls into shade, softly.
       const out = Math.max(X0 - 6 - x, x - (X0 + FIELD_W + 6), Y0 - 2 - y, y - fy - 4);
       if (out > 0 && r < Math.min(0.85, out / 18)) c = SHADOW_LUT[c];
@@ -267,7 +267,7 @@ function paintedField(obstacles: number[], seed: number): Bitmap | null {
       for (let x = Math.floor(cx - HEX_W / 2); x <= cx + HEX_W / 2; x++) {
         if (!insideHex(x, y, cx, cy)) continue;
         const edge = !insideHex(x + 1, y, cx, cy) || !insideHex(x, y + 1, cx, cy) || !insideHex(x - 1, y, cx, cy) || !insideHex(x, y - 1, cx, cy);
-        if (edge && (x + y) % 2 === 0) field.set(x, y, SHADOW_LUT[field.get(x, y)]);
+        if (edge && (x + y) % 4 === 0) field.set(x, y, GRAIN_LUT[field.get(x, y)]);
       }
     }
   }
@@ -345,14 +345,14 @@ function paintField(obstacles: number[], seed: number, fen: boolean): Bitmap {
       field.set(x, y + 1, STONE[2]);
     }
   }
-  // Hex outlines: a darker line where hexes meet.
+  // Resting hex outlines stay quieter than the active and reachable hexes.
   for (let i = 0; i < HEXES; i++) {
     const [cx, cy] = hexCentre(i);
     for (let y = Math.floor(cy - HALF_H); y <= cy + HALF_H; y++) {
       for (let x = Math.floor(cx - HEX_W / 2); x <= cx + HEX_W / 2; x++) {
         if (!insideHex(x, y, cx, cy)) continue;
         const edge = !insideHex(x + 1, y, cx, cy) || !insideHex(x, y + 1, cx, cy) || !insideHex(x - 1, y, cx, cy) || !insideHex(x, y - 1, cx, cy);
-        if (edge && (x + y) % 2 === 0) field.set(x, y, SHADOW_LUT[field.get(x, y)]);
+        if (edge && (x + y) % 4 === 0) field.set(x, y, GRAIN_LUT[field.get(x, y)]);
       }
     }
   }
