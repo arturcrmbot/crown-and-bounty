@@ -557,7 +557,7 @@ export class BattleScreen {
       const pose = view.poses.get(f.id) ?? (view.positions.has(f.id) ? STAND : fidget(f.troop, f.id, view.time));
       const painted = paintedAnimation(f.troop, 'battle', pose.anim);
       const figure = troopFigure(f.troop, f.side === 'player' ? 'blue' : 'red', facing, pose, 'battle');
-      if (f.troop === 'knights' && painted) blit(screen, KNIGHT_SHADOW, Math.round(px + ox - 36), Math.round(py + oy + 6), MAP_VIEW);
+      if ((f.troop === 'knights' || f.troop === 'heroKnight') && painted) blit(screen, KNIGHT_SHADOW, Math.round(px + ox - 36), Math.round(py + oy + 6), MAP_VIEW);
       const sprite = view.whites.has(f.id) ? whiteSprite(figure.sprite) : view.flashing.has(f.id) ? hurtSprite(figure.sprite) : figure.sprite;
       // Standing about, everyone breathes: a pixel up and down, each stack in its own time.
       const breath = !painted && pose.anim === 'stand' && !view.positions.has(f.id) && !view.offsets.has(f.id) && Math.sin(view.time * 2.4 + f.id * 1.9) > 0.35 ? 1 : 0;
