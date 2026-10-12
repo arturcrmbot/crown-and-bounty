@@ -1037,6 +1037,22 @@ export function cottage(phase = 0): Bitmap {
   return shaped;
 }
 
+/** Four cloth sails about a fixed hub, shared by the drawn and painted windmills. */
+export function windmillSails(sprite: Bitmap, hub: readonly [number, number], turn: number, length: number) {
+  for (let k = 0; k < 4; k++) {
+    const a = (k / 4 + turn) * Math.PI * 2;
+    const [dx, dy] = [Math.cos(a), Math.sin(a)];
+    for (let t = 2; t < length; t++) {
+      for (let w = 0; w < 6; w++) {
+        const x = Math.round(hub[0] + dx * t - dy * w);
+        const y = Math.round(hub[1] + dy * t + dx * w);
+        const lattice = w === 0 || t % 4 === 0;
+        if (w === 0 || t > 6) sprite.set(x, y, lattice ? WOOD[2] : flat(PLASTER4, 0.85 - w * 0.06, x, y));
+      }
+    }
+  }
+}
+
 /** A fen windmill: a tarred timber tower with a white cap, sails turned to `turn` (0 to 1 round). */
 export function windmill(turn: number): Bitmap {
   const sprite = new Bitmap(64, 72);
@@ -1051,20 +1067,7 @@ export function windmill(turn: number): Bitmap {
   for (let y = 54; y < 66; y++) for (let x = cx - 3; x < cx + 3; x++) sprite.set(x, y, y === 54 ? WOOD[3] : INK);
   for (let y = 38; y < 43; y++) for (let x = cx - 2; x < cx + 1; x++) sprite.set(x, y, GOLD[5]);
   for (let y = 18; y < 28; y++) for (let x = cx - 10; x < cx + 10; x++) if (Math.hypot((x - cx) / 10, (y - 27) / 9) < 1) sprite.set(x, y, flat(PLASTER4, 0.8 - (x - cx + 10) * 0.025, x, y));
-  // Four sails on the hub, each a lattice of cloth.
-  const hub: [number, number] = [cx, 24];
-  for (let k = 0; k < 4; k++) {
-    const a = (k / 4 + turn * 0.25) * Math.PI * 2;
-    const [dx, dy] = [Math.cos(a), Math.sin(a)];
-    for (let t = 2; t < 28; t++) {
-      for (let w = 0; w < 6; w++) {
-        const x = Math.round(hub[0] + dx * t - dy * w);
-        const y = Math.round(hub[1] + dy * t + dx * w);
-        const lattice = w === 0 || t % 4 === 0;
-        if (w === 0 || t > 6) sprite.set(x, y, lattice ? WOOD[2] : flat(PLASTER4, 0.85 - w * 0.06, x, y));
-      }
-    }
-  }
+  windmillSails(sprite, [cx, 24], turn * 0.25, 28);
   for (let y = 22; y < 27; y++) for (let x = cx - 2; x < cx + 3; x++) sprite.set(x, y, WOOD[1]);
   const shaped = outline(sprite, INK);
   castShadow(shaped, 7, 2, 50);
