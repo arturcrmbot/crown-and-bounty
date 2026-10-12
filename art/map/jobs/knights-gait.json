@@ -1,0 +1,18 @@
+[
+  {
+    "out": "art/map/sheets/knights-gait.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28301,
+    "prompt": "A matching animation sheet of FOUR poses of the SAME mounted blue Knight from the isolated knight reference and the top-right figure on units-a. Keep his exact chestnut brown horse, brown mane and tail, bright royal-blue saddle cloth with gold edging, silver steel plate armour, closed silver helmet, long wooden lance with a steel point and small sword at the belt. He is a friendly painted 1996 DOS fantasy strategy game figure, not a new character. Four full-body mounted figures facing right in a slight three-quarter view, TWO rows of TWO, each completely separate, complete lance, horse, rider and feet inside its own square, no touching or clipping. These are consecutive frames of one horse cantering on level ground, with the rider steady in the saddle and the lance carried diagonally upward exactly as in the reference. TOP LEFT: the near foreleg extended forward with its hoof planted, near hind leg stretched back, opposite legs bent beneath the belly. TOP RIGHT: gathered suspension, all four hooves just clear of the ground, both forelegs folded back beneath the chest and both hind legs coming forward beneath the belly. BOTTOM LEFT: opposite lead landing, far foreleg planted and near foreleg bent up, far hind leg extended back, visibly different leg silhouette from top left. BOTTOM RIGHT: extended suspension, forelegs reaching forward and hind legs reaching back, the horse body level, not rearing and not jumping upward. The four leg poses MUST be visibly different, but horse body size, rider size, horse head shape, armour, blue cloth and lance stay identical. One small flat grey oval shadow directly under each horse marks the same ground plane, even in suspension. Drawn in exactly the art style of the reference 1996 DOS fantasy strategy game battle screens: charming, friendly, clearly readable, bright colours, painted shading reduced to 256 colours, soft dithering, a little character in every face. On one plain flat grey background, no scenery, labels, grid, effects, dust or speed lines.",
+    "reference_images": [
+      "public/assets/troops/knights-battle.png",
+      "art/map/sheets/units-a.png",
+      "~/.config/retro-diffusion/refs/battle_hero.png",
+      "~/.config/retro-diffusion/refs/battle_troops.png",
+      "~/.config/retro-diffusion/refs/battle_wide.png"
+    ]
+  }
+]

@@ -16,14 +16,16 @@ import { bayer, fbm, hash, noise, shade } from './noise';
 import { CUE_PING, FRAME, rolled } from './juice';
 import { rotateAbout } from './rotate';
 import { drawPops, type Pop } from './pops';
-import { ground, piece } from './mapArt';
+import { ground, paintedAnimation, piece } from './mapArt';
 import type { PieceName } from './mapPieces';
 import { BLUE, CYCLE_BOG, DANGER_LUT, EARTH, GOLD, GRASS, INK, LEAF, LIGHT_LUT, NEUTRAL, PARCHMENT, PLUM, RED, REED, SHADOW_LUT, STONE, WOOD } from './palette';
-import { boulder, mirror, oak, pine, willow } from './sprites';
+import { boulder, mirror, oak, pine, shadowOval, willow } from './sprites';
 import { bigLettering, drawText, lettered, textMask } from './text';
 
 /** The King's blue with his gold star, over Aldric's side. */
 const ROYAL: Standard = { cloth: [BLUE[1], BLUE[2], BLUE[3], BLUE[4]], emblem: 'star' };
+const KNIGHT_SHADOW = new Bitmap(72, 12);
+shadowOval(KNIGHT_SHADOW, 36, 6, 36, 6);
 
 /** Aldric, or a villain: one of a kind, a name rather than a number. */
 const oneOfAKind = (f: Fighter) => TROOPS[f.troop].name === TROOPS[f.troop].one;
@@ -553,10 +555,12 @@ export class BattleScreen {
         continue;
       }
       const pose = view.poses.get(f.id) ?? (view.positions.has(f.id) ? STAND : fidget(f.troop, f.id, view.time));
+      const painted = paintedAnimation(f.troop, 'battle', pose.anim);
       const figure = troopFigure(f.troop, f.side === 'player' ? 'blue' : 'red', facing, pose, 'battle');
+      if (f.troop === 'knights' && painted) blit(screen, KNIGHT_SHADOW, Math.round(px + ox - 36), Math.round(py + oy + 6), MAP_VIEW);
       const sprite = view.whites.has(f.id) ? whiteSprite(figure.sprite) : view.flashing.has(f.id) ? hurtSprite(figure.sprite) : figure.sprite;
       // Standing about, everyone breathes: a pixel up and down, each stack in its own time.
-      const breath = pose.anim === 'stand' && !view.positions.has(f.id) && !view.offsets.has(f.id) && Math.sin(view.time * 2.4 + f.id * 1.9) > 0.35 ? 1 : 0;
+      const breath = !painted && pose.anim === 'stand' && !view.positions.has(f.id) && !view.offsets.has(f.id) && Math.sin(view.time * 2.4 + f.id * 1.9) > 0.35 ? 1 : 0;
       const lift = view.positions.has(f.id) ? 0 : (view.lifts.get(f.id) ?? 0);
       const [x, y] = [Math.round(px + ox + figure.x), Math.round(py + oy + 12 + figure.y) - breath - lift];
       if (view.lit.has(f.id)) this.glow(figure.sprite, x, y, view.lit.get(f.id)!, view.time);

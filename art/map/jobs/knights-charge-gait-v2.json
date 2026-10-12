@@ -1,0 +1,17 @@
+[
+  {
+    "out": "art/map/sheets/knights-charge-gait-v2.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28324,
+    "prompt": "a sheet of FOUR matching animation frames of the ONE mounted blue Knight shown in the isolated knights-lance-reference. Copy that same detailed silver-armoured rider, closed helmet, chestnut brown horse with white blaze, dark mane and tail, royal-blue saddle cloth with gold edging, and exact LOW HORIZONTAL blue-shafted steel-tipped lance. All FOUR frames keep his lance COUCHED HORIZONTALLY under his arm pointing RIGHT and his body seated forward, exactly like the single reference. The lance is NEVER upright in this sheet. Only the horse's legs change pose. TWO rows of TWO full-body mounted figures facing RIGHT in a slight three-quarter view, each separate and not touching, each complete horse, rider and lance tip inside its square. TOP LEFT has all four horse legs gathered under its belly, front knees bent back and hind knees coming forward, hooves just clear of the ground. TOP RIGHT has the gallop fully extended, forelegs reaching forward and hind legs reaching backward, horse body level. BOTTOM LEFT has the near forehoof planted forward and the opposite foreleg bent up, near hind leg stretched back. BOTTOM RIGHT has the far forehoof planted forward and the near foreleg bent up, far hind leg stretched back, opposite lead from bottom left. FOUR genuinely different silhouettes of the horse's legs, NOT four rigid standing horses. Same head, rider, horse body, lance, blue cloth and body size in every frame, horse and rider together about 100 pixels high. A small flat grey oval shadow marks the same ground plane below each horse, even when the feet lift. Drawn in exactly the art style of the reference 1996 DOS fantasy strategy game battle screens: charming, friendly, clearly readable, bright colours, painted shading reduced to 256 colours, soft dithering, a little character in every face. A plain flat grey background, no scenery, labels, grid, opponents, extra weapons, dust, sparks, blood or speed lines.",
+    "reference_images": [
+      "art/map/sheets/knights-lance-reference.png",
+      "~/.config/retro-diffusion/refs/battle_hero.png",
+      "~/.config/retro-diffusion/refs/battle_troops.png",
+      "~/.config/retro-diffusion/refs/battle_wide.png"
+    ]
+  }
+]

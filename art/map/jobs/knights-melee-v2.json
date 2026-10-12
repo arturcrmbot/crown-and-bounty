@@ -1,0 +1,18 @@
+[
+  {
+    "out": "art/map/sheets/knights-melee-v2.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28312,
+    "prompt": "FOUR animation frames of the SAME blue armoured mounted Knight on the SAME chestnut horse in the knights-gait reference, making ONE ordinary sword attack toward the RIGHT. Keep his exact closed silver helmet, silver plate armour, royal blue cloth and gold edging, horse head, brown mane and tail, body proportions and painted colours. Four figures, TWO rows of TWO, all facing RIGHT, on plain flat grey. No lance in these sword poses. All swords, horses, riders and feet must fit completely inside their own square with a clear eight-pixel empty margin on every side. The mounted knight holds his sword in the arm on the viewer's side of his chest. TOP LEFT, wind-up: his bent elbow raises the straight steel sword above and behind his helmet, blade points UP and LEFT, horse steady. TOP RIGHT, forward swing: his sword arm swings OVER the horse's neck toward the RIGHT, elbow unfolds and sword blade points diagonally DOWN and RIGHT, in front of the horse's face. BOTTOM LEFT, CONTACT: his sword arm stretches FORWARD toward the RIGHT, hand in front of his chest above the horse's mane, sword blade reaches forward beyond the horse's muzzle toward the RIGHT and slightly downward, to hit a standing opponent on the right. The sword must NOT point left, backward toward the tail, or down behind his thigh. This contact pose is clearly different from the wind-up. Horse braces with near forehoof planted, rider leans forward only a little and never leaves the saddle. BOTTOM RIGHT, recovery: sword arm bends back toward his chest, hand and blade held near the horse's mane, rider sitting upright and horse settled, not another wind-up. The arm and sword are drawn in four visibly different positions with ONE sword each. Identical rider, horse, armour and blue cloth in all frames, no enlargement or stretching. One small flat grey oval ground shadow under each horse. Exactly the charming painted 1996 DOS fantasy strategy battle style of the references, bright clear colours reduced to 256 colours, painted shading and soft dithering. Full-body figures kept completely separate. No opponents, lettering, scenery, grid, sparks, blood, dust or speed lines.",
+    "reference_images": [
+      "art/map/sheets/knights-gait.png",
+      "public/assets/troops/knights-battle.png",
+      "art/map/sheets/units-a.png",
+      "~/.config/retro-diffusion/refs/battle_hero.png",
+      "~/.config/retro-diffusion/refs/battle_wide.png"
+    ]
+  }
+]

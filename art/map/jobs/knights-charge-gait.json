@@ -1,0 +1,19 @@
+[
+  {
+    "out": "art/map/sheets/knights-charge-gait.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28323,
+    "prompt": "a sheet of four consecutive CHARGING HORSE GAIT poses of exactly the mounted Knight in the knights-charge and knights-gait reference sheets, each a full-body mounted figure facing right in the same slight three-quarter view. Match the large detailed chestnut horse, white blaze on its forehead and nose, dark brown mane and tail, silver plate armour, closed silver helmet, bright royal-blue saddle cloth with gold edging and blue lance shaft with a steel point. Keep the SAME body proportions, painted detail, size and colours as knights-gait, a rider and horse together about 100 pixels from helmet to ground in each 128-pixel square, not tiny icons or a different orange horse. The knight leans slightly forward in the saddle and holds the lance LOW, COUCHED HORIZONTALLY under his right arm in EVERY frame, exactly like the top-right figure on knights-charge. No upright lance in any frame. His sword stays sheathed. Two rows of TWO figures, each separate and not touching, with the full horse, rider, legs and complete lance tip visible. TOP LEFT: gathered gallop, all four legs folded beneath the horse's belly, hooves just clear of the ground. TOP RIGHT: extended gallop, both forelegs reaching forward and both hind legs reaching backward, horse body level. BOTTOM LEFT: near forehoof landing, near foreleg stretched down and forward, opposite front knee bent up, near hind leg extended back. BOTTOM RIGHT: opposite lead landing, far forehoof planted, near foreleg bent up and far hind leg extended back, unmistakably different from the other landing. The four leg silhouettes must really differ. Keep the horse body, head, rider's torso and lance stable, not a rear, leap or high hop. Small flatter-grey oval shadows directly beneath every horse stay on one ground plane. Drawn in exactly the art style of the reference 1996 DOS fantasy strategy game battle screens: charming, friendly, clearly readable, bright colours, painted shading reduced to 256 colours, soft dithering, a little character in every face. On a plain flat grey background. No labels, scenery, opponents, grid, motion lines, blood, sparks or dust.",
+    "reference_images": [
+      "art/map/sheets/knights-charge.png",
+      "art/map/sheets/knights-gait.png",
+      "public/assets/troops/knights-battle.png",
+      "art/map/sheets/units-a.png",
+      "~/.config/retro-diffusion/refs/battle_hero.png",
+      "~/.config/retro-diffusion/refs/battle_troops.png"
+    ]
+  }
+]

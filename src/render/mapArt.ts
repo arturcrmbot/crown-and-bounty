@@ -139,7 +139,7 @@ export function paintedAnimation(id: string, size: Size, anim: AnimName): Painte
   if (cached) return cached;
   const animation = FIGURE_ANIMATIONS[id]?.[anim];
   const foot = animation?.feet[size];
-  if (!animation || !foot) return null;
+  if (!animation || !foot) return anim === 'idle' ? paintedAnimation(id, size, 'stand') : null;
   const frames: PaintedAnimation['frames'][number][] = [];
   for (const frame of animation.frames) {
     const sprite = figures.get(`${frame.name}-${size}`);
