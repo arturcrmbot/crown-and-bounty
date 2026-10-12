@@ -731,8 +731,12 @@ FIGURE_ANIMATIONS = {
         },
     },
     'heroKnight': {
+        'stand': {
+            'sheet': 'map-hero-knight-idle-edit', 'scale': 0.78, 'sizes': ['battle'],
+            'frames': [((0, 0, 118, 123), (64, 120), 100)],
+        },
         'move': {
-            'sheet': 'map-hero-knight-move', 'scale': 0.78, 'sizes': ['map'],
+            'sheet': 'map-hero-knight-move', 'scale': 0.78, 'sizes': ['map', 'battle'],
             'frames': [
                 ((0, 0, 118, 123), (64, 119), 90),
                 ((128, 0, 248, 123), (192, 119), 90),
@@ -742,13 +746,23 @@ FIGURE_ANIMATIONS = {
             'stride': 64, 'footfalls': [0, 180],
         },
         'idle': {
-            'sheet': 'map-hero-knight-idle-edit', 'scale': 0.78, 'sizes': ['map'],
+            'sheet': 'map-hero-knight-idle-edit', 'scale': 0.78, 'sizes': ['map', 'battle'],
             'frames': [
                 ((0, 0, 118, 123), (64, 120), 1800),
                 ((128, 0, 248, 123), (192, 120), 240),
                 ((0, 125, 120, 254), (64, 249), 240),
                 ((128, 125, 249, 254), (192, 250), 1440),
             ],
+        },
+        'melee': {
+            'sheet': 'hero-knight-lance-sequence', 'scale': 0.78, 'sizes': ['battle'],
+            'frames': [
+                ((0, 0, 170, 128), (64, 120), 140),
+                ((0, 128, 170, 256), (64, 248), 100),
+                ((0, 256, 170, 384), (64, 377), 100),
+                ((0, 384, 170, 512), (64, 509), 200),
+            ],
+            'hit': 240,
         },
     },
 }

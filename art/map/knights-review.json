@@ -2,7 +2,7 @@
   "issue": 283,
   "provider": "Retro Diffusion",
   "model": "rd_pro__spritesheet",
-  "cost_usd": 1.62,
+  "cost_usd": 1.98,
   "attempts": [
     {
       "job": "jobs/knights-gait.json",
@@ -66,6 +66,20 @@
       "cost_usd": 0.18,
       "decision": "selected",
       "critique": "A minimal edit of the existing lance sheet sits the ready rider upright and draws his arm back. Preparation, short thrust and recovery all keep the same blue-shafted lance, horse and painted identity."
+    },
+    {
+      "job": "jobs/knights-rest.json",
+      "sheet": "sheets/knights-rest.png",
+      "cost_usd": 0.18,
+      "decision": "selected",
+      "critique": "All four hooves are grounded in the neutral stance and the gentle head, ear and tail idle poses. This replaces the incorrect running-cell stand and idle."
+    },
+    {
+      "job": "jobs/hero-knight-lance.json",
+      "sheet": "sheets/hero-knight-lance.png",
+      "cost_usd": 0.18,
+      "decision": "selected",
+      "critique": "The white horse stays grounded through the hero's four real lance preparation, contact and recovery poses. His silver armour, plume and blue pennant remain distinct from the troop."
     }
   ],
   "selected": {
@@ -93,5 +107,11 @@
     "battle_scale": 0.86,
     "map_scale": 0.6
   },
-  "scope": "The Knights troop. The Knight hero keeps his distinct white horse and painted identity."
+  "hero_assembly": {
+    "sheet": "sheets/hero-knight-lance-sequence.png",
+    "source": "sheets/hero-knight-lance.png",
+    "method": "Each figure's connected painted component is packed unchanged into a separate 170 by 128 cell, retaining the full lance and pennant without a neighbouring figure.",
+    "battle_scale": 0.78
+  },
+  "scope": "Both mounted figures in battle. Knights have genuine grounded rest and idle. The hero uses his landed white-horse gait and idle, with a matching lance action. His original map stand and calibration are unchanged."
 }

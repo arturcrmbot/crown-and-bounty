@@ -16,6 +16,25 @@ describe('the Knights painted gait and attacks', () => {
     expect(paintedAnimation('knights', 'battle', 'move')?.footfalls).toEqual([0, 180]);
   });
 
+  it('settles on a distinct grounded rest rather than freezing the first running pose', () => {
+    const rest = troopFigure('knights', 'blue', 1, { anim: 'stand', ms: 0 }, 'battle');
+    const moving = troopFigure('knights', 'blue', 1, { anim: 'move', ms: 0 }, 'battle');
+    expect(rest.sprite.data.join(',')).not.toBe(moving.sprite.data.join(','));
+    const idle = paintedAnimation('knights', 'battle', 'idle');
+    expect(idle?.frames).toHaveLength(4);
+    expect(new Set(idle?.frames.map((frame) => frame.sprite.data.join(','))).size).toBe(4);
+  });
+
+  it('gives Aldric real white-horse battle gait, rest, idle and lance strike frames', () => {
+    for (const anim of ['move', 'idle', 'melee'] as const) {
+      const sequence = paintedAnimation('heroKnight', 'battle', anim);
+      expect(sequence?.frames, `Aldric needs a battle ${anim} sequence`).toHaveLength(4);
+      expect(new Set(sequence?.frames.map((frame) => frame.sprite.data.join(','))).size).toBe(4);
+    }
+    expect(paintedAnimation('heroKnight', 'battle', 'stand')?.frames[0].name).toBe('heroKnight-stand-0');
+    expect(hitTime('heroKnight', 'melee')).toBe(240);
+  });
+
   it('puts the short lance thrust on its contact pose and holds the recovery', () => {
     const frames = [0, 140, 240, 340].map((ms) => troopFigure('knights', 'blue', 1, { anim: 'melee', ms }, 'battle'));
     expect(new Set(frames.map((frame) => frame.sprite.data.join(','))).size).toBe(4);

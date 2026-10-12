@@ -13,6 +13,7 @@ import { CUE_PING, cueBounce, FLASH_GAP, FLASH_TIME, FRAME, holdFrames, kickLeft
 import { hash } from '../render/noise';
 import { animLength, bodyHeight, hitTime, STAND, type AnimName } from '../render/battleSprites';
 import { paintedAnimation } from '../render/mapArt';
+import { walkFootfalls } from '../render/adventureScene';
 import { cursorIcon, type CursorKind, type Heading } from '../render/cursors';
 import { ART, type Missile } from '../render/units';
 import { MAP_VIEW } from '../render/frame';
@@ -667,13 +668,13 @@ export class BattleController implements Screen {
     const [ux, uy] = [(tx - ax) / len, (ty - ay) / len];
     const art = ART[attacker.troop];
     const anim = e.ranged ? 'ranged' : e.charge && art.charge ? 'charge' : 'melee';
-    const knight = attacker.troop === 'knights';
+    const knight = attacker.troop === 'knights' || attacker.troop === 'heroKnight';
     const mounted = knight || target.troop === 'knights';
     const painted = knight && !e.ranged && !!paintedAnimation(attacker.troop, 'battle', anim);
     const contact = hitTime(attacker.troop, anim);
     const soundLead = !e.ranged && mounted ? CONTACT / MS * this.pace * (this.auto ? 2.5 : 1) : 0;
     // The charge's opening gait has already played on the approach. Finish the last stride into contact.
-    const begins = painted && e.charge ? Math.max(0, contact - Math.max(100, soundLead)) : 0;
+    const begins = painted && e.charge && anim === 'charge' ? Math.max(0, contact - Math.max(100, soundLead)) : 0;
     const hit = contact - begins;
     const total = Math.max(animLength(attacker.troop, anim) - begins, hit + 1);
     const after = Math.max(300, total - hit);
@@ -869,27 +870,39 @@ export class BattleController implements Screen {
           const feet = `feet:${TROOP_SOUNDS[f.troop].feet}` as const;
           // A charge's run-up (#190): dust flies from the hooves on every hex of it.
           const charging = !back && events.some((n) => n.type === 'hit' && n.charge && n.attacker === e.fighter);
-          const gait = f.troop === 'knights' ? paintedAnimation(f.troop, 'battle', charging ? 'charge' : 'move') : null;
-          const cycle = gait ? (charging ? hitTime(f.troop, 'charge') : animLength(f.troop, 'move')) : 0;
+          const chargeGait = charging ? paintedAnimation(f.troop, 'battle', 'charge') : null;
+          const gait = chargeGait ?? paintedAnimation(f.troop, 'battle', 'move');
+          const cycle = gait ? (chargeGait ? hitTime(f.troop, 'charge') : animLength(f.troop, 'move')) : 0;
+          let gaitMs = 0;
+          let heardMs = -0.001;
           for (const [n, to] of path.entries()) {
             const a = n === 0 ? start : path[n - 1];
             // A hex a step for a stack; a leader gallops, however far his first and last stretches are.
-            const length = gait ? cycle * MS / 2 : leader ? Math.max(0.06, Math.hypot(to[0] - a[0], to[1] - a[1]) / 640) : 0.12;
+            const length = gait ? cycle * MS / 2 * (leader ? Math.hypot(to[0] - a[0], to[1] - a[1]) / 64 : 1) : leader ? Math.max(0.06, Math.hypot(to[0] - a[0], to[1] - a[1]) / 640) : 0.12;
+            const begin = gaitMs;
+            gaitMs += length / MS;
             this.step(length, {
               start: () => {
                 if (n === 0 && !back) v.log = `${this.fighterName(e.fighter)} ${this.verb(e.fighter, leader ? 'ride out' : 'advance')}...`;
-                if (n === 0 && charging && f.troop === 'knights') play('charge');
+                if (n === 0 && charging && (f.troop === 'knights' || f.troop === 'heroKnight')) play('charge');
                 if (to[0] !== a[0]) v.facings.set(e.fighter, to[0] > a[0] ? 1 : -1);
-                play(feet, this.panAt(to[0]));
+                if (!gait?.footfalls) play(feet, this.panAt(to[0]));
                 if (charging) this.burst('dust', [Math.round(a[0]), Math.round(a[1]) + 12], 0.45, { size: 30 });
               },
               tick: (t) => {
                 const hop = frames ? 0 : Math.sin(t * Math.PI) * 4;
                 v.positions.set(e.fighter, [a[0] + (to[0] - a[0]) * t, a[1] + (to[1] - a[1]) * t - hop]);
-                v.poses.set(e.fighter, gait ? { anim: charging ? 'charge' : 'move', ms: ((n + t) * cycle / 2) % cycle } : frames ? { anim: 'move', ms: (n + t) * 120 } : STAND);
+                const ms = begin + t * length / MS;
+                if (gait?.footfalls) {
+                  const count = walkFootfalls(heardMs, ms, { stride: cycle, frames: [], footfalls: gait.footfalls });
+                  for (let k = 0; k < count; k++) play(feet, this.panAt(a[0] + (to[0] - a[0]) * t));
+                  heardMs = ms;
+                }
+                v.poses.set(e.fighter, gait ? { anim: chargeGait ? 'charge' : 'move', ms: ms % cycle } : frames ? { anim: 'move', ms: (n + t) * 120 } : STAND);
               },
             });
           }
+          this.step(FRAME, { start: () => v.poses.set(e.fighter, STAND) });
           // A leader who rode out stays where he got to until his blow lands, and rides back after it.
           if (leader && !back) break;
           if (back) out.delete(e.fighter);
