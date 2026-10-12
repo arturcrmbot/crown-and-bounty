@@ -14,9 +14,10 @@ import { CLEAR, type Sky, type Weather } from './weather';
 /**
  * `x` and `y` are the sprite's top-left in map pixels. `frames` animate it (flags, wheels);
  * `frame` pins the frame instead of following the clock (a walking hero steps with distance).
+ * `foreground` restores fixed scenery in front of a moving landmark.
  * `hidden` keeps it off the map for now: a band out of the hero's sight.
  */
-export type Placed = { sprite: Bitmap; frames?: Bitmap[]; frame?: number; foot?: number; x: number; y: number; hidden?: boolean };
+export type Placed = { sprite: Bitmap; frames?: Bitmap[]; frame?: number; foot?: number; foreground?: Bitmap; x: number; y: number; hidden?: boolean };
 
 const footY = (o: Placed) => o.y + (o.foot ?? o.sprite.height);
 
@@ -140,11 +141,13 @@ export class AdventureScreen {
       if (o.hidden || this.isFogged(o.x + o.sprite.width / 2, footY(o) - 2)) continue;
       const image = o.frames ? o.frames[(o.frame ?? tick) % o.frames.length] : o.sprite;
       blit(screen, image, VIEW.x + Math.round(o.x) - cx, VIEW.y + Math.round(o.y) - cy, VIEW);
+      if (o.foreground) blit(screen, o.foreground, VIEW.x + Math.round(o.x) - cx, VIEW.y + Math.round(o.y) - cy, VIEW);
     }
     for (const o of this.lit) {
       if (o.hidden) continue;
       const image = o.frames ? o.frames[(o.frame ?? tick) % o.frames.length] : o.sprite;
       blit(screen, ringOf(image), VIEW.x + Math.round(o.x) - cx - LIT_REACH, VIEW.y + Math.round(o.y) - cy - LIT_REACH, VIEW);
+      if (o.foreground) blit(screen, o.foreground, VIEW.x + Math.round(o.x) - cx, VIEW.y + Math.round(o.y) - cy, VIEW);
     }
     const seen = (x: number, y: number) => !this.isFogged(x, y);
     this.weather?.drawSmoke(screen, VIEW.x - cx, VIEW.y - cy, VIEW, this.sky, seen);

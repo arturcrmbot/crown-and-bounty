@@ -136,6 +136,14 @@ He still needs his Wesnoth entry in `src/render/units.ts`, which times his blows
 - `src/render/terrain.ts`, `paintedLand` and `rolling`: the ground's patches (worn earth, bare heath) and
   its rolling light, stippled with a hash (not Bayer: an ordered dither reads as a screen-door grid).
 - `src/render/adventureScene.ts`, `PAINTED_LOOKS`/`PAINTED_KINDS`: which piece stands for each place.
+- The two mills reuse their existing paintings through `paintedMill` in `src/render/mills.ts`, even
+  where the rest of the province is drawn in code. The waterwheel's interior turns inside its fixed
+  rim; the windmill's baked sails are removed and the shared code-drawn lattice sails turn over its
+  painted timber body. Both hold each of 64 frames for two ticks of the existing 120 ms map clock,
+  one full turn in 15.36 seconds. The windmill has a padded common canvas, with its painted ground
+  anchor and hub fixed. `adventureScene.ts` keeps their stationary fog silhouettes and foreground
+  scenery. Generated provinces keep their previous drawn mechanisms. `test/paintedMills.test.ts`
+  checks the motion, timing, palette, anchors, occlusion and the unchanged generated mills.
 - `src/render/battleScreen.ts`, `paintedField`: the battlefield.
 
 ## Critique checklist (before showing Artur)

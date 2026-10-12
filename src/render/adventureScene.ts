@@ -9,6 +9,7 @@ import { FogMask } from './fog';
 import { MINIMAP } from './frame';
 import { MapTiles } from './mapTiles';
 import { Minimap } from './minimap';
+import { paintedMill } from './mills';
 import { hash } from './noise';
 import { BLUE, GOLD, INK, NEUTRAL, PARCHMENT, RED, SILHOUETTE, WOOD } from './palette';
 import { animFrames, bodyHeight, everyFrame, STAND, troopFigure, type Figure, type Pose } from './battleSprites';
@@ -77,7 +78,7 @@ const PAINTED_KINDS: Partial<Record<string, PieceName>> = {
 
 const FRAMES = 8;
 const animation = <T>(make: (t: number) => T) => Array.from({ length: FRAMES }, (_, i) => make(i / FRAMES));
-const footY = (o: Placed) => o.y + o.sprite.height;
+const footY = (o: Placed) => o.y + (o.foot ?? o.sprite.height);
 
 /** Landmarks under fog show only as flat dark shapes. */
 function silhouette(sprite: Bitmap): Bitmap {
@@ -255,7 +256,11 @@ function stacked(base: { sprite: Bitmap; foot: number }, top: { sprite: Bitmap; 
  * The sprite (or frames) that stands for a place on the map, and how far below its top the foot is.
  * The goose pond shows the lost geese that are `home` (#192).
  */
-function landmark(l: Location, home = 0): { frames: Bitmap[]; foot: number; animated: boolean; figure?: Omit<HeroRig, 'object'> } | null {
+function landmark(l: Location, home = 0): { frames: Bitmap[]; foot: number; animated: boolean; mechanism?: true; figure?: Omit<HeroRig, 'object'> } | null {
+  if (l.kind === 'mill' && (painted || l.id === 'windmill')) {
+    const look = paintedMill(l.look === 'windmill' ? 'windmill' : 'watermill');
+    if (look) return look;
+  }
   if (painted) {
     // The goose pond is drawn anew as the lost geese come home to it, so it's kept with the places that change.
     if (l.look === 'pond') {
@@ -415,7 +420,7 @@ export function refreshPlace(scene: AdventureScene, l: Location, home = 0) {
   const o = scene.sights.get(l.id) ?? scene.pickups.get(l.id);
   const look = landmark(l, home);
   if (!o || !look) return;
-  Object.assign(o, place(look.frames[0], l.at, look.foot), { frames: look.frames.length > 1 ? look.frames : undefined, frame: undefined, foot: look.figure ? look.foot : undefined });
+  Object.assign(o, place(look.frames[0], l.at, look.foot), { frames: look.frames.length > 1 ? look.frames : undefined, frame: undefined, foot: look.figure || look.mechanism ? look.foot : undefined });
   if (look.figure) {
     const rig = scene.bands.get(l.id);
     if (rig) Object.assign(rig, look.figure);
@@ -430,7 +435,7 @@ export function refreshPlace(scene: AdventureScene, l: Location, home = 0) {
 export function addPlace(scene: AdventureScene, l: Location) {
   const look = landmark(l);
   if (!look) return;
-  const o: Placed = { ...place(look.frames[0], l.at, look.foot), frames: look.frames.length > 1 ? look.frames : undefined, foot: look.figure ? look.foot : undefined, hidden: Boolean(l.enemy?.unseen) };
+  const o: Placed = { ...place(look.frames[0], l.at, look.foot), frames: look.frames.length > 1 ? look.frames : undefined, foot: look.figure || look.mechanism ? look.foot : undefined, hidden: Boolean(l.enemy?.unseen) };
   scene.view.animate(o);
   scene.pickups.set(l.id, o);
   scene.parts.set(l.id, [o]);
@@ -564,6 +569,7 @@ export function buildAdventureScene(map: MapModel, state: GameState): AdventureS
   const bands = new Map<string, HeroRig>();
   const sights = new Map<string, Placed>();
   const animated: Placed[] = [];
+  const mills = new Set<Placed>();
   const parts = new Map<string, Placed[]>();
   const partOf = (id: string, o: Placed) => parts.set(id, [...(parts.get(id) ?? []), o]);
 
@@ -593,7 +599,8 @@ export function buildAdventureScene(map: MapModel, state: GameState): AdventureS
   for (const l of state.locations) {
     const look = landmark(l, l.look === 'pond' ? geeseHome(state) : 0);
     if (!look) continue;
-    const o: Placed = { ...place(look.frames[0], l.at, look.foot), frames: look.frames.length > 1 ? look.frames : undefined, foot: look.figure ? look.foot : undefined };
+    const o: Placed = { ...place(look.frames[0], l.at, look.foot), frames: look.frames.length > 1 ? look.frames : undefined, foot: look.figure || look.mechanism ? look.foot : undefined };
+    if (look.mechanism) mills.add(o);
     partOf(l.id, o);
     const vanishes = VANISHES.has(l.kind);
     if (vanishes) {
@@ -633,9 +640,28 @@ export function buildAdventureScene(map: MapModel, state: GameState): AdventureS
   }
 
   const isLandmark = new Set(landmarks);
-  const fixtures = [...scenery, ...landmarks]
-    .sort((a, b) => footY(a) - footY(b))
-    .map((o) => ({ sprite: o.sprite, wild: isLandmark.has(o) ? silhouette(o.sprite) : o.sprite, x: Math.round(o.x), y: Math.round(o.y) }));
+  const fixed = [...scenery, ...landmarks].sort((a, b) => footY(a) - footY(b));
+  for (const mill of mills) {
+    const foreground = new Bitmap(mill.sprite.width, mill.sprite.height);
+    for (const o of fixed) {
+      if (footY(o) <= footY(mill)) continue;
+      const dx = Math.round(o.x) - Math.round(mill.x);
+      const dy = Math.round(o.y) - Math.round(mill.y);
+      for (let y = Math.max(0, -dy); y < Math.min(o.sprite.height, foreground.height - dy); y++) {
+        for (let x = Math.max(0, -dx); x < Math.min(o.sprite.width, foreground.width - dx); x++) {
+          const colour = o.sprite.get(x, y);
+          if (colour && colour !== SHADOW) foreground.set(x + dx, y + dy, colour);
+        }
+      }
+    }
+    mill.foreground = foreground;
+  }
+  const fixtures = [...fixed, ...mills].sort((a, b) => footY(a) - footY(b))
+    .map((o) => ({
+      sprite: mills.has(o) ? new Bitmap(o.sprite.width, o.sprite.height) : o.sprite,
+      wild: isLandmark.has(o) || mills.has(o) ? silhouette(o.sprite) : o.sprite,
+      x: Math.round(o.x), y: Math.round(o.y),
+    }));
   const fog = new FogMask(province.width, province.height, state.explored);
   const painter = new TerrainPainter(map);
   const view = new AdventureScreen(new MapTiles(painter, fixtures), fog);
