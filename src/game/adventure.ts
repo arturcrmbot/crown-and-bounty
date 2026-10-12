@@ -1,5 +1,5 @@
 import { BACKGROUNDS } from '../content/backgrounds';
-import { addPlace, buildAdventureScene, flyPennants, refreshPlace, setHeroFigure, type AdventureScene, type Hitbox } from '../render/adventureScene';
+import { addPlace, buildAdventureScene, flyPennants, refreshPlace, setHeroFigure, walkFootfalls, walkFrame, type AdventureScene, type Hitbox } from '../render/adventureScene';
 import { BANNER_TIME, drawBanner, paintBanner } from '../render/banner';
 import type { Bitmap } from '../render/bitmap';
 import { BAR, MAP_VIEW as VIEW } from '../render/frame';
@@ -51,8 +51,6 @@ const NIGHT = 1.4;
 const GLOOM = 0.6;
 /** Map pixels per second. */
 const RIDE_SPEED = 95;
-/** Map pixels per step of the trot cycle, so hooves don't slide. */
-const STRIDE = 5;
 /** Map pixels between footfalls (or hoofbeats), for the sound of the ride. */
 const STEP_PX = 16;
 const SCROLL_SPEED = 6;
@@ -957,7 +955,7 @@ export class AdventureController implements Screen {
     const walking = this.isRiding();
     const facing = this.state.hero.facing;
     hero.object.frames = walking ? (facing > 0 ? hero.walk : hero.walkLeft) : facing > 0 ? hero.idle : hero.idleLeft;
-    hero.object.frame = walking ? Math.floor(this.travelled / STRIDE) : undefined;
+    hero.object.frame = walking ? walkFrame(this.travelled, hero.gait) : undefined;
     hero.object.x = this.drawn.x - hero.idle[0].width / 2;
     hero.object.y = this.drawn.y - hero.foot;
     if (this.route.length > 0) {
@@ -1130,13 +1128,21 @@ export class AdventureController implements Screen {
       this.drawn.x += ((tx - this.drawn.x) / d) * move;
       this.drawn.y += ((ty - this.drawn.y) / d) * move;
       budget -= move;
+      const before = this.travelled;
       this.travelled += move;
       this.sinceDust += move;
-      this.sinceStep += move;
-      if (this.sinceStep > STEP_PX) {
-        this.sinceStep = 0;
-        const terrain = this.map.terrain[Math.floor(ty / CELL) * this.map.width + Math.floor(tx / CELL)] as Terrain;
-        playStep(terrain, Boolean(ART[heroArtId(this.state.hero.background)].rides));
+      const gait = this.scene.hero.gait;
+      if (gait) {
+        const falls = walkFootfalls(before, this.travelled, gait);
+        const terrain = this.map.terrain[Math.floor(this.drawn.y / CELL) * this.map.width + Math.floor(this.drawn.x / CELL)] as Terrain;
+        for (let i = 0; i < falls; i++) playStep(terrain, Boolean(ART[heroArtId(this.state.hero.background)].rides));
+      } else {
+        this.sinceStep += move;
+        if (this.sinceStep > STEP_PX) {
+          this.sinceStep = 0;
+          const terrain = this.map.terrain[Math.floor(ty / CELL) * this.map.width + Math.floor(tx / CELL)] as Terrain;
+          playStep(terrain, Boolean(ART[heroArtId(this.state.hero.background)].rides));
+        }
       }
       if (this.sinceDust > 7 && this.map.grid.cost[Math.floor(ty / 8) * this.map.width + Math.floor(tx / 8)] === 1) {
         this.sinceDust = 0;

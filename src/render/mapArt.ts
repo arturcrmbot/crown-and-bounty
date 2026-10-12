@@ -1,7 +1,9 @@
 import { Bitmap, SHADOW } from './bitmap';
 import { COLORS, CYCLING, SILHOUETTE } from './palette';
 import { decodePng, type Rgba } from './png';
-import { FEAST_PIECES, FIGURES, GROUNDS, PIECE_FEET, type FeastPieceName, type GroundName, type PieceName } from './mapPieces';
+import { FEAST_PIECES, FIGURE_ANIMATIONS, FIGURES, GROUNDS, PIECE_FEET, type FeastPieceName, type FigureAnimation, type GroundName, type PieceName } from './mapPieces';
+import type { AnimName } from './battleSprites';
+import type { Size } from './scale';
 
 /**
  * Aldmoor's painted map (#178): its places, trees, crags and ground, drawn in the spirit of HoMM2's
@@ -14,6 +16,11 @@ const pieces = new Map<string, Bitmap>();
 const grounds = new Map<GroundName, Bitmap>();
 const figures = new Map<string, Bitmap>();
 const feast = new Map<FeastPieceName, Bitmap>();
+export type PaintedAnimation = Omit<FigureAnimation, 'frames' | 'feet'> & {
+  frames: readonly { name: string; ms: number; sprite: Bitmap }[];
+  foot: readonly [number, number];
+};
+const animations = new Map<string, PaintedAnimation>();
 let loading: Promise<void> | null = null;
 
 const fetchPiece = async (file: string) => {
@@ -84,6 +91,20 @@ export function loadMapArt(read: (file: string) => Promise<Uint8Array> = fetchPi
         }
       }),
     ),
+    ...Object.values(FIGURE_ANIMATIONS).flatMap((poses) =>
+      Object.values(poses).flatMap((animation) =>
+        animation ? (['battle', 'map'] as const).flatMap((size) =>
+          animation.feet[size] ? animation.frames.map(async (frame) => {
+            const name = `${frame.name}-${size}`;
+            try {
+              figures.set(name, toBitmap(await decodePng(await read(`troops/${name}.png`))));
+            } catch (error) {
+              console.warn(error);
+            }
+          }) : [],
+        ) : [],
+      ),
+    ),
     // The payday feast's pieces (#191), small enough to come with the rest.
     ...FEAST_PIECES.map(async (name) => {
       try {
@@ -110,6 +131,25 @@ export const mapArtReady = () => pieces.size === Object.keys(PIECE_FEET).length 
 
 /** A troop's (or Aldric's) painted figure (#178), facing right, at battle or map size, if it's loaded. */
 export const paintedFigure = (id: string, size: 'battle' | 'map'): Bitmap | null => figures.get(`${id}-${size}`) ?? null;
+
+/** A pose sequence only when every frame has loaded; otherwise the existing figure still stands in. */
+export function paintedAnimation(id: string, size: Size, anim: AnimName): PaintedAnimation | null {
+  const key = `${id}-${size}-${anim}`;
+  const cached = animations.get(key);
+  if (cached) return cached;
+  const animation = FIGURE_ANIMATIONS[id]?.[anim];
+  const foot = animation?.feet[size];
+  if (!animation || !foot) return null;
+  const frames: PaintedAnimation['frames'][number][] = [];
+  for (const frame of animation.frames) {
+    const sprite = figures.get(`${frame.name}-${size}`);
+    if (!sprite) return null;
+    frames.push({ ...frame, sprite });
+  }
+  const ready = { ...animation, frames, foot };
+  animations.set(key, ready);
+  return ready;
+}
 
 /** A piece of the payday feast (#191), facing right as it was drawn, if it's loaded. */
 export const feastPiece = (name: FeastPieceName): Bitmap | null => feast.get(name) ?? null;

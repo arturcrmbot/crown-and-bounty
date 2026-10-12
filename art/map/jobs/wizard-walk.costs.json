@@ -1,0 +1,24 @@
+{
+  "issue": 278,
+  "date": "2026-10-12",
+  "currency": "USD",
+  "total": 0.36,
+  "attempts": [
+    {
+      "job": "wizard-walk.json",
+      "task_id": "1f46edee-dd44-450b-b344-3a7e2e6ce2a2",
+      "sheet": "wizard-walk.png",
+      "balance_cost": 0.18,
+      "used": false,
+      "inspection": "The face and hat match, but the robe exposes too much trouser and the same boot leads both halves."
+    },
+    {
+      "job": "wizard-walk-2.json",
+      "task_id": "7bbea0c6-4a57-45ae-9484-7d20d9bf8aae",
+      "sheet": "wizard-walk-2.png",
+      "balance_cost": 0.18,
+      "used": true,
+      "inspection": "The long robe, face, hat and scale match. Boots, hem and staff take distinct grounded poses."
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+[
+  {
+    "out": "art/map/sheets/wizard-walk.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 6278,
+    "prompt": "a sheet of six consecutive walking animation frames of the SAME blue-robed Hedge Wizard from the upper left of the units-d reference sheet: an elderly friendly man with a long white beard, a floppy pointed blue hat with a brown band and bent tip, a bright medium-blue ankle-length robe, a brown belt and pouch, brown boots and a tall crooked wooden walking staff in his right hand. Keep exactly his existing character design, face, colours, costume and body proportions in EVERY frame. All six face right in the same three-quarter side view, with the same head height and body scale. Read the six frames left to right, then the next row: A right boot planted forward and left boot behind, staff planted ahead; B weight passes over the right boot, left knee comes forward, robe hem folds; C left boot swings forward just above the ground, right boot still planted, staff lifted a little; D left boot planted forward and right boot behind, staff swings ahead; E weight passes over the left boot, right knee comes forward, robe hem folds the other way; F right boot swings forward just above the ground, left boot still planted, staff returning to its planted position. A complete repeatable grounded walking gait, with visibly different legs, robe folds and staff positions, never hopping or jumping, no motion blur and no extra characters. Drawn in exactly the art style of the reference 1996 DOS fantasy strategy game battle screens: charming, friendly, clearly readable, bright colours, painted shading reduced to 256 colours, soft dithering, a little character in every face, two rows of three full-body figures, each separate and not touching, on a plain flat grey background with flat grey ground shadows. No labels or lettering.",
+    "reference_images": [
+      "art/map/sheets/units-d.png",
+      "~/.config/retro-diffusion/refs/battle_hero.png",
+      "~/.config/retro-diffusion/refs/battle_troops.png",
+      "~/.config/retro-diffusion/refs/battle_wide.png",
+      "~/.config/retro-diffusion/refs/r1.png",
+      "art/map/sheets/units-a.png",
+      "art/map/sheets/units-b.png",
+      "art/map/sheets/units-c.png"
+    ]
+  }
+]

@@ -1,0 +1,23 @@
+[
+  {
+    "out": "art/map/sheets/wizard-walk-2.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 6279,
+    "bypass_prompt_expansion": true,
+    "prompt": "a sheet of six: A the blue-robed Hedge Wizard walking right with his nearer brown boot planted forward, his far boot trailing behind, his crooked walking staff planted ahead; B the same wizard with his weight over his nearer boot, his far boot passing it, his staff lifted slightly; C the same wizard with his far boot swinging forward, his nearer heel lifting behind, his staff tilted backward slightly; D the same wizard with his FAR brown boot planted forward and his NEARER boot trailing behind, his staff tilted forward; E the same wizard with his weight over his far boot, his nearer boot passing it, his staff swinging ahead; F the same wizard with his nearer boot swinging forward, his far heel lifting behind, his staff coming down. Six successive frames of ONE looping walk, not six different wizards. The exact same elderly friendly wizard as the single-figure reference, with his bent floppy pointed blue hat and brown hatband, long white beard, long bright medium-blue robe, brown belt and small pouch, brown boots and crooked wooden staff. His long robe reaches his ankles in EVERY pose, hiding his knees and trousers. Only the moving boots and a little shin show below the softly swinging hem. Keep his head, chest, waist, staff length and overall BODY SCALE identical in every frame; the boots take alternating steps while he stays upright and grounded. The two halves must show opposite boots leading, not repeat the same leading boot. A full-body figure, facing right in the same three-quarter side view, drawn in exactly the art style of the reference 1996 DOS fantasy strategy game battle screens: charming, friendly, clearly readable, bright colours, painted shading reduced to 256 colours, soft dithering, a little character in every face, two rows of three figures, each separate and not touching, on a plain flat grey background with flatter grey shadows. No text, labels or motion blur.",
+    "reference_images": [
+      "art/map/references/heroWizard.png",
+      "art/map/sheets/units-d.png",
+      "~/.config/retro-diffusion/refs/battle_hero.png",
+      "~/.config/retro-diffusion/refs/battle_troops.png",
+      "~/.config/retro-diffusion/refs/battle_wide.png",
+      "~/.config/retro-diffusion/refs/r1.png",
+      "art/map/sheets/units-a.png",
+      "art/map/sheets/units-b.png",
+      "art/map/sheets/units-c.png"
+    ]
+  }
+]
