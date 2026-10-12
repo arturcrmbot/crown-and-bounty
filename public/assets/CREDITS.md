@@ -31,6 +31,15 @@ of $0.18 each, $0.36 in all, in `art/map/jobs/wizard-walk.costs.json`. `art/map/
 is a crop of our own `units-d.png`, not another generation. The poses use the game's existing palette
 and licence, at one fixed body scale with explicit foot anchors.
 
+The Knights' gait, sword attacks and lance charge (#283) were painted with Retro Diffusion on
+12 October 2026, with their existing chestnut horse, blue cloth and steel armour as references.
+`knights-gait.png`, `knights-melee-v2.png`, `knights-charge-edit.png` and `knights-charge.png`
+supply the selected poses. `knights-charge-sequence.png` packs the selected approach, contact
+and recovery cells without repainting them. All eight requests and inspected attempts are
+retained in `art/map/jobs/` and `art/map/sheets/`, with their actual spend of $1.44 and critiques
+in `art/map/knights-review.json`. `knights-lance-reference.png` is a crop of our own first charge
+sheet. The frames keep one body scale and explicit foot anchors, and use the same palette and licence.
+
 ## The units: Battle for Wesnoth
 
 Under the painted figures, the troops and the hero are units from [Battle for Wesnoth](https://www.wesnoth.org/) 1.18:

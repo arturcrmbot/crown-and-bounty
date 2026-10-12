@@ -145,7 +145,7 @@ def grove_kind(px):
 # The troops and Aldric (#178): each one's box on its sheet, and how tall he stands in battle, from
 # his feet to the top of his head (a person about 65 px; on the map three fifths of that, Aldric two thirds).
 FIGURES = {
-    'peasants': ('units-a', (19, 19, 78, 124), 66), 'archers': ('units-a', (99, 20, 157, 125), 64), 'knights': ('units-a', (172, 0, 256, 127), 105),
+    'peasants': ('units-a', (19, 19, 78, 124), 66), 'archers': ('units-a', (99, 20, 157, 125), 64), 'knights': ('knights-gait', (0, 0, 133, 128), 100),
     'swordsmen': ('units-a', (10, 128, 79, 252), 68), 'crossbowmen': ('units-a', (95, 140, 171, 252), 68), 'wolves': ('units-a', (167, 171, 249, 252), 44),
     'baron': ('units-b', (10, 9, 83, 124), 82), 'goblins': ('units-b', (96, 42, 174, 124), 48), 'trolls': ('units-b', (178, 7, 244, 124), 86),
     'witch': ('units-b', (22, 145, 84, 249), 70), 'bramble': ('units-b', (97, 131, 167, 249), 82), 'poachers': ('units-b', (177, 147, 250, 250), 64),
@@ -165,6 +165,48 @@ TROOPS_OUT = os.path.join(ROOT, 'public/assets/troops')
 # One scale for the whole body, not one fitted to each pose's weapon bounds. Boxes and feet are
 # absolute sheet pixels; the cutter gives every frame of an animation the same canvas and anchor.
 FIGURE_ANIMATIONS = {
+    'knights': {
+        'stand': {
+            'sheet': 'knights-gait', 'scale': 0.86, 'sizes': ['battle', 'map'],
+            'frames': [((0, 0, 133, 128), (63, 117), 100)],
+        },
+        'idle': {
+            'sheet': 'knights-gait', 'scale': 0.86, 'sizes': ['battle', 'map'],
+            'frames': [((0, 0, 133, 128), (63, 117), 100)],
+        },
+        'move': {
+            'sheet': 'knights-gait', 'scale': 0.86, 'sizes': ['battle', 'map'],
+            'frames': [
+                ((0, 0, 133, 128), (63, 117), 90),
+                ((128, 0, 256, 128), (191, 117), 90),
+                ((0, 128, 133, 256), (63, 245), 90),
+                ((128, 128, 256, 256), (191, 245), 90),
+            ],
+            'stride': 64, 'footfalls': [0, 180],
+        },
+        'melee': {
+            'sheet': 'knights-melee-v2', 'scale': 0.86, 'sizes': ['battle'],
+            'frames': [
+                ((0, 0, 133, 128), (63, 117), 160),
+                ((0, 128, 133, 256), (63, 245), 110),
+                ((128, 0, 256, 128), (191, 117), 100),
+                ((128, 128, 256, 256), (191, 245), 200),
+            ],
+            'hit': 160,
+        },
+        'charge': {
+            'sheet': 'knights-charge-sequence', 'scale': 0.86, 'sizes': ['battle'],
+            'frames': [
+                ((0, 0, 133, 128), (63, 117), 80),
+                ((128, 0, 256, 128), (191, 117), 80),
+                ((0, 128, 133, 256), (63, 245), 80),
+                ((128, 128, 256, 256), (191, 245), 80),
+                ((0, 256, 133, 384), (63, 373), 100),
+                ((128, 256, 256, 384), (191, 373), 220),
+            ],
+            'hit': 320, 'footfalls': [0, 160],
+        },
+    },
     'heroWizard': {
         'move': {
             'sheet': 'wizard-walk-2', 'scale': 72 / 116, 'sizes': ['map'],

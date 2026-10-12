@@ -79,5 +79,12 @@
       }
     }
   },
+  "assembly": {
+    "sheet": "sheets/knights-charge-sequence.png",
+    "sources": ["sheets/knights-charge-edit.png", "sheets/knights-charge.png"],
+    "method": "The four approach cells are copied unchanged. The first charge sheet's lower row is copied below them, with only its flat background matched to the approach sheet. No pose is repainted.",
+    "battle_scale": 0.86,
+    "map_scale": 0.6
+  },
   "scope": "The Knights troop. The Knight hero keeps his distinct white horse and painted identity."
 }
