@@ -1,0 +1,71 @@
+{
+  "issue": 285,
+  "date": "2026-10-12",
+  "currency": "USD",
+  "total": 1.62,
+  "attempts": [
+    {
+      "sheet": "map-wizard-idle.png",
+      "job": "map-heroes.json",
+      "balance_cost": 0.18,
+      "used": false,
+      "inspection": "The model added inventory objects and changed the hat and staff. Edit the accepted wizard walk sheet instead."
+    },
+    {
+      "sheet": "map-ranger-move.png",
+      "job": "map-heroes.json",
+      "balance_cost": 0.18,
+      "used": true,
+      "inspection": "The hood, face, bow and leather match. Opposite boots lead the two halves and the cloak takes distinct walking folds."
+    },
+    {
+      "sheet": "map-ranger-idle.png",
+      "job": "map-heroes.json",
+      "balance_cost": 0.18,
+      "used": true,
+      "inspection": "Grounded boots, restrained changes to the face, fingers, shoulders and cloak. Four matching poses."
+    },
+    {
+      "sheet": "map-courtier-move.png",
+      "job": "map-heroes.json",
+      "balance_cost": 0.18,
+      "used": true,
+      "inspection": "The red coat, gold plume, white sleeves and moustache match. Boots, arms, plume and coat move through six walking poses."
+    },
+    {
+      "sheet": "map-courtier-idle.png",
+      "job": "map-heroes.json",
+      "balance_cost": 0.18,
+      "used": true,
+      "inspection": "Use top left, top right, bottom left and bottom right. They have planted feet and subtle chin, hand and plume changes. The unused middle pose adds a breath effect."
+    },
+    {
+      "sheet": "map-hero-knight-move.png",
+      "job": "map-heroes.json",
+      "balance_cost": 0.18,
+      "used": true,
+      "inspection": "Four distinct horse leg silhouettes with steady armour and lance. The hero keeps his white horse and blue pennant, separate from the chestnut Knights troop."
+    },
+    {
+      "sheet": "map-hero-knight-idle.png",
+      "job": "map-heroes.json",
+      "balance_cost": 0.18,
+      "used": false,
+      "inspection": "The white horse matches but the raised lances and pennants clip the sheet. Edit the complete accepted travel sheet."
+    },
+    {
+      "sheet": "map-wizard-idle-edit.png",
+      "job": "map-hero-idle-edits.json",
+      "balance_cost": 0.18,
+      "used": true,
+      "inspection": "The accepted walk's original face, hat, staff, robe and scale are retained. Boots stay planted; beard, sleeves, hands and shoulders change gently."
+    },
+    {
+      "sheet": "map-hero-knight-idle-edit.png",
+      "job": "map-hero-idle-edits.json",
+      "balance_cost": 0.18,
+      "used": true,
+      "inspection": "Preserves the matching white horse, complete blue pennant and armour. All four hooves rest on the ground; ears, muzzle, mane and tail change subtly."
+    }
+  ]
+}

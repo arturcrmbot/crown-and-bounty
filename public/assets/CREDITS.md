@@ -31,6 +31,15 @@ of $0.18 each, $0.36 in all, in `art/map/jobs/wizard-walk.costs.json`. `art/map/
 is a crop of our own `units-d.png`, not another generation. The poses use the game's existing palette
 and licence, at one fixed body scale with explicit foot anchors.
 
+All four heroes' adventure-map travel and gentle resting poses (#285) were painted with Retro Diffusion on
+12 October 2026, from their own original figures and the same HoMM2 screens. `map-ranger-move.png`,
+`map-ranger-idle.png`, `map-courtier-move.png`, `map-courtier-idle.png` and `map-hero-knight-move.png` supply
+the new poses. Image edits of the accepted travel sheets, `map-wizard-idle-edit.png` and
+`map-hero-knight-idle-edit.png`, preserve the wizard's identity and the Knight hero's white horse and blue
+pennant. The unused first idle attempts are retained with their inspection notes. The requests and actual
+spend of $1.62 are in `art/map/jobs/map-heroes*.json`; the other hero references are crops of `units-c.png`
+and `units-d.png`, not new generations. These map-only poses keep the existing palette and game licence.
+
 ## The units: Battle for Wesnoth
 
 Under the painted figures, the troops and the hero are units from [Battle for Wesnoth](https://www.wesnoth.org/) 1.18:

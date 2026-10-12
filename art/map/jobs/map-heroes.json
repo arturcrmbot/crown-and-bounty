@@ -1,0 +1,115 @@
+[
+  {
+    "out": "art/map/sheets/map-wizard-idle.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28501,
+    "bypass_prompt_expansion": true,
+    "prompt": "Four consecutive gentle resting poses of the exact SAME elderly Hedge Wizard in the single-figure reference. Keep his friendly face, long white beard, bent blue pointed hat with brown band, long medium-blue robe, brown belt and pouch, brown boots and crooked wooden staff. These are NOT walking or combat poses. All face right in the same three-quarter view, BOTH boots planted at the same ground level, the same body proportions and head height, the same staff length. Two rows of TWO separate full-body figures. A at top left rests on his planted staff and looks ahead. B at top right quietly breathes out, his shoulders relax slightly, his beard and robe folds settle, both boots and the staff stay planted. C at bottom left glances slightly downward with half-closed eyes, his free hand shifts subtly at his belt, his beard moves slightly, feet stay planted. D at bottom right looks ahead again with a slightly different beard and hat-tip fold. Restrained natural life, small genuine changes INSIDE the character, no whole-body bobbing, hopping, sliding, new costume, magic or effects. Match the original painted 1996 DOS fantasy strategy game style exactly: charming, friendly, clearly readable, bright colours, painted shading reduced to 256 colours, soft dithering. Each complete figure separate and not touching, on one plain flat grey background with flatter grey ground shadows. No text or labels.",
+    "reference_images": [
+      "art/map/references/heroWizard.png",
+      "art/map/sheets/wizard-walk-2.png",
+      "art/map/sheets/units-d.png",
+      "~/.config/retro-diffusion/refs/battle_hero.png",
+      "~/.config/retro-diffusion/refs/battle_troops.png"
+    ]
+  },
+  {
+    "out": "art/map/sheets/map-ranger-move.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28502,
+    "bypass_prompt_expansion": true,
+    "prompt": "Six consecutive grounded walking poses of the exact SAME green-hooded Ranger in the single-figure reference and the top middle of units-d. His friendly young face, long green hood and cloak, green tunic, brown leather belt with pouch, brown trousers and boots, wooden longbow carried low in his hand, quiver behind his shoulder all stay EXACTLY the same. He walks on foot, not on a horse. All six face right in the same three-quarter view, identical head, chest and body scale. Two rows of THREE. A nearer boot planted forward, far boot trailing, bow carried beside him. B weight over nearer boot, far knee and boot passing forward, cloak folding back. C far boot swings forward above the ground, nearer heel lifting, bow moves a little naturally. D FAR boot planted forward, NEARER boot behind, cloak folds the other way. E weight over far boot, nearer boot passing forward. F nearer boot swinging ahead, far heel lifting behind. A complete repeatable walk with opposite boots leading in each half, genuinely different legs and cloak folds, head and body upright and grounded, no jumping or skating. The bow is not drawn and no arrow is fired. Match the reference painted 1996 DOS fantasy strategy game style exactly: charming, friendly, clearly readable, bright colours, painted shading reduced to 256 colours, soft dithering. Six full-body figures, each separate and not touching, on one plain flat grey background with flatter grey shadows. No labels, text, scenery or effects.",
+    "reference_images": [
+      "art/map/references/heroRanger.png",
+      "art/map/sheets/units-d.png",
+      "~/.config/retro-diffusion/refs/battle_hero.png",
+      "~/.config/retro-diffusion/refs/battle_troops.png"
+    ]
+  },
+  {
+    "out": "art/map/sheets/map-ranger-idle.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28503,
+    "bypass_prompt_expansion": true,
+    "prompt": "Four gentle resting poses of the exact SAME green-hooded Ranger from the single-figure reference. Keep his young friendly face, long green hood and cloak, green tunic, brown leather belt and pouch, brown trousers and boots, wooden longbow carried low in his hand and quiver at his shoulder. All face right in the same three-quarter view, identical body scale and head height, BOTH boots planted at the same ground level. Two rows of TWO full-body figures. A at top left looks calmly ahead with his bow held low. B at top right breathes out quietly, shoulders relax a little, cloak folds shift subtly and fingers settle round the bow. C at bottom left turns his face very slightly to listen, keeping his body facing right, bow still low. D at bottom right looks ahead again and the edge of his hood and cloak settles. Small genuine changes inside the figure, natural restrained waiting, no walking, hopping, whole-picture bounce, shooting or new equipment. Match the original painted 1996 DOS fantasy strategy game style exactly: charming, friendly, clearly readable, bright colours, painted shading reduced to 256 colours, soft dithering. Each full-body figure separate and not touching, on one plain flat grey background with flatter grey ground shadows. No text or labels.",
+    "reference_images": [
+      "art/map/references/heroRanger.png",
+      "art/map/sheets/units-d.png",
+      "~/.config/retro-diffusion/refs/battle_hero.png",
+      "~/.config/retro-diffusion/refs/battle_troops.png"
+    ]
+  },
+  {
+    "out": "art/map/sheets/map-courtier-move.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28504,
+    "bypass_prompt_expansion": true,
+    "prompt": "Six consecutive grounded walking poses of the exact SAME Courtier in the single-figure reference and the top right of units-d. Keep his friendly dark-moustached face, broad RED hat with curled brim and large GOLDEN plume, long bright RED coat with GOLD buttons and trim, WHITE puffed sleeves, brown breeches, brown boots, brown belt and slim sheathed sword. All six face right in the same three-quarter view, identical head, chest and body scale, not six different men. Two rows of THREE. A nearer boot planted forward, far boot trailing, free arm back. B weight over nearer boot, far boot passing forward, red coat-tail folds. C far boot swings forward, nearer heel lifts, plume bends gently with his step. D FAR boot planted forward and NEARER boot trailing behind, arm swings the other way. E weight over far boot, nearer boot passing. F nearer boot swings forward, far heel lifts, coat-tail and plume return. Opposite boots lead the two halves, a complete repeatable grounded walk, upright body, visibly different legs, sleeves and coat folds, no jumping, skating, unsheathing the sword or new equipment. Match the original painted 1996 DOS fantasy strategy game style exactly: charming, friendly, clearly readable, bright colours, painted shading reduced to 256 colours, soft dithering. Each full-body figure separate and not touching, on one plain flat grey background with flatter grey shadows. No text, labels or effects.",
+    "reference_images": [
+      "art/map/references/heroCourtier.png",
+      "art/map/sheets/units-d.png",
+      "~/.config/retro-diffusion/refs/battle_hero.png",
+      "~/.config/retro-diffusion/refs/battle_troops.png"
+    ]
+  },
+  {
+    "out": "art/map/sheets/map-courtier-idle.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28505,
+    "bypass_prompt_expansion": true,
+    "prompt": "Four gentle resting poses of the exact SAME Courtier from the single-figure reference. Keep his friendly dark-moustached face, broad RED hat with curled brim and large GOLDEN plume, long bright RED coat with GOLD buttons and trim, WHITE puffed sleeves, brown breeches and boots, brown belt and sheathed sword. All face right in the same three-quarter view, identical proportions and head height, BOTH boots planted at the same ground level. Two rows of TWO full-body figures. A top left waits cheerfully with a hand at his hip. B top right quietly breathes out, sleeve creases and shoulders relax slightly, the golden plume bends a little in the breeze. C bottom left briefly tilts his chin as if hearing something amusing, his fingers settle on his belt, boots stay planted. D bottom right looks ahead again, plume and red coat-tail settle with slightly different folds. Restrained characterful life through small real pose changes inside the figure, no stepping, hopping, whole-picture bounce, theatrical gesture, weapon drawn or new clothes. Match the original painted 1996 DOS fantasy strategy game style exactly: charming, friendly, clearly readable, bright colours, painted shading reduced to 256 colours, soft dithering. Each full-body figure separate and not touching, on one plain flat grey background with flatter grey ground shadows. No text or labels.",
+    "reference_images": [
+      "art/map/references/heroCourtier.png",
+      "art/map/sheets/units-d.png",
+      "~/.config/retro-diffusion/refs/battle_hero.png",
+      "~/.config/retro-diffusion/refs/battle_troops.png"
+    ]
+  },
+  {
+    "out": "art/map/sheets/map-hero-knight-move.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28506,
+    "bypass_prompt_expansion": true,
+    "prompt": "Four consecutive travel poses of the exact SAME mounted HERO Knight from the single-figure reference and the BOTTOM RIGHT of units-c. His horse is WHITE with grey shaded flanks and dark mane, NOT chestnut or brown. Keep the same silver steel armour and closed helmet, blue cloth, white horse tack, long raised wooden lance with the small ROYAL BLUE pennant, rider and horse proportions. All four face right in the same three-quarter view, identical horse body and head size, rider steady in the saddle, lance raised diagonally in EVERY pose. Two rows of TWO complete separate mounted figures. A top left near forehoof planted forward, near hindleg stretched back, opposite legs bent beneath the belly. B top right both forelegs folded back beneath the chest and hindlegs gathering forward, hooves just above level ground. C bottom left FAR forehoof planted forward with near foreleg bent up, far hindleg extended back, the opposite lead and a clearly different leg silhouette from A. D bottom right forelegs reaching forward, hindlegs reaching back, horse body level not rearing, then cycle back to A. One convincing looping canter, four distinctly different leg poses, slight mane, tail and pennant movement, no upward hopping, no charging or attack. Match the original charming painted 1996 DOS fantasy strategy game style: bright colours, painted shading reduced to 256 colours, soft dithering, readable and friendly, not anime. Each entire lance, rider, horse and hooves fit separately on one plain flat grey background with flatter grey oval shadows marking the same ground plane. No text, labels, scenery, dust or effects.",
+    "reference_images": [
+      "art/map/references/heroKnight.png",
+      "art/map/sheets/units-c.png",
+      "~/.config/retro-diffusion/refs/battle_hero.png",
+      "~/.config/retro-diffusion/refs/battle_troops.png"
+    ]
+  },
+  {
+    "out": "art/map/sheets/map-hero-knight-idle.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28507,
+    "bypass_prompt_expansion": true,
+    "prompt": "Four gentle RESTING poses of the exact SAME mounted HERO Knight from the single-figure reference and the BOTTOM RIGHT of units-c. His horse stays WHITE with grey shaded flanks and dark mane, NOT chestnut. Keep the same silver steel armour, closed helmet, blue cloth and tack, long wooden lance held diagonally upward with its small ROYAL BLUE pennant, body proportions and painted identity. All face right in the same three-quarter view, all FOUR hooves grounded in EVERY pose, same horse body and rider size, same ground level. Two rows of TWO complete separate mounted figures. A top left waits quietly, horse ears forward and blue pennant softly hanging. B top right the horse turns one ear slightly and softly lowers its muzzle by a little, the rider remains steady and the pennant folds differently. C bottom left the horse breathes out and flicks its tail softly, neck and mane change subtly, rider's gloved hand relaxes on the reins. D bottom right horse's head returns, ears relax, the pennant curls the other way. Small natural life inside the character, no moving the whole body up or down, no walking, rearing, attack or changing the lance. Match the original charming painted 1996 DOS fantasy strategy game style: bright colours, painted shading reduced to 256 colours, soft dithering, friendly and readable, not anime. Each entire lance, rider, horse and hooves fit separately on one plain flat grey background with flatter grey ground shadows. No text, labels, scenery or effects.",
+    "reference_images": [
+      "art/map/references/heroKnight.png",
+      "art/map/sheets/units-c.png",
+      "~/.config/retro-diffusion/refs/battle_hero.png",
+      "~/.config/retro-diffusion/refs/battle_troops.png"
+    ]
+  }
+]

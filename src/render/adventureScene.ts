@@ -11,7 +11,7 @@ import { MapTiles } from './mapTiles';
 import { Minimap } from './minimap';
 import { hash } from './noise';
 import { BLUE, GOLD, INK, NEUTRAL, PARCHMENT, RED, SILHOUETTE, WOOD } from './palette';
-import { animFrames, bodyHeight, everyFrame, STAND, troopFigure, type Figure } from './battleSprites';
+import { animFrames, bodyHeight, everyFrame, STAND, troopFigure, type Figure, type Pose } from './battleSprites';
 import { heroArtId } from './units';
 import {
   abbey, boat, boulder, camp, campfire,
@@ -672,25 +672,28 @@ export function buildAdventureScene(map: MapModel, state: GameState): AdventureS
 }
 
 /**
- * The hero's frames on the map, in his background's figure. He fidgets now and then as he waits, as
- * his Wesnoth unit does (the Knight's pennant flutters; those Wesnoth gave no fidget just breathe).
- * A painted gait keeps its anchors, shadow and ring on the ground; figures without one keep their
- * existing walk and fidget.
+ * Painted travel and gentle idle share one grounded canvas, shadow and ring. Until a set loads,
+ * its previous painted or Wesnoth figure still stands in.
  */
 function heroFrames(background: BackgroundId): Omit<HeroRig, 'object'> {
   const art = heroArtId(background);
   const still = troopFigure(art, 'blue', 1, STAND, 'map');
   const moving = paintedAnimation(art, 'map', 'move');
   if (moving?.stride && moving.footfalls) {
+    const waiting = paintedAnimation(art, 'map', 'idle');
     const duration = moving.frames.reduce((total, frame) => total + frame.ms, 0);
-    let ms = 0;
-    const poses = moving.frames.map((frame) => {
-      const pose = { anim: 'move', ms } as const;
-      ms += frame.ms;
-      return pose;
-    });
-    const right = [still, ...poses.map((pose) => troopFigure(art, 'blue', 1, pose, 'map'))];
-    const left = [troopFigure(art, 'blue', -1, STAND, 'map'), ...poses.map((pose) => troopFigure(art, 'blue', -1, pose, 'map'))];
+    const poses: Pose[] = [];
+    for (const [anim, sequence] of [['idle', waiting], ['move', moving]] as const) {
+      let ms = 0;
+      for (const frame of sequence?.frames ?? []) {
+        poses.push({ anim, ms });
+        ms += frame.ms;
+      }
+      if (anim === 'idle' && !sequence) poses.push(STAND);
+    }
+    const count = waiting?.frames.length ?? 1;
+    const right = poses.map((pose) => troopFigure(art, 'blue', 1, pose, 'map'));
+    const left = poses.map((pose) => troopFigure(art, 'blue', -1, pose, 'map'));
     const all = [...right, ...left];
     const half = Math.max(...all.flatMap((frame) => [-frame.x, frame.x + frame.sprite.width]));
     const foot = Math.max(...all.map((frame) => -frame.y));
@@ -709,9 +712,12 @@ function heroFrames(background: BackgroundId): Omit<HeroRig, 'object'> {
     };
     let end = 0;
     const stride = moving.stride;
+    const idle = (frames: Figure[]) => frames.slice(0, count).flatMap((frame, i) =>
+      Array<Bitmap>(waiting ? Math.max(1, Math.round(waiting.frames[i].ms / 120)) : 1).fill(grounded(frame)),
+    );
     return {
-      idle: [grounded(right[0])], walk: right.slice(1).map(grounded),
-      idleLeft: [grounded(left[0])], walkLeft: left.slice(1).map(grounded),
+      idle: idle(right), walk: right.slice(count).map(grounded),
+      idleLeft: idle(left), walkLeft: left.slice(count).map(grounded),
       foot, head: bodyHeight(art, 'map'),
       gait: {
         stride,
@@ -735,9 +741,11 @@ function heroFrames(background: BackgroundId): Omit<HeroRig, 'object'> {
 export function setHeroFigure(scene: AdventureScene, background: BackgroundId, facing: 1 | -1) {
   const rig = scene.hero;
   const feet = rig.object.y + rig.foot;
+  const centre = rig.object.x + rig.object.sprite.width / 2;
   const figure = heroFrames(background);
   Object.assign(rig, figure, { gait: figure.gait });
   rig.object.frames = facing < 0 ? rig.idleLeft : rig.idle;
-  rig.object.sprite = rig.idle[0];
+  rig.object.sprite = rig.object.frames[0];
+  rig.object.x = centre - rig.object.sprite.width / 2;
   rig.object.y = feet - rig.foot;
 }
