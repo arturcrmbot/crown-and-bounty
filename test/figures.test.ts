@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { TROOPS } from '../src/content/troops';
+import { leads, TROOPS } from '../src/content/troops';
+import type { AnimName } from '../src/render/battleSprites';
 import { FIGURE_ANIMATIONS, FIGURES } from '../src/render/mapPieces';
 
 describe('painted figures (#255)', () => {
@@ -41,5 +42,21 @@ describe('painted figures (#255)', () => {
       return sequence.frames.filter((frame) => !existsSync(`public/assets/troops/${frame.name}-battle.png`)).map((frame) => `${frame.name} asset`);
     }));
     expect(pending, 'battle must load the painted poses, not only the map-sized ones').toEqual([]);
+  });
+
+  it('covers every remaining legal battle action without pretending a static fallback is finished', () => {
+    const pending = Object.values(TROOPS).flatMap((troop) => {
+      const actions: AnimName[] = ['move', 'idle', 'stand'];
+      if (!leads(troop.id) || troop.id === 'heroKnight') actions.push('melee');
+      if (!leads(troop.id) && troop.id !== 'knights') actions.push('defend', 'defendRanged', 'death');
+      if (troop.shots) actions.push('ranged');
+      if (troop.caster || (troop.hero && troop.id !== 'heroKnight')) actions.push('cast');
+      return actions.flatMap((anim) => {
+        const sequence = FIGURE_ANIMATIONS[troop.id]?.[anim];
+        if (!sequence?.feet.battle || !sequence.frames.length) return [`${troop.id} ${anim}`];
+        return sequence.frames.filter(frame => !existsSync(`public/assets/troops/${frame.name}-battle.png`)).map(frame => `${frame.name} asset`);
+      });
+    });
+    expect(pending, 'the approved mounted poses stay in place; every other legal action must really load').toEqual([]);
   });
 });

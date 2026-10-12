@@ -132,7 +132,7 @@ describe('the sounds of a fight', () => {
 
   it('beasts cry as beasts, and blows ring on the armoured', () => {
     expect(TROOP_SOUNDS.wolves.cry).toBe('wolf');
-    expect(TROOP_SOUNDS.trolls.blow).toBe('fist');
+    expect(TROOP_SOUNDS.trolls.blow).toBe('club');
     expect(TROOP_SOUNDS.knights.armour).toBe(true);
     expect(TROOP_SOUNDS.peasants.armour).toBeUndefined();
   });
