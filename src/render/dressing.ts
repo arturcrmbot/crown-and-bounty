@@ -3,7 +3,7 @@ import type { Point } from '../rules/map/geometry';
 import { CELL, forestAmount, forestAt, riverHalfWidth, Terrain, type MapModel } from '../rules/map/model';
 import type { Placed } from './adventureScreen';
 import type { Bitmap } from './bitmap';
-import { piece } from './mapArt';
+import { piece, subduedPiece } from './mapArt';
 import { GROVE_TREES, type PieceName } from './mapPieces';
 import { fbm, hash, noise } from './noise';
 import { mirror } from './sprites';
@@ -116,7 +116,7 @@ export function dress(map: MapModel, locations: readonly Location[], scenery: Pl
   const blocks = Math.ceil(province.width / BLOCK);
   const count = new Uint16Array(blocks * Math.ceil(province.height / BLOCK));
   const put = (name: PieceName, x: number, y: number, flip: boolean) => {
-    const p = piece(name);
+    const p = name.startsWith('bed') || name.startsWith('decor') ? subduedPiece(name) : piece(name);
     if (!p) return null;
     if (x >= 0 && y >= 0 && x < province.width && y < province.height) count[Math.floor(y / BLOCK) * blocks + Math.floor(x / BLOCK)]++;
     const sprite: Bitmap = flip ? mirror(p.sprite) : p.sprite;
