@@ -2,7 +2,7 @@
   "issue": 283,
   "provider": "Retro Diffusion",
   "model": "rd_pro__spritesheet",
-  "cost_usd": 1.44,
+  "cost_usd": 1.62,
   "attempts": [
     {
       "job": "jobs/knights-gait.json",
@@ -29,8 +29,8 @@
       "job": "jobs/knights-melee-v2.json",
       "sheet": "sheets/knights-melee-v2.png",
       "cost_usd": 0.18,
-      "decision": "selected",
-      "critique": "The sword reaches forward over the horse's neck. Use wind-up, forward contact, downward follow-through and upright recovery, in source-frame order 0, 2, 1, 3."
+      "decision": "rejected",
+      "critique": "The forward cut matched the art, but changed the weapon. Artur confirmed that the Knights always use the same lance, so no sword pose is used."
     },
     {
       "job": "jobs/knights-charge-v2.json",
@@ -59,13 +59,20 @@
       "cost_usd": 0.18,
       "decision": "selected",
       "critique": "Image editing keeps the matching horse, armour, blue cloth, leg poses and body scale. All four lances are now couched horizontally. Use these for the approach gait, then the first charge sheet's contact and raised-lance recovery."
+    },
+    {
+      "job": "jobs/knights-lance-melee.json",
+      "sheet": "sheets/knights-lance-melee.png",
+      "cost_usd": 0.18,
+      "decision": "selected",
+      "critique": "A minimal edit of the existing lance sheet sits the ready rider upright and draws his arm back. Preparation, short thrust and recovery all keep the same blue-shafted lance, horse and painted identity."
     }
   ],
   "selected": {
     "move": "knights-gait",
     "melee": {
-      "sheet": "knights-melee-v2",
-      "source_order": [0, 2, 1, 3]
+      "sheet": "knights-lance-melee",
+      "source_order": [0, 1, 2, 3]
     },
     "charge": {
       "approach": "knights-charge-edit",

@@ -23,7 +23,7 @@ export type UnitArt = {
   /** Looped while it walks or rides from hex to hex. */
   move?: Frame[];
   melee: Attack;
-  /** The knights' lance, for a charge. */
+  /** A separate charge sequence, where the troop has one. */
   charge?: Attack;
   /** Aldric raising his hands (or his sabre) as he casts a spell. */
   cast?: Frame[];
@@ -93,7 +93,7 @@ const TROOP_ART: Record<Exclude<TroopId, HeroId>, UnitArt> = {
     stand: KNIGHT + 'knight.png',
     idle: frames(KNIGHT, 'knight-breeze-[1~4,2,5].png', '200,300*3,200*2'),
     move: frames(KNIGHT, 'knight-se-run[1~8].png', 70),
-    melee: attack(400, frames(KNIGHT, 'knight-se-slash[1~12].png', '100*3,70*9')),
+    melee: attack(400, frames(KNIGHT, 'knight-se-attack[1~12].png', '100*3,70*9')),
     charge: attack(400, frames(KNIGHT, 'knight-se-attack[1~12].png', '100*3,70*9')),
     defend: KNIGHT + 'knight-se-defend2.png',
     death: frames(KNIGHT, 'knight-se-die[1~5].png', 100),

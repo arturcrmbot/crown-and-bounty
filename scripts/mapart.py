@@ -185,14 +185,14 @@ FIGURE_ANIMATIONS = {
             'stride': 64, 'footfalls': [0, 180],
         },
         'melee': {
-            'sheet': 'knights-melee-v2', 'scale': 0.86, 'sizes': ['battle'],
+            'sheet': 'knights-lance-melee', 'scale': 0.86, 'sizes': ['battle'],
             'frames': [
-                ((0, 0, 133, 128), (63, 117), 160),
-                ((0, 128, 133, 256), (63, 245), 110),
+                ((0, 0, 133, 128), (63, 117), 140),
                 ((128, 0, 256, 128), (191, 117), 100),
+                ((0, 128, 133, 256), (63, 245), 100),
                 ((128, 128, 256, 256), (191, 245), 200),
             ],
-            'hit': 160,
+            'hit': 240,
         },
         'charge': {
             'sheet': 'knights-charge-sequence', 'scale': 0.86, 'sizes': ['battle'],

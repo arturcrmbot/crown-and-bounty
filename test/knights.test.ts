@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { animLength, hitTime, troopFigure } from '../src/render/battleSprites';
 import { loadMapArt, paintedAnimation } from '../src/render/mapArt';
+import { TROOP_SOUNDS } from '../src/audio/blows';
+import { ART } from '../src/render/units';
 
 describe('the Knights painted gait and attacks', () => {
   beforeAll(() => loadMapArt(async (file) => new Uint8Array(readFileSync(`public/assets/${file.includes('/') ? file : `map/${file}`}`))));
@@ -14,13 +16,18 @@ describe('the Knights painted gait and attacks', () => {
     expect(paintedAnimation('knights', 'battle', 'move')?.footfalls).toEqual([0, 180]);
   });
 
-  it('puts sword contact on its painted contact pose and holds the recovery', () => {
-    const frames = [0, 160, 270, 370].map((ms) => troopFigure('knights', 'blue', 1, { anim: 'melee', ms }, 'battle'));
+  it('puts the short lance thrust on its contact pose and holds the recovery', () => {
+    const frames = [0, 140, 240, 340].map((ms) => troopFigure('knights', 'blue', 1, { anim: 'melee', ms }, 'battle'));
     expect(new Set(frames.map((frame) => frame.sprite.data.join(','))).size).toBe(4);
     expect(new Set(frames.map((frame) => `${frame.x},${frame.y}`)).size).toBe(1);
-    expect(hitTime('knights', 'melee')).toBe(160);
-    expect(animLength('knights', 'melee')).toBe(570);
+    expect(hitTime('knights', 'melee')).toBe(240);
+    expect(animLength('knights', 'melee')).toBe(540);
     expect(troopFigure('knights', 'blue', 1, { anim: 'melee', ms: 2000 }, 'battle').sprite).toBe(frames[3].sprite);
+  });
+
+  it('keeps the lance sound and lance fallback for ordinary melee too', () => {
+    expect(TROOP_SOUNDS.knights.blow).toBe('lance');
+    expect(ART.knights.melee).toEqual(ART.knights.charge);
   });
 
   it('has four couched-lance approach poses before distinct contact and recovery', () => {

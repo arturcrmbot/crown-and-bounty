@@ -12,6 +12,7 @@ import { BattleScreen, BUTTONS, FIRE_FALL, FLOAT_LIFE, FLOAT_RISE, hexAt, hexCen
 import { CUE_PING, cueBounce, FLASH_GAP, FLASH_TIME, FRAME, holdFrames, kickLeft, kickOf, POP_LIFE, ROLL, TOPPLE_TIME, toppleAngle, victoryHop, volleyOf, type Blow } from '../render/juice';
 import { hash } from '../render/noise';
 import { animLength, bodyHeight, hitTime, STAND, type AnimName } from '../render/battleSprites';
+import { paintedAnimation } from '../render/mapArt';
 import { cursorIcon, type CursorKind, type Heading } from '../render/cursors';
 import { ART, type Missile } from '../render/units';
 import { MAP_VIEW } from '../render/frame';
@@ -431,18 +432,18 @@ export class BattleController implements Screen {
   }
 
   /**
-   * What a blow or a shot sounds like as it lands: the attacker's weapon (a knight's charge is his
-   * lance), or the shot hitting home; what it lands on, flesh or the target's steel (#257); and its
+   * What a blow or a shot sounds like as it lands: the attacker's weapon, or the shot hitting
+   * home; what it lands on, flesh or the target's steel (#257); and its
    * cry, if it's hurt and still standing (one that falls gives its death cry as it goes).
    */
-  private landSound(e: Extract<BattleEvent, { type: 'hit' }>, missile: Missile | null, dies: boolean, x: number) {
+  private landSound(e: Extract<BattleEvent, { type: 'hit' }>, missile: Missile | null, dies: boolean, x: number, prepared = false) {
     const pan = this.panAt(x);
     const attacker = fighterById(this.battle, e.attacker);
     const target = TROOP_SOUNDS[fighterById(this.battle, e.target).troop];
     const blow = e.charge && ART[attacker.troop].charge ? 'lance' : TROOP_SOUNDS[attacker.troop].blow;
     if (missile) play(`land:${missile}`, pan);
-    else play(`blow:${blow}`, pan);
-    const lands = missile ? 0 : CONTACT;
+    else if (!prepared) play(`blow:${blow}`, pan);
+    const lands = missile || prepared ? 0 : CONTACT;
     // Weight under the blow, as heavy as what it did (#190).
     play(e.charge || dies ? 'thump:huge' : e.killed ? 'thump:heavy' : 'thump:light', pan, lands);
     const hit = missile ? SHOT_HITS[missile] : BLOW_HITS[blow];
@@ -666,14 +667,21 @@ export class BattleController implements Screen {
     const [ux, uy] = [(tx - ax) / len, (ty - ay) / len];
     const art = ART[attacker.troop];
     const anim = e.ranged ? 'ranged' : e.charge && art.charge ? 'charge' : 'melee';
-    const hit = hitTime(attacker.troop, anim);
-    const total = Math.max(animLength(attacker.troop, anim), hit + 1);
+    const knight = attacker.troop === 'knights';
+    const mounted = knight || target.troop === 'knights';
+    const painted = knight && !e.ranged && !!paintedAnimation(attacker.troop, 'battle', anim);
+    const contact = hitTime(attacker.troop, anim);
+    const soundLead = !e.ranged && mounted ? CONTACT / MS * this.pace * (this.auto ? 2.5 : 1) : 0;
+    // The charge's opening gait has already played on the approach. Finish the last stride into contact.
+    const begins = painted && e.charge ? Math.max(0, contact - Math.max(100, soundLead)) : 0;
+    const hit = contact - begins;
+    const total = Math.max(animLength(attacker.troop, anim) - begins, hit + 1);
     const after = Math.max(300, total - hit);
     // Lunge in: still at first, then hard to about half way at the blow, then back to its hex.
-    const reach = e.ranged ? 0 : Math.min(30, len * 0.45);
+    const reach = e.ranged || mounted ? 0 : Math.min(30, len * 0.45);
     const lunge = (ms: number) => (ms < hit ? reach * Math.max(0, (ms - hit * 0.4) / (hit * 0.6)) ** 2 : reach * Math.max(0, 1 - (ms - hit) / after));
     const swing = (ms: number) => {
-      v.poses.set(e.attacker, { anim, ms });
+      v.poses.set(e.attacker, { anim, ms: begins + ms });
       v.offsets.set(e.attacker, [ux * lunge(ms), uy * lunge(ms)]);
     };
     const flinch = (): AnimName => (e.ranged ? 'defendRanged' : 'defend');
@@ -688,6 +696,8 @@ export class BattleController implements Screen {
     // A company of archers or crossbowmen looses a volley, not one arrow (#190).
     const extra = missile === 'arrow' || missile === 'quarrel' ? volleyOf(attacker.count, isLeader(attacker)) - 1 : 0;
     const release = missile ? Math.max(0, hit - 150) : hit;
+    const leading = Math.min(release, soundLead);
+    const prepare = release - leading;
     // The ribbon names the blow as it starts, and says what it did when it lands.
     const blow = `${this.fighterName(e.attacker)} ${this.verb(e.attacker, e.ranged ? 'shoot' : e.retaliation ? 'strike back at' : e.charge ? 'charge' : 'hit')} ${this.objectName(e.target)}`;
     if (e.lucky) {
@@ -706,7 +716,7 @@ export class BattleController implements Screen {
         },
       });
     }
-    this.step(release * MS, {
+    this.step(prepare * MS, {
       start: () => {
         turn();
         v.log = `${blow}...`;
@@ -714,9 +724,13 @@ export class BattleController implements Screen {
         if (!e.ranged) v.front.set(e.target, e.attacker);
       },
       tick: (t) => {
-        swing(t * release);
-        if (!missile && t * release >= hit - FLINCH_EARLY) v.poses.set(e.target, { anim: flinch(), ms: 0 });
+        swing(t * prepare);
+        if (!missile && !mounted && t * prepare >= hit - FLINCH_EARLY) v.poses.set(e.target, { anim: flinch(), ms: 0 });
       },
+    });
+    if (leading) this.step(leading * MS, {
+      start: () => play(`blow:${e.charge ? 'lance' : TROOP_SOUNDS[attacker.troop].blow}`, this.panAt(ax)),
+      tick: (t) => swing(prepare + t * leading),
     });
     if (missile) {
       // The release frame holds while the shot flies, however far.
@@ -736,11 +750,11 @@ export class BattleController implements Screen {
         end: () => v.shots.splice(v.shots.indexOf(shot), 1),
       });
     }
-    const reel = (e.ranged ? 4 : 8) * (e.charge ? 2.2 : 1);
     // The blow lands, and the field holds still on it for a moment (#190): the target a white shape
     // for a frame, then red, the field kicked the way the blow went, and the kill popping out of the badge.
     const landed: Blow = { killed: e.killed, charge: e.charge, lucky: e.lucky, wiped: dies };
     const gentle = isGentle();
+    const reel = mounted ? (gentle ? 1.5 : e.charge ? 5 : 3) : (e.ranged ? 4 : 8) * (e.charge ? 2.2 : 1);
     const hold = holdFrames(landed, gentle) * FRAME;
     // The white shape shows for a frame at least, even when Auto hurries the hold along.
     let ticks = 0;
@@ -749,12 +763,12 @@ export class BattleController implements Screen {
         v[gentle ? 'flashing' : 'whites'].add(e.target);
         v.poses.set(e.target, { anim: flinch(), ms: 0 });
         this.counted(e.target, left);
-        this.landSound(e, missile, dies, tx);
-        if (dies) this.deathCry(e.target, (missile ? 0 : CONTACT) + 0.06);
+        this.landSound(e, missile, dies, tx, leading > 0);
+        if (dies) this.deathCry(e.target, (missile || leading ? 0 : CONTACT) + 0.06);
         this.impact(e.target, landed, !e.ranged, [ux, uy]);
         if (e.charge) {
           this.float(e.attacker, 'Charge!', GOLD[6], from);
-          play('charge');
+          if (!knight) play('charge');
         }
         if (e.lucky) this.float(e.attacker, 'Lucky!', GOLD[5], from);
         if (e.backstab) this.float(e.attacker, 'Backstab!', GOLD[6], from);
@@ -855,13 +869,16 @@ export class BattleController implements Screen {
           const feet = `feet:${TROOP_SOUNDS[f.troop].feet}` as const;
           // A charge's run-up (#190): dust flies from the hooves on every hex of it.
           const charging = !back && events.some((n) => n.type === 'hit' && n.charge && n.attacker === e.fighter);
+          const gait = f.troop === 'knights' ? paintedAnimation(f.troop, 'battle', charging ? 'charge' : 'move') : null;
+          const cycle = gait ? (charging ? hitTime(f.troop, 'charge') : animLength(f.troop, 'move')) : 0;
           for (const [n, to] of path.entries()) {
             const a = n === 0 ? start : path[n - 1];
             // A hex a step for a stack; a leader gallops, however far his first and last stretches are.
-            const length = leader ? Math.max(0.06, Math.hypot(to[0] - a[0], to[1] - a[1]) / 640) : 0.12;
+            const length = gait ? cycle * MS / 2 : leader ? Math.max(0.06, Math.hypot(to[0] - a[0], to[1] - a[1]) / 640) : 0.12;
             this.step(length, {
               start: () => {
                 if (n === 0 && !back) v.log = `${this.fighterName(e.fighter)} ${this.verb(e.fighter, leader ? 'ride out' : 'advance')}...`;
+                if (n === 0 && charging && f.troop === 'knights') play('charge');
                 if (to[0] !== a[0]) v.facings.set(e.fighter, to[0] > a[0] ? 1 : -1);
                 play(feet, this.panAt(to[0]));
                 if (charging) this.burst('dust', [Math.round(a[0]), Math.round(a[1]) + 12], 0.45, { size: 30 });
@@ -869,7 +886,7 @@ export class BattleController implements Screen {
               tick: (t) => {
                 const hop = frames ? 0 : Math.sin(t * Math.PI) * 4;
                 v.positions.set(e.fighter, [a[0] + (to[0] - a[0]) * t, a[1] + (to[1] - a[1]) * t - hop]);
-                v.poses.set(e.fighter, frames ? { anim: 'move', ms: (n + t) * 120 } : { anim: 'stand', ms: 0 });
+                v.poses.set(e.fighter, gait ? { anim: charging ? 'charge' : 'move', ms: ((n + t) * cycle / 2) % cycle } : frames ? { anim: 'move', ms: (n + t) * 120 } : STAND);
               },
             });
           }

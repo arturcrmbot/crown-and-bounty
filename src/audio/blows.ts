@@ -24,7 +24,7 @@ export type TroopSounds = { blow: BlowKind; cry: CryKind; feet: FeetKind; armour
 export const TROOP_SOUNDS: Record<TroopId, TroopSounds> = {
   peasants: { blow: 'fork', cry: 'man', feet: 'boots' },
   archers: { blow: 'blade', cry: 'man', feet: 'boots' },
-  knights: { blow: 'blade', cry: 'man', feet: 'hooves', armour: true },
+  knights: { blow: 'lance', cry: 'man', feet: 'hooves', armour: true },
   swordsmen: { blow: 'blade', cry: 'man', feet: 'boots', armour: true },
   crossbowmen: { blow: 'blade', cry: 'man', feet: 'boots', armour: true },
   wolves: { blow: 'bite', cry: 'wolf', feet: 'paws' },
