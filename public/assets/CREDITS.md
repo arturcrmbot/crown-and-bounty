@@ -23,6 +23,14 @@ and our own unit sheets as the reference: the cutpurses, the outlaws' captains a
 (`units-e.png`), and the Baron's pikemen, men-at-arms, sergeants, picket captain and foreman in his red and gold
 (`units-f.png`). The request for each sheet is kept in `art/map/jobs/`.
 
+The Hedge Wizard's six walking poses (#278) were made with Retro Diffusion on 12 October 2026, with his
+original figure from `units-d.png` and the same HoMM2 screens as references. `wizard-walk-2.png` supplies the
+poses in `public/assets/troops/heroWizard-move-*-map.png`. The first attempt, `wizard-walk.png`, was inspected
+and not used because its robe rose too high. Both sheets and requests are kept, with the actual spend
+of $0.18 each, $0.36 in all, in `art/map/jobs/wizard-walk.costs.json`. `art/map/references/heroWizard.png`
+is a crop of our own `units-d.png`, not another generation. The poses use the game's existing palette
+and licence, at one fixed body scale with explicit foot anchors.
+
 ## The units: Battle for Wesnoth
 
 Under the painted figures, the troops and the hero are units from [Battle for Wesnoth](https://www.wesnoth.org/) 1.18:

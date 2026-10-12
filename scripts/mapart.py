@@ -162,6 +162,24 @@ FIGURES = {
 }
 FIGURES['hero'] = FIGURES['heroKnight']
 TROOPS_OUT = os.path.join(ROOT, 'public/assets/troops')
+# One scale for the whole body, not one fitted to each pose's weapon bounds. Boxes and feet are
+# absolute sheet pixels; the cutter gives every frame of an animation the same canvas and anchor.
+FIGURE_ANIMATIONS = {
+    'heroWizard': {
+        'move': {
+            'sheet': 'wizard-walk-2', 'scale': 72 / 116, 'sizes': ['map'],
+            'frames': [
+                ((12, 7, 83, 126), (47, 124), 100),
+                ((96, 6, 170, 126), (132, 124), 100),
+                ((180, 6, 254, 126), (216, 124), 100),
+                ((13, 132, 85, 252), (48, 250), 100),
+                ((97, 131, 170, 252), (132, 250), 100),
+                ((181, 131, 253, 252), (216, 249), 100),
+            ],
+            'stride': 48, 'footfalls': [100, 400],
+        },
+    },
+}
 # The payday feast (#191): Aldric and his troops celebrating payday round the fire, and the camp's things. Four sheets
 # (feast-1 to feast-4), cut at the size they were drawn, a little closer than the battle's (a person sitting is about
 # 60 px), and with no shadow of their own: the feast lays its shadows away from its fire. Each troop's figure is named
@@ -247,7 +265,7 @@ def layers(sheet):
 CACHE = {}
 
 
-def cut(sheet, box, width, name='', height=None, alone=False, cool=False):
+def cut(sheet, box, width, name='', height=None, alone=False, cool=False, scale=None):
     """RGBA of one piece at `width` pixels across: painted pixels opaque, shadow at alpha 128."""
     if sheet not in CACHE:
         CACHE[sheet] = layers(sheet)
@@ -316,9 +334,10 @@ def cut(sheet, box, width, name='', height=None, alone=False, cool=False):
     keep = main[lab]
     solid &= keep
     sh &= keep
-    ys, xs = np.nonzero(solid | sh)
-    rgb, solid, sh = rgb[ys.min():ys.max() + 1, xs.min():xs.max() + 1], solid[ys.min():ys.max() + 1, xs.min():xs.max() + 1], sh[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
-    k = width / rgb.shape[1] if height is None else height / (np.ptp(np.nonzero(solid.any(1))[0]) + 1)
+    if scale is None:
+        ys, xs = np.nonzero(solid | sh)
+        rgb, solid, sh = rgb[ys.min():ys.max() + 1, xs.min():xs.max() + 1], solid[ys.min():ys.max() + 1, xs.min():xs.max() + 1], sh[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+    k = scale if scale is not None else width / rgb.shape[1] if height is None else height / (np.ptp(np.nonzero(solid.any(1))[0]) + 1)
     w, h = max(1, round(rgb.shape[1] * k)), max(1, round(rgb.shape[0] * k))
     if k != 1:
         own = np.unique(rgb[solid].reshape(-1, 3), axis=0).astype(float)
@@ -337,6 +356,42 @@ def cut(sheet, box, width, name='', height=None, alone=False, cool=False):
     out[solid, 3] = 255
     out[sh, 3] = 128
     return out
+
+
+def cut_animation(name, anim, spec):
+    if not spec['frames'] or spec['scale'] <= 0:
+        raise ValueError(f'{name} {anim}: a sequence needs frames and a positive fixed scale')
+    total = sum(ms for _, _, ms in spec['frames'])
+    if any(ms <= 0 for _, _, ms in spec['frames']):
+        raise ValueError(f'{name} {anim}: frame durations must be positive')
+    if anim in ('melee', 'charge', 'ranged') and 'hit' not in spec:
+        raise ValueError(f'{name} {anim}: an attack needs its visible contact time')
+    if 'hit' in spec and not 0 <= spec['hit'] < total:
+        raise ValueError(f'{name} {anim}: hit must fall within the animation')
+    if anim == 'move' and 'map' in spec['sizes']:
+        if spec['stride'] <= 0 or not spec['footfalls'] or any(not 0 <= ms < total for ms in spec['footfalls']):
+            raise ValueError(f'{name} {anim}: a map gait needs a stride and footfall phases')
+    frames = [{'name': f'{name}-{anim}-{i}', 'ms': ms} for i, (_, _, ms) in enumerate(spec['frames'])]
+    feet = {}
+    for size in spec['sizes']:
+        scale = spec['scale'] * (1 if size == 'battle' else 2 / 3 if name.startswith('hero') else 0.6)
+        images = []
+        for box, anchor, _ in spec['frames']:
+            px = cut(spec['sheet'], box, 0, scale=scale)
+            px[px[..., 3] == 128] = 0
+            foot = (round((anchor[0] - box[0]) * scale), round((anchor[1] - box[1]) * scale))
+            images.append((px, foot))
+        left = min(-foot[0] for _, foot in images)
+        top = min(-foot[1] for _, foot in images)
+        right = max(px.shape[1] - foot[0] for px, foot in images)
+        bottom = max(px.shape[0] - foot[1] for px, foot in images)
+        feet[size] = [-left, -top]
+        for frame, (px, foot) in zip(frames, images):
+            out = np.zeros((bottom - top, right - left, 4), 'uint8')
+            x, y = -foot[0] - left, -foot[1] - top
+            out[y:y + px.shape[0], x:x + px.shape[1]] = px
+            Image.fromarray(out).save(os.path.join(TROOPS_OUT, f"{frame['name']}-{size}.png"))
+    return {'frames': frames, 'feet': feet, **{key: spec[key] for key in ('hit', 'stride', 'footfalls') if key in spec}}
 
 
 def heath(rgb):
@@ -497,6 +552,7 @@ def main():
         for size, k in (('battle', 1), ('map', 2 / 3 if name.startswith('hero') else 0.6)):
             px = cut(sheet, box, 0, name, height=round(tall * k))
             Image.fromarray(px).save(os.path.join(TROOPS_OUT, f'{name}-{size}.png'))
+    animations = {name: {anim: cut_animation(name, anim, spec) for anim, spec in poses.items()} for name, poses in FIGURE_ANIMATIONS.items()}
     os.makedirs(FEAST_OUT, exist_ok=True)
     for name, (sheet, box) in FEAST.items():
         Image.fromarray(cut_feast(name, sheet, box)).save(os.path.join(FEAST_OUT, name + '.png'))
@@ -528,6 +584,8 @@ def main():
         f.write(f"export const GROVE_TREES = {json.dumps(kinds)} as const;\n")
         f.write(f"export const GROUNDS = {json.dumps(list(GROUND))} as const;\n")
         f.write(f"/** The troops and Aldric's figures, painted: in public/assets/troops/, each at battle and map size. */\nexport const FIGURES = {json.dumps(list(FIGURES))} as const;\n")
+        f.write("export type FigureAnimation = {\n  frames: readonly { name: string; ms: number }[];\n  feet: Partial<Record<'battle' | 'map', readonly [number, number]>>;\n  hit?: number;\n  stride?: number;\n  footfalls?: readonly number[];\n};\n")
+        f.write("export const FIGURE_ANIMATIONS: Record<string, Partial<Record<import('./battleSprites').AnimName, FigureAnimation>>> = " + json.dumps(animations) + ";\n")
         f.write(f"/** The payday feast's pieces (#191), in public/assets/feast/: Aldric as each background, a figure for each troop that has one, and the camp's things. */\nexport const FEAST_PIECES = {json.dumps(list(FEAST))} as const;\n")
         f.write("export type FeastPieceName = (typeof FEAST_PIECES)[number];\n")
         f.write("export type GroundName = (typeof GROUNDS)[number];\n")

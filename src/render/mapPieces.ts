@@ -186,6 +186,14 @@ export const GROVE_TREES = {"orange": ["orange0", "orange1", "orange2"], "green"
 export const GROUNDS = ["heather", "water", "grass", "dirt", "wheat", "heath", "plough"] as const;
 /** The troops and Aldric's figures, painted: in public/assets/troops/, each at battle and map size. */
 export const FIGURES = ["peasants", "archers", "knights", "swordsmen", "crossbowmen", "wolves", "baron", "goblins", "trolls", "witch", "bramble", "poachers", "bandits", "boars", "bears", "huntsmen", "heroKnight", "heroWizard", "heroRanger", "heroCourtier", "rook", "cutpurses", "cutpurseCaptain", "highwaymanCaptain", "poacherCaptain", "spiders", "pikemen", "menAtArms", "sergeant", "pike", "picketCaptain", "foreman", "hero"] as const;
+export type FigureAnimation = {
+  frames: readonly { name: string; ms: number }[];
+  feet: Partial<Record<'battle' | 'map', readonly [number, number]>>;
+  hit?: number;
+  stride?: number;
+  footfalls?: readonly number[];
+};
+export const FIGURE_ANIMATIONS: Record<string, Partial<Record<import('./battleSprites').AnimName, FigureAnimation>>> = {"heroWizard": {"move": {"frames": [{"name": "heroWizard-move-0", "ms": 100}, {"name": "heroWizard-move-1", "ms": 100}, {"name": "heroWizard-move-2", "ms": 100}, {"name": "heroWizard-move-3", "ms": 100}, {"name": "heroWizard-move-4", "ms": 100}, {"name": "heroWizard-move-5", "ms": 100}], "feet": {"map": [15, 49]}, "stride": 48, "footfalls": [100, 400]}}};
 /** The payday feast's pieces (#191), in public/assets/feast/: Aldric as each background, a figure for each troop that has one, and the camp's things. */
 export const FEAST_PIECES = ["heroKnight", "heroWizard", "heroRanger", "heroCourtier", "knights", "archers", "peasants", "swordsmen", "crossbowmen", "wolves", "boars", "bears", "goblins", "trolls", "poachers", "bandits", "huntsmen", "fire", "spit", "tent", "horseWhite", "horseBrown", "barrel", "chest", "food", "banner"] as const;
 export type FeastPieceName = (typeof FEAST_PIECES)[number];
