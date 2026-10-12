@@ -40,6 +40,14 @@ pennant. The unused first idle attempts are retained with their inspection notes
 spend of $1.62 are in `art/map/jobs/map-heroes*.json`; the other hero references are crops of `units-c.png`
 and `units-d.png`, not new generations. These map-only poses keep the existing palette and game licence.
 
+The outlaws, their captains, Rook and the wolves' map poses (#285) were painted with Retro Diffusion on
+12 October 2026, using isolated crops of their original figures and the same HoMM2 screens.
+`map-cutpurses.png`, `map-cutpurseCaptain.png`, `map-highwaymanCaptain.png`, `map-bandits.png`,
+`map-poacherCaptain.png`, `map-poachers.png`, `map-rook.png` and `map-wolves.png` supply four travel poses
+and two gentle resting poses each. Both members of a led band use their own poses. Their requests and
+inspection notes are in `art/map/jobs/map-outlaws*.json`, with actual spend of $1.44. The poses remain
+map-only, in the existing palette and under the game's licence.
+
 ## The units: Battle for Wesnoth
 
 Under the painted figures, the troops and the hero are units from [Battle for Wesnoth](https://www.wesnoth.org/) 1.18:

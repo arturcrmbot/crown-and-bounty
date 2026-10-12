@@ -16,9 +16,9 @@ import { CLEAR, type Sky, type Weather } from './weather';
  * `frame` pins the frame instead of following the clock (a walking hero steps with distance).
  * `hidden` keeps it off the map for now: a band out of the hero's sight.
  */
-export type Placed = { sprite: Bitmap; frames?: Bitmap[]; frame?: number; x: number; y: number; hidden?: boolean };
+export type Placed = { sprite: Bitmap; frames?: Bitmap[]; frame?: number; foot?: number; x: number; y: number; hidden?: boolean };
 
-const footY = (o: Placed) => o.y + o.sprite.height;
+const footY = (o: Placed) => o.y + (o.foot ?? o.sprite.height);
 
 /**
  * The adventure screen: the map's view, with the minimap over its top right corner (see `minimap.ts`).
