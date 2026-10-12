@@ -1,0 +1,22 @@
+{
+  "issue": 279,
+  "date": "2026-10-12",
+  "currency": "USD",
+  "balance_before": 6.55,
+  "total": 1.8,
+  "balance_after": 4.75,
+  "attempts": [
+    { "sheet": "battle-swordsmen-reactions.png", "balance_cost": 0.18, "used": true, "inspection": "Original plume, blue sleeves, sword and shield remain. Use the recoil for a hit, then the kneeling collapse and complete prone figure for the fall." },
+    { "sheet": "battle-wolves-reactions.png", "balance_cost": 0.18, "used": true, "inspection": "Same grey fur, muzzle, paws and tail. The ears and shoulders recoil, legs fold and the wolf settles on its side without shrinking." },
+    { "sheet": "battle-archers-close.png", "balance_cost": 0.18, "used": true, "inspection": "The original longbow remains in every pose. A short sidearm prepares and strikes at close quarters, then is sheathed for the bow-bearing reaction and fallen figure." },
+    { "sheet": "battle-peasants-actions.png", "balance_cost": 0.18, "used": true, "inspection": "The complete original pitchfork keeps its three tines. Both hands draw it back and thrust forward; the hurt and prone poses retain his brown cap and clothes." },
+    { "sheet": "battle-crossbowmen-close.png", "balance_cost": 0.18, "used": false, "inspection": "The top-right sword still pointed backward over his head. It could not honestly be the forward contact pose, so correct only that stroke." },
+    { "sheet": "battle-crossbowmen-ranged.png", "balance_cost": 0.18, "used": true, "inspection": "Original rounded helmet, beige coat and wooden crossbow remain. Loading, braced aim, trigger release and lowered recovery are distinct. The quarrel leaves the visible weapon." },
+    { "sheet": "battle-pikemen-actions.png", "balance_cost": 0.18, "used": false, "inspection": "The full pike and thrust match, but the lower-left reaction stays too close to quiet rest. Correct only that reaction." },
+    { "sheet": "battle-menAtArms-actions.png", "balance_cost": 0.18, "used": true, "inspection": "The silver plate, plume, red-and-gold tabard, kite shield and original silver sword remain. Wind-up and forward cut are distinct; the shield-bearing flinch and full-size prone figure match." },
+    { "sheet": "battle-crossbowmen-close-edit.png", "balance_cost": 0.18, "used": true, "inspection": "The same short blade now extends to the right at chest height, with its full point inside the cell. The original crossbow and other poses remain." },
+    { "sheet": "battle-pikemen-actions-edit.png", "balance_cost": 0.18, "used": true, "inspection": "The lower-left shoulders, helmet and knees visibly recoil. The entire original single pike stays in the cell and his boots remain grounded." }
+  ],
+  "packing": "The fixed-size input atlases repeat our existing inspected idle crops without rescaling. Each generated sheet is calibrated once with its existing idle body scale, never by each pose's total height. The battle-sized sequence atlases pack those new cells with the exact existing grounded quiet poses. Their cutter scale is 1 and their common absolute foot anchor is 64,124 in each 128-pixel cell. The low-sum packed background is outside the game's palette and cannot be mistaken for a shadow or erase grey armour pixels.",
+  "request_rejections": []
+}

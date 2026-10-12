@@ -835,6 +835,43 @@ for _name, _poses in FIGURE_ANIMATIONS.items():
     if 'stand' not in _poses:
         _idle = _poses['idle']
         _poses['stand'] = {**_idle, 'sizes': ['battle'], 'frames': [(*_idle['frames'][0][:2], 100)]}
+
+# These atlases pack inspected new poses with the existing grounded rests, already at battle scale.
+for _name in ('swordsmen', 'wolves', 'archers', 'peasants', 'crossbowmen', 'pikemen', 'menAtArms'):
+    for _anim, _times in (('defend', (160, 160)), ('death', (80, 220, 200))):
+        _poses = {
+            'sheet': f'battle-{_name}-{_anim}-sequence', 'scale': 1, 'sizes': ['battle'],
+            'frames': [
+                ((i % 2 * 128, i // 2 * 128, i % 2 * 128 + 128, i // 2 * 128 + 128),
+                 (i % 2 * 128 + 64, i // 2 * 128 + 124), ms)
+                for i, ms in enumerate(_times)
+            ],
+        }
+        if _anim == 'death':
+            _poses['hit'] = 300
+        FIGURE_ANIMATIONS[_name][_anim] = _poses
+    FIGURE_ANIMATIONS[_name]['defendRanged'] = FIGURE_ANIMATIONS[_name]['defend']
+    if _name not in ('swordsmen', 'wolves'):
+        FIGURE_ANIMATIONS[_name]['melee'] = {
+            'sheet': f'battle-{_name}-melee-sequence', 'scale': 1, 'sizes': ['battle'],
+            'frames': [
+                ((0, 0, 128, 128), (64, 124), 120),
+                ((128, 0, 256, 128), (192, 124), 140),
+                ((0, 128, 128, 256), (64, 252), 120),
+                ((128, 128, 256, 256), (192, 252), 220),
+            ],
+            'hit': 260,
+        }
+FIGURE_ANIMATIONS['crossbowmen']['ranged'] = {
+    'sheet': 'battle-crossbowmen-ranged-sequence', 'scale': 1, 'sizes': ['battle'],
+    'frames': [
+        ((0, 0, 128, 128), (64, 124), 140),
+        ((128, 0, 256, 128), (192, 124), 220),
+        ((0, 128, 128, 256), (64, 252), 120),
+        ((128, 128, 256, 256), (192, 252), 240),
+    ],
+    'hit': 360, 'launch': (28, -48),
+}
 # The payday feast (#191): Aldric and his troops celebrating payday round the fire, and the camp's things. Four sheets
 # (feast-1 to feast-4), cut at the size they were drawn, a little closer than the battle's (a person sitting is about
 # 60 px), and with no shadow of their own: the feast lays its shadows away from its fire. Each troop's figure is named

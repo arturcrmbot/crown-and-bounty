@@ -114,6 +114,12 @@ describe('the sound effects', () => {
 });
 
 describe('the sounds of a fight', () => {
+  it('keeps the painted sword on men-at-arms and on charging swordsmen, without borrowing a Knight lance', () => {
+    expect(TROOP_SOUNDS.menAtArms.blow).toBe('blade');
+    expect(TROOP_SOUNDS.swordsmen.blow).toBe('blade');
+    expect(TROOP_SOUNDS.knights.blow).toBe('lance');
+  });
+
   it('every troop strikes, cries and walks like what it is, and its shots loose and land', () => {
     for (const id of Object.keys(TROOPS) as TroopId[]) {
       const s = TROOP_SOUNDS[id];

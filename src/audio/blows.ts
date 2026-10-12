@@ -41,8 +41,7 @@ export const TROOP_SOUNDS: Record<TroopId, TroopSounds> = {
   huntsmen: { blow: 'dagger', cry: 'man', feet: 'boots' },
   rook: { blow: 'dagger', cry: 'man', feet: 'boots' },
   pikemen: { blow: 'spear', cry: 'man', feet: 'boots', armour: true },
-  // Men-at-arms carry maces, as Wesnoth's Heavy Infantrymen do.
-  menAtArms: { blow: 'mace', cry: 'man', feet: 'boots', armour: true },
+  menAtArms: { blow: 'blade', cry: 'man', feet: 'boots', armour: true },
   cutpurses: { blow: 'dagger', cry: 'man', feet: 'boots' },
   // A giant spider bites, hisses as Wesnoth's does, and patters about on all eight feet.
   spiders: { blow: 'bite', cry: 'spider', feet: 'patter' },
