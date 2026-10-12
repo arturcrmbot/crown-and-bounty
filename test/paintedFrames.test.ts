@@ -40,11 +40,12 @@ describe('painted walking figures', () => {
     }
   });
 
-  it.each(['heroKnight', 'heroRanger', 'heroCourtier'] as const)('leaves %s on its existing painted fallback', (id) => {
+  it.each(['heroKnight', 'heroRanger', 'heroCourtier'] as const)('gives %s genuine painted steps on a fixed anchor', (id) => {
     const first = troopFigure(id, 'blue', 1, { anim: 'move', ms: 0 }, 'map');
     const later = troopFigure(id, 'blue', 1, { anim: 'move', ms: 100 }, 'map');
-    expect(later.sprite).toBe(first.sprite);
-    expect(later.y).toBeLessThan(first.y);
+    expect(later.sprite).not.toBe(first.sprite);
+    expect(later.y).toBe(first.y);
+    expect(later.x).toBe(first.x);
   });
 
   describe('optional painted sequences', () => {

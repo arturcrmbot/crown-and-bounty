@@ -40,6 +40,15 @@ retained in `art/map/jobs/` and `art/map/sheets/`, with their actual spend of $1
 in `art/map/knights-review.json`. `knights-lance-reference.png` is a crop of our own first charge
 sheet. The frames keep one body scale and explicit foot anchors, and use the same palette and licence.
 
+All four heroes' adventure-map travel and gentle resting poses (#285) were painted with Retro Diffusion on
+12 October 2026, from their own original figures and the same HoMM2 screens. `map-ranger-move.png`,
+`map-ranger-idle.png`, `map-courtier-move.png`, `map-courtier-idle.png` and `map-hero-knight-move.png` supply
+the new poses. Image edits of the accepted travel sheets, `map-wizard-idle-edit.png` and
+`map-hero-knight-idle-edit.png`, preserve the wizard's identity and the Knight hero's white horse and blue
+pennant. The unused first idle attempts are retained with their inspection notes. The requests and actual
+spend of $1.62 are in `art/map/jobs/map-heroes*.json`; the other hero references are crops of `units-c.png`
+and `units-d.png`, not new generations. These map-only poses keep the existing palette and game licence.
+
 ## The units: Battle for Wesnoth
 
 Under the painted figures, the troops and the hero are units from [Battle for Wesnoth](https://www.wesnoth.org/) 1.18:

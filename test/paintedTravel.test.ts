@@ -14,7 +14,7 @@ vi.mock('../src/render/text', () => ({
   bigLettering: () => false,
 }));
 
-describe('the wizard on the road', () => {
+describe('the heroes on the road', () => {
   beforeAll(() => loadMapArt(async (file) => new Uint8Array(readFileSync(`public/assets/${file.includes('/') ? file : `map/${file}`}`))));
 
   it('uses a painted gait on the map instead of the raised standing frames', () => {
@@ -23,31 +23,37 @@ describe('the wizard on the road', () => {
     expect(hero.gait).toEqual({ stride: 48, frames: [8, 16, 24, 32, 40, 48], footfalls: [8, 32] });
     expect(new Set(hero.walk.map((frame) => [...frame.data].join(','))).size).toBe(6);
     expect(hero.walk.every((frame) => frame.width === hero.idle[0].width && frame.height === hero.idle[0].height)).toBe(true);
-    expect(new Set(hero.idle.map((frame) => [...frame.data].join(','))).size).toBe(1);
+    expect(new Set(hero.idle.map((frame) => [...frame.data].join(','))).size).toBeGreaterThan(1);
     const ground = (frame: (typeof hero.walk)[number]) => [...frame.data.subarray((hero.foot + 1) * frame.width)].join(',');
     expect(new Set([...hero.idle, ...hero.walk, ...hero.idleLeft, ...hero.walkLeft].map(ground)).size).toBe(1);
   });
 
-  it('leaves the other heroes on their existing rigs', () => {
-    for (const background of ['knight', 'ranger', 'courtier'] as const) {
+  it('gives every background genuine travel and restrained idle poses on one grounded canvas', () => {
+    for (const background of ['knight', 'wizard', 'ranger', 'courtier'] as const) {
       const state = newGame(1066, ALDMOOR, background);
       const { hero } = scene.buildAdventureScene(mapOf(state), state);
-      expect(hero.gait).toBeUndefined();
-      expect(hero.walk).toHaveLength(6);
-      expect(hero.idle).toHaveLength(20);
+      expect(hero.gait, background).toBeDefined();
+      expect(new Set(hero.walk.map((frame) => [...frame.data].join(','))).size, background).toBeGreaterThan(2);
+      expect(new Set(hero.idle.map((frame) => [...frame.data].join(','))).size, background).toBeGreaterThan(1);
+      const frames = [...hero.idle, ...hero.walk, ...hero.idleLeft, ...hero.walkLeft];
+      expect(new Set(frames.map((frame) => `${frame.width},${frame.height}`)).size, background).toBe(1);
     }
   });
 
-  it('clears the wizard gait when the opening choice changes background, without moving his feet', () => {
+  it('changes gait with the opening choice without moving the hero feet', () => {
     const state = newGame(1066, ALDMOOR, 'wizard');
     const map = scene.buildAdventureScene(mapOf(state), state);
     const feet = map.hero.object.y + map.hero.foot;
+    const centre = map.hero.object.x + map.hero.object.sprite.width / 2;
     scene.setHeroFigure(map, 'knight', -1);
-    expect(map.hero.gait).toBeUndefined();
+    expect(map.hero.gait?.stride).toBeGreaterThan(48);
+    expect(map.hero.object.frames).toBe(map.hero.idleLeft);
     expect(map.hero.object.y + map.hero.foot).toBe(feet);
+    expect(map.hero.object.x + map.hero.object.sprite.width / 2).toBe(centre);
     scene.setHeroFigure(map, 'wizard', 1);
     expect(map.hero.gait?.stride).toBe(48);
     expect(map.hero.object.y + map.hero.foot).toBe(feet);
+    expect(map.hero.object.x + map.hero.object.sprite.width / 2).toBe(centre);
   });
 
   it('steps by distance through straight travel, bends and Shift travel', () => {
