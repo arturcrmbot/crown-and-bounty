@@ -1,0 +1,19 @@
+[
+  {
+    "out": "art/map/sheets/knights-charge-v2.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28313,
+    "prompt": "FOUR animation frames of the SAME mounted blue Knight on the SAME chestnut horse in the knights-gait and knights-charge references. EXACTLY match his closed silver helmet, silver plate armour, royal-blue saddle cloth with gold edging, brown mane and tail, horse head, body proportions and painted colours. This is a LANCE charge, no drawn sword. Four full-body figures facing RIGHT in a slight three-quarter view, TWO rows of TWO, on one plain flat grey background. Each complete figure and its entire lance tip fits inside its own square with eight pixels of EMPTY MARGIN on every side, no lance tip at the image edge or touching another figure. TOP LEFT is a gathered CHARGE APPROACH: the knight leans forward in the saddle, elbow by his waist, lance already LOW and COUCHED almost HORIZONTALLY toward the RIGHT above the horse's mane, all four legs gathered and bent under the level horse's belly. TOP RIGHT is the next CHARGE APPROACH gait frame: the SAME low horizontal lance and forward-seated rider, horse forelegs stretch forward and hind legs stretch back in a level gallop. The first TWO frames must both have a LOW lance, NOT an upright diagonal lance, and have unmistakably different gathered versus stretched leg silhouettes. BOTTOM LEFT is CONTACT: rider firmly in saddle, right hand pushes the horizontal couched lance slightly forward toward the RIGHT, lance point completely visible in front of the horse's face, horse braces with its near forehoof planted and opposite knee bent. BOTTOM RIGHT is RECOVERY: rider sits upright again, elbow drawn back, lance tip lifts to a diagonal upward angle toward the right, horse settles on level ground. ONE lance per rider, no duplicate weapons, no high jump, no rearing, no rider flying off. Body size, horse head, helmet and cloth remain identical in every frame. One small flat grey oval shadow on the same ground plane under each horse. Drawn in exactly the charming painted 1996 DOS fantasy strategy game battle style of the references, bright readable colours reduced to 256 colours, painted shading and soft dithering, not anime or smooth vector art. No enemy, scenery, lettering, grid, sparks, dust, blood, motion streaks or speed lines.",
+    "reference_images": [
+      "art/map/sheets/knights-gait.png",
+      "art/map/sheets/knights-charge.png",
+      "public/assets/troops/knights-battle.png",
+      "art/map/sheets/units-a.png",
+      "~/.config/retro-diffusion/refs/battle_hero.png",
+      "~/.config/retro-diffusion/refs/battle_wide.png"
+    ]
+  }
+]

@@ -1,0 +1,83 @@
+{
+  "issue": 283,
+  "provider": "Retro Diffusion",
+  "model": "rd_pro__spritesheet",
+  "cost_usd": 1.44,
+  "attempts": [
+    {
+      "job": "jobs/knights-gait.json",
+      "sheet": "sheets/knights-gait.png",
+      "cost_usd": 0.18,
+      "decision": "selected",
+      "critique": "Four genuinely different horse leg silhouettes. The chestnut horse, steel armour, blue cloth and painted shading match the standing Knight."
+    },
+    {
+      "job": "jobs/knights-melee.json",
+      "sheet": "sheets/knights-melee.png",
+      "cost_usd": 0.18,
+      "decision": "rejected",
+      "critique": "The sword contact points back toward the horse's tail rather than toward the enemy."
+    },
+    {
+      "job": "jobs/knights-charge.json",
+      "sheet": "sheets/knights-charge.png",
+      "cost_usd": 0.18,
+      "decision": "partly selected",
+      "critique": "The couched-lance contact and raised-lance recovery match the gait art. Only one approach frame has a lowered lance, so it cannot supply a convincing approach gait by itself."
+    },
+    {
+      "job": "jobs/knights-melee-v2.json",
+      "sheet": "sheets/knights-melee-v2.png",
+      "cost_usd": 0.18,
+      "decision": "selected",
+      "critique": "The sword reaches forward over the horse's neck. Use wind-up, forward contact, downward follow-through and upright recovery, in source-frame order 0, 2, 1, 3."
+    },
+    {
+      "job": "jobs/knights-charge-v2.json",
+      "sheet": "sheets/knights-charge-v2.png",
+      "cost_usd": 0.18,
+      "decision": "rejected",
+      "critique": "The horse became smaller, orange and coarsely shaded. The lowered lance is clearer but the identity and painted style no longer match."
+    },
+    {
+      "job": "jobs/knights-charge-gait.json",
+      "sheet": "sheets/knights-charge-gait.png",
+      "cost_usd": 0.18,
+      "decision": "rejected for approach",
+      "critique": "The painted identity matches again, but the model copied the mixed upright and couched poses from the full-sheet reference. An isolated couched-lance reference is needed."
+    },
+    {
+      "job": "jobs/knights-charge-gait-v2.json",
+      "sheet": "sheets/knights-charge-gait-v2.png",
+      "cost_usd": 0.18,
+      "decision": "rejected",
+      "critique": "All four lances are low, but the horse is orange and the rider's helmet and shaded armour no longer match. Use Retro Diffusion's image-editing style on the matching sheet instead of reconstructing from a cropped reference."
+    },
+    {
+      "job": "jobs/knights-charge-edit.json",
+      "sheet": "sheets/knights-charge-edit.png",
+      "cost_usd": 0.18,
+      "decision": "selected",
+      "critique": "Image editing keeps the matching horse, armour, blue cloth, leg poses and body scale. All four lances are now couched horizontally. Use these for the approach gait, then the first charge sheet's contact and raised-lance recovery."
+    }
+  ],
+  "selected": {
+    "move": "knights-gait",
+    "melee": {
+      "sheet": "knights-melee-v2",
+      "source_order": [0, 2, 1, 3]
+    },
+    "charge": {
+      "approach": "knights-charge-edit",
+      "contact": {
+        "sheet": "knights-charge",
+        "source_frame": 2
+      },
+      "recovery": {
+        "sheet": "knights-charge",
+        "source_frame": 3
+      }
+    }
+  },
+  "scope": "The Knights troop. The Knight hero keeps his distinct white horse and painted identity."
+}

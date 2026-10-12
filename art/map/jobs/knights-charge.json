@@ -1,0 +1,19 @@
+[
+  {
+    "out": "art/map/sheets/knights-charge.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28303,
+    "prompt": "A matching animation sheet of FOUR mounted LANCE CHARGE poses of the SAME blue Knight and SAME chestnut horse on the knights-gait reference. Match that rider, chestnut horse, royal-blue saddle cloth with gold edging, silver steel plate armour, closed silver helmet, brown mane and tail, exact proportions and paint. He stays seated on his horse facing right in the same slight three-quarter view. His sword stays sheathed at the belt. This is a real couched-lance attack with the weapon changing pose, not four copies of an upright lance and not a sword cut. FOUR full-body figures in TWO rows of TWO, each completely separate, complete lance point, horse, rider and hooves inside its square, no touching or clipping. TOP LEFT is preparation: rider begins leaning forward from the hips, right elbow at his waist, long wooden lance lowered to thirty degrees above horizontal toward the right, horse in a gathered canter with its near foreleg folded. TOP RIGHT is the committed approach: knight leaning forward with his long lance COUCHED HORIZONTALLY under the right arm, steel tip pointing directly right, forelegs extended forward and hind legs extended back in a level gallop, not a high jump. BOTTOM LEFT is CONTACT: right arm and couched horizontal lance thrust a little farther forward, lance point still entirely visible, chestnut horse braced on its near front hoof with opposite knee bent, rider firmly in the saddle rather than flying off it. BOTTOM RIGHT is recovery: rider sits up, right elbow bends back and the lance tip rises again to a diagonal thirty degrees above horizontal, horse gathers its hind legs and settles after the strike. The lance angle, rider's torso, arm and horse legs MUST visibly change through these four stages. The horse body, head, armour and blue cloth stay identical in size and design. One small flat grey oval shadow directly under each horse marks the same ground plane. Drawn in exactly the art style of the reference 1996 DOS fantasy strategy game battle screens: charming, friendly, clearly readable, bright colours, painted shading reduced to 256 colours, soft dithering, a little character in every face. On one plain flat grey background, no enemy, scenery, labels, grid, sparks, motion streaks, blood, dust or speed lines.",
+    "reference_images": [
+      "art/map/sheets/knights-gait.png",
+      "public/assets/troops/knights-battle.png",
+      "art/map/sheets/units-a.png",
+      "~/.config/retro-diffusion/refs/battle_hero.png",
+      "~/.config/retro-diffusion/refs/battle_troops.png",
+      "~/.config/retro-diffusion/refs/battle_wide.png"
+    ]
+  }
+]

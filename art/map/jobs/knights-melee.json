@@ -1,0 +1,19 @@
+[
+  {
+    "out": "art/map/sheets/knights-melee.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28302,
+    "prompt": "A matching animation sheet of FOUR ordinary mounted SWORD ATTACK poses of the SAME blue Knight and SAME chestnut horse on the knights-gait reference. Match that rider, horse, royal-blue saddle cloth with gold edging, silver plate armour, closed silver helmet, brown mane and tail, exact proportions and paint. He stays seated on his horse facing right in the same slight three-quarter view. This is one continuous controlled sword cut, not a lance charge. His long lance is stowed diagonally up behind his left shoulder in every pose, and his right hand uses one short straight silver sword. FOUR full-body figures in TWO rows of TWO, each completely separate, rider, sword, lance, horse and hooves entirely inside its square, no touching or clipping. TOP LEFT is preparation: horse planted on level ground, rider upright, sword drawn back above his right shoulder, elbow bent and sword pointing up and back. TOP RIGHT is the beginning of the cut: rider turns slightly from the waist, sword passing down and forward at a forty-five-degree angle, horse front knee bent but body steady. BOTTOM LEFT is CONTACT: rider leans slightly forward in the saddle, right arm clearly extended forward, sword cutting forward and slightly down toward an enemy standing to the right at horse-head height, horse's near front hoof planted, no leap or rear. BOTTOM RIGHT is recovery: rider sitting upright again, elbow drawn back, sword held low near his right thigh after the cut, horse squarely settled. The sword and arm silhouette MUST change between all four poses. Horse body, head, blue cloth and rider's helmet stay the SAME size and design, with no stretching or enlarged knight. One small flat grey oval shadow directly under each horse marks the same ground plane. Drawn in exactly the art style of the reference 1996 DOS fantasy strategy game battle screens: charming, friendly, clearly readable, bright colours, painted shading reduced to 256 colours, soft dithering, a little character in every face. On one plain flat grey background, no enemy, scenery, labels, grid, sparks, motion streaks, blood, dust or speed lines.",
+    "reference_images": [
+      "art/map/sheets/knights-gait.png",
+      "public/assets/troops/knights-battle.png",
+      "art/map/sheets/units-a.png",
+      "~/.config/retro-diffusion/refs/battle_hero.png",
+      "~/.config/retro-diffusion/refs/battle_troops.png",
+      "~/.config/retro-diffusion/refs/battle_wide.png"
+    ]
+  }
+]
