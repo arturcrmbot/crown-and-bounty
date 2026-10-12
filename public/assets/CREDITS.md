@@ -35,8 +35,12 @@ The Knights' gait, short lance thrusts and lance charge (#283) were painted with
 12 October 2026, with their existing chestnut horse, blue cloth and steel armour as references.
 `knights-gait.png`, `knights-lance-melee.png`, `knights-charge-edit.png` and `knights-charge.png`
 supply the selected poses. `knights-charge-sequence.png` packs the selected approach, contact
-and recovery cells without repainting them. All nine requests and inspected attempts are
-retained in `art/map/jobs/` and `art/map/sheets/`, with their actual spend of $1.62 and critiques
+and recovery cells without repainting them. The grounded neutral and gentle idle in `knights-rest.png`
+replace the first running crop previously used at rest. `hero-knight-lance.png` adds the mounted hero's
+matching white-horse lance action, packed without repainting into `hero-knight-lance-sequence.png`.
+His landed map gait and grounded idle are reused at battle size with the same body calibration.
+All eleven requests and inspected attempts are retained in `art/map/jobs/` and `art/map/sheets/`,
+with their actual spend of $1.98 and critiques
 in `art/map/knights-review.json`. `knights-lance-reference.png` is a crop of our own first charge
 sheet. The frames keep one body scale and explicit foot anchors, and use the same palette and licence.
 

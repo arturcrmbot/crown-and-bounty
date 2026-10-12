@@ -145,7 +145,7 @@ def grove_kind(px):
 # The troops and Aldric (#178): each one's box on its sheet, and how tall he stands in battle, from
 # his feet to the top of his head (a person about 65 px; on the map three fifths of that, Aldric two thirds).
 FIGURES = {
-    'peasants': ('units-a', (19, 19, 78, 124), 66), 'archers': ('units-a', (99, 20, 157, 125), 64), 'knights': ('knights-gait', (0, 0, 133, 128), 100),
+    'peasants': ('units-a', (19, 19, 78, 124), 66), 'archers': ('units-a', (99, 20, 157, 125), 64), 'knights': ('knights-rest', (0, 0, 133, 128), 104),
     'swordsmen': ('units-a', (10, 128, 79, 252), 68), 'crossbowmen': ('units-a', (95, 140, 171, 252), 68), 'wolves': ('units-a', (167, 171, 249, 252), 44),
     'baron': ('units-b', (10, 9, 83, 124), 82), 'goblins': ('units-b', (96, 42, 174, 124), 48), 'trolls': ('units-b', (178, 7, 244, 124), 86),
     'witch': ('units-b', (22, 145, 84, 249), 70), 'bramble': ('units-b', (97, 131, 167, 249), 82), 'poachers': ('units-b', (177, 147, 250, 250), 64),
@@ -295,12 +295,17 @@ FIGURE_ANIMATIONS = {
     },
     'knights': {
         'stand': {
-            'sheet': 'knights-gait', 'scale': 0.86, 'sizes': ['battle', 'map'],
-            'frames': [((0, 0, 133, 128), (63, 117), 100)],
+            'sheet': 'knights-rest', 'scale': 0.86, 'sizes': ['battle', 'map'],
+            'frames': [((0, 0, 133, 128), (63, 122), 100)],
         },
         'idle': {
-            'sheet': 'knights-gait', 'scale': 0.86, 'sizes': ['battle', 'map'],
-            'frames': [((0, 0, 133, 128), (63, 117), 100)],
+            'sheet': 'knights-rest', 'scale': 0.86, 'sizes': ['battle', 'map'],
+            'frames': [
+                ((0, 0, 133, 128), (63, 122), 1200),
+                ((128, 0, 256, 128), (191, 121), 200),
+                ((0, 128, 133, 256), (63, 252), 200),
+                ((128, 128, 256, 256), (191, 253), 1200),
+            ],
         },
         'move': {
             'sheet': 'knights-gait', 'scale': 0.86, 'sizes': ['battle', 'map'],
@@ -407,8 +412,12 @@ FIGURE_ANIMATIONS = {
         },
     },
     'heroKnight': {
+        'stand': {
+            'sheet': 'map-hero-knight-idle-edit', 'scale': 0.78, 'sizes': ['battle'],
+            'frames': [((0, 0, 118, 123), (64, 120), 100)],
+        },
         'move': {
-            'sheet': 'map-hero-knight-move', 'scale': 0.78, 'sizes': ['map'],
+            'sheet': 'map-hero-knight-move', 'scale': 0.78, 'sizes': ['map', 'battle'],
             'frames': [
                 ((0, 0, 118, 123), (64, 119), 90),
                 ((128, 0, 248, 123), (192, 119), 90),
@@ -418,13 +427,23 @@ FIGURE_ANIMATIONS = {
             'stride': 64, 'footfalls': [0, 180],
         },
         'idle': {
-            'sheet': 'map-hero-knight-idle-edit', 'scale': 0.78, 'sizes': ['map'],
+            'sheet': 'map-hero-knight-idle-edit', 'scale': 0.78, 'sizes': ['map', 'battle'],
             'frames': [
                 ((0, 0, 118, 123), (64, 120), 1800),
                 ((128, 0, 248, 123), (192, 120), 240),
                 ((0, 125, 120, 254), (64, 249), 240),
                 ((128, 125, 249, 254), (192, 250), 1440),
             ],
+        },
+        'melee': {
+            'sheet': 'hero-knight-lance-sequence', 'scale': 0.78, 'sizes': ['battle'],
+            'frames': [
+                ((0, 0, 170, 128), (64, 120), 140),
+                ((0, 128, 170, 256), (64, 248), 100),
+                ((0, 256, 170, 384), (64, 377), 100),
+                ((0, 384, 170, 512), (64, 509), 200),
+            ],
+            'hit': 240,
         },
     },
 }
