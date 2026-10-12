@@ -837,7 +837,8 @@ for _name, _poses in FIGURE_ANIMATIONS.items():
         _poses['stand'] = {**_idle, 'sizes': ['battle'], 'frames': [(*_idle['frames'][0][:2], 100)]}
 
 # These atlases pack inspected new poses with the existing grounded rests, already at battle scale.
-for _name in ('swordsmen', 'wolves', 'archers', 'peasants', 'crossbowmen', 'pikemen', 'menAtArms'):
+for _name in ('swordsmen', 'wolves', 'archers', 'peasants', 'crossbowmen', 'pikemen', 'menAtArms',
+              'goblins', 'trolls', 'poachers', 'bandits', 'boars', 'bears', 'huntsmen', 'cutpurses', 'spiders'):
     for _anim, _times in (('defend', (160, 160)), ('death', (80, 220, 200))):
         _poses = {
             'sheet': f'battle-{_name}-{_anim}-sequence', 'scale': 1, 'sizes': ['battle'],
@@ -872,6 +873,36 @@ FIGURE_ANIMATIONS['crossbowmen']['ranged'] = {
     ],
     'hit': 360, 'launch': (28, -48),
 }
+for _name, _launch in {
+    'poachers': (25, -44), 'huntsmen': (30, -48), 'rook': (27, -50), 'poacherCaptain': (25, -49),
+}.items():
+    FIGURE_ANIMATIONS[_name]['ranged'] = {
+        'sheet': f'battle-{_name}-ranged-sequence', 'scale': 1, 'sizes': ['battle'],
+        'frames': [
+            ((0, 0, 128, 128), (64, 124), 140),
+            ((128, 0, 256, 128), (192, 124), 220),
+            ((0, 128, 128, 256), (64, 252), 120),
+            ((128, 128, 256, 256), (192, 252), 240),
+        ],
+        'hit': 360, 'launch': _launch,
+    }
+for _name, _launch in {
+    'baron': (41, -55), 'sergeant': (29, -43), 'pike': (33, -48), 'foreman': (34, -44),
+    'picketCaptain': (30, -44), 'cutpurseCaptain': (31, -49), 'highwaymanCaptain': (30, -39),
+    'witch': (26, -44), 'bramble': (32, -53), 'heroRanger': (29, -46),
+}.items():
+    FIGURE_ANIMATIONS[_name]['cast'] = {
+        'sheet': f'battle-{_name}-cast-sequence', 'scale': 1, 'sizes': ['battle'],
+        'frames': [
+            ((0, 0, 128, 128), (64, 124), 140),
+            ((128, 0, 256, 128), (192, 124), 180),
+            ((0, 128, 128, 256), (64, 252), 140),
+            ((128, 128, 256, 256), (192, 252), 180),
+        ],
+        'hit': 320, 'launch': _launch,
+    }
+for _name in ('witch', 'bramble'):
+    FIGURE_ANIMATIONS[_name]['ranged'] = FIGURE_ANIMATIONS[_name]['cast']
 # The payday feast (#191): Aldric and his troops celebrating payday round the fire, and the camp's things. Four sheets
 # (feast-1 to feast-4), cut at the size they were drawn, a little closer than the battle's (a person sitting is about
 # 60 px), and with no shadow of their own: the feast lays its shadows away from its fire. Each troop's figure is named

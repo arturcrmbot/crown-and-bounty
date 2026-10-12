@@ -90,7 +90,7 @@ describe('painted walking figures', () => {
     expect(paintedAnimation(id, 'battle', anim)?.launch).toEqual(launch);
   });
 
-  it.each(['swordsmen', 'wolves', 'archers', 'peasants', 'crossbowmen', 'pikemen', 'menAtArms'] as const)('gives %s actual flinch and fall poses, and leaves its painted final pose on the same ground anchor', (id) => {
+  it.each(['swordsmen', 'wolves', 'archers', 'peasants', 'crossbowmen', 'pikemen', 'menAtArms', 'goblins', 'trolls', 'poachers', 'bandits', 'boars', 'bears', 'huntsmen', 'cutpurses', 'spiders'] as const)('gives %s actual flinch and fall poses, and leaves its painted final pose on the same ground anchor', (id) => {
     for (const anim of ['defend', 'defendRanged', 'death'] as const) {
       const sequence = paintedAnimation(id, 'battle', anim);
       expect(sequence, `${id} needs painted ${anim} frames`).not.toBeNull();
@@ -104,7 +104,7 @@ describe('painted walking figures', () => {
     }
   });
 
-  it.each(['archers', 'peasants', 'crossbowmen', 'pikemen', 'menAtArms'] as const)('takes %s from its existing quiet pose through a matching weapon strike and back to a real quiet recovery', (id) => {
+  it.each(['archers', 'peasants', 'crossbowmen', 'pikemen', 'menAtArms', 'goblins', 'trolls', 'poachers', 'bandits', 'boars', 'bears', 'huntsmen', 'cutpurses', 'spiders'] as const)('takes %s from its existing quiet pose through a matching weapon strike and back to a real quiet recovery', (id) => {
     const sequence = paintedAnimation(id, 'battle', 'melee');
     expect(sequence?.frames).toHaveLength(4);
     expect(new Set(sequence!.frames.map((frame) => picture(frame.sprite))).size).toBe(4);
@@ -115,6 +115,22 @@ describe('painted walking figures', () => {
     expect(sequence?.frames).toHaveLength(4);
     expect(sequence?.launch).toHaveLength(2);
     expect(new Set(sequence!.frames.map((frame) => picture(frame.sprite))).size).toBe(4);
+  });
+
+  it.each(['poachers', 'huntsmen', 'rook', 'poacherCaptain'] as const)('gives %s matching bow draw, release and recovery from the visible weapon', (id) => {
+    const sequence = paintedAnimation(id, 'battle', 'ranged');
+    expect(sequence?.frames).toHaveLength(4);
+    expect(sequence?.launch).toHaveLength(2);
+    expect(new Set(sequence!.frames.map((frame) => picture(frame.sprite))).size).toBe(4);
+  });
+
+  it.each(['baron', 'witch', 'bramble', 'sergeant', 'pike', 'foreman', 'picketCaptain', 'cutpurseCaptain', 'highwaymanCaptain', 'heroRanger'] as const)('gives %s real rear-line casting or speaking gestures without changing the weapon or foot anchor', (id) => {
+    const sequence = paintedAnimation(id, 'battle', 'cast');
+    expect(sequence?.frames).toHaveLength(4);
+    expect(sequence?.launch).toHaveLength(2);
+    expect(new Set(sequence!.frames.map((frame) => picture(frame.sprite))).size).toBe(4);
+    const figures = [0, 140, 320, 460].map(ms => troopFigure(id, 'red', -1, { anim: 'cast', ms }, 'battle'));
+    expect(new Set(figures.map(frame => `${frame.x},${frame.y}`)).size).toBe(1);
   });
 
   describe('optional painted sequences', () => {

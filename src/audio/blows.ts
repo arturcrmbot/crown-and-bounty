@@ -30,7 +30,7 @@ export const TROOP_SOUNDS: Record<TroopId, TroopSounds> = {
   wolves: { blow: 'bite', cry: 'wolf', feet: 'paws' },
   baron: { blow: 'blade', cry: 'man', feet: 'boots', armour: true },
   goblins: { blow: 'spear', cry: 'goblin', feet: 'patter' },
-  trolls: { blow: 'fist', cry: 'troll', feet: 'stomp' },
+  trolls: { blow: 'club', cry: 'troll', feet: 'stomp' },
   witch: { blow: 'staff', cry: 'woman', feet: 'boots' },
   bramble: { blow: 'staff', cry: 'woman', feet: 'boots' },
   poachers: { blow: 'dagger', cry: 'man', feet: 'boots' },

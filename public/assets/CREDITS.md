@@ -96,6 +96,18 @@ The `battle-*-sequence.png` sheets pack selected new cells with the existing qui
 fixed battle body scale. They are cut by the same `npm run mapart` pipeline and keep the game's
 palette and licence. The complete painted fallen pose remains on the same ground anchor.
 
+The remaining nine field troops, eleven rear-line leaders and the Ranger's spell gesture (#279)
+were painted on 12 October 2026 from the same fixed-body four-copy templates. Their requests are
+`art/map/jobs/battle-field-rest.json` and `battle-leaders-rest.json`. The troops keep their original
+spears, clubs, daggers, bows, tusks, jaws and eight-legged bodies. The rear-line figures speak,
+cast or loose their own bows while staying behind the line. The Ranger keeps his lowered longbow
+while his free hand casts. The goblin's first attack sheet added an unwanted second spear, so
+`battle-field-rest-corrections.json` removes only that extra pole. Every source and the rejected
+first goblin attempt are retained. The eleven field requests and correction cost $2.16, and the
+twelve leader and Ranger requests cost $2.16. The two ledgers record the actual requests and spend,
+$4.32 for this coverage and $7.20 for all battle cohorts. The derived sequence sheets pack these
+accepted cells and existing quiet rests at one fixed body scale, with the same palette and licence.
+
 ## The units: Battle for Wesnoth
 
 Under the painted figures, the troops and the hero are units from [Battle for Wesnoth](https://www.wesnoth.org/) 1.18:

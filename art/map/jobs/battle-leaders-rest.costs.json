@@ -1,0 +1,96 @@
+{
+  "issue": 279,
+  "date": "2026-10-12",
+  "currency": "USD",
+  "balance_before_remaining_batches": 4.75,
+  "total": 2.16,
+  "shared_balance_after_remaining_batches": 0.43,
+  "attempts": [
+    {
+      "sheet": "battle-baron-cast.png",
+      "balance_cost": 0.18,
+      "reported_remaining_balance": 4.57,
+      "used": true,
+      "inspection": "Inspected matching original body, face and equipment. Accepted cells are packed at the existing idle body calibration with absolute feet, without per-pose height fitting."
+    },
+    {
+      "sheet": "battle-sergeant-cast.png",
+      "balance_cost": 0.18,
+      "reported_remaining_balance": 3.85,
+      "used": true,
+      "inspection": "Inspected matching original body, face and equipment. Accepted cells are packed at the existing idle body calibration with absolute feet, without per-pose height fitting."
+    },
+    {
+      "sheet": "battle-pike-cast.png",
+      "balance_cost": 0.18,
+      "reported_remaining_balance": 3.31,
+      "used": true,
+      "inspection": "Inspected matching original body, face and equipment. Accepted cells are packed at the existing idle body calibration with absolute feet, without per-pose height fitting."
+    },
+    {
+      "sheet": "battle-foreman-cast.png",
+      "balance_cost": 0.18,
+      "reported_remaining_balance": 2.95,
+      "used": true,
+      "inspection": "Inspected matching original body, face and equipment. Accepted cells are packed at the existing idle body calibration with absolute feet, without per-pose height fitting."
+    },
+    {
+      "sheet": "battle-picketCaptain-cast.png",
+      "balance_cost": 0.18,
+      "reported_remaining_balance": 2.77,
+      "used": true,
+      "inspection": "Inspected matching original body, face and equipment. Accepted cells are packed at the existing idle body calibration with absolute feet, without per-pose height fitting."
+    },
+    {
+      "sheet": "battle-cutpurseCaptain-cast.png",
+      "balance_cost": 0.18,
+      "reported_remaining_balance": 2.41,
+      "used": true,
+      "inspection": "Inspected matching original body, face and equipment. Accepted cells are packed at the existing idle body calibration with absolute feet, without per-pose height fitting."
+    },
+    {
+      "sheet": "battle-highwaymanCaptain-cast.png",
+      "balance_cost": 0.18,
+      "reported_remaining_balance": 2.05,
+      "used": true,
+      "inspection": "Inspected matching original body, face and equipment. Accepted cells are packed at the existing idle body calibration with absolute feet, without per-pose height fitting."
+    },
+    {
+      "sheet": "battle-witch-cast.png",
+      "balance_cost": 0.18,
+      "reported_remaining_balance": 1.69,
+      "used": true,
+      "inspection": "Inspected matching original body, face and equipment. Accepted cells are packed at the existing idle body calibration with absolute feet, without per-pose height fitting."
+    },
+    {
+      "sheet": "battle-bramble-cast.png",
+      "balance_cost": 0.18,
+      "reported_remaining_balance": 1.33,
+      "used": true,
+      "inspection": "Inspected matching original body, face and equipment. Accepted cells are packed at the existing idle body calibration with absolute feet, without per-pose height fitting."
+    },
+    {
+      "sheet": "battle-heroRanger-cast.png",
+      "balance_cost": 0.18,
+      "reported_remaining_balance": 0.97,
+      "used": true,
+      "inspection": "Inspected matching original body, face and equipment. Accepted cells are packed at the existing idle body calibration with absolute feet, without per-pose height fitting."
+    },
+    {
+      "sheet": "battle-rook-ranged.png",
+      "balance_cost": 0.18,
+      "reported_remaining_balance": 0.79,
+      "used": true,
+      "inspection": "Inspected matching original body, face and equipment. Accepted cells are packed at the existing idle body calibration with absolute feet, without per-pose height fitting."
+    },
+    {
+      "sheet": "battle-poacherCaptain-ranged.png",
+      "balance_cost": 0.18,
+      "reported_remaining_balance": 0.61,
+      "used": true,
+      "inspection": "Inspected matching original body, face and equipment. Accepted cells are packed at the existing idle body calibration with absolute feet, without per-pose height fitting."
+    }
+  ],
+  "request_rejections": [],
+  "packing": "Exact existing quiet crops form each four-copy input template. New cells share that existing fixed body scale; they are packed with old quiet poses at battle size. Sequence scale is 1 with absolute common feet. No new gait, standing normalization, framework or rules change."
+}
