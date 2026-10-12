@@ -76,6 +76,16 @@ instead of freezing a running cell. Its request is `art/map/jobs/knights-rest.js
 is recorded with the rest of that owner's work, not charged again to #285. The Knight hero keeps
 his separate white horse. No additional generation was made for these shared poses.
 
+Battle now reuses those inspected map gaits and grounded rests at the same fixed body calibration
+(#279), without another generation. The first combat sheets were made with Retro Diffusion on
+12 October 2026 from the same isolated characters and HoMM2 references. `battle-swordsmen-melee.png`,
+`battle-archers-ranged.png` and `battle-wolves-melee.png` supply sword cuts, bow shots and bites;
+`battle-wizard-cast.png`, `battle-ranger-ranged.png` and `battle-courtier-cast.png` supply the heroes'
+magic, archery and gestures. Every frame keeps its complete original equipment and explicit ground
+anchor. Shots leave their painted bow, staff or hand on the release frame, before the figure recovers.
+Requests, selected cells and actual spend of $1.08 are recorded in `art/map/jobs/battle-first*.json`.
+These battle poses use the existing palette and game licence.
+
 ## The units: Battle for Wesnoth
 
 Under the painted figures, the troops and the hero are units from [Battle for Wesnoth](https://www.wesnoth.org/) 1.18:

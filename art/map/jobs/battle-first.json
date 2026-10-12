@@ -1,0 +1,68 @@
+[
+  {
+    "out": "art/map/sheets/battle-swordsmen-melee.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 27901,
+    "bypass_prompt_expansion": true,
+    "prompt": "Four consecutive SWORD ATTACK poses of the exact same friendly swordsman in the references. Preserve his silver helmet and white plume, steel mail, BLUE sleeves, brown breeches and boots, silver sword and blue steel shield. Identical body size, face, equipment and three-quarter RIGHT-facing view in every cell. TWO rows of TWO separate complete figures with space for the WHOLE sword. Top left prepares with shield forward and sword drawn back, both boots grounded. Top right winds the SAME sword back over his shoulder, elbow bent, torso turned slightly. Bottom left is CONTACT, that SAME sword swings forward and down towards an enemy to his right, arm extended, shield still held on his other arm, boots braced. Bottom right RECOVERS, drawing the sword back to the original quiet diagonal and standing planted behind his shield. Four genuinely different arm, blade and torso silhouettes, not four idle pictures or a body bounce. Keep the complete plume, boots, shield and sword point inside every cell, with no overlapping figures. EXACT charming painted 1996 DOS fantasy strategy game style of the references, bright colours, 256-colour painted shading, soft dithering, friendly face, not anime. Plain flat grey background and flatter grey ground shadows. No text, labels, effects, sparks or painted enemies.",
+    "reference_images": ["art/map/references/swordsmen.png", "art/map/sheets/map-swordsmen.png", "~/.config/retro-diffusion/refs/battle_troops.png"]
+  },
+  {
+    "out": "art/map/sheets/battle-archers-ranged.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 27902,
+    "bypass_prompt_expansion": true,
+    "prompt": "Four consecutive LONG BOW SHOOTING poses of the exact same friendly archer in the isolated reference and idle atlas. Preserve his brown hair, BLUE tunic, bare arms, brown belt, trousers and boots, quiver and the SAME wooden longbow. Identical body scale, clothes, bow and three-quarter RIGHT-facing view. TWO rows of TWO separate full-body figures. Top left prepares, takes an arrow from his quiver with the bow upright. Top right has the arrow NOCKED and bow fully DRAWN, bow arm straight towards the right and string hand at his cheek, bent bow and taut string clearly visible. Bottom left is RELEASE, string hand opens beside his cheek and bow straightens, arrow has just left and is NOT painted in flight. Bottom right lowers the SAME undrawn bow and returns to a quiet planted stance. Both boots stay grounded, arms, string tension and torso change visibly. No crossbow, extra weapon, jumping or whole-picture wobble. All complete heads, bows, hands and boots fit inside separate cells. Match the original charming painted 1996 DOS fantasy strategy art exactly, bright colours, 256-colour painted shading and soft dithering, not anime. Plain flat grey background with flatter grey ground shadows. No text, labels, arrows in flight, effects or enemies.",
+    "reference_images": ["art/map/references/archers.png", "art/map/sheets/map-archers-idle-atlas.png", "~/.config/retro-diffusion/refs/battle_troops.png"]
+  },
+  {
+    "out": "art/map/sheets/battle-wolves-melee.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 27903,
+    "bypass_prompt_expansion": true,
+    "prompt": "Four consecutive BITE ATTACK poses of the exact same grey wolf in the isolated reference and walking sheet. Preserve the same silver-grey fur, dark back markings, pale muzzle and belly, ears, eyes, tail, body proportions and friendly painted animal style. All face RIGHT in the same three-quarter side view, identical body scale. TWO rows of TWO separate complete wolves. Top left lowers his shoulders and crouches to prepare, paws braced. Top right opens his jaw and pushes his head forward, rear paws driving while forelegs extend. Bottom left is CONTACT, head reaches right and jaws close around an imaginary target, muzzle and teeth clearly different, body stretched but still a wolf, not a jump into the air. Bottom right draws his head back, closes his mouth and settles on all four planted paws in his original quiet stance. Four different head, jaw and leg silhouettes, no rigid-picture translation. Entire nose, ears, paws and tail inside each cell, separate wolves never touching. Exact charming painted 1996 DOS fantasy strategy game style of the reference, bright painted shading reduced to 256 colours and soft dithering. Flat grey background and flatter grey ground shadows. No text, labels, blood, effects or painted targets.",
+    "reference_images": ["art/map/references/wolves.png", "art/map/sheets/map-wolves.png", "~/.config/retro-diffusion/refs/battle_troops.png"]
+  },
+  {
+    "out": "art/map/sheets/battle-wizard-cast.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 27904,
+    "bypass_prompt_expansion": true,
+    "prompt": "Four consecutive SPELL CASTING poses of the exact same elderly Hedge Wizard in the isolated reference and accepted idle sheet. Preserve his friendly face, long WHITE beard, bent BLUE pointed hat with BROWN band, medium-blue long robe, brown belt and pouch, brown boots and the SAME crooked wooden staff. All face RIGHT in the same three-quarter view with identical body scale and proportions, BOTH boots planted. TWO rows of TWO separate complete figures. Top left prepares, free hand lifts from his belt while the other hand keeps the original staff upright. Top right gathers a spell, free palm close to his chest, elbow bent and shoulders turning slightly towards the right. Bottom left is RELEASE, free arm extends towards the right with palm open and fingers spread, staff remains in the other hand, beard and sleeves follow the gesture. Bottom right draws the free hand back to the belt and recovers to his original quiet planted stance. Four distinct hand, elbow, sleeve and torso poses. Do NOT add an orb, change the staff or hat, paint magical effects, float or jump. Keep the entire original hat, staff and boots inside every separate cell. Exact charming painted 1996 DOS fantasy strategy game art of the reference, bright colours, 256-colour painted shading, soft dithering, friendly face, not anime. Flat grey background with flatter grey shadows. No text, labels, scenery or effects.",
+    "reference_images": ["art/map/references/heroWizard.png", "art/map/sheets/map-wizard-idle-edit.png", "~/.config/retro-diffusion/refs/battle_hero.png"]
+  },
+  {
+    "out": "art/map/sheets/battle-ranger-ranged.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 27905,
+    "bypass_prompt_expansion": true,
+    "prompt": "Four consecutive LONG BOW SHOOTING poses of the exact same green-hooded Ranger in the isolated reference and accepted idle sheet. Preserve his young friendly face, GREEN hood and long cloak, green tunic, brown leather belt and pouch, brown breeches and boots, shoulder quiver and the SAME wooden longbow. Identical body scale, face, clothes and three-quarter RIGHT-facing view throughout. TWO rows of TWO separate complete figures. Top left takes an arrow from the quiver and raises the bow. Top right has an arrow NOCKED and bow fully DRAWN towards the right, bow arm straight and string hand at his cheek, bent bow and taut string visible. Bottom left is RELEASE, string fingers open beside his cheek and bow straightens, no arrow painted in flight. Bottom right lowers the SAME undrawn bow to his original quiet stance. BOTH boots remain planted; arms, string, cloak and torso have genuine different poses, not a picture wobble. No crossbow, horse, hat change, magic or new costume. Complete hood, bow, hands, cloak and boots fit separately inside every cell. Match the exact charming painted 1996 DOS fantasy strategy game style, bright 256-colour painted shading and soft dithering, not anime. Flat grey background and flatter grey shadows. No labels, text, effects or enemies.",
+    "reference_images": ["art/map/references/heroRanger.png", "art/map/sheets/map-ranger-idle.png", "~/.config/retro-diffusion/refs/battle_hero.png"]
+  },
+  {
+    "out": "art/map/sheets/battle-courtier-cast.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 27906,
+    "bypass_prompt_expansion": true,
+    "prompt": "Four consecutive expressive SPEAKING AND COMMANDING poses of the exact same Courtier in the isolated reference and accepted idle sheet. Preserve his friendly dark-moustached face, broad RED hat with curled brim and large GOLDEN plume, long bright RED coat with GOLD trim and buttons, WHITE puffed sleeves, brown belt, breeches and boots and slim SHEATHED sword. All face RIGHT in the same three-quarter view with identical body size and BOTH boots planted. TWO rows of TWO separate full-body figures. Top left begins his words, free hand lifting from his belt with palm open. Top right opens his mouth to speak and draws that free hand back beside his chest, elbow bent. Bottom left is the strong gesture, open mouth and free arm extended to the right, palm turned up as if delivering a witty challenge or conducting his men, the other hand stays at his belt. Bottom right closes his mouth and lowers his hand back to the original relaxed stance. Four genuinely different mouth, arm, elbow and sleeve poses; no rigid-picture rocking. Do not draw his sword, add a lute or new equipment, remove his hat, jump or change his costume. Keep the full golden plume, sleeves, coat and boots inside separate cells. Match the original charming painted 1996 DOS fantasy strategy game style exactly, bright colours, 256-colour painted shading and soft dithering, friendly readable face, not anime. Flat grey background with flatter grey ground shadows. No text, labels, magical effects or scenery.",
+    "reference_images": ["art/map/references/heroCourtier.png", "art/map/sheets/map-courtier-idle.png", "~/.config/retro-diffusion/refs/battle_hero.png"]
+  }
+]

@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { bodyHeight, STAND, troopFigure } from '../src/render/battleSprites';
-import { loadMapArt } from '../src/render/mapArt';
+import { loadMapArt, paintedAnimation } from '../src/render/mapArt';
+import { FIGURES } from '../src/render/mapPieces';
 import type { Bitmap } from '../src/render/bitmap';
 
 const picture = (sprite: Bitmap) => [...sprite.data].join(',');
@@ -46,6 +47,47 @@ describe('painted walking figures', () => {
     expect(later.sprite).not.toBe(first.sprite);
     expect(later.y).toBe(first.y);
     expect(later.x).toBe(first.x);
+  });
+
+  it.each(FIGURES.filter((id) => id !== 'hero'))('keeps %s battle travel and idle on their own fixed canvas and ground anchor', (id) => {
+    for (const anim of ['move', 'idle'] as const) {
+      const sequence = paintedAnimation(id, 'battle', anim);
+      expect(sequence, `${id} needs its loaded painted ${anim}`).not.toBeNull();
+      let ms = 0;
+      const frames = sequence!.frames.map((frame) => {
+        const figure = troopFigure(id, 'blue', 1, { anim, ms }, 'battle');
+        ms += frame.ms;
+        return figure;
+      });
+      expect(new Set(frames.map((frame) => picture(frame.sprite))).size).toBeGreaterThan(1);
+      expect(new Set(frames.map((frame) => `${frame.x},${frame.y},${frame.sprite.width},${frame.sprite.height}`)).size).toBe(1);
+    }
+  });
+
+  it.each([
+    ['swordsmen', 'melee'],
+    ['archers', 'ranged'],
+    ['wolves', 'melee'],
+    ['heroWizard', 'ranged'],
+    ['heroWizard', 'cast'],
+    ['heroRanger', 'ranged'],
+    ['heroCourtier', 'cast'],
+  ] as const)('gives %s a painted %s preparation, contact and recovery', (id, anim) => {
+    const sequence = paintedAnimation(id, 'battle', anim);
+    expect(sequence?.frames).toHaveLength(4);
+    expect(new Set(sequence!.frames.map((frame) => picture(frame.sprite))).size).toBe(4);
+    expect(sequence!.hit).toBeGreaterThan(0);
+    expect(sequence!.hit).toBeLessThan(sequence!.frames.reduce((total, frame) => total + frame.ms, 0));
+  });
+
+  it.each([
+    ['archers', 'ranged', [24, -43]],
+    ['heroRanger', 'ranged', [26, -43]],
+    ['heroWizard', 'ranged', [28, -69]],
+    ['heroWizard', 'cast', [28, -69]],
+    ['heroCourtier', 'cast', [31, -50]],
+  ] as const)('launches %s %s from its visible bow, staff or hand', (id, anim, launch) => {
+    expect(paintedAnimation(id, 'battle', anim)?.launch).toEqual(launch);
   });
 
   describe('optional painted sequences', () => {
