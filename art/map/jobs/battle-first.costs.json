@@ -1,0 +1,20 @@
+{
+  "issue": 279,
+  "date": "2026-10-12",
+  "currency": "USD",
+  "balance_before": 2.63,
+  "approved_top_up": 5,
+  "total": 1.08,
+  "balance_after": 6.55,
+  "attempts": [
+    { "sheet": "battle-swordsmen-melee.png", "balance_cost": 0.18, "used": true, "inspection": "The sheet supplied six cells despite the four-pose request. Select preparation, wind-up, the lower-left full sword cut and lower-right recovery. Original blue sleeves, plume, sword and shield remain." },
+    { "sheet": "battle-archers-ranged.png", "balance_cost": 0.18, "used": true, "inspection": "Four complete matching blue-tunic archer poses. The bow is nocked and bent, then straightens at release, and lowers to recover. The projectile is drawn by the game, not baked into the sheet." },
+    { "sheet": "battle-wolves-melee.png", "balance_cost": 0.18, "used": true, "inspection": "The sheet supplied six cells. Select the crouch, open-jaw lunge, closing bite and lower-right grounded recovery. The grey coat, muzzle and tail remain. All selected cells share one fixed calibration." },
+    { "sheet": "battle-wizard-cast.png", "balance_cost": 0.18, "used": true, "inspection": "Select preparation, gathering, lower-left invocation and lower-right recovery from six cells. The lower-middle hand was hidden behind his beard and was not readable enough. His crooked staff, blue hat and white beard remain; the free arm opens while the staff tilts towards the enemy. The same sequence casts a spell and releases his ordinary magic shot from the visible staff tip." },
+    { "sheet": "battle-ranger-ranged.png", "balance_cost": 0.18, "used": true, "inspection": "Four matching green-hooded longbow poses. The draw, open fingers and relaxed bow make the release readable without a weapon or costume swap." },
+    { "sheet": "battle-courtier-cast.png", "balance_cost": 0.18, "used": true, "inspection": "Select four of six cells. The red coat, gold plume, white sleeves and sheathed sword remain; mouth, hand and arm deliver his words and return to quiet rest. No invented instrument or drawn sword." }
+  ],
+  "request_rejections": [
+    { "operation": "free price estimate", "reported_cost": null, "reason": "The initial check_cost request was rejected because the existing call helper sends an Idempotency-Key. The free estimate succeeded without that header and returned 0.18 with the unchanged 2.63 balance. No generation was submitted by the rejected request." }
+  ]
+}

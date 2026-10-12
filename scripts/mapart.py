@@ -275,6 +275,16 @@ FIGURE_ANIMATIONS = {
                 ((161, 145, 224, 255), (192, 251), 1200),
             ],
         },
+        'ranged': {
+            'sheet': 'battle-archers-ranged', 'scale': 64 / 103, 'sizes': ['battle'],
+            'frames': [
+                ((26, 15, 97, 128), (64, 123), 140),
+                ((146, 0, 235, 128), (181, 123), 220),
+                ((27, 127, 109, 256), (64, 251), 120),
+                ((160, 143, 225, 256), (192, 251), 240),
+            ],
+            'hit': 360, 'launch': (38, -70),
+        },
     },
     'swordsmen': {
         'move': {
@@ -290,6 +300,16 @@ FIGURE_ANIMATIONS = {
         'idle': {
             'sheet': 'map-swordsmen', 'scale': 68 / 118, 'sizes': ['map'],
             'frames': [((89, 127, 161, 256), (128, 252), 2040), ((179, 130, 248, 256), (213, 252), 360)],
+        },
+        'melee': {
+            'sheet': 'battle-swordsmen-melee', 'scale': 68 / 117, 'sizes': ['battle'],
+            'frames': [
+                ((8, 1, 81, 128), (45, 122), 140),
+                ((83, 1, 164, 128), (128, 125), 100),
+                ((9, 128, 100, 256), (45, 252), 120),
+                ((178, 128, 249, 256), (213, 252), 220),
+            ],
+            'hit': 240,
         },
     },
     'crossbowmen': {
@@ -611,6 +631,16 @@ FIGURE_ANIMATIONS = {
             'sheet': 'map-wolves', 'scale': 44 / 73, 'sizes': ['map'],
             'frames': [((90, 174, 170, 254), (128, 250), 1560), ((164, 176, 254, 254), (213, 250), 480)],
         },
+        'melee': {
+            'sheet': 'battle-wolves-melee', 'scale': 44 / 73, 'sizes': ['battle'],
+            'frames': [
+                ((0, 7, 128, 85), (64, 81), 120),
+                ((128, 0, 256, 85), (192, 80), 100),
+                ((0, 89, 128, 172), (64, 166), 100),
+                ((162, 172, 256, 256), (213, 251), 220),
+            ],
+            'hit': 220,
+        },
     },
     'knights': {
         'stand': {
@@ -683,6 +713,16 @@ FIGURE_ANIMATIONS = {
                 ((180, 131, 253, 252), (216, 249), 1200),
             ],
         },
+        'cast': {
+            'sheet': 'battle-wizard-cast', 'scale': 72 / 115, 'sizes': ['battle'],
+            'frames': [
+                ((11, 5, 85, 128), (47, 124), 140),
+                ((97, 5, 172, 128), (132, 124), 180),
+                ((0, 129, 99, 252), (47, 248), 140),
+                ((183, 129, 255, 252), (216, 248), 180),
+            ],
+            'hit': 320, 'launch': (45, -110),
+        },
     },
     'heroRanger': {
         'move': {
@@ -706,6 +746,16 @@ FIGURE_ANIMATIONS = {
                 ((153, 133, 236, 256), (192, 253), 1200),
             ],
         },
+        'ranged': {
+            'sheet': 'battle-ranger-ranged', 'scale': 72 / 118, 'sizes': ['battle'],
+            'frames': [
+                ((24, 4, 118, 128), (66, 124), 160),
+                ((152, 0, 247, 128), (185, 124), 220),
+                ((25, 127, 116, 256), (66, 253), 140),
+                ((150, 131, 239, 256), (192, 253), 240),
+            ],
+            'hit': 380, 'launch': (43, -71),
+        },
     },
     'heroCourtier': {
         'move': {
@@ -728,6 +778,16 @@ FIGURE_ANIMATIONS = {
                 ((5, 134, 73, 255), (41, 252), 240),
                 ((177, 132, 245, 255), (211, 252), 1200),
             ],
+        },
+        'cast': {
+            'sheet': 'battle-courtier-cast', 'scale': 72 / 117, 'sizes': ['battle'],
+            'frames': [
+                ((4, 3, 79, 128), (41, 124), 140),
+                ((89, 4, 160, 128), (127, 124), 180),
+                ((5, 132, 98, 256), (41, 252), 140),
+                ((177, 130, 246, 256), (211, 252), 180),
+            ],
+            'hit': 320, 'launch': (50, -81),
         },
     },
     'heroKnight': {
@@ -766,6 +826,15 @@ FIGURE_ANIMATIONS = {
         },
     },
 }
+FIGURE_ANIMATIONS['heroWizard']['ranged'] = FIGURE_ANIMATIONS['heroWizard']['cast']
+# Battle reuses the inspected map bodies and rests on their grounded idle, never on a gait cell.
+for _name, _poses in FIGURE_ANIMATIONS.items():
+    for _anim in ('move', 'idle'):
+        if 'battle' not in _poses[_anim]['sizes']:
+            _poses[_anim]['sizes'].append('battle')
+    if 'stand' not in _poses:
+        _idle = _poses['idle']
+        _poses['stand'] = {**_idle, 'sizes': ['battle'], 'frames': [(*_idle['frames'][0][:2], 100)]}
 # The payday feast (#191): Aldric and his troops celebrating payday round the fire, and the camp's things. Four sheets
 # (feast-1 to feast-4), cut at the size they were drawn, a little closer than the battle's (a person sitting is about
 # 60 px), and with no shadow of their own: the feast lays its shadows away from its fire. Each troop's figure is named
@@ -950,7 +1019,7 @@ def cut_animation(name, anim, spec):
     total = sum(ms for _, _, ms in spec['frames'])
     if any(ms <= 0 for _, _, ms in spec['frames']):
         raise ValueError(f'{name} {anim}: frame durations must be positive')
-    if anim in ('melee', 'charge', 'ranged') and 'hit' not in spec:
+    if anim in ('melee', 'charge', 'ranged', 'cast') and 'hit' not in spec:
         raise ValueError(f'{name} {anim}: an attack needs its visible contact time')
     if 'hit' in spec and not 0 <= spec['hit'] < total:
         raise ValueError(f'{name} {anim}: hit must fall within the animation')
@@ -977,7 +1046,8 @@ def cut_animation(name, anim, spec):
             x, y = -foot[0] - left, -foot[1] - top
             out[y:y + px.shape[0], x:x + px.shape[1]] = px
             Image.fromarray(out).save(os.path.join(TROOPS_OUT, f"{frame['name']}-{size}.png"))
-    return {'frames': frames, 'feet': feet, **{key: spec[key] for key in ('hit', 'stride', 'footfalls') if key in spec}}
+    launch = {'launch': [round(n * spec['scale']) for n in spec['launch']]} if 'launch' in spec else {}
+    return {'frames': frames, 'feet': feet, **{key: spec[key] for key in ('hit', 'stride', 'footfalls') if key in spec}, **launch}
 
 
 def heath(rgb):
@@ -1170,7 +1240,7 @@ def main():
         f.write(f"export const GROVE_TREES = {json.dumps(kinds)} as const;\n")
         f.write(f"export const GROUNDS = {json.dumps(list(GROUND))} as const;\n")
         f.write(f"/** The troops and Aldric's figures, painted: in public/assets/troops/, each at battle and map size. */\nexport const FIGURES = {json.dumps(list(FIGURES))} as const;\n")
-        f.write("export type FigureAnimation = {\n  frames: readonly { name: string; ms: number }[];\n  feet: Partial<Record<'battle' | 'map', readonly [number, number]>>;\n  hit?: number;\n  stride?: number;\n  footfalls?: readonly number[];\n};\n")
+        f.write("export type FigureAnimation = {\n  frames: readonly { name: string; ms: number }[];\n  feet: Partial<Record<'battle' | 'map', readonly [number, number]>>;\n  hit?: number;\n  launch?: readonly [number, number];\n  stride?: number;\n  footfalls?: readonly number[];\n};\n")
         f.write("export const FIGURE_ANIMATIONS: Record<string, Partial<Record<import('./battleSprites').AnimName, FigureAnimation>>> = " + json.dumps(animations) + ";\n")
         f.write(f"/** The payday feast's pieces (#191), in public/assets/feast/: Aldric as each background, a figure for each troop that has one, and the camp's things. */\nexport const FEAST_PIECES = {json.dumps(list(FEAST))} as const;\n")
         f.write("export type FeastPieceName = (typeof FEAST_PIECES)[number];\n")

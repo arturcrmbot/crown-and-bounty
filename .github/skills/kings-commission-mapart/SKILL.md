@@ -74,7 +74,10 @@ trees along the top cut by the frame, clumps in the corners, and obstacles at ba
   `mapArt.ts` exposes a sequence only when every frame is loaded. `troopFigure` reads it through the existing
   `Pose`; move and idle loop, other poses hold the last frame. Missing sets keep the old painted or Wesnoth
   fallback. Every attack supplies `hit`, the visible contact time in milliseconds, which `hitTime` and
-  `animLength` pass to the battle's strike and sound. A map move supplies `stride` in map pixels per full cycle
+  `animLength` pass to the battle's strike and sound. A shot or cast also supplies `launch`, the source-pixel
+  offset from its contact frame's foot to its bow, staff tip or hand. The cutter scales it once to battle
+  pixels; the battle mirrors it with the figure and holds that pose while the projectile flies.
+  A map move supplies `stride` in map pixels per full cycle
   and `footfalls` in cycle milliseconds. The map converts both frame boundaries and contacts to travelled
   distance, including bends and Shift, and lays its shadow and ring at a stable foot anchor for both facings.
   The wizard's six walk frames are the first set. Jobs, inspected attempts and actual spend are recorded beside

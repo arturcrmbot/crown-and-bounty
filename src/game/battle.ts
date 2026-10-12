@@ -237,7 +237,8 @@ export class BattleController implements Screen {
    */
   private flourish(id: number, anim: 'idle' | 'cast', start: () => void) {
     const f = fighterById(this.battle, id);
-    const length = ART[f.troop][anim] ? Math.min(700, animLength(f.troop, anim)) : 0;
+    if (anim === 'idle' && paintedAnimation(f.troop, 'battle', 'cast')) anim = 'cast';
+    const length = paintedAnimation(f.troop, 'battle', anim) || ART[f.troop][anim] ? Math.min(700, animLength(f.troop, anim)) : 0;
     this.step(Math.max(0.3, length * MS), {
       start,
       tick: (t) => length && this.view.poses.set(id, { anim, ms: Math.min(length, (t * Math.max(0.3, length * MS)) / MS) }),
@@ -577,8 +578,8 @@ export class BattleController implements Screen {
   }
 
   /**
-   * A caster casts from behind his men: he raises his hands (in his casting frames, if Wesnoth drew
-   * him any) and the magic gathers round him before it flies. An order is bellowed instead, for
+   * A caster casts from behind his men: in his painted frames or the existing fallback, the magic
+   * gathers round him before it flies. An order is bellowed instead, for
    * all to hear. Nothing plays for a hero with no fighter of his own (a battle saved before he had one).
    */
   private cast(spell: SpellId, before: BattleState, by?: number) {
@@ -587,12 +588,16 @@ export class BattleController implements Screen {
     if (!caster || caster.count <= 0) return;
     const [x, y] = this.spot(caster.id);
     const art = ART[caster.troop];
+    const painted = paintedAnimation(caster.troop, 'battle', 'cast');
     const { look, shout } = SPELLS[spell];
-    const hands: [number, number] = [x + 4 * this.facingOf(caster), y + 12 - bodyHeight(caster.troop, 'battle') * 0.5];
+    const hands: [number, number] = painted?.launch
+      ? [x + painted.launch[0] * this.facingOf(caster), y + 12 + painted.launch[1]]
+      : [x + 4 * this.facingOf(caster), y + 12 - bodyHeight(caster.troop, 'battle') * 0.5];
     const glow: Shot = { from: hands, to: hands, t: 0, kind: 'gather', color: look.colour === 'blue' ? BLUE[6] : look.colour === 'red' ? RED[5] : GOLD[6] };
-    const frames = art.cast ? art.cast.reduce((t, f) => t + f.ms, 0) : 300;
+    const frames = painted ? animLength(caster.troop, 'cast') : art.cast ? art.cast.reduce((t, f) => t + f.ms, 0) : 300;
+    const contact = painted?.hit ?? frames;
     // An order takes long enough to be heard.
-    const length = shout ? Math.max(frames, 900) : frames;
+    const length = shout ? Math.max(contact, 900) : contact;
     this.step(length * MS, {
       start: () => {
         if (!shout) v.shots.push(glow);
@@ -604,12 +609,16 @@ export class BattleController implements Screen {
       },
       tick: (t) => {
         glow.t = t;
-        if (art.cast) v.poses.set(caster.id, { anim: 'cast', ms: Math.min(frames, t * length) });
+        if (painted || art.cast) v.poses.set(caster.id, { anim: 'cast', ms: Math.min(contact, t * length) });
       },
       end: () => {
         if (!shout) v.shots.splice(v.shots.indexOf(glow), 1);
-        v.poses.delete(caster.id);
+        if (!painted) v.poses.delete(caster.id);
       },
+    });
+    if (painted) return () => this.step(Math.max(FRAME, (frames - contact) * MS), {
+      tick: (t) => v.poses.set(caster.id, { anim: 'cast', ms: contact + t * (frames - contact) }),
+      end: () => v.poses.delete(caster.id),
     });
   }
 
@@ -670,9 +679,9 @@ export class BattleController implements Screen {
     const anim = e.ranged ? 'ranged' : e.charge && art.charge ? 'charge' : 'melee';
     const knight = attacker.troop === 'knights' || attacker.troop === 'heroKnight';
     const mounted = knight || target.troop === 'knights';
-    const painted = knight && !e.ranged && !!paintedAnimation(attacker.troop, 'battle', anim);
+    const painted = paintedAnimation(attacker.troop, 'battle', anim);
     const contact = hitTime(attacker.troop, anim);
-    const soundLead = !e.ranged && mounted ? CONTACT / MS * this.pace * (this.auto ? 2.5 : 1) : 0;
+    const soundLead = !e.ranged && (painted || mounted) ? CONTACT / MS * this.pace * (this.auto ? 2.5 : 1) : 0;
     // The charge's opening gait has already played on the approach. Finish the last stride into contact.
     const begins = painted && e.charge && anim === 'charge' ? Math.max(0, contact - Math.max(100, soundLead)) : 0;
     const hit = contact - begins;
@@ -696,7 +705,7 @@ export class BattleController implements Screen {
     const missile = e.ranged ? (art.ranged?.missile ?? 'arrow') : null;
     // A company of archers or crossbowmen looses a volley, not one arrow (#190).
     const extra = missile === 'arrow' || missile === 'quarrel' ? volleyOf(attacker.count, isLeader(attacker)) - 1 : 0;
-    const release = missile ? Math.max(0, hit - 150) : hit;
+    const release = missile && !painted ? Math.max(0, hit - 150) : hit;
     const leading = Math.min(release, soundLead);
     const prepare = release - leading;
     // The ribbon names the blow as it starts, and says what it did when it lands.
@@ -735,7 +744,10 @@ export class BattleController implements Screen {
     });
     if (missile) {
       // The release frame holds while the shot flies, however far.
-      const shot: Shot = { from: [ax + ux * 12, ay - bodyHeight(attacker.troop, 'battle') * 0.55], to: [tx, ty + 12 - bodyHeight(target.troop, 'battle') * 0.5], t: 0, kind: missile };
+      const origin: [number, number] = painted?.launch
+        ? [ax + painted.launch[0] * (tx >= ax ? 1 : -1), ay + 12 + painted.launch[1]]
+        : [ax + ux * 12, ay - bodyHeight(attacker.troop, 'battle') * 0.55];
+      const shot: Shot = { from: origin, to: [tx, ty + 12 - bodyHeight(target.troop, 'battle') * 0.5], t: 0, kind: missile };
       const flight = 0.16 + len / 1500;
       this.step(flight, {
         start: () => {
@@ -865,13 +877,13 @@ export class BattleController implements Screen {
           const path = back ? [...e.path.slice(1).map(hexCentre), this.spot(f.id)] : e.path.map(hexCentre);
           if (!back) v.positions.set(e.fighter, start);
           if (leader && !back) out.set(e.fighter, path[path.length - 1]);
-          // Riders gallop and beasts lope, in their own frames; folk on foot hop from hex to hex.
-          const frames = !!ART[f.troop].move;
+          // Loaded gaits keep their own stride clock; an older figure keeps its fallback hop.
           const feet = `feet:${TROOP_SOUNDS[f.troop].feet}` as const;
           // A charge's run-up (#190): dust flies from the hooves on every hex of it.
           const charging = !back && events.some((n) => n.type === 'hit' && n.charge && n.attacker === e.fighter);
           const chargeGait = charging ? paintedAnimation(f.troop, 'battle', 'charge') : null;
           const gait = chargeGait ?? paintedAnimation(f.troop, 'battle', 'move');
+          const frames = !!gait || !!ART[f.troop].move;
           const cycle = gait ? (chargeGait ? hitTime(f.troop, 'charge') : animLength(f.troop, 'move')) : 0;
           let gaitMs = 0;
           let heardMs = -0.001;
@@ -974,7 +986,7 @@ export class BattleController implements Screen {
             if (h.healed) this.mend(left, h.target, h.healed);
             return { h, dies, remaining: { ...left.get(h.target)! }, ours: fighterById(this.battle, h.target).side === 'player' };
           });
-          this.cast(e.spell, before, e.by);
+          const recover = this.cast(e.spell, before, e.by);
           const spell = SPELLS[e.spell];
           const target = fighterById(this.battle, e.target);
           const look = spell.look;
@@ -987,7 +999,10 @@ export class BattleController implements Screen {
             const [tx, ty] = hexCentre(x.at);
             if (look.kind === 'missile' && caster !== undefined) {
               const [cx, cy] = this.spot(caster);
-              return { from: [cx, cy - 20] as [number, number], to: [tx, ty - 10] as [number, number], t: 0, kind: 'magic' as const, color: colour };
+              const f = fighterById(this.battle, caster);
+              const launch = paintedAnimation(f.troop, 'battle', 'cast')?.launch;
+              const origin: [number, number] = launch ? [cx + launch[0] * this.facingOf(f), cy + 12 + launch[1]] : [cx, cy - 20];
+              return { from: origin, to: [tx, ty - 10] as [number, number], t: 0, kind: 'magic' as const, color: colour };
             }
             return { from: [tx, 0] as [number, number], to: [tx, ty - 10] as [number, number], t: 0, kind: look.kind === 'missile' ? ('bolt' as const) : look.kind, color: colour };
           });
@@ -1085,6 +1100,7 @@ export class BattleController implements Screen {
               for (const f of fallers) f.end();
             },
           });
+          recover?.();
           break;
         }
         case 'wait':
@@ -1166,7 +1182,7 @@ export class BattleController implements Screen {
           });
           if (joined === undefined) {
             const edge = target.side === 'player' ? MAP_VIEW.x - 40 : MAP_VIEW.x + MAP_VIEW.width + 40;
-            const frames = !!ART[target.troop].move;
+            const frames = !!paintedAnimation(target.troop, 'battle', 'move') || !!ART[target.troop].move;
             const length = 0.3 + Math.abs(edge - tx) / 240;
             this.step(length, {
               start: () => {
@@ -1241,7 +1257,7 @@ export class BattleController implements Screen {
         }
         case 'volley':
           // An order: he bellows it, and the shots that follow are his men's.
-          if (e.spell) this.cast(e.spell, before, e.by);
+          if (e.spell) this.cast(e.spell, before, e.by)?.();
           else this.step(0.3, { start: () => (v.log = 'From the treeline, your archers loose a volley before anyone moves!') });
           break;
         case 'skip': {
@@ -1322,12 +1338,13 @@ export class BattleController implements Screen {
                 }
                 const [x, y] = this.spot(f.id);
                 const k = Math.min(1, t / 0.4);
-                const hop = ART[f.troop].move ? 0 : Math.abs(Math.sin(k * Math.PI * 5)) * 3;
+                const frames = !!paintedAnimation(f.troop, 'battle', 'move') || !!ART[f.troop].move;
+                const hop = frames ? 0 : Math.abs(Math.sin(k * Math.PI * 5)) * 3;
                 const away = f.side === 'player' ? -1 : 1;
                 const edge = away < 0 ? MAP_VIEW.x - 70 : MAP_VIEW.x + MAP_VIEW.width + 70;
                 v.facings.set(f.id, away);
                 v.positions.set(f.id, [x + (edge - x) * k, y - hop]);
-                v.poses.set(f.id, ART[f.troop].move ? { anim: 'move', ms: t * 2200 } : STAND);
+                v.poses.set(f.id, frames ? { anim: 'move', ms: t * 2200 } : STAND);
                 if (k >= 1) v.hidden.add(f.id);
               }
             },

@@ -43,6 +43,7 @@ function standardOf(troops: TroopId[]): Standard | null {
 
 /** Now and then a stack that waits fidgets, as its Wesnoth unit does, each on its own clock. */
 function fidget(troop: TroopId, id: number, time: number): Pose {
+  if (paintedAnimation(troop, 'battle', 'idle')) return { anim: 'idle', ms: (time + id * 1.7) * 1000 };
   if (!ART[troop].idle || time === 0) return STAND;
   const period = 6 + ((id * 2.3) % 5);
   const ms = (((time + id * 1.7) % period) - (period - animLength(troop, 'idle') / 1000)) * 1000;

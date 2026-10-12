@@ -33,4 +33,13 @@ describe('painted figures (#255)', () => {
       expect([...rests].some((rest) => walks.has(rest)), `${id} must not freeze a walking bitmap to rest`).toBe(false);
     }
   });
+
+  it('reuses every inspected gait and grounded rest at battle scale', () => {
+    const pending = Object.keys(TROOPS).flatMap((id) => (['move', 'idle', 'stand'] as const).flatMap((anim) => {
+      const sequence = FIGURE_ANIMATIONS[id]?.[anim];
+      if (!sequence?.feet.battle) return [`${id} ${anim}`];
+      return sequence.frames.filter((frame) => !existsSync(`public/assets/troops/${frame.name}-battle.png`)).map((frame) => `${frame.name} asset`);
+    }));
+    expect(pending, 'battle must load the painted poses, not only the map-sized ones').toEqual([]);
+  });
 });
