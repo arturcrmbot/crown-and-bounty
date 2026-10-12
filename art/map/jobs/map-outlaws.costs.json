@@ -1,0 +1,56 @@
+{
+  "issue": 285,
+  "date": "2026-10-12",
+  "currency": "USD",
+  "total": 1.44,
+  "attempts": [
+    {
+      "sheet": "map-cutpurseCaptain.png",
+      "balance_cost": 0.18,
+      "used": true,
+      "inspection": "The purple coat, face, feather and dagger match. Four walking leg poses and two grounded rests with small hand, face and coat changes."
+    },
+    {
+      "sheet": "map-cutpurses.png",
+      "balance_cost": 0.18,
+      "used": true,
+      "inspection": "The russet jerkin, grey cap, purse and dagger match. The sheet has four walk poses on top and three rests below, not the requested grid. Use all four top poses and the first two rests."
+    },
+    {
+      "sheet": "map-highwaymanCaptain.png",
+      "balance_cost": 0.18,
+      "used": true,
+      "inspection": "The dark coat, mask, red feather and sabre match. Alternating walking poses and quiet rests with a sash-hand and chin change."
+    },
+    {
+      "sheet": "map-bandits.png",
+      "balance_cost": 0.18,
+      "used": true,
+      "inspection": "The dark coat, blue breeches, hat and shoulder-carried club match. Opposite walking legs and restrained changes to the arm, coat and face."
+    },
+    {
+      "sheet": "map-poacherCaptain.png",
+      "balance_cost": 0.18,
+      "used": true,
+      "inspection": "The old face, brown hat, leather, rabbits and longbow match. Four walking poses and two planted rests with subtle head and hand changes."
+    },
+    {
+      "sheet": "map-poachers.png",
+      "balance_cost": 0.18,
+      "used": true,
+      "inspection": "The brown hood remains distinct from the Ranger's green hood. Boots, bow arm and leather folds move; the two rests change his grip and listening pose."
+    },
+    {
+      "sheet": "map-rook.png",
+      "balance_cost": 0.18,
+      "used": true,
+      "inspection": "Rook keeps his broad brown hat, beard, leather and bow. Four walking poses and two grounded listening rests."
+    },
+    {
+      "sheet": "map-wolves.png",
+      "balance_cost": 0.18,
+      "used": true,
+      "inspection": "The shaggy grey wolf and pale muzzle match. The sheet supplied nine poses. Use the first four for paws passing and opposite leads, and the last two for a planted ear, muzzle and tail change."
+    }
+  ]
+}

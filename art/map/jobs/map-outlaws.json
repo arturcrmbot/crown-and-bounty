@@ -1,0 +1,130 @@
+[
+  {
+    "out": "art/map/sheets/map-cutpurseCaptain.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28520,
+    "bypass_prompt_expansion": true,
+    "prompt": "Six animation poses of the exact SAME cutpurse captain in the isolated reference and the top middle of units-e. Keep his battered brown feathered cap, moustached face, patched PURPLE coat, brown breeches and boots, long dagger and small purse at his belt. Same face, costume, weapons, proportions and body size in EVERY pose. All face right in the same three-quarter view. Two rows of THREE full-body figures, read left to right then next row. A near boot planted forward, far boot trailing. B far boot passes under the body, free arm swings, purple coat folds. C FAR boot planted forward, NEAR boot trailing, opposite arm swing and coat fold. D near boot passes under the body, returning to A. These first FOUR poses form a complete grounded looping walk, opposite legs leading in the two halves, no attack, no jumping or sliding. E waits with BOTH boots planted, looking slyly ahead, dagger carried low. F still waits with BOTH boots planted in the same positions, half-closes his eyes and subtly shifts his fingers at the purse, feather and coat folds settle. Last TWO are gentle IDLE, no step, no whole-body bounce. Match the original charming painted 1996 DOS fantasy strategy game art exactly: bright colours, painted shading reduced to 256 colours, soft dithering, friendly readable faces, not anime. Each complete figure separate and not touching, on one plain flat grey background with flatter grey ground shadows. No text, labels, extra people, items or effects.",
+    "reference_images": [
+      "art/map/references/cutpurseCaptain.png",
+      "art/map/sheets/units-e.png",
+      "~/.config/retro-diffusion/refs/battle_troops.png",
+      "~/.config/retro-diffusion/refs/battle_hero.png"
+    ]
+  },
+  {
+    "out": "art/map/sheets/map-cutpurses.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28521,
+    "bypass_prompt_expansion": true,
+    "prompt": "Six animation poses of the exact SAME skinny cutpurse in the isolated reference and the top left of units-e. Keep the grey cap, sly friendly face, patched RUSSET jerkin, grey breeches, brown shoes, little dagger in one hand and stolen purse in the other, slightly crouched stance. Same face, equipment and body size in EVERY pose, all facing right in the same three-quarter view. Two rows of THREE, read left to right then next row. A nearer shoe planted forward, far shoe behind. B far foot passes beneath him while purse and jerkin swing gently. C FAR shoe planted forward and NEAR shoe behind, purse swings the other way. D near foot passes beneath him, returning to A. First FOUR form a complete grounded sneaking walk with opposite legs leading, not an attack or leap. E stands quietly with BOTH feet planted, peering ahead and holding the purse. F keeps BOTH feet planted in the same positions, glances subtly at the purse and tightens his fingers, shoulders and cap settle slightly. Last TWO are restrained IDLE poses, no stepping or whole-picture bouncing. Match the original charming painted 1996 DOS fantasy strategy game art exactly: bright colours, painted shading reduced to 256 colours, soft dithering, friendly readable faces, not anime. Six separate complete full-body figures, not touching, on one plain flat grey background with flatter grey shadows. No text, labels, extra objects or effects.",
+    "reference_images": [
+      "art/map/references/cutpurses.png",
+      "art/map/sheets/units-e.png",
+      "~/.config/retro-diffusion/refs/battle_troops.png",
+      "~/.config/retro-diffusion/refs/battle_hero.png"
+    ]
+  },
+  {
+    "out": "art/map/sheets/map-highwaymanCaptain.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28522,
+    "bypass_prompt_expansion": true,
+    "prompt": "Six animation poses of the exact SAME highwayman captain in the isolated reference and the top right of units-e. Keep his black mask, large BLACK tricorn with RED feather, long dark charcoal coat, RED sash, grey breeches, dark boots and curved silver sabre carried LOW in his right hand. Same face, colours, costume, proportions and body size in EVERY pose, all facing right in the same three-quarter view. Two rows of THREE, read left to right then next row. A near boot planted forward and far boot behind. B far boot passes beneath him, free arm swings and long coat folds. C FAR boot planted forward and NEAR boot behind, opposite coat and arm swing. D near boot passes beneath him, returning to A. First FOUR form a repeatable grounded walking cycle, no attack, raised sword, hopping or sliding. E rests with BOTH boots planted, sabre low, looking ahead. F keeps BOTH boots planted in the same places, tilts his chin very slightly and relaxes his free hand on his sash, red feather folds differently. Last TWO are gentle IDLE with small changes inside the figure, not whole-body bounce. Match the original charming painted 1996 DOS fantasy strategy game style exactly: bright colours, painted shading reduced to 256 colours, soft dithering, friendly readable face, not anime. Each complete full-body figure separate and not touching on one plain flat grey background with flatter grey ground shadows. No labels, lettering, extra figures or effects.",
+    "reference_images": [
+      "art/map/references/highwaymanCaptain.png",
+      "art/map/sheets/units-e.png",
+      "~/.config/retro-diffusion/refs/battle_troops.png",
+      "~/.config/retro-diffusion/refs/battle_hero.png"
+    ]
+  },
+  {
+    "out": "art/map/sheets/map-bandits.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28523,
+    "bypass_prompt_expansion": true,
+    "prompt": "Six animation poses of the exact SAME bandit in the isolated reference and the top left of units-c. Keep his BLACK broad tricorn hat with GOLD edging, friendly grizzled face, long dark grey coat over a muted ochre shirt, BLUE breeches, brown boots and wooden CLUB held over his shoulder. Same character, clothes, club, proportions and body size in EVERY pose, facing right in the same three-quarter view. Two rows of THREE, read left to right then next row. A near boot planted ahead and far boot behind. B far boot passes beneath him, free arm and coat tails swing gently, club stays on the shoulder. C FAR boot planted ahead and NEAR boot behind, opposite coat and arm swing. D near boot passes beneath him, returning to A. First FOUR form one complete grounded walk with alternate legs leading, not an attack or jump. E rests with BOTH boots planted and the club on his shoulder. F keeps BOTH boots planted in the same positions, eases his club hand a little and glances sideways with a small shoulder and coat fold change. Last TWO are gentle IDLE, no stepping, no whole-picture bounce. Match the original charming painted 1996 DOS fantasy strategy game art exactly: bright colours, painted shading reduced to 256 colours, soft dithering, friendly readable face, not anime. All six full-body figures complete, separate and not touching on a plain flat grey background with flatter grey ground shadows. No text, labels, scenery or effects.",
+    "reference_images": [
+      "art/map/references/bandits.png",
+      "art/map/sheets/units-c.png",
+      "~/.config/retro-diffusion/refs/battle_troops.png",
+      "~/.config/retro-diffusion/refs/battle_hero.png"
+    ]
+  },
+  {
+    "out": "art/map/sheets/map-poacherCaptain.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28524,
+    "bypass_prompt_expansion": true,
+    "prompt": "Six animation poses of the exact SAME elderly poacher captain in the isolated reference and the bottom left of units-e. Keep his broad brown hat, weathered friendly face, brown leather jerkin, brown trousers and boots, wooden longbow held low, rabbits at his belt and exact equipment and body proportions. All face right in the same three-quarter view at IDENTICAL body size. Two rows of THREE, read left to right then next row. A near boot planted forward, far boot trailing. B far boot passes under him, bow arm rocks slightly and belt rabbits sway. C FAR boot planted forward, NEAR boot behind, bow and rabbits sway the other way. D near boot passes under him, returning to A. First FOUR form a complete grounded walk, opposite legs lead the two halves, no shooting, arrow drawn, jump or slide. E rests with BOTH boots planted, bow low, watching ahead. F keeps BOTH boots planted in the same places, listens with a slight head turn and blink, his fingers and leather folds settle. Last TWO are restrained IDLE, no stepping or whole-body bounce. Match the original charming painted 1996 DOS fantasy strategy game art exactly: bright colours, painted shading reduced to 256 colours, soft dithering, friendly clearly readable face, not anime. Each full-body figure separate, complete and not touching on one plain flat grey background with flatter grey shadows. No labels, lettering, extra people or effects.",
+    "reference_images": [
+      "art/map/references/poacherCaptain.png",
+      "art/map/sheets/units-e.png",
+      "~/.config/retro-diffusion/refs/battle_troops.png",
+      "~/.config/retro-diffusion/refs/battle_hero.png"
+    ]
+  },
+  {
+    "out": "art/map/sheets/map-poachers.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28525,
+    "bypass_prompt_expansion": true,
+    "prompt": "Six animation poses of the exact SAME poacher in the isolated reference and the bottom right of units-b. Keep his BROWN hood and leather tunic, brown belt, trousers and boots, friendly clean-shaven face and wooden longbow held low, no green Ranger hood. Exact same equipment, proportions and body size in EVERY pose, all facing right in the same three-quarter view. Two rows of THREE, read left to right then next row. A nearer boot planted forward, far boot behind. B far boot passes beneath him and his bow arm swings gently. C FAR boot planted forward and NEAR boot behind, opposite arm and leather folds. D near boot passes beneath him, returning to A. First FOUR form a complete grounded walking cycle, opposite legs leading, not shooting, jumping or sliding. E waits quietly with BOTH boots planted and bow lowered. F keeps BOTH boots planted in the same places, subtly turns his face to listen and adjusts his bow grip, hood and shoulders relax. Last TWO are gentle IDLE, no step or whole-picture bounce. Match the original charming painted 1996 DOS fantasy strategy game art exactly: bright colours, painted shading reduced to 256 colours, soft dithering, friendly readable face, not anime. Each full-body figure separate and not touching on one plain flat grey background with flatter grey shadows. No labels, lettering, extra figures or effects.",
+    "reference_images": [
+      "art/map/references/poachers.png",
+      "art/map/sheets/units-b.png",
+      "~/.config/retro-diffusion/refs/battle_troops.png",
+      "~/.config/retro-diffusion/refs/battle_hero.png"
+    ]
+  },
+  {
+    "out": "art/map/sheets/map-rook.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28526,
+    "bypass_prompt_expansion": true,
+    "prompt": "Six animation poses of the exact SAME Rook the Huntsman in the isolated reference and the bottom right of units-d. Keep his broad flat BROWN hat, weathered bearded face, brown leather coat and jerkin, brown trousers and boots, wooden longbow carried low, quiver and exact character proportions. Same face, colours, clothes and body scale in EVERY pose, all facing right in the same three-quarter view. Two rows of THREE, read left to right then next row. A near boot planted forward, far boot behind. B far boot passes beneath him, bow rocks softly and coat folds back. C FAR boot planted forward and NEAR boot behind, opposite bow and coat motion. D near boot passes beneath him, returning to A. First FOUR form a grounded repeatable walking cycle with alternate legs leading, no shot, attack, jumping or sliding. E stands watchfully with BOTH boots planted and bow lowered. F keeps BOTH boots planted in the same places, subtly lifts his chin to listen to his wolves and blinks, beard and hat brim settle. Last TWO are gentle IDLE with small real changes within the figure, no whole-body bounce or step. Match the original charming painted 1996 DOS fantasy strategy game art exactly: bright colours, painted shading reduced to 256 colours, soft dithering, friendly readable face, not anime. Each full-body figure complete, separate and not touching on one plain flat grey background with flatter grey shadows. No text, labels, extra people or effects.",
+    "reference_images": [
+      "art/map/references/rook.png",
+      "art/map/sheets/units-d.png",
+      "~/.config/retro-diffusion/refs/battle_troops.png",
+      "~/.config/retro-diffusion/refs/battle_hero.png"
+    ]
+  },
+  {
+    "out": "art/map/sheets/map-wolves.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 28527,
+    "bypass_prompt_expansion": true,
+    "prompt": "Six animation poses of the exact SAME GREY WOLF in the isolated reference and the bottom right of units-a. Keep its shaggy grey and white fur, pale muzzle, dark nose, pointed ears, bushy tail, strong shoulders and exact friendly painted wolf identity. A four-legged wolf, not a dog, bear or human. All face right in the same three-quarter view at IDENTICAL body, head and paw size. Two rows of THREE full-body wolves, read left to right then next row. A nearer front paw planted forward and nearer hind paw trailing, opposite paws beneath the body. B the near paws pass beneath the body while opposite paws carry the weight, tail sways softly. C FAR front paw planted forward and FAR hind paw trailing, near paws bent beneath the body, opposite lead from A. D far paws pass beneath the body while near paws carry the weight, returning to A. First FOUR form a complete grounded four-legged travel gait, clearly different paw and leg silhouettes, body level, no leap, rearing, skating or attack. E stands quietly on ALL FOUR planted paws with ears alert. F keeps ALL FOUR paws planted in the same positions, turns one ear, lowers its muzzle a little and softly flicks its tail, chest and fur settle. Last TWO are gentle IDLE, not whole-picture bounce. Match the original charming painted 1996 DOS fantasy strategy game art exactly: bright colours, painted shading reduced to 256 colours and soft dithering. Each complete wolf separate and not touching on one plain flat grey background with flatter grey ground shadows. No text, labels, extra animals, scenery or effects.",
+    "reference_images": [
+      "art/map/references/wolves.png",
+      "art/map/sheets/units-a.png",
+      "~/.config/retro-diffusion/refs/battle_troops.png",
+      "~/.config/retro-diffusion/refs/battle_hero.png"
+    ]
+  }
+]

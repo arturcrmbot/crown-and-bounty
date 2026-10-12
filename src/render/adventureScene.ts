@@ -12,7 +12,7 @@ import { Minimap } from './minimap';
 import { hash } from './noise';
 import { BLUE, GOLD, INK, NEUTRAL, PARCHMENT, RED, SILHOUETTE, WOOD } from './palette';
 import { animFrames, bodyHeight, everyFrame, STAND, troopFigure, type Figure, type Pose } from './battleSprites';
-import { heroArtId } from './units';
+import { heroArtId, type ArtId } from './units';
 import {
   abbey, boat, boulder, camp, campfire,
   butts, CART_GROUND as DRAWN_CART_GROUND, cottage, castle, standingStones, chest, crag, fold, goldPile, grainCart, hayrick, hideout, holes, huntHall, hut, kiln, lodge, mews, mill, mine, mirror, nest, oak, pack, peatHut, pine, pond, signpost, skeps, stiltHut, shrine,
@@ -86,7 +86,7 @@ function silhouette(sprite: Bitmap): Bitmap {
   return out;
 }
 
-/** Everything the controller needs to ride the hero around. */
+/** A map character's travel and idle poses on one grounded canvas. */
 type Gait = { stride: number; frames: readonly number[]; footfalls: readonly number[] };
 export type HeroRig = {
   object: Placed;
@@ -121,6 +121,8 @@ export type AdventureScene = {
   hitboxes: Hitbox[];
   /** Objects that vanish once their location is done: pickups and enemies. */
   pickups: Map<string, Placed>;
+  /** Enemy rigs, including both characters of a led band and a convoy's escort. */
+  bands: Map<string, HeroRig>;
   /** Animated landmarks by place, so one that changes (the hunt hall, opened) can be drawn anew. */
   sights: Map<string, Placed>;
   /** Each place's pictures (a village's huts with its well), by place: what lights up under the pointer (#256). */
@@ -146,10 +148,10 @@ function leadTroop(army: Army): TroopId {
  * A band's leader with one of his men at his heel, a step behind him and to the side, away from
  * whoever comes: one sprite, with his feet where the leader's are, as wide on either side of them.
  */
-function atHeel(leader: Bitmap, lead: Figure, man: Figure): { sprite: Bitmap; foot: number } {
+function atHeel(leader: Bitmap, lead: Figure, man: Figure, facing: 1 | -1, width: number): { sprite: Bitmap; foot: number } {
   const [lx, ly] = [-lead.x, -lead.y];
   const [mx, my] = [-man.x, -man.y];
-  const [dx, dy] = [Math.round(leader.width * 0.62), -5];
+  const [dx, dy] = [-facing * Math.round(width * 0.62), -5];
   const half = Math.max(lx, leader.width - lx, mx - dx, dx - mx + man.sprite.width);
   const top = Math.min(-ly, dy - my);
   const out = new Bitmap(half * 2, Math.max(leader.height - ly, dy - my + man.sprite.height) - top);
@@ -171,9 +173,10 @@ function atHeel(leader: Bitmap, lead: Figure, man: Figure): { sprite: Bitmap; fo
  * A convoy on the map: its cart ahead, heading west as its road does, and one of its escort (already
  * in his red ring) walking at its tail. One sprite, with his feet and the cart's wheel on the ground.
  */
-function withCart(escort: Bitmap, foot: number): { sprite: Bitmap; foot: number } {
+function withCart(escort: Bitmap, foot: number, facing: 1 | -1): { sprite: Bitmap; foot: number } {
   const painting = painted ? piece('cart') : null;
-  const cart = painting?.sprite ?? grainCart();
+  const original = painting?.sprite ?? grainCart();
+  const cart = facing < 0 ? original : mirror(original);
   const CART_GROUND = painting?.foot ?? DRAWN_CART_GROUND;
   const overlap = 6;
   const top = Math.max(foot, CART_GROUND);
@@ -186,8 +189,8 @@ function withCart(escort: Bitmap, foot: number): { sprite: Bitmap; foot: number 
       }
     }
   };
-  paint(cart, 0, top - CART_GROUND);
-  paint(escort, cart.width - overlap, top - foot);
+  paint(cart, facing < 0 ? 0 : escort.width - overlap, top - CART_GROUND);
+  paint(escort, facing < 0 ? cart.width - overlap : 0, top - foot);
   return { sprite: out, foot: top };
 }
 
@@ -252,7 +255,7 @@ function stacked(base: { sprite: Bitmap; foot: number }, top: { sprite: Bitmap; 
  * The sprite (or frames) that stands for a place on the map, and how far below its top the foot is.
  * The goose pond shows the lost geese that are `home` (#192).
  */
-function landmark(l: Location, home = 0): { frames: Bitmap[]; foot: number; animated: boolean } | null {
+function landmark(l: Location, home = 0): { frames: Bitmap[]; foot: number; animated: boolean; figure?: Omit<HeroRig, 'object'> } | null {
   if (painted) {
     // The goose pond is drawn anew as the lost geese come home to it, so it's kept with the places that change.
     if (l.look === 'pond') {
@@ -284,7 +287,7 @@ function landmark(l: Location, home = 0): { frames: Bitmap[]; foot: number; anim
 const LOOKS_DRAWN = { cart: 1, hamper: 1, abbey: 1, peathut: 1, stilthut: 1, cairn: 1 } as const;
 
 /** A place as it's drawn in code. */
-function drawn(l: Location): { frames: Bitmap[]; foot: number; animated: boolean } | null {
+function drawn(l: Location): ReturnType<typeof landmark> {
   switch (l.look) {
     case 'abbey':
       return { frames: [abbey()], foot: 60, animated: false };
@@ -345,12 +348,8 @@ function drawn(l: Location): { frames: Bitmap[]; foot: number; animated: boolean
     case 'cairn':
       return { frames: [cairn()], foot: 28, animated: false };
     case 'cart': {
-      // Pike's grain cart, and one of his lads at its tail in a foe's red ring, fidgeting as they wait.
-      const lead = leadTroop(l.enemy!.army);
-      const still = troopFigure(lead, 'red', -1, STAND, 'map');
-      const fidget = animFrames(lead, 'idle').length > 1 && !paintedFigure(lead, 'map') ? everyFrame(lead, 'idle', 'red', -1, 'map', 120) : Array<Bitmap>(4).fill(raised(still.sprite));
-      const joined = [...Array<Bitmap>(fidget.length > 4 ? 24 : 14).fill(still.sprite), ...fidget].map((f) => withCart(ringed(f, -still.y, RED), -still.y));
-      return { frames: joined.map((j) => j.sprite), foot: joined[0].foot, animated: true };
+      const figure = bandFrames(l);
+      return { frames: figure.idleLeft, foot: figure.foot, animated: true, figure };
     }
   }
   switch (l.kind) {
@@ -378,26 +377,8 @@ function drawn(l: Location): { frames: Bitmap[]; foot: number; animated: boolean
     case 'hideout':
       return { frames: [hideout(0.4)], foot: 64, animated: false };
     case 'patrol': {
-      // One creature stands for the stack, HoMM2 style, at the same scale as everything else. Now
-      // and then it fidgets, as its Wesnoth unit does, each band in its own time.
-      const lead = leadTroop(l.enemy!.army);
-      const still = troopFigure(lead, 'red', -1, STAND, 'map');
-      // Those Wesnoth gave no fidget just breathe: a pixel up for a moment, every couple of seconds.
-      const fidget = animFrames(lead, 'idle').length > 1 && !paintedFigure(lead, 'map') ? everyFrame(lead, 'idle', 'red', -1, 'map', 120) : Array<Bitmap>(4).fill(raised(still.sprite));
-      let poses = [...Array<Bitmap>(fidget.length > 4 ? 24 : 14).fill(still.sprite), ...fidget];
-      let foot = -still.y;
-      // A villain or a captain has one of his men at his heel, so a band reads as his: a wolf at the huntsman's.
-      const men = leads(lead) ? mainTroop(l.enemy!.army) : undefined;
-      if (men) {
-        const man = troopFigure(men, 'red', -1, STAND, 'map');
-        const joined = poses.map((f) => atHeel(f, still, man));
-        poses = joined.map((j) => j.sprite);
-        foot = joined[0].foot;
-      }
-      // The red ring under his feet says he is a foe, as the hero's gold one says he is your own.
-      const frames = poses.map((f) => ringed(f, foot, RED, still.sprite.width));
-      const turn = [...l.id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % frames.length;
-      return { frames: [...frames.slice(turn), ...frames.slice(0, turn)], foot, animated: true };
+      const figure = bandFrames(l);
+      return { frames: figure.idleLeft, foot: figure.foot, animated: true, figure };
     }
     case 'pickup':
       return { frames: [wayside('purse')], foot: 12, animated: true };
@@ -434,7 +415,12 @@ export function refreshPlace(scene: AdventureScene, l: Location, home = 0) {
   const o = scene.sights.get(l.id) ?? scene.pickups.get(l.id);
   const look = landmark(l, home);
   if (!o || !look) return;
-  Object.assign(o, place(look.frames[0], l.at, look.foot), { frames: look.frames.length > 1 ? look.frames : undefined });
+  Object.assign(o, place(look.frames[0], l.at, look.foot), { frames: look.frames.length > 1 ? look.frames : undefined, frame: undefined, foot: look.figure ? look.foot : undefined });
+  if (look.figure) {
+    const rig = scene.bands.get(l.id);
+    if (rig) Object.assign(rig, look.figure);
+    else scene.bands.set(l.id, { object: o, ...look.figure });
+  } else scene.bands.delete(l.id);
   // A band may stand for itself as another of its troops now, so it's clicked where the new figure stands.
   const box = scene.pickups.has(l.id) ? scene.hitboxes.find((b) => b.id === l.id) : undefined;
   if (box) Object.assign(box, { x0: o.x, y0: o.y, x1: o.x + o.sprite.width, y1: o.y + o.sprite.height });
@@ -444,10 +430,11 @@ export function refreshPlace(scene: AdventureScene, l: Location, home = 0) {
 export function addPlace(scene: AdventureScene, l: Location) {
   const look = landmark(l);
   if (!look) return;
-  const o: Placed = { ...place(look.frames[0], l.at, look.foot), frames: look.frames.length > 1 ? look.frames : undefined, hidden: Boolean(l.enemy?.unseen) };
+  const o: Placed = { ...place(look.frames[0], l.at, look.foot), frames: look.frames.length > 1 ? look.frames : undefined, foot: look.figure ? look.foot : undefined, hidden: Boolean(l.enemy?.unseen) };
   scene.view.animate(o);
   scene.pickups.set(l.id, o);
   scene.parts.set(l.id, [o]);
+  if (look.figure) scene.bands.set(l.id, { object: o, ...look.figure });
   // A place back on the map (a band that rode out before) is clicked where it stands now.
   const old = scene.hitboxes.findIndex((b) => b.id === l.id);
   if (old >= 0) scene.hitboxes.splice(old, 1);
@@ -574,6 +561,7 @@ export function buildAdventureScene(map: MapModel, state: GameState): AdventureS
   const landmarks: Placed[] = [];
   const hitboxes: Hitbox[] = [];
   const pickups = new Map<string, Placed>();
+  const bands = new Map<string, HeroRig>();
   const sights = new Map<string, Placed>();
   const animated: Placed[] = [];
   const parts = new Map<string, Placed[]>();
@@ -605,7 +593,7 @@ export function buildAdventureScene(map: MapModel, state: GameState): AdventureS
   for (const l of state.locations) {
     const look = landmark(l, l.look === 'pond' ? geeseHome(state) : 0);
     if (!look) continue;
-    const o: Placed = { ...place(look.frames[0], l.at, look.foot), frames: look.frames.length > 1 ? look.frames : undefined };
+    const o: Placed = { ...place(look.frames[0], l.at, look.foot), frames: look.frames.length > 1 ? look.frames : undefined, foot: look.figure ? look.foot : undefined };
     partOf(l.id, o);
     const vanishes = VANISHES.has(l.kind);
     if (vanishes) {
@@ -613,6 +601,7 @@ export function buildAdventureScene(map: MapModel, state: GameState): AdventureS
         // A band out of the hero's sight stays off the map until he sees it (see `rules/map/sight.ts`).
         o.hidden = Boolean(l.enemy?.unseen);
         pickups.set(l.id, o);
+        if (look.figure) bands.set(l.id, { object: o, ...look.figure });
         animated.push(o);
       }
     } else if (look.animated) {
@@ -663,21 +652,40 @@ export function buildAdventureScene(map: MapModel, state: GameState): AdventureS
     });
   }
 
-  // The hero, in his background's figure, in a gold ring (see `heroFrames`).
-  const figure = heroFrames(state.hero.background);
-  const rig: HeroRig = { object: { ...place(figure.idle[0], state.hero.at, figure.foot), frames: figure.idle }, ...figure };
+  // The hero, in his background's figure, in a gold ring.
+  const figure = figureFrames(heroArtId(state.hero.background), false);
+  const rig: HeroRig = { object: { ...place(figure.idle[0], state.hero.at, figure.foot), frames: figure.idle, foot: figure.foot }, ...figure };
   if (state.hero.facing < 0) rig.object.frames = rig.idleLeft;
   view.animate(rig.object);
-  return { view, fog, minimap, hero: rig, hitboxes, pickups, sights, parts, pennants: new Map(), flown: new Set() };
+  return { view, fog, minimap, hero: rig, hitboxes, pickups, bands, sights, parts, pennants: new Map(), flown: new Set() };
+}
+
+/** Packs poses round their foot anchors, including both facings and any companion. */
+function commonFrames(all: Figure[]): { frames: Bitmap[]; foot: number } {
+  const half = Math.max(...all.flatMap((frame) => [-frame.x, frame.x + frame.sprite.width]));
+  const foot = Math.max(...all.map((frame) => -frame.y));
+  const height = foot + Math.max(4, ...all.map((frame) => frame.y + frame.sprite.height));
+  const frames = all.map((frame) => {
+    const out = new Bitmap(half * 2, height);
+    for (let y = 0; y < frame.sprite.height; y++) {
+      for (let x = 0; x < frame.sprite.width; x++) {
+        const v = frame.sprite.get(x, y);
+        if (v !== 0) out.set(half + frame.x + x, foot + frame.y + y, v);
+      }
+    }
+    return out;
+  });
+  return { frames, foot };
 }
 
 /**
  * Painted travel and gentle idle share one grounded canvas, shadow and ring. Until a set loads,
  * its previous painted or Wesnoth figure still stands in.
  */
-function heroFrames(background: BackgroundId): Omit<HeroRig, 'object'> {
-  const art = heroArtId(background);
-  const still = troopFigure(art, 'blue', 1, STAND, 'map');
+function figureFrames(art: ArtId, enemy: boolean, ring = true): Omit<HeroRig, 'object'> {
+  const team = enemy ? 'red' : 'blue';
+  const ramp = enemy ? RED : GOLD;
+  const still = troopFigure(art, team, 1, STAND, 'map');
   const moving = paintedAnimation(art, 'map', 'move');
   if (moving?.stride && moving.footfalls) {
     const waiting = paintedAnimation(art, 'map', 'idle');
@@ -692,32 +700,24 @@ function heroFrames(background: BackgroundId): Omit<HeroRig, 'object'> {
       if (anim === 'idle' && !sequence) poses.push(STAND);
     }
     const count = waiting?.frames.length ?? 1;
-    const right = poses.map((pose) => troopFigure(art, 'blue', 1, pose, 'map'));
-    const left = poses.map((pose) => troopFigure(art, 'blue', -1, pose, 'map'));
-    const all = [...right, ...left];
-    const half = Math.max(...all.flatMap((frame) => [-frame.x, frame.x + frame.sprite.width]));
-    const foot = Math.max(...all.map((frame) => -frame.y));
-    const height = foot + Math.max(4, ...all.map((frame) => frame.y + frame.sprite.height));
-    const grounded = (frame: Figure): Bitmap => {
-      const out = new Bitmap(half * 2, height);
-      for (let y = 0; y < frame.sprite.height; y++) {
-        for (let x = 0; x < frame.sprite.width; x++) {
-          const v = frame.sprite.get(x, y);
-          if (v !== 0 && v !== SHADOW) out.set(half + frame.x + x, foot + frame.y + y, v);
-        }
-      }
+    const right = poses.map((pose) => troopFigure(art, team, 1, pose, 'map'));
+    const left = poses.map((pose) => troopFigure(art, team, -1, pose, 'map'));
+    const packed = commonFrames([...right, ...left]);
+    const { foot } = packed;
+    const grounded = (out: Bitmap): Bitmap => {
+      for (let i = 0; i < out.data.length; i++) if (out.data[i] === SHADOW) out.data[i] = 0;
       // The sun's shadow stays on the same side even when the body turns.
-      shadowOval(out, half + 2, foot + 1, Math.max(4, still.sprite.width * 0.3), 2);
-      return ringed(out, foot, GOLD, still.sprite.width);
+      shadowOval(out, out.width / 2 + 2, foot + 1, Math.max(4, still.sprite.width * 0.3), 2);
+      return ring ? ringed(out, foot, ramp, still.sprite.width) : out;
     };
     let end = 0;
     const stride = moving.stride;
-    const idle = (frames: Figure[]) => frames.slice(0, count).flatMap((frame, i) =>
+    const idle = (frames: Bitmap[]) => frames.slice(0, count).flatMap((frame, i) =>
       Array<Bitmap>(waiting ? Math.max(1, Math.round(waiting.frames[i].ms / 120)) : 1).fill(grounded(frame)),
     );
     return {
-      idle: idle(right), walk: right.slice(count).map(grounded),
-      idleLeft: idle(left), walkLeft: left.slice(count).map(grounded),
+      idle: idle(packed.frames.slice(0, right.length)), walk: packed.frames.slice(count, right.length).map(grounded),
+      idleLeft: idle(packed.frames.slice(right.length)), walkLeft: packed.frames.slice(right.length + count).map(grounded),
       foot, head: bodyHeight(art, 'map'),
       gait: {
         stride,
@@ -727,14 +727,56 @@ function heroFrames(background: BackgroundId): Omit<HeroRig, 'object'> {
     };
   }
   const foot = -still.y;
-  const fidget = animFrames(art, 'idle').length > 1 && !paintedFigure(art, 'map') ? everyFrame(art, 'idle', 'blue', 1, 'map', 120) : Array<Bitmap>(4).fill(raised(still.sprite));
+  const fidget = animFrames(art, 'idle').length > 1 && !paintedFigure(art, 'map') ? everyFrame(art, 'idle', team, 1, 'map', 120) : Array<Bitmap>(4).fill(raised(still.sprite));
   // Still for at least half again as long as the fidget lasts, so it comes now and then.
-  const idle = [...Array<Bitmap>(Math.max(16, Math.round(fidget.length * 1.5))).fill(still.sprite), ...fidget].map((f) => ringed(f, foot));
+  const decorate = (frame: Bitmap) => ring ? ringed(frame, foot, ramp) : frame;
+  const idle = [...Array<Bitmap>(Math.max(16, Math.round(fidget.length * 1.5))).fill(still.sprite), ...fidget].map(decorate);
   const up = raised(still.sprite);
   const stride = [still.sprite, still.sprite, up, raised(up), raised(up), up];
   // Until a figure has a painted gait, keep its existing bob.
-  const walk = (!paintedFigure(art, 'map') && animFrames(art, 'move').length > 1 ? everyFrame(art, 'move', 'blue', 1, 'map', 70) : stride).map((f) => ringed(f, foot));
+  const walk = (!paintedFigure(art, 'map') && animFrames(art, 'move').length > 1 ? everyFrame(art, 'move', team, 1, 'map', 70) : stride).map(decorate);
   return { idle, walk, idleLeft: idle.map(mirror), walkLeft: walk.map(mirror), foot, head: bodyHeight(art, 'map') };
+}
+
+function bandFrames(l: Location): Omit<HeroRig, 'object'> {
+  const lead = leadTroop(l.enemy!.army);
+  const leader = figureFrames(lead, true);
+  const men = leads(lead) ? mainTroop(l.enemy!.army) : undefined;
+  const man = men ? figureFrames(men, true, false) : null;
+  const width = troopFigure(lead, 'red', 1, STAND, 'map').sprite.width;
+  const seed = [...l.id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
+  const poses: Figure[] = [];
+  for (const facing of [1, -1] as const) {
+    for (const anim of ['idle', 'walk'] as const) {
+      const frames = facing > 0 ? leader[anim] : leader[anim === 'idle' ? 'idleLeft' : 'walkLeft'];
+      const followers = man ? facing > 0 ? man[anim] : man[anim === 'idle' ? 'idleLeft' : 'walkLeft'] : null;
+      for (let i = 0; i < frames.length; i++) {
+        let sprite = frames[i];
+        let foot = leader.foot;
+        if (man && followers) {
+          const k = anim === 'idle' ? (i + seed + Math.floor(followers.length / 2)) % followers.length : Math.floor(i * followers.length / frames.length + followers.length / 2) % followers.length;
+          const escort = followers[k];
+          const joined = atHeel(sprite, { sprite, x: -Math.round(sprite.width / 2), y: -foot }, { sprite: escort, x: -Math.round(escort.width / 2), y: -man.foot }, facing, width);
+          [sprite, foot] = [joined.sprite, joined.foot];
+        }
+        if (l.look === 'cart') {
+          const joined = withCart(sprite, foot, facing);
+          [sprite, foot] = [joined.sprite, joined.foot];
+        }
+        poses.push({ sprite, x: -Math.round(sprite.width / 2), y: -foot });
+      }
+    }
+  }
+  const packed = commonFrames(poses);
+  const take = (start: number, length: number) => packed.frames.slice(start, start + length);
+  const rotate = (frames: Bitmap[]) => [...frames.slice(seed % frames.length), ...frames.slice(0, seed % frames.length)];
+  const n = leader.idle.length;
+  const m = leader.walk.length;
+  return {
+    idle: rotate(take(0, n)), walk: rotate(take(n, m)),
+    idleLeft: rotate(take(n + m, n)), walkLeft: rotate(take(n * 2 + m, m)),
+    foot: packed.foot, head: leader.head, gait: leader.gait,
+  };
 }
 
 /** Puts the hero in another background's figure, where he stands: when the choice on the opening card changes who he was. */
@@ -742,10 +784,11 @@ export function setHeroFigure(scene: AdventureScene, background: BackgroundId, f
   const rig = scene.hero;
   const feet = rig.object.y + rig.foot;
   const centre = rig.object.x + rig.object.sprite.width / 2;
-  const figure = heroFrames(background);
+  const figure = figureFrames(heroArtId(background), false);
   Object.assign(rig, figure, { gait: figure.gait });
   rig.object.frames = facing < 0 ? rig.idleLeft : rig.idle;
   rig.object.sprite = rig.object.frames[0];
   rig.object.x = centre - rig.object.sprite.width / 2;
   rig.object.y = feet - rig.foot;
+  rig.object.foot = rig.foot;
 }

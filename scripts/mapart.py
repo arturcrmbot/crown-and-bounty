@@ -165,6 +165,134 @@ TROOPS_OUT = os.path.join(ROOT, 'public/assets/troops')
 # One scale for the whole body, not one fitted to each pose's weapon bounds. Boxes and feet are
 # absolute sheet pixels; the cutter gives every frame of an animation the same canvas and anchor.
 FIGURE_ANIMATIONS = {
+    'cutpurseCaptain': {
+        'move': {
+            'sheet': 'map-cutpurseCaptain', 'scale': 68 / 109, 'sizes': ['map'],
+            'frames': [
+                ((11, 11, 78, 125), (43, 121), 100),
+                ((95, 11, 165, 126), (128, 123), 100),
+                ((178, 11, 245, 125), (212, 121), 100),
+                ((11, 136, 79, 248), (43, 244), 100),
+            ],
+            'stride': 40, 'footfalls': [0, 200],
+        },
+        'idle': {
+            'sheet': 'map-cutpurseCaptain', 'scale': 68 / 109, 'sizes': ['map'],
+            'frames': [((95, 137, 163, 251), (128, 247), 1920), ((178, 137, 242, 251), (212, 247), 360)],
+        },
+    },
+    'cutpurses': {
+        'move': {
+            'sheet': 'map-cutpurses', 'scale': 62 / 107, 'sizes': ['map'],
+            'frames': [
+                ((5, 8, 64, 123), (33, 117), 100),
+                ((72, 8, 125, 123), (97, 119), 100),
+                ((133, 8, 191, 123), (160, 117), 100),
+                ((196, 8, 251, 123), (225, 118), 100),
+            ],
+            'stride': 32, 'footfalls': [0, 200],
+        },
+        'idle': {
+            'sheet': 'map-cutpurses', 'scale': 62 / 107, 'sizes': ['map'],
+            'frames': [((11, 134, 65, 251), (35, 246), 1680), ((81, 135, 125, 251), (102, 247), 360)],
+        },
+    },
+    'highwaymanCaptain': {
+        'move': {
+            'sheet': 'map-highwaymanCaptain', 'scale': 70 / 117, 'sizes': ['map'],
+            'frames': [
+                ((12, 8, 77, 128), (43, 127), 100),
+                ((94, 9, 162, 128), (128, 127), 100),
+                ((181, 8, 245, 128), (213, 127), 100),
+                ((13, 135, 77, 256), (43, 251), 100),
+            ],
+            'stride': 44, 'footfalls': [0, 200],
+        },
+        'idle': {
+            'sheet': 'map-highwaymanCaptain', 'scale': 70 / 117, 'sizes': ['map'],
+            'frames': [((99, 131, 162, 254), (128, 251), 2160), ((181, 135, 244, 254), (213, 251), 360)],
+        },
+    },
+    'bandits': {
+        'move': {
+            'sheet': 'map-bandits', 'scale': 64 / 113, 'sizes': ['map'],
+            'frames': [
+                ((5, 6, 80, 125), (43, 122), 100),
+                ((93, 6, 165, 125), (128, 121), 100),
+                ((178, 6, 251, 124), (213, 120), 100),
+                ((10, 134, 80, 253), (43, 249), 100),
+            ],
+            'stride': 40, 'footfalls': [0, 200],
+        },
+        'idle': {
+            'sheet': 'map-bandits', 'scale': 64 / 113, 'sizes': ['map'],
+            'frames': [((101, 134, 166, 253), (128, 249), 1800), ((186, 134, 251, 254), (213, 250), 360)],
+        },
+    },
+    'poacherCaptain': {
+        'move': {
+            'sheet': 'map-poacherCaptain', 'scale': 69 / 118, 'sizes': ['map'],
+            'frames': [
+                ((10, 9, 85, 128), (46, 127), 100),
+                ((93, 9, 168, 128), (130, 127), 100),
+                ((175, 9, 251, 128), (213, 127), 100),
+                ((11, 132, 82, 255), (46, 252), 100),
+            ],
+            'stride': 42, 'footfalls': [0, 200],
+        },
+        'idle': {
+            'sheet': 'map-poacherCaptain', 'scale': 69 / 118, 'sizes': ['map'],
+            'frames': [((97, 132, 168, 255), (130, 252), 2040), ((178, 132, 250, 255), (213, 252), 360)],
+        },
+    },
+    'poachers': {
+        'move': {
+            'sheet': 'map-poachers', 'scale': 64 / 109, 'sizes': ['map'],
+            'frames': [
+                ((3, 8, 85, 124), (43, 119), 100),
+                ((85, 8, 171, 124), (128, 120), 100),
+                ((172, 8, 255, 124), (213, 120), 100),
+                ((8, 145, 85, 252), (43, 248), 100),
+            ],
+            'stride': 40, 'footfalls': [0, 200],
+        },
+        'idle': {
+            'sheet': 'map-poachers', 'scale': 64 / 109, 'sizes': ['map'],
+            'frames': [((92, 145, 169, 253), (128, 248), 1800), ((176, 146, 253, 254), (213, 249), 480)],
+        },
+    },
+    'rook': {
+        'move': {
+            'sheet': 'map-rook', 'scale': 68 / 112, 'sizes': ['map'],
+            'frames': [
+                ((0, 8, 85, 124), (43, 121), 100),
+                ((85, 8, 170, 124), (128, 121), 100),
+                ((170, 8, 255, 124), (213, 120), 100),
+                ((0, 136, 85, 254), (43, 250), 100),
+            ],
+            'stride': 42, 'footfalls': [0, 200],
+        },
+        'idle': {
+            'sheet': 'map-rook', 'scale': 68 / 112, 'sizes': ['map'],
+            'frames': [((85, 137, 170, 255), (128, 251), 1920), ((170, 137, 256, 255), (213, 251), 480)],
+        },
+    },
+    'wolves': {
+        'move': {
+            'sheet': 'map-wolves', 'scale': 44 / 73, 'sizes': ['map'],
+            'frames': [
+                ((0, 1, 85, 79), (43, 76), 100),
+                ((84, 1, 171, 79), (128, 75), 100),
+                ((170, 1, 256, 79), (213, 75), 100),
+                ((0, 87, 85, 167), (43, 160), 100),
+            ],
+            'stride': 40, 'footfalls': [0, 200],
+        },
+        'idle': {
+            'sheet': 'map-wolves', 'scale': 44 / 73, 'sizes': ['map'],
+            'frames': [((90, 174, 170, 254), (128, 250), 1560), ((164, 176, 254, 254), (213, 250), 480)],
+        },
+    },
     'knights': {
         'stand': {
             'sheet': 'knights-gait', 'scale': 0.86, 'sizes': ['battle', 'map'],

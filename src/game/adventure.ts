@@ -600,6 +600,7 @@ export class AdventureController implements Screen {
           if (gone && !object?.hidden) this.view.effects.puff(gone.at[0], gone.at[1], gone.enemy ? 'dust' : gone.kind === 'goose' ? 'feathers' : 'sparkle');
           if (object) this.view.remove(object);
           this.scene.pickups.delete(e.id);
+          this.scene.bands.delete(e.id);
           break;
         }
         case 'day':
@@ -637,8 +638,8 @@ export class AdventureController implements Screen {
           break;
         case 'enemyMoved':
           {
-            const object = this.scene.pickups.get(e.id);
-            if (object) this.walks.start(e.id, object, this.scene.hitboxes.find((b) => b.id === e.id), e.from, e.path);
+            const figure = this.scene.bands.get(e.id);
+            if (figure) this.walks.start(e.id, figure, this.scene.hitboxes.find((b) => b.id === e.id), e.from, e.path);
           }
           // Somebody may be standing on the road now: find the way again.
           if (this.target) this.replan();
