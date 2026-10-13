@@ -82,16 +82,20 @@ async function drag(page, from, to, touch) {
     const r = await locator.boundingBox();
     return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
   };
-  const a = await box(from), b = await box(to);
+  const a = await box(from);
   if (touch) {
     const cdp = await page.context().newCDPSession(page);
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [a] });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: a.x + 8, y: a.y + 8 }] });
+    const b = await box(to);
     for (let i = 1; i <= 10; i++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: a.x + (b.x - a.x) * i / 10, y: a.y + (b.y - a.y) * i / 10 }] });
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     await cdp.detach();
   } else {
     await page.mouse.move(a.x, a.y);
     await page.mouse.down();
+    await page.mouse.move(a.x + 8, a.y + 8, { steps: 2 });
+    const b = await box(to);
     await page.mouse.move(b.x, b.y, { steps: 10 });
     await page.mouse.up();
   }
@@ -130,6 +134,18 @@ try {
     await act(page, 'move-cancel');
     await act(page, 'gear-apply');
     check((await state(page)).hero.gear.weapon === 'brannocsLance', `${profile.name} cancelling Move does not prevent a later explicit wear`);
+    current = await state(page);
+    const free = current.hero.pack.length;
+    await place(page, 'slot:banner');
+    if (profile.touch) await act(page, 'pick-up');
+    await drag(page, 'slot:banner', `pack:${free}`, profile.touch);
+    check(!(await state(page)).hero.gear.banner && (await state(page)).hero.pack[free] === 'oldBanner', `${profile.name} the banner drags into a free pack square`);
+    if (profile.touch) {
+      await place(page, `pack:${free}`);
+      await act(page, 'pick-up');
+    }
+    await drag(page, `pack:${free}`, 'slot:banner', profile.touch);
+    check((await state(page)).hero.gear.banner === 'oldBanner', `${profile.name} the banner drags back on across a scrolled equipment pane`);
     current = await state(page);
     await place(page, 'pack:0');
     await act(page, 'pick-up');

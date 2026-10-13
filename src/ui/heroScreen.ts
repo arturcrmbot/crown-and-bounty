@@ -452,7 +452,8 @@ export class HeroScreen {
         this.over = key;
       }
       const scroll = hit?.el.closest<HTMLElement>('[data-scroll]');
-      if (scroll) {
+      // Keep the source and any valid drop target still under the pointer.
+      if (scroll && hit && !key && keyOf(hit.place) !== keyOf(this.press.place)) {
         const rect = scroll.getBoundingClientRect();
         if (e.clientY < rect.top + 24) scroll.scrollTop -= 12;
         else if (e.clientY > rect.bottom - 24) scroll.scrollTop += 12;
