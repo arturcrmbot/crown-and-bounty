@@ -148,7 +148,9 @@ try {
     check((await state(page)).hero.gear.banner === 'oldBanner', `${profile.name} the banner drags back on across a scrolled equipment pane`);
     current = await state(page);
     await place(page, 'pack:0');
+    check((await sheet(page)).selected === 'pack:0' && (await sheet(page)).held === null, `${profile.name} the first tap after a drag inspects the intended find`);
     await act(page, 'pick-up');
+    check((await sheet(page)).held === 'pack:0', `${profile.name} Move picks up the inspected find, not the previous drag source`);
     await place(page, 'pack:1');
     check((await state(page)).hero.pack[1] === current.hero.pack[0], `${profile.name} Move then destination reorders the pack`);
     await place(page, 'pack:0');

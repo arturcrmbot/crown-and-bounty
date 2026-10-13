@@ -425,6 +425,7 @@ export class HeroScreen {
     const root = this.root;
     root.addEventListener('pointerdown', e => {
       e.stopPropagation();
+      this.swallowClick = false;
       if (e.button !== 0) return;
       const hit = this.placeAt(e.clientX, e.clientY);
       if (!hit || hit.place.kind === 'hero' || !this.has(hit.place)) return;
@@ -466,7 +467,6 @@ export class HeroScreen {
       this.press = null;
       if (!was) return;
       this.swallowClick = true;
-      setTimeout(() => { this.swallowClick = false; }, 0);
       const hit = e.type === 'pointerup' ? this.placeAt(e.clientX, e.clientY) : null;
       const action = hit ? this.actionFor(from, hit.place) : null;
       this.endDrag();
@@ -478,7 +478,8 @@ export class HeroScreen {
     root.addEventListener('pointerleave', () => { if (!this.press) this.hideTip(); });
     root.addEventListener('click', e => {
       e.stopPropagation();
-      if (this.swallowClick || !(e.target instanceof HTMLElement)) return;
+      if (this.swallowClick) { this.swallowClick = false; return; }
+      if (!(e.target instanceof HTMLElement)) return;
       const tab = e.target.closest<HTMLElement>('[data-tab]');
       const page = PAGES.find(page => page === tab?.dataset.tab);
       if (page) return this.setPage(page);
@@ -665,6 +666,7 @@ export class HeroScreen {
 
   private key(e: KeyboardEvent) {
     if (!(e.target instanceof HTMLElement)) return;
+    if (e.key === ' ' || e.key === 'Enter') this.swallowClick = false;
     if (e.target instanceof HTMLSelectElement) { e.stopPropagation(); return; }
     if (e.key === 'Escape') {
       if (this.cancel()) { e.stopPropagation(); e.preventDefault(); }
