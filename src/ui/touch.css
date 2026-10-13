@@ -51,10 +51,10 @@
   display: none !important;
 }
 
-/* The hero screen's word-buttons get more room to hit, where they stand. */
+/* Allocate a finger's target in the layout, never across a neighbouring command. */
 .kc-touch .kc-hero .act {
-  padding: 16px 12px;
-  margin: -16px -12px;
+  min-height: 44px;
+  margin: 0;
 }
 
 /* What a finger holds or taps, in type big enough to read at arm's length. */

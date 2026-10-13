@@ -77,4 +77,14 @@ https://arturcrmbot.github.io/crown-and-bounty/
 | Play-through | the real UI, from the title to the court, by mouse | `npm run e2e` |
 | Phone | the same by touch alone, on an emulated phone held sideways | `npm run phone` |
 | Visual | frozen scenes, frame for frame, against baselines approved on a Mac | `npm run visual` |
+| Character screen | gear previews and actions, army controls and small landscape-phone layouts | `npm run test:hero-ui` |
 | Artur | whether it's fun | the live game |
+
+The character screen has Hero, Equipment and Army pages with navigation and Close kept in view.
+Equipment is inspected before it is changed. Wear it and Take it off apply the displayed comparison;
+Move starts tap-to-place or dragging, and the keyboard accelerators remain available.
+The comparison runs the existing gear rules on a prospective state and never changes a save.
+Army inspection keeps the company's wages, leadership and battle position beside its commands.
+
+Frozen scenes can be selected with `npm run visual -- --scenes=hero,herogear,herostack,heroleader`.
+Approving a selection preserves the baselines of scenes outside that selection.

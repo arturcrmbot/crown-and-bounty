@@ -56,13 +56,17 @@ const SCENES = {
   mere: { query: '&commission=4&reveal=1&x=700&y=560', keepCard: true },
   sceptre: { query: '&commission=5&reveal=1&sceptre=1', keepCard: true },
   hero: { query: `&hero=wizard&gear=${GEAR}&army=knights:8,archers:22,peasants:40`, steps: ['key:h'], dom: true },
-  herostack: { query: `&hero=wizard&gear=${GEAR}&army=knights:8,archers:22,peasants:40`, steps: ['key:h', 'place:stack:0'], dom: true },
-  heroleader: { query: `&hero=knight&gear=oldBanner,brannocsLance&army=knights:10,archers:20,peasants:30`, steps: ['key:h', 'place:hero'], dom: true },
+  herogear: { query: `&hero=wizard&gear=${GEAR}&army=knights:8,archers:22,peasants:40`, steps: ['key:h', 'Equipment'], dom: true },
+  herostack: { query: `&hero=wizard&gear=${GEAR}&army=knights:8,archers:22,peasants:40`, steps: ['key:h', 'Army', 'place:stack:0'], dom: true },
+  heroleader: { query: `&hero=knight&gear=oldBanner,brannocsLance&army=knights:10,archers:20,peasants:30`, steps: ['key:h', 'How he fights'], dom: true },
   // The minimap folded away into its button, and the journal with things heard, one of them ticked off (#130).
   folded: { query: '', steps: ['Knight of the Realm', 'Ride out', 'key:Tab'] },
   journal: { query: '&hero=knight&flags=tower:journal,pike:false,pikeHome:true,orders:true,poachers:spared', steps: ['key:j'], dom: true },
 };
 const approve = process.argv.includes('--approve');
+const requested = process.argv.find(arg => arg.startsWith('--scenes='))?.slice(9).split(',');
+if (requested?.some(name => !(name in SCENES))) throw new Error(`Unknown visual scene in ${requested.join(', ')}`);
+const scenes = Object.entries(SCENES).filter(([name]) => !requested || requested.includes(name));
 const file = 'test/visual.json';
 const approved = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : {};
 mkdirSync('screenshots/visual', { recursive: true });
@@ -70,10 +74,10 @@ mkdirSync('screenshots/visual', { recursive: true });
 const server = await startServer();
 const { browser, page, errors } = await openPage();
 const kc = hooks(page);
-const now = {};
+const now = requested ? { ...approved } : {};
 let changed = 0;
 try {
-  for (const [name, scene] of Object.entries(SCENES)) {
+  for (const [name, scene] of scenes) {
     await page.goto(`${server.url}?freeze=1${scene.query}`);
     await kc.ready();
     if (scene.steps) {
@@ -110,7 +114,7 @@ try {
 if (errors.length) console.log(`page errors: ${errors.join(' | ')}`);
 if (approve) {
   writeFileSync(file, `${JSON.stringify(now, null, 2)}\n`);
-  console.log(`approved ${Object.keys(now).length} scenes into ${file}`);
+  console.log(`approved ${scenes.length} scenes into ${file}`);
 } else if (changed) {
   console.log(`${changed} scene(s) differ. Look at the PNGs, then run: npm run visual -- --approve`);
 }

@@ -355,6 +355,7 @@ try {
   await page.waitForTimeout(100);
   const sheet = () => kc.call(() => window.__kc.hero());
   check((await screen()) === 'hero' && (await sheet())?.title === 'Sir Aldric, Knight of the Realm', 'H opens the hero screen');
+  check(await kc.choose('Equipment'), 'the equipment page opens without changing the army or gear');
   const dragTo = async (from, to) => {
     const at = async (place) => {
       const b = await page.locator(`.kc-hero [data-place="${place}"]`).boundingBox();
@@ -378,10 +379,12 @@ try {
   looked = await sheet();
   check(looked.slots.banner === 'oldBanner' && (await kc.state()).hero.gear.banner === 'oldBanner', 'and goes back on, dragged to its slot');
   const line = looked.army;
+  check(await kc.choose('Army'), 'the army has its own page');
   await dragTo('stack:1', 'stack:0');
   check(JSON.stringify((await sheet()).army) === JSON.stringify([line[1], line[0], ...line.slice(2)]), 'a stack dragged onto another swaps places with it in the line');
   await dragTo('stack:1', 'stack:0');
   await page.keyboard.press('Escape');
+  if ((await screen()) === 'hero') await page.keyboard.press('Escape');
   await page.waitForTimeout(60);
   check((await screen()) === 'adventure' && JSON.stringify((await kc.state()).army.map((a) => `${a.count} ${a.troop}`)) === JSON.stringify(line), 'Escape closes it, with the army as it was');
   await go('mine', 'Enter');
