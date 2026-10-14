@@ -91,3 +91,9 @@ Army inspection keeps the company's wages, leadership and battle position beside
 
 Frozen scenes can be selected with `npm run visual -- --scenes=hero,herogear,herostack,heroleader`.
 Approving a selection preserves the baselines of scenes outside that selection.
+
+The battle keeps the acting company and its mana in a readable deck below the field, with the current
+and next turns above it. A forecast appears beside its target without replacing the acting company's
+identity. On landscape phones the rails are the only command surface. Spells can still be inspected
+when none is affordable, and Cancel puts an aimed spell away. `node scripts/battle-ui.mjs` checks these
+tasks on desktop and both landscape-phone sizes without playing a campaign.

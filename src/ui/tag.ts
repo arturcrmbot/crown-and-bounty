@@ -45,17 +45,20 @@ export class ForecastTag {
     this.placed = placed;
     this.el.hidden = false;
     this.el.style.transform = s === 1 ? '' : `scale(${s})`;
+    this.el.style.maxWidth = `${Math.min(250, room.right - room.left - 16) / s}px`;
     const [w, h] = [this.el.offsetWidth * s, this.el.offsetHeight * s];
     const [midX, midY] = [(box.left + box.right) / 2 - w / 2, (box.top + box.bottom) / 2 - h / 2];
+    const across = Math.max(room.left + 4, Math.min(room.right - 4 - w, midX));
+    const down = Math.max(room.top + 4, Math.min(room.bottom - 4 - h, midY));
     const spots: Record<TagSide, [number, number]> = {
-      right: [box.right + 8, midY],
-      left: [box.left - 8 - w, midY],
-      above: [midX, box.top - 8 - h],
-      below: [midX, box.bottom + 8],
+      right: [box.right + 10, down],
+      left: [box.left - 10 - w, down],
+      above: [across, box.top - 10 - h],
+      below: [across, box.bottom + 10],
     };
     const fits = (side: TagSide) => {
       const [x, y] = spots[side];
-      return side === 'left' || side === 'right' ? x >= room.left + 4 && x + w <= room.right - 4 : y >= room.top + 4 && y + h <= room.bottom - 4;
+      return x >= room.left + 4 && x + w <= room.right - 4 && y >= room.top + 4 && y + h <= room.bottom - 4;
     };
     const [x, y] = spots[sides.find(fits) ?? sides[0]];
     this.el.style.left = `${Math.round(Math.max(room.left + 4, Math.min(room.right - 4 - w, x)))}px`;

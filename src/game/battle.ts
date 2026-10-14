@@ -8,7 +8,7 @@ import { capital, coins, listed, roman } from '../rules/state';
 import { activeFighter, bardOf, battleAct, battleEnd, blessesAll, bribeOffer, canCast, canJoin, casterOf, castsLeft, chargeOf, fighterById, heroHelp, isCharge, isLeader, onField, options, ridesOut, spellCost, spellDamage, spellsOf, spellVictims, unitOf, wound, type BattleAction, type BattleEvent, type BattleState, type Fighter } from '../rules/battle/battle';
 import { aimTag, bardTag, forecastOf, type AimTag } from '../rules/battle/forecast';
 import { paintBanner } from '../render/banner';
-import { BattleScreen, BUTTONS, FIRE_FALL, FLOAT_LIFE, FLOAT_RISE, hexAt, hexCentre, leaderAt, LOG_BOTTOM, sideAt, spotOf, stripBottom, type BattleView, type Shot } from '../render/battleScreen';
+import { BattleScreen, FIRE_FALL, FLOAT_LIFE, FLOAT_RISE, hexAt, hexCentre, leaderAt, LOG_BOTTOM, sideAt, spotOf, stripBottom, type BattleView, type Shot } from '../render/battleScreen';
 import { CUE_PING, cueBounce, FLASH_GAP, FLASH_TIME, FRAME, holdFrames, kickLeft, kickOf, POP_LIFE, ROLL, TOPPLE_TIME, toppleAngle, victoryHop, volleyOf, type Blow } from '../render/juice';
 import { hash } from '../render/noise';
 import { animLength, bodyHeight, hitTime, STAND, type AnimName } from '../render/battleSprites';
@@ -24,6 +24,7 @@ import { HoverLabel } from '../ui/label';
 import { bitmapUrl } from '../ui/pixels';
 import { play, speak } from '../ui/sound';
 import { ForecastTag, type PageBox, type TagSide } from '../ui/tag';
+import { BattleHUD } from '../ui/battleHUD';
 import { touch } from '../ui/touch';
 import { isGentle } from '../ui/gentle';
 import type { Display } from './display';
@@ -39,6 +40,7 @@ type Left = Map<number, { count: number; hp: number }>;
 type Intent = { action: BattleAction; kind: 'move' | 'melee' | 'shoot' | 'spell' | 'bard' };
 /** What pointing at an intent shows, worked out once for each: the tag by the stack, the stacks lit, and the ribbon's line. */
 type Aim = { battle: BattleState; key: string; tag: AimTag | null; lit: Map<number, 'target' | 'danger'>; line: string | null; charge: boolean };
+type Command = 'spells' | 'wait' | 'defend' | 'auto' | 'retreat';
 
 /** Nothing lit. */
 const UNLIT: ReadonlyMap<number, 'target' | 'danger'> = new Map();
@@ -100,12 +102,13 @@ export class BattleController implements Screen {
   private readonly label = new HoverLabel();
   /** What a click would do, beside the stack it would land on. */
   private readonly tag = new ForecastTag();
+  private readonly hud = new BattleHUD(button => this.hooks.onCommand(button));
   /** The pointer the canvas has now, and its name, for scripts. */
   private cursor = '';
   private pointerName = 'default';
   private aim: Aim | null = null;
   private readonly display: Display;
-  private readonly hooks: { onChange: (b: BattleState) => void; onDone: (b: BattleState) => void };
+  private readonly hooks: { onChange: (b: BattleState) => void; onDone: (b: BattleState) => void; onCommand: (button: SideButton) => void };
   private readonly pace: number;
   private auto = false;
   private finishState: BattleState | null = null;
@@ -366,6 +369,7 @@ export class BattleController implements Screen {
     this.cards.dispose();
     this.label.dispose();
     this.tag.dispose();
+    this.hud.dispose();
     this.setCursor('default');
   }
 
@@ -1533,6 +1537,7 @@ export class BattleController implements Screen {
   }
 
   render(_tick?: number): Uint8Array {
+    this.view.scale = this.display.scale;
     return this.screen.draw(this.battle, this.view).data;
   }
 
@@ -1542,6 +1547,7 @@ export class BattleController implements Screen {
 
   placeCards() {
     this.placeCard();
+    this.hud.place(this.battle, this.view, this.buttons(), this.display, this.cards.isOpen);
   }
 
   get screenBitmap() {
@@ -1555,7 +1561,7 @@ export class BattleController implements Screen {
   /** What clicking a hex would do, for the stack whose turn it is. */
   private intent(hex: number, x: number, y: number): Intent | null {
     const f = activeFighter(this.battle);
-    if (!f || f.side !== 'player' || this.auto || this.queue.length > 0) return null;
+    if (!f || f.side !== 'player' || this.auto || this.queue.length > 0 || this.battle.volley || this.battle.result || this.cards.isOpen) return null;
     const occupant = this.battle.fighters.find((o) => onField(o) && o.at === hex);
     if (this.view.targeting) {
       const spell = SPELLS[this.view.targeting as SpellId];
@@ -1590,7 +1596,7 @@ export class BattleController implements Screen {
     const aim = this.aimAt(intent);
     v.preview = aim ? aim.line : under?.book || under?.level ? this.leaderLine(under.id) : under ? this.spiritsLine(under.id) : null;
     v.lit = aim?.lit ?? UNLIT;
-    const pointer = this.pointerFor(intent, aim, hex !== null || leader !== null, x, y);
+    const pointer = this.pointerFor(intent, aim, hex !== null || leader !== null);
     this.setCursor(pointer.css, pointer.name);
     this.showTag(intent, aim, hex);
   }
@@ -1619,12 +1625,11 @@ export class BattleController implements Screen {
    * in, a bow, boots (a horseshoe for riders, a paw for beasts), the spell's sign, a bard's lute, and
    * on your turn, "no" wherever on the field a click would do nothing.
    */
-  private pointerFor(intent: Intent | null, aim: Aim | null, onTheField: boolean, x: number, y: number): { name: string; css: string } {
+  private pointerFor(intent: Intent | null, aim: Aim | null, onTheField: boolean): { name: string; css: string } {
     const f = activeFighter(this.battle);
     const mine = !!f && f.side === 'player' && !this.auto && this.queue.length === 0 && !this.battle.volley;
     const icon = (kind: CursorKind, heading?: Heading) => ({ name: heading ? `${kind}:${heading}` : kind, css: cursorCss(kind, heading) });
     if (!intent || !f) {
-      if (BUTTONS.some(({ rect: r }) => x >= r.x && x < r.x + r.width && y >= r.y && y < r.y + r.height)) return { name: 'pointer', css: 'pointer' };
       return mine && onTheField ? icon('no') : { name: 'default', css: 'default' };
     }
     const { action } = intent;
@@ -1652,10 +1657,10 @@ export class BattleController implements Screen {
     // Round the stacks aimed at, each from its head to its feet, or round the hex it would move to.
     const boxes = moving
       ? [[...hexCentre(hex), 26, 26] as const]
-      : [...aim.lit.keys()].map((id) => {
+      : ('target' in intent.action && intent.action.target !== undefined ? [intent.action.target] : [...aim.lit.keys()]).map((id) => {
           const f = fighterById(this.battle, id);
           const [cx, cy] = hexCentre(f.at);
-          return [cx, cy, bodyHeight(f.troop, 'battle') - 12, 22] as const;
+          return [cx, cy, Math.max(84, bodyHeight(f.troop, 'battle') - 12), 22] as const;
         });
     const from = this.display.toPage(Math.min(...boxes.map(([cx]) => cx)) - 30, Math.min(...boxes.map(([, cy, up]) => cy - up)));
     const to = this.display.toPage(Math.max(...boxes.map(([cx]) => cx)) + 30, Math.max(...boxes.map(([, cy, , down]) => cy + down)));
@@ -1740,21 +1745,31 @@ export class BattleController implements Screen {
     return `${charge ? 'Charge! ' : ''}${ranged ? 'Shoot' : 'Attack'} ${whom}: about ${forecast.target.damage} damage, ${perish(forecast.target.killed)}.${first}${back}${after}`;
   }
 
-  private button(id: (typeof BUTTONS)[number]['id']) {
+  private cancelAim() {
+    this.view.targeting = null;
+    this.armed = null;
+    this.pointer = null;
+    this.view.inspect = null;
+    this.label.hide();
+    this.unaim();
+  }
+
+  private button(id: Command) {
+    if (!this.buttons().find(button => button.id === id)?.enabled) return;
     const f = activeFighter(this.battle);
-    const mine = !!f && f.side === 'player' && this.queue.length === 0;
     if (id === 'auto') {
+      this.cancelAim();
       this.auto = !this.auto;
       this.view.finishOffer = false;
       this.view.log = this.auto ? 'Your sergeants take over. Press Auto again to take back command.' : 'You take command again.';
       return;
     }
-    if (!mine || this.auto) return;
     if (id === 'wait') this.perform({ type: 'wait' });
     // A bard has nothing to defend against: the button sings instead.
-    else if (id === 'defend' && bardOf(f)) this.songCard();
+    else if (id === 'defend' && f && bardOf(f)) this.songCard();
     else if (id === 'defend') this.perform({ type: 'defend' });
     else if (id === 'retreat') this.confirmRetreat();
+    else if (this.view.targeting) this.cancelAim();
     else this.openSpellbook();
   }
 
@@ -1821,16 +1836,16 @@ export class BattleController implements Screen {
    */
   buttons(): SideButton[] {
     const f = activeFighter(this.battle);
-    const mine = !!f && f.side === 'player' && this.queue.length === 0 && !this.auto && !this.battle.volley && !this.battle.result;
+    const mine = !!f && f.side === 'player' && this.queue.length === 0 && !this.auto && !this.battle.volley && !this.battle.result && !this.cards.isOpen;
     const bard = mine && !!bardOf(f);
     const aiming = Boolean(this.view.targeting);
-    const castable = Object.values(SPELLS).some((spell) => canCast(this.battle, spell.id));
+    const knowsSpells = spellsOf(this.battle).length > 0;
     return [
-      { id: 'spells', label: aiming ? 'Cancel' : 'Spells', icon: 'spells', side: 'left', enabled: mine && (aiming || castable), on: aiming, press: () => (aiming ? this.input.key('escape') : this.button('spells')) },
-      { id: 'wait', label: 'Wait', icon: 'wait', side: 'left', enabled: mine, press: () => this.button('wait') },
-      { id: 'defend', label: bard ? 'Sing' : 'Defend', icon: bard ? 'sing' : 'defend', side: 'left', enabled: mine, press: () => this.button('defend') },
+      { id: 'spells', label: aiming ? 'Cancel' : 'Spells', icon: 'spells', side: 'left', enabled: mine && (aiming || knowsSpells), on: aiming, press: () => this.button('spells') },
+      { id: 'wait', label: 'Wait', icon: 'wait', side: 'left', enabled: mine && !aiming && !f.waited, press: () => this.button('wait') },
+      { id: 'defend', label: bard ? 'Sing' : 'Defend', icon: bard ? 'sing' : 'defend', side: 'left', enabled: mine && !aiming, press: () => this.button('defend') },
       { id: 'retreat', label: 'Retreat', icon: 'retreat', side: 'right', enabled: mine, press: () => this.button('retreat') },
-      { id: 'auto', label: this.view.finishOffer ? 'Finish' : 'Auto', icon: 'auto', side: 'right', enabled: !this.battle.result, on: this.auto, press: () => this.button('auto') },
+      { id: 'auto', label: this.view.finishOffer ? 'Finish' : 'Auto', icon: 'auto', side: 'right', enabled: !this.battle.result && !this.cards.isOpen, on: this.auto, press: () => this.button('auto') },
     ];
   }
 
@@ -1863,8 +1878,6 @@ export class BattleController implements Screen {
         this.queue[0].elapsed = this.queue[0].duration;
         return;
       }
-      const button = BUTTONS.find((b) => x >= b.rect.x && x < b.rect.x + b.rect.width && y >= b.rect.y && y < b.rect.y + b.rect.height);
-      if (button) return this.button(button.id);
       const hex = hexAt(x, y);
       const intent = hex === null ? null : this.intent(hex, x, y);
       if (tapped && intent?.kind !== 'bard') {
@@ -1900,7 +1913,7 @@ export class BattleController implements Screen {
     },
     key: (key: string) => {
       if (key === 'escape') {
-        this.view.targeting = null;
+        this.cancelAim();
         this.cards.hide();
       } else if (key === 'w') this.button('wait');
       else if (key === 'd') this.button('defend');

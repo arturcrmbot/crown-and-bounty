@@ -40,7 +40,7 @@ const SCENES = {
   // Land he has seen stays clear in any light (#125): the King's road in the evening, and at nightfall.
   evening: { query: '&hero=knight&movement=40&x=2760&y=960', steps: [] },
   nightfall: { query: '&hero=knight&movement=0&x=2760&y=960', steps: [] },
-  battle: { query: '&battle=patrol', keepCard: true },
+  battle: { query: '&battle=patrol', keepCard: true, dom: true },
   // Aiming a spell at their stack (#156): the stack lit, and the tag saying what a click would do.
   aim: { query: '&battle=patrol&spells=fireball', steps: ['key:s', 'Cast Fireball', 'hover:enemy'], dom: true },
   court: { query: '&court=1', keepCard: true },
@@ -55,7 +55,7 @@ const SCENES = {
   feastcourtier: { query: '&feast=1&hero=courtier&army=knights:8,archers:22,peasants:40', keepCard: true },
   fenmarch: { query: '&commission=2', keepCard: true },
   fen: { query: '&commission=2&reveal=1&x=640&y=700', keepCard: true },
-  fenbattle: { query: '&commission=2&battle=troll', keepCard: true },
+  fenbattle: { query: '&commission=2&battle=troll', keepCard: true, dom: true },
   heath: { query: '&commission=3&reveal=1&x=640&y=480', keepCard: true },
   mere: { query: '&commission=4&reveal=1&x=700&y=560', keepCard: true },
   sceptre: { query: '&commission=5&reveal=1&sceptre=1', keepCard: true },
