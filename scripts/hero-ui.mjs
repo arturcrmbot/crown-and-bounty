@@ -15,7 +15,8 @@ const profiles = [
   { name: 'desktop', width: 1280, height: 720, touch: false },
   { name: 'phone', width: 844, height: 390, touch: true },
   { name: 'compact', width: 667, height: 375, touch: true },
-];
+].filter(profile => !process.env.PROFILE || profile.name === process.env.PROFILE);
+if (!profiles.length) throw new Error(`Unknown character UI profile ${process.env.PROFILE}`);
 const errors = [], captures = [], checks = [];
 const touchPages = new WeakSet();
 const check = (condition, message) => { assert.ok(condition, message); checks.push(message); console.log(`ok ${message}`); };
@@ -147,8 +148,30 @@ try {
     await drag(page, `pack:${free}`, 'slot:banner', profile.touch);
     check((await state(page)).hero.gear.banner === 'oldBanner', `${profile.name} the banner drags back on across a scrolled equipment pane`);
     current = await state(page);
+    await page.evaluate(() => {
+      window.__heroTapTrace = [];
+      for (const type of ['pointerdown', 'pointerup', 'pointercancel', 'touchstart', 'touchend', 'click']) document.querySelector('.kc-hero').addEventListener(type, event => {
+        const target = event.target.closest?.('[data-place],[data-act]');
+        const entry = { type, pointer: event.pointerId, pointerType: event.pointerType, target: target?.dataset.place ?? target?.dataset.act, x: event.clientX, y: event.clientY, selected: window.__kc.hero()?.selected, held: window.__kc.hero()?.held, interaction: window.__kc.hero()?.interaction, scroll: document.querySelector('.gear').scrollTop };
+        window.__heroTapTrace.push(entry);
+        queueMicrotask(() => { entry.after = { selected: window.__kc.hero()?.selected, held: window.__kc.hero()?.held, interaction: window.__kc.hero()?.interaction, scroll: document.querySelector('.gear').scrollTop }; });
+      }, { capture: true });
+    });
     await place(page, 'pack:0');
-    check((await sheet(page)).selected === 'pack:0' && (await sheet(page)).held === null, `${profile.name} the first tap after a drag inspects the intended find`);
+    await page.waitForFunction(() => {
+      const current = window.__kc.hero();
+      return current.selected === 'pack:0' && current.held === null;
+    }, null, { timeout: 3000 }).catch(async error => {
+      console.log('post-drag tap timeout diagnostic', JSON.stringify(await page.evaluate(() => ({ trace: window.__heroTapTrace, sheet: window.__kc.hero(), gearScroll: document.querySelector('.gear').scrollTop, viewport: { width: innerWidth, height: innerHeight, scale: visualViewport.scale } }))));
+      await page.screenshot({ path: `${out}/${profile.name}-post-drag-tap-failure.png` });
+      throw error;
+    });
+    const inspected = await sheet(page);
+    if (inspected.selected !== 'pack:0' || inspected.held !== null) {
+      console.log('post-drag tap diagnostic', JSON.stringify(await page.evaluate(() => ({ trace: window.__heroTapTrace, sheet: window.__kc.hero(), gearScroll: document.querySelector('.gear').scrollTop, viewport: { width: innerWidth, height: innerHeight, scale: visualViewport.scale } }))));
+      await page.screenshot({ path: `${out}/${profile.name}-post-drag-tap-failure.png` });
+    }
+    check(inspected.selected === 'pack:0' && inspected.held === null, `${profile.name} the first tap after a drag inspects the intended find (${inspected.selected}, held ${inspected.held})`);
     await act(page, 'pick-up');
     check((await sheet(page)).held === 'pack:0', `${profile.name} Move picks up the inspected find, not the previous drag source`);
     await place(page, 'pack:1');

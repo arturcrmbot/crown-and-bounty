@@ -777,6 +777,7 @@ export class HeroScreen {
       selected: this.selected ? keyOf(this.selected) : null,
       card: this.card ? keyOf(this.card) : null,
       comparison: preview ? { target: preview.target, current: preview.current, candidate: preview.candidate, rows: preview.rows } : null,
+      interaction: { dragging: this.dragging, pressed: this.press ? keyOf(this.press.place) : null, suppressClick: this.swallowClick },
       text: this.root.innerText,
     };
   }
