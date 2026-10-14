@@ -14,12 +14,13 @@ import { GOLD, INK, NEUTRAL, PARCHMENT, RED, WATER, WOOD } from '../render/palet
 import { CardView } from './card';
 import { homeScreenCard, isFullscreen, standalone, toggleFullscreen } from './fullscreen';
 import { speaker } from './mute';
+import { toggleMixPanel } from './mix';
 import { bitmapUrl } from './pixels';
 import { play } from './sound';
 import { touch, upright } from './touch';
 import './rail.css';
 
-export type RailIcon = 'hero' | 'journal' | 'map' | 'day' | 'spells' | 'wait' | 'defend' | 'sing' | 'auto' | 'retreat' | 'sound' | 'muted' | 'full' | 'unfull';
+export type RailIcon = 'hero' | 'mix' | 'journal' | 'map' | 'day' | 'spells' | 'wait' | 'defend' | 'sing' | 'auto' | 'retreat' | 'sound' | 'muted' | 'full' | 'unfull';
 
 function icon(rows: string[], colours: Record<string, number>): Bitmap {
   const b = new Bitmap(rows[0].length, rows.length);
@@ -42,6 +43,7 @@ const FLAG = icon(
 );
 /** A note, for a bard's song. */
 const NOTE = icon(['...oo...', '...oGo..', '...oGGo.', '...oGoGo', '...oGo.o', '...oGo..', '...oGo..', '.oooGo..', 'oGGGGo..', 'oGGGGo..', '.oooo...'], { o: INK, G: GOLD[5] });
+const MIX = icon(['.G...G...G.', '.G..GGG..G.', 'GGG..G...G.', '.G...G...G.', '.G...G..GGG', '.G...G...G.', '.G...G...G.'], { G: GOLD[5] });
 
 /** A bitmap without its empty edges, so every picture fills its button alike. */
 function trimmed(b: Bitmap): Bitmap {
@@ -60,6 +62,7 @@ function trimmed(b: Bitmap): Bitmap {
 
 const PICTURES: Record<RailIcon, () => Bitmap> = {
   hero: () => artifactIcon('dwarvenHelm'),
+  mix: () => MIX,
   journal: () => JOURNAL,
   map: () => MAP,
   day: () => HOURGLASS,
@@ -89,7 +92,7 @@ function picture(id: RailIcon) {
 }
 
 /** Full screen and Sound: at the top of the right-hand rail, on every screen. */
-const OWN = new Set(['full', 'sound']);
+const OWN = new Set(['full', 'sound', 'mix']);
 
 export class Rail {
   private readonly rails = { left: document.createElement('div'), right: document.createElement('div') };
@@ -129,7 +132,8 @@ export class Rail {
     const full = isFullscreen();
     const fullButton: SideButton = { id: 'full', label: full ? 'Exit full' : 'Full screen', icon: full ? 'unfull' : 'full', side: 'right', enabled: true, on: full, press: () => void this.fullScreen() };
     const sound: SideButton = { id: 'sound', label: muted ? 'Muted' : 'Sound', icon: muted ? 'muted' : 'sound', side: 'right', enabled: true, press: () => toggleMute() };
-    return standalone() ? [sound] : [fullButton, sound];
+    const mix: SideButton = { id: 'mix', label: 'Settings', icon: 'mix', side: 'right', enabled: true, press: () => toggleMixPanel() };
+    return standalone() ? [sound, mix] : [fullButton, sound, mix];
   }
 
   private async fullScreen() {
