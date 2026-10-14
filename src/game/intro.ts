@@ -6,6 +6,7 @@ import { ARTIFACTS, type ArtifactId } from '../content/artifacts';
 import { FRIENDS } from '../content/friends';
 import { PERKS, RANKS, SKILLS } from '../content/skills';
 import { bountyCard, bountyOf, campaignLines, commissionOf, hasNextCommission, listed, roman, type Card, type GameState } from '../rules/game';
+import { touch } from '../ui/touch';
 
 /** The title screen's menu: carry on with a save (a won commission waits at court), or begin again. */
 export function titleCard(resume: GameState | null): Card {
@@ -130,6 +131,7 @@ export function endCard(state: GameState): Card {
 
 /** Every key, on one card: press ? on the map. */
 export function keysCard(): Card {
+  const touching = touch();
   return {
     title: 'Keys',
     wide: true,
@@ -137,7 +139,7 @@ export function keysCard(): Card {
       '**On cards.** **Enter** or **Space** presses a card\u2019s only button, the number keys press the first, second or third, and **Esc** puts it away.',
       '**On the map.** Click to ride, and rest the pointer on the ground first to see how many days\u2019 ride it is. Hold **Shift** to gallop, and press **Esc** or click on him to stop. Click anything to look at it, and click it again to go there. A right-click only looks. Drag, scroll, the arrows or **WASD** look around, and so does a click or a drag on the little map at the top right, which **Tab** folds away and brings back. **Space** brings the view back to him. **E** ends the day, **H** opens the hero and his army, **J** opens the journal with the bounty and what you\u2019ve heard, and **M** turns the sound off.',
       '**In battle.** Click a hex to move, or an enemy to attack. **S** opens the spellbook, **W** waits, **D** defends, **A** hands over to the sergeants, and **R** retreats.',
-      '**On the hero screen.** Drag an artifact or a stack where you want it, or click it, then click where it goes. A double-click wears an artifact or takes it off. The arrows move between squares, **Enter** picks up and puts down, **Shift** and an arrow moves what\u2019s there, and **Delete** dismisses a stack. **H** or **Esc** closes it.',
+      `**On the hero screen.** ${touching ? 'Tap' : 'Click'} an artifact to inspect it, then choose **Wear it** or **Take it off** to apply the comparison. **Move** starts moving an artifact or a company, and a ${touching ? 'tap' : 'click'} places it. You can also drag it where it belongs. The arrows move between items, **Shift** and an arrow reorders the pack or the companies, and **Delete** asks before sending a company home. **H** closes the screen. **Esc** first cancels a move or puts away a confirmation or inspection, and closes the screen when nothing is open.`,
     ],
     choices: [{ label: 'Close', action: { type: 'close' } }],
   };

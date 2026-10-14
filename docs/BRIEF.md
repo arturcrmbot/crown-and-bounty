@@ -51,7 +51,10 @@ on the story, WORLD.md wins.
   Battle for Wesnoth's units lie under the paintings, where they time the blows and stand in until the paintings load.
   The ground's light and small decoration stay quieter than the figures and action marks.
   Everything else (the portraits, the court's people, the title painting, the interface) is drawn in code.
-  The court keeps its room still, with detailed figures and small, cached nods and blinks on its existing clock.
+  The court is a close royal audience in a warm vaulted room. Osric, Aldric and the story's visitors stand on the left,
+  and every welcome, hero choice and reward stays on the right. Its room is still, with cached figures and a brief
+  welcoming gesture. The title puts its name and menu beside the castle and the road. At payday the painted party
+  gathers closer to the fire, with its toast in the sky and its card on the left. Gentle effects keep these scenes still.
 - **Recorded sound** (#257). Every sound effect, and most of the land's sounds, is a recording made by a named person,
   cut by `scripts/sfx.py`. Only speech and a few small things are still made in code.
 - **Music** is yubatake's MIDI tunes, played on GeneralUser GS's instruments. A map's music stays put and picks up where

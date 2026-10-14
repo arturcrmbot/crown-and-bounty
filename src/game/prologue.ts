@@ -1,7 +1,8 @@
-import { CourtScreen } from '../render/courtScreen';
+import { COURT_CARD, CourtScreen } from '../render/courtScreen';
 import { MAP_VIEW } from '../render/frame';
 import { apply, type Action, type GameState } from '../rules/game';
 import { CardView } from '../ui/card';
+import { isGentle } from '../ui/gentle';
 import { count, heroChosen } from './counter';
 import type { Display } from './display';
 import { backgroundCard, kingCard, storyCard, wantedCard } from './intro';
@@ -32,6 +33,7 @@ export class PrologueController implements Screen {
     this.onDone = onDone;
     this.screen.caption = 'The King\u2019s Court';
     this.screen.goose = false;
+    this.screen.welcome(0);
     this.cards = new CardView((action) => this.choose(action));
     this.cards.show(this.pages[0]);
   }
@@ -44,6 +46,7 @@ export class PrologueController implements Screen {
       count(heroChosen(action.id));
       // He kneels before the King as who he was.
       this.screen.kneel(action.id);
+      this.screen.welcome(this.time);
       this.cards.show(storyCard(action.id, true));
       this.page = this.pages.length + 1;
     } else if (action.type === 'close') {
@@ -59,7 +62,7 @@ export class PrologueController implements Screen {
   }
 
   render(): Uint8Array {
-    return this.screen.draw(this.time).data;
+    return this.screen.draw(isGentle() ? 0 : this.time).data;
   }
 
   get bitmap() {
@@ -67,15 +70,14 @@ export class PrologueController implements Screen {
   }
 
   /**
-   * Cards hang to the right of the throne, so the King stays in view; the choice of hero sits in the
-   * middle, and the wide last word to the left of the throne.
+   * Every page stays beside the audience, including hero choice and the final briefing.
    */
   placeCards() {
     const top = this.display.toPage(0, MAP_VIEW.y).y;
     const bottom = this.display.toPage(0, MAP_VIEW.y + MAP_VIEW.height).y;
-    const side = this.page > this.pages.length ? 0.2 : 0.8;
-    const at = this.display.toPage(MAP_VIEW.x + MAP_VIEW.width * side, MAP_VIEW.y + MAP_VIEW.height - 8);
-    this.cards.place(this.page === this.pages.length ? null : at, top, bottom);
+    const sides = { left: this.display.toPage(COURT_CARD.left, 0).x, right: this.display.toPage(COURT_CARD.right, 0).x };
+    const at = this.display.toPage((COURT_CARD.left + COURT_CARD.right) / 2, MAP_VIEW.y + MAP_VIEW.height - 8);
+    this.cards.place(at, top, bottom, undefined, sides);
   }
 
   dispose() {

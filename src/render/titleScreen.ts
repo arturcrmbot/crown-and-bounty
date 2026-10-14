@@ -1,4 +1,4 @@
-import { Bitmap, blit, SHADOW } from './bitmap';
+import { Bitmap, blit, scaleBitmap, SHADOW } from './bitmap';
 import { BAR, MAP_VIEW, paintFrame, SCREEN, type Rect } from './frame';
 import { fbm, hash, noise, shade } from './noise';
 import { BLUE, DIRT, GOLD, GRASS, INK, LEAF, PARCHMENT, PINE, PLUM, RED, REED, STONE, WOOD } from './palette';
@@ -8,10 +8,12 @@ import { drawOutlined, drawText, textMask } from './text';
 const W = MAP_VIEW.width;
 const H = MAP_VIEW.height;
 /** Where the far land meets the sky, and the setting sun just above it, in painting pixels. */
-const HORIZON = 262;
-const SUN = { x: 176, y: 226, r: 19 };
+const HORIZON = 242;
+const SUN = { x: 750, y: 190, r: 24 };
 /** How far down the painting the name starts, in painting pixels. */
-const NAME_TOP = 18;
+const NAME_TOP = 22;
+const NAME_LEFT = 48;
+const CASTLE_X = 686;
 
 /** Sunset, from the deep blue overhead down to the gold at the horizon. */
 const SKY = [BLUE[0], BLUE[1], BLUE[2], PLUM[2], PLUM[3], PLUM[4], RED[5], RED[6], GOLD[5], GOLD[6]];
@@ -122,10 +124,10 @@ function ridge(seed: number, base: number, rise: number, scale: number, sharp: b
 }
 
 /** Where the road runs, from the castle gate down to the bottom of the painting: its middle and half-width at a row. */
-const ROAD_TOP = 318;
+const ROAD_TOP = 302;
 const roadAt = (y: number) => {
   const t = (y - ROAD_TOP) / (H - ROAD_TOP);
-  return { x: 648 - t * 190 + Math.sin(t * 5.2) * 38 * t, half: 2 + t * 26 };
+  return { x: CASTLE_X + t * 96 + Math.sin(t * 5.2) * 22 * t, half: 3 + t * 31 };
 };
 
 /** The river, from far off under the sun, across the valley and under the road: points along its middle. */
@@ -203,9 +205,10 @@ export class TitleScreen {
   private readonly glow = new Float32Array(W * HORIZON);
   private readonly layers = [clouds(34, 124, 7, 0.4, 1.2), clouds(118, 236, 19, 0.44, 2.6)];
   private water: number[] = [];
-  private readonly castles = Array.from({ length: 8 }, (_, i) => castle(i / 8));
-  private readonly heroes = Array.from({ length: 8 }, (_, i) => hero((i / 8) * Math.PI, false, false));
+  private readonly castles = Array.from({ length: 8 }, (_, i) => scaleBitmap(castle(i / 8), 1.8));
+  private readonly heroes = Array.from({ length: 8 }, (_, i) => hero((i / 8) * Math.PI, false, false, 3));
   private readonly logo: Bitmap;
+  private readonly menuLogo: Bitmap;
 
   constructor() {
     // The bar carries one line of credits, so it has no sections to divide.
@@ -242,7 +245,7 @@ export class TitleScreen {
 
     // Nearer hills, one of them for the castle.
     const hills = ridge(11, HORIZON + 34, 34, 120, false);
-    for (let x = 0; x < W; x++) hills[x] -= 30 * Math.exp(-(((x - 648) / 96) ** 2));
+    for (let x = 0; x < W; x++) hills[x] -= 30 * Math.exp(-(((x - CASTLE_X) / 116) ** 2));
     for (let x = 0; x < W; x++) {
       const light = clamp01(0.5 + (hills[Math.max(0, x - 2)] - hills[Math.min(W - 1, x + 2)]) * 0.25);
       for (let y = Math.floor(hills[x]); y < H; y++) {
@@ -253,7 +256,7 @@ export class TitleScreen {
     }
 
     // A patchwork of fields in perspective, with hedges between them.
-    const FIELDS_TOP = 306;
+    const FIELDS_TOP = 292;
     const fieldColour = (x: number, y: number) => {
       const z = 900 / (y - HORIZON + 6);
       const gx = ((x - W / 2) * z) / 380 + 40;
@@ -340,7 +343,7 @@ export class TitleScreen {
       const x = Math.floor(hash(i, 1, 41) * W);
       const y = Math.floor(FIELDS_TOP - 4 + hash(i, 2, 41) ** 1.6 * 120);
       if (Math.abs(x - roadAt(y).x) < roadAt(y).half + 10 || wet[Math.min(H - 1, y + 2) * W + x] || wet[y * W + x]) continue;
-      if (Math.abs(x - 648) < 90 && y < 330) continue;
+      if (Math.abs(x - CASTLE_X) < 124 && y < 330) continue;
       const size = Math.round(10 + ((y - FIELDS_TOP) / 120) * 18);
       trees.push({ x, y, sprite: hash(i, 3, 41) < 0.35 ? pine(i, size + 4) : oak(i, size) });
     }
@@ -362,11 +365,18 @@ export class TitleScreen {
     }
 
     // Big trees at the edges frame the view.
-    bigTree(set, 26, H + 4, 150, 230, 5);
-    bigTree(set, 918, H + 4, 132, 250, 8);
+    bigTree(set, 10, H + 4, 132, 200, 5);
+    bigTree(set, 934, H + 4, 152, 254, 8);
 
-    // The name, with the first act's title under it in smaller letters.
-    this.logo = stack([this.paintLogo(textMask('CROWN & BOUNTY', 72, 3)), this.paintLogo(textMask('THE OLD KING\u2019S TREASURE', 26, 4))], 4);
+    this.logo = stack([
+      this.paintLogo(textMask('CROWN &', 58, 2)),
+      this.paintLogo(textMask('BOUNTY', 72, 3)),
+      this.paintLogo(textMask('THE OLD KING\u2019S TREASURE', 22, 1)),
+    ], 2);
+    this.menuLogo = stack([
+      this.paintLogo(textMask('CROWN & BOUNTY', 39, 1)),
+      this.paintLogo(textMask('THE OLD KING\u2019S TREASURE', 18, 1)),
+    ], 1);
     drawText(b, 'This game is a tribute to King\u2019s Bounty (1990) and Heroes of Might and Magic II, and its figures are painted over Wesnoth\u2019s units (GPL, CC BY-SA).', BAR.x + 12, BAR.y + 5, PARCHMENT[6], INK);
     this.base = b;
   }
@@ -395,9 +405,9 @@ export class TitleScreen {
     return sprite;
   }
 
-  /** The painting at `time` seconds; with `prompt`, a blinking "Click to begin" under the name. */
-  draw(time: number, prompt = false, words = 'Click anywhere to begin'): Bitmap {
-    return this.paint(this.screen, time, prompt, words);
+  /** The painting at `time` seconds, with a steady invitation under the name. */
+  draw(time: number, prompt = false, words = 'Click anywhere to begin', menu = false): Bitmap {
+    return this.paint(this.screen, time, prompt, words, menu);
   }
 
   /**
@@ -406,14 +416,14 @@ export class TitleScreen {
    */
   upright(): { name: Bitmap; land: Bitmap } {
     const still = this.paint(new Bitmap(SCREEN.width, SCREEN.height), 0, false, '');
-    const left = MAP_VIEW.x + Math.round((W - this.logo.width) / 2);
+    const left = MAP_VIEW.x + NAME_LEFT;
     return {
       name: crop(still, { x: left - 12, y: MAP_VIEW.y + 8, width: this.logo.width + 24, height: NAME_TOP - 8 + this.logo.height + 4 }),
-      land: crop(still, { x: MAP_VIEW.x + 440, y: MAP_VIEW.y + 180, width: 340, height: H - 188 }),
+      land: crop(still, { x: MAP_VIEW.x + 506, y: MAP_VIEW.y + 80, width: 360, height: H - 88 }),
     };
   }
 
-  private paint(s: Bitmap, time: number, prompt: boolean, words: string): Bitmap {
+  private paint(s: Bitmap, time: number, prompt: boolean, words: string, menu = false): Bitmap {
     s.data.set(this.base.data);
     // Clouds drift over the sky (never over the land or the name).
     for (const layer of this.layers) {
@@ -447,12 +457,12 @@ export class TitleScreen {
     }
     const phase = Math.floor(time * 6) % 8;
     const keep = this.castles[phase];
-    blit(s, keep, MAP_VIEW.x + 648 - keep.width / 2, MAP_VIEW.y + ROAD_TOP - keep.height + 16);
+    blit(s, keep, MAP_VIEW.x + CASTLE_X - Math.round(keep.width / 2), MAP_VIEW.y + ROAD_TOP - keep.height + 16);
     const rider = this.heroes[Math.floor(time * 3) % 8];
-    const at = roadAt(H - 40);
-    blit(s, rider, MAP_VIEW.x + Math.round(at.x) - rider.width / 2, MAP_VIEW.y + H - 40 - rider.height + 8);
-    blit(s, this.logo, MAP_VIEW.x + Math.round((W - this.logo.width) / 2), MAP_VIEW.y + NAME_TOP);
-    if (prompt && Math.floor(time * 1.6) % 2 === 0) drawOutlined(s, words, MAP_VIEW.x + W / 2, MAP_VIEW.y + NAME_TOP + this.logo.height + 11, PARCHMENT[6], INK, 22);
+    const at = roadAt(H - 20);
+    blit(s, rider, MAP_VIEW.x + Math.round(at.x) - Math.round(rider.width / 2), MAP_VIEW.y + H - 20 - rider.height + 8);
+    blit(s, menu ? this.menuLogo : this.logo, MAP_VIEW.x + NAME_LEFT, MAP_VIEW.y + NAME_TOP);
+    if (prompt) drawOutlined(s, words, MAP_VIEW.x + NAME_LEFT + this.logo.width / 2, MAP_VIEW.y + NAME_TOP + this.logo.height + 14, PARCHMENT[6], INK, 20);
     blit(s, this.overlay, 0, 0);
     return s;
   }
