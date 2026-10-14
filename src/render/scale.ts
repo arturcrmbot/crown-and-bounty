@@ -26,3 +26,5 @@ export type Size = 'battle' | 'map';
 export const unitScale = (size: Size, id: ArtId) => (VILLAINS.has(id) ? VILLAIN : 1) * (size === 'battle' ? BATTLE_UNIT : isHeroArt(id) ? MAP_HERO : MAP_UNIT);
 /** How much brighter and more vivid units are drawn at each size (see `brighten` in wesnoth.ts). */
 export const unitLift = (size: Size) => (size === 'battle' ? 0 : MAP_LIFT);
+/** Only the approved battle Wizard is promoted; map figures and UI paintings keep their scale. */
+export const battleFigureScale = (size: Size, id: ArtId) => size === 'battle' && id === 'heroWizard' ? 1.30 : 1;

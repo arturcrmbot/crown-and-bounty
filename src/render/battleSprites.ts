@@ -1,7 +1,7 @@
-import { Bitmap, outline, SHADOW } from './bitmap';
+import { Bitmap, outline, scaleBitmap, SHADOW } from './bitmap';
 import { COLORS, GOLD, INK, NEUTRAL, WOOD } from './palette';
 import { flat, mirror, shadowOval } from './sprites';
-import { unitLift, unitScale, type Size } from './scale';
+import { battleFigureScale, unitLift, unitScale, type Size } from './scale';
 import { ART, type ArtId, type Frame } from './units';
 import { nearestTint, unitBitmap, unitImage, type Team } from './wesnoth';
 import { paintedAnimation, paintedFigure } from './mapArt';
@@ -108,9 +108,22 @@ export function bodyHeight(troop: ArtId, size: Size): number {
   const painted = paintedFigure(troop, size);
   if (painted) {
     const [top, bottom] = rows(painted);
-    return bottom + 1 - top;
+    return Math.round((bottom + 1 - top) * battleFigureScale(size, troop));
   }
-  return Math.round(measure(troop).head * unitScale(size, troop));
+  return Math.round(measure(troop).head * unitScale(size, troop) * battleFigureScale(size, troop));
+}
+
+const promoted = new WeakMap<Bitmap, Bitmap>();
+function atBattleScale(troop: ArtId, size: Size, facing: 1 | -1, figure: Figure): Figure {
+  const scale = battleFigureScale(size, troop);
+  if (scale === 1) return figure;
+  let sprite = promoted.get(figure.sprite);
+  if (!sprite) {
+    sprite = scaleBitmap(figure.sprite, scale);
+    promoted.set(figure.sprite, sprite);
+  }
+  const anchor = Math.round((facing > 0 ? -figure.x : figure.x + figure.sprite.width) * scale);
+  return { sprite, x: facing > 0 ? -anchor : anchor - sprite.width, y: -Math.round(-figure.y * scale) };
 }
 
 const paintedSprites = new Map<string, { sprite: Bitmap; foot: number; x: number }>();
@@ -136,7 +149,7 @@ function paintedPose(troop: ArtId, facing: 1 | -1, { anim, ms }: Pose, size: Siz
     made = { sprite, foot: animation ? animation.foot[1] + HEADROOM : rows(sprite)[1] + 1, x: facing > 0 ? -anchor : anchor - sprite.width };
     paintedSprites.set(key, made);
   }
-  if (frame) return { sprite: made.sprite, x: made.x, y: -made.foot };
+  if (frame) return atBattleScale(troop, size, facing, { sprite: made.sprite, x: made.x, y: -made.foot });
   const reach = size === 'battle' ? 10 : 4;
   let [dx, dy] = [0, 0];
   if (anim === 'idle') dy = Math.floor(ms / 400) % 2 ? -1 : 0;
@@ -148,7 +161,7 @@ function paintedPose(troop: ArtId, facing: 1 | -1, { anim, ms }: Pose, size: Siz
     dx = Math.round(facing * swing * (anim === 'melee' || anim === 'charge' ? reach * (anim === 'charge' ? 1.6 : 1) : -reach * 0.3));
     dy = anim === 'melee' || anim === 'charge' ? -Math.round(swing * 2) : 0;
   } else if (anim === 'defend' || anim === 'defendRanged' || anim === 'death') dx = -facing * (size === 'battle' ? 4 : 2);
-  return { sprite: made.sprite, x: -Math.round(made.sprite.width / 2) + dx, y: -made.foot + dy };
+  return atBattleScale(troop, size, facing, { sprite: made.sprite, x: -Math.round(made.sprite.width / 2) + dx, y: -made.foot + dy });
 }
 
 const sprites = new Map<string, Bitmap>();
@@ -175,7 +188,7 @@ function frameBitmap(troop: ArtId, image: string, team: Team, facing: 1 | -1, si
 export function troopFigure(troop: ArtId, team: Team, facing: 1 | -1, pose: Pose, size: Size): Figure {
   const painted = paintedPose(troop, facing, pose, size);
   if (painted) return painted;
-  return place(troop, frameBitmap(troop, imageAt(troop, pose), team, facing, size), size);
+  return atBattleScale(troop, size, facing, place(troop, frameBitmap(troop, imageAt(troop, pose), team, facing, size), size));
 }
 
 function place(troop: ArtId, sprite: Bitmap, size: Size): Figure {

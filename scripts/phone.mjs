@@ -100,6 +100,14 @@ async function rail(name) {
   return true;
 }
 
+/** Battle orders live in one native bottom row, not in the map's side rails. */
+async function battleCommand(id) {
+  const button = page.locator(`.kc-battle-commands button[data-id="${id}"]:visible`);
+  if (!(await button.count()) || (await button.isDisabled())) return false;
+  await tapBox(await button.boundingBox(), `battle: ${await button.textContent()}`);
+  return true;
+}
+
 /** A finger's drag across the page, and a long press (Chromium only: WebKit here has only taps). */
 const touch = (type, points) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: points.map(([x, y]) => ({ x: Math.round(x), y: Math.round(y) })) });
 async function drag([x0, y0], [x1, y1], steps = 10) {
@@ -417,8 +425,6 @@ try {
   await press('Fight');
   await page.waitForFunction(() => window.__kc.screen() === 'battle', null, { timeout: 10_000 });
   await wait(600);
-  const battleRails = await call(() => [...document.querySelectorAll('.kc-rail:not([hidden]) button')].map((b) => b.getAttribute('aria-label')));
-  check(['Spells', 'Wait', 'Defend', 'Retreat'].every((n) => battleRails.includes(n)) && (battleRails.includes('Auto') || battleRails.includes('Finish')), `buttons down the sides for the battle: ${battleRails.join(', ')}`);
   for (let guard = 0; guard < 10; guard++) {
     await page.waitForFunction(() => {
       const b = window.__kc.battle();
@@ -433,9 +439,25 @@ try {
       return Boolean(s.fighters.find((x) => x.id === s.order[0]).hero && b.moves().length === 0);
     });
     if (!leader) break;
-    await rail('Defend');
+    check(await battleCommand('defend'), 'the leader can give his turn to the real battle command');
     await wait(400);
   }
+  const battleCommands = await call(() => {
+    const b = window.__kc.battle().battle();
+    const fighter = b.fighters.find(f => f.id === b.order[0]);
+    const words = [...document.querySelectorAll('.kc-battle-commands button')].filter(button => button.getClientRects().length && !button.hidden).map(button => button.textContent);
+    const knowsSpells = b.hero.spells.length > 0 || b.hero.charges?.some(charge => charge.uses > 0);
+    const required = [...(!fighter.waited ? ['Wait'] : []), 'Defend', 'Retreat', ...(knowsSpells ? ['Spells'] : [])];
+    const controls = [...document.querySelectorAll('.kc-battle-commands button')].filter(button => button.getClientRects().length && !button.hidden).map(button => {
+      const r = button.getBoundingClientRect();
+      const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+      return { width: r.width, height: r.height, hit: top === button || button.contains(top) };
+    });
+    const duplicates = [...document.querySelectorAll('.kc-rail:not([hidden]) button')].filter(button => !['sound', 'full'].includes(button.dataset.id)).length;
+    return { words, required, controls, duplicates };
+  });
+  check(battleCommands.required.every(name => battleCommands.words.includes(name)) && (battleCommands.words.includes('Auto') || battleCommands.words.includes('Finish')), `available battle commands in one bottom row: ${battleCommands.words.join(', ')}`);
+  check(!battleCommands.duplicates && battleCommands.controls.every(control => control.width >= 44 && control.height >= 44 && control.hit), 'battle commands have unobstructed finger-sized targets and no duplicate action rails');
   await look('battle');
   // A first tap on an enemy says who they are; a first tap on a hex, what a second would do.
   const foe = await call(() => {
@@ -464,7 +486,8 @@ try {
   await page.waitForFunction(() => !window.__kc.battle().busy(), null, { timeout: 10_000 }).catch(() => {});
   const moved = await call(() => window.__kc.battle().battle());
   check(moved.fighters.find((f) => f.id === plan.id).at === plan.target, 'and the second tap moves the stack there');
-  (await rail('Auto')) || (await rail('Finish'));
+  check(await battleCommand('auto'), 'the visible and enabled bottom-row command is tapped once');
+  check(await call(() => window.__kc.battle()?.isAuto() === true), 'the real battle immediately gives command to the sergeants');
   await page.waitForFunction(() => window.__kc.screen() === 'adventure', null, { timeout: 60_000 });
   check((await title()) === 'Victory!', 'Auto hands the fight to the sergeants, and they win it');
   await look('victory');
