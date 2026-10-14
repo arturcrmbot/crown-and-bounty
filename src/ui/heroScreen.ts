@@ -67,10 +67,11 @@ export class HeroScreen {
   private target: Slot | undefined;
   private scale = 1;
   private held: Place | null = null;
-  private press: { place: Place; x: number; y: number; image: string; wide: boolean } | null = null;
+  private press: { pointer: number; place: Place; x: number; y: number; image: string; wide: boolean } | null = null;
   private dragging = false;
   private over: string | null = null;
   private swallowClick = false;
+  private handledPointer: number | null = null;
   private lastClick: { key: string; at: number } | null = null;
   private quiet = false;
   private card: { kind: 'stack'; index: number } | { kind: 'hero' } | null = null;
@@ -426,16 +427,18 @@ export class HeroScreen {
     root.addEventListener('pointerdown', e => {
       e.stopPropagation();
       this.swallowClick = false;
-      if (e.button !== 0) return;
+      if (this.handledPointer === e.pointerId) this.handledPointer = null;
+      if (e.button !== 0 || !e.isPrimary) return;
       const hit = this.placeAt(e.clientX, e.clientY);
-      if (!hit || hit.place.kind === 'hero' || !this.has(hit.place)) return;
-      this.press = { place: hit.place, x: e.clientX, y: e.clientY, image: hit.el.querySelector('img')?.src ?? '', wide: hit.place.kind === 'stack' };
+      if (!hit) return;
+      this.press = { pointer: e.pointerId, place: hit.place, x: e.clientX, y: e.clientY, image: hit.el.querySelector('img')?.src ?? '', wide: hit.place.kind === 'stack' };
     });
     root.addEventListener('pointermove', e => {
       if (!this.press) {
         this.followHeld(e);
         return this.hoverTip(e);
       }
+      if (e.pointerId !== this.press.pointer || this.press.place.kind === 'hero' || !this.has(this.press.place)) return;
       if (e.pointerType === 'touch' && !this.held && !this.dragging) return;
       if (!this.dragging && Math.hypot(e.clientX - this.press.x, e.clientY - this.press.y) < 5) return;
       if (!this.dragging) {
@@ -462,10 +465,21 @@ export class HeroScreen {
     });
     const release = (e: PointerEvent) => {
       if (root.hasPointerCapture(e.pointerId)) root.releasePointerCapture(e.pointerId);
-      if (!this.press) return;
-      const from = this.press.place, was = this.dragging;
+      if (!this.press || e.pointerId !== this.press.pointer) return;
+      const press = this.press;
+      const from = press.place, was = this.dragging;
       this.press = null;
-      if (!was) return;
+      if (!was) {
+        // A completed finger tap must not depend on a post-drag compatibility click.
+        if (e.type === 'pointerup' && e.pointerType === 'touch') {
+          this.handledPointer = e.pointerId;
+          this.swallowClick = true;
+          const hit = this.placeAt(e.clientX, e.clientY);
+          if (hit && keyOf(hit.place) === keyOf(from) && Math.hypot(e.clientX - press.x, e.clientY - press.y) < 12) this.clickPlace(from);
+        }
+        return;
+      }
+      if (e.type === 'pointerup') this.handledPointer = e.pointerId;
       this.swallowClick = true;
       const hit = e.type === 'pointerup' ? this.placeAt(e.clientX, e.clientY) : null;
       const action = hit ? this.actionFor(from, hit.place) : null;
@@ -478,7 +492,12 @@ export class HeroScreen {
     root.addEventListener('pointerleave', () => { if (!this.press) this.hideTip(); });
     root.addEventListener('click', e => {
       e.stopPropagation();
-      if (this.swallowClick) { this.swallowClick = false; return; }
+      if (e instanceof PointerEvent && e.pointerId === this.handledPointer) {
+        this.handledPointer = null;
+        this.swallowClick = false;
+        return;
+      }
+      if (this.swallowClick && e.detail > 0) { this.swallowClick = false; return; }
       if (!(e.target instanceof HTMLElement)) return;
       const tab = e.target.closest<HTMLElement>('[data-tab]');
       const page = PAGES.find(page => page === tab?.dataset.tab);
@@ -777,7 +796,7 @@ export class HeroScreen {
       selected: this.selected ? keyOf(this.selected) : null,
       card: this.card ? keyOf(this.card) : null,
       comparison: preview ? { target: preview.target, current: preview.current, candidate: preview.candidate, rows: preview.rows } : null,
-      interaction: { dragging: this.dragging, pressed: this.press ? keyOf(this.press.place) : null, suppressClick: this.swallowClick },
+      interaction: { dragging: this.dragging, pressed: this.press ? keyOf(this.press.place) : null, suppressClick: this.swallowClick, handledPointer: this.handledPointer },
       text: this.root.innerText,
     };
   }
