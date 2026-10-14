@@ -1,6 +1,6 @@
 import type { GameState } from '../rules/game';
-import { Bitmap, blit, SHADOW } from './bitmap';
-import { FEAST_FIRE, FEAST_FLAME, FEAST_HORIZON, FEAST_MOON, feastLayout, type FeastSpot } from './feastLayout';
+import { Bitmap, blit, scaleBitmap, SHADOW } from './bitmap';
+import { FEAST_FLAME, FEAST_HORIZON, FEAST_MOON, feastLayout, type FeastSpot } from './feastLayout';
 import { MAP_VIEW, paintFrame, SCREEN } from './frame';
 import { paintHud } from './hud';
 import { feastPiece, ground, paintedFigure, piece } from './mapArt';
@@ -47,7 +47,7 @@ const LEVELS = 24;
 const TOP = 1.6;
 const STEP = (LEVELS - 1) / TOP;
 /** The moon's light, everywhere, and the fire's, as much again as it is near. */
-const MOON = [0.13, 0.165, 0.31] as const;
+const MOON = [0.2, 0.245, 0.4] as const;
 const FIRE = [1.28, 0.9, 0.55] as const;
 
 type Rgb = readonly [number, number, number];
@@ -84,7 +84,7 @@ const TREE = 3;
 /** How brightly the fire burns, a moment at a time. */
 const flicker = (t: number) => 1 + 0.07 * Math.sin(2 * Math.PI * 2.1 * t) + 0.05 * Math.sin(2 * Math.PI * 4.9 * t + 0.3) + 0.03 * Math.sin(2 * Math.PI * 7.6 * t + 0.6);
 /** The fire's light on a thing standing `d` pixels from it. */
-const reach = (d: number) => Math.max(0, 1 - d / 320) ** 1.9 * 1.3;
+const reach = (d: number) => Math.max(0, 1 - d / 350) ** 1.9 * 1.3;
 
 /** The flames' colours, from the white heart out to the dark red tips, and the heat each starts at. */
 const FLAMES: [number, number][] = [
@@ -119,6 +119,8 @@ export class FeastScene {
   private dancer: { x: number; y: number; sprite: Bitmap } | null = null;
   private readonly smoke: number;
   private readonly glow: number;
+  private readonly fireAt: { x: number; y: number };
+  private readonly flameAt: { x: number; y: number };
 
   /** `gold` is what the map's bar shows: payday's pay flies to it once the feast is over. */
   constructor(state: GameState, line: string, gold = state.gold) {
@@ -128,20 +130,24 @@ export class FeastScene {
     this.overlay = overlay;
     this.smoke = nearest(118, 122, 156);
     this.glow = nearest(120, 150, 60);
+    const spots = feastLayout(state.hero.background, state.army, bigLettering());
+    const fire = spots.find((s) => 'feast' in s && s.feast === 'fire');
+    if (!fire) throw new Error('The feast must have a fire.');
+    this.fireAt = { x: fire.x, y: fire.y };
+    this.flameAt = { x: fire.x, y: FEAST_FLAME.y };
     for (let i = 0; i < N; i++) this.grain[i] = (hash(i % W, Math.floor(i / W), 99) - 0.5) * 0.08;
     const trees = this.sky();
     this.meadow(trees);
-    const spots = feastLayout(state.hero.background, state.army);
     this.shadows(spots);
-    const fire = spots.find((s) => 'feast' in s && s.feast === 'fire');
-    const fireSprite = feastPiece('fire');
+    const fireSprite = this.spriteAt(fire);
     this.fire = fire && fireSprite ? { x: Math.round(fire.x - fireSprite.width / 2), y: fire.y - fireSprite.height, sprite: fireSprite } : null;
-    const spit = feastPiece('spit');
-    this.spit = spit ? { x: Math.round(FEAST_FIRE.x - spit.width / 2), y: FEAST_FIRE.y - 8 - spit.height, sprite: spit } : null;
+    const roast = feastPiece('spit');
+    const spit = roast ? scaleBitmap(roast, 1.3) : null;
+    this.spit = spit ? { x: Math.round(this.fireAt.x - spit.width / 2), y: this.fireAt.y - 10 - spit.height, sprite: spit } : null;
     const owner = new Int16Array(N).fill(-1);
     spots.forEach((spot, i) => {
       if ('feast' in spot && spot.dances) {
-        const sprite = feastPiece(spot.feast);
+        const sprite = this.spriteAt(spot);
         if (sprite) this.dancer = { x: spot.x, y: spot.y, sprite };
         return;
       }
@@ -150,6 +156,11 @@ export class FeastScene {
     this.lights(spots, owner);
     this.foreground();
     this.write(line);
+  }
+
+  private spriteAt(spot: FeastSpot): Bitmap | null {
+    const source = 'feast' in spot ? feastPiece(spot.feast) : 'map' in spot ? (piece(spot.map)?.sprite ?? null) : paintedFigure(spot.battle, 'battle');
+    return source && spot.scale ? scaleBitmap(source, spot.scale) : source;
   }
 
   /** The night sky, the moon in its haze, thin cloud, a far ridge and the trees against it. Returns which pixels are trees. */
@@ -196,7 +207,7 @@ export class FeastScene {
     const spots: [number, number, number, boolean][] = [];
     for (let k = 0; k < 40; k++) {
       const x = -20 + ((W + 40) * k) / 39 + between(-14, 14);
-      const middle = Math.abs(x - W / 2) < 250;
+      const middle = Math.abs(x - this.fireAt.x) < 238;
       const h = middle ? between(34, 62) : between(92, 158);
       spots.push([x, FEAST_HORIZON + (middle ? between(-4, 4) : between(6, 34)), h, random() < 0.75]);
     }
@@ -243,7 +254,7 @@ export class FeastScene {
       for (let y = Math.max(0, Math.floor(edge)); y < H; y++) {
         const i = y * W + x;
         if (trees[i] && y < edge + 2) continue;
-        const worn = Math.hypot((x - FEAST_FIRE.x) / 92, (y - FEAST_FIRE.y + 6) / 32) + (fbm(x / 7, y / 7, 3, 4) - 0.5) * 0.9 < 1;
+        const worn = Math.hypot((x - this.fireAt.x) / 142, (y - this.fireAt.y + 6) / 58) + (fbm(x / 7, y / 7, 3, 4) - 0.5) * 0.9 < 1;
         const tile = worn ? dirt : grass;
         this.base[i] = tile ? tile.data[(y % tile.height) * tile.width + (x % tile.width)] : worn ? nearest(126, 95, 56) : nearest(76, 99, 26);
         this.kind[i] = GROUND;
@@ -261,11 +272,11 @@ export class FeastScene {
     };
     for (const spot of spots) {
       if ('map' in spot || ('feast' in spot && spot.feast === 'fire')) continue;
-      const sprite = 'feast' in spot ? feastPiece(spot.feast) : paintedFigure(spot.battle, 'battle');
+      const sprite = this.spriteAt(spot);
       if (!sprite) continue;
       const half = sprite.width * 0.45;
       for (let y = spot.y - 6; y <= spot.y + 4; y++) for (let x = Math.floor(spot.x - half); x <= spot.x + half; x++) if (Math.hypot((x - spot.x) / half, (y - spot.y + 2) / 6) < 1) shade(x, y, 1);
-      const [vx, vy] = [spot.x - FEAST_FLAME.x, (spot.y - FEAST_FIRE.y) * 2 + 0.001];
+      const [vx, vy] = [spot.x - this.flameAt.x, (spot.y - this.fireAt.y) * 2 + 0.001];
       const n = Math.hypot(vx, vy);
       if (n >= 400) continue;
       const [ux, uy] = [vx / n, vy / n];
@@ -282,7 +293,7 @@ export class FeastScene {
 
   /** Puts a piece, a map piece or a troop's battle figure into the picture, feet at its spot. */
   private place(spot: FeastSpot, index: number, owner: Int16Array) {
-    const sprite = 'feast' in spot ? feastPiece(spot.feast) : 'map' in spot ? (piece(spot.map)?.sprite ?? null) : paintedFigure(spot.battle, 'battle');
+    const sprite = this.spriteAt(spot);
     if (!sprite) return;
     const flip = 'flip' in spot && Boolean(spot.flip);
     const x0 = Math.round(spot.x - sprite.width / 2);
@@ -316,7 +327,7 @@ export class FeastScene {
     for (let y = 0; y < H; y++) {
       for (let x = 0; x < W; x++) {
         const i = y * W + x;
-        const [dx, dy] = [x - FEAST_FLAME.x, y - FEAST_FLAME.y];
+        const [dx, dy] = [x - this.flameAt.x, y - this.flameAt.y];
         if (kind[i] === GROUND) light[i] = reach(Math.hypot(dx, dy * 1.9));
         else if (kind[i] === TREE) light[i] = Math.max(0, 1 - Math.hypot(dx, dy * 1.2) / 260) ** 2 * 0.9;
         else if (kind[i] === THING) {
@@ -324,7 +335,7 @@ export class FeastScene {
           const me = owner[i];
           let rim = 0;
           if (me !== fireIndex) {
-            const side = spots[me].x < FEAST_FLAME.x ? 1 : -1;
+            const side = spots[me].x < this.flameAt.x ? 1 : -1;
             const other = (ox: number, oy: number) => {
               const xx = x + ox;
               const yy = y + oy;
@@ -332,7 +343,7 @@ export class FeastScene {
             };
             if (other(side, 0)) rim += 1;
             else if (other(side * 2, 0)) rim += 0.6;
-            if (Math.abs(spots[me].x - FEAST_FLAME.x) < 90 && other(0, -2)) rim += 0.5;
+            if (Math.abs(spots[me].x - this.flameAt.x) < 90 && other(0, -2)) rim += 0.5;
           }
           light[i] = reach(d) + 0.75 * rim * Math.max(0, 1 - d / 200);
         }
@@ -359,13 +370,12 @@ export class FeastScene {
   }
 
   /**
-   * The line about the feast, right of the payday card (which is bigger by touch). One row sits under the fire; a line
-   * that needs more goes up into the sky, where the rows cover nobody. It breaks at a comma if it can.
+   * The toast stays in the sky above the party, never across its food or figures.
    */
   private write(line: string) {
     const touching = bigLettering();
-    const size = lettered(16);
-    const [centre, room] = touching ? [690, 440] : [626, 604];
+    const size = lettered(18);
+    const [centre, room] = touching ? [730, 360] : [660, 512];
     const width = (text: string) => textMask(text, size).width;
     const fits = (rows: string[]) => rows.every((row) => width(row) <= room);
     let rows = [line];
@@ -381,7 +391,7 @@ export class FeastScene {
         }
       }
     }
-    const top = rows.length === 1 ? H - 24 - (size - 16) : 14;
+    const top = 18;
     rows.forEach((row, k) => drawOutlined(this.words, row, centre, top + k * (size + 4), PARCHMENT[6], INK, size));
   }
 
@@ -444,7 +454,7 @@ export class FeastScene {
     }
     for (let k = 0; k < 22; k++) {
       const x = Math.floor(40 + hash(k, 1, 81) * (W - 80));
-      if (Math.abs(x - FEAST_FLAME.x) < 150) continue;
+      if (Math.abs(x - this.flameAt.x) < 150) continue;
       const y = Math.floor(FEAST_HORIZON + 4 + hash(k, 2, 81) * 90 + 3 * Math.sin(2 * Math.PI * (0.5 * time + hash(k, 3, 81))));
       if ((0.5 * time + hash(k, 4, 81)) % 1 >= 0.45) continue;
       set(x, y, LEAF[8]);
@@ -454,10 +464,10 @@ export class FeastScene {
 
   /** Smoke rising from the fire and drifting off to the right, thinning as it goes. */
   private drawSmoke(time: number, set: (x: number, y: number, c: number) => void) {
-    const top = FEAST_FLAME.y - 30;
+    const top = this.flameAt.y - 30;
     for (let rise = 1; rise < 190; rise++) {
       const y = top - rise;
-      const cx = FEAST_FLAME.x + 0.0022 * rise * rise + 0.12 * rise + 4 * Math.sin((y + 22 * time) / 13);
+      const cx = this.flameAt.x + 0.0022 * rise * rise + 0.12 * rise + 4 * Math.sin((y + 22 * time) / 13);
       const half = 5 + 0.16 * rise;
       const share = 0.3 * (1 - rise / 190);
       for (let x = Math.floor(cx - half); x <= cx + half; x++) {
@@ -473,14 +483,14 @@ export class FeastScene {
     const { sprite, x: fx, y: fy } = this.fire;
     const t = time / 1.44;
     const phase = 2 * Math.PI * t;
-    const foot = FEAST_FIRE.y - 22;
-    for (let y = foot - 62; y < FEAST_FIRE.y; y++) {
+    const foot = this.fireAt.y - 28;
+    for (let y = foot - 74; y < this.fireAt.y; y++) {
       const above = foot - y;
-      for (let x = FEAST_FIRE.x - 34; x <= FEAST_FIRE.x + 34; x++) {
+      for (let x = this.fireAt.x - 40; x <= this.fireAt.x + 40; x++) {
         const [u, v] = [x - fx, y - fy];
         if (u >= 0 && v >= 0 && u < sprite.width && v < sprite.height && sprite.data[v * sprite.width + u]) continue;
-        const across = x - FEAST_FIRE.x;
-        const height = 58 * Math.max(0, 1 - (across / 19) ** 2) ** 0.6 * (0.82 + 0.22 * (0.5 * Math.sin(across / 3 + phase * 2) + 0.5 * Math.sin(across / 5.3 - phase * 3)));
+        const across = x - this.fireAt.x;
+        const height = 70 * Math.max(0, 1 - (across / 24) ** 2) ** 0.6 * (0.82 + 0.22 * (0.5 * Math.sin(across / 3 + phase * 2) + 0.5 * Math.sin(across / 5.3 - phase * 3)));
         if (height <= 0 || above < -2) continue;
         const heat = ((height - above) / Math.max(1, height) * 1.08 + (noise(x / 3.2, (y + 46 * t) / 3.6, 70) - 0.5) * 0.55) * f;
         const jitter = (hash(x, y, 71) - 0.5) * 0.06;
@@ -498,7 +508,7 @@ export class FeastScene {
         const v = at(sprite, i, j, flip);
         if (v === 0 || v === SHADOW) continue;
         const [x, y] = [x0 + i, y0 + j];
-        let level = Math.round((reach(Math.hypot(x - FEAST_FLAME.x, y - FEAST_FLAME.y)) * f + this.grain[Math.max(0, Math.min(N - 1, y * W + x))]) * STEP);
+        let level = Math.round((reach(Math.hypot(x - this.flameAt.x, y - this.flameAt.y)) * f + this.grain[Math.max(0, Math.min(N - 1, y * W + x))]) * STEP);
         level = Math.max(0, Math.min(LEVELS - 1, level));
         set(x, y, things[level * 256 + v]);
       }
@@ -511,8 +521,8 @@ export class FeastScene {
       const phase = hash(k, 1, 41);
       const life = (time * 0.7 * (1 + (k % 2)) + phase) % 1;
       if (life >= 0.85) continue;
-      const y = FEAST_FLAME.y - 18 - life * (80 + 40 * hash(k, 2, 41));
-      const x = FEAST_FLAME.x + (hash(k, 3, 41) - 0.5) * 22 + Math.sin(2 * Math.PI * (life * 1.5 + phase)) * 4 + life * 16;
+      const y = this.flameAt.y - 18 - life * (80 + 40 * hash(k, 2, 41));
+      const x = this.flameAt.x + (hash(k, 3, 41) - 0.5) * 22 + Math.sin(2 * Math.PI * (life * 1.5 + phase)) * 4 + life * 16;
       set(Math.floor(x), Math.floor(y), life < 0.4 ? GOLD[6] : RED[5]);
     }
   }

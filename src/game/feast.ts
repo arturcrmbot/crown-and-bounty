@@ -2,6 +2,7 @@ import { FeastScene } from '../render/feastScene';
 import { MAP_VIEW } from '../render/frame';
 import { feastLine, type Action, type Card } from '../rules/game';
 import { CardView } from '../ui/card';
+import { isGentle } from '../ui/gentle';
 import type { AdventureController } from './adventure';
 import type { Display } from './display';
 import { NO_INPUT, type Screen, type SideButton } from './screen';
@@ -61,7 +62,7 @@ export class FeastController implements Screen {
   }
 
   render(): Uint8Array {
-    return this.scene.draw(this.time).data;
+    return this.scene.draw(isGentle() ? 0 : this.time).data;
   }
 
   get bitmap() {
@@ -73,7 +74,8 @@ export class FeastController implements Screen {
     const page = (x: number, y: number) => this.display.toPage(x, y);
     const top = page(0, MAP_VIEW.y).y;
     const bottom = page(0, MAP_VIEW.y + MAP_VIEW.height).y;
-    const sides = { left: page(MAP_VIEW.x, 0).x, right: page(MAP_VIEW.x + CARD_ROOM, 0).x };
+    const left = page(MAP_VIEW.x, 0).x;
+    const sides = { left, right: Math.max(page(MAP_VIEW.x + CARD_ROOM, 0).x, left + 328) };
     this.cards.place(page(MAP_VIEW.x + CARD_ROOM / 2, MAP_VIEW.y + MAP_VIEW.height - 8), top, bottom, undefined, sides);
   }
 

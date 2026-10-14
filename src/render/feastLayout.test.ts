@@ -37,4 +37,17 @@ describe('who sits where at the payday feast', () => {
     expect(spots.map((s) => s.y)).toEqual([...spots.map((s) => s.y)].sort((a, b) => a - b));
     for (const s of spots) if (!('feast' in s && s.feast === 'tent')) expect(s.x, pieces([s])[0]).toBeGreaterThan(300);
   });
+
+  it('brings the painted party closer and leaves native phone-card room beside it', () => {
+    const army = [{ troop: 'archers' as const, count: 20 }, { troop: 'peasants' as const, count: 40 }];
+    const desktop = feastLayout('ranger', army);
+    const phone = feastLayout('ranger', army, true);
+    const fire = phone.find(s => 'feast' in s && s.feast === 'fire')!;
+    const hero = phone.find(s => 'feast' in s && s.feast === 'heroRanger')!;
+    expect(fire.x).toBeGreaterThanOrEqual(700);
+    expect(hero.x).toBeGreaterThanOrEqual(630);
+    expect(hero.scale).toBeGreaterThan(1);
+    expect(fire.x).toBeGreaterThan(desktop.find(s => 'feast' in s && s.feast === 'fire')!.x);
+    expect(phone.map(s => s.y)).toEqual(phone.map(s => s.y).sort((a, b) => a - b));
+  });
 });

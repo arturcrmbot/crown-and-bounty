@@ -2,6 +2,7 @@ import { MAP_VIEW } from '../render/frame';
 import { titlePainting } from '../render/titleScreen';
 import type { Action, Card, GameState } from '../rules/game';
 import { CardView } from '../ui/card';
+import { isGentle } from '../ui/gentle';
 import { touch } from '../ui/touch';
 import type { Display } from './display';
 import { titleCard } from './intro';
@@ -67,7 +68,7 @@ export class TitleController implements Screen {
   }
 
   render(): Uint8Array {
-    return this.screen.draw(this.time, this.waiting, touch() ? 'Tap anywhere to begin' : undefined).data;
+    return this.screen.draw(isGentle() ? 0 : this.time, this.waiting, touch() ? 'Tap anywhere to begin' : undefined, !this.waiting).data;
   }
 
   get bitmap() {
@@ -78,7 +79,9 @@ export class TitleController implements Screen {
   placeCards() {
     const top = this.display.toPage(0, MAP_VIEW.y).y;
     const bottom = this.display.toPage(0, MAP_VIEW.y + MAP_VIEW.height).y;
-    this.cards.place(this.display.toPage(MAP_VIEW.x + 196, MAP_VIEW.y + MAP_VIEW.height - 18), top, bottom);
+    const left = this.display.toPage(MAP_VIEW.x + 24, 0).x;
+    const right = Math.max(this.display.toPage(MAP_VIEW.x + 430, 0).x, left + 328);
+    this.cards.place(this.display.toPage(MAP_VIEW.x + 224, MAP_VIEW.y + MAP_VIEW.height - 14), top, bottom, undefined, { left, right });
   }
 
   dispose() {

@@ -1,14 +1,19 @@
 import type { BackgroundId } from '../content/backgrounds';
-import { Bitmap, blit, outline, SHADOW } from './bitmap';
+import { FRIENDS, type FriendId } from '../content/friends';
+import { Bitmap, blit, outline, scaleBitmap, SHADOW } from './bitmap';
 import { BAR, MAP_VIEW, paintFrame, SCREEN } from './frame';
-import { bayer, hash, noise, shade } from './noise';
-import { BLUE, CYCLE_FIRE, EARTH, GOLD, INK, LEAF, LIGHT_LUT, NEUTRAL, PARCHMENT, RED, ROCK, SHADOW_LUT, SKIN, STONE, WOOD } from './palette';
+import { hash, noise, shade } from './noise';
+import { BLUE, EARTH, GOLD, INK, LEAF, LIGHT_LUT, NEUTRAL, PARCHMENT, PLUM, RED, ROCK, SAND, SHADOW_LUT, SKIN, STONE, WOOD } from './palette';
+import { portrait } from './portraits';
 import { drawText } from './text';
 
 /** Where the wall meets the floor, and where the lines of the floor meet, in room pixels. */
-const WALL_FOOT = 252;
-const VANISH: [number, number] = [464, 128];
-const MID = MAP_VIEW.width / 2;
+const WALL_FOOT = 308;
+const VANISH: [number, number] = [228, 168];
+const MID = 228;
+/** Framebuffer coordinates shared by the welcome and homecoming controllers. */
+export const COURT_CARD = { left: 380, right: MAP_VIEW.x + MAP_VIEW.width - 8 };
+const MASONRY = [EARTH[1], EARTH[2], EARTH[3], SAND[0], SAND[1], SAND[2], SAND[3]];
 
 const inEllipse = (x: number, y: number, cx: number, cy: number, rx: number, ry: number) => ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1;
 
@@ -23,40 +28,48 @@ class Room {
   }
   /** Darkens (or lights) a pixel through a lookup table, on a dither pattern of `share` of the pixels. */
   tint(x: number, y: number, lut: Uint8Array, share: number) {
-    if (bayer(x, y) < share) this.set(x, y, lut[this.get(x, y)]);
+    if (hash(x, y, 91) < share) this.set(x, y, lut[this.get(x, y)]);
   }
 }
 
 function wall(room: Room) {
   for (let y = 0; y < WALL_FOOT; y++) {
-    const row = Math.floor(y / 22);
-    const shift = (row % 2) * 26;
+    const row = Math.floor(y / 34);
+    const shift = (row % 2) * 42;
     for (let x = 0; x < MAP_VIEW.width; x++) {
-      const col = Math.floor((x + shift) / 52);
-      const mortar = y % 22 === 0 || (x + shift) % 52 === 0;
-      let level = 0.42 + (hash(col, row, 31) - 0.5) * 0.16 + (noise(x / 9, y / 9, 32) - 0.5) * 0.14;
-      level -= (1 - y / WALL_FOOT) * 0.22;
-      if (mortar) level -= 0.2;
-      else if (y % 22 === 1 || (x + shift) % 52 === 1) level += 0.08;
-      room.set(x, y, shade(STONE, level, x, y));
+      const col = Math.floor((x + shift) / 84);
+      const mortar = y % 34 === 0 || (x + shift) % 84 === 0;
+      const light = Math.exp(-(((x - MID) / 260) ** 2 + ((y - 150) / 240) ** 2));
+      const level = 0.25 + light * 0.3 + (hash(col, row, 31) - 0.5) * 0.07 + (noise(x / 9, y / 9, 32) - 0.5) * 0.05;
+      room.set(x, y, shade(MASONRY, level - (mortar ? 0.08 : 0), x, y));
     }
   }
-  // A skirting of darker stone where the wall meets the floor.
-  for (let y = WALL_FOOT - 10; y < WALL_FOOT; y++) for (let x = 0; x < MAP_VIEW.width; x++) room.set(x, y, shade(STONE, 0.26 + (y - WALL_FOOT + 10) * 0.012, x, y));
+  // A vaulted recess draws the eye to the audience rather than the far wall.
+  for (let y = 8; y < WALL_FOOT; y++) {
+    for (let x = MID - 184; x <= MID + 184; x++) {
+      const dx = Math.abs(x - MID);
+      const arch = y >= 162 || inEllipse(x, y, MID, 162, 184, 154);
+      const inside = dx < 168 && (y >= 162 || inEllipse(x, y, MID, 162, 168, 138));
+      if (!arch) continue;
+      if (!inside) room.set(x, y, shade(SAND, 0.5 - (x - MID) / 650 + (y % 27 < 2 ? -0.12 : 0), x, y));
+      else room.tint(x, y, SHADOW_LUT, 0.18);
+    }
+  }
+  for (let y = WALL_FOOT - 12; y < WALL_FOOT; y++) for (let x = 0; x < MAP_VIEW.width; x++) room.set(x, y, shade(MASONRY, y === WALL_FOOT - 12 ? 0.56 : 0.2, x, y));
 }
 
 function pillar(room: Room, cx: number) {
-  const half = 24;
+  const half = 21;
   for (let y = 0; y < WALL_FOOT + 6; y++) {
     for (let x = cx - half; x < cx + half; x++) {
       const u = (x - cx) / half;
       const lit = 0.5 - u * 0.28 + Math.sqrt(1 - u * u) * 0.12 + (noise(x / 5, y / 14, 41) - 0.5) * 0.08;
-      const band = y % 60 < 3 ? -0.18 : 0;
-      room.set(x, y, shade(STONE, lit + band - (1 - y / WALL_FOOT) * 0.18, x, y));
+      const band = y % 78 < 2 ? -0.12 : 0;
+      room.set(x, y, shade(SAND, lit + band - (1 - y / WALL_FOOT) * 0.12, x, y));
     }
   }
   // Base block.
-  for (let y = WALL_FOOT - 18; y < WALL_FOOT + 8; y++) for (let x = cx - half - 5; x < cx + half + 5; x++) room.set(x, y, shade(STONE, y < WALL_FOOT - 15 ? 0.66 : 0.4 - (x - cx) / 200, x, y));
+  for (let y = WALL_FOOT - 18; y < WALL_FOOT + 8; y++) for (let x = cx - half - 5; x < cx + half + 5; x++) room.set(x, y, shade(SAND, y < WALL_FOOT - 15 ? 0.66 : 0.4 - (x - cx) / 200, x, y));
 }
 
 function windowPane(room: Room, cx: number) {
@@ -67,24 +80,24 @@ function windowPane(room: Room, cx: number) {
       if (inside(x, y, 0)) {
         const lead = (x - cx + 60) % 15 === 0 || (y - top + 60) % 15 === 0;
         const sky = (y - top) / (bottom - top);
-        room.set(x, y, lead ? STONE[1] : sky < 0.35 ? NEUTRAL[7] : sky < 0.7 ? BLUE[6] : BLUE[5]);
-      } else if (inside(x, y, 6)) room.set(x, y, shade(STONE, x < cx ? 0.72 : 0.5, x, y));
+        room.set(x, y, lead ? EARTH[2] : sky < 0.35 ? PARCHMENT[6] : sky < 0.7 ? GOLD[6] : BLUE[6]);
+      } else if (inside(x, y, 6)) room.set(x, y, shade(SAND, x < cx ? 0.72 : 0.5, x, y));
     }
   }
   // Sill.
-  for (let x = cx - half - 10; x <= cx + half + 10; x++) for (let y = bottom + 6; y < bottom + 11; y++) room.set(x, y, shade(STONE, y === bottom + 6 ? 0.8 : 0.45, x, y));
+  for (let x = cx - half - 10; x <= cx + half + 10; x++) for (let y = bottom + 6; y < bottom + 11; y++) room.set(x, y, shade(SAND, y === bottom + 6 ? 0.8 : 0.45, x, y));
 }
 
 /** A long red banner with a gold border, a gold crown and a swallowtail. */
 function banner(room: Room, cx: number) {
-  const [top, bottom, half] = [8, 196, 26];
+  const [top, bottom, half] = [14, 254, 23];
   for (let y = top; y < bottom; y++) {
     for (let x = cx - half; x < cx + half; x++) {
       const notch = bottom - 22 + Math.abs(x - cx) * (22 / half);
       if (y > notch) continue;
       const fold = Math.sin((x - cx) / 5.5) * 0.12;
       const edge = x < cx - half + 4 || x >= cx + half - 4 || y > notch - 4;
-      const crown = crownAt(x - cx, y - 96);
+      const crown = crownAt(x - cx, y - 112);
       room.set(x, y, edge || crown ? shade(GOLD, 0.55 + fold, x, y) : shade(RED, 0.5 + fold - (y - top) * 0.0008, x, y));
     }
   }
@@ -119,7 +132,7 @@ function torch(room: Room, cx: number, cy: number) {
       const w = 6.5 * Math.sin(Math.PI * Math.min(1, 0.25 + h * 0.85)) * (1 - h * 0.35);
       if (Math.abs(x - cx) > w) continue;
       const core = Math.abs(x - cx) < w * 0.45 && h < 0.6;
-      room.set(x, y, CYCLE_FIRE[(Math.floor(h * 6) + (core ? 0 : 2) + (x & 1)) % CYCLE_FIRE.length]);
+      room.set(x, y, core ? GOLD[6] : h < 0.45 ? GOLD[5] : RED[5]);
     }
   }
 }
@@ -133,24 +146,26 @@ function floor(room: Room) {
       const row = Math.floor(depth / 2.2);
       const col = Math.floor(across + (row % 2) * 0.5);
       const grout = depth / 2.2 - row < 0.07 || across + (row % 2) * 0.5 - col < 0.035 * (y / 200);
-      const carpet = Math.abs(across) < 1.35;
+      const centre = MID + (y - WALL_FOOT) * 0.5;
+      const half = 50 + (y - WALL_FOOT) * 0.27;
+      const edge = Math.abs(x - centre) / half;
+      const carpet = edge < 1;
       let c: number;
       if (carpet) {
-        const trim = Math.abs(across) > 1.12;
-        const diamond = Math.abs(across) + Math.abs(((depth * 0.9) % 2) - 1) * 0.9 < 0.45;
-        c = trim ? shade(GOLD, 0.5, x, y) : diamond ? shade(GOLD, 0.35, x, y) : shade(RED, 0.4 + (noise(x / 3, y / 3, 12) - 0.5) * 0.15 + (y - WALL_FOOT) * 0.0006, x, y);
+        const trim = edge > 0.9;
+        c = trim ? shade(GOLD, 0.54 - edge * 0.08, x, y) : shade(RED, 0.34 + (noise(x / 3, y / 3, 12) - 0.5) * 0.08 + (y - WALL_FOOT) * 0.0006, x, y);
       } else {
-        const tone = (row + col) % 2 === 0 ? 0.5 : 0.38;
-        c = shade(STONE, (grout ? 0.18 : tone) + (hash(row, col, 7) - 0.5) * 0.08 + (noise(x / 6, y / 6, 8) - 0.5) * 0.08 - (1 - (y - WALL_FOOT) / 212) * 0.1, x, y);
+        const tone = (row + col) % 2 === 0 ? 0.4 : 0.36;
+        c = shade(MASONRY, (grout ? 0.22 : tone) + (hash(row, col, 7) - 0.5) * 0.05 + (noise(x / 6, y / 6, 8) - 0.5) * 0.05, x, y);
       }
       room.set(x, y, c);
     }
   }
   // Window light: long pale slants across the floor.
-  for (const cx of [250, 678]) {
+  for (const cx of [40, 728]) {
     for (let y = WALL_FOOT; y < MAP_VIEW.height; y++) {
-      const t = (y - WALL_FOOT) / 212;
-      const left = cx + 20 + t * 150;
+      const t = (y - WALL_FOOT) / (MAP_VIEW.height - WALL_FOOT);
+      const left = cx + 20 + t * 170;
       for (let x = Math.floor(left - 36 - t * 30); x < left + 36 + t * 30; x++) room.tint(x, y, LIGHT_LUT, 0.55 - t * 0.25);
     }
   }
@@ -159,13 +174,13 @@ function floor(room: Room) {
 /** The dais: three steps, carpeted up the middle. */
 function dais(room: Room) {
   for (let step = 0; step < 3; step++) {
-    const top = 200 + step * 16;
-    const half = 120 + step * 36;
-    for (let y = top; y < top + 16; y++) {
+    const top = 268 + step * 14;
+    const half = 108 + step * 24;
+    for (let y = top; y < top + 14; y++) {
       for (let x = MID - half; x < MID + half; x++) {
         const tread = y < top + 5;
         const carpet = Math.abs(x - MID) < 46 + step * 3;
-        const c = carpet ? (Math.abs(x - MID) > 40 + step * 3 ? GOLD[tread ? 5 : 3] : RED[tread ? 4 : 2]) : shade(STONE, tread ? 0.72 : 0.44 - (x - MID) / 900, x, y);
+        const c = carpet ? (Math.abs(x - MID) > 40 + step * 3 ? GOLD[tread ? 5 : 3] : RED[tread ? 4 : 2]) : shade(SAND, tread ? 0.66 : 0.38 - (x - MID) / 900, x, y);
         room.set(x, y, c);
       }
     }
@@ -173,35 +188,36 @@ function dais(room: Room) {
 }
 
 function throne(room: Room) {
-  const [top, bottom, half] = [74, 204, 44];
-  for (let y = top - 22; y < bottom; y++) {
-    for (let x = MID - half - 8; x < MID + half + 8; x++) {
+  const [top, bottom, half] = [44, 270, 64];
+  for (let y = top; y < bottom; y++) {
+    for (let x = MID - half - 10; x <= MID + half + 10; x++) {
       const dx = Math.abs(x - MID);
-      const spire = y < top && dx <= (y - (top - 22)) * 1.6 && dx < 18;
-      const back = y >= top && dx <= half;
-      const arm = y >= 164 && y < 180 && dx <= half + 8;
-      if (!spire && !back && !arm) continue;
-      const velvet = y >= top + 14 && y < 176 && dx <= half - 10;
-      const lit = 0.62 - (x - MID) / 140 + (y < top + 4 ? 0.2 : 0);
-      room.set(x, y, velvet ? shade(RED, 0.42 - dx / 300, x, y) : shade(GOLD, lit, x, y));
+      const back = dx <= half && (y >= top + half || inEllipse(x, y, MID, top + half, half, half));
+      const arm = y >= 216 && y < 238 && dx <= half + 10;
+      const leg = y >= 232 && dx > half - 6 && dx < half + 4;
+      if (!back && !arm && !leg) continue;
+      const velvet = dx < half - 13 && y < 228 && (y >= top + half || inEllipse(x, y, MID, top + half, half - 13, half - 13));
+      const gold = dx > half - 9 && dx < half - 4 || arm && (y < 220 || dx > half + 5);
+      const lit = 0.7 - (x - MID) / 230;
+      room.set(x, y, velvet ? shade(BLUE, 0.27 + Math.sin((x - MID) / 12) * 0.05, x, y) : shade(gold ? GOLD : WOOD, lit - (y > 238 ? 0.15 : 0), x, y));
     }
   }
-  // Gold finial on the spire.
-  for (let y = top - 30; y < top - 20; y++) for (let x = MID - 4; x <= MID + 4; x++) if (inEllipse(x, y, MID, top - 25, 4, 5)) room.set(x, y, x < MID ? GOLD[6] : GOLD[4]);
+  for (let y = 63; y < 87; y++) for (let x = MID - 22; x <= MID + 22; x++) if (crownAt((x - MID) / 1.6, (y - 75) / 1.6)) room.set(x, y, x < MID ? GOLD[5] : GOLD[3]);
+  for (const side of [-1, 1]) for (let y = 105; y < 212; y++) room.set(MID + side * 58, y, side < 0 ? GOLD[5] : GOLD[2]);
 }
 
 /** Good King Osric: portly, bearded, with the sceptre in one hand. */
-function king(blink: boolean): Bitmap {
+function king(blink: boolean, welcome = false): Bitmap {
   const room = new Bitmap(96, 144);
   const [cx, cy] = [48, 100];
   // The robe hangs from his shoulders over his seated knees.
   for (let y = cy - 40; y < cy + 36; y++) {
     for (let x = cx - 40; x < cx + 40; x++) {
       const dy = y - cy;
-      const half = dy < -14 ? 22 + (dy + 40) * 0.35 : dy < 5 ? 31 - (dy + 14) * 0.12 : 29 - (dy - 5) * 0.18;
+      const half = dy < -14 ? 22 + (dy + 40) * 0.35 : dy < 5 ? 31 + (dy + 14) * 0.1 : 33 - (dy - 5) * 0.14;
       if (Math.abs(x - cx) > half || dy > 32) continue;
       const folds = Math.sin((x - cx) / 5 + Math.max(0, dy) * 0.06) * 0.09;
-      const lap = inEllipse(x, y, cx - 14, cy + 16, 12, 15) ? 0.1 : inEllipse(x, y, cx + 13, cy + 16, 11, 15) ? -0.08 : 0;
+      const lap = inEllipse(x, y, cx - 16, cy + 15, 15, 15) ? 0.1 : inEllipse(x, y, cx + 15, cy + 15, 14, 15) ? -0.08 : 0;
       room.set(x, y, shade(RED, 0.55 + folds + lap - (x - cx) / 110 - dy / 240, x, y));
     }
   }
@@ -213,13 +229,13 @@ function king(blink: boolean): Bitmap {
     room.set(Math.floor(centre - 6), y, GOLD[3]);
     room.set(Math.floor(centre + 6), y, GOLD[2]);
   }
-  for (const [ax, ay, bx, by] of [[cx - 22, cy - 22, cx - 28, cy + 2], [cx + 22, cy - 22, cx + 30, cy + 6]]) {
+  for (const [ax, ay, bx, by] of [[cx - 22, cy - 22, cx - 28, cy + 2], [cx + 22, cy - 22, cx + (welcome ? 37 : 30), cy + (welcome ? -12 : 6)]]) {
     for (let t = 0; t <= 1; t += 0.02) {
       const [x0, y0] = [ax + (bx - ax) * t, ay + (by - ay) * t];
       for (let y = -7; y <= 7; y++) for (let x = -7; x <= 7; x++) if (x * x + y * y <= 40) room.set(Math.round(x0 + x), Math.round(y0 + y), shade(RED, 0.5 - x / 24 - (x0 - cx) / 140 + (t > 0.6 ? -0.09 : 0), Math.round(x0 + x), Math.round(y0 + y)));
     }
   }
-  for (const [x0, y0] of [[cx - 29, cy - 2], [cx + 29, cy + 3]]) {
+  for (const [x0, y0] of [[cx - 29, cy - 2], [cx + (welcome ? 37 : 29), cy + (welcome ? -12 : 3)]]) {
     for (let y = y0 - 3; y < y0 + 3; y++) for (let x = x0 - 6; x <= x0 + 6; x++) if (inEllipse(x, y, x0, y0, 6, 3)) ermine(x, y);
   }
   // Head: a round, kindly face over a great white beard, under the crown.
@@ -259,8 +275,8 @@ function king(blink: boolean): Bitmap {
     room.set(hx + dx, hy - 16, NEUTRAL[7]);
   }
   // Hands, and the sceptre with a gold orb.
-  for (const [x0, y0] of [[cx - 33, cy - 2], [cx + 26, cy + 4]]) for (let y = y0; y < y0 + 8; y++) for (let x = x0; x < x0 + 9; x++) if (inEllipse(x, y, x0 + 4.5, y0 + 4, 4.5, 4)) room.set(x, y, shade(SKIN, 0.7, x, y));
-  for (const [x0, y0] of [[cx - 31, cy + 4], [cx + 28, cy + 9]]) for (let x = x0; x < x0 + 6; x += 2) room.set(x, y0, SKIN[2]);
+  for (const [x0, y0] of [[cx - 33, cy - 2], [cx + (welcome ? 34 : 26), cy + (welcome ? -15 : 4)]]) for (let y = y0; y < y0 + 8; y++) for (let x = x0; x < x0 + 9; x++) if (inEllipse(x, y, x0 + 4.5, y0 + 4, 4.5, 4)) room.set(x, y, shade(SKIN, 0.7, x, y));
+  for (const [x0, y0] of [[cx - 31, cy + 4], [cx + (welcome ? 36 : 28), cy + (welcome ? -10 : 9)]]) for (let x = x0; x < x0 + 6; x += 2) room.set(x, y0, SKIN[2]);
   for (let y = cy - 62; y < cy + 12; y++) room.set(cx - 29, y, GOLD[5]), room.set(cx - 28, y, GOLD[3]);
   for (let y = cy - 74; y < cy - 60; y++) for (let x = cx - 35; x < cx - 22; x++) if (inEllipse(x, y, cx - 28.5, cy - 67, 5.5, 5.5)) room.set(x, y, x < cx - 29 ? GOLD[6] : GOLD[4]);
   room.set(cx - 29, cy - 69, NEUTRAL[7]);
@@ -427,56 +443,109 @@ function kneeling(background: BackgroundId, breath = 0): Bitmap {
   return shaped;
 }
 
+function guest(id: FriendId): Bitmap {
+  const height = id === 'dwarf' ? 84 : 100;
+  const s = new Bitmap(56, height);
+  const cloth = id === 'nan' ? PLUM : id === 'pike' ? RED : WOOD;
+  for (let y = 32; y < height - 9; y++) {
+    const half = id === 'dwarf' ? 17 - Math.abs(y - 52) * 0.07 : y < 52 ? 13 + (y - 32) * 0.08 : 14 + (y - 52) * (id === 'nan' ? 0.12 : id === 'anselm' ? 0.05 : 0.01);
+    for (let x = 7; x < 49; x++) {
+      if (Math.abs(x - 28) >= half || y > height - 14 && Math.abs(x - 28) < 2) continue;
+      const fold = Math.sin((x - 28) / 3.8 + Math.max(0, y - 52) * 0.02) * 0.12;
+      s.set(x, y, shade(cloth, 0.56 - (x - 28) / 55 + fold - Math.max(0, y - 52) * 0.003, x, y));
+    }
+  }
+  for (const side of [-1, 1]) {
+    for (let y = 35; y < 63; y++) {
+      const arm = 28 + side * (13 + (y - 35) * 0.17);
+      for (let x = Math.floor(arm - 4); x <= arm + 4; x++) if (inEllipse(x, y, arm, 49, 4, 15)) s.set(x, y, shade(cloth, 0.61 - (x - arm) / 17 - side * 0.1, x, y));
+    }
+    for (let y = 60; y < 67; y++) for (let x = 28 + side * 18 - 4; x <= 28 + side * 18 + 4; x++) if (inEllipse(x, y, 28 + side * 18, 63, 3.5, 3.5)) s.set(x, y, shade(SKIN, 0.67 - side * 0.15, x, y));
+    for (let y = height - 13; y < height - 3; y++) for (let x = 28 + side * 8 - 5; x < 28 + side * 8 + 6; x++) if (y > height - 8 || Math.abs(x - 28 - side * 8) < 3) s.set(x, y, y === height - 13 ? EARTH[3] : EARTH[1]);
+  }
+  if (id === 'pike') {
+    s.fill(12, 53, 33, 3, EARTH[1]);
+    s.fill(26, 53, 4, 3, GOLD[4]);
+    for (let y = 59; y < height - 11; y++) s.set(46, y, STONE[5]), s.set(47, y, STONE[2]);
+  } else if (id === 'dwarf' || id === 'nan') {
+    for (let y = 32; y < height - 3; y++) s.set(47, y, WOOD[4]), s.set(48, y, WOOD[1]);
+    if (id === 'dwarf') s.fill(37, 30, 18, 3, STONE[5]);
+  } else {
+    for (let y = 44; y < 62; y += 4) s.set(31, y, GOLD[3]);
+  }
+  if (id === 'nan') for (let y = 34; y < 51; y++) for (let x = 12; x <= 44; x++) if (inEllipse(x, y, 28, 37, 17, 12) && !inEllipse(x, y, 28, 29, 12, 11)) s.set(x, y, shade(RED, 0.34 - (x - 28) / 65, x, y));
+  const face = portrait(FRIENDS[id].portrait);
+  const head = new Bitmap(42, 47);
+  for (let y = 0; y < head.height; y++) for (let x = 0; x < head.width; x++) head.set(x, y, face.get(x + 11, y));
+  blit(s, scaleBitmap(head, 0.72), 13, 4);
+  const shaped = outline(s, INK);
+  for (let x = 10; x < 48; x++) shaped.under(x + 2, height - 2, SHADOW);
+  return scaleBitmap(shaped, 1.25);
+}
+
 /** The King's court, between commissions: throne, banners, torchlight and the royal goose. */
 export class CourtScreen {
   readonly screen = new Bitmap(SCREEN.width, SCREEN.height);
   /** The throne room with nobody kneeling in it yet. */
   private readonly room: Bitmap;
   private readonly overlay: Bitmap;
-  private readonly kings = [king(false), king(true)];
+  private readonly kings = [king(false), king(true), king(false, true)].map(s => scaleBitmap(s, 1.42));
+  private readonly geese = [scaleBitmap(goose(0), 1.25), scaleBitmap(goose(1), 1.25)];
   private kneelers: [Bitmap, Bitmap];
+  private guests: { sprite: Bitmap; x: number; y: number }[] = [];
+  private greetedAt = -Infinity;
   caption = '';
   /** The royal goose, at the King's feet. Before the first commission, Grimsby has it. */
   goose = true;
 
   constructor(background: BackgroundId = 'knight') {
-    const { frame, overlay } = paintFrame();
+    const { frame, overlay } = paintFrame([]);
     this.overlay = overlay;
     const room = new Room();
     room.bitmap.data.set(frame.data);
     wall(room);
-    for (const x of [250, 678]) windowPane(room, x);
-    for (const x of [110, 818]) pillar(room, x);
-    for (const x of [372, 556]) banner(room, x);
+    for (const x of [24, 728]) windowPane(room, x);
+    for (const x of [28, 414, 866]) pillar(room, x);
+    for (const x of [102, 354]) banner(room, x);
     floor(room);
     dais(room);
     throne(room);
-    for (const x of [110, 818]) torch(room, x, 132);
+    for (const x of [58, 414]) torch(room, x, 172);
     // Corners fall into shadow.
     for (let y = 0; y < MAP_VIEW.height; y++) {
       for (let x = 0; x < MAP_VIEW.width; x++) {
-        const edge = Math.max(Math.abs(x - MID) / MID, Math.abs(y - 200) / 264);
-        if (edge > 0.82) room.tint(x, y, SHADOW_LUT, (edge - 0.82) * 3);
+        const edge = Math.max(Math.abs(x - MAP_VIEW.width / 2) / (MAP_VIEW.width / 2), Math.abs(y - 220) / 264);
+        if (edge > 0.85) room.tint(x, y, SHADOW_LUT, (edge - 0.85) * 2.2);
       }
     }
     const b = room.bitmap;
-    blit(b, guard(1), MAP_VIEW.x + 281, MAP_VIEW.y + 154);
-    blit(b, guard(-1), MAP_VIEW.x + 603, MAP_VIEW.y + 154);
+    blit(b, scaleBitmap(guard(1), 1.2), MAP_VIEW.x + 65, MAP_VIEW.y + 190);
+    blit(b, scaleBitmap(guard(-1), 1.2), MAP_VIEW.x + 325, MAP_VIEW.y + 190);
     this.room = b;
-    this.kneelers = [kneeling(background), kneeling(background, 1)];
+    this.kneelers = [scaleBitmap(kneeling(background), 1.65), scaleBitmap(kneeling(background, 1), 1.65)];
   }
 
   /** Aldric on the carpet before the throne, as who he was. */
   kneel(background: BackgroundId) {
-    this.kneelers = [kneeling(background), kneeling(background, 1)];
+    this.kneelers = [scaleBitmap(kneeling(background), 1.65), scaleBitmap(kneeling(background, 1), 1.65)];
+  }
+
+  setGuests(ids: readonly FriendId[]) {
+    this.guests = ids.slice(0, 2).map((id, i) => ({ sprite: guest(id), x: 120 + i * 80, y: 424 - i * 12 })).reverse();
+  }
+
+  welcome(time: number) {
+    this.greetedAt = time;
   }
 
   draw(phase: number): Bitmap {
     this.screen.data.set(this.room.data);
-    const blink = phase % 6.4 > 6.18 ? 1 : 0;
-    blit(this.screen, this.kings[blink], MAP_VIEW.x + MID - 48, MAP_VIEW.y + 70);
-    blit(this.screen, this.kneelers[Math.sin(phase * 0.75) > 0.8 ? 1 : 0], MAP_VIEW.x + MID - 30, MAP_VIEW.y + 366);
-    if (this.goose) blit(this.screen, goose(phase), MAP_VIEW.x + MID + 58, MAP_VIEW.y + 176);
+    const greeting = phase >= this.greetedAt && phase - this.greetedAt < 1.4;
+    const king = this.kings[greeting ? 2 : phase % 6.4 > 6.18 ? 1 : 0];
+    blit(this.screen, king, MAP_VIEW.x + MID - Math.round(king.width / 2), MAP_VIEW.y + 72);
+    if (this.goose) blit(this.screen, this.geese[Math.sin(phase * 1.7) > 0.6 ? 1 : 0], MAP_VIEW.x + MID + 69, MAP_VIEW.y + 250);
+    for (const { sprite, x, y } of this.guests) blit(this.screen, sprite, MAP_VIEW.x + x - Math.round(sprite.width / 2), MAP_VIEW.y + y - sprite.height);
+    blit(this.screen, this.kneelers[Math.sin(phase * 0.75) > 0.8 ? 1 : 0], MAP_VIEW.x + 264, MAP_VIEW.y + 306);
     if (this.caption) drawText(this.screen, this.caption, BAR.x + 12, BAR.y + 5, PARCHMENT[6], INK);
     blit(this.screen, this.overlay, 0, 0);
     return this.screen;
