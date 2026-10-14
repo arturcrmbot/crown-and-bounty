@@ -81,6 +81,7 @@ https://arturcrmbot.github.io/crown-and-bounty/
 | Phone | the same by touch alone, on an emulated phone held sideways | `npm run phone` |
 | Visual | frozen scenes, frame for frame, against baselines approved on a Mac | `npm run visual` |
 | Character screen | gear previews and actions, army controls and small landscape-phone layouts | `npm run test:hero-ui` |
+| Shared cards | long offers, journal pages, safe confirmations, settings and native phone targets | `npm run test:cards-ui` |
 | Artur | whether it's fun | the live game |
 
 The character screen has Hero, Equipment and Army pages with navigation and Close kept in view.
@@ -91,6 +92,15 @@ Army inspection keeps the company's wages, leadership and battle position beside
 
 Frozen scenes can be selected with `npm run visual -- --scenes=hero,herogear,herostack,heroleader`.
 Approving a selection preserves the baselines of scenes outside that selection.
+
+The shared cards follow the character screen's royal-blue headings, readable parchment and restrained gold.
+The heading stays above the scrolling words. Long shops, spellbooks and hero choices scroll their offers,
+while Close and navigation remain below them. Costs, unavailable needs and dangerous choices have distinct
+treatment without changing the rules' words or the order of number-key choices.
+The journal keeps two pages on desktop and turns between them on a phone. Settings use the same panel
+on desktop and from the phone rail, with native volume sliders, visible percentages and gentle effects.
+Narrow court choices become portrait rows, and their measured first offer gets enough reading room
+to show its name and full effect before it is chosen.
 
 The battle keeps the acting company and its mana in a readable deck below the field, with the current
 and next turns above it. A forecast appears beside its target without replacing the acting company's

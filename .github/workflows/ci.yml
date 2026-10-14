@@ -145,6 +145,8 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Check the character screen's focused desktop and touch tasks
         run: npm run test:hero-ui 2>&1 | tee hero-ui.txt
+      - name: Check shared cards and settings on desktop and landscape phones
+        run: npm run test:cards-ui
       - name: Check battle commands and forecasts on desktop and landscape phones
         run: node scripts/battle-ui.mjs 2>&1 | tee battle-ui.txt
       - name: Play the first commission through the real UI

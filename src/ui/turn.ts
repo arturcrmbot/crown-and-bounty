@@ -53,7 +53,8 @@ export function turnCard() {
   screen.innerHTML = `<div class="kc-turn-column">
     <img class="name" alt="Crown &amp; Bounty. The Old King\u2019s Treasure.">
     <img class="land" alt="">
-    <div class="kc-card kc-turn-card">
+    <div class="kc-turn-card">
+      <h3>Turn your phone on its side</h3>
       <img class="phone" alt="" src="${bitmapUrl(phone())}">
       <p>The map needs a wider screen than this. Turn your phone on its side to play.</p>
       <p class="small">If it won\u2019t turn, switch off rotation lock.</p>

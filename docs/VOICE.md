@@ -48,3 +48,13 @@ These come from Commission I, as it read before and after #149.
 | He holds up a **loaf** that has not gone stale in living memory (*nobody marches on an empty stomach*)... | He holds up a **loaf** that has not gone stale in living memory, because nobody marches on an empty stomach... |
 | ...nobody can strike back, but it winds them: they can’t strike back themselves for the rest of that round and the next. | ...nobody can strike back. The charge winds them, though, so they can’t strike back themselves for the rest of that round and the next. |
 | *Five villains, one lost sceptre, and a stolen goose.* | *The King has lost five provinces, his sceptre and his goose, and he wants them all back.* |
+
+## Shared panel labels
+
+The journal's phone pages are **The commission** and **Things heard**. Completed clues are marked
+**Resolved**, and clues still open are **Unresolved**. Their words and speakers stay as they were.
+The settings heading is **Sound and effects**, with **Music**, **Effects** and **Ambience** beside
+their percentages. **Gentle effects** says **Less shaking and flashing in battle.** The sound control
+says **Mute sound** or **Turn sound on**, and **Close** puts the panel away.
+The orientation heading repeats **Turn your phone on its side**. Artur's two sentences below it
+remain unchanged.

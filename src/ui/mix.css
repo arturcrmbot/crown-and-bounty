@@ -1,4 +1,3 @@
-/* The mix button beside the Sound button: same dark wood and gilt edge, an equaliser icon. */
 .kc-mix {
   position: fixed;
   z-index: 11;
@@ -7,69 +6,64 @@
   justify-content: center;
   box-sizing: border-box;
   padding: 0;
-  background: #2a1c10;
-  border: 2px solid #c28a1c;
-  box-shadow: 0 0 0 1px #0b0a10, 2px 2px 0 rgba(12, 8, 3, 0.75);
+  background: #15226a;
+  border: 1px solid #c28a1c;
+  box-shadow: 1px 2px 0 rgba(12, 8, 3, 0.5);
   cursor: pointer;
 }
-.kc-mix:hover,
-.kc-mix:focus-visible,
-.kc-mix.open {
-  background: #45301a;
-  border-color: #f2ce50;
-}
-.kc-mix img {
-  display: block;
-  image-rendering: pixelated;
-  pointer-events: none;
-}
-
-/* The panel that drops from it: one slider per bus, remembered like mute. */
+.kc-mix:hover, .kc-mix.open { background: #1f3390; border-color: #f2ce50; }
+.kc-mix:focus-visible { outline: 2px solid #f2ce50; outline-offset: 2px; }
+.kc-mix img { display: block; image-rendering: pixelated; pointer-events: none; }
 .kc-mix-panel {
   position: fixed;
-  z-index: 11;
-  box-sizing: border-box;
-  padding: 8px 10px;
+  z-index: 15;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  color: #f2e4c4;
-  font: 13px/1.2 'Bounty Serif', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
-  background: #2a1c10;
-  border: 2px solid #c28a1c;
-  box-shadow: 0 0 0 1px #0b0a10, 2px 2px 0 rgba(12, 8, 3, 0.75);
+  box-sizing: border-box;
+  transform-origin: 0 0;
+  color: #2a1a08;
+  font: 15px/1.35 'Bounty Serif', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  background: #f2e4c4;
+  border: 2px solid #5a3e14;
+  box-shadow: 0 0 0 1px #c28a1c, 4px 5px 0 rgba(12, 8, 3, 0.55);
 }
-.kc-mix-panel[hidden] {
-  display: none;
-}
-.kc-mix-row {
+.kc-mix-panel[hidden] { display: none; }
+.kc-mix-panel * { box-sizing: border-box; }
+.kc-mix-heading {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 12px;
+  flex: none;
+  padding: 8px 10px;
+  color: #f2e4c4;
+  background: #15226a;
+  border-bottom: 2px solid #c28a1c;
 }
-.kc-mix-row span {
-  flex: 0 0 auto;
-  width: 4.6em;
-}
-.kc-mix-row input[type='range'] {
-  /* A range input keeps its default width (about 130 px) unless told it may shrink to fit the panel. */
-  flex: 1 1 0;
-  min-width: 0;
-  width: 100%;
-  margin: 0;
-  accent-color: #c28a1c;
-}
-
-/* The switch for gentle effects in battle (#190), under the sliders. */
-.kc-mix-gentle {
+.kc-mix-heading h3 { flex: 1; min-width: 0; margin: 0; font-size: 19px; line-height: 1.2; font-variant: small-caps; }
+.kc-mix-panel button {
+  flex: none;
+  min-height: 34px;
+  min-width: 68px;
+  padding: 5px 10px;
+  border: 1px solid #5a3e14;
+  border-radius: 0;
+  background: linear-gradient(#f2e4c4, #e8d4ac);
+  color: #3a1206;
+  font: inherit;
+  font-weight: bold;
   cursor: pointer;
+  touch-action: manipulation;
 }
-.kc-mix-row.kc-mix-gentle span {
-  width: auto;
-}
-.kc-mix-gentle input[type='checkbox'] {
-  margin: 0;
-  accent-color: #c28a1c;
-  cursor: pointer;
-}
+.kc-mix-panel button:hover { background: #f2e4c4; border-color: #986612; }
+.kc-mix-panel button:active { background: #e8d4ac; }
+.kc-mix-panel :is(button,input):focus-visible { outline: 2px solid #986612; outline-offset: 2px; }
+.kc-mix-body { min-height: 0; padding: 12px; overflow-y: auto; overscroll-behavior: contain; }
+.kc-mix-sound { width: 100%; margin-bottom: 10px; }
+.kc-mix-row { display: grid; grid-template-columns: 68px minmax(0, 1fr) 34px; align-items: center; gap: 8px; min-height: 38px; }
+.kc-mix-row output { text-align: right; font-size: 13px; color: #5a3e14; font-variant-numeric: tabular-nums; }
+.kc-mix-row input[type='range'] { width: 100%; min-width: 0; height: 34px; margin: 0; accent-color: #986612; }
+.kc-mix-gentle { grid-template-columns: minmax(0, 1fr) 24px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #ad9163; cursor: pointer; }
+.kc-mix-gentle small { display: block; margin-top: 3px; font-size: 13px; color: #5a3e14; }
+.kc-mix-gentle input[type='checkbox'] { width: 22px; height: 22px; margin: 0; accent-color: #986612; cursor: pointer; }
+.kc-touch .kc-mix-panel { font-size: 16px; }
+.kc-touch .kc-mix-panel button, .kc-touch .kc-mix-row, .kc-touch .kc-mix-row input[type='range'] { min-height: 44px; }

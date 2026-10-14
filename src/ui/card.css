@@ -1,252 +1,289 @@
-/* A torn parchment note: flat colours, hard edges, no blur, no rounded corners. */
+/* Royal-blue headings, quiet parchment and deliberate controls, as on the hero's folio. */
 .kc-card-wrap {
   position: fixed;
   z-index: 10;
   transform-origin: 0 0;
-  filter: drop-shadow(3px 3px 0 rgba(12, 8, 3, 0.75));
   pointer-events: none;
 }
 .kc-card {
-  pointer-events: auto;
-  width: 250px;
-  padding: 14px 18px 12px;
-  color: #2a1a08;
-  font: 15px/1.38 'Bounty Serif', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
-  background-color: #e4d0a2;
-  background-image:
-    radial-gradient(circle at 20% 30%, rgba(122, 92, 44, 0.16) 0 1px, transparent 1.5px),
-    radial-gradient(circle at 70% 80%, rgba(122, 92, 44, 0.12) 0 1px, transparent 1.5px),
-    linear-gradient(#ead9b0, #d9c290);
-  background-size: 7px 9px, 11px 7px, 100% 100%;
-  border: 2px solid #5a3e14;
-  clip-path: polygon(0 3px, 7% 0, 18% 2px, 33% 0, 52% 3px, 70% 0, 86% 2px, 100% 0, 100% 97%, 91% 100%, 76% 98%, 60% 100%, 41% 97%, 24% 100%, 9% 98%, 0 100%);
-}
-.kc-card.wide {
-  width: 400px;
-}
-/* Never taller than the room it's given (padding and border included): a very long card scrolls its
-   words and keeps its buttons in sight. Only if the buttons alone don't fit does the whole card scroll. */
-.kc-card {
+  box-sizing: border-box;
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
-  max-height: calc(100vh - 46px);
-  overflow-y: auto;
+  width: 312px;
+  max-width: calc(var(--room, 100vw) - 16px);
+  max-height: calc(100vh - 16px);
+  min-width: 0;
+  color: #2a1a08;
+  font: 15.5px/1.4 'Bounty Serif', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  background: #f2e4c4;
+  border: 2px solid #5a3e14;
+  box-shadow: 0 0 0 1px #c28a1c, 4px 5px 0 rgba(12, 8, 3, 0.55);
+  pointer-events: auto;
 }
-.kc-card-body {
+.kc-card *, .kc-card *::before, .kc-card *::after { box-sizing: border-box; }
+.kc-card [hidden] { display: none !important; }
+.kc-card.wide { width: 460px; }
+.kc-card.poster { width: 350px; }
+.kc-card.tiled { width: 720px; }
+.kc-card.journal { width: 700px; }
+.kc-card-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: none;
+  min-width: 0;
+  padding: 9px 14px;
+  color: #f2e4c4;
+  background: #15226a;
+  border-bottom: 2px solid #c28a1c;
+}
+.kc-card h3 {
+  min-width: 0;
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.2;
+  font-variant: small-caps;
+  text-wrap: balance;
+  overflow-wrap: break-word;
+}
+.kc-card-heading img.portrait {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  background: #1f3390;
+  border: 1px solid #c6ab7c;
+}
+.kc-card img { image-rendering: pixelated; }
+.kc-card-reading {
+  position: relative;
+  display: flex;
+  flex-direction: column;
   flex: 0 1 auto;
   min-height: 0;
+  overflow: hidden;
+}
+.kc-card-body {
+  position: relative;
+  flex: 0 1 auto;
+  min-width: 0;
+  min-height: 0;
+  padding: 14px 16px;
   overflow-y: auto;
+  overscroll-behavior: contain;
   --fade-top: 0px;
   --fade-bottom: 0px;
-  --clear-bottom: 0px;
   --bar: 0px;
 }
+.kc-card-body:focus-visible { outline: 2px solid #986612; outline-offset: -3px; }
+.kc-card p { margin: 0 0 9px; }
+.kc-card p:last-child { margin-bottom: 0; }
+.kc-card b { color: #3a1206; }
+.kc-card .instruction + .instruction { margin-top: 16px; }
+.kc-card .instruction > b:first-child { display: block; color: #6e1a0c; font-size: 17px; margin-bottom: 4px; }
 .kc-card .choices {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+}
+.kc-card-footer {
   flex: none;
+  padding: 10px 12px;
+  background: #e8d4ac;
+  border-top: 1px solid #ad9163;
 }
-/* Words run on out of sight: the cut edge fades, and "more" points down from a clear strip at the
-   foot of the words. The fade leaves the scrollbar alone (`--bar`, its width, set as it comes). */
-.kc-card.more-above .kc-card-body {
-  --fade-top: 22px;
+.kc-card-options {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #ad9163;
 }
-.kc-card.more-below .kc-card-body {
-  --fade-bottom: 46px;
-  --clear-bottom: 19px;
+.kc-card button, .kc-card a.link {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 36px;
+  margin: 0;
+  padding: 7px 10px;
+  border: 1px solid #5a3e14;
+  border-radius: 0;
+  background: linear-gradient(#f2e4c4, #e8d4ac);
+  box-shadow: 1px 2px 0 rgba(58, 36, 16, 0.15);
+  color: #3a1206;
+  font: inherit;
+  font-weight: bold;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  touch-action: manipulation;
 }
-.kc-card.more-above .kc-card-body,
-.kc-card.more-below .kc-card-body {
+.kc-card .words { min-width: 0; width: 100%; overflow-wrap: break-word; }
+.kc-card .price { display: block; margin-top: 2px; font-size: 13.5px; color: #6e460c; font-weight: normal; }
+.kc-card .choices small { display: block; margin-top: 4px; font-size: 13.5px; font-weight: normal; line-height: 1.35; color: #5a3e14; }
+.kc-card button:hover:not(:disabled), .kc-card a.link:hover { background: #f2e4c4; border-color: #986612; }
+.kc-card button:focus-visible, .kc-card a.link:focus-visible { outline: 2px solid #986612; outline-offset: 2px; }
+.kc-card button:active:not(:disabled), .kc-card a.link:active { background: #e8d4ac; box-shadow: inset 1px 2px #ad9163; }
+.kc-card button.primary { border: 2px solid #986612; padding: 6px 9px; background: #f2e4c4; }
+.kc-card button.danger:not(:disabled) { color: #82191a; border-color: #82191a; }
+.kc-card button.dismiss { background: #d9c194; border-color: #ad9163; box-shadow: none; }
+.kc-card button:disabled {
+  background: #e8d4ac;
+  border-color: #ad9163;
+  color: #6a5332;
+  font-weight: normal;
+  box-shadow: none;
+  cursor: default;
+}
+.kc-card button:disabled small, .kc-card button:disabled .price { color: #6a5332; }
+.kc-card button.with-portrait, .kc-card button.with-picture { gap: 10px; }
+.kc-card button.with-portrait img { flex: none; width: 40px; height: 40px; border: 1px solid #ad9163; background: #c6ab7c; }
+.kc-card button.with-picture img { flex: none; width: 32px; height: 32px; object-fit: contain; }
+.kc-card a.link .out { margin-left: 5px; color: #6e460c; }
+
+/* The scroll cue belongs to the reading area, not to the command strip. */
+.kc-card.more-above .kc-card-body { --fade-top: 14px; }
+.kc-card.more-below .kc-card-body { --fade-bottom: 32px; padding-bottom: 34px; }
+.kc-card.more-above .kc-card-body, .kc-card.more-below .kc-card-body {
   -webkit-mask:
-    linear-gradient(transparent, #000 var(--fade-top), #000 calc(100% - var(--fade-bottom)), transparent calc(100% - var(--clear-bottom))) left top / calc(100% - var(--bar)) 100% no-repeat,
+    linear-gradient(transparent, #000 var(--fade-top), #000 calc(100% - var(--fade-bottom)), transparent) left top / calc(100% - var(--bar)) 100% no-repeat,
     linear-gradient(#000, #000) right top / var(--bar) 100% no-repeat;
   mask:
-    linear-gradient(transparent, #000 var(--fade-top), #000 calc(100% - var(--fade-bottom)), transparent calc(100% - var(--clear-bottom))) left top / calc(100% - var(--bar)) 100% no-repeat,
+    linear-gradient(transparent, #000 var(--fade-top), #000 calc(100% - var(--fade-bottom)), transparent) left top / calc(100% - var(--bar)) 100% no-repeat,
     linear-gradient(#000, #000) right top / var(--bar) 100% no-repeat;
 }
 .kc-card-more {
-  flex: none;
-  position: relative;
-  z-index: 1;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 8px;
+  height: 24px;
   display: flex;
   justify-content: center;
-  align-items: flex-end;
-  height: 0;
+  align-items: center;
+  color: #5a3e14;
   font-size: 13px;
   font-style: italic;
-  font-weight: bold;
-  color: #7a2a10;
+  background: linear-gradient(transparent, #f2e4c4 45%);
   visibility: hidden;
-  opacity: 0;
-  transition: opacity 150ms;
   pointer-events: none;
 }
-/* It fades in, and goes at once. Its visibility is the card's, so a card veiled while its screen
-   changes keeps "more" out of sight too. */
-.kc-card.more-below .kc-card-more {
-  visibility: inherit;
-  opacity: 1;
-}
-.kc-card-more span {
-  padding: 0 10px 1px;
-  line-height: 1.25;
-  cursor: pointer;
-  pointer-events: auto;
-  text-shadow: 0 0 3px #e4d0a2, 0 0 3px #e4d0a2;
-  animation: kc-more 1.8s ease-in-out infinite;
-}
-.kc-card-more span:hover {
-  color: #a42a10;
-}
-@keyframes kc-more {
-  0%,
-  60%,
-  100% {
-    transform: none;
-  }
-  80% {
-    transform: translateY(2px);
-  }
-}
-/* A slim scrollbar in the card's own inks, so a card that scrolls looks it. */
-.kc-card::-webkit-scrollbar,
-.kc-card-body::-webkit-scrollbar {
-  width: 6px;
-}
-.kc-card::-webkit-scrollbar-track,
-.kc-card-body::-webkit-scrollbar-track {
-  background: rgba(90, 62, 20, 0.14);
-}
-.kc-card::-webkit-scrollbar-thumb,
-.kc-card-body::-webkit-scrollbar-thumb {
-  background: #9a7a3a;
-}
-@supports not selector(::-webkit-scrollbar) {
-  .kc-card,
-  .kc-card-body {
-    scrollbar-width: thin;
-    scrollbar-color: #9a7a3a rgba(90, 62, 20, 0.14);
-  }
-}
-/* A face on the card, in a little gilt frame, top left. */
-.kc-card img.portrait {
-  float: left;
-  width: 96px;
-  height: 96px;
-  margin: 2px 12px 6px 0;
-  image-rendering: pixelated;
-  background: #c6ab7c;
-  border: 2px solid #5a3e14;
-  box-shadow: 0 0 0 2px #c28a1c;
-}
-.kc-card .choices {
-  clear: both;
-}
+.kc-card.more-below .kc-card-more { visibility: inherit; }
+.kc-card-body { scrollbar-width: thin; scrollbar-color: #9a7a3a #e8d4ac; }
+.kc-card-body::-webkit-scrollbar { width: 7px; }
+.kc-card-body::-webkit-scrollbar-track { background: #e8d4ac; }
+.kc-card-body::-webkit-scrollbar-thumb { background: #9a7a3a; }
+
 .kc-card .battle-result {
-  clear: both;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin: 8px 0 4px;
-  padding: 7px 0 5px;
-  border-top: 1px solid #a88652;
-  border-bottom: 1px solid #a88652;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  margin: 12px 0 8px;
+  padding: 10px 0;
+  border-top: 1px solid #ad9163;
+  border-bottom: 1px solid #ad9163;
 }
-.kc-card .battle-result-side h4 {
-  margin: 0 0 4px;
-  font-size: 14px;
-  color: #6e1a0c;
-}
-.kc-card .battle-result-unit {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 30px;
-  font-size: 12px;
-  line-height: 1.15;
-}
-.kc-card .battle-result-unit img {
-  flex: none;
-  width: 28px;
-  height: 30px;
-  object-fit: contain;
-  image-rendering: pixelated;
-}
-.kc-card .battle-result-none {
-  margin: 2px 0;
-  font-style: italic;
-  font-size: 12px;
-}
-.kc-card .battle-result-mana {
-  font-style: italic;
-}
-.kc-card button.with-portrait {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.kc-card button.with-portrait::before {
-  content: none;
-}
-.kc-card button.with-portrait img {
-  flex: none;
-  width: 40px;
-  height: 40px;
-  image-rendering: pixelated;
-  background: #c6ab7c;
-  border: 1px solid #5a3e14;
-}
-/* Beside a face, the label and the line under it stack as one. */
-.kc-card button.with-portrait .words {
-  display: block;
-}
-.kc-card h3 {
-  margin: 0 0 6px;
-  font-size: 19px;
-  font-variant: small-caps;
-  letter-spacing: 1px;
-  color: #6e1a0c;
-}
-.kc-card p {
-  margin: 0 0 5px;
-}
-.kc-card b {
-  color: #3a1206;
-}
-.kc-card .choices {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  margin-top: 9px;
-  padding-top: 7px;
-  border-top: 1px solid #a88652;
-}
-.kc-card button {
-  all: unset;
-  cursor: pointer;
+.kc-card .battle-result-side h4 { margin: 0 0 6px; font-size: 15px; color: #6e1a0c; }
+.kc-card .battle-result-unit { display: flex; align-items: center; gap: 6px; min-height: 34px; font-size: 13.5px; line-height: 1.25; }
+.kc-card .battle-result-unit img { flex: none; width: 28px; height: 32px; object-fit: contain; }
+.kc-card .battle-result-none { font-size: 13.5px; font-style: italic; }
+.kc-card .battle-result-mana { color: #5a3e14; font-size: 13.5px; }
+
+/* Bounties keep their poster and red stamp, inside the same frame as every other decision. */
+.kc-card.poster .kc-card-heading { justify-content: center; }
+.kc-card.poster h3 { color: #f2ce50; font-size: 30px; font-variant: normal; letter-spacing: 4px; }
+.kc-card .poster-summary { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: 14px; align-items: start; }
+.kc-card .mugshot { position: relative; }
+.kc-card .mugshot img.portrait { display: block; width: 100px; height: 100px; border: 2px solid #5a3e14; background: #c6ab7c; }
+.kc-card .poster-copy > p:first-child { font-size: 18px; line-height: 1.25; }
+.kc-card .stamp {
+  position: absolute;
+  left: 50%;
+  top: 54%;
+  padding: 2px 6px 0 9px;
+  font-size: 25px;
   font-weight: bold;
-  color: #4a1a08;
+  line-height: 1;
+  letter-spacing: 3px;
+  color: #b0231a;
+  border: 4px double #b0231a;
+  opacity: 0.9;
+  mix-blend-mode: multiply;
+  transform: translate(-50%, -50%) rotate(-15deg);
+  pointer-events: none;
 }
-.kc-card button::before {
-  content: '\25C6\00a0';
-  color: #9a7a3a;
+.kc-card.unfold .stamp { animation: kc-stamp 190ms cubic-bezier(0.3, 0, 0.8, 0.4) 280ms both; }
+@keyframes kc-stamp {
+  from { opacity: 0; transform: translate(-50%, -50%) rotate(-26deg) scale(2.8); }
+  to { opacity: 0.9; transform: translate(-50%, -50%) rotate(-15deg) scale(1); }
 }
-.kc-card button:hover,
-.kc-card button:focus-visible {
-  color: #a42a10;
-  text-decoration: underline;
+.kc-card .inset { display: flex; align-items: center; gap: 12px; margin-top: 12px; padding-top: 10px; border-top: 1px solid #ad9163; }
+.kc-card .inset img { flex: none; width: 48px; height: 48px; background: #c6ab7c; border: 1px solid #5a3e14; }
+.kc-card .inset p { margin: 0; font-style: italic; }
+
+.kc-card.journal .kc-card-body { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 22px; }
+.kc-card.journal h4 { margin: 0 0 10px; font-size: 18px; line-height: 1.2; color: #6e1a0c; }
+.kc-card .pinned { width: 112px; margin: 0 auto 14px; padding: 6px; text-align: center; background: #e8d4ac; border: 1px solid #ad9163; }
+.kc-card .pinned > b { display: block; margin-bottom: 5px; font-size: 17px; letter-spacing: 3px; }
+.kc-card .pinned .stamp { font-size: 22px; border-width: 3px; }
+.kc-card.journal.unfold .stamp { animation: none; }
+.kc-card .heard { min-width: 0; padding-left: 20px; border-left: 1px solid #ad9163; }
+.kc-card .heard ul { margin: 0; padding: 0; list-style: none; }
+.kc-card .heard li { position: relative; padding: 0 0 12px 22px; margin: 0 0 12px; border-bottom: 1px solid #d9c194; }
+.kc-card .heard li:last-child { border-bottom: 0; margin-bottom: 0; }
+.kc-card .heard .words { font-style: italic; }
+.kc-card .heard small { display: block; margin-top: 4px; font-size: 13px; color: #5a3e14; }
+.kc-card .heard-status { position: absolute; left: 0; top: 4px; width: 12px; height: 12px; border: 1px solid #5a3e14; }
+.kc-card .heard li.done { color: #6a5332; }
+.kc-card .heard li.done .heard-status::after { content: ''; position: absolute; left: 3px; top: -5px; width: 6px; height: 13px; border: solid #82191a; border-width: 0 2px 2px 0; transform: rotate(40deg); }
+.kc-card .heard h4.found { margin-top: 18px; }
+.kc-card .heard ul.found li { display: flex; align-items: baseline; gap: 8px; margin: 0; padding: 6px 0; border-bottom: 1px solid #d9c194; font-size: 14px; }
+.kc-card .heard ul.found i { flex: 1; }
+.kc-card .heard ul.found b { flex: none; font-variant-numeric: tabular-nums; }
+.kc-card .heard .none { color: #5a3e14; }
+.kc-journal-tabs { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 6px 12px 0; background: #e8d4ac; border-bottom: 1px solid #ad9163; }
+.kc-journal-tabs button { justify-content: center; box-shadow: none; border-bottom: 0; background: #d9c194; }
+.kc-journal-tabs button[aria-selected='true'] { border-top: 3px solid #986612; color: #6e1a0c; background: #f2e4c4; }
+.kc-card .choices.tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.kc-card .choices.tiles button.with-portrait { flex-direction: column; align-items: center; gap: 10px; padding: 12px; }
+.kc-card .choices.tiles button.with-portrait img { width: 64px; height: 64px; }
+.kc-card .choices.tiles .words { font-size: 17px; }
+.kc-card .choices.tiles small { margin-top: 6px; }
+
+@container (max-width: 540px) {
+  .kc-card .choices.tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kc-card .choices.tiles button.with-portrait { align-items: flex-start; gap: 8px; padding: 10px; }
+  .kc-card .choices.tiles button.with-portrait img { width: 48px; height: 48px; }
 }
-/* Options for another sort of hero, or a fuller purse: shown, but faded. */
-.kc-card button:disabled {
-  cursor: default;
-  font-weight: normal;
-  font-style: italic;
-  color: #8c7a58;
-  text-decoration: none;
+@container (max-width: 260px) {
+  .kc-card .choices.tiles { grid-template-columns: minmax(0, 1fr); }
+  .kc-card .poster-summary { grid-template-columns: minmax(0, 1fr); }
 }
-.kc-card button:disabled::before {
-  color: #b9a47c;
+@container (max-width: 420px) {
+  .kc-card .choices.tiles { grid-template-columns: minmax(0, 1fr); }
+  .kc-card .choices.tiles button.with-portrait { flex-direction: row; gap: 10px; }
+  .kc-card .choices.tiles button.with-portrait img { width: 40px; height: 40px; }
+}
+.kc-touch .kc-card { font-size: 16px; }
+.kc-touch .kc-card button, .kc-touch .kc-card a.link { min-height: 44px; }
+.kc-touch .kc-card .choices small, .kc-touch .kc-card .price { font-size: 14px; }
+.kc-touch .kc-card.journal .kc-card-body { display: block; }
+.kc-touch .kc-card .heard { padding-left: 0; border-left: 0; }
+.kc-touch .kc-card .page > h4, .kc-touch .kc-card .heard > h4:first-child { display: none; }
+.kc-touch .kc-card .pinned { float: left; width: 96px; margin: 0 12px 8px 0; }
+.kc-touch .kc-card .pinned > b { font-size: 14px; letter-spacing: 1px; }
+.kc-touch .kc-card .pinned .mugshot img.portrait { width: 80px; height: 80px; }
+.kc-touch .kc-card.two-up { width: 560px; }
+.kc-touch .kc-card.two-up .kc-card-footer { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.kc-touch .kc-card.two-up .kc-card-footer > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+@keyframes kc-unfold {
+  from { opacity: 0.5; }
+  to { opacity: 1; }
+}
+.kc-card.unfold { animation: kc-unfold 160ms ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .kc-card.unfold, .kc-card.unfold .stamp { animation: none; }
 }
 
-/* The name of whatever is under the pointer, like HoMM2's status line: over any card beside it. */
+/* Hover labels remain shared with the map and battle owners. */
 .kc-label {
   position: fixed;
   z-index: 13;
@@ -259,384 +296,10 @@
   pointer-events: none;
   white-space: nowrap;
 }
-
-/* The odds of a fight at a glance, in their colour, from a sure win in green to a likely loss in
-   dark red: under the title of every card about a fight, and under a band's name in the label. */
-.kc-odds {
-  display: table;
-  padding: 1px 8px 2px;
-  font-weight: bold;
-  color: #f2e4c4;
-  border: 1px solid #1a1206;
-  box-shadow: 2px 2px 0 rgba(12, 8, 3, 0.45);
-}
-.kc-odds.win {
-  background: #2a6d26;
-}
-.kc-odds.close {
-  color: #fbea96;
-  background: #986612;
-}
-.kc-odds.against {
-  background: #ab291f;
-}
-.kc-odds.lose {
-  color: #f8a276;
-  background: #581010;
-}
-.kc-card .kc-odds {
-  margin: 0 0 7px;
-}
-.kc-label .kc-odds {
-  margin: 3px 0 2px;
-  padding: 0 6px 1px;
-  box-shadow: none;
-}
-
-/* A smaller line under a button's label. */
-.kc-card button small {
-  display: block;
-  font-size: 12.5px;
-  font-weight: normal;
-  font-style: italic;
-  line-height: 1.25;
-  color: #5a3e14;
-}
-.kc-card button:disabled small {
-  color: inherit;
-}
-
-/* A link off the game (the maker's LinkedIn), among the buttons and looking like one, with an arrow
-   for the new tab it opens. */
-.kc-card .choices a.link {
-  cursor: pointer;
-  font-weight: bold;
-  color: #4a1a08;
-  text-decoration: none;
-}
-.kc-card .choices a.link::before {
-  content: '\25C6\00a0';
-  color: #9a7a3a;
-}
-.kc-card .choices a.link:hover,
-.kc-card .choices a.link:focus-visible {
-  color: #a42a10;
-  text-decoration: underline;
-  outline: none;
-}
-.kc-card .choices a.link .out {
-  margin-left: 4px;
-  font-weight: normal;
-}
-.kc-card .choices a.link small {
-  display: block;
-  font-size: 12.5px;
-  font-weight: normal;
-  font-style: italic;
-  line-height: 1.25;
-  color: #5a3e14;
-}
-
-/* A WANTED poster: everything centred, a big black title, and the face in the middle. */
-.kc-card.poster {
-  width: 300px;
-  text-align: center;
-  background-image:
-    radial-gradient(circle at 20% 30%, rgba(122, 92, 44, 0.2) 0 1px, transparent 1.5px),
-    radial-gradient(circle at 70% 80%, rgba(122, 92, 44, 0.16) 0 1px, transparent 1.5px),
-    linear-gradient(#e2cc98, #c9ad74);
-}
-.kc-card.poster h3 {
-  margin: 2px 0 6px;
-  font-size: 40px;
-  line-height: 1;
-  letter-spacing: 6px;
-  font-variant: normal;
-  color: #2a1a08;
-}
-.kc-card.poster img.portrait {
-  float: none;
-  display: block;
-  width: 128px;
-  height: 128px;
-  margin: 0;
-}
-.kc-card.poster .mugshot {
-  position: relative;
-  width: 132px;
-  margin: 0 auto 8px;
-}
-/* PAID, in red ink, slammed across the face once the bounty is. */
-.kc-card .stamp {
-  position: absolute;
-  left: 50%;
-  top: 54%;
-  padding: 3px 10px 1px 14px;
-  font-size: 36px;
-  font-weight: bold;
-  line-height: 1;
-  letter-spacing: 5px;
-  color: #b0231a;
-  border: 5px double #b0231a;
-  opacity: 0.9;
-  mix-blend-mode: multiply;
-  transform: translate(-50%, -50%) rotate(-15deg);
-  pointer-events: none;
-}
-.kc-card.unfold .stamp {
-  animation: kc-stamp 190ms cubic-bezier(0.3, 0, 0.8, 0.4) 280ms both;
-}
-@keyframes kc-stamp {
-  from {
-    opacity: 0;
-    transform: translate(-50%, -50%) rotate(-26deg) scale(2.8);
-  }
-  to {
-    opacity: 0.9;
-    transform: translate(-50%, -50%) rotate(-15deg) scale(1);
-  }
-}
-/* What came home, pictured at the foot of the poster with its line. */
-.kc-card .inset {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 4px 0 0;
-  text-align: left;
-}
-.kc-card .inset img {
-  flex: none;
-  width: 48px;
-  height: 48px;
-  image-rendering: pixelated;
-  background: #c6ab7c;
-  border: 2px solid #5a3e14;
-}
-.kc-card .inset p {
-  margin: 0;
-  font-style: italic;
-}
-.kc-card.poster .choices button {
-  text-align: center;
-}
-/* By touch the face is smaller and stands beside the words, so the crime and the reward show without "more" (#155). */
-.kc-touch .kc-card.poster {
-  width: 420px;
-}
-.kc-touch .kc-card.poster h3 {
-  font-size: 32px;
-  margin-bottom: 8px;
-  text-align: center;
-}
-.kc-touch .kc-card.poster .kc-card-body {
-  text-align: left;
-}
-.kc-touch .kc-card.poster img.portrait {
-  width: 96px;
-  height: 96px;
-}
-.kc-touch .kc-card.poster .mugshot {
-  float: left;
-  width: 100px;
-  margin: 2px 14px 4px 0;
-}
-.kc-touch .kc-card.poster .stamp {
-  padding: 2px 6px 0 9px;
-  font-size: 26px;
-  letter-spacing: 3px;
-  border-width: 4px;
-}
-
-/* The journal, open at two pages: the commission on the left, its WANTED poster pinned in, and on the
-   right what's been heard on the road, each ticked off in red ink once it has paid off. */
-.kc-card.journal {
-  width: 600px;
-}
-.kc-card.journal .kc-card-body {
-  display: grid;
-  grid-template-columns: 230px 1fr;
-  gap: 0 18px;
-}
-.kc-card .pinned {
-  position: relative;
-  width: 112px;
-  margin: 8px auto 12px;
-  padding: 5px 0 7px;
-  text-align: center;
-  background: linear-gradient(#e2cc98, #c9ad74);
-  border: 1px solid #8c7148;
-  box-shadow: 2px 2px 0 rgba(12, 8, 3, 0.35);
-  transform: rotate(-2deg);
-}
-/* The pin that holds it in, a red diamond. */
-.kc-card .pinned::before {
-  content: '';
-  position: absolute;
-  top: -4px;
-  left: 50%;
-  width: 6px;
-  height: 6px;
-  margin-left: -4px;
-  background: #d2432b;
-  border: 1px solid #340808;
-  transform: rotate(45deg);
-}
-.kc-card .pinned b {
-  display: block;
-  margin-bottom: 3px;
-  font-size: 17px;
-  line-height: 1;
-  letter-spacing: 3px;
-  color: #2a1a08;
-}
-.kc-card .pinned .mugshot {
-  position: relative;
-  width: 100px;
-  margin: 0 auto;
-}
-.kc-card .pinned img.portrait {
-  float: none;
-  display: block;
-  margin: 0 auto;
-}
-.kc-card .pinned .stamp {
-  padding: 2px 6px 0 9px;
-  font-size: 22px;
-  letter-spacing: 3px;
-  border-width: 3px;
-}
-.kc-card.journal.unfold .stamp {
-  animation: none;
-}
-.kc-card .heard {
-  padding-left: 17px;
-  border-left: 1px solid #a88652;
-}
-.kc-card .heard h4 {
-  margin: 0 0 8px;
-  font-size: 19px;
-  font-variant: small-caps;
-  letter-spacing: 1px;
-  color: #6e1a0c;
-}
-.kc-card .heard ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.kc-card .heard li {
-  position: relative;
-  margin: 0 0 8px;
-  padding-left: 21px;
-}
-.kc-card .heard .words {
-  font-style: italic;
-}
-.kc-card .heard small {
-  display: block;
-  font-size: 12.5px;
-  line-height: 1.25;
-  color: #5a3e14;
-}
-/* A box to tick, and the tick once it has paid off. */
-.kc-card .heard li::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 4px;
-  width: 10px;
-  height: 10px;
-  border: 1px solid #5a3e14;
-  background: rgba(255, 240, 200, 0.35);
-}
-.kc-card .heard li.done {
-  color: #6f5f3f;
-}
-.kc-card .heard li.done::after {
-  content: '';
-  position: absolute;
-  left: 4px;
-  top: -1px;
-  width: 5px;
-  height: 12px;
-  border: solid #b0231a;
-  border-width: 0 3px 3px 0;
-  transform: rotate(40deg);
-}
-/* The tally of things found, under what's been heard: each kind, a dotted line, and how many of how many. */
-.kc-card .heard h4.found {
-  margin-top: 14px;
-}
-.kc-card .heard ul.found li {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  margin: 0 0 4px;
-  padding-left: 0;
-}
-.kc-card .heard ul.found li::before {
-  display: none;
-}
-.kc-card .heard ul.found i {
-  flex: 1;
-  border-bottom: 1px dotted #a88652;
-}
-.kc-card .heard .none {
-  font-style: italic;
-  color: #5a3e14;
-}
-
-/* Heroes to pick from, side by side: face on top, name, then how he plays. */
-.kc-card.tiled {
-  width: 640px;
-}
-.kc-card .choices.tiles {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-}
-.kc-card .choices.tiles button.with-portrait {
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 8px 6px 9px;
-  text-align: center;
-  font-weight: bold;
-}
-.kc-card .choices.tiles button.with-portrait img {
-  width: 96px;
-  height: 96px;
-}
-.kc-card .choices.tiles button.with-portrait {
-  border: 1px solid #a88652;
-  background: rgba(255, 240, 200, 0.22);
-}
-.kc-card .choices.tiles button.with-portrait:hover,
-.kc-card .choices.tiles button.with-portrait:focus-visible {
-  text-decoration: none;
-  border-color: #5a3e14;
-  background: rgba(255, 240, 200, 0.6);
-}
-
-/* A new card unfolds from its top edge, like a letter opened. */
-@keyframes kc-unfold {
-  from {
-    opacity: 0;
-    transform: perspective(600px) rotateX(-38deg) translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-.kc-card.unfold {
-  transform-origin: 50% 0;
-  animation: kc-unfold 170ms ease-out;
-}
-@media (prefers-reduced-motion: reduce) {
-  .kc-card.unfold,
-  .kc-card.unfold .stamp,
-  .kc-card-more span {
-    animation: none;
-  }
-}
+.kc-odds { display: table; padding: 1px 8px 2px; font-weight: bold; color: #f2e4c4; border: 1px solid #1a1206; box-shadow: 2px 2px 0 rgba(12, 8, 3, 0.45); }
+.kc-odds.win { background: #2a6d26; }
+.kc-odds.close { color: #fbea96; background: #986612; }
+.kc-odds.against { background: #ab291f; }
+.kc-odds.lose { color: #f8a276; background: #581010; }
+.kc-card .kc-odds { display: block; margin: 0 0 12px; padding: 7px 10px; box-shadow: none; }
+.kc-label .kc-odds { margin: 3px 0 2px; padding: 0 6px 1px; box-shadow: none; }

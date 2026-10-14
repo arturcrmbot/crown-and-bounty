@@ -19,35 +19,14 @@
   -webkit-user-drag: none;
 }
 
-/* A card's words scroll under a finger, and each of its buttons (and links) is a strip big enough to hit. */
+/* Shared cards own their native-size actions; only their reading area pans under a finger. */
 .kc-touch .kc-card-body {
   touch-action: pan-y;
-}
-.kc-touch .kc-card .choices:not(.tiles) {
-  gap: 0;
-}
-.kc-touch .kc-card .choices:not(.tiles) button,
-.kc-touch .kc-card .choices:not(.tiles) a.link {
-  display: flex;
-  align-items: center;
-  box-sizing: border-box;
-  min-height: 40px;
-  padding: 3px 0;
-}
-.kc-touch .kc-card .choices:not(.tiles) :is(button, a.link) + :is(button, a.link) {
-  border-top: 1px dotted rgba(90, 62, 20, 0.4);
-}
-.kc-touch .kc-card .choices:not(.tiles) :is(button, a.link)::before {
-  flex: none;
-}
-.kc-touch .kc-card-more span {
-  padding: 6px 14px 4px;
 }
 
 /* The Sound button and its mix are in the right-hand rail instead. */
 .kc-touch .kc-mute,
-.kc-touch .kc-mix,
-.kc-touch .kc-mix-panel {
+.kc-touch .kc-mix {
   display: none !important;
 }
 
@@ -63,27 +42,4 @@
   padding: 3px 9px 4px;
   font-size: 14px;
   white-space: normal;
-}
-
-/* No wider than the room between the rails (`--room`, set as the card is placed), padding and border included. */
-.kc-touch .kc-card {
-  max-width: calc(var(--room, 100vw) - 56px);
-}
-.kc-touch .kc-card.tiled .choices.tiles button.with-portrait img {
-  width: 72px;
-  height: 72px;
-}
-
-/* Many buttons on a phone on its side: two to a row, on a wider card (`layOut` in card.ts), so the
-   title and the odds stay in sight above them. */
-.kc-touch .kc-card.two-up {
-  width: 540px;
-}
-.kc-touch .kc-card.two-up .choices:not(.tiles) {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  column-gap: 18px;
-}
-.kc-touch .kc-card.two-up .choices:not(.tiles) > :is(button, a.link):nth-child(2) {
-  border-top: none;
 }
