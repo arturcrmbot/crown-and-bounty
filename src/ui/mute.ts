@@ -60,7 +60,6 @@ export class MuteButton {
     for (const type of ['pointerdown', 'pointerup', 'click'] as const) this.button.addEventListener(type, (e) => e.stopPropagation());
     this.button.addEventListener('click', () => {
       toggleMute();
-      this.button.blur();
     });
     document.body.append(this.button);
   }
