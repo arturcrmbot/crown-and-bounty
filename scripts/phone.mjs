@@ -475,8 +475,9 @@ try {
   await press('Take the banner');
   await close();
 
-  // The hero screen by touch: tap an artifact to pick it up, tap where it goes.
+  // Inspection does not pick anything up. Move explicitly begins tap-to-place or dragging.
   await rail('Hero');
+  check(await press('Equipment'), 'Equipment opens the finds and their inspector');
   const sheet = () => call(() => window.__kc.hero());
   const tapPlace = async (place) => {
     const square = page.locator(`.kc-hero [data-place="${place}"]`);
@@ -485,7 +486,7 @@ try {
     await wait(80);
   };
   const tapAct = async (act) => {
-    const button = page.locator(`.kc-hero [data-act="${act}"]`).first();
+    const button = page.locator(`.kc-hero [data-act="${act}"]:visible`).first();
     await button.scrollIntoViewIfNeeded();
     await tapBox(await button.boundingBox(), `hero: ${act}`);
     await wait(80);
@@ -493,24 +494,25 @@ try {
   let looked = await sheet();
   if (looked.slots.banner !== 'oldBanner') {
     await tapPlace(`pack:${looked.pack.indexOf('oldBanner')}`);
-    await tapPlace('slot:banner');
+    await tapAct('gear-apply');
   }
   const free = (await sheet()).pack.length;
   await tapPlace('slot:banner');
-  const tip = await call(() => {
-    const t = document.querySelector('.kc-hero-tip');
-    return t && !t.hidden ? t.textContent : null;
-  });
-  check((await sheet()).held === 'slot:banner' && Boolean(tip), `a tap picks the banner up, and says what it is (${tip?.slice(0, 40)}...)`);
+  const name = await call(() => document.querySelector('.gear-card h3')?.textContent);
+  check((await sheet()).held === null && (await sheet()).selected === 'slot:banner' && name === 'The Old Tower Banner', 'a tap opens the banner comparison without picking it up or changing gear');
+  await tapAct('pick-up');
+  check((await sheet()).held === 'slot:banner', 'Move explicitly picks the banner up');
   await look('hero-holding');
   await tapPlace(`pack:${free}`);
   looked = await sheet();
   check(looked.slots.banner === null && looked.pack[free] === 'oldBanner', 'a tap on a pack square takes it off');
   await tapPlace(`pack:${free}`);
+  await tapAct('pick-up');
   await tapPlace('slot:banner');
   looked = await sheet();
   check(looked.slots.banner === 'oldBanner' && (await state()).hero.gear.banner === 'oldBanner', 'tapped, then its slot tapped, it goes back on');
   const line = looked.army;
+  check(await press('Army'), 'Army opens the companies and their costs');
   await tapPlace('stack:1');
   await look('hero-stack');
   await tapAct('left');
@@ -518,11 +520,15 @@ try {
   await tapAct('right');
   await tapAct('card-close');
   if (cdp) {
+    await tapPlace('stack:1');
+    await tapAct('pick-up');
     await page.locator('.kc-hero [data-place="stack:0"]').scrollIntoViewIfNeeded();
     const a = await page.locator('.kc-hero [data-place="stack:1"]').boundingBox();
     const b = await page.locator('.kc-hero [data-place="stack:0"]').boundingBox();
     await drag([a.x + a.width / 2, a.y + a.height / 2], [b.x + b.width / 2, b.y + b.height / 2], 12);
     check(JSON.stringify((await sheet()).army) === JSON.stringify([line[1], line[0], ...line.slice(2)]), 'and a finger drags one onto another to swap them');
+    await tapPlace('stack:0');
+    await tapAct('pick-up');
     await drag([b.x + b.width / 2, b.y + b.height / 2], [a.x + a.width / 2, a.y + a.height / 2], 12);
   }
   await press('Close');

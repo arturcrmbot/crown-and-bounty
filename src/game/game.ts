@@ -324,7 +324,7 @@ export class Game {
       click: (x: number, y: number) => adventure()?.click(x, y),
       /** Presses the first button that can be pressed on the card (or the hero screen) on screen whose text starts with `label`. */
       choose: (label: string) => {
-        const button = [...document.querySelectorAll<HTMLButtonElement>('.kc-card-wrap:not([hidden]) .kc-card button, .kc-hero button.act')].find((b) => !b.disabled && b.textContent?.startsWith(label));
+        const button = [...document.querySelectorAll<HTMLButtonElement>('.kc-card-wrap:not([hidden]) .kc-card button, .kc-hero button.act')].find((b) => !b.disabled && b.getClientRects().length > 0 && b.textContent?.startsWith(label));
         button?.click();
         return Boolean(button);
       },

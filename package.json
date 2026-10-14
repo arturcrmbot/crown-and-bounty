@@ -30,7 +30,8 @@
     "icons": "node scripts/icons.mjs",
     "fonts": "python3 scripts/fonts.py",
     "phone": "node scripts/phone.mjs",
-    "mapart": "python3 scripts/mapart.py"
+    "mapart": "python3 scripts/mapart.py",
+    "test:hero-ui": "node scripts/hero-ui.mjs"
   },
   "devDependencies": {
     "playwright": "^1.63.0",

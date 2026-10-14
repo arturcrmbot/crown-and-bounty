@@ -143,6 +143,8 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - run: npx playwright install --with-deps chromium
+      - name: Check the character screen's focused desktop and touch tasks
+        run: npm run test:hero-ui 2>&1 | tee hero-ui.txt
       - name: Play the first commission through the real UI
         run: npm run e2e 2>&1 | tee e2e.txt
       - name: Play the first commission by touch, on a phone
@@ -182,6 +184,7 @@ jobs:
             playtest-*.txt
             e2e.txt
             phone.txt
+            hero-ui.txt
           retention-days: 14
 
   visual:

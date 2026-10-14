@@ -3,40 +3,35 @@ import type { MapSpellId } from '../content/spells';
 import { outline } from '../render/bitmap';
 import { artifactIcon, slotGhost, statIcon } from '../render/artifactIcons';
 import { INK } from '../render/palette';
-import { portraitOf } from '../render/portraits';
 import { heroArtId, type ArtId } from '../render/units';
 import { standingFigure } from '../render/battleSprites';
-import { coins, heroSheet, heroStats, leaderSheet, leadershipUsed, SLOT_NAMES, stackSheet, wages, type Action, type GameState, type HeroSheet } from '../rules/game';
+import { coins, heroSheet, heroStats, leaderSheet, leadershipUsed, SLOT_NAMES, stackSheet, wages, type Action, type GameState, type HeroSheet, type Note } from '../rules/game';
+import { gearAt, previewGear, type GearPlace } from './heroGear';
 import './heroScreen.css';
 import { bitmapUrl, PARCHMENT_SHADOW } from './pixels';
 import { play } from './sound';
 import { touch } from './touch';
 
-/** Size of the sheet in screen pixels: it covers the map, and scales with the page as the canvas does. */
 export const SHEET = { x: 24, y: 30, width: 912, height: 446 };
-/**
- * Played by touch, the sheet is laid out in one column this wide (heroScreen.css), drawn as big as
- * the window's width allows (up to `TOUCH_MOST` times), and scrolls under a finger.
- */
-const TOUCH_WIDTH = 600;
-const TOUCH_MOST = 1.4;
-
-/** Somewhere on the sheet a thing can sit: a worn slot, a pack square, an army slot, or the hero himself. */
-type Place = { kind: 'slot'; slot: Slot } | { kind: 'pack'; index: number } | { kind: 'stack'; index: number } | { kind: 'hero' };
-
-const keyOf = (p: Place) => (p.kind === 'slot' ? `slot:${p.slot}` : p.kind === 'hero' ? 'hero' : `${p.kind}:${p.index}`);
+type Page = 'hero' | 'equipment' | 'army';
+type Place = GearPlace | { kind: 'stack'; index: number } | { kind: 'hero' };
+const PAGES: Page[] = ['hero', 'equipment', 'army'];
+const PAGE_NAMES: Record<Page, string> = { hero: 'Hero', equipment: 'Equipment', army: 'Army' };
+const PACK_ROW = 7;
+const packSquares = (n: number) => Math.max(PACK_ROW * 2, Math.ceil((n + 1) / PACK_ROW) * PACK_ROW);
+const keyOf = (p: Place) => p.kind === 'slot' ? `slot:${p.slot}` : p.kind === 'hero' ? 'hero' : `${p.kind}:${p.index}`;
 function parse(key: string | undefined): Place | null {
   if (!key) return null;
   const [kind, value] = key.split(':');
-  if (kind === 'slot') return { kind, slot: value as Slot };
-  if (kind === 'pack' || kind === 'stack') return { kind, index: Number(value) };
+  if (kind === 'slot') {
+    const slot = SLOTS.find(s => s === value);
+    return slot ? { kind, slot } : null;
+  }
+  if ((kind === 'pack' || kind === 'stack') && Number.isInteger(Number(value)) && Number(value) >= 0) return { kind, index: Number(value) };
   return kind === 'hero' ? { kind } : null;
 }
-
 const escape = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const format = (text: string) => escape(text).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\*(.+?)\*/g, '<i>$1</i>').replace(/\n/g, '<br>');
-
-/** Pictures for the page, drawn once through the palette. */
 const urls = new Map<string, string>();
 const cached = (key: string, make: () => string) => {
   let url = urls.get(key);
@@ -49,55 +44,44 @@ const cached = (key: string, make: () => string) => {
 const iconUrl = (id: ArtifactId) => cached(`a:${id}`, () => bitmapUrl(artifactIcon(id)));
 const ghostUrl = (slot: Slot) => cached(`g:${slot}`, () => bitmapUrl(slotGhost(slot)));
 const statUrl = (id: 'attack' | 'defence' | 'spellPower' | 'knowledge') => cached(`s:${id}`, () => bitmapUrl(statIcon(id)));
-const faceUrl = (id: HeroSheet['background']) => cached(`p:${id}`, () => bitmapUrl(portraitOf(id)));
-/** A unit as Wesnoth drew it, standing, in our blue: at its own size in the army strip, twice that on its card. */
 export const unitUrl = (id: ArtId, scale = 1) => cached(`u:${id}:${scale}`, () => bitmapUrl(outline(standingFigure(id, 'blue', scale), INK), PARCHMENT_SHADOW));
 
-/** The pack always shows at least two rows of seven, and a free square after the last artifact. */
-const PACK_ROW = 7;
-const packSquares = (n: number) => Math.max(PACK_ROW * 2, Math.ceil((n + 1) / PACK_ROW) * PACK_ROW);
-
 export type HeroScreenHooks = {
-  /** Gear and army changes: the rules apply them and the sheet stays open. */
   act(action: Action): boolean;
   castMapSpell(spell: MapSpellId): void;
   endDay(): void;
   close(): void;
 };
 
-/**
- * The hero screen, HoMM2 style, on parchment over the map: who he is and what he knows, a paper doll
- * with his five slots and the pack below, and his army. Artifacts and stacks move by drag and drop,
- * by click (pick up, put down) and by keyboard (arrows, Enter, Shift+arrows, Delete).
- */
+/** An officer's folio. Inspection is local; only an explicit command reaches the rules and save. */
 export class HeroScreen {
   readonly root = document.createElement('div');
-  /** Played by touch, the window-sized frame the sheet scrolls in, and the box the size of the drawn sheet inside it. */
   private readonly frame: HTMLElement | null = touch() ? document.createElement('div') : null;
-  private readonly sizer = document.createElement('div');
   private readonly body = document.createElement('div');
   private readonly tip = document.createElement('div');
   private readonly ghost = document.createElement('img');
   private state: GameState;
   private readonly hooks: HeroScreenHooks;
+  private page: Page = 'hero';
+  private selected: GearPlace | null = null;
+  private target: Slot | undefined;
   private scale = 1;
-  /** Picked up by a click or Enter, waiting to be put down. */
   private held: Place | null = null;
-  /** A press on something that may turn into a drag. */
-  private press: { place: Place; x: number; y: number; image: string; wide: boolean } | null = null;
+  private press: { pointer: number; place: Place; x: number; y: number; image: string; wide: boolean } | null = null;
   private dragging = false;
   private over: string | null = null;
   private swallowClick = false;
+  private handledPointer: number | null = null;
   private lastClick: { key: string; at: number } | null = null;
   private quiet = false;
-  /** The card open over the sheet: a stack's, or the hero's own. */
-  private card: Place | null = null;
+  private card: { kind: 'stack'; index: number } | { kind: 'hero' } | null = null;
   private confirming = false;
-  /** Places that just changed, to glow once. */
   private fresh = new Set<string>();
   private lastStats: number[] | null = null;
+  private scroll = new Map<string, number>();
+  private notice = '';
+  private error = false;
 
-  /** `stack` opens that stack's card straight away, as a click on its count in the bar does. */
   constructor(state: GameState, hooks: HeroScreenHooks, stack: number | null = null) {
     this.state = state;
     this.hooks = hooks;
@@ -105,6 +89,7 @@ export class HeroScreen {
     this.body.className = 'kc-hero-body';
     this.root.setAttribute('role', 'dialog');
     this.root.setAttribute('aria-modal', 'true');
+    this.root.setAttribute('aria-labelledby', 'kc-hero-title');
     this.tip.className = 'kc-hero-tip';
     this.tip.hidden = true;
     this.ghost.className = 'kc-hero-ghost';
@@ -113,73 +98,54 @@ export class HeroScreen {
     this.root.append(this.body, this.tip, this.ghost);
     if (this.frame) {
       this.frame.className = 'kc-hero-frame';
-      this.sizer.className = 'kc-hero-sizer';
-      this.sizer.append(this.root);
-      this.frame.append(this.sizer);
-      // Its presses are its own: they never reach the map underneath.
-      this.frame.addEventListener('pointerdown', (e) => e.stopPropagation());
+      this.frame.append(this.root);
+      this.frame.addEventListener('pointerdown', e => e.stopPropagation());
       document.body.append(this.frame);
     } else document.body.append(this.root);
+    if (stack !== null && state.army[stack]) {
+      this.page = 'army';
+      this.card = { kind: 'stack', index: stack };
+    }
     this.listen();
     this.render();
     play('page');
-    const shown = stack !== null && state.army[stack] ? stack : null;
-    if (shown !== null) this.openCard({ kind: 'stack', index: shown });
-    this.focus(this.root.querySelector<HTMLElement>(shown !== null ? `[data-place="stack:${shown}"]` : '[data-act="close"]'));
+    this.focus(this.root.querySelector<HTMLElement>(`[data-tab="${this.page}"]`));
   }
 
-  /** Shows the state after a change, keeping focus where it was. */
   update(state: GameState) {
     this.state = state;
-    if (this.card?.kind === 'stack' && !state.army[this.card.index]) this.card = null;
+    if (this.card?.kind === 'stack' && !state.army[this.card.index]) this.card = state.army.length ? { kind: 'stack', index: state.army.length - 1 } : { kind: 'hero' };
+    if (this.selected && !gearAt(state, this.selected)) this.selected = null;
     this.render();
   }
 
-  get title() {
-    return heroSheet(this.state).title;
-  }
+  get title() { return heroSheet(this.state).title; }
 
-  /** Its top left corner at (x, y) on the page, drawn `scale` times its size. */
   place(x: number, y: number, scale: number) {
-    if (this.frame) return this.fill();
+    if (this.frame) {
+      this.scale = 1;
+      return;
+    }
     this.scale = scale;
     this.root.style.left = `${Math.round(x)}px`;
     this.root.style.top = `${Math.round(y)}px`;
     this.root.style.transform = `scale(${scale})`;
   }
 
-  /** Played by touch: across the window, as big as its width allows, scrolling down under a finger. */
-  private fill() {
-    const scale = Math.min(TOUCH_MOST, (window.innerWidth - 16) / TOUCH_WIDTH);
-    const [width, height] = [Math.round(TOUCH_WIDTH * scale), Math.ceil(this.root.offsetHeight * scale)];
-    if (scale !== this.scale) {
-      this.scale = scale;
-      this.root.style.transform = `scale(${scale})`;
-    }
-    Object.assign(this.sizer.style, { width: `${width}px`, height: `${height}px` });
-    // A card over the sheet is never taller than the window, and stands just above the army it's about.
-    const army = this.root.querySelector<HTMLElement>('.army');
-    this.root.style.setProperty('--window', `${Math.floor(window.innerHeight / scale)}px`);
-    if (army) this.root.style.setProperty('--above-army', `${this.root.offsetHeight - army.offsetTop + 6}px`);
-  }
+  dispose() { (this.frame ?? this.root).remove(); }
 
-  /** Played by touch, brings the card over the sheet into sight, once it opens. */
-  private showCardWhole() {
-    if (!this.frame) return;
-    this.fill();
-    this.root.querySelector('.kc-hero-card')?.scrollIntoView({ block: 'nearest' });
-  }
-
-  dispose() {
-    (this.frame ?? this.root).remove();
-  }
-
-  /** Escape puts back what's held, then closes a card; true if it did either. */
   cancel(): boolean {
     if (this.dragging) this.endDrag();
     if (this.held) {
       this.held = null;
+      this.notice = 'You put it back.';
       this.render();
+      return true;
+    }
+    if (this.confirming) {
+      this.confirming = false;
+      this.render();
+      this.focus(this.root.querySelector<HTMLElement>('[data-act="dismiss"]'));
       return true;
     }
     if (this.card) {
@@ -189,194 +155,213 @@ export class HeroScreen {
     return false;
   }
 
-  // --- Drawing ----------------------------------------------------------------------------
-
   private render() {
-    const focused = (document.activeElement as HTMLElement | null)?.closest?.('[data-place],[data-act]') as HTMLElement | null;
-    const focusKey = focused && this.root.contains(focused) ? (focused.dataset.place ? `place:${focused.dataset.place}` : `act:${focused.dataset.act}`) : null;
+    const focused = document.activeElement instanceof HTMLElement ? document.activeElement.closest<HTMLElement>('[data-place],[data-act],[data-tab]') : null;
+    const focusKey = focused && this.root.contains(focused) ? { place: focused.dataset.place, act: focused.dataset.act, tab: focused.dataset.tab } : null;
+    for (const el of this.root.querySelectorAll<HTMLElement>('[data-scroll]')) if (el.getClientRects().length) this.scroll.set(el.dataset.scroll!, el.scrollTop);
     const sheet = heroSheet(this.state);
-    const stats = sheet.stats.map((s) => s.value).concat([sheet.mana.max, sheet.leadership.max, sheet.movement.max]);
-    const changed = (i: number) => (this.lastStats && this.lastStats[i] !== stats[i] ? (stats[i] > this.lastStats[i] ? ' up' : ' down') : '');
-    this.body.innerHTML = `${this.who(sheet, changed)}${this.gear()}${this.army(sheet)}${this.footer(sheet)}${this.cardHtml()}`;
+    const stats = sheet.stats.map(s => s.value).concat([sheet.mana.max, sheet.leadership.max, sheet.movement.max]);
+    const changed = (i: number) => this.lastStats && this.lastStats[i] !== stats[i] ? stats[i] > this.lastStats[i] ? ' up' : ' down' : '';
+    const panel = (page: Page, html: string) => `<div class="hero-page ${page}-panel" id="kc-page-${page}" role="tabpanel" aria-labelledby="kc-tab-${page}"${this.page === page ? '' : ' hidden'}>${html}</div>`;
+    this.body.innerHTML = `${this.header(sheet)}
+      <nav class="hero-tabs" role="tablist" aria-label="Character pages">${PAGES.map(page => `<button class="act tab" id="kc-tab-${page}" role="tab" aria-controls="kc-page-${page}" aria-selected="${this.page === page}" tabindex="${this.page === page ? 0 : -1}" data-tab="${page}">${PAGE_NAMES[page]}</button>`).join('')}</nav>
+      ${this.resources(sheet)}
+      ${panel('hero', this.who(sheet, changed))}
+      ${panel('equipment', `${this.gear()}${this.gearCard()}`)}
+      ${panel('army', `${this.army(sheet)}${this.cardHtml()}`)}
+      ${this.footer(sheet)}`;
     this.lastStats = stats;
+    this.root.dataset.page = this.page;
     this.root.classList.toggle('holding', Boolean(this.held));
     if (!this.held && !this.dragging) this.ghost.hidden = true;
-    this.root.setAttribute('aria-label', sheet.title);
+    for (const el of this.root.querySelectorAll<HTMLElement>('[data-scroll]')) el.scrollTop = this.scroll.get(el.dataset.scroll!) ?? 0;
     if (focusKey) {
-      const [kind, key] = [focusKey.slice(0, focusKey.indexOf(':')), focusKey.slice(focusKey.indexOf(':') + 1)];
-      this.focus(this.root.querySelector<HTMLElement>(kind === 'place' ? `[data-place="${key}"]` : `[data-act="${key}"]`));
+      const selector = focusKey.tab ? `[data-tab="${focusKey.tab}"]` : focusKey.place ? `[data-place="${focusKey.place}"]` : `[data-act="${focusKey.act}"]`;
+      const el = [...this.root.querySelectorAll<HTMLElement>(selector)].find(el => el.getClientRects().length);
+      if (el) this.focus(el);
     }
     this.fresh.clear();
   }
 
-  private who(sheet: HeroSheet, changed: (i: number) => string): string {
-    const bar = (kind: string, share: number) => `<span class="bar ${kind}"><i style="width:${Math.round(Math.max(0, Math.min(1, share)) * 100)}%"></i></span>`;
-    const stat = (s: HeroSheet['stats'][number], i: number) =>
-      `<div class="stat${changed(i)}" data-tip="${escape(s.note)}"><img alt="" draggable="false" src="${statUrl(s.id)}"><b>${s.value}</b><span>${escape(s.name)}</span></div>`;
-    const chips = (notes: HeroSheet['skills'], none: string) =>
-      notes.length ? notes.map((n) => `<span class="chip${n.trick ? ' trick' : ''}" data-tip="${escape(`**${n.name}**\n${n.note}`)}">${escape(n.name)}</span>`).join('') : `<i class="none">${none}</i>`;
-    const { mana, movement, leadership } = sheet;
-    const close = touch() ? '<button class="act top-close" data-act="close">Close</button>' : '';
-    return `<section class="who">
-      ${close}
-      <div class="top">
-        <img class="face" alt="" draggable="false" src="${faceUrl(sheet.background)}">
-        <div class="name">
-          <h2>${escape(sheet.title)}</h2>
-          <div class="level" data-tip="${escape(sheet.xp.line)}"><b>${sheet.level}</b>${bar('xp', sheet.xp.share)}<small>${escape(sheet.xp.line)}</small></div>
-          <div class="when" data-tip="${escape(sheet.piecesNote)}">${escape(sheet.day)} \u00b7 ${escape(sheet.pieces)}</div>
-          ${sheet.company.length ? `<div class="company"><small>Riding with him:</small>${chips(sheet.company, '')}</div>` : ''}
-        </div>
-      </div>
-      <div class="stats">${sheet.stats.map(stat).join('')}</div>
-      <div class="gauges">
-        <div class="gauge${changed(4)}" data-tip="${escape(mana.line)}"><span class="label"><b>Mana</b><small>${mana.max ? escape(mana.back) : ''}</small><span>${mana.left}/${mana.max}</span></span>${bar('mana', mana.max ? mana.left / mana.max : 0)}</div>
-        <div class="gauge${changed(6)}" data-tip="${escape(movement.line)}"><span class="label"><b>Movement</b><small>today</small><span>${movement.left}/${movement.max}</span></span>${bar('move', movement.max ? movement.left / movement.max : 0)}</div>
-        <div class="gauge${changed(5)}${leadership.used > leadership.max ? ' too-many' : ''}" data-tip="${escape(leadership.line)}"><span class="label"><b>Leadership</b><small>in use</small><span>${leadership.used}/${leadership.max}</span></span>${bar('lead', leadership.max ? leadership.used / leadership.max : 0)}</div>
-      </div>
-      <div class="learned">
-        <div class="row"><h4>Signature</h4>${chips([sheet.signature], '')}</div>
-        <div class="row"><h4>Skills</h4>${chips(sheet.skills, 'none yet, but a level brings a choice')}</div>
-        <div class="row"><h4>Perks</h4>${chips(sheet.perks, 'none yet')}</div>
-        <div class="row"><h4>Spells</h4>${chips(sheet.spells, 'none yet, but a teacher or a shrine could help')}</div>
-      </div>
-    </section>`;
+  private header(sheet: HeroSheet) {
+    return `<header class="hero-header">
+      <img class="header-figure" alt="" draggable="false" src="${unitUrl(heroArtId(sheet.background))}">
+      <div class="identity"><h2 id="kc-hero-title">${escape(sheet.title)}</h2><p>${escape(sheet.level)} <span>${escape(sheet.day)}</span></p></div>
+      <button class="act close" data-act="close" aria-label="Close the character screen">Close${touch() ? '' : ' (H)'}</button>
+    </header>`;
   }
 
-  private gear(): string {
-    const { gear, pack } = this.state.hero;
-    const classes = (place: Place, filled: boolean) => {
-      const key = keyOf(place);
-      const held = this.held && keyOf(this.held) === key ? ' held' : '';
-      const drop = this.held && this.actionFor(this.held, place) ? ' can-drop' : '';
-      return `${filled ? '' : ' empty'}${held}${drop}${this.fresh.has(key) ? ' fresh' : ''}`;
-    };
-    const slots = SLOTS.map((slot) => {
-      const id = gear[slot];
-      const place: Place = { kind: 'slot', slot };
-      const spare = pack.find((p) => slotAcceptsArtifact(slot, ARTIFACTS[p].slot));
-      const finger = touch();
-      const empty = spare
-        ? `**${SLOT_NAMES[slot]}**: nothing on.\n*${finger ? `Tap the ${ARTIFACTS[spare].name} in the pack, then this slot.` : `Drag the ${ARTIFACTS[spare].name} here from the pack, or double-click it there.`}*`
-        : `**${SLOT_NAMES[slot]}**: nothing yet.\n*Artifacts turn up in chests and old places, as spoils, and in castle armouries.*`;
-      const how = finger ? 'Tap a square in the pack to take it off, or drag it there.' : 'Drag it to the pack, or click to pick it up. Double-click takes it off.';
-      const tip = id ? `**${ARTIFACTS[id].name}** \u00b7 ${SLOT_NAMES[slot]}\n${ARTIFACTS[id].note}\n*${how}*` : empty;
-      const img = id ? `<img alt="" draggable="false" src="${iconUrl(id)}">` : `<img class="ghostly" alt="" draggable="false" src="${ghostUrl(slot)}">`;
-      return `<button class="slot ${slot}${classes(place, Boolean(id))}" data-place="${keyOf(place)}" data-tip="${escape(tip)}" aria-label="${escape(id ? `${SLOT_NAMES[slot]}: ${ARTIFACTS[id].name}` : `${SLOT_NAMES[slot]}: empty`)}">${img}</button>`;
-    }).join('');
-    const squares = Array.from({ length: packSquares(pack.length) }, (_, index) => {
-      const id = pack[index];
-      const place: Place = { kind: 'pack', index };
-      const how = touch() ? 'Tap its slot to wear it, or drag it there.' : 'Drag it to its slot to wear it, or click to pick it up. Double-click wears it.';
-      const tip = id ? `**${ARTIFACTS[id].name}** \u00b7 ${SLOT_NAMES[ARTIFACTS[id].slot]}\n${ARTIFACTS[id].note}\n*${how}*` : '';
-      return `<button class="square${classes(place, Boolean(id))}" data-place="${keyOf(place)}"${tip ? ` data-tip="${escape(tip)}"` : ''} aria-label="${escape(id ? `Pack: ${ARTIFACTS[id].name}` : 'Pack: empty square')}">${id ? `<img alt="" draggable="false" src="${iconUrl(id)}">` : ''}</button>`;
-    }).join('');
-    const hint = this.held ? this.holdingHint(this.held) : pack.length ? (touch() ? 'tap one, then tap where it goes' : 'drag to wear, or click, then click where') : 'finds go here when their slot is taken';
-    return `<section class="gear">
-      <h3>Equipment</h3>
-      <div class="doll"><img class="figure" alt="" draggable="false" src="${unitUrl(heroArtId(this.state.hero.background), 2)}">${slots}</div>
-      <p class="caption"><b>Pack</b> <small>${escape(hint)}</small></p>
-      <div class="pack">${squares}</div>
-    </section>`;
-  }
-
-  private holdingHint(held: Place): string {
-    const { gear, pack } = this.state.hero;
-    const id = held.kind === 'slot' ? gear[held.slot] : held.kind === 'pack' ? pack[held.index] : undefined;
-    if (!id) return '';
-    if (touch()) return held.kind === 'pack' ? `${ARTIFACTS[id].name}: tap its slot, or a square` : `${ARTIFACTS[id].name}: tap a square to take it off`;
-    return held.kind === 'pack' ? `${ARTIFACTS[id].name}: click its slot, or a square \u00b7 Esc` : `${ARTIFACTS[id].name}: click a square to take it off \u00b7 Esc`;
-  }
-
-  private army(sheet: HeroSheet): string {
-    const { army } = this.state;
+  private resources(sheet: HeroSheet) {
     const s = heroStats(this.state);
-    const tiles = Array.from({ length: 5 }, (_, index) => {
-      const stack = army[index];
-      const place: Place = { kind: 'stack', index };
-      if (!stack) {
-        const tip = '**An empty place in the line.**\n*Recruit at castles and villages, or win a band over. You can lead up to five companies.*';
-        return `<button class="tile empty" data-place="${keyOf(place)}" data-tip="${escape(tip)}" aria-label="An empty place in the line" tabindex="-1"></button>`;
-      }
-      const info = stackSheet(this.state, index)!;
-      const open = this.card && keyOf(this.card) === keyOf(place) ? ' open' : '';
-      const tip = `**${info.title}**\n${info.row}\n*${touch() ? 'Tap' : 'Click'} for their card. Drag them along the line.*`;
-      return `<button class="tile${open}${this.fresh.has(keyOf(place)) ? ' fresh' : ''}" data-place="${keyOf(place)}" data-tip="${escape(tip)}" aria-label="${escape(info.title)}"><img alt="" draggable="false" src="${unitUrl(stack.troop)}"><span class="count">${stack.count}</span></button>`;
-    }).join('');
-    const pay = Math.round(wages(army) * (1 + s.wages));
-    const leaderTip = `**${sheet.title}**\nHe leads from behind the line, where nothing can reach him. Every stack adds his attack and defence to its own, and he casts from there.\n*${touch() ? 'Tap' : 'Click'} for his numbers.*`;
-    const open = this.card?.kind === 'hero' ? ' open' : '';
-    return `<section class="army">
-      <h3>Army <small>${touch() ? 'tap one for its card, or drag to reorder' : 'drag to reorder'}. The first stands in the middle of the battle line, and the rest above and below.</small></h3>
-      <div class="strip">
-        <button class="tile leader${open}" data-place="hero" data-tip="${escape(leaderTip)}" aria-label="${escape(sheet.title)}"><img alt="" draggable="false" src="${unitUrl(heroArtId(this.state.hero.background))}"><span class="count">Leader</span></button>
-        <span class="sep"></span>
-        ${tiles}
-        <div class="totals">
-          <div data-tip="${escape(sheet.leadership.line)}"><b>Leadership</b> ${leadershipUsed(army)} / ${s.leadership}</div>
-          <div data-tip="Paid once a week, from day VIII, with the King\u2019s money"><b>Wages</b> ${coins(pay)} gold a week</div>
-          <div><b>Stacks</b> ${army.length} of 5</div>
-        </div>
-      </div>
-    </section>`;
-  }
-
-  private footer(sheet: HeroSheet): string {
-    const spells = sheet.mapSpells.map((m) => `<button class="act" data-act="spell:${m.spell}" data-tip="${escape(m.note)}"${m.disabled ? ' disabled' : ''}>${escape(m.label)}</button>`).join('');
-    return `<footer>
-      ${spells}
-      <button class="act" data-act="endDay" data-tip="Rest, and at dawn you get fresh legs and a quarter of your mana back">End the day${touch() ? '' : ' (E)'}</button>
-      <span class="spacer"></span>
-      <button class="act" data-act="close">Close${touch() ? '' : ' (H)'}</button>
-    </footer>`;
-  }
-
-  private cardHtml(): string {
-    if (!this.card) return '';
-    if (this.card.kind === 'hero') {
-      // His own card, laid out like his stacks': how he fights, what he brings them, and what happens if he falls.
-      const me = leaderSheet(this.state);
-      return `<div class="kc-hero-card leader-card" role="dialog" aria-label="${escape(me.title)}">
-        <img class="pic" alt="" draggable="false" src="${unitUrl(heroArtId(this.state.hero.background), 2)}">
-        <div class="head"><h3>${escape(me.title)}</h3><p><i>${escape(me.note)}</i></p></div>
-        <dl>${this.statList(me.stats)}</dl>
-        ${this.traitList(me.traits)}
-        <p class="cost">${me.lines.map(escape).join('<br>')}</p>
-        <div class="acts"><span class="spacer"></span><button class="act" data-act="card-close">Close</button></div>
-      </div>`;
-    }
-    if (this.card.kind !== 'stack') return '';
-    const info = stackSheet(this.state, this.card.index);
-    if (!info) return '';
-    const i = this.card.index;
-    const last = this.state.army.length - 1;
-    const stats = this.statList(info.stats);
-
-    const acts = this.confirming
-      ? `<span class="ask">Send the ${escape(info.title)} home for good?</span><button class="act" data-act="dismiss-yes">Dismiss them</button><button class="act" data-act="dismiss-no">Keep them</button>`
-      : `<button class="act" data-act="left"${i === 0 ? ' disabled' : ''}>\u25C0 Move left</button><button class="act" data-act="right"${i >= last ? ' disabled' : ''}>Move right \u25B6</button><button class="act" data-act="dismiss"${info.canDismiss ? '' : ' disabled'} data-tip="${info.canDismiss ? 'They go home, and take no more wages' : 'Your last company stays with you'}">Dismiss\u2026</button><span class="spacer"></span><button class="act" data-act="card-close">Close</button>`;
-    return `<div class="kc-hero-card" role="dialog" aria-label="${escape(info.title)}">
-      <img class="pic" alt="" draggable="false" src="${unitUrl(info.troop, 2)}">
-      <div class="head"><h3>${escape(info.title)}</h3><p><i>${escape(info.note)}</i></p></div>
-      <dl>${stats}</dl>
-      ${this.traitList(info.traits)}
-      <p class="cost">${escape(info.leadership)}<br>${escape(info.wages)}<br>${escape(info.row)}</p>
-      <div class="acts">${acts}</div>
+    const pay = Math.round(wages(this.state.army) * (1 + s.wages));
+    return `<div class="hero-resources">
+      <span class="resource" aria-label="${escape(sheet.mana.line)}"><span>Mana</span><b class="mana">${sheet.mana.left}/${sheet.mana.max}</b></span>
+      <span class="resource" aria-label="${escape(sheet.movement.line)}"><span>Movement</span><b>${sheet.movement.left}/${sheet.movement.max}</b></span>
+      <span class="resource${sheet.leadership.used > sheet.leadership.max ? ' too-many' : ''}" aria-label="${escape(sheet.leadership.line)}"><span>Leadership</span><b>${sheet.leadership.used}/${sheet.leadership.max}</b></span>
+      <span class="resource"><span>Gold</span><b>${coins(this.state.gold)}</b></span>
+      <span class="resource"><span>Wages</span><b>${coins(pay)}<small> a week</small></b></span>
     </div>`;
   }
 
-  private statList(stats: { name: string; value: string; note: string }[]): string {
-    return stats.map((s) => `<dt>${escape(s.name)}</dt><dd><b>${escape(s.value)}</b> <small>${escape(s.note)}</small></dd>`).join('');
+  private who(sheet: HeroSheet, changed: (i: number) => string) {
+    const notes = (title: string, rows: Note[], empty: string) => `<section class="learned"><h3>${title}</h3>${rows.length ? rows.map(n => `<div class="learned-row${n.trick ? ' trick' : ''}"><h4>${escape(n.name)}</h4><p>${format(n.note)}</p></div>`).join('') : `<p>${empty}</p>`}</section>`;
+    return `<div class="hero-person">
+      <div class="portrait-field"><img class="hero-figure" alt="${escape(sheet.title)}" draggable="false" src="${unitUrl(heroArtId(sheet.background), 2)}"></div>
+      <div class="stats">${sheet.stats.map((s, i) => `<button class="stat${changed(i)}" data-act="note" data-tip="${escape(s.note)}"><img alt="" draggable="false" src="${statUrl(s.id)}"><b>${s.value}</b><span>${escape(s.name)}</span></button>`).join('')}</div>
+      <button class="act" data-act="leader">How he fights</button>
+    </div>
+    <div class="hero-reading page-scroll" data-scroll="hero">
+      <section class="progress"><h3>${escape(sheet.level)}</h3><div class="bar"><i style="width:${Math.round(sheet.xp.share * 100)}%"></i></div><p>${escape(sheet.xp.line)}</p><p class="map-pieces">${escape(sheet.pieces)}</p></section>
+      ${notes(sheet.signature.name, [{ name: '', note: sheet.signature.note }], '')}
+      ${notes('Skills', sheet.skills, 'A level brings a choice of a new skill.')}
+      ${notes('Perks', sheet.perks, 'You have no perks yet.')}
+      ${notes('Spells', sheet.spells, 'A teacher or a shrine can teach you a spell.')}
+      ${notes('Riding with you', sheet.company, 'Nobody rides with you yet. The King can offer a friend at court.')}
+      <section class="learned"><h3>On the road</h3><p>${escape(sheet.mana.line)}</p><p>${escape(sheet.movement.line)}</p><p>${escape(sheet.leadership.line)}</p><p>${escape(sheet.piecesNote)}</p></section>
+    </div>`;
   }
 
-  private traitList(traits: { name: string; note: string; trick?: boolean }[]): string {
-    const items = traits.map((t) => `<li${t.trick ? ' class="trick"' : ''}><b>${escape(t.name)}.</b> ${escape(t.note)}</li>`).join('');
-    return items ? `<ul class="traits">${items}</ul>` : '';
+  private placeClasses(place: Place, filled: boolean) {
+    const key = keyOf(place);
+    const selected = place.kind === 'slot' || place.kind === 'pack' ? this.selected && keyOf(this.selected) === key : this.card && keyOf(this.card) === key;
+    return `${filled ? '' : ' empty'}${selected ? ' selected' : ''}${this.held && keyOf(this.held) === key ? ' held' : ''}${this.held && this.actionFor(this.held, place) ? ' can-drop' : ''}${this.fresh.has(key) ? ' fresh' : ''}`;
   }
 
-  // --- What moves where -------------------------------------------------------------------
+  private gear() {
+    const { gear, pack } = this.state.hero;
+    const slots = SLOTS.map(slot => {
+      const id = gear[slot];
+      const place: GearPlace = { kind: 'slot', slot };
+      return `<div class="worn"><span>${SLOT_NAMES[slot]}</span><button class="slot${this.placeClasses(place, Boolean(id))}" data-place="${keyOf(place)}" aria-label="${escape(`${SLOT_NAMES[slot]}: ${id ? ARTIFACTS[id].name : 'empty'}`)}" aria-pressed="${Boolean(this.selected && keyOf(this.selected) === keyOf(place))}"><img alt="" draggable="false" src="${id ? iconUrl(id) : ghostUrl(slot)}"${id ? '' : ' class="ghostly"'}></button></div>`;
+    }).join('');
+    const squares = Array.from({ length: packSquares(pack.length) }, (_, index) => {
+      const id = pack[index];
+      const place: GearPlace = { kind: 'pack', index };
+      return `<button class="square${this.placeClasses(place, Boolean(id))}" data-place="${keyOf(place)}" aria-label="${escape(id ? `Pack: ${ARTIFACTS[id].name}` : 'Pack: empty square')}" aria-pressed="${Boolean(this.selected && keyOf(this.selected) === keyOf(place))}">${id ? `<img alt="" draggable="false" src="${iconUrl(id)}">` : ''}</button>`;
+    }).join('');
+    return `<div class="gear page-scroll" data-scroll="gear">
+      <h3>Equipped</h3><div class="doll">${slots}</div>
+      <div class="pack-heading"><h3>Pack</h3><span>${pack.length} ${pack.length === 1 ? 'find' : 'finds'}</span></div>
+      <div class="pack">${squares}</div>
+      <p class="guide">${touch() ? 'Tap a find to read it. Move lets you put it somewhere else.' : 'Click a find to read it. Drag to move it, or choose Move.'}</p>
+    </div>`;
+  }
 
-  /** The rules action for putting what's at `from` down at `to`, or null if it can't go there. */
+  private gearCard() {
+    if (!this.selected) return `<section class="kc-hero-card empty-inspector"><img class="inspector-hero" alt="" draggable="false" src="${unitUrl(heroArtId(this.state.hero.background), 2)}"><h3>Your equipment</h3><p>Select a find or a worn item to read what it does.</p><p>You can compare it here before changing anything.</p></section>`;
+    const id = gearAt(this.state, this.selected);
+    if (!id) {
+      const slot = this.selected.kind === 'slot' ? this.selected.slot : null;
+      return `<section class="kc-hero-card empty-inspector"><h3>${slot ? SLOT_NAMES[slot] : 'A free square'}</h3><p>${slot ? 'You wear nothing here. Select a find in the pack to compare it.' : 'You can move a find into this square.'}</p><div class="acts"><button class="act" data-act="gear-cancel">Back</button></div></section>`;
+    }
+    const artifact = ARTIFACTS[id];
+    const preview = previewGear(this.state, this.selected, this.target);
+    const targets = this.selected.kind === 'pack' ? slotsForArtifact(artifact.slot) : [];
+    const target = preview?.target;
+    const destination = targets.length > 1 ? `<label class="destination">Wear in<select data-act="target" aria-label="Choose the trinket to replace">${targets.map(slot => `<option value="${slot}"${slot === target ? ' selected' : ''}>${SLOT_NAMES[slot]}${this.state.hero.gear[slot] ? ` (${escape(ARTIFACTS[this.state.hero.gear[slot]!].name)})` : ' (empty)'}</option>`).join('')}</select></label>` : '';
+    const current = preview?.current ? ARTIFACTS[preview.current] : null;
+    const changes = preview?.rows.filter(row => row.change !== 'same') ?? [];
+    const casts = preview?.rows.find(row => row.name === 'Spells each round');
+    const numeric = changes.filter(row => row.name !== 'Spells each round' && Number.isFinite(Number(row.before.replace(/%$/, ''))) && Number.isFinite(Number(row.after.replace(/%$/, ''))));
+    const rows = [...numeric, ...(casts ? [casts] : []), ...changes.filter(row => row.name !== 'Spells each round' && !numeric.includes(row))];
+    const table = preview ? `<table class="comparison"><thead><tr><th>What changes</th><th>Now</th><th>${this.selected.kind === 'pack' ? 'With it' : 'Without it'}</th></tr></thead><tbody>${rows.map(row => `<tr class="${row.change}"><th>${escape(row.name)}</th><td>${escape(row.before)}</td><td>${escape(row.after)}</td></tr>`).join('')}</tbody></table>` : '';
+    const source = this.selected.kind === 'pack' ? `${target ? `${SLOT_NAMES[target]} \u00b7 ` : ''}${current ? `Equipped now ${current.name}` : 'Nothing equipped here'}` : `Worn \u00b7 ${SLOT_NAMES[this.selected.slot]}`;
+    return `<section class="kc-hero-card gear-card" aria-label="${escape(artifact.name)}">
+      <div class="card-heading"><img class="object-pic" alt="" draggable="false" src="${iconUrl(id)}"><div><h3>${escape(artifact.name)}</h3><p>${escape(source)}</p></div></div>
+      <div class="card-reading page-scroll" data-scroll="gear-detail">
+        ${destination}
+        ${this.selected.kind === 'slot' ? '<p class="preview-note">This is what taking it off would change.</p>' : ''}
+        ${table}
+        <p class="preview-note">Looking does not change your equipment.</p>
+        <details class="item-notes"><summary>About this find</summary><p class="object-note">${format(artifact.note)}</p></details>
+        ${this.selected.kind === 'pack' && current ? `<details class="item-notes"><summary>About ${escape(current.name)}</summary><p>${format(current.note)}</p></details>` : ''}
+      </div>
+      <div class="acts">${this.held ? `<p class="move-instruction">${escape(this.holdingHint(this.held))}</p><button class="act" data-act="move-cancel">Put it back</button>` : `<button class="act primary" data-act="gear-apply"${preview ? '' : ' disabled'}>${this.selected.kind === 'pack' ? 'Wear it' : 'Take it off'}</button><button class="act" data-act="pick-up">Move</button><button class="act" data-act="gear-cancel">Back</button>`}</div>
+    </section>`;
+  }
+
+  private holdingHint(held: Place) {
+    if (held.kind === 'stack') return 'Choose a place in the line. You can drag the company there too.';
+    if (held.kind === 'hero') return '';
+    const id = gearAt(this.state, held);
+    if (!id) return '';
+    return held.kind === 'pack' ? `Choose a ${SLOT_NAMES[ARTIFACTS[id].slot].toLowerCase()} slot or a pack square.` : 'Choose a pack square to take it off.';
+  }
+
+  private army(sheet: HeroSheet) {
+    const leader: Place = { kind: 'hero' };
+    const tiles = Array.from({ length: 5 }, (_, index) => {
+      const stack = this.state.army[index];
+      const place: Place = { kind: 'stack', index };
+      const info = stackSheet(this.state, index);
+      return `<button class="tile${this.placeClasses(place, Boolean(stack))}" data-place="${keyOf(place)}" aria-label="${escape(info?.title ?? 'An empty place in the line')}"${stack ? '' : ' tabindex="-1"'}>${stack && info ? `<img alt="" draggable="false" src="${unitUrl(stack.troop)}"><div><b>${escape(info.title)}</b><span>${escape(info.row.replace('In battle they stand ', '').replace(/\.$/, ''))}</span></div>` : '<span>An empty place in the line</span>'}</button>`;
+    }).join('');
+    return `<div class="army page-scroll" data-scroll="army-line">
+      <button class="tile leader${this.placeClasses(leader, true)}" data-place="hero" aria-label="${escape(sheet.title)}"><img alt="" draggable="false" src="${unitUrl(heroArtId(sheet.background))}"><div><b>Aldric</b><span>He leads from behind the line.</span></div></button>
+      <h3>Your companies <small>${this.state.army.length} of 5</small></h3>
+      <div class="strip">${tiles}</div>
+      <p class="guide">The first company stands in the middle. The next two stand above and below it.</p>
+    </div>`;
+  }
+
+  private cardHtml() {
+    if (!this.card) return `<section class="kc-hero-card empty-inspector"><h3>Your army</h3><p>Select a company to see its strength, wages and place in the battle line.</p><p>You can reorder the line without sending anyone home.</p></section>`;
+    if (this.card.kind === 'hero') {
+      const me = leaderSheet(this.state);
+      return `<section class="kc-hero-card leader-card" aria-label="${escape(me.title)}">
+        <div class="card-heading"><img class="unit-pic" alt="" draggable="false" src="${unitUrl(heroArtId(this.state.hero.background), 2)}"><div><h3>${escape(me.title)}</h3><p>${escape(me.note)}</p></div></div>
+        <div class="card-reading page-scroll" data-scroll="army-detail"><dl>${this.statList(me.stats)}</dl>${this.traitList(me.traits)}${me.lines.map(line => `<p>${escape(line)}</p>`).join('')}</div>
+        <div class="acts"><button class="act" data-act="card-close">Back</button></div>
+      </section>`;
+    }
+    const info = stackSheet(this.state, this.card.index);
+    if (!info) return '';
+    const i = this.card.index;
+    const multiplier = 1 + heroStats(this.state).wages;
+    const company = this.state.army[i];
+    const cost = Math.round(wages([company]) * multiplier);
+    const leadership = leadershipUsed([company]);
+    const pay = Math.round(wages(this.state.army) * multiplier);
+    const after = Math.round(wages(this.state.army.filter((_, index) => index !== i)) * multiplier);
+    const moves = `<button class="act" data-act="left"${i === 0 ? ' disabled' : ''}>Move left</button><button class="act" data-act="right"${i === this.state.army.length - 1 ? ' disabled' : ''}>Move right</button>`;
+    return `<section class="kc-hero-card company-card${this.confirming ? ' confirming' : ''}" aria-label="${escape(info.title)}">
+      <div class="card-heading"><img class="unit-pic" alt="" draggable="false" src="${unitUrl(info.troop, 2)}"><div><h3>${escape(info.title)}</h3><p class="formation">${escape(info.row)}</p></div></div>
+      <div class="company-cost"><span>Leadership <b>${leadership || 'none'}</b></span><span>Wages <b>${cost ? `${coins(cost)} gold a week` : 'none'}</b></span></div>
+      ${this.confirming ? `<div class="confirmation page-scroll" data-scroll="dismiss"><h4>Send the ${escape(info.title)} home for good?</h4><p>They leave your army and take no more wages. Your weekly wages would fall from ${coins(pay)} to ${coins(after)} gold.</p></div>` : `<div class="card-reading page-scroll" data-scroll="army-detail"><p class="company-note">${escape(info.note)}</p><dl>${this.statList(info.stats)}</dl>${this.traitList(info.traits)}<p>${escape(info.leadership)}</p><p>${escape(info.wages)}</p></div>`}
+      <div class="acts">${this.confirming ? `<button class="act safe" data-act="dismiss-no">Keep them</button><button class="act danger" data-act="dismiss-yes">Dismiss them</button>` : this.held ? `<p class="move-instruction">${escape(this.holdingHint(this.held))}</p><button class="act" data-act="move-cancel">Put them back</button>` : `${moves}<button class="act" data-act="pick-up">Reorder</button><button class="act danger" data-act="dismiss"${info.canDismiss ? '' : ' disabled'} title="${info.canDismiss ? 'Send this company home' : 'Your last company stays with you'}">Dismiss\u2026</button><button class="act card-back" data-act="card-close">Back</button>`}</div>
+    </section>`;
+  }
+
+  private statList(stats: { name: string; value: string; note: string }[]) {
+    return stats.map(s => `<dt>${escape(s.name)}</dt><dd><b>${escape(s.value)}</b><span>${escape(s.note)}</span></dd>`).join('');
+  }
+
+  private traitList(traits: Note[]) {
+    return traits.length ? `<ul class="traits">${traits.map(t => `<li${t.trick ? ' class="trick"' : ''}><b>${escape(t.name)}.</b> ${format(t.note)}</li>`).join('')}</ul>` : '';
+  }
+
+  private footer(sheet: HeroSheet) {
+    return `<footer class="hero-footer"><div class="map-commands">${sheet.mapSpells.map(m => `<button class="act" data-act="spell:${m.spell}" title="${escape(m.note)}"${m.disabled ? ' disabled' : ''}>${escape(m.label)}</button>`).join('')}<button class="act" data-act="endDay">End the day${touch() ? '' : ' (E)'}</button></div><p class="notice${this.error ? ' error' : ''}" role="status" aria-live="polite">${escape(this.notice)}</p></footer>`;
+  }
+
+  private setPage(page: Page) {
+    this.held = null;
+    this.confirming = false;
+    this.page = page;
+    this.lastClick = null;
+    this.notice = '';
+    this.error = false;
+    this.hideTip();
+    if (page === 'equipment' && !this.selected) {
+      const slot = SLOTS.find(slot => this.state.hero.gear[slot]) ?? 'weapon';
+      this.selected = this.state.hero.pack.length ? { kind: 'pack', index: 0 } : { kind: 'slot', slot };
+      this.target = undefined;
+    }
+    if (page === 'army' && !this.card) this.card = this.state.army.length ? { kind: 'stack', index: 0 } : { kind: 'hero' };
+    this.render();
+    this.focus(this.root.querySelector<HTMLElement>(`[data-tab="${page}"]`));
+  }
+
   private actionFor(from: Place, to: Place): Action | null {
     const { pack, gear } = this.state.hero;
     if (from.kind === 'pack' && pack[from.index]) {
@@ -384,85 +369,84 @@ export class HeroScreen {
       if (to.kind === 'pack' && to.index !== from.index && (to.index < pack.length || from.index < pack.length - 1)) return { type: 'movePack', from: from.index, to: to.index };
     }
     if (from.kind === 'slot' && gear[from.slot] && to.kind === 'pack') return { type: 'unequip', slot: from.slot, to: to.index };
-    if (from.kind === 'stack' && this.state.army[from.index] && to.kind === 'stack' && to.index !== from.index && (to.index < this.state.army.length || from.index < this.state.army.length - 1)) {
-      return { type: 'moveStack', from: from.index, to: Math.min(to.index, this.state.army.length) };
-    }
+    if (from.kind === 'stack' && this.state.army[from.index] && to.kind === 'stack' && to.index !== from.index && (to.index < this.state.army.length || from.index < this.state.army.length - 1)) return { type: 'moveStack', from: from.index, to: Math.min(to.index, this.state.army.length) };
     return null;
   }
 
-  private has(place: Place): boolean {
-    if (place.kind === 'slot') return Boolean(this.state.hero.gear[place.slot]);
-    if (place.kind === 'pack') return Boolean(this.state.hero.pack[place.index]);
-    if (place.kind === 'stack') return Boolean(this.state.army[place.index]);
-    return true;
-  }
+  private has(place: Place) { return place.kind === 'hero' || (place.kind === 'stack' ? Boolean(this.state.army[place.index]) : Boolean(gearAt(this.state, place))); }
 
-  /** Where an artifact or stack ends up after an action, to glow and keep focus. */
   private landing(action: Action): Place | null {
     switch (action.type) {
-      case 'wear':
-        return { kind: 'slot', slot: action.slot ?? slotsForArtifact(ARTIFACTS[this.state.hero.pack[action.from]].slot).find((slot) => !this.state.hero.gear[slot]) ?? ARTIFACTS[this.state.hero.pack[action.from]].slot };
-      case 'unequip':
-        return { kind: 'pack', index: Math.min(action.to ?? this.state.hero.pack.length, this.state.hero.pack.length) };
-      case 'movePack':
-        return { kind: 'pack', index: Math.min(action.to, this.state.hero.pack.length - 1) };
-      case 'moveStack':
-        return { kind: 'stack', index: Math.min(action.to, this.state.army.length - 1) };
-      default:
-        return null;
+      case 'wear': return { kind: 'slot', slot: action.slot ?? slotsForArtifact(ARTIFACTS[this.state.hero.pack[action.from]].slot).find(slot => !this.state.hero.gear[slot]) ?? ARTIFACTS[this.state.hero.pack[action.from]].slot };
+      case 'unequip': return { kind: 'pack', index: Math.min(action.to ?? this.state.hero.pack.length, this.state.hero.pack.length) };
+      case 'movePack': return { kind: 'pack', index: Math.min(action.to, this.state.hero.pack.length - 1) };
+      case 'moveStack': return { kind: 'stack', index: Math.min(action.to, this.state.army.length - 1) };
+      default: return null;
     }
   }
 
-  /** Asks the rules; the sheet redraws from the new state (once) if they agree, and false if not. */
-  private perform(action: Action): boolean {
+  private perform(action: Action) {
     const landing = this.landing(action);
-    const card = this.card;
+    const card = this.card, selected = this.selected;
     if (landing) this.fresh.add(keyOf(landing));
-    if (landing && card?.kind === 'stack' && action.type === 'moveStack' && card.index === action.from) this.card = landing;
+    if (landing?.kind === 'stack' && this.card?.kind === 'stack' && action.type === 'moveStack' && this.card.index === action.from) this.card = landing;
+    if (landing?.kind === 'slot' || landing?.kind === 'pack') this.selected = landing;
+    this.target = undefined;
+    this.held = null;
+    this.lastClick = null;
+    this.error = false;
+    this.notice = action.type === 'moveStack' ? 'Your company has moved in the line.' : action.type === 'movePack' ? 'You move the find in your pack.' : 'Your equipment has changed.';
     if (this.hooks.act(action)) {
       play(action.type === 'wear' || action.type === 'unequip' ? 'equip' : action.type === 'moveStack' ? 'march' : 'lift');
+      const el = landing && this.root.querySelector<HTMLElement>(`[data-place="${keyOf(landing)}"]`);
+      if (el) this.focus(el, false);
       return true;
     }
     this.card = card;
+    this.selected = selected;
     this.fresh.clear();
+    this.error = true;
+    this.notice = 'That change could not be made. Select the item or company and try again.';
+    this.render();
     return false;
   }
 
-  // --- Input ------------------------------------------------------------------------------
-
-  private placeAt(clientX: number, clientY: number): { el: HTMLElement; place: Place } | null {
-    const el = document.elementFromPoint(clientX, clientY)?.closest<HTMLElement>('[data-place]');
+  private placeAt(x: number, y: number) {
+    const el = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-place]');
     const place = el && this.root.contains(el) ? parse(el.dataset.place) : null;
     return el && place ? { el, place } : null;
   }
 
-  private toSheet(clientX: number, clientY: number): [number, number] {
+  private toSheet(x: number, y: number): [number, number] {
     const rect = this.root.getBoundingClientRect();
-    return [(clientX - rect.left) / this.scale, (clientY - rect.top) / this.scale];
+    return [(x - rect.left) / this.scale, (y - rect.top) / this.scale];
   }
 
   private listen() {
     const root = this.root;
-    root.addEventListener('pointerdown', (e) => {
+    root.addEventListener('pointerdown', e => {
       e.stopPropagation();
-      if (e.button !== 0) return;
+      this.swallowClick = false;
+      if (this.handledPointer === e.pointerId) this.handledPointer = null;
+      if (e.button !== 0 || !e.isPrimary) return;
       const hit = this.placeAt(e.clientX, e.clientY);
-      if (!hit || hit.place.kind === 'hero' || !this.has(hit.place)) return;
-      const img = hit.el.querySelector('img');
-      this.press = { place: hit.place, x: e.clientX, y: e.clientY, image: img?.src ?? '', wide: hit.place.kind === 'stack' };
+      if (!hit) return;
+      this.press = { pointer: e.pointerId, place: hit.place, x: e.clientX, y: e.clientY, image: hit.el.querySelector('img')?.src ?? '', wide: hit.place.kind === 'stack' };
     });
-    root.addEventListener('pointermove', (e) => {
+    root.addEventListener('pointermove', e => {
       if (!this.press) {
         this.followHeld(e);
         return this.hoverTip(e);
       }
+      if (e.pointerId !== this.press.pointer || this.press.place.kind === 'hero' || !this.has(this.press.place)) return;
+      if (e.pointerType === 'touch' && !this.held && !this.dragging) return;
       if (!this.dragging && Math.hypot(e.clientX - this.press.x, e.clientY - this.press.y) < 5) return;
       if (!this.dragging) {
         root.setPointerCapture(e.pointerId);
         this.startDrag();
       }
       const [x, y] = this.toSheet(e.clientX, e.clientY);
-      const size = this.press.wide ? 72 : 32;
+      const size = this.press.wide ? 72 : 36;
       Object.assign(this.ghost.style, { left: `${Math.round(x - size / 2)}px`, top: `${Math.round(y - size / 2)}px`, width: `${size}px`, height: `${size}px` });
       const hit = this.placeAt(e.clientX, e.clientY);
       const key = hit && this.actionFor(this.press.place, hit.place) ? keyOf(hit.place) : null;
@@ -471,61 +455,85 @@ export class HeroScreen {
         if (key) root.querySelector(`[data-place="${key}"]`)?.classList.add('over');
         this.over = key;
       }
+      const scroll = hit?.el.closest<HTMLElement>('[data-scroll]');
+      // Keep the source and any valid drop target still under the pointer.
+      if (scroll && hit && !key && keyOf(hit.place) !== keyOf(this.press.place)) {
+        const rect = scroll.getBoundingClientRect();
+        if (e.clientY < rect.top + 24) scroll.scrollTop -= 12;
+        else if (e.clientY > rect.bottom - 24) scroll.scrollTop += 12;
+      }
     });
     const release = (e: PointerEvent) => {
       if (root.hasPointerCapture(e.pointerId)) root.releasePointerCapture(e.pointerId);
-      if (!this.press) return;
-      const from = this.press.place;
-      const was = this.dragging;
+      if (!this.press || e.pointerId !== this.press.pointer) return;
+      const press = this.press;
+      const from = press.place, was = this.dragging;
       this.press = null;
-      if (!was) return;
+      if (!was) {
+        // A completed finger tap must not depend on a post-drag compatibility click.
+        if (e.type === 'pointerup' && e.pointerType === 'touch') {
+          this.handledPointer = e.pointerId;
+          this.swallowClick = true;
+          const hit = this.placeAt(e.clientX, e.clientY);
+          if (hit && keyOf(hit.place) === keyOf(from) && Math.hypot(e.clientX - press.x, e.clientY - press.y) < 12) this.clickPlace(from);
+        }
+        return;
+      }
+      if (e.type === 'pointerup') this.handledPointer = e.pointerId;
       this.swallowClick = true;
-      setTimeout(() => (this.swallowClick = false), 0);
       const hit = e.type === 'pointerup' ? this.placeAt(e.clientX, e.clientY) : null;
       const action = hit ? this.actionFor(from, hit.place) : null;
       this.endDrag();
-      if (!action || !this.perform(action)) this.render();
+      if (action) this.perform(action);
+      else this.render();
     };
     root.addEventListener('pointerup', release);
     root.addEventListener('pointercancel', release);
-    root.addEventListener('pointerleave', () => !this.press && this.hideTip());
-    root.addEventListener('click', (e) => {
+    root.addEventListener('pointerleave', () => { if (!this.press) this.hideTip(); });
+    root.addEventListener('click', e => {
       e.stopPropagation();
-      if (this.swallowClick) return;
-      const target = e.target as HTMLElement;
-      const act = target.closest<HTMLElement>('[data-act]');
-      if (act && this.root.contains(act)) return this.clickAct(act.dataset.act!, act as HTMLButtonElement);
-      const hit = target.closest<HTMLElement>('[data-place]');
-      const place = hit ? parse(hit.dataset.place) : null;
-      // A tap on a chip, a stat or a gauge shows its note, for touch screens and for anyone who clicks.
-      const noted = !place && target.closest<HTMLElement>('[data-tip]');
-      if (noted && this.root.contains(noted)) return this.showTip(noted);
+      if (e instanceof PointerEvent && e.pointerId === this.handledPointer) {
+        this.handledPointer = null;
+        this.swallowClick = false;
+        return;
+      }
+      if (this.swallowClick && e.detail > 0) { this.swallowClick = false; return; }
+      if (!(e.target instanceof HTMLElement)) return;
+      const tab = e.target.closest<HTMLElement>('[data-tab]');
+      const page = PAGES.find(page => page === tab?.dataset.tab);
+      if (page) return this.setPage(page);
+      const act = e.target.closest<HTMLButtonElement>('[data-act]');
+      if (act && this.root.contains(act)) return this.clickAct(act.dataset.act!, act);
+      const place = parse(e.target.closest<HTMLElement>('[data-place]')?.dataset.place);
       if (place) this.clickPlace(place);
-      else if (this.card && !target.closest('.kc-hero-card')) this.closeCard();
-      else if (this.held) this.cancel();
     });
-    root.addEventListener('keydown', (e) => this.key(e));
-    // A right-click is the game's, not the browser's menu.
-    root.addEventListener('contextmenu', (e) => e.preventDefault());
-    root.addEventListener('focusin', (e) => {
-      if (this.quiet) return this.hideTip();
-      const el = (e.target as HTMLElement).closest<HTMLElement>('[data-tip]');
-      if (el && el.matches(':focus-visible')) this.showTip(el);
-      else this.hideTip();
+    root.addEventListener('change', e => {
+      if (!(e.target instanceof HTMLSelectElement) || e.target.dataset.act !== 'target') return;
+      const select = e.target;
+      const slot = SLOTS.find(slot => slot === select.value);
+      if (!slot || !this.selected || !previewGear(this.state, this.selected, slot)) return;
+      this.target = slot;
+      this.scroll.set('gear-detail', 0);
+      this.render();
+      this.focus(this.root.querySelector<HTMLElement>('[data-act="target"]'));
+    });
+    root.addEventListener('keydown', e => this.key(e));
+    root.addEventListener('contextmenu', e => e.preventDefault());
+    root.addEventListener('focusin', e => {
+      if (this.quiet || !(e.target instanceof HTMLElement)) return this.hideTip();
+      const el = e.target.closest<HTMLElement>('[data-tip]');
+      if (el?.matches(':focus-visible')) this.showTip(el);
     });
     root.addEventListener('focusout', () => this.hideTip());
   }
 
-  /** What's held by a click rides along under the pointer, as in HoMM2 and Diablo. */
   private followHeld(e: PointerEvent) {
+    if (e.pointerType === 'touch') return;
     const img = this.held && this.root.querySelector<HTMLImageElement>(`[data-place="${keyOf(this.held)}"] img`);
-    if (!img) {
-      this.ghost.hidden = true;
-      return;
-    }
+    if (!img) { this.ghost.hidden = true; return; }
     const [x, y] = this.toSheet(e.clientX, e.clientY);
-    if (this.ghost.src !== img.src) this.ghost.src = img.src;
-    Object.assign(this.ghost.style, { left: `${Math.round(x + 4)}px`, top: `${Math.round(y + 4)}px`, width: '32px', height: '32px' });
+    this.ghost.src = img.src;
+    Object.assign(this.ghost.style, { left: `${Math.round(x + 4)}px`, top: `${Math.round(y + 4)}px`, width: '36px', height: '36px' });
     this.ghost.hidden = false;
   }
 
@@ -533,7 +541,7 @@ export class HeroScreen {
     const press = this.press!;
     this.dragging = true;
     this.held = null;
-    if (press.place.kind === 'stack') this.card = null;
+    if (press.place.kind === 'stack') this.card = press.place;
     this.hideTip();
     this.render();
     this.root.classList.add('dragging');
@@ -552,207 +560,243 @@ export class HeroScreen {
     this.over = null;
     this.ghost.hidden = true;
     this.root.classList.remove('dragging');
-    for (const el of this.root.querySelectorAll('.can-drop, .lifted, .over')) el.classList.remove('can-drop', 'lifted', 'over');
+    for (const el of this.root.querySelectorAll('.can-drop,.lifted,.over')) el.classList.remove('can-drop', 'lifted', 'over');
   }
 
   private clickPlace(place: Place) {
     this.hideTip();
-    // A second click on the same artifact soon after the first wears it, or takes it off. (The sheet
-    // redraws between the two, so the browser's own double-click can't be trusted to notice.)
-    const now = performance.now();
-    const double = this.lastClick?.key === keyOf(place) && now - this.lastClick.at < 400;
-    this.lastClick = double ? null : { key: keyOf(place), at: now };
-    if (double && (place.kind === 'pack' || place.kind === 'slot') && this.has(place)) {
-      this.held = null;
-      const action: Action = place.kind === 'pack' ? { type: 'wear', from: place.index } : { type: 'unequip', slot: place.slot };
-      if (!this.perform(action)) this.render();
+    if (this.held) {
+      const action = this.actionFor(this.held, place);
+      if (action) return this.perform(action);
+      if (keyOf(this.held) === keyOf(place)) return this.cancel();
+      this.error = true;
+      this.notice = `It cannot go there. ${this.holdingHint(this.held)}`;
+      this.render();
       return;
     }
-    if (place.kind === 'hero') return this.card?.kind === 'hero' ? this.closeCard() : this.openCard(place);
-    if (place.kind === 'stack') {
-      if (!this.has(place)) return;
-      return this.card && keyOf(this.card) === keyOf(place) ? this.closeCard() : this.openCard(place);
+    if (place.kind === 'hero' || place.kind === 'stack') {
+      if (this.has(place)) this.openCard(place);
+      return;
     }
-    // Artifacts: pick up, then put down.
-    if (this.held) {
-      const held = this.held;
-      const action = this.actionFor(held, place);
-      this.held = null;
-      if (action && this.perform(action)) return;
-      if (!action && keyOf(held) !== keyOf(place) && this.has(place)) this.held = place;
-      this.render();
-    } else if (this.has(place)) {
-      this.held = place;
-      play('lift');
-      this.render();
+    const now = performance.now();
+    const double = !touch() && this.lastClick?.key === keyOf(place) && now - this.lastClick.at < 400;
+    this.lastClick = double ? null : { key: keyOf(place), at: now };
+    this.selected = place;
+    this.target = undefined;
+    this.scroll.set('gear-detail', 0);
+    this.error = false;
+    this.notice = '';
+    if (double && this.has(place)) {
+      const preview = previewGear(this.state, place);
+      if (preview) return this.perform(preview.action);
     }
-    // A finger can't hover: what it picks up (or an empty slot it taps) says what it is.
-    const el = touch() && (!this.held || keyOf(this.held) === keyOf(place)) && this.root.querySelector<HTMLElement>(`[data-place="${keyOf(place)}"]`);
-    if (el) this.showTip(el);
+    this.render();
+    play('click');
   }
 
   private clickAct(act: string, button: HTMLButtonElement) {
     if (button.disabled) return;
-    const index = this.card?.kind === 'stack' ? this.card.index : -1;
+    if (act === 'note') return this.showTip(button);
     if (act === 'close') return this.hooks.close();
     if (act === 'endDay') return this.hooks.endDay();
     if (act.startsWith('spell:')) return this.hooks.castMapSpell(act.slice(6) as MapSpellId);
-    if (act === 'card-close' || act === 'dismiss-no') {
-      if (act === 'dismiss-no') {
-        this.confirming = false;
-        return this.render();
-      }
-      return this.closeCard();
+    if (act === 'leader') return this.openCard({ kind: 'hero' });
+    if (act === 'gear-cancel') {
+      const was = this.selected;
+      this.selected = null; this.held = null; this.lastClick = null; this.render();
+      if (was) this.focus(this.root.querySelector<HTMLElement>(`[data-place="${keyOf(was)}"]`));
+      return;
     }
+    if (act === 'move-cancel') {
+      const was = this.held;
+      this.held = null; this.error = false; this.notice = 'You put it back.'; this.render();
+      if (was) this.focus(this.root.querySelector<HTMLElement>(`[data-place="${keyOf(was)}"]`));
+      return;
+    }
+    if (act === 'gear-apply' && this.selected) {
+      const preview = previewGear(this.state, this.selected, this.target);
+      if (preview) this.perform(preview.action);
+      return;
+    }
+    if (act === 'pick-up') {
+      this.held = this.page === 'equipment' ? this.selected : this.card?.kind === 'stack' ? this.card : null;
+      this.error = false;
+      this.notice = this.held ? this.holdingHint(this.held) : '';
+      this.render();
+      if (this.held) this.focus(this.root.querySelector<HTMLElement>(`[data-place="${keyOf(this.held)}"]`));
+      play('lift');
+      return;
+    }
+    if (act === 'card-close') return this.closeCard();
+    const index = this.card?.kind === 'stack' ? this.card.index : -1;
     if (act === 'left' || act === 'right') {
-      if (!this.perform({ type: 'moveStack', from: index, to: act === 'left' ? index - 1 : index + 1 })) this.render();
+      this.perform({ type: 'moveStack', from: index, to: act === 'left' ? index - 1 : index + 1 });
       this.focus(this.root.querySelector<HTMLElement>(`[data-act="${act}"]:not(:disabled)`));
       return;
     }
-    if (act === 'dismiss') {
+    if (act === 'dismiss-no') {
+      this.confirming = false;
+      this.render();
+      this.focus(this.root.querySelector<HTMLElement>('[data-act="dismiss"]'));
+      return;
+    }
+    if (act === 'dismiss' && stackSheet(this.state, index)?.canDismiss) {
+      this.held = null;
       this.confirming = true;
+      this.scroll.set('dismiss', 0);
       this.render();
       this.focus(this.root.querySelector<HTMLElement>('[data-act="dismiss-no"]'));
       return;
     }
-    if (act === 'dismiss-yes') {
+    if (act === 'dismiss-yes' && this.confirming) {
       this.confirming = false;
-      const card = this.card;
-      this.card = null;
+      this.notice = 'The company goes home.';
       if (this.hooks.act({ type: 'dismiss', index })) play('march');
-      else {
-        this.card = card;
-        this.render();
-      }
+      else { this.error = true; this.notice = 'The company could not be dismissed. Your last company stays with you.'; this.render(); }
       this.focus(this.root.querySelector<HTMLElement>(`[data-place="stack:${Math.max(0, Math.min(index, this.state.army.length - 1))}"]`));
     }
   }
 
-  private openCard(place: Place) {
+  private openCard(place: { kind: 'hero' } | { kind: 'stack'; index: number }) {
+    this.page = 'army';
     this.card = place;
     this.confirming = false;
-    play('click');
+    this.held = null;
+    this.scroll.set('army-detail', 0);
+    this.notice = '';
+    this.error = false;
     this.render();
-    this.showCardWhole();
+    this.focus(this.root.querySelector<HTMLElement>(`[data-place="${keyOf(place)}"]`));
+    play('click');
   }
 
   private closeCard() {
     const was = this.card;
     this.card = null;
     this.confirming = false;
+    this.held = null;
     this.render();
     if (was) this.focus(this.root.querySelector<HTMLElement>(`[data-place="${keyOf(was)}"]`));
   }
 
-  /** Arrows move between squares; Shift+arrows move what's there; Delete dismisses a stack. */
+  private focusables() {
+    return [...this.root.querySelectorAll<HTMLElement>('button:not(:disabled):not([tabindex="-1"]),select,summary')].filter(el => el.getClientRects().length > 0);
+  }
+
   private key(e: KeyboardEvent) {
-    const el = (e.target as HTMLElement).closest<HTMLElement>('[data-place]');
-    const place = el ? parse(el.dataset.place) : null;
+    if (!(e.target instanceof HTMLElement)) return;
+    if (e.key === ' ' || e.key === 'Enter') this.swallowClick = false;
+    if (e.target instanceof HTMLSelectElement) { e.stopPropagation(); return; }
     if (e.key === 'Escape') {
-      if (this.cancel()) {
-        e.stopPropagation();
-        e.preventDefault();
-      }
+      if (this.cancel()) { e.stopPropagation(); e.preventDefault(); }
       return;
     }
+    if (e.key === 'Tab') {
+      e.stopPropagation();
+      const list = this.focusables();
+      const next = e.shiftKey ? list[list.length - 1] : list[0];
+      if (e.target === (e.shiftKey ? list[0] : list[list.length - 1])) { e.preventDefault(); this.focus(next); }
+      return;
+    }
+    const tab = e.target.closest<HTMLElement>('[data-tab]');
+    if (tab && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) {
+      e.preventDefault(); e.stopPropagation();
+      const index = PAGES.indexOf(this.page);
+      this.setPage(PAGES[e.key === 'Home' ? 0 : e.key === 'End' ? 2 : (index + (e.key === 'ArrowRight' ? 1 : 2)) % 3]);
+      return;
+    }
+    const el = e.target.closest<HTMLElement>('[data-place]');
+    const place = parse(el?.dataset.place);
     const arrow = ({ ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] } as Record<string, [number, number]>)[e.key];
     if (arrow) {
-      e.preventDefault();
-      e.stopPropagation();
+      e.preventDefault(); e.stopPropagation();
       if (e.shiftKey && place && this.has(place) && (place.kind === 'stack' || place.kind === 'pack')) {
-        const step = place.kind === 'pack' ? arrow[0] + arrow[1] * PACK_ROW : arrow[0];
+        const pack = this.root.querySelector('.pack');
+        const columns = pack ? getComputedStyle(pack).gridTemplateColumns.split(' ').length : PACK_ROW;
+        const step = place.kind === 'pack' ? arrow[0] + arrow[1] * columns : arrow[0] + arrow[1];
         const to = place.index + step;
         if (step && to >= 0) {
-          const action = place.kind === 'stack' ? ({ type: 'moveStack', from: place.index, to } as const) : ({ type: 'movePack', from: place.index, to } as const);
-          if (this.actionFor(place, { kind: place.kind, index: to } as Place)) {
-            if (!this.perform(action)) this.render();
-            this.focus(this.root.querySelector<HTMLElement>(`[data-place="${place.kind}:${Math.min(to, (place.kind === 'stack' ? this.state.army.length : this.state.hero.pack.length) - 1)}"]`));
-          }
+          const target: Place = { kind: place.kind, index: to };
+          const action = this.actionFor(place, target);
+          if (action) this.perform(action);
         }
         return;
       }
-      this.moveFocus(el ?? (e.target as HTMLElement), arrow);
+      this.moveFocus(el ?? e.target, arrow);
       return;
     }
     if ((e.key === 'Delete' || e.key === 'Backspace') && place?.kind === 'stack' && this.has(place)) {
-      e.preventDefault();
-      e.stopPropagation();
+      e.preventDefault(); e.stopPropagation();
       this.card = place;
       this.confirming = stackSheet(this.state, place.index)?.canDismiss ?? false;
       this.render();
       this.focus(this.root.querySelector<HTMLElement>(this.confirming ? '[data-act="dismiss-no"]' : '[data-act="card-close"]'));
       return;
     }
-    // Letters are the screen's hotkeys (H closes, E ends the day): they go on up to the game.
     if (e.key === ' ' || e.key === 'Enter') e.stopPropagation();
   }
 
-  /** Moves focus to the nearest square in the arrow's direction, as the eye would. */
   private moveFocus(from: HTMLElement, [dx, dy]: [number, number]) {
-    const a = from.getBoundingClientRect();
-    const [ax, ay] = [a.left + a.width / 2, a.top + a.height / 2];
-    let best: HTMLElement | null = null;
-    let score = Infinity;
-    for (const el of this.root.querySelectorAll<HTMLElement>('[data-place]:not([tabindex="-1"]), [data-act]:not(:disabled)')) {
+    const a = from.getBoundingClientRect(), ax = a.left + a.width / 2, ay = a.top + a.height / 2;
+    let best: HTMLElement | null = null, score = Infinity;
+    for (const el of this.focusables()) {
       if (el === from || el.closest('.kc-hero-card') !== from.closest('.kc-hero-card')) continue;
-      const b = el.getBoundingClientRect();
-      const [ex, ey] = [b.left + b.width / 2 - ax, b.top + b.height / 2 - ay];
+      const b = el.getBoundingClientRect(), ex = b.left + b.width / 2 - ax, ey = b.top + b.height / 2 - ay;
       const along = ex * dx + ey * dy;
       if (along <= 2) continue;
-      const across = Math.abs(ex * dy - ey * dx);
-      const s = along + across * 2.5;
-      if (s < score) [best, score] = [el, s];
+      const s = along + Math.abs(ex * dy - ey * dx) * 2.5;
+      if (s < score) { best = el; score = s; }
     }
     this.focus(best, false);
   }
 
   private hoverTip(e: PointerEvent) {
-    const el = (e.target as HTMLElement).closest<HTMLElement>('[data-tip]');
-    if (el && this.root.contains(el) && el.dataset.tip) this.showTip(el);
+    const el = e.target instanceof HTMLElement ? e.target.closest<HTMLElement>('[data-tip]') : null;
+    if (el?.dataset.tip) this.showTip(el);
     else this.hideTip();
   }
 
-  /** The note for whatever is under the pointer (or focused), just above it, kept on the sheet. */
   private showTip(el: HTMLElement) {
     const text = el.dataset.tip;
     if (!text || this.dragging) return this.hideTip();
-    if (this.tip.dataset.for !== text) {
-      this.tip.innerHTML = format(text);
-      this.tip.dataset.for = text;
-    }
+    this.tip.innerHTML = format(text);
+    const rect = this.root.getBoundingClientRect();
+    const left = Math.max(4, -rect.left / this.scale + 4);
+    const right = Math.min(this.root.offsetWidth - 4, (window.innerWidth - rect.left) / this.scale - 4);
+    const top = Math.max(4, -rect.top / this.scale + 4);
+    const bottom = Math.min(this.root.offsetHeight - 4, (window.innerHeight - rect.top) / this.scale - 4);
+    this.tip.style.maxWidth = `${Math.max(80, Math.min(300, right - left))}px`;
+    this.tip.style.maxHeight = `${Math.max(40, bottom - top)}px`;
     this.tip.hidden = false;
-    const r = el.getBoundingClientRect();
-    const [x0, y0] = this.toSheet(r.left, r.top);
-    const [x1, y1] = this.toSheet(r.right, r.bottom);
-    const { offsetWidth: w, offsetHeight: h } = this.tip;
-    const [width, height] = [this.root.offsetWidth, this.root.offsetHeight];
-    const x = Math.max(4, Math.min(width - w - 4, (x0 + x1) / 2 - w / 2));
-    const y = y0 - h - 6 >= 2 ? y0 - h - 6 : y1 + 6;
+    const r = el.getBoundingClientRect(), [x0, y0] = this.toSheet(r.left, r.top), [x1, y1] = this.toSheet(r.right, r.bottom);
+    const w = this.tip.offsetWidth, h = this.tip.offsetHeight;
+    const x = Math.max(left, Math.min(right - w, (x0 + x1 - w) / 2));
+    const preferred = y0 - h - 6 >= top ? y0 - h - 6 : y1 + 6;
     this.tip.style.left = `${Math.round(x)}px`;
-    this.tip.style.top = `${Math.round(Math.min(height - h - 2, y))}px`;
+    this.tip.style.top = `${Math.round(Math.max(top, Math.min(bottom - h, preferred)))}px`;
   }
 
-  private hideTip() {
-    this.tip.hidden = true;
-  }
-
-  /** Moves focus without scrolling the page. Focus the sheet moves itself brings up no note. */
-  private focus(el: HTMLElement | null, quiet = true) {
+  private hideTip() { this.tip.hidden = true; }
+  private focus(el: HTMLElement | null | undefined, quiet = true) {
     if (!el) return;
     this.quiet = quiet;
     el.focus({ preventScroll: true });
+    if (!quiet) el.scrollIntoView({ block: 'nearest' });
     this.quiet = false;
   }
 
-  /** For scripts: what the sheet shows, in words. */
   describe() {
+    const preview = this.selected ? previewGear(this.state, this.selected, this.target) : null;
     return {
-      title: this.title,
-      slots: Object.fromEntries(SLOTS.map((s) => [s, this.state.hero.gear[s] ?? null])),
+      title: this.title, page: this.page,
+      slots: Object.fromEntries(SLOTS.map(slot => [slot, this.state.hero.gear[slot] ?? null])),
       pack: [...this.state.hero.pack],
-      army: this.state.army.map((s) => `${s.count} ${s.troop}`),
+      army: this.state.army.map(s => `${s.count} ${s.troop}`),
       held: this.held ? keyOf(this.held) : null,
+      selected: this.selected ? keyOf(this.selected) : null,
       card: this.card ? keyOf(this.card) : null,
+      comparison: preview ? { target: preview.target, current: preview.current, candidate: preview.candidate, rows: preview.rows } : null,
+      interaction: { dragging: this.dragging, pressed: this.press ? keyOf(this.press.place) : null, suppressClick: this.swallowClick, handledPointer: this.handledPointer },
       text: this.root.innerText,
     };
   }
