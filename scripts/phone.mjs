@@ -101,10 +101,10 @@ async function rail(name) {
 }
 
 /** Battle orders live in one native bottom row, not in the map's side rails. */
-async function battleCommand(name) {
-  const button = page.locator('.kc-battle-commands').getByRole('button', { name, exact: true });
+async function battleCommand(id) {
+  const button = page.locator(`.kc-battle-commands button[data-id="${id}"]:visible`);
   if (!(await button.count()) || (await button.isDisabled())) return false;
-  await tapBox(await button.boundingBox(), `battle: ${name}`);
+  await tapBox(await button.boundingBox(), `battle: ${await button.textContent()}`);
   return true;
 }
 
@@ -439,7 +439,7 @@ try {
       return Boolean(s.fighters.find((x) => x.id === s.order[0]).hero && b.moves().length === 0);
     });
     if (!leader) break;
-    await battleCommand('Defend');
+    check(await battleCommand('defend'), 'the leader can give his turn to the real battle command');
     await wait(400);
   }
   const battleCommands = await call(() => {
@@ -486,7 +486,8 @@ try {
   await page.waitForFunction(() => !window.__kc.battle().busy(), null, { timeout: 10_000 }).catch(() => {});
   const moved = await call(() => window.__kc.battle().battle());
   check(moved.fighters.find((f) => f.id === plan.id).at === plan.target, 'and the second tap moves the stack there');
-  check((await battleCommand('Auto')) || (await battleCommand('Finish')), 'the real bottom-row command hands the fight to the sergeants');
+  check(await battleCommand('auto'), 'the visible and enabled bottom-row command is tapped once');
+  check(await call(() => window.__kc.battle()?.isAuto() === true), 'the real battle immediately gives command to the sergeants');
   await page.waitForFunction(() => window.__kc.screen() === 'adventure', null, { timeout: 60_000 });
   check((await title()) === 'Victory!', 'Auto hands the fight to the sergeants, and they win it');
   await look('victory');
