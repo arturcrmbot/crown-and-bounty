@@ -48,3 +48,11 @@ These come from Commission I, as it read before and after #149.
 | He holds up a **loaf** that has not gone stale in living memory (*nobody marches on an empty stomach*)... | He holds up a **loaf** that has not gone stale in living memory, because nobody marches on an empty stomach... |
 | ...nobody can strike back, but it winds them: they can’t strike back themselves for the rest of that round and the next. | ...nobody can strike back. The charge winds them, though, so they can’t strike back themselves for the rest of that round and the next. |
 | *Five villains, one lost sceptre, and a stolen goose.* | *The King has lost five provinces, his sceptre and his goose, and he wants them all back.* |
+
+## Requested battle information
+
+The quiet battle view keeps names and commands on screen, not a permanent list of numbers.
+Its requested Keys card can add the live turn order. For example, "This round, your Knights,
+your Archers and their Swordsmen take their turns in that order." The names and order come
+from the battle, not from a new rule. Inspection labels keep the existing short stat labels,
+and the spellbook keeps its full sentences about mana and casts.

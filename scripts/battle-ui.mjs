@@ -24,7 +24,7 @@ const check = (condition, message) => {
 };
 const battle = page => page.evaluate(() => window.__kc.battle()?.battle());
 const current = b => b.fighters.find(f => f.id === b.order[0]);
-const command = (page, profile, id) => page.locator(`${profile.touch ? '.kc-rail' : '.kc-battle-commands'} button[data-id="${id}"]`);
+const command = (page, _profile, id) => page.locator(`.kc-battle-commands button[data-id="${id}"]`);
 const frame = page => page.evaluate(() => new Promise(resolve => requestAnimationFrame(resolve)));
 const press = async (locator, profile) => {
   if (profile.touch) await locator.tap();
@@ -101,16 +101,18 @@ async function shot(page, profile, name) {
       imageErrors: images.filter(image => !image.complete || !image.naturalWidth).length,
       title: document.querySelector('.kc-battle-active')?.textContent,
       text: deck?.textContent, tag: tag ? { ...rect(tag), text: tag.textContent } : null,
-      queue: [...document.querySelectorAll('.kc-battle-turns [data-fighter]')].map(element => Number(element.dataset.fighter)),
+      permanentInformation: document.querySelectorAll('.kc-battle-header,.kc-battle-turns,.kc-battle-stats,.kc-battle-resources,.kc-battle kbd').length,
     };
   });
   captures.push({ file, profile, url: page.url(), battle: await battle(page), measured });
   check(measured.deck && measured.deck.x >= 0 && measured.deck.right <= profile.width && measured.deck.bottom <= profile.height, `${profile.name} ${name} keeps the information deck in the viewport`);
   check(!measured.overlaps.length && measured.controls.every(c => c.hit), `${profile.name} ${name} has separate unobstructed command regions`);
   check(!measured.imageErrors, `${profile.name} ${name} uses loaded painted figures`);
+  check(measured.permanentInformation === 0, `${profile.name} ${name} has no permanent queue, hotkeys, stats or resource wall`);
   if (profile.touch) {
     check(measured.controls.every(c => c.width >= 43.5 && c.height >= 43.5), `${profile.name} ${name} has actual finger-sized targets`);
-    check(!await page.locator('.kc-battle-commands button:visible').count(), `${profile.name} does not duplicate the rail commands`);
+    check(!await page.locator('.kc-rail button:not([data-id="sound"]):not([data-id="full"]):visible').count(), `${profile.name} has no duplicate tactical rails`);
+    check(await page.locator('.kc-battle-commands button:visible').count() > 0 || await page.locator('.kc-card-wrap:not([hidden])').count() > 0, `${profile.name} available actions remain discoverable`);
   }
   return measured;
 }
@@ -158,7 +160,7 @@ try {
       check(await page.locator('.kc-battle').count() === 1, `${profile.name} has a native-size battle information and command hierarchy`);
       const initial = await battle(page);
       const opening = await shot(page, profile, 'opening');
-      check(opening.title.includes('10 Knights') && opening.queue[0] === initial.order[0], `${profile.name} shows the acting company and the real turn queue`);
+      check(opening.title.includes('10 Knights'), `${profile.name} shows only the acting company in the quiet command strip`);
       const crowded = await open(context, profile, '&hero=knight&army=knights:120,archers:1234,swordsmen:345,pikemen:456,peasants:789&enemy=knights:120,archers:1234,swordsmen:345,pikemen:456,peasants:789,sergeant:1:5');
       await readyTurn(crowded);
       await shot(crowded, profile, 'five-companies');
@@ -226,7 +228,7 @@ try {
       check(JSON.stringify(await battle(page)) === JSON.stringify(casting) && await page.evaluate(() => window.__kc.battle().pointer()) === 'no', `${profile.name} an enemy spell rejects a friendly target without spending mana`);
       await point(page, profile, victim.at);
       const spellAim = await shot(page, profile, 'spell-forecast');
-      check(spellAim.tag.text.includes('Cast Fireball') && spellAim.text.includes(`Mana ${casting.hero.mana}`), `${profile.name} the selected spell and real mana remain legible`);
+      check(spellAim.tag.text.includes('Cast Fireball') && !spellAim.text.includes('Mana'), `${profile.name} the selected spell is contextual, with mana available in the spellbook rather than a permanent wall`);
       await clearOfTarget(page, profile, victim.at);
       check(JSON.stringify(await battle(page)) === JSON.stringify(casting), `${profile.name} pointing at a spell target is non-mutating`);
       await point(page, profile, victim.at, !profile.touch);
@@ -245,15 +247,22 @@ try {
       });
       await press(command(page, profile, 'wait'), profile);
       await readyTurn(page);
+      const inspected = await battle(page);
+      const at = await page.evaluate(hex => window.__kc.battle().hexOnPage(hex), current(inspected).at);
+      if (profile.touch) await page.touchscreen.tap(at.x, at.y);
+      else await page.mouse.move(at.x, at.y);
+      await frame(page);
       const exhausted = await shot(page, profile, 'exhausted-status');
-      check(exhausted.text.includes('Mana 0') && exhausted.text.includes('Shots 0') && exhausted.text.includes('Slowed'), `${profile.name} exhausted mana, arrows and statuses are explicit`);
+      const details = await page.evaluate(() => window.__kc.battle().label());
+      check(details.includes('Shots 0') && details.includes('Slowed'), `${profile.name} requested inspection explains exhausted arrows and statuses`);
       await press(command(page, profile, 'spells'), profile);
       const unaffordable = page.locator('.kc-card-wrap:not([hidden]) button').filter({ hasText: /^Cast Fireball/ });
-      check(await unaffordable.isDisabled() && (await unaffordable.innerText()).includes('short'), `${profile.name} unaffordable spells show the precise shortage`);
+      check(await unaffordable.isDisabled() && (await unaffordable.innerText()).includes('short') && (await page.locator('.kc-card-wrap:not([hidden])').innerText()).includes('mana'), `${profile.name} the spellbook exposes current mana and the precise shortage`);
       await page.keyboard.press('Escape');
       await page.evaluate(() => { const b = window.__kc.battle().battle(); b.fighters.find(f => f.id === b.order[0]).waited = true; });
       await advance(page);
       check(await command(page, profile, 'wait').isDisabled(), `${profile.name} an already-waited company cannot accidentally Defend through Wait`);
+      check(await command(page, profile, 'wait').isHidden(), `${profile.name} an unavailable Wait does not occupy the quiet action strip`);
       await press(command(page, profile, 'defend'), profile);
       await readyTurn(page);
       check((await battle(page)).fighters.find(f => f.troop === 'archers' && f.side === 'player').defending, `${profile.name} Defend remains a real manual command`);
@@ -304,6 +313,16 @@ try {
       check((await command(page, profile, 'defend').innerText()).includes('Sing'), `${profile.name} the Courtier's bard command stays correctly named`);
       await press(command(page, profile, 'defend'), profile);
       check(await page.locator('.kc-card-wrap:not([hidden]) button').count() > 1, `${profile.name} Sing opens the existing songs`);
+      await page.close();
+
+      page = await open(context, profile);
+      await page.keyboard.type('?');
+      const help = await page.locator('.kc-card-wrap:not([hidden])').innerText();
+      check(help.includes('This round') && help.includes('spellbook') && help.includes('sergeants'), `${profile.name} turn order and keyboard help are available on request without permanent controls`);
+      await page.keyboard.press('Escape');
+      await page.keyboard.press('w');
+      await readyTurn(page);
+      check(current(await battle(page)).troop === 'archers', `${profile.name} the existing Wait shortcut still works`);
       await page.close();
 
       page = await context.newPage();

@@ -5,7 +5,7 @@ import { chooseAction, finishEstimate, sergeantsAct } from '../rules/battle/ai';
 import { manaInBattle, signedShare, spiritsOf, uneasyWords } from '../rules/heroSheet';
 import { grumbleLine } from '../rules/army';
 import { capital, coins, listed, roman } from '../rules/state';
-import { activeFighter, bardOf, battleAct, battleEnd, blessesAll, bribeOffer, canCast, canJoin, casterOf, castsLeft, chargeOf, fighterById, heroHelp, isCharge, isLeader, onField, options, ridesOut, spellCost, spellDamage, spellsOf, spellVictims, unitOf, wound, type BattleAction, type BattleEvent, type BattleState, type Fighter } from '../rules/battle/battle';
+import { activeFighter, bardOf, battleAct, battleEnd, blessesAll, bribeOffer, canCast, canJoin, casterOf, castsLeft, chargeOf, fighterById, heroHelp, isCharge, isLeader, onField, options, ridesOut, speedOf, spellCost, spellDamage, spellsOf, spellVictims, statsOf, unitOf, wound, type BattleAction, type BattleEvent, type BattleState, type Fighter } from '../rules/battle/battle';
 import { aimTag, bardTag, forecastOf, type AimTag } from '../rules/battle/forecast';
 import { paintBanner } from '../render/banner';
 import { BattleScreen, FIRE_FALL, FLOAT_LIFE, FLOAT_RISE, hexAt, hexCentre, leaderAt, LOG_BOTTOM, sideAt, spotOf, stripBottom, type BattleView, type Shot } from '../render/battleScreen';
@@ -13,6 +13,7 @@ import { CUE_PING, cueBounce, FLASH_GAP, FLASH_TIME, FRAME, holdFrames, kickLeft
 import { hash } from '../render/noise';
 import { animLength, bodyHeight, hitTime, STAND, type AnimName } from '../render/battleSprites';
 import { paintedAnimation } from '../render/mapArt';
+import { battleFigureScale } from '../render/scale';
 import { walkFootfalls } from '../render/adventureScene';
 import { cursorIcon, type CursorKind, type Heading } from '../render/cursors';
 import { ART, type Missile } from '../render/units';
@@ -25,6 +26,7 @@ import { bitmapUrl } from '../ui/pixels';
 import { play, speak } from '../ui/sound';
 import { ForecastTag, type PageBox, type TagSide } from '../ui/tag';
 import { BattleHUD } from '../ui/battleHUD';
+import { keysCard } from './intro';
 import { touch } from '../ui/touch';
 import { isGentle } from '../ui/gentle';
 import type { Display } from './display';
@@ -598,10 +600,11 @@ export class BattleController implements Screen {
     const [x, y] = this.spot(caster.id);
     const art = ART[caster.troop];
     const painted = paintedAnimation(caster.troop, 'battle', 'cast');
+    const scale = battleFigureScale('battle', caster.troop);
     const { look, shout } = SPELLS[spell];
     const hands: [number, number] = painted?.launch
-      ? [x + painted.launch[0] * this.facingOf(caster), y + 12 + painted.launch[1]]
-      : [x + 4 * this.facingOf(caster), y + 12 - bodyHeight(caster.troop, 'battle') * 0.5];
+      ? [x + painted.launch[0] * scale * this.facingOf(caster), y + 12 + painted.launch[1] * scale]
+      : [x + 4 * scale * this.facingOf(caster), y + 12 - bodyHeight(caster.troop, 'battle') * 0.5];
     const glow: Shot = { from: hands, to: hands, t: 0, kind: 'gather', color: look.colour === 'blue' ? BLUE[6] : look.colour === 'red' ? RED[5] : GOLD[6] };
     const frames = painted ? animLength(caster.troop, 'cast') : art.cast ? art.cast.reduce((t, f) => t + f.ms, 0) : 300;
     const contact = painted?.hit ?? frames;
@@ -754,7 +757,7 @@ export class BattleController implements Screen {
     if (missile) {
       // The release frame holds while the shot flies, however far.
       const origin: [number, number] = painted?.launch
-        ? [ax + painted.launch[0] * (tx >= ax ? 1 : -1), ay + 12 + painted.launch[1]]
+        ? [ax + painted.launch[0] * battleFigureScale('battle', attacker.troop) * (tx >= ax ? 1 : -1), ay + 12 + painted.launch[1] * battleFigureScale('battle', attacker.troop)]
         : [ax + ux * 12, ay - bodyHeight(attacker.troop, 'battle') * 0.55];
       const shot: Shot = { from: origin, to: [tx, ty + 12 - bodyHeight(target.troop, 'battle') * 0.5], t: 0, kind: missile };
       const flight = 0.16 + len / 1500;
@@ -1011,7 +1014,8 @@ export class BattleController implements Screen {
               const [cx, cy] = this.spot(caster);
               const f = fighterById(this.battle, caster);
               const launch = paintedAnimation(f.troop, 'battle', 'cast')?.launch;
-              const origin: [number, number] = launch ? [cx + launch[0] * this.facingOf(f), cy + 12 + launch[1]] : [cx, cy - 20];
+              const scale = battleFigureScale('battle', f.troop);
+              const origin: [number, number] = launch ? [cx + launch[0] * scale * this.facingOf(f), cy + 12 + launch[1] * scale] : [cx, cy - 20 * scale];
               return { from: origin, to: [tx, ty - 10] as [number, number], t: 0, kind: 'magic' as const, color: colour };
             }
             return { from: [tx, 0] as [number, number], to: [tx, ty - 10] as [number, number], t: 0, kind: look.kind === 'missile' ? ('bolt' as const) : look.kind, color: colour };
@@ -1547,7 +1551,7 @@ export class BattleController implements Screen {
 
   placeCards() {
     this.placeCard();
-    this.hud.place(this.battle, this.view, this.buttons(), this.display, this.cards.isOpen);
+    this.hud.place(this.battle, this.view, this.commands(), this.display, this.cards.isOpen);
   }
 
   get screenBitmap() {
@@ -1755,7 +1759,7 @@ export class BattleController implements Screen {
   }
 
   private button(id: Command) {
-    if (!this.buttons().find(button => button.id === id)?.enabled) return;
+    if (!this.commands().find(button => button.id === id)?.enabled) return;
     const f = activeFighter(this.battle);
     if (id === 'auto') {
       this.cancelAim();
@@ -1830,11 +1834,13 @@ export class BattleController implements Screen {
     });
   }
 
-  /**
-   * Played by touch, down the sides: Spells, Wait and Defend (or Sing) on the left, Retreat and Auto
-   * (or Finish) on the right, as on the battle bar. While a spell waits for its target, Spells cancels it.
-   */
+  /** Only Sound and Full screen remain in the shared rails during battle. */
   buttons(): SideButton[] {
+    return [];
+  }
+
+  /** One model serves the native command row and existing keyboard shortcuts. */
+  private commands(): SideButton[] {
     const f = activeFighter(this.battle);
     const mine = !!f && f.side === 'player' && this.queue.length === 0 && !this.auto && !this.battle.volley && !this.battle.result && !this.cards.isOpen;
     const bard = mine && !!bardOf(f);
@@ -1854,13 +1860,25 @@ export class BattleController implements Screen {
    * Anything a tap would do, the tag beside it says, and what a second tap does.
    */
   private tell(x: number, y: number, intent: Intent | null) {
-    if (intent && this.tag.text) return;
+    if (this.cards.isOpen || this.tag.text) return this.label.hide();
     const v = this.view;
     const under = v.inspect === null ? null : fighterById(this.battle, v.inspect);
-    const who = under ? (this.named(under.id) ? capital(TROOPS[under.troop].name) : this.fighterName(under.id, under.count)) : null;
-    // Without the tag, the label says it all, and what a second tap does.
-    const text = [intent?.kind === 'move' ? 'Move here.' : (v.preview ?? who), intent ? SECOND_TAP[intent.kind] : ''].filter(Boolean).join(' ');
-    if (!text) return;
+    let detail = v.preview;
+    if (under && !intent) {
+      const t = unitOf(under);
+      const numbers = statsOf(this.battle, under);
+      detail = [
+        this.fighterName(under.id, under.count),
+        isLeader(under) ? this.leaderLine(under.id) : `Attack ${numbers.attack}. Defence ${numbers.defence}. Health ${under.hp}/${t.hp}. Damage ${t.damage[0]}-${t.damage[1]}. Speed ${speedOf(under)}.`,
+        TROOPS[under.troop].shots ? `Shots ${under.shots}.` : '',
+        under.status.map(id => STATUSES[id].name).join(', '),
+        under.waited ? 'Waited.' : '',
+        under.defending ? 'Defending.' : '',
+        this.spiritsLine(under.id),
+      ].filter(Boolean).join(' ');
+    }
+    const text = [intent?.kind === 'move' ? 'Move here.' : detail, intent ? SECOND_TAP[intent.kind] : ''].filter(Boolean).join(' ');
+    if (!text) return this.label.hide();
     const at = this.display.toPage(x, y);
     this.label.show(text, at.x, at.y);
   }
@@ -1901,6 +1919,13 @@ export class BattleController implements Screen {
     hover: (x: number, y: number) => {
       this.pointer = [x, y];
       this.hoverAt(x, y);
+      this.tell(x, y, null);
+    },
+    look: (x: number, y: number) => {
+      this.pointer = null;
+      this.hoverAt(x, y);
+      this.unaim();
+      this.tell(x, y, null);
     },
     drag: () => {},
     leave: () => {
@@ -1920,6 +1945,12 @@ export class BattleController implements Screen {
       else if (key === 's' || key === 'c') this.button('spells');
       else if (key === 'a') this.button('auto');
       else if (key === 'r') this.button('retreat');
+      else if (key === '?') {
+        this.cancelAim();
+        const help = keysCard();
+        const order = listed(this.battle.order.map(id => this.fighterName(id)));
+        this.cards.show({ ...help, lines: [...help.lines, `This round, ${order} take their turns in that order.`] });
+      } else this.cards.key(key);
     },
   };
 

@@ -12,6 +12,7 @@ import { BAR, MAP_VIEW, paintFrame, SCREEN } from './frame';
 import { bayer, fbm, hash, noise, shade } from './noise';
 import { CUE_PING, FRAME, rolled } from './juice';
 import { rotateAbout } from './rotate';
+import { battleFigureScale } from './scale';
 import { drawPops, type Pop } from './pops';
 import { ground, paintedAnimation, piece, subduedPiece } from './mapArt';
 import type { PieceName } from './mapPieces';
@@ -66,7 +67,8 @@ export function leaderAt(b: BattleState, x: number, y: number): Fighter | null {
   return b.fighters.find((f) => {
     if (f.count <= 0 || !isLeader(f)) return false;
     const [cx, cy] = spotOf(b, f);
-    return Math.abs(x - cx) <= LEADER_BOX.half && y >= cy - LEADER_BOX.above && y <= cy + LEADER_BOX.below;
+    const scale = battleFigureScale('battle', f.troop);
+    return Math.abs(x - cx) <= LEADER_BOX.half * scale && y >= cy - LEADER_BOX.above * scale && y <= cy + LEADER_BOX.below * scale;
   }) ?? null;
 }
 
@@ -423,7 +425,7 @@ export class BattleScreen {
 
   constructor(battle: BattleState) {
     const { frame, overlay } = paintFrame([]);
-    frame.fill(BAR.x - 5, BAR.y - 5, BAR.width + 10, BAR.height + 10, BLUE[0]);
+    frame.fill(BAR.x - 5, BAR.y - 5, BAR.width + 10, BAR.height + 10, INK);
     this.frame = frame;
     this.overlay = overlay;
     this.field = paintField(battle.obstacles, (battle.seed >>> 8) & 1023, battle.ground === 'fen');
