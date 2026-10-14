@@ -99,3 +99,11 @@ while Close and navigation remain below them. Costs, unavailable needs and dange
 treatment without changing the rules' words or the order of number-key choices.
 The journal keeps two pages on desktop and turns between them on a phone. Settings use the same panel
 on desktop and from the phone rail, with native volume sliders, visible percentages and gentle effects.
+Narrow court choices become portrait rows, and their measured first offer gets enough reading room
+to show its name and full effect before it is chosen.
+
+The battle keeps the acting company and its mana in a readable deck below the field, with the current
+and next turns above it. A forecast appears beside its target without replacing the acting company's
+identity. On landscape phones the rails are the only command surface. Spells can still be inspected
+when none is affordable, and Cancel puts an aimed spell away. `node scripts/battle-ui.mjs` checks these
+tasks on desktop and both landscape-phone sizes without playing a campaign.

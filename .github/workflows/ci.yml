@@ -145,6 +145,10 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Check the character screen's focused desktop and touch tasks
         run: npm run test:hero-ui 2>&1 | tee hero-ui.txt
+      - name: Check shared cards and settings on desktop and landscape phones
+        run: npm run test:cards-ui
+      - name: Check battle commands and forecasts on desktop and landscape phones
+        run: node scripts/battle-ui.mjs 2>&1 | tee battle-ui.txt
       - name: Play the first commission through the real UI
         run: npm run e2e 2>&1 | tee e2e.txt
       - name: Play the first commission by touch, on a phone
@@ -172,6 +176,10 @@ jobs:
             echo '```'
             grep -E "^(ok|FAIL)" phone.txt | tail -80 || true
             echo '```'
+            echo "### Battle interface"
+            echo '```'
+            grep -E "^(ok|FAIL)" battle-ui.txt | tail -30 || true
+            echo '```'
             echo "### Playtests"
             for f in playtest-*.txt; do [ -e "$f" ] || continue; echo "- **${f#playtest-}**: $(tail -1 "$f")"; done
           } >> "$GITHUB_STEP_SUMMARY"
@@ -185,6 +193,7 @@ jobs:
             e2e.txt
             phone.txt
             hero-ui.txt
+            battle-ui.txt
           retention-days: 14
 
   visual:
