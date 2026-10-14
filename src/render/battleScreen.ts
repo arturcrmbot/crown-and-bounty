@@ -1,26 +1,23 @@
-import { abilitiesOf, TROOPS, type TroopId } from '../content/troops';
-import { SPELLS, STATUSES, type SpellId } from '../content/spells';
-import { canCast, hasTurn, isLeader, lookOf, luckOf, moraleOf, speedOf, statsOf, unitOf, type BattleState, type Fighter } from '../rules/battle/battle';
-import { capital, roman } from '../rules/state';
+import { TROOPS, type TroopId } from '../content/troops';
+import { isLeader, lookOf, type BattleState, type Fighter } from '../rules/battle/battle';
 import { HEXES, hexIndex, ROWS } from '../rules/battle/hex';
 import { FIELD_W, HALF_H, HEX_W, hexAt, hexCentre, insideHex, ROW_H, sideAt, X0, Y0 } from './battleHexes';
 import { Bitmap, blit, SHADOW } from './bitmap';
 import { critters, critterSprite, type Critter } from './critters';
 import { animLength, bodyHeight, corpseSprite, hurtSprite, standard, STAND, toppledFigure, troopFigure, whiteSprite, type Pose, type Standard } from './battleSprites';
-import { upcomingFighters } from './battleOrder';
 import { ART } from './units';
 import { drawBanner } from './banner';
 import { TIP } from './speech';
-import { BAR, MAP_VIEW, paintBarBackground, paintFrame, SCREEN, type Rect } from './frame';
+import { BAR, MAP_VIEW, paintFrame, SCREEN } from './frame';
 import { bayer, fbm, hash, noise, shade } from './noise';
 import { CUE_PING, FRAME, rolled } from './juice';
 import { rotateAbout } from './rotate';
 import { drawPops, type Pop } from './pops';
 import { ground, paintedAnimation, piece, subduedPiece } from './mapArt';
 import type { PieceName } from './mapPieces';
-import { BLUE, CYCLE_BOG, DANGER_LUT, EARTH, GOLD, GRAIN_LUT, GRASS, GROUND_LIGHT_LUT, INK, LEAF, LIGHT_LUT, NEUTRAL, PARCHMENT, PLUM, RED, REED, SHADOW_LUT, STONE, WOOD } from './palette';
+import { BLUE, CYCLE_BOG, DANGER_LUT, EARTH, GOLD, GRAIN_LUT, GRASS, GROUND_LIGHT_LUT, INK, LEAF, LIGHT_LUT, NEUTRAL, PLUM, RED, REED, SHADOW_LUT, STONE, WOOD } from './palette';
 import { boulder, mirror, oak, pine, shadowOval, willow } from './sprites';
-import { bigLettering, drawText, lettered, textMask } from './text';
+import { drawText, textMask } from './text';
 
 /** The King's blue with his gold star, over Aldric's side. */
 const ROYAL: Standard = { cloth: [BLUE[1], BLUE[2], BLUE[3], BLUE[4]], emblem: 'star' };
@@ -79,11 +76,9 @@ export const FLOAT_RISE = 30;
 /** How long a floater lasts, and how long it takes to dither away at the end. */
 export const FLOAT_LIFE = 1;
 const FLOAT_FADE = 0.25;
-/** The message ribbon across the top of the field. */
-const LOG_TOP = MAP_VIEW.y + 6;
-export const LOG_BOTTOM = LOG_TOP + 18;
-/** The bottom of the strip of next turns under the ribbon: words over the field stay under it (#211). */
-export const stripBottom = () => LOG_BOTTOM + 2 + (bigLettering() ? 24 : 20);
+/** Words and forecasts keep clear of the battle's turn strip. */
+export const LOG_BOTTOM = MAP_VIEW.y + 24;
+export const stripBottom = () => LOG_BOTTOM + 20;
 /**
  * A missile, a spell or a burst. A spark's `size` scales it, and its `heading` (radians) is the way
  * the blow went, for the chips it flings; dust's `size` is how wide it spreads along the ground. An
@@ -102,24 +97,6 @@ export type Shot = {
 };
 /** How much of a fireball's flight is the fall from the sky; it bursts after that. */
 export const FIRE_FALL = 0.35;
-
-const turnIcons = new Map<string, Bitmap>();
-
-function turnIcon(troop: Fighter['troop'], side: Fighter['side']) {
-  const team = side === 'player' ? 'blue' : 'red';
-  const key = `${troop}|${team}`;
-  let icon = turnIcons.get(key);
-  if (!icon) {
-    const figure = troopFigure(troop, team, side === 'player' ? 1 : -1, STAND, 'map').sprite;
-    const scale = Math.min(16 / figure.width, 16 / figure.height, 1);
-    icon = new Bitmap(Math.max(1, Math.round(figure.width * scale)), Math.max(1, Math.round(figure.height * scale)));
-    for (let y = 0; y < icon.height; y++) {
-      for (let x = 0; x < icon.width; x++) icon.set(x, y, figure.get(Math.floor(x / scale), Math.floor(y / scale)));
-    }
-    turnIcons.set(key, icon);
-  }
-  return icon;
-}
 
 /** What the battle controller wants drawn this frame, on top of the rules state. */
 export type BattleView = {
@@ -198,13 +175,9 @@ export type BattleView = {
   finishOffer: boolean;
   /** Played by touch: there's no Esc to cancel a spell, but the rail's Cancel. */
   touch?: boolean;
+  /** CSS pixels per canvas pixel, for readable count badges on a small field. */
+  scale?: number;
 };
-
-export const BUTTONS: { id: 'spells' | 'wait' | 'defend' | 'auto' | 'retreat'; label: string; rect: Rect }[] = ['spells', 'wait', 'defend', 'auto', 'retreat'].map((id, i) => ({
-  id: id as 'spells',
-  label: { spells: 'Spells', wait: 'Wait', defend: 'Defend', auto: 'Auto', retreat: 'Retreat' }[id]!,
-  rect: { x: BAR.x + BAR.width - 5 * 66 - 6 + i * 66, y: BAR.y + 3, width: 62, height: BAR.height - 6 },
-}));
 
 /**
  * The field on Aldmoor's painted ground (#178), as HoMM2's grass battlefield is: the map's own grass
@@ -449,7 +422,8 @@ export class BattleScreen {
   private readonly standard: Bitmap[] | null;
 
   constructor(battle: BattleState) {
-    const { frame, overlay } = paintFrame();
+    const { frame, overlay } = paintFrame([]);
+    frame.fill(BAR.x - 5, BAR.y - 5, BAR.width + 10, BAR.height + 10, BLUE[0]);
     this.frame = frame;
     this.overlay = overlay;
     this.field = paintField(battle.obstacles, (battle.seed >>> 8) & 1023, battle.ground === 'fen');
@@ -577,7 +551,8 @@ export class BattleScreen {
       const count = roll ? rolled(roll.from, roll.to, roll.age) : (view.counts.get(f.id) ?? f.count);
       if (count <= 0 || isLeader(f)) continue;
       const [cx, cy] = place(f);
-      this.badge(Math.round(cx + (f.side === 'player' ? 14 : -14)), Math.round(cy + 8), count, f.side === 'player', !!roll && roll.age < FRAME);
+      const size = view.touch ? Math.max(14, Math.ceil(11 / (view.scale ?? 1))) : 12;
+      this.badge(Math.round(cx + (f.side === 'player' ? 14 : -14)), Math.round(cy + 8), count, f.side === 'player', size, !!roll && roll.age < FRAME);
     }
     // Lightning lights the whole field for a moment, figures and all (#190): two shades up, never white.
     if (view.flash > 0) {
@@ -602,9 +577,6 @@ export class BattleScreen {
     const dx = Math.round(view.kick[0] + (jitter ? (hash(Math.floor(view.time * 60), 1, 3) - 0.5) * 2 * jitter : 0));
     const dy = Math.round(view.kick[1] + (jitter ? (hash(Math.floor(view.time * 60), 2, 3) - 0.5) * 2 * jitter : 0));
     if (dx || dy) this.jolt(dx, dy);
-    this.logLine(view.preview ?? view.log);
-    this.turnStrip(b);
-    this.bar(b, view);
     blit(screen, this.overlay, 0, 0);
     return screen;
   }
@@ -813,77 +785,19 @@ export class BattleScreen {
   }
 
   /** A stack's count on its hex; `flash` draws it white, the frame its count changes. */
-  private badge(cx: number, y: number, count: number, player: boolean, flash = false) {
+  private badge(cx: number, y: number, count: number, player: boolean, size: number, flash = false) {
     const text = String(count);
-    // By touch the count is bigger, and its badge with it, from the same top.
-    const size = lettered(11);
-    const w = bigLettering() ? textMask(text, size).width + 6 : text.length * 7 + 7;
-    const h = size + 2;
+    const w = textMask(text, size).width + 8;
+    const h = size + 4;
     const x = cx - Math.floor(w / 2);
     const fill = flash ? NEUTRAL[7] : player ? BLUE[2] : RED[2];
     for (let j = 0; j < h; j++) {
       for (let i = 0; i < w; i++) {
         const edge = i === 0 || j === 0 || i === w - 1 || j === h - 1;
-        this.screen.set(x + i, y + j, edge ? (flash ? GOLD[6] : GOLD[3]) : fill);
+        this.screen.set(x + i, y + j, edge ? (flash ? GOLD[6] : INK) : fill);
       }
     }
-    drawText(this.screen, text, x + 3, y - 2, flash ? (player ? BLUE[2] : RED[2]) : NEUTRAL[7], flash ? NEUTRAL[7] : INK, size);
-  }
-
-  /** The next turns, as small versions of the figures on the field. */
-  private turnStrip(b: BattleState) {
-    const next = b.result ? [] : upcomingFighters(b);
-    if (!next.length) return;
-    const { screen } = this;
-    const big = bigLettering();
-    const size = lettered(9);
-    const labelWidth = big ? 46 : 34;
-    const cellWidth = big ? 48 : 38;
-    const width = labelWidth + next.length * cellWidth + 6;
-    const y0 = LOG_BOTTOM + 2;
-    const height = stripBottom() - y0;
-    const words = big ? 4 : 5;
-    const x0 = MAP_VIEW.x + Math.floor((MAP_VIEW.width - width) / 2);
-    screen.fill(x0, y0, width, height, WOOD[1]);
-    for (let x = x0; x < x0 + width; x++) {
-      screen.set(x, y0, GOLD[4]);
-      screen.set(x, y0 + height - 1, INK);
-    }
-    for (let y = y0; y < y0 + height; y++) {
-      screen.set(x0, y, GOLD[4]);
-      screen.set(x0 + width - 1, y, INK);
-    }
-    drawText(screen, 'NEXT', x0 + 4, y0 + words, GOLD[6], INK, size);
-
-    next.forEach((fighter, i) => {
-      const x = x0 + labelWidth + i * cellWidth;
-      const border = i === 0 ? GOLD[6] : fighter.side === 'player' ? BLUE[4] : RED[4];
-      for (let dx = 0; dx < cellWidth - 2; dx++) {
-        screen.set(x + dx, y0 + 2, border);
-        screen.set(x + dx, y0 + height - 3, INK);
-      }
-      for (let dy = 2; dy < height - 2; dy++) {
-        screen.set(x, y0 + dy, border);
-        screen.set(x + cellWidth - 3, y0 + dy, INK);
-      }
-      const icon = turnIcon(fighter.troop, fighter.side);
-      const iconX = x + 2;
-      const iconY = y0 + Math.floor((height - icon.height) / 2);
-      const leader = isLeader(fighter);
-      if (leader) this.smallRing(iconX + Math.floor(icon.width / 2), y0 + height / 2, fighter.side === 'player');
-      blit(screen, icon, iconX, iconY);
-      if (!leader) {
-        drawText(screen, String(fighter.count), x + 20, y0 + words, PARCHMENT[6], INK, size);
-      }
-    });
-  }
-
-  private smallRing(cx: number, cy: number, ours: boolean) {
-    for (const [rx, ry, color] of [[9, 8, INK], [8, 7, ours ? GOLD[4] : RED[3]], [7, 6, ours ? GOLD[6] : RED[5]]] as const) {
-      for (let a = 0; a < Math.PI * 2; a += 0.08) {
-        this.screen.set(Math.round(cx + Math.cos(a) * rx), Math.round(cy + Math.sin(a) * ry), color);
-      }
-    }
+    drawText(this.screen, text, x + 4, y - 1, flash ? (player ? BLUE[2] : RED[2]) : NEUTRAL[7], flash ? NEUTRAL[7] : INK, size);
   }
 
   private shot(s: Shot) {
@@ -1182,87 +1096,6 @@ export class BattleScreen {
     }
   }
 
-  private bar(b: BattleState, view: BattleView) {
-    const { screen } = this;
-    paintBarBackground(screen);
-    const big = bigLettering();
-    const text = BAR.y + 5 - Math.floor((lettered(13) - 13) / 2);
-    const shownId = view.inspect ?? view.active;
-    const countOf = (x: { id: number; count: number }) => view.counts.get(x.id) ?? x.count;
-    const f = shownId === null ? null : b.fighters.find((x) => x.id === shownId && countOf(x) > 0);
-    if (view.targeting) drawText(screen, `Cast ${SPELLS[view.targeting as SpellId]?.name ?? view.targeting}: ${view.touch ? 'tap a target, or Cancel' : 'pick a target (Esc to cancel)'}`, BAR.x + 12, text, GOLD[6], INK, lettered(13));
-    else if (f) {
-      const t = unitOf(f);
-      const share = (x: number) => `${x > 0 ? '+' : '\u2212'}${Math.round(Math.abs(x) * 100)}%`;
-      const [luck, morale] = [luckOf(b, f), moraleOf(b, f)];
-      const spirits = [Math.round(luck * 100) ? `Luck ${share(luck)}` : '', Math.round(morale * 100) ? `Morale ${share(morale)}` : ''];
-      const named = [...spirits, ...abilitiesOf(f.troop).map((a) => a.name), ...f.status.map((s) => STATUSES[s].name), f.defending ? 'Defending' : ''].filter(Boolean);
-      const tagged = (list: string[]) => list.map((tag) => ` ${tag}`).join('');
-      const tags = tagged(named);
-      const { attack, defence } = statsOf(b, f);
-      const count = countOf(f);
-      // A named foe is one of a kind: "Baron Grimsby", not "1 Baron Grimsby". An enemy hero says his level (#239).
-      const who = t.name === t.one ? `${capital(t.name)}${f.level ? `, level ${roman(f.level)}` : ''}` : `${count} ${count === 1 ? t.one : t.name}`;
-      // Nothing reaches a leader, so he has no defence or health to speak of, only his own blows, if he strikes at all.
-      const blows = isLeader(f) && !f.shots && !abilitiesOf(f.troop).some((a) => a.rides) ? '' : ` Att ${attack}${isLeader(f) ? '' : ` Def ${defence}`} Dmg ${t.damage[0]}-${t.damage[1]}`;
-      const numbers = `${who}  ·${blows}${isLeader(f) ? '' : ` HP ${view.health.get(f.id) ?? f.hp}/${t.hp}`}${hasTurn(f) ? ` Spd ${speedOf(f)}` : ''}${f.shots ? ` Shots ${f.shots}` : ''}`;
-      let info = `${numbers}${tags}`;
-      // A long line gets smaller type rather than running into the mana.
-      const room = BUTTONS[0].rect.x - lettered(70) - 8 - (BAR.x + 12);
-      const top = lettered(13);
-      let size = top;
-      while (size > lettered(big ? 12 : 10) && textMask(info, size).width > room) size--;
-      // By touch the type stays big enough to read, so the line's last tags go instead: the stack's card has them all.
-      if (big) {
-        const kept = [...named];
-        while (kept.length && textMask(info, size).width > room) {
-          kept.pop();
-          info = `${numbers}${tagged(kept)}`;
-        }
-      }
-      drawText(screen, info, BAR.x + 12, text + Math.floor((top - size) / 2), f.side === 'player' ? PARCHMENT[6] : RED[6], INK, size);
-    }
-    // A villain's mana while you look at him; your own otherwise.
-    const mana = f?.book ? `Mana ${f.book.mana}` : `Mana ${b.hero.mana}`;
-    drawText(screen, mana, BUTTONS[0].rect.x - lettered(70), text, f?.book ? RED[6] : BLUE[6], INK, lettered(13));
-    for (const button of BUTTONS) {
-      const { x, y, width, height } = button.rect;
-      const disabled = button.id === 'spells' && !Object.values(SPELLS).some((s) => canCast(b, s.id));
-      const label = button.id === 'auto' && view.finishOffer ? 'Finish' : button.id === 'defend' && view.bard ? 'Sing' : button.label;
-      for (let j = 0; j < height; j++) {
-        for (let i = 0; i < width; i++) {
-          const edge = i === 0 || j === 0 ? GOLD[4] : i === width - 1 || j === height - 1 ? INK : -1;
-          screen.set(x + i, y + j, edge >= 0 ? edge : shade(STONE, 0.42 - j * 0.01 + (noise((x + i) / 4, (y + j) / 4, 41) - 0.5) * 0.2, x + i, y + j));
-        }
-      }
-      const size = lettered(12);
-      const left = big ? Math.round(width / 2 - textMask(label, size).width / 2) : Math.round(width / 2 - label.length * 3.4);
-      drawText(screen, label, x + left, y + 1 - Math.floor((size - 12) / 2), disabled ? STONE[4] : PARCHMENT[6], INK, size);
-    }
-  }
-
-  /**
-   * The last thing that happened, on a dark strip across the top of the field: smaller type if it's
-   * too long for it, and if it's still too long, its last sentences go, so it's never cut off.
-   */
-  private logLine(text: string) {
-    if (!text) return;
-    const y0 = LOG_TOP;
-    const big = bigLettering();
-    // By touch the type is bigger, so the strip is wider and a little deeper.
-    const [left, right] = big ? [MAP_VIEW.x + 60, MAP_VIEW.x + MAP_VIEW.width - 60] : [MAP_VIEW.x + 150, MAP_VIEW.x + MAP_VIEW.width - 150];
-    for (let y = y0 - (big ? 3 : 0); y < LOG_BOTTOM + (big ? 2 : 0); y++) for (let x = left; x < right; x++) this.screen.set(x, y, SHADOW_LUT[SHADOW_LUT[this.screen.get(x, y)]]);
-    const top = lettered(13);
-    let size = top;
-    while (size > lettered(big ? 12 : 11) && textMask(text, size).width > right - left) size--;
-    while (textMask(text, size).width > right - left) {
-      const end = text.slice(0, -1).search(/[.!?][^.!?]*$/);
-      if (end <= 0) break;
-      text = text.slice(0, end + 1);
-    }
-    const across = big ? textMask(text, size).width / 2 : (text.length * 3.3 * size) / 13;
-    drawText(this.screen, text, Math.round(MAP_VIEW.x + MAP_VIEW.width / 2 - across), y0 - 1 + Math.floor((13 - size) / 2), PARCHMENT[6], INK, size);
-  }
 }
 
 export { HEXES, hexAt, hexCentre, sideAt };

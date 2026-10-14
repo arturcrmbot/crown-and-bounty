@@ -215,6 +215,7 @@ export class Game {
         battle,
         {
           onChange: (b) => this.adventure.updateBattle(b),
+          onCommand: (button) => this.pressButton(button),
           // Back to the map: a win dissolves into it, a defeat or a retreat sinks through the dark.
           onDone: (b) =>
             this.change(b.result === 'won' ? 'dissolve' : 'fade', null, () => {
