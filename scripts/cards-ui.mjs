@@ -203,6 +203,11 @@ try {
     await show('heroes', true);
     const constrained = await inspect(page, profile, 'constrained-heroes');
     check(constrained.bounds.x >= profile.width / 2 - .5 && constrained.bounds.x + constrained.bounds.width <= profile.width - 16 + .5, `${profile.name} supplied scene sides constrain wide hero choices`);
+    if (profile.touch) check(await card.evaluate(element => {
+      const first = element.querySelector('.kc-card-options > :first-child').getBoundingClientRect();
+      const cue = element.querySelector('.kc-card-more').getBoundingClientRect();
+      return first.bottom <= cue.top;
+    }), `${profile.name} a narrow scene exposes the complete first hero choice`);
     await show('poor-shop');
     const disabled = await card.locator('.choices button:disabled').count();
     check(disabled > 0 && await card.locator('.choices button:disabled small').count() === disabled, `${profile.name} unaffordable purchases keep their explanations`);

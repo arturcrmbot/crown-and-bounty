@@ -444,7 +444,9 @@ export class CardView {
     this.layOut();
     // A tall card fits the map area, its words scrolling above its buttons. Only if the buttons
     // (and a few lines of words) can't fit there does it take the whole window, over the bar.
-    const words = touch() && this.card.classList.contains('journal') ? 160 : SOME_WORDS;
+    const firstOffer = this.body.querySelector<HTMLElement>('.kc-card-options > :first-child');
+    let words = SOME_WORDS;
+    if (touch()) words = firstOffer ? firstOffer.offsetTop + firstOffer.offsetHeight + this.more.offsetHeight : this.card.classList.contains('journal') ? 160 : SOME_WORDS;
     const needs = CHROME + this.heading.offsetHeight + this.tabs.offsetHeight + this.footer.offsetHeight + Math.min(this.body.scrollHeight, words);
     if (needs * s > bottom - top - 16) [top, bottom] = [0, window.innerHeight];
     const tallest = `${Math.max(0, Math.floor((bottom - top - 16) / s))}px`;

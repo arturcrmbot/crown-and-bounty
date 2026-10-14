@@ -64,6 +64,7 @@
   overflow: hidden;
 }
 .kc-card-body {
+  position: relative;
   flex: 0 1 auto;
   min-width: 0;
   min-height: 0;
@@ -255,6 +256,11 @@
 @container (max-width: 260px) {
   .kc-card .choices.tiles { grid-template-columns: minmax(0, 1fr); }
   .kc-card .poster-summary { grid-template-columns: minmax(0, 1fr); }
+}
+@container (max-width: 420px) {
+  .kc-card .choices.tiles { grid-template-columns: minmax(0, 1fr); }
+  .kc-card .choices.tiles button.with-portrait { flex-direction: row; gap: 10px; }
+  .kc-card .choices.tiles button.with-portrait img { width: 40px; height: 40px; }
 }
 .kc-touch .kc-card { font-size: 16px; }
 .kc-touch .kc-card button, .kc-touch .kc-card a.link { min-height: 44px; }

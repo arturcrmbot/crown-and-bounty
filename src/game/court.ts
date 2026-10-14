@@ -1,7 +1,9 @@
-import { CourtScreen } from '../render/courtScreen';
+import { FRIENDS, type FriendId } from '../content/friends';
+import { COURT_CARD, CourtScreen } from '../render/courtScreen';
 import { MAP_VIEW } from '../render/frame';
 import { apply, closingCard, courtCard, levelUpCard, roman, speechCard, type Action, type Card, type GameEvent, type GameState } from '../rules/game';
 import { CardView } from '../ui/card';
+import { isGentle } from '../ui/gentle';
 import { CLOSING_CARD, count } from './counter';
 import type { Display } from './display';
 import { NO_INPUT, type Screen } from './screen';
@@ -44,6 +46,9 @@ export class CourtController implements Screen {
 
   /** The closing card, after the last commission open to play, is the visitor counter's last milestone. */
   private show(card: Card) {
+    const visitors = [...(this.state.campaign.court?.boons ?? []), ...(this.state.hero.friends ?? [])].filter((id): id is FriendId => id in FRIENDS);
+    this.screen.setGuests([...new Set(visitors)]);
+    this.screen.welcome(this.time);
     this.cards.show(card);
     if (card.title === closingCard(this.state).title) count(CLOSING_CARD);
   }
@@ -79,7 +84,7 @@ export class CourtController implements Screen {
   }
 
   render(_tick?: number): Uint8Array {
-    return this.screen.draw(this.time).data;
+    return this.screen.draw(isGentle() ? 0 : this.time).data;
   }
 
   get bitmap() {
@@ -97,8 +102,8 @@ export class CourtController implements Screen {
   /** Cards hang to the right of the throne, so the King stays in view, and keep inside the picture's frame. */
   placeCard() {
     const bottom = this.display.toPage(0, MAP_VIEW.y + MAP_VIEW.height).y;
-    const sides = { left: this.display.toPage(MAP_VIEW.x, 0).x, right: this.display.toPage(MAP_VIEW.x + MAP_VIEW.width, 0).x };
-    this.cards.place(this.display.toPage(MAP_VIEW.x + MAP_VIEW.width * 0.8, MAP_VIEW.y + MAP_VIEW.height - 8), this.display.toPage(0, MAP_VIEW.y).y, bottom, undefined, sides);
+    const sides = { left: this.display.toPage(COURT_CARD.left, 0).x, right: this.display.toPage(COURT_CARD.right, 0).x };
+    this.cards.place(this.display.toPage((COURT_CARD.left + COURT_CARD.right) / 2, MAP_VIEW.y + MAP_VIEW.height - 8), this.display.toPage(0, MAP_VIEW.y).y, bottom, undefined, sides);
   }
 
   dispose() {

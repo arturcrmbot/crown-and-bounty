@@ -10,11 +10,11 @@ import { FEAST_PIECES, type FeastPieceName, type PieceName } from './mapPieces';
  */
 
 /** Where the fire stands (the foot of its stones), and where its light comes from. */
-export const FEAST_FIRE = { x: 600, y: 362 } as const;
-export const FEAST_FLAME = { x: 600, y: 318 } as const;
+export const FEAST_FIRE = { x: 652, y: 354 } as const;
+export const FEAST_FLAME = { x: 652, y: 298 } as const;
 /** Where the sky meets the trees, and the moon. */
-export const FEAST_HORIZON = 214;
-export const FEAST_MOON = { x: 810, y: 112 } as const;
+export const FEAST_HORIZON = 176;
+export const FEAST_MOON = { x: 816, y: 74 } as const;
 /** How many of his stacks sit at the feast, the biggest first. */
 export const FEAST_STACKS = 3;
 
@@ -23,23 +23,24 @@ export const FEAST_STACKS = 3;
  * with no feast figure of its own, which comes in its battle figure. `flip` turns it to face the other way (every
  * piece faces right as drawn), and `dances` jigs.
  */
-export type FeastSpot =
+export type FeastSpot = (
   | { feast: FeastPieceName; x: number; y: number; flip?: boolean; dances?: boolean }
   | { map: PieceName; x: number; y: number }
-  | { battle: TroopId; x: number; y: number; flip?: boolean };
+  | { battle: TroopId; x: number; y: number; flip?: boolean }
+) & { scale?: number };
 
 const HERO_SPOT: Record<BackgroundId, { x: number; y: number }> = {
-  knight: { x: 528, y: 334 },
-  wizard: { x: 524, y: 330 },
-  ranger: { x: 520, y: 336 },
-  courtier: { x: 524, y: 340 },
+  knight: { x: 574, y: 326 },
+  wizard: { x: 570, y: 322 },
+  ranger: { x: 568, y: 328 },
+  courtier: { x: 570, y: 330 },
 };
 const HERO_PIECE: Record<BackgroundId, FeastPieceName> = { knight: 'heroKnight', wizard: 'heroWizard', ranger: 'heroRanger', courtier: 'heroCourtier' };
 /** Where his stacks sit, biggest first: in front of the fire on the left, across it on the right, and dancing in front. */
 const SLOTS = [
-  { x: 500, y: 396, flip: false },
-  { x: 694, y: 388, flip: true },
-  { x: 750, y: 432, flip: false },
+  { x: 558, y: 418, flip: false },
+  { x: 754, y: 394, flip: true },
+  { x: 848, y: 426, flip: true },
 ] as const;
 
 /** Whether a troop has a figure of its own at the feast. */
@@ -55,32 +56,36 @@ export function feastStacks(army: Army): TroopId[] {
 }
 
 /** Everything at the feast for a hero and his army, back to front. */
-export function feastLayout(background: BackgroundId, army: Army): FeastSpot[] {
+export function feastLayout(background: BackgroundId, army: Army, touching = false): FeastSpot[] {
+  const shift = touching ? 64 : 0;
   const spots: FeastSpot[] = [
-    { feast: 'tent', x: 160, y: 270, flip: true },
-    { feast: 'tent', x: 270, y: 292 },
-    { feast: 'tent', x: 372, y: 284, flip: true },
-    { feast: 'banner', x: 446, y: 312 },
-    { feast: 'barrel', x: 712, y: 326 },
-    { feast: 'fire', x: FEAST_FIRE.x, y: FEAST_FIRE.y },
-    { feast: 'chest', x: 570, y: 428 },
-    { feast: 'food', x: 650, y: 438 },
-    { map: 'logs', x: 470, y: 410 },
-    { map: 'logPile', x: 790, y: 404 },
-    { map: 'decor24', x: 900, y: 440 },
-    { map: 'decor18', x: 420, y: 448 },
-    { map: 'decor5', x: 360, y: 400 },
-    { map: 'decor15', x: 860, y: 372 },
-    { map: 'decor3', x: 330, y: 360 },
+    { feast: 'tent', x: 120, y: 230, flip: true },
+    { feast: 'tent', x: 278, y: 242 },
+    { feast: 'tent', x: 462, y: 244, flip: true, scale: 1.2 },
+    { feast: 'banner', x: 472 + shift, y: 290, scale: 1.2 },
+    { feast: 'barrel', x: 774 + shift / 2, y: 298, scale: 1.2 },
+    { feast: 'fire', x: FEAST_FIRE.x + shift, y: FEAST_FIRE.y, scale: 1.3 },
+    { feast: 'chest', x: 656 + shift, y: 434, scale: 1.2 },
+    { feast: 'food', x: 742 + shift / 2, y: 444, scale: 1.2 },
+    { map: 'logs', x: 512 + shift, y: 432 },
+    { map: 'logPile', x: 898, y: 352 },
+    { map: 'decor24', x: 908, y: 442 },
+    { map: 'decor18', x: 424, y: 448 },
+    { map: 'decor5', x: 364, y: 394 },
+    { map: 'decor15', x: 864, y: 374 },
+    { map: 'decor3', x: 338, y: 346 },
   ];
   const stacks = feastStacks(army);
   // The Knight's white horse, and the knights' bay, graze at the edge of the light.
-  if (background === 'knight') spots.push({ feast: 'horseWhite', x: 806, y: 306, flip: true });
-  if (army.some((s) => s.troop === 'knights' && s.count > 0)) spots.push({ feast: 'horseBrown', x: 872, y: 290 });
-  spots.push({ feast: HERO_PIECE[background], ...HERO_SPOT[background] });
+  if (background === 'knight') spots.push({ feast: 'horseWhite', x: 780, y: 232, flip: true });
+  if (army.some((s) => s.troop === 'knights' && s.count > 0)) spots.push({ feast: 'horseBrown', x: 874, y: 252 });
+  const hero = HERO_SPOT[background];
+  spots.push({ feast: HERO_PIECE[background], x: hero.x + shift, y: hero.y, scale: 1.55 });
   stacks.forEach((troop, i) => {
-    const { x, y, flip } = SLOTS[i];
-    spots.push(feasts(troop) ? { feast: troop, x, y, flip, dances: troop === 'peasants' } : { battle: troop, x, y, flip });
+    const slot = SLOTS[i];
+    const x = slot.x + (i === 0 ? shift : i === 1 ? shift / 2 : 0);
+    const { y, flip } = slot;
+    spots.push(feasts(troop) ? { feast: troop, x, y, flip, scale: 1.3, dances: troop === 'peasants' } : { battle: troop, x, y, flip, scale: 1.3 });
   });
   return spots.sort((a, b) => a.y - b.y);
 }

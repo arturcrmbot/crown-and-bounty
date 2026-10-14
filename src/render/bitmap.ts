@@ -35,6 +35,17 @@ export class Bitmap {
   }
 }
 
+/** Whole-pixel scene scaling, retaining palette indices, transparency and ground shadows. */
+export function scaleBitmap(source: Bitmap, scale: number): Bitmap {
+  const out = new Bitmap(Math.round(source.width * scale), Math.round(source.height * scale));
+  for (let y = 0; y < out.height; y++) {
+    for (let x = 0; x < out.width; x++) {
+      out.set(x, y, source.get(Math.min(source.width - 1, Math.floor(x / scale)), Math.min(source.height - 1, Math.floor(y / scale))));
+    }
+  }
+  return out;
+}
+
 /** Draws `src` onto `dst` with its top-left at (x, y), optionally clipped to a rectangle of `dst`. */
 export function blit(
   dst: Bitmap,
