@@ -67,7 +67,7 @@ trees along the top cut by the frame, clumps in the corners, and obstacles at ba
   at run time and never give it a width wider than it was painted. A figure bigger in battle than in the UI is
   `BATTLE_SIZE` in mapart.py. Figures are cut with `figure=True`, which fills steel keyed out with the grey ground,
   drops the shadow's specks and keeps one-pixel shafts whole. The cards' faces are `PORTRAITS`, painted busts cut
-  into the 64 px square (`portraits-a`); the faces not yet painted are drawn in `render/portraits.ts`.
+  into the 64 px square (`portraits-a`, `portraits-b`), cute and chunky like the figures, never realistic.
 - **It writes** `public/assets/map/*.png`, `public/assets/troops/*-{battle,map}.png` and
   `src/render/mapPieces.ts` (`PIECE_FEET`, `GROVE_TREES`). `src/render/mapArt.ts` loads them.
 - **Optional painted poses** (#278) are `FIGURE_ANIMATIONS` in `scripts/mapart.py`. Each animation names its

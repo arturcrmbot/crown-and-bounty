@@ -16,8 +16,7 @@ describe('the faces on the cards (#311)', () => {
     }
   });
 
-  it('still draws the rest in code', () => {
-    expect(paintedPortrait('nan')).toBeNull();
-    expect(portraitOf('nan').width).toBe(PORTRAIT_SIZE);
+  it('paints every face on the cards', () => {
+    for (const id of ['king', 'knight', 'wizard', 'ranger', 'courtier', 'grimsby', 'mirrow', 'bramble', 'anselm', 'sergeant', 'nan', 'dwarf', 'goose', 'rook', 'foreman', 'warren'] as const) expect(paintedPortrait(id)).not.toBeNull();
   });
 });

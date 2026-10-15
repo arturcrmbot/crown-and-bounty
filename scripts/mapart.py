@@ -100,13 +100,16 @@ _more = {
     'shore': ['bedPurple', 'bedPurple2', 'bedPink', 'bedPink2', 'bedRed', 'bedRed2', 'bedRed3', 'reeds', 'reeds2', 'reeds3', 'reeds4', 'lily', 'wetRock', 'wetRocks', 'wetRocks2', 'bedYellow', 'bedYellow2', 'driftLog'],
     'hills': ['hillSmall', 'hill', 'outcrop', 'hillWide', 'hillBig', 'outcrop2', 'outcrop3', 'rock', 'mound', 'mound2', 'peak'],
     'treasure': ['chestShut', 'chestGold', 'chestOpen', 'goldHeap', 'goldSmall', 'wood', 'ore', 'gems', None, 'crystals', 'lamp', 'cauldron', 'fire', 'bones'],
-    'battle': ['bOak', 'bOak2', 'bOak3', 'bOak4', 'bFir', 'bFir2', 'bRock', 'bRock2', 'bRock3', 'bRock4', 'bRock5', 'bBramble', 'bLog', 'bStump', 'bPond'],
+    # The battle's trees are painted bigger on their own sheet (#311), so they're never enlarged.
+    'battle-trees': ['bOak', 'bOak2', 'bOak3', 'bFir', 'bFir2', 'bOak4'],
+    'battle': [None, None, None, None, None, None, 'bRock', 'bRock2', 'bRock3', 'bRock4', 'bRock5', 'bBramble', 'bLog', 'bStump', 'bPond'],
 }
 _boxes = {
     'farm': [(7, 12, 63, 50), (79, 8, 169, 56), (183, 16, 247, 48), (5, 60, 63, 109), (85, 64, 144, 108), (181, 56, 245, 110), (12, 117, 59, 177), (73, 114, 125, 176), (169, 109, 246, 180), (5, 185, 64, 245), (72, 182, 156, 248), (163, 193, 249, 244)],
     'shore': [(6, 1, 108, 44), (123, 9, 242, 44), (6, 44, 109, 87), (123, 52, 242, 87), (7, 94, 72, 126), (77, 94, 142, 127), (146, 94, 200, 127), (204, 90, 248, 128), (4, 137, 44, 189), (52, 133, 97, 189), (101, 133, 141, 189), (153, 140, 195, 168), (206, 134, 246, 168), (148, 174, 197, 209), (203, 173, 251, 209), (7, 198, 67, 251), (73, 198, 134, 251), (148, 212, 247, 251)],
     'hills': [(13, 21, 56, 45), (75, 12, 168, 54), (190, 9, 250, 56), (9, 73, 105, 121), (122, 67, 250, 126), (12, 134, 87, 191), (99, 134, 180, 193), (195, 145, 245, 182), (9, 206, 87, 246), (102, 208, 174, 246), (189, 200, 250, 248)],
     'treasure': [(72, 14, 119, 56), (135, 9, 185, 57), (197, 11, 243, 57), (7, 75, 63, 119), (77, 81, 118, 113), (132, 74, 185, 116), (194, 75, 247, 115), (8, 137, 62, 178), (48, 168, 60, 178), (72, 133, 124, 178), (131, 137, 187, 175), (199, 129, 244, 183), (73, 190, 120, 244), (130, 197, 190, 241)],
+    'battle-trees': [(2, 3, 83, 112), (90, 4, 171, 112), (173, 4, 253, 112), (11, 122, 76, 249), (99, 131, 160, 249), (173, 143, 253, 250)],
     'battle': [(3, 1, 61, 60), (67, 1, 125, 59), (132, 2, 187, 59), (198, 2, 249, 59), (13, 64, 50, 126), (78, 65, 115, 126), (133, 72, 183, 120), (198, 74, 246, 119), (6, 136, 54, 184), (70, 136, 118, 184), (138, 137, 182, 183), (198, 139, 247, 183), (10, 200, 117, 247), (131, 202, 186, 247), (194, 209, 254, 240)],
 }
 # Widths on the map (a tile is 32 px), and in battle for the battle's (a hex is 64 px across).
@@ -116,9 +119,8 @@ _widths = {
     'lily': 12, 'wetRock': 18, 'wetRocks': 22, 'wetRocks2': 22, 'bedYellow': 26, 'bedYellow2': 26, 'driftLog': 40,
     'hillSmall': 36, 'hill': 70, 'outcrop': 44, 'hillWide': 76, 'hillBig': 100, 'outcrop2': 52, 'outcrop3': 54, 'rock': 24, 'mound': 50, 'mound2': 46, 'peak': 50,
     'chestShut': 24, 'chestGold': 26, 'chestOpen': 24, 'goldHeap': 28, 'goldSmall': 20, 'wood': 28, 'ore': 26, 'gems': 26, 'crystals': 24, 'lamp': 20, 'cauldron': 24, 'fire': 24, 'bones': 30,
-    # The battle's rocks, bramble, log and pond at the size they were painted (#311): enlarged, their pixels doubled unevenly.
-    # Its trees are still enlarged, to stand taller than a man, until a sheet paints them bigger.
-    'bOak': 74, 'bOak2': 74, 'bOak3': 70, 'bOak4': 66, 'bFir': 42, 'bFir2': 42, 'bRock': 50, 'bRock2': 48, 'bRock3': 48, 'bRock4': 48, 'bRock5': 44, 'bBramble': 49, 'bLog': 107, 'bStump': 52, 'bPond': 60,
+    # The battle's pieces never wider than they were painted (#311): enlarged, their pixels doubled unevenly.
+    'bOak': 64, 'bOak2': 64, 'bOak3': 62, 'bOak4': 62, 'bFir': 42, 'bFir2': 38, 'bRock': 50, 'bRock2': 48, 'bRock3': 48, 'bRock4': 48, 'bRock5': 44, 'bBramble': 49, 'bLog': 107, 'bStump': 52, 'bPond': 60,
 }
 for _sheet, _names in _more.items():
     for _name, _box in zip(_names, _boxes[_sheet]):
@@ -913,12 +915,14 @@ for _name in ('witch', 'bramble'):
 # 60 px), and with no shadow of their own: the feast lays its shadows away from its fire. Each troop's figure is named
 # for the troop; a troop with none stands at the feast in its battle figure.
 # The faces on the cards (#311), painted as the figures they stand for: each one's box on its sheet and its scale,
-# cut into the portrait's 64 px square, standing on its bottom edge. The rest are still drawn in `render/portraits.ts`.
+# cut into the portrait's 64 px square, standing on its bottom edge. The King is the court's cute King.
 PORTRAITS = {
-    'king': ('portraits-a', (5, 12, 81, 84), 0.8), 'knight': ('portraits-a', (91, 4, 161, 84), 0.8), 'wizard': ('portraits-a', (177, 4, 247, 84), 0.8),
+    'king': ('portraits-b', (4, 6, 84, 85), 0.8), 'knight': ('portraits-a', (91, 4, 161, 84), 0.8), 'wizard': ('portraits-a', (177, 4, 247, 84), 0.8),
     'ranger': ('portraits-a', (7, 96, 76, 167), 0.8), 'courtier': ('portraits-a', (90, 89, 166, 167), 0.8), 'grimsby': ('portraits-a', (172, 89, 251, 167), 0.8),
     'sergeant': ('portraits-a', (9, 177, 75, 250), 0.8), 'warren': ('portraits-a', (88, 179, 157, 250), 0.8), 'foreman': ('portraits-a', (172, 182, 247, 250), 0.8),
-    'goose': ('units-d', (87, 145, 167, 253), 0.6),
+    'mirrow': ('portraits-b', (174, 3, 250, 86), 0.8), 'bramble': ('portraits-b', (9, 88, 83, 168), 0.8), 'rook': ('portraits-b', (88, 93, 168, 168), 0.8),
+    'anselm': ('portraits-b', (172, 95, 252, 168), 0.8), 'nan': ('portraits-b', (6, 178, 81, 251), 0.8), 'dwarf': ('portraits-b', (88, 174, 168, 251), 0.8),
+    'goose': ('portraits-b', (172, 173, 240, 251), 0.8),
 }
 PORTRAIT_SIZE = 64
 PORTRAITS_OUT = os.path.join(ROOT, 'public/assets/portraits')

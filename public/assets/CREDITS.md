@@ -24,9 +24,11 @@ and our own unit sheets as the reference: the cutpurses, the outlaws' captains a
 (`units-f.png`). The request for each sheet is kept in `art/map/jobs/`.
 
 The faces on the cards (`public/assets/portraits/`, #311) were made the same way on 15 October 2026, with HoMM2's
-battle screens and our own unit sheets as the reference, so that each face agrees with its figure: the King, Aldric
-as each background, Baron Grimsby, Sergeant Pike, Captain Warren and the Foreman (`portraits-a.png`, $0.18). The
-royal goose's face is her figure from `units-d.png`. The request for the rest (`portraits-b.json`) is kept for later.
+battle screens and our own unit sheets as the reference, so that each face agrees with its figure: Aldric as each
+background, Baron Grimsby, Sergeant Pike, Captain Warren and the Foreman (`portraits-a.png`), and the King (with the
+court's own King, `art/map/references/king-cute.png`, as the reference), Mirrow, Bramble, Rook, Brother Anselm, Old
+Nan, the dwarf and the royal goose (`portraits-b.png`). The battle's oaks and firs were painted bigger the same day,
+with the battle's own sheet and the map's trees as the reference (`battle-trees.png`). Each sheet cost $0.18.
 
 The Hedge Wizard's six walking poses (#278) were made with Retro Diffusion on 12 October 2026, with his
 original figure from `units-d.png` and the same HoMM2 screens as references. `wizard-walk-2.png` supplies the
