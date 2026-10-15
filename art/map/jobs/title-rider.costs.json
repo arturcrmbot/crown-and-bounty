@@ -1,0 +1,15 @@
+{
+  "issue": 311,
+  "date": "2026-10-15",
+  "currency": "USD",
+  "total": 0.18,
+  "attempts": [
+    {
+      "sheet": "title-rider.png",
+      "job": "title-rider.json",
+      "balance_cost": 0.18,
+      "used": true,
+      "inspection": "Cute and chunky as asked; three poses of Aldric riding out and his squire, archer and peasant. Used on the title."
+    }
+  ]
+}

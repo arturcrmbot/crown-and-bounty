@@ -1,0 +1,21 @@
+[
+  {
+    "out": "art/map/sheets/court-cute.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 3114,
+    "prompt": "a sheet of six: a jolly, portly old king with a huge white beard, rosy cheeks, a big gold crown and a red robe with a white ermine collar, holding a gold sceptre, sitting on a gilded throne with blue velvet, facing the viewer; a knight in steel armour with a red plume and a red cape, kneeling on one knee with his head bowed, facing left; a wizard with a long white beard, a tall blue pointed hat and a blue robe, kneeling on one knee with his head bowed, facing left; a ranger in a green hooded cloak and brown leathers with a bow, kneeling on one knee with his head bowed, facing left; a courtier in a red coat and a broad red hat with a big yellow plume, kneeling on one knee with his head bowed, facing left; a royal guard in a blue and gold tabard over steel armour and a round steel helmet, standing to attention with a tall halberd, facing right, each a full-body figure, drawn in the cute, chunky, charming style of the 1995 Heroes of Might and Magic and 1990 King's Bounty title screens: friendly storybook characters with slightly big heads, simple bold shapes, dark outlines, bright warm saturated colours, painted shading reduced to 256 colours, a little character in every face, never realistic, matching the reference figures and the cute painted feast party, two rows of three figures, each separate and not touching, on a plain flat grey background",
+    "reference_images": [
+      "~/.config/retro-diffusion/refs/battle_hero.png",
+      "~/.config/retro-diffusion/refs/battle_troops.png",
+      "~/.config/retro-diffusion/refs/battle_wide.png",
+      "~/.config/retro-diffusion/refs/r1.png",
+      "art/map/sheets/feast-2.png",
+      "art/map/sheets/feast-3.png",
+      "art/map/sheets/units-a.png",
+      "art/map/references/court-code.png"
+    ]
+  }
+]

@@ -1,6 +1,6 @@
 import { Bitmap, outline, SHADOW } from './bitmap';
 import { hash, noise, rng } from './noise';
-import { BLUE, DIRT, EARTH, FOG, GOLD, INK, LEAF, NEUTRAL, PARCHMENT, PINE, PLUM, RED, REED, ROCK, SKIN, STONE, WATER, WOOD } from './palette';
+import { BLUE, DIRT, EARTH, FOG, GOLD, INK, LEAF, NEUTRAL, PARCHMENT, PINE, PLUM, RED, REED, ROCK, STONE, WATER, WOOD } from './palette';
 
 /** Light comes from the top left and a little towards the viewer, as on the painted HoMM2 maps. */
 const L = (() => {
@@ -213,7 +213,7 @@ function masonry(x: number, y: number, light: number, seed: number): number {
   return flat(STONE4, clamp01(light + (brick - 0.5) * 0.22), x, y);
 }
 
-function tower(sprite: Bitmap, cx: number, top: number, bottom: number, r: number, roofHeight: number, flag: number) {
+function tower(sprite: Bitmap, cx: number, top: number, bottom: number, r: number, roofHeight: number, flag: number | null) {
   for (let y = top; y < bottom; y++) {
     for (let x = Math.floor(cx - r); x < cx + r; x++) {
       const u = (x + 0.5 - cx) / r;
@@ -233,7 +233,7 @@ function tower(sprite: Bitmap, cx: number, top: number, bottom: number, r: numbe
       sprite.set(x, y, flat(RED4, clamp01(0.78 - u * 0.5 + stripe - (k > 0.92 ? 0.3 : 0)), x, y));
     }
   }
-  pennant(sprite, Math.round(cx), roofTop, flag);
+  if (flag !== null) pennant(sprite, Math.round(cx), roofTop, flag);
 }
 
 /** A small flag on a pole. `phase` makes it wave. */
@@ -278,8 +278,14 @@ export function kingsPennant(phase: number): Bitmap {
   return out;
 }
 
-/** The King's castle: walls with crenellations, four round towers with red roofs, a keep and a gate. */
-export function castle(phase = 0): Bitmap {
+/** Where the castle's roofs end in a point, for flags of its own: the keep's, then the back towers' and the front's. */
+export const CASTLE_TIPS: readonly (readonly [number, number])[] = [[64, 4], [26, 18], [102, 18], [18, 42], [110, 42]];
+
+/**
+ * The King's castle: walls with crenellations, four round towers with red roofs, a keep and a gate. Without `flags`,
+ * its roofs end bare, for whoever flies bigger ones from them (the title, #311).
+ */
+export function castle(phase = 0, flags = true): Bitmap {
   const w = 128;
   const h = 112;
   const sprite = new Bitmap(w, h);
@@ -309,9 +315,9 @@ export function castle(phase = 0): Bitmap {
     }
   }
   for (const wx of [56, 63, 70]) for (let y = 30; y < 38; y++) sprite.set(wx, y, y === 30 ? STONE[6] : INK);
-  pennant(sprite, 64, 4, phase);
-  tower(sprite, 26, 34, wallTop, 9, 16, phase + 1);
-  tower(sprite, w - 26, 34, wallTop, 9, 16, phase + 2);
+  if (flags) pennant(sprite, 64, 4, phase);
+  tower(sprite, 26, 34, wallTop, 9, 16, flags ? phase + 1 : null);
+  tower(sprite, w - 26, 34, wallTop, 9, 16, flags ? phase + 2 : null);
   // Front wall with the gate.
   for (let y = wallTop; y < wallBottom; y++) {
     for (let x = 14; x < w - 14; x++) sprite.set(x, y, masonry(x, y, 0.62 - (y - wallTop) * 0.006, 1));
@@ -327,113 +333,10 @@ export function castle(phase = 0): Bitmap {
       sprite.set(x, y, bars ? STONE[2] : Math.abs(dx) > 8.5 ? STONE[6] : INK);
     }
   }
-  tower(sprite, 18, 62, wallBottom + 2, 11, 20, phase + 3);
-  tower(sprite, w - 18, 62, wallBottom + 2, 11, 20, phase + 4);
+  tower(sprite, 18, 62, wallBottom + 2, 11, 20, flags ? phase + 3 : null);
+  tower(sprite, w - 18, 62, wallBottom + 2, 11, 20, flags ? phase + 4 : null);
   const shaped = outline(sprite, INK);
   castShadow(shaped, 8, 4, 40);
-  return shaped;
-}
-
-/**
- * The hero: a knight in a red cape on a white horse, carrying the player's blue banner with a gold
- * star. `phase` animates the banner, a gentle bob and the tail; `selected` adds a gold ring.
- */
-export function hero(phase = 0, selected = true, walking = false, S = 1.4): Bitmap {
-  const sprite = new Bitmap(Math.ceil(40 * S), Math.ceil(46 * S));
-  const bob = walking ? (Math.sin(phase * 4) > 0 ? 1 : 0) : Math.sin(phase * 2) > 0.3 ? 1 : 0;
-  const inEllipse = (x: number, y: number, cx: number, cy: number, rx: number, ry: number, a = 0) => {
-    const dx = (x + 0.5) / S - cx;
-    const dy = (y + 0.5 - bob) / S - cy;
-    const u = (dx * Math.cos(a) + dy * Math.sin(a)) / rx;
-    const v = (-dx * Math.sin(a) + dy * Math.cos(a)) / ry;
-    return u * u + v * v <= 1;
-  };
-  const each = (x0: number, y0: number, x1: number, y1: number, paint: (x: number, y: number) => void) => {
-    for (let y = Math.floor(y0 * S); y < y1 * S + 2; y++) for (let x = Math.floor(x0 * S); x < x1 * S; x++) paint(x, y);
-  };
-  const lit = (x: number, y: number, cx: number, cy: number, r: number) => {
-    const v = sphere(x / S, (y - bob) / S, cx, cy, r);
-    return v === OUTSIDE ? 0.4 : 0.35 + v * 0.65;
-  };
-  // Tail, swishing.
-  const swish = Math.sin(phase) * 0.25;
-  each(3, 21, 10, 34, (x, y) => {
-    if (inEllipse(x, y, 7.6 - ((y / S - 22) * (0.18 + swish * 0.3)), 27.5, 1.7, 6, 0.25 + swish)) sprite.set(x, y, COAT4[0]);
-  });
-  // Legs trot in diagonal pairs when walking: each swings and lifts in turn.
-  const leg = (x0: number, far: boolean, shift: number) => {
-    const swing = walking ? Math.sin(phase * Math.PI * 2 + shift) : 0;
-    const lift = swing > 0.35 ? 1.2 : 0;
-    each(x0 - 3, 30, x0 + 5, 40, (x, y) => {
-      const u = x / S - swing * 1.5 * ((y / S - 30) / 10);
-      if (u < x0 || u >= x0 + 2 || y / S > 40 - lift) return;
-      sprite.set(x, y, y / S > 38 - lift ? INK : flat(COAT4, far ? 0.3 : 0.75 - ((u - x0) / 2) * 0.4, x, y));
-    });
-  };
-  leg(11, true, 0);
-  leg(24, true, Math.PI);
-  each(6, 18, 30, 34, (x, y) => {
-    if (inEllipse(x, y, 18, 27, 10.5, 5.2)) sprite.set(x, y, flat(COAT4, lit(x, y, 16, 24, 12), x, y));
-  });
-  leg(14, false, Math.PI);
-  leg(27, false, 0);
-  each(21, 11, 37, 28, (x, y) => {
-    const neck = inEllipse(x, y, 27.2, 20.5, 3.4, 6.5, -0.55);
-    const head = inEllipse(x, y, 31.5, 15.2, 4.1, 2.4, 0.5);
-    if (neck || head) sprite.set(x, y, flat(COAT4, head ? 0.85 - (x / S - 28) * 0.06 : 0.72 - (x / S - 24) * 0.05, x, y));
-  });
-  each(24, 12, 28, 22, (x, y) => {
-    if (inEllipse(x, y, 25.4, 16.8, 0.9, 5, -0.3)) sprite.set(x, y, NEUTRAL[2]);
-  });
-  const dot = (x: number, y: number, color: number) => sprite.set(Math.round(x * S), Math.round(y * S) + bob, color);
-  dot(30, 11, NEUTRAL[5]);
-  dot(30, 10, NEUTRAL[4]);
-  dot(33, 14, INK);
-  // Blue caparison with a gold hem.
-  each(10, 24, 25, 32, (x, y) => {
-    if (!inEllipse(x, y, 18, 27, 10.5, 5.2) || (y - bob) / S < 24) return;
-    const hem = (y - bob) / S > 30.6;
-    sprite.set(x, y, hem ? GOLD[4] : flat(BLUE4, 0.62 - ((y - bob) / S - 24) * 0.05, x, y));
-  });
-  // Rider: cape, armoured body, helmet with a red plume.
-  each(8, 11, 17, 27, (x, y) => {
-    if (inEllipse(x, y, 13.5 - ((y - bob) / S - 11) * 0.12, 19, 3.2 + ((y - bob) / S - 11) * 0.12, 8)) {
-      sprite.set(x, y, flat(RED4, 0.62 - ((y - bob) / S - 11) * 0.03, x, y));
-    }
-  });
-  each(13, 12, 22, 24, (x, y) => {
-    if (inEllipse(x, y, 17.4, 18, 3.2, 6)) sprite.set(x, y, flat(STONE4, lit(x, y, 16.4, 16, 5), x, y));
-  });
-  each(13, 5, 22, 12, (x, y) => {
-    if (inEllipse(x, y, 17.4, 8.6, 2.8, 3.2)) sprite.set(x, y, flat(STONE4, lit(x, y, 16.6, 7.6, 3.4) + 0.1, x, y));
-  });
-  for (let x = 17.6; x < 20.4; x += 0.5) dot(x, 9, INK);
-  for (const [x, y] of [[16, 4], [15, 3], [16, 3], [14, 2], [15, 2], [13, 2], [14, 3]]) dot(x, y, RED[4]);
-  if (S > 2) each(12, 1, 17, 6, (x, y) => inEllipse(x, y, 14.6, 3.2, 2.4, 1.3, -0.4) && sprite.set(x, y, flat(RED4, 0.7 - ((y - bob) / S - 2) * 0.1, x, y)));
-  dot(19.6, 10.2, SKIN[3]);
-  // Lance and the blue banner with a gold star.
-  const pole = Math.round(21.5 * S);
-  for (let y = 0; y < 30 * S; y++) for (let w = 0; w < Math.max(1, Math.round(S / 1.6)); w++) sprite.set(pole - w, y + bob, y < 1 ? GOLD[5] : w ? WOOD[1] : WOOD[2]);
-  for (let i = 1; i < 13 * S; i++) {
-    const wave = Math.round(Math.sin(i / S * 0.65 + phase) * 1.3);
-    const depth = 8 * S - (i / S) * 0.35 * S;
-    for (let j = 0; j < depth; j++) {
-      const u = i / S - 6;
-      const v = j / S - 4;
-      const star = Math.hypot(u, v) < 1.3 + 0.9 * Math.pow(Math.abs(Math.cos(Math.atan2(v, u) * 2.5)), 6);
-      sprite.set(pole + i, Math.round(2 * S) + j + wave + bob, star ? GOLD[5] : flat(BLUE4, j === 0 ? 0.95 : 0.55 - j * 0.02, i, j));
-    }
-  }
-  const shaped = outline(sprite, INK);
-  const footY = Math.round(40.5 * S);
-  if (selected) {
-    for (let a = 0; a < Math.PI * 2; a += 0.01) {
-      const x = Math.round(19 * S + Math.cos(a) * 15 * S);
-      const y = Math.round(footY + Math.sin(a) * 4 * S);
-      if (shaped.get(x, y) === 0) shaped.set(x, y, GOLD[5]);
-    }
-  }
-  shadowOval(shaped, 21 * S, footY, 12 * S, 2.6 * S);
   return shaped;
 }
 

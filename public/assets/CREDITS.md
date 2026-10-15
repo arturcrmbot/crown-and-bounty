@@ -34,6 +34,12 @@ The Baron's wicker hamper and the lost letters on the map (#311) were made with 
 with HoMM2's map screen and our own `treasure.png`, `farm.png`, `wild.png` and `places.png` as the reference. They
 came from one sheet, `finds.png`, drawn once for $0.18, and its request is `art/map/jobs/map-finds.json`.
 
+The title's riders and the King's court (`public/assets/title/`, `public/assets/court/`, #311) were made the same way on
+15 October 2026, cute and chunky in the spirit of the first Heroes of Might and Magic's and King's Bounty's title
+screens, with HoMM2's screens, our feast and unit sheets and our own title and court as the reference: Aldric riding out
+with his squire, an archer and a peasant (`title-rider.png`), and King Osric on his throne, Aldric kneeling as each
+background and the royal guard (`court-cute.png`).
+
 The Hedge Wizard's six walking poses (#278) were made with Retro Diffusion on 12 October 2026, with his
 original figure from `units-d.png` and the same HoMM2 screens as references. `wizard-walk-2.png` supplies the
 poses in `public/assets/troops/heroWizard-move-*-map.png`. The first attempt, `wizard-walk.png`, was inspected

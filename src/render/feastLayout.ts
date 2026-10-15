@@ -38,10 +38,12 @@ const HERO_SPOT: Record<BackgroundId, { x: number; y: number }> = {
 const HERO_PIECE: Record<BackgroundId, FeastPieceName> = { knight: 'heroKnight', wizard: 'heroWizard', ranger: 'heroRanger', courtier: 'heroCourtier' };
 /** Where his stacks sit, biggest first: in front of the fire on the left, across it on the right, and dancing in front. */
 const SLOTS = [
-  { x: 558, y: 418, flip: false },
-  { x: 754, y: 394, flip: true },
-  { x: 848, y: 426, flip: true },
+  { x: 558, y: 418, flip: false, quiet: true },
+  { x: 754, y: 394, flip: true, quiet: true },
+  { x: 848, y: 426, flip: true, quiet: false },
 ] as const;
+/** The quieter poses of the troops who otherwise raise a cup (#311), so no two neighbours toast alike. */
+const QUIET: Partial<Record<TroopId, FeastPieceName>> = { knights: 'knightsRest', archers: 'archersRest' };
 
 /** Whether a troop has a figure of its own at the feast. */
 export const feasts = (troop: TroopId): troop is TroopId & FeastPieceName => (FEAST_PIECES as readonly string[]).includes(troop);
@@ -77,7 +79,7 @@ export function feastLayout(background: BackgroundId, army: Army, touching = fal
   ];
   const stacks = feastStacks(army);
   // The Knight's white horse, and the knights' bay, graze at the edge of the light.
-  if (background === 'knight') spots.push({ feast: 'horseWhite', x: 780, y: 232, flip: true });
+  if (background === 'knight') spots.push({ feast: 'horseWhite', x: 726, y: 222, flip: true });
   if (army.some((s) => s.troop === 'knights' && s.count > 0)) spots.push({ feast: 'horseBrown', x: 874, y: 252 });
   const hero = HERO_SPOT[background];
   spots.push({ feast: HERO_PIECE[background], x: hero.x + shift, y: hero.y, scale: 1.55 });
@@ -85,7 +87,10 @@ export function feastLayout(background: BackgroundId, army: Army, touching = fal
     const slot = SLOTS[i];
     const x = slot.x + (i === 0 ? shift : i === 1 ? shift / 2 : 0);
     const { y, flip } = slot;
-    spots.push(feasts(troop) ? { feast: troop, x, y, flip, scale: 1.3, dances: troop === 'peasants' } : { battle: troop, x, y, flip, scale: 1.3 });
+    // Beside Aldric's toast and across the fire, those who would raise a cup sit quietly instead; in front they cheer.
+    const quiet = slot.quiet ? QUIET[troop] : undefined;
+    if (quiet) spots.push({ feast: quiet, x, y, flip, scale: 1.3 });
+    else spots.push(feasts(troop) ? { feast: troop, x, y, flip, scale: 1.3, dances: troop === 'peasants' } : { battle: troop, x, y, flip, scale: 1.3 });
   });
   return spots.sort((a, b) => a.y - b.y);
 }

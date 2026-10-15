@@ -2,7 +2,12 @@ import { Bitmap, blit, scaleBitmap, SHADOW } from './bitmap';
 import { BAR, MAP_VIEW, paintFrame, SCREEN, type Rect } from './frame';
 import { fbm, hash, noise, shade } from './noise';
 import { BLUE, DIRT, GOLD, GRASS, INK, LEAF, PARCHMENT, PINE, PLUM, RED, REED, STONE, WOOD } from './palette';
-import { castle, hero, oak, pine } from './sprites';
+import { titlePiece } from './mapArt';
+import type { TitlePieceName } from './mapPieces';
+import { castle, CASTLE_TIPS, kingsPennant, mirror, oak, pine, PENNANT_FOOT } from './sprites';
+
+/** How much of the King's pennant flies over each roof of the title's castle: its knob, its cloth and a short pole. */
+const FLAG_POLE = 19;
 import { drawOutlined, drawText, textMask } from './text';
 
 const W = MAP_VIEW.width;
@@ -14,6 +19,13 @@ const SUN = { x: 750, y: 190, r: 24 };
 const NAME_TOP = 22;
 const NAME_LEFT = 48;
 const CASTLE_X = 686;
+/** Aldric's company on the road, back to front: who, how far beside the road's middle and below its last row, and facing left. */
+const COMPANY: readonly [TitlePieceName, number, number, boolean][] = [
+  ['squire', -58, -22, false],
+  ['peasant', 56, -14, false],
+  ['archer', -96, -6, false],
+  ['rider', 0, 0, false],
+];
 
 /** Sunset, from the deep blue overhead down to the gold at the horizon. */
 const SKY = [BLUE[0], BLUE[1], BLUE[2], PLUM[2], PLUM[3], PLUM[4], RED[5], RED[6], GOLD[5], GOLD[6]];
@@ -205,8 +217,22 @@ export class TitleScreen {
   private readonly glow = new Float32Array(W * HORIZON);
   private readonly layers = [clouds(34, 124, 7, 0.4, 1.2), clouds(118, 236, 19, 0.44, 2.6)];
   private water: number[] = [];
-  private readonly castles = Array.from({ length: 8 }, (_, i) => scaleBitmap(castle(i / 8), 1.8));
-  private readonly heroes = Array.from({ length: 8 }, (_, i) => hero((i / 8) * Math.PI, false, false, 3));
+  // At twice its size, so every pixel is the same size, and without the shadow it casts on the map, which stood over the sky here (#311).
+  // At twice its size, so every pixel is the same size, without the shadow it casts on the map, which stood over the
+  // sky here, and with the King's big swallow-tailed flags flying from every roof (#311).
+  private readonly castles = Array.from({ length: 8 }, (_, i) => {
+    const keep = castle(i / 8, false);
+    keep.data.set(keep.data.map((c) => (c === SHADOW ? 0 : c)));
+    const big = scaleBitmap(keep, 2);
+    const flags = new Bitmap(big.width, big.height + 40);
+    blit(flags, big, 0, 40);
+    CASTLE_TIPS.forEach(([x, y], k) => {
+      // The pennant at the castle's own scale, on a pole cut short so it stands just above the roof.
+      const flag = scaleBitmap(crop(kingsPennant((i / 8) * Math.PI * 2 + k), { x: 0, y: 0, width: 18, height: FLAG_POLE }), 2);
+      blit(flags, flag, x * 2 - PENNANT_FOOT[0] * 2, 40 + y * 2 - flag.height + 2);
+    });
+    return flags;
+  });
   private readonly logo: Bitmap;
   private readonly menuLogo: Bitmap;
 
@@ -320,7 +346,7 @@ export class TitleScreen {
       const road = roadAt(y);
       for (let x = Math.floor(road.x - road.half - 3); x <= road.x + road.half + 3; x++) {
         if (x < 0 || x >= W) continue;
-        const near = [0, -3, 3, -6, 6].some((d) => wet[(y + d) * W + x] === 2);
+        const near = [0, -2, 2].some((d) => wet[(y + d) * W + x] === 2);
         if (!near) continue;
         const edge = Math.abs(x - road.x) > road.half;
         set(x, y, edge ? shade(STONE, 0.72 - (x - road.x) / 60, x, y) : shade(DIRT, 0.6 + (hash(x, y, 4) - 0.5) * 0.1, x, y));
@@ -458,9 +484,17 @@ export class TitleScreen {
     const phase = Math.floor(time * 6) % 8;
     const keep = this.castles[phase];
     blit(s, keep, MAP_VIEW.x + CASTLE_X - Math.round(keep.width / 2), MAP_VIEW.y + ROAD_TOP - keep.height + 16);
-    const rider = this.heroes[Math.floor(time * 3) % 8];
-    const at = roadAt(H - 20);
-    blit(s, rider, MAP_VIEW.x + Math.round(at.x) - Math.round(rider.width / 2), MAP_VIEW.y + H - 20 - rider.height + 8);
+    // Aldric rides out with his little company (#311): painted, as cheerful as HoMM1's riders. Now and then he lifts his banner.
+    const waving = time % 7 > 6;
+    for (const [name, dx, dy, flip] of COMPANY) {
+      const figure = titlePiece(name === 'rider' && waving ? 'riderWave' : name);
+      if (!figure) continue;
+      const at = roadAt(H - 22 + dy);
+      const x = Math.round(at.x) + dx;
+      const y = H - 22 + dy;
+      for (let i = 6; i < figure.width - 6; i++) for (const j of [0, 1]) s.under(MAP_VIEW.x + x - Math.round(figure.width / 2) + i + 3, MAP_VIEW.y + y + j, SHADOW);
+      blit(s, flip ? mirror(figure) : figure, MAP_VIEW.x + x - Math.round(figure.width / 2), MAP_VIEW.y + y - figure.height + 2);
+    }
     blit(s, menu ? this.menuLogo : this.logo, MAP_VIEW.x + NAME_LEFT, MAP_VIEW.y + NAME_TOP);
     if (prompt) drawOutlined(s, words, MAP_VIEW.x + NAME_LEFT + this.logo.width / 2, MAP_VIEW.y + NAME_TOP + this.logo.height + 14, PARCHMENT[6], INK, 20);
     blit(s, this.overlay, 0, 0);

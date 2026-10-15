@@ -1,9 +1,12 @@
 import type { BackgroundId } from '../content/backgrounds';
 import { FRIENDS, type FriendId } from '../content/friends';
 import { Bitmap, blit, outline, scaleBitmap, SHADOW } from './bitmap';
+import { courtPiece } from './mapArt';
+import type { CourtPieceName } from './mapPieces';
+import { mirror } from './sprites';
 import { BAR, MAP_VIEW, paintFrame, SCREEN } from './frame';
-import { hash, noise, shade } from './noise';
-import { BLUE, EARTH, GOLD, INK, LEAF, LIGHT_LUT, NEUTRAL, PARCHMENT, PLUM, RED, ROCK, SAND, SHADOW_LUT, SKIN, STONE, WOOD } from './palette';
+import { bayer, hash, noise, shade } from './noise';
+import { BLUE, EARTH, GOLD, INK, LIGHT_LUT, NEUTRAL, PARCHMENT, PLUM, RED, SAND, SHADOW_LUT, SKIN, STONE, WOOD } from './palette';
 import { portrait } from './portraits';
 import { drawText } from './text';
 
@@ -26,9 +29,12 @@ class Room {
   set(x: number, y: number, c: number) {
     if (x >= 0 && y >= 0 && x < MAP_VIEW.width && y < MAP_VIEW.height) this.bitmap.set(MAP_VIEW.x + x, MAP_VIEW.y + y, c);
   }
-  /** Darkens (or lights) a pixel through a lookup table, on a dither pattern of `share` of the pixels. */
+  /**
+   * Darkens (or lights) a pixel through a lookup table where `share` is high: solid over most of it, with an ordered
+   * dither only across the edge, never the random speckle that read as dirt on the stone (#311).
+   */
   tint(x: number, y: number, lut: Uint8Array, share: number) {
-    if (hash(x, y, 91) < share) this.set(x, y, lut[this.get(x, y)]);
+    if (bayer(x, y) < (share - 0.25) * 2) this.set(x, y, lut[this.get(x, y)]);
   }
 }
 
@@ -52,7 +58,7 @@ function wall(room: Room) {
       const inside = dx < 168 && (y >= 162 || inEllipse(x, y, MID, 162, 168, 138));
       if (!arch) continue;
       if (!inside) room.set(x, y, shade(SAND, 0.5 - (x - MID) / 650 + (y % 27 < 2 ? -0.12 : 0), x, y));
-      else room.tint(x, y, SHADOW_LUT, 0.18);
+      else room.tint(x, y, SHADOW_LUT, 1);
     }
   }
   for (let y = WALL_FOOT - 12; y < WALL_FOOT; y++) for (let x = 0; x < MAP_VIEW.width; x++) room.set(x, y, shade(MASONRY, y === WALL_FOOT - 12 ? 0.56 : 0.2, x, y));
@@ -187,141 +193,19 @@ function dais(room: Room) {
   }
 }
 
-function throne(room: Room) {
-  const [top, bottom, half] = [44, 270, 64];
+/** The cloth of estate: a blue velvet hanging with a gold border and the crown, behind the King's throne. */
+function clothOfEstate(room: Room) {
+  const [top, bottom, half] = [92, 270, 56];
   for (let y = top; y < bottom; y++) {
-    for (let x = MID - half - 10; x <= MID + half + 10; x++) {
+    for (let x = MID - half; x <= MID + half; x++) {
       const dx = Math.abs(x - MID);
-      const back = dx <= half && (y >= top + half || inEllipse(x, y, MID, top + half, half, half));
-      const arm = y >= 216 && y < 238 && dx <= half + 10;
-      const leg = y >= 232 && dx > half - 6 && dx < half + 4;
-      if (!back && !arm && !leg) continue;
-      const velvet = dx < half - 13 && y < 228 && (y >= top + half || inEllipse(x, y, MID, top + half, half - 13, half - 13));
-      const gold = dx > half - 9 && dx < half - 4 || arm && (y < 220 || dx > half + 5);
+      if (y < top + half && !inEllipse(x, y, MID, top + half, half, half)) continue;
+      const inner = dx < half - 7 && (y >= top + half || inEllipse(x, y, MID, top + half, half - 7, half - 7));
       const lit = 0.7 - (x - MID) / 230;
-      room.set(x, y, velvet ? shade(BLUE, 0.27 + Math.sin((x - MID) / 12) * 0.05, x, y) : shade(gold ? GOLD : WOOD, lit - (y > 238 ? 0.15 : 0), x, y));
+      room.set(x, y, inner ? shade(BLUE, 0.27 + Math.sin((x - MID) / 12) * 0.05, x, y) : shade(GOLD, lit, x, y));
     }
   }
-  for (let y = 63; y < 87; y++) for (let x = MID - 22; x <= MID + 22; x++) if (crownAt((x - MID) / 1.6, (y - 75) / 1.6)) room.set(x, y, x < MID ? GOLD[5] : GOLD[3]);
-  for (const side of [-1, 1]) for (let y = 105; y < 212; y++) room.set(MID + side * 58, y, side < 0 ? GOLD[5] : GOLD[2]);
-}
-
-/** Good King Osric: portly, bearded, with the sceptre in one hand. */
-function king(blink: boolean, welcome = false): Bitmap {
-  const room = new Bitmap(96, 144);
-  const [cx, cy] = [48, 100];
-  // The robe hangs from his shoulders over his seated knees.
-  for (let y = cy - 40; y < cy + 36; y++) {
-    for (let x = cx - 40; x < cx + 40; x++) {
-      const dy = y - cy;
-      const half = dy < -14 ? 22 + (dy + 40) * 0.35 : dy < 5 ? 31 + (dy + 14) * 0.1 : 33 - (dy - 5) * 0.14;
-      if (Math.abs(x - cx) > half || dy > 32) continue;
-      const folds = Math.sin((x - cx) / 5 + Math.max(0, dy) * 0.06) * 0.09;
-      const lap = inEllipse(x, y, cx - 16, cy + 15, 15, 15) ? 0.1 : inEllipse(x, y, cx + 15, cy + 15, 14, 15) ? -0.08 : 0;
-      room.set(x, y, shade(RED, 0.55 + folds + lap - (x - cx) / 110 - dy / 240, x, y));
-    }
-  }
-  const ermine = (x: number, y: number) => room.set(x, y, x % 9 < 2 && y % 12 > 7 ? INK : shade([NEUTRAL[4], NEUTRAL[5], NEUTRAL[6], NEUTRAL[7]], 0.82 - (x - cx) / 100, x, y));
-  for (let y = cy - 38; y < cy - 20; y++) for (let x = cx - 34; x < cx + 34; x++) if (inEllipse(x, y, cx, cy - 29, 29, 8)) ermine(x, y);
-  for (let y = cy - 20; y < cy + 32; y++) {
-    const centre = cx + Math.max(0, y - cy) * 0.1;
-    for (let x = Math.floor(centre - 5); x <= centre + 5; x++) ermine(x, y);
-    room.set(Math.floor(centre - 6), y, GOLD[3]);
-    room.set(Math.floor(centre + 6), y, GOLD[2]);
-  }
-  for (const [ax, ay, bx, by] of [[cx - 22, cy - 22, cx - 28, cy + 2], [cx + 22, cy - 22, cx + (welcome ? 37 : 30), cy + (welcome ? -12 : 6)]]) {
-    for (let t = 0; t <= 1; t += 0.02) {
-      const [x0, y0] = [ax + (bx - ax) * t, ay + (by - ay) * t];
-      for (let y = -7; y <= 7; y++) for (let x = -7; x <= 7; x++) if (x * x + y * y <= 40) room.set(Math.round(x0 + x), Math.round(y0 + y), shade(RED, 0.5 - x / 24 - (x0 - cx) / 140 + (t > 0.6 ? -0.09 : 0), Math.round(x0 + x), Math.round(y0 + y)));
-    }
-  }
-  for (const [x0, y0] of [[cx - 29, cy - 2], [cx + (welcome ? 37 : 29), cy + (welcome ? -12 : 3)]]) {
-    for (let y = y0 - 3; y < y0 + 3; y++) for (let x = x0 - 6; x <= x0 + 6; x++) if (inEllipse(x, y, x0, y0, 6, 3)) ermine(x, y);
-  }
-  // Head: a round, kindly face over a great white beard, under the crown.
-  const [hx, hy] = [cx, cy - 52];
-  for (const ex of [hx - 12, hx + 12]) for (let y = hy - 3; y < hy + 5; y++) for (let x = ex - 2; x <= ex + 2; x++) if (inEllipse(x, y, ex, hy + 1, 2, 4)) room.set(x, y, ex < hx ? SKIN[3] : SKIN[2]);
-  for (let y = hy - 14; y < hy + 14; y++) for (let x = hx - 14; x < hx + 14; x++) if (inEllipse(x, y, hx, hy, 12.5, 13.5)) room.set(x, y, shade(SKIN, 0.72 - (x - hx) / 40, x, y));
-  for (let y = hy + 1; y < hy + 32; y++) {
-    for (let x = hx - 15; x < hx + 16; x++) {
-      if (!inEllipse(x, y, hx, hy + 13, 13.5 - Math.max(0, y - hy - 19) * 0.55, 17)) continue;
-      if (y < hy + 6 && Math.abs(x - hx) < 5) continue;
-      const locks = Math.sin((x - hx) * 0.7 + (y - hy) * 0.25) * 0.1;
-      room.set(x, y, shade([NEUTRAL[4], NEUTRAL[5], NEUTRAL[6], NEUTRAL[7]], 0.77 + locks - (x - hx) / 60 - (y - hy) / 180, x, y));
-    }
-  }
-  for (const dx of [-5, 4]) {
-    room.set(hx + dx - 1, hy - 2, blink ? SKIN[2] : NEUTRAL[7]);
-    room.set(hx + dx, hy - 2, blink ? SKIN[2] : BLUE[3]);
-    room.set(hx + dx, hy - 1, blink ? SKIN[3] : INK);
-    for (let x = hx + dx - 2; x <= hx + dx + 2; x++) room.set(x, hy - 5, NEUTRAL[7]);
-    room.set(hx + dx + (dx < 0 ? -3 : 3), hy + 3, RED[5]);
-    room.set(hx + dx + (dx < 0 ? -2 : 2), hy + 3, SKIN[3]);
-  }
-  room.set(hx, hy, SKIN[4]);
-  room.set(hx + 1, hy + 1, SKIN[2]);
-  room.set(hx, hy + 2, SKIN[4]);
-  room.set(hx + 1, hy + 3, SKIN[1]);
-  room.set(hx, hy + 6, RED[2]);
-  for (let x = hx - 6; x <= hx + 6; x++) room.set(x, hy + 5, x === hx - 6 || x === hx + 6 ? NEUTRAL[6] : NEUTRAL[7]);
-  for (let y = hy - 27; y < hy - 10; y++) {
-    for (let x = hx - 14; x <= hx + 14; x++) {
-      if (!crownAt((x - hx) * 0.85, (y - (hy - 19)) * 1.05)) continue;
-      room.set(x, y, shade(GOLD, 0.78 - (x - hx) / 45 - (y - hy + 20) / 70, x, y));
-    }
-  }
-  for (const dx of [-7, 0, 7]) {
-    room.set(hx + dx, hy - 15, dx === 0 ? RED[4] : BLUE[4]);
-    room.set(hx + dx, hy - 16, NEUTRAL[7]);
-  }
-  // Hands, and the sceptre with a gold orb.
-  for (const [x0, y0] of [[cx - 33, cy - 2], [cx + (welcome ? 34 : 26), cy + (welcome ? -15 : 4)]]) for (let y = y0; y < y0 + 8; y++) for (let x = x0; x < x0 + 9; x++) if (inEllipse(x, y, x0 + 4.5, y0 + 4, 4.5, 4)) room.set(x, y, shade(SKIN, 0.7, x, y));
-  for (const [x0, y0] of [[cx - 31, cy + 4], [cx + (welcome ? 36 : 28), cy + (welcome ? -10 : 9)]]) for (let x = x0; x < x0 + 6; x += 2) room.set(x, y0, SKIN[2]);
-  for (let y = cy - 62; y < cy + 12; y++) room.set(cx - 29, y, GOLD[5]), room.set(cx - 28, y, GOLD[3]);
-  for (let y = cy - 74; y < cy - 60; y++) for (let x = cx - 35; x < cx - 22; x++) if (inEllipse(x, y, cx - 28.5, cy - 67, 5.5, 5.5)) room.set(x, y, x < cx - 29 ? GOLD[6] : GOLD[4]);
-  room.set(cx - 29, cy - 69, NEUTRAL[7]);
-  for (let x = cx - 24; x <= cx + 24; x++) room.set(x, cy + 31 - Math.round(((x - cx) / 24) ** 2 * 2), GOLD[x < cx ? 4 : 2]);
-  for (const x0 of [cx - 18, cx + 7]) for (let y = cy + 32; y < cy + 37; y++) for (let x = x0; x < x0 + 12; x++) if (y > cy + 33 || x < x0 + 9) room.set(x, y, y === cy + 32 ? RED[2] : EARTH[1]);
-  return outline(room, INK);
-}
-
-/** A royal guard with a halberd, facing the carpet. */
-function guard(facing: 1 | -1): Bitmap {
-  const s = new Bitmap(44, 102);
-  const cx = 22;
-  for (const side of [-1, 1]) {
-    for (let y = 65; y < 95; y++) for (let x = cx + side * 5 - 3; x <= cx + side * 5 + 3; x++) s.set(x, y, shade(STONE, 0.56 - (x - cx - side * 5) / 12 - (y % 12 < 2 ? 0.2 : 0), x, y));
-    for (let y = 94; y < 100; y++) for (let x = cx + side * 5 - 4; x <= cx + side * 5 + 4; x++) s.set(x, y, y === 94 ? EARTH[3] : EARTH[0]);
-    for (let y = 39; y < 66; y++) {
-      const ax = cx + side * (11 - (y - 39) * 0.08);
-      for (let x = Math.floor(ax - 3); x <= ax + 3; x++) s.set(x, y, (x + y) % 3 === 0 ? STONE[5] : STONE[2]);
-    }
-  }
-  for (let y = 37; y < 77; y++) for (let x = cx - 11; x <= cx + 11; x++) {
-    const half = y < 53 ? 10 - (y - 37) * 0.18 : 7 + (y - 53) * 0.1;
-    if (Math.abs(x - cx) > half || (y > 71 && Math.abs(x - cx) < 1)) continue;
-    const trim = Math.abs(x - cx) > half - 1.3 || y === 75;
-    s.set(x, y, trim ? GOLD[3] : shade(BLUE, 0.58 - (x - cx) / 32 + Math.sin((x - cx) * 0.8) * 0.08, x, y));
-    if (crownAt((x - cx) * 2.5, (y - 51) * 2.5)) s.set(x, y, GOLD[5]);
-  }
-  s.fill(cx - 8, 64, 17, 3, EARTH[1]);
-  s.fill(cx - 1, 64, 3, 3, GOLD[5]);
-  for (const px of [cx - 9, cx + 9]) for (let y = 34; y < 43; y++) for (let x = px - 4; x <= px + 4; x++) if (inEllipse(x, y, px, 38, 4, 4)) s.set(x, y, shade(STONE, 0.75 - (x - px) / 14 - (y - 34) / 24, x, y));
-  for (let y = 22; y < 39; y++) for (let x = cx - 7; x <= cx + 7; x++) if (inEllipse(x, y, cx, 30, 6, 8.5)) s.set(x, y, y < 29 ? shade(STONE, 0.8 - (x - cx) / 20, x, y) : shade(SKIN, 0.72 - (x - cx) / 20, x, y));
-  s.fill(cx - 8, 28, 17, 2, STONE[4]);
-  for (let y = 23; y < 28; y++) s.set(cx - 1, y, STONE[7]);
-  s.set(cx + facing * 3, 32, INK);
-  s.set(cx + facing * 6, 34, SKIN[3]);
-  s.set(cx + facing * 3, 37, SKIN[1]);
-  const pole = cx + facing * 13;
-  for (let y = 2; y < 99; y++) s.set(pole, y, WOOD[4]), s.set(pole + 1, y, WOOD[1]);
-  for (let y = 4; y < 22; y++) for (let x = 0; x < 6; x++) if (x < 6 - Math.abs(y - 13) * 0.45) s.set(pole + facing * (x + 1), y, x === 0 ? STONE[3] : STONE[7 - Math.min(3, x >> 1)]);
-  for (let y = 0; y < 6; y++) s.set(pole, y, STONE[7]);
-  for (let y = 59; y < 65; y++) for (let x = pole - 2; x <= pole + 3; x++) s.set(x, y, shade(SKIN, 0.7 - (x - pole) / 12, x, y));
-  for (let y = 60; y < 65; y += 2) s.set(pole + 1, y, SKIN[1]);
-  const shaped = outline(s, INK);
-  for (let x = 10; x < 35; x++) shaped.under(x + 3, 100, SHADOW);
-  return shaped;
+  for (let y = 106; y < 130; y++) for (let x = MID - 22; x <= MID + 22; x++) if (crownAt((x - MID) / 1.6, (y - 118) / 1.6)) room.set(x, y, x < MID ? GOLD[5] : GOLD[3]);
 }
 
 /** The royal goose, home at last, with a tiny crown. `phase` bobs her head. */
@@ -344,102 +228,6 @@ export function goose(phase: number): Bitmap {
   for (const x of [12, 14, 20, 22]) s.set(x, 39, RED[4]);
   const shaped = outline(s, INK);
   for (let x = 4; x < 34; x++) shaped.under(x + 3, 39, SHADOW);
-  return shaped;
-}
-
-/**
- * Aldric kneeling on the carpet, seen from behind, as his figure is on the map: the Knight in a red
- * cape, steel helm and pauldrons, his sword laid by; the Wizard in a grey robe and a blue hood, his
- * staff beside him; the Ranger in his green hooded cloak with a quiver, his bow laid down; the
- * Courtier in his red coat trimmed with gold, brown locks on a lace collar, under a broad red hat
- * with a great yellow plume, his sabre on the carpet.
- */
-function kneeling(background: BackgroundId, breath = 0): Bitmap {
-  const s = new Bitmap(60, 70);
-  const cx = 30;
-  const cloth = { knight: RED, wizard: [ROCK[2], ROCK[3], ROCK[4], ROCK[5], ROCK[6]], ranger: [LEAF[0], LEAF[1], LEAF[2], LEAF[3], LEAF[4]], courtier: [RED[0], RED[1], RED[2], RED[3], RED[4]] }[background];
-  for (const side of [-1, 1]) {
-    for (let y = 27; y < 46; y++) {
-      const ax = cx + side * (17 - (y - 27) * 0.12);
-      for (let x = Math.floor(ax - 4); x <= ax + 4; x++) s.set(x, y, shade(background === 'knight' ? STONE : cloth, 0.55 - (x - ax) / 18 - (y - 27) / 90, x, y));
-    }
-    for (let y = 43; y < 48; y++) for (let x = cx + side * 15 - 3; x <= cx + side * 15 + 3; x++) if (inEllipse(x, y, cx + side * 15, 45, 3, 2.5)) s.set(x, y, background === 'knight' ? STONE[4] : SKIN[3]);
-  }
-  // The cape (or robe, or cloak) falls from the shoulders and pools on the floor.
-  for (let y = 20; y < 66; y++) {
-    for (let x = 2; x < 58; x++) {
-      const half = y < 29 ? 13 + (y - 20) * 0.55 : y < 46 ? 18 - (y - 29) * 0.15 : 15.5 + (y - 46) * 0.5;
-      if (Math.abs(x - cx) > half || (y > 60 && Math.abs(x - cx) > half - (y - 60) * 1.5)) continue;
-      const fold = Math.sin((x - cx) / (3.4 + (y - 20) * 0.025)) * 0.12 - (Math.abs(x - cx + 3) < 1.3 ? 0.14 : 0);
-      s.set(x, y, shade(cloth, 0.52 + fold - (x - cx) / 90 - (y - 20) * 0.004, x, y));
-      // The gold trim round the hem of his coat.
-      if (background === 'courtier' && y > 57 && y < 60 && Math.abs(x - cx) < half - 1) s.set(x, y, y === 58 ? GOLD[5] : GOLD[3]);
-    }
-  }
-  // One knee is forward; the other leg folds under the cloak.
-  for (let y = 51; y < 64; y++) for (let x = cx + 8; x < cx + 27; x++) if (inEllipse(x, y, cx + 17, 57, 9, 6)) s.set(x, y, shade(cloth, 0.49 - (x - cx - 17) / 32 - (y - 51) / 35, x, y));
-  for (let x = cx + 10; x < cx + 24; x++) s.set(x, 62, background === 'courtier' ? GOLD[3] : shade(cloth, 0.18, x, 62));
-  const hood = (colour: readonly number[]) => {
-    // A hood over the head, peaked a little, draped on the shoulders.
-    for (let y = 14 + breath; y < 31 + breath; y++) for (let x = cx - 20; x <= cx + 20; x++) if (inEllipse(x, y, cx, 23 + breath, 19, 7)) s.set(x, y, shade(colour, 0.55 - (x - cx) / 40 - (y - 14 - breath) * 0.01, x, y - breath));
-    for (let y = 1 + breath; y < 24 + breath; y++) for (let x = cx - 10; x <= cx + 10; x++) if (inEllipse(x, y, cx, 13 + breath, 9, 10) || (y < 6 + breath && Math.abs(x - cx + 1) < (y - 1 - breath) * 0.8)) s.set(x, y, shade(colour, 0.66 - (x - cx) / 26 - (y - 3 - breath) * 0.012, x, y - breath));
-    for (let y = 7 + breath; y < 21 + breath; y++) s.set(cx + 5, y, colour[1]);
-  };
-  if (background === 'knight') {
-    // Pauldrons on both shoulders, the helm and its plume.
-    for (const px of [cx - 12, cx + 12]) for (let y = 16 + breath; y < 28 + breath; y++) for (let x = px - 8; x <= px + 8; x++) if (inEllipse(x, y, px, 22 + breath, 7.5, 5.5)) s.set(x, y, shade(STONE, 0.8 - (x - px) / 16 - (y - 16 - breath) * 0.02 - (y > 24 + breath ? 0.15 : 0), x, y - breath));
-    for (let y = 3 + breath; y < 22 + breath; y++) for (let x = cx - 9; x <= cx + 9; x++) if (inEllipse(x, y, cx, 12 + breath, 8, 9)) s.set(x, y, shade(STONE, 0.82 - (x - cx) / 18 - (y - 3 - breath) * 0.012, x, y - breath));
-    for (let y = 5 + breath; y < 20 + breath; y++) s.set(cx - 1, y, STONE[7]), s.set(cx, y, STONE[4]);
-    for (let y = breath; y < 8 + breath; y++) for (let x = cx - 2; x <= cx + 3; x++) if (Math.abs(x - cx - 0.5 + (y - 4 - breath) * 0.2) < 2.2 - (y - breath) * 0.12) s.set(x, y, y < 3 + breath ? RED[5] : RED[4]);
-  } else if (background === 'wizard') {
-    hood([BLUE[0], BLUE[1], BLUE[2], BLUE[3], BLUE[4]]);
-    for (let y = 7 + breath; y < 21 + breath; y++) s.set(cx - 6, y, GOLD[y % 3 === 0 ? 3 : 4]);
-  } else if (background === 'ranger') {
-    // A quiver on his back, fletching over the right shoulder, under the hood.
-    for (let y = 8; y < 40; y++) for (let x = cx + 5; x < cx + 11; x++) if (Math.abs(x - (cx + 8) + (y - 24) * 0.25) < 2.6) s.set(x, y, y < 14 ? (x % 2 ? NEUTRAL[7] : RED[4]) : shade(WOOD, 0.45 - (x - cx - 8) / 10, x, y));
-    hood([LEAF[0], LEAF[1], LEAF[2], LEAF[3], LEAF[4]]);
-    for (let y = 29; y < 52; y++) {
-      const x = cx + 9 - Math.floor((y - 29) * 0.7);
-      s.set(x, y, EARTH[1]);
-      s.set(x + 1, y, WOOD[4]);
-    }
-  } else {
-    // The coat's shoulders and a lace collar, long brown hair over it, and a broad red hat with a gold band and a great yellow plume.
-    const coat = [RED[0], RED[1], RED[2], RED[3], RED[4]];
-    for (let y = 15; y < 30; y++) for (let x = cx - 20; x <= cx + 20; x++) if (inEllipse(x, y, cx, 22, 19, 6.5)) s.set(x, y, shade(coat, 0.62 - (x - cx) / 36, x, y));
-    for (let y = 15; y < 21; y++) for (let x = cx - 12; x <= cx + 12; x++) if (inEllipse(x, y, cx, 18, 11.5, 2.6)) s.set(x, y, (x + y) % 3 === 0 ? NEUTRAL[5] : x < cx ? NEUTRAL[7] : NEUTRAL[6]);
-    const hair = [EARTH[1], EARTH[2], EARTH[3], EARTH[4], EARTH[5]];
-    for (let y = 8 + breath; y < 28 + breath; y++) for (let x = cx - 10; x <= cx + 10; x++) if (Math.abs(x + 0.5 - cx) < 7.5 + (y - 8 - breath) * 0.12 && y < 25 + breath + ((x >> 1) % 2) + (Math.abs(x - cx) > 5 ? 1 : 0)) s.set(x, y, shade(hair, 0.62 - (x - cx) / 22 - (y - 8 - breath) * 0.01 + (((x >> 1) % 2) - 0.5) * 0.24, x, y - breath));
-    for (let y = 1 + breath; y < 15 + breath; y++) for (let x = cx - 18; x <= cx + 18; x++) if (inEllipse(x, y, cx, 11 + breath, 17.5, 3.2) || (inEllipse(x, y, cx, 7 + breath, 8.5, 5.5) && y <= 11 + breath)) s.set(x, y, shade(coat, 0.66 - (x - cx) / 30 - (y - 2 - breath) * 0.02, x, y - breath));
-    for (let x = cx - 8; x <= cx + 8; x++) for (const y of [9, 10]) s.set(x, y + breath, y === 9 ? GOLD[5] : GOLD[3]);
-    for (let x = cx - 17; x <= cx + 17; x++) s.set(x, 13 + breath, x < cx ? GOLD[4] : GOLD[3]);
-    for (let k = 0; k < 18; k++) {
-      const t = k / 17;
-      const [px, py, r] = [cx + 1 - t * 21, 3.5 + breath - Math.sin(t * Math.PI * 0.7) * 3 + t * t * 9, 2.7 - Math.abs(t - 0.35) * 2];
-      for (let y = Math.floor(py - r); y <= py + r; y++) for (let x = Math.floor(px - r); x <= px + r; x++) if (y >= 0 && inEllipse(x, y, px, py, r, r * 0.85)) s.set(x, y, (x - (y - breath) * 2) % 4 === 0 ? GOLD[3] : y < py ? GOLD[6] : GOLD[5]);
-    }
-  }
-  // Boot soles, and what he fights with laid on the carpet beside him.
-  for (let y = 62; y < 68; y++) for (let x = cx + 15; x < cx + 27; x++) if (y > 64 || x < cx + 22) s.set(x, y, y === 62 ? EARTH[3] : EARTH[0]);
-  if (background === 'wizard') {
-    for (let x = 1; x < 26; x++) s.set(x, 64, x < 3 ? GOLD[5] : WOOD[3 + (x % 2)]);
-    for (let y = 60; y < 67; y++) for (let x = 0; x < 6; x++) if (inEllipse(x, y, 3, 63, 2.6, 2.6)) s.set(x, y, x < 3 && y < 63 ? NEUTRAL[7] : BLUE[5]);
-  } else if (background === 'ranger') {
-    for (let x = 2; x < 28; x++) {
-      const bow = Math.round(Math.sin(((x - 2) / 26) * Math.PI) * 4);
-      s.set(x, 66 - bow, WOOD[4]);
-      s.set(x, 67 - bow, WOOD[2]);
-      s.set(x, 67, NEUTRAL[5]);
-    }
-  } else {
-    // A sword, or a sabre with its curve.
-    const curve = background === 'courtier';
-    for (let x = 2; x < 22; x++) s.set(x, 64 - (curve ? Math.round(((x - 12) / 10) ** 2 * 2) : 0), x < 4 ? STONE[4] : STONE[6]);
-    for (let y = 61; y < 68; y++) s.set(22, y, GOLD[4]);
-    s.set(24, 64, GOLD[5]);
-  }
-  const shaped = outline(s, INK);
-  for (let x = 6; x < 56; x++) shaped.under(x + 3, 68, SHADOW);
   return shaped;
 }
 
@@ -480,8 +268,21 @@ function guest(id: FriendId): Bitmap {
   blit(s, scaleBitmap(head, 0.72), 13, 4);
   const shaped = outline(s, INK);
   for (let x = 10; x < 48; x++) shaped.under(x + 2, height - 2, SHADOW);
-  return scaleBitmap(shaped, 1.25);
+  return shaped;
 }
+
+/** A painted figure standing with its feet at `x, y` in the room, facing right as drawn or `flip`ped to face left. */
+function stand(b: Bitmap, sprite: Bitmap | null, x: number, y: number, flip = false) {
+  if (!sprite) return;
+  const shown = flip ? mirror(sprite) : sprite;
+  for (let i = 4; i < shown.width - 4; i++) b.under(MAP_VIEW.x + x - Math.round(shown.width / 2) + i + 3, MAP_VIEW.y + y, SHADOW);
+  blit(b, shown, MAP_VIEW.x + x - Math.round(shown.width / 2), MAP_VIEW.y + y - shown.height);
+}
+
+const KNEELING: Record<BackgroundId, CourtPieceName> = { knight: 'kneelKnight', wizard: 'kneelWizard', ranger: 'kneelRanger', courtier: 'kneelCourtier' };
+/** Where Aldric kneels on the carpet, facing the throne, and where the King's throne stands on the dais. */
+const KNEEL = { x: 300, y: 418 };
+const THRONE = { left: MID - 41, foot: 278 };
 
 /** The King's court, between commissions: throne, banners, torchlight and the royal goose. */
 export class CourtScreen {
@@ -489,9 +290,8 @@ export class CourtScreen {
   /** The throne room with nobody kneeling in it yet. */
   private readonly room: Bitmap;
   private readonly overlay: Bitmap;
-  private readonly kings = [king(false), king(true), king(false, true)].map(s => scaleBitmap(s, 1.42));
-  private readonly geese = [scaleBitmap(goose(0), 1.25), scaleBitmap(goose(1), 1.25)];
-  private kneelers: [Bitmap, Bitmap];
+  private readonly geese = [goose(0), goose(1)];
+  private kneeler: Bitmap | null = null;
   private guests: { sprite: Bitmap; x: number; y: number }[] = [];
   private greetedAt = -Infinity;
   caption = '';
@@ -509,7 +309,7 @@ export class CourtScreen {
     for (const x of [102, 354]) banner(room, x);
     floor(room);
     dais(room);
-    throne(room);
+    clothOfEstate(room);
     for (const x of [58, 414]) torch(room, x, 172);
     // Corners fall into shadow.
     for (let y = 0; y < MAP_VIEW.height; y++) {
@@ -519,15 +319,18 @@ export class CourtScreen {
       }
     }
     const b = room.bitmap;
-    blit(b, scaleBitmap(guard(1), 1.2), MAP_VIEW.x + 65, MAP_VIEW.y + 190);
-    blit(b, scaleBitmap(guard(-1), 1.2), MAP_VIEW.x + 325, MAP_VIEW.y + 190);
+    // The royal guard stands either side of the dais, facing the carpet.
+    stand(b, courtPiece('guard'), 92, 312);
+    stand(b, courtPiece('guard'), 334, 312, true);
     this.room = b;
-    this.kneelers = [scaleBitmap(kneeling(background), 1.65), scaleBitmap(kneeling(background, 1), 1.65)];
+    this.kneel(background);
   }
 
-  /** Aldric on the carpet before the throne, as who he was. */
+  /** Aldric on the carpet before the throne, as who he was, facing the King. */
   kneel(background: BackgroundId) {
-    this.kneelers = [scaleBitmap(kneeling(background), 1.65), scaleBitmap(kneeling(background, 1), 1.65)];
+    // Each was drawn kneeling to the left, towards the throne, but the Wizard, who is turned round to face it.
+    const figure = courtPiece(KNEELING[background]);
+    this.kneeler = figure && background === 'wizard' ? mirror(figure) : figure;
   }
 
   setGuests(ids: readonly FriendId[]) {
@@ -541,11 +344,12 @@ export class CourtScreen {
   draw(phase: number): Bitmap {
     this.screen.data.set(this.room.data);
     const greeting = phase >= this.greetedAt && phase - this.greetedAt < 1.4;
-    const king = this.kings[greeting ? 2 : phase % 6.4 > 6.18 ? 1 : 0];
-    blit(this.screen, king, MAP_VIEW.x + MID - Math.round(king.width / 2), MAP_VIEW.y + 72);
-    if (this.goose) blit(this.screen, this.geese[Math.sin(phase * 1.7) > 0.6 ? 1 : 0], MAP_VIEW.x + MID + 69, MAP_VIEW.y + 250);
+    // The King bounces on his throne to welcome a new page.
+    const king = courtPiece('king');
+    if (king) blit(this.screen, king, MAP_VIEW.x + THRONE.left, MAP_VIEW.y + THRONE.foot - king.height - (greeting && phase - this.greetedAt < 0.5 ? 3 : 0));
+    if (this.goose) blit(this.screen, this.geese[Math.sin(phase * 1.7) > 0.6 ? 1 : 0], MAP_VIEW.x + MID - 84, MAP_VIEW.y + THRONE.foot - 38);
     for (const { sprite, x, y } of this.guests) blit(this.screen, sprite, MAP_VIEW.x + x - Math.round(sprite.width / 2), MAP_VIEW.y + y - sprite.height);
-    blit(this.screen, this.kneelers[Math.sin(phase * 0.75) > 0.8 ? 1 : 0], MAP_VIEW.x + 264, MAP_VIEW.y + 306);
+    if (this.kneeler) stand(this.screen, this.kneeler, KNEEL.x, KNEEL.y);
     if (this.caption) drawText(this.screen, this.caption, BAR.x + 12, BAR.y + 5, PARCHMENT[6], INK);
     blit(this.screen, this.overlay, 0, 0);
     return this.screen;

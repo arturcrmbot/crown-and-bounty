@@ -200,6 +200,11 @@ export const FIGURE_ANIMATIONS: Record<string, Partial<Record<import('./battleSp
 /** The faces on the cards that are painted (#311), in public/assets/portraits/. */
 export const PAINTED_PORTRAITS = ["king", "knight", "wizard", "ranger", "courtier", "grimsby", "sergeant", "warren", "foreman", "mirrow", "bramble", "rook", "anselm", "nan", "dwarf", "goose"] as const;
 /** The payday feast's pieces (#191), in public/assets/feast/: Aldric as each background, a figure for each troop that has one, and the camp's things. */
-export const FEAST_PIECES = ["heroKnight", "heroWizard", "heroRanger", "heroCourtier", "knights", "archers", "peasants", "swordsmen", "crossbowmen", "wolves", "boars", "bears", "goblins", "trolls", "poachers", "bandits", "huntsmen", "fire", "spit", "tent", "horseWhite", "horseBrown", "barrel", "chest", "food", "banner"] as const;
+export const FEAST_PIECES = ["heroKnight", "heroWizard", "heroRanger", "heroCourtier", "knights", "archers", "peasants", "swordsmen", "crossbowmen", "wolves", "boars", "bears", "goblins", "trolls", "poachers", "bandits", "huntsmen", "fire", "spit", "tent", "horseWhite", "horseBrown", "barrel", "chest", "food", "banner", "knightsRest", "archersRest"] as const;
 export type FeastPieceName = (typeof FEAST_PIECES)[number];
+/** The title's riders and the court's people (#311), in public/assets/title/ and public/assets/court/. */
+export const TITLE_PIECES = ["rider", "riderStep", "riderWave", "squire", "archer", "peasant"] as const;
+export const COURT_PIECES = ["king", "kneelKnight", "kneelWizard", "kneelRanger", "kneelCourtier", "guard"] as const;
+export type TitlePieceName = (typeof TITLE_PIECES)[number];
+export type CourtPieceName = (typeof COURT_PIECES)[number];
 export type GroundName = (typeof GROUNDS)[number];

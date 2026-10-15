@@ -1,0 +1,15 @@
+{
+  "issue": 311,
+  "date": "2026-10-15",
+  "currency": "USD",
+  "total": 0.18,
+  "attempts": [
+    {
+      "sheet": "court-cute.png",
+      "job": "court-cute.json",
+      "balance_cost": 0.18,
+      "used": true,
+      "inspection": "Cute and chunky as asked; the King on his throne, Aldric kneeling as each background and the royal guard. Used at court."
+    }
+  ]
+}

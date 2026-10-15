@@ -1,0 +1,15 @@
+{
+  "issue": 311,
+  "date": "2026-10-15",
+  "currency": "USD",
+  "total": 0.18,
+  "attempts": [
+    {
+      "sheet": "court.png",
+      "job": "court.json",
+      "balance_cost": 0.18,
+      "used": false,
+      "inspection": "Well drawn, but Artur found it too realistic beside the cute court drawn in code (#312: 'this needs to look cute not be more realistic'). Not used; the court keeps its own King, and kneeling Aldric was reshaped in code."
+    }
+  ]
+}

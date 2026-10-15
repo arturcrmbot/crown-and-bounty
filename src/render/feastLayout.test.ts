@@ -6,7 +6,7 @@ const pieces = (spots: FeastSpot[]) => spots.map((s) => ('feast' in s ? s.feast 
 describe('who sits where at the payday feast', () => {
   it('Aldric comes as his background, with a figure for each of his biggest stacks', () => {
     const knight = pieces(feastLayout('knight', [{ troop: 'knights', count: 10 }, { troop: 'archers', count: 20 }, { troop: 'peasants', count: 30 }]));
-    expect(knight).toEqual(expect.arrayContaining(['heroKnight', 'knights', 'archers', 'peasants', 'fire', 'chest']));
+    expect(knight).toEqual(expect.arrayContaining(['heroKnight', 'knightsRest', 'archersRest', 'peasants', 'fire', 'chest']));
     expect(pieces(feastLayout('courtier', [{ troop: 'swordsmen', count: 20 }]))).toContain('heroCourtier');
     expect(pieces(feastLayout('ranger', [{ troop: 'archers', count: 20 }]))).toContain('heroRanger');
     expect(pieces(feastLayout('wizard', [{ troop: 'knights', count: 8 }]))).toContain('heroWizard');
@@ -30,6 +30,13 @@ describe('who sits where at the payday feast', () => {
     expect(pieces(spots).some((p) => p.startsWith('horse'))).toBe(false);
     expect(pieces(feastLayout('knight', [{ troop: 'archers', count: 20 }]))).toContain('horseWhite');
     expect(pieces(feastLayout('wizard', [{ troop: 'knights', count: 8 }]))).toContain('horseBrown');
+  });
+
+  it('never sits two cup-raisers side by side: those beside the toast and across the fire sit quietly (#311)', () => {
+    const toasts = ['knights', 'archers'];
+    for (const army of [[{ troop: 'knights' as const, count: 10 }, { troop: 'archers' as const, count: 20 }], [{ troop: 'archers' as const, count: 20 }, { troop: 'knights' as const, count: 10 }, { troop: 'peasants' as const, count: 40 }]]) {
+      expect(pieces(feastLayout('knight', army)).filter((p) => toasts.includes(p)).length).toBeLessThanOrEqual(1);
+    }
   });
 
   it('everything is drawn back to front, and the left third stays clear for the payday card', () => {

@@ -1,9 +1,12 @@
-import { describe, expect, it, vi } from 'vitest';
-import { CourtScreen } from './courtScreen';
-import { MAP_VIEW, SCREEN } from './frame';
+import { readFileSync } from 'node:fs';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { CourtScreen } from '../src/render/courtScreen';
+import { MAP_VIEW, SCREEN } from '../src/render/frame';
+import { courtPiece, loadSceneArt } from '../src/render/mapArt';
+import { COURT_PIECES } from '../src/render/mapPieces';
 
 // Lettering is checked in the browser; these frames have no caption.
-vi.mock('./text', () => ({ drawText: vi.fn() }));
+vi.mock('../src/render/text', () => ({ drawText: vi.fn() }));
 
 function changedPixels(before: Uint8Array, after: Uint8Array) {
   const changed: [number, number][] = [];
@@ -14,29 +17,10 @@ function changedPixels(before: Uint8Array, after: Uint8Array) {
 }
 
 describe('the people at court', () => {
-  it('lets the King blink without moving the room or anyone else', () => {
-    const court = new CourtScreen();
-    court.goose = false;
-    const open = court.draw(0).data.slice();
-    const blink = changedPixels(open, court.draw(6.25).data);
-    expect(blink.length).toBeGreaterThan(0);
-    expect(blink.length).toBeLessThan(180);
-    expect(blink.every(([x, y]) => x > 180 && x < 260 && y > 90 && y < 165)).toBe(true);
-    expect(court.draw(0).data).toEqual(open);
-  });
+  beforeAll(() => loadSceneArt(async (file) => new Uint8Array(readFileSync(`public/assets/${file.includes('/') ? file : `map/${file}`}`))));
 
-  it('keeps feet and laid-down weapons still while Aldric breathes', () => {
-    const court = new CourtScreen();
-    court.goose = false;
-    for (const background of ['knight', 'wizard', 'ranger', 'courtier'] as const) {
-      court.kneel(background);
-      const still = court.draw(0).data.slice();
-      const breath = changedPixels(still, court.draw(1.4).data);
-      expect(breath.length, background).toBeGreaterThan(0);
-      expect(breath.length, background).toBeLessThan(1400);
-      expect(breath.every(([x, y]) => x > 240 && x < 370 && y > 290 && y < 410), background).toBe(true);
-      expect(court.draw(0).data).toEqual(still);
-    }
+  it('paints everyone at court from the court sheet, none of them in code (#311)', () => {
+    for (const name of COURT_PIECES) expect(courtPiece(name), name).not.toBeNull();
   });
 
   it('keeps all four backgrounds distinct when Aldric changes who he was', () => {
