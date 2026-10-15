@@ -93,6 +93,9 @@ PIECES = {
     'chest': ('places', (158, 161, 200, 199), 26),
     'gold': ('places', (205, 162, 255, 200), 32),
     'shrine': ('places', (212, 207, 248, 255), 30),
+    # The Baron's hamper and a lost letter, painted (#311): they were drawn in code, flat beside the paintings.
+    'hamper': ('finds', (8, 20, 84, 84), 26),
+    'letter': ('finds', (9, 106, 78, 155), 16),
 }
 # The second batch (1 Oct, after Artur put the map beside HoMM2's): what makes each place a little scene.
 # Farm things, waterside beds and reeds, rolling hills and outcrops, treasure, and the battle's own obstacles.
@@ -1004,7 +1007,8 @@ def layers(sheet):
     bg = np.array(Counter(map(tuple, a.reshape(-1, 3))).most_common(1)[0][0])
     back = np.abs(a - bg).sum(2) <= 8
     rim = nd.binary_dilation(back) & ~back
-    grey = (a.max(2) - a.min(2) < 12) & (a.sum(2) > 120) & (a.sum(2) < bg.sum() - 20)
+    # The finds sheet (#311) laid its shadow in a bluish grey.
+    grey = (a.max(2) - a.min(2) < (24 if sheet == 'finds' else 12)) & (a.sum(2) > 120) & (a.sum(2) < bg.sum() - 20)
     if sheet == 'heath':
         # A ground sheet: nothing is background, nothing is shadow; its pieces are cut by colour.
         return a, np.zeros(a.shape[:2], bool), np.zeros(a.shape[:2], bool)

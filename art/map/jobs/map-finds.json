@@ -1,0 +1,18 @@
+[
+  {
+    "out": "art/map/sheets/finds.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 311,
+    "prompt": "a sheet of six small things lying on the ground of an adventure map: a closed wicker picnic hamper with a lid, two leather straps and the gold letters B.G. on the lid; a closed wicker picnic hamper with a lid, a brass buckle and a red checked cloth peeking out; a closed wicker picnic hamper with a lid and a loaf and a pie peeking out; a folded parchment letter sealed with a blob of red wax, lying flat; a folded parchment letter tied with string and sealed with red wax, lying flat; a folded parchment letter with a red wax seal and a corner turned up, lying flat, each drawn in exactly the art style of the reference 1996 DOS fantasy strategy game adventure map objects: cute, chunky, clearly readable, bright colours, a dark outline, painted shading reduced to 256 colours, soft dithering, seen from above at a slant like the map's other objects, each with a soft shadow to the lower right, two rows of three objects, each separate and not touching, on a plain flat grey background",
+    "reference_images": [
+      "~/.config/retro-diffusion/refs/r1.png",
+      "art/map/sheets/treasure.png",
+      "art/map/sheets/farm.png",
+      "art/map/sheets/wild.png",
+      "art/map/sheets/places.png"
+    ]
+  }
+]

@@ -55,6 +55,8 @@ const PAINTED_LOOKS: Partial<Record<string, PieceName>> = {
   nest: 'nest',
   purse: 'goldSmall',
   oats: 'haystack',
+  hamper: 'hamper',
+  letter: 'letter',
   crystals: 'crystals',
   lonePine: 'bFir',
   stand: 'gazebo',
@@ -298,7 +300,7 @@ function landmark(l: Location, home = 0): { frames: Bitmap[]; foot: number; anim
 }
 
 /** Looks that stand for a place on the map in their own drawing, even on the painted map. */
-const LOOKS_DRAWN = { cart: 1, hamper: 1, abbey: 1, peathut: 1, stilthut: 1, cairn: 1 } as const;
+const LOOKS_DRAWN = { cart: 1, abbey: 1, peathut: 1, stilthut: 1, cairn: 1 } as const;
 
 /** A place as it's drawn in code. */
 function drawn(l: Location): ReturnType<typeof landmark> {

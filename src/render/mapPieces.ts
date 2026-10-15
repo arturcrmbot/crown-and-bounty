@@ -70,6 +70,8 @@ export const PIECE_FEET = {
   chest: 21,
   gold: 21,
   shrine: 36,
+  hamper: 19,
+  letter: 7,
   logPile: 14,
   wagon: 18,
   fence: 12,
