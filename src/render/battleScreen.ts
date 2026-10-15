@@ -224,17 +224,18 @@ function paintedField(obstacles: number[], seed: number): Bitmap | null {
     }
   }
   const stand = (p: { sprite: Bitmap; foot: number }, x: number, y: number, flip = false) => blit(field, flip ? mirror(p.sprite) : p.sprite, Math.round(x - p.sprite.width / 2), Math.round(y - p.foot), MAP_VIEW);
-  // Tufts and flowers, at twice their size on the map, and beds of flowers here and there.
-  const twice = sprigs.map((p) => ({ sprite: doubled(p.sprite), foot: p.foot * 2 }));
-  for (let i = 0; i < 48; i++) {
+  // The columns the armies line up in stay clear, so nobody starts the fight standing in a bush.
+  const lines = (x: number) => (x > X0 - 8 && x < X0 + HEX_W * 1.4) || (x > X0 + FIELD_W - HEX_W * 1.4 && x < X0 + FIELD_W + 8);
+  // Tufts and flowers at the size they were painted (#311), as small beside a man as HoMM2's, and beds of flowers here and there.
+  for (let i = 0; i < 96; i++) {
     const x = MAP_VIEW.x + 10 + hash(i, seed, 615) * (MAP_VIEW.width - 20);
     const y = MAP_VIEW.y + 44 + hash(i, seed, 616) * (MAP_VIEW.height - 50);
-    stand(twice[Math.floor(hash(i, seed, 617) * twice.length)], x, y, hash(i, seed, 618) < 0.5);
+    if (!lines(x)) stand(sprigs[Math.floor(hash(i, seed, 617) * sprigs.length)], x, y, hash(i, seed, 618) < 0.5);
   }
   for (let i = 0; i < 7; i++) {
     const x = MAP_VIEW.x + 20 + hash(i, seed, 619) * (MAP_VIEW.width - 40);
     const y = MAP_VIEW.y + 60 + hash(i, seed, 620) * (MAP_VIEW.height - 70);
-    stand(beds[Math.floor(hash(i, seed, 621) * beds.length)], x, y, hash(i, seed, 622) < 0.5);
+    if (!lines(x)) stand(beds[Math.floor(hash(i, seed, 621) * beds.length)], x, y, hash(i, seed, 622) < 0.5);
   }
   for (let i = 0; i < HEXES; i++) {
     const [cx, cy] = hexCentre(i);
@@ -262,13 +263,6 @@ function paintedField(obstacles: number[], seed: number): Bitmap | null {
     stand(o, cx, cy + 14, hash(n, seed, 629) < 0.5);
   }
   return field;
-}
-
-/** A small picture at twice its size, pixel for pixel. */
-function doubled(b: Bitmap): Bitmap {
-  const out = new Bitmap(b.width * 2, b.height * 2);
-  for (let y = 0; y < out.height; y++) for (let x = 0; x < out.width; x++) out.data[y * out.width + x] = b.data[(y >> 1) * b.width + (x >> 1)];
-  return out;
 }
 
 function paintField(obstacles: number[], seed: number, fen: boolean): Bitmap {

@@ -5,6 +5,7 @@
  * crooked hat.
  */
 import { Bitmap, outline } from './bitmap';
+import { paintedPortrait } from './mapArt';
 import { hash, shade } from './noise';
 import { BLUE, EARTH, FOG, GOLD, INK, LEAF, NEUTRAL, PLUM, RED, ROCK, SKIN, SLATE, STONE } from './palette';
 
@@ -48,7 +49,6 @@ const WHITE = [NEUTRAL[3], NEUTRAL[5], NEUTRAL[6], NEUTRAL[7]];
 const BROWN = [EARTH[1], EARTH[2], EARTH[4], EARTH[5]];
 const DARK = [SLATE[0], SLATE[1], SLATE[3], SLATE[4]];
 const GINGER = [RED[1], RED[3], RED[4], GOLD[4]];
-const GREENSKIN = [LEAF[1], LEAF[3], LEAF[5], LEAF[6], LEAF[7]];
 const GREY = [FOG[3], FOG[5], FOG[7], FOG[8]];
 
 /** The heroes' faces agree with their figures on the map: the Horseman's helm, the Arch Mage's hood and beard, the Ranger's green hood, the Courtier's red coat, brown locks and broad red hat with its yellow plume. */
@@ -59,15 +59,16 @@ const RECIPES: Record<Exclude<PortraitId, 'goose'>, Recipe> = {
   ranger: { skin: SKIN, hair: GINGER, beard: 'goatee', beardColour: [EARTH[1], EARTH[2], EARTH[3], RED[2]], hat: 'hood', hatColour: [LEAF[1], LEAF[2], LEAF[4], LEAF[5]], clothes: [LEAF[1], LEAF[2], LEAF[3], LEAF[4]], eyes: LEAF[6], mood: 'sly' },
   courtier: { skin: SKIN, hair: BROWN, long: true, beard: 'goatee', beardColour: BROWN, hat: 'cavalier', hatColour: [RED[1], RED[2], RED[3], RED[4]], clothes: [RED[0], RED[1], RED[2], RED[3]], trim: true, collar: 'jabot', eyes: EARTH[2], mood: 'smile' },
   grimsby: { skin: SKIN, hair: GINGER, beard: 'moustache', beardColour: GINGER, hat: 'kettle', hatColour: [PLUM[0], PLUM[1], PLUM[2], GOLD[4]], clothes: [PLUM[0], PLUM[1], PLUM[2], PLUM[3]], collar: 'ruff', eyes: EARTH[2], mood: 'sly', goose: true },
-  mirrow: { skin: GREENSKIN, hair: GREY, hat: 'witch', hatColour: [PLUM[0], PLUM[0], PLUM[1], PLUM[2]], clothes: [PLUM[0], PLUM[1], PLUM[2], PLUM[3]], eyes: GOLD[6], mood: 'cackle', wart: true },
-  bramble: { skin: GREENSKIN, hair: WHITE, hat: 'witch', hatColour: [INK, SLATE[0], SLATE[1], SLATE[2]], clothes: [LEAF[1], LEAF[2], LEAF[3], LEAF[4]], eyes: RED[5], mood: 'stern', wart: true },
+  // Mirrow and Bramble, as their figures (#311): a young witch with brown hair in purple, and a grey old crone in green.
+  mirrow: { skin: SKIN, hair: BROWN, hat: 'witch', hatColour: [PLUM[0], PLUM[1], PLUM[2], PLUM[3]], clothes: [PLUM[0], PLUM[1], PLUM[2], PLUM[3]], eyes: EARTH[2], mood: 'smile' },
+  bramble: { skin: SKIN, hair: GREY, hat: 'witch', hatColour: [LEAF[0], LEAF[1], LEAF[2], LEAF[3]], clothes: [LEAF[1], LEAF[2], LEAF[3], LEAF[4]], eyes: RED[5], mood: 'stern', wart: true },
   anselm: { skin: SKIN, hair: WHITE, beard: 'stubble', beardColour: WHITE, hat: 'coif', hatColour: BROWN, clothes: BROWN, eyes: BLUE[4], mood: 'smile' },
   // Sergeant Pike, as his figure (#255): a steel kettle hat, a dark moustache and the Baron's red and gold over mail.
   sergeant: { skin: SKIN, hair: DARK, beard: 'moustache', beardColour: DARK, hat: 'kettle', hatColour: [STONE[2], STONE[3], STONE[5], STONE[6]], clothes: [RED[1], RED[2], RED[3], RED[4]], trim: true, collar: 'mail', eyes: EARTH[2], mood: 'stern' },
   nan: { skin: SKIN, hair: WHITE, hat: 'scarf', hatColour: [RED[1], RED[2], RED[3], RED[4]], clothes: [PLUM[0], PLUM[1], PLUM[2], PLUM[3]], eyes: LEAF[5], mood: 'smile', specs: true },
   dwarf: { skin: SKIN, hair: GINGER, beard: 'full', beardColour: GINGER, hat: 'helm', bare: true, hatColour: [STONE[2], STONE[4], STONE[5], STONE[6]], clothes: BROWN, collar: 'mail', eyes: BLUE[4], mood: 'stern' },
-  // Grimsby's huntsman, as Wesnoth's Trapper: a woodsman's cap with a rook's black feather, and a red cloth over his face.
-  rook: { skin: SKIN, hair: DARK, hat: 'feathercap', hatColour: [LEAF[0], LEAF[1], EARTH[2], EARTH[4]], plume: [BLUE[1], INK], mask: [RED[1], RED[2], RED[3], RED[4]], clothes: [EARTH[1], EARTH[2], EARTH[3], EARTH[4]], eyes: GOLD[5], mood: 'sly' },
+  // Grimsby's huntsman, as his figure (#311): a brown fur hood over his ears, and a sheepskin coat.
+  rook: { skin: SKIN, hair: BROWN, hat: 'hood', hatColour: [EARTH[1], EARTH[2], EARTH[4], EARTH[5]], clothes: [EARTH[2], EARTH[3], EARTH[4], EARTH[5]], collar: 'none', eyes: EARTH[2], mood: 'sly' },
   // The Foreman of Grimsby's dig (#239), as his figure (#255): cropped grey hair, a great grey moustache and a leather jerkin.
   foreman: { skin: SKIN, hair: GREY, beard: 'moustache', beardColour: GREY, hat: 'none', clothes: [EARTH[0], EARTH[1], EARTH[2], EARTH[3]], collar: 'none', eyes: EARTH[2], mood: 'stern' },
   // Captain Warren of the Baron's pickets (#239), as his figure (#255): a plain dark helm, a black moustache, and the Baron's red and gold over his plate.
@@ -307,9 +308,11 @@ export function portrait(id: PortraitId): Bitmap {
   return outline(b, INK);
 }
 
-/** Every portrait, drawn once. */
+/** Every portrait: painted where it has been (#311), else drawn here once. */
 const drawn = new Map<PortraitId, Bitmap>();
 export function portraitOf(id: PortraitId): Bitmap {
+  const painted = paintedPortrait(id);
+  if (painted) return painted;
   let p = drawn.get(id);
   if (!p) {
     p = portrait(id);

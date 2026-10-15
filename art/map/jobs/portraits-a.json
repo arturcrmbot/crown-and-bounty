@@ -1,0 +1,21 @@
+[
+  {
+    "out": "art/map/sheets/portraits-a.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 311,
+    "prompt": "a sheet of nine: an old kindly king with a great white beard, a gold crown with red jewels, a red royal robe with a white ermine collar; a young knight in shining steel plate armour, an open-faced steel helm with a white plume, a blue surcoat; an old wizard with a long white beard, a tall pointed blue wizard's hat and a blue robe; a young ranger with brown hair under a green hood, a green cloak over brown leather; a dashing courtier with long brown curls, a thin moustache and small beard, a broad red hat with a big yellow plume, a red coat with a white lace collar; a portly baron with a round ruddy face and a brown moustache, a wide black hat with a big white ostrich plume, a red and gold doublet, a white goose peering over his shoulder; a stiff tidy sergeant with a dark moustache, a steel kettle hat, a red and gold tabard over mail; a stern captain with a black moustache, a plain dark steel helm, a red and gold surcoat over dark steel plate; a burly foreman with cropped grey hair and a great grey moustache, a leather jerkin with a red sash, each a head-and-shoulders portrait bust facing the viewer, a little turned, drawn in exactly the art style of the reference 1996 DOS fantasy strategy game battle screens and of the reference figures, whose faces these are: charming, friendly, clearly readable, bright colours, painted shading reduced to 256 colours, soft dithering, a little character in every face, three rows of three portraits, each separate and not touching, on a plain flat grey background",
+    "reference_images": [
+      "~/.config/retro-diffusion/refs/battle_hero.png",
+      "~/.config/retro-diffusion/refs/battle_troops.png",
+      "~/.config/retro-diffusion/refs/battle_wide.png",
+      "~/.config/retro-diffusion/refs/r1.png",
+      "art/map/sheets/units-b.png",
+      "art/map/sheets/units-c.png",
+      "art/map/sheets/units-d.png",
+      "art/map/sheets/units-f.png"
+    ]
+  }
+]

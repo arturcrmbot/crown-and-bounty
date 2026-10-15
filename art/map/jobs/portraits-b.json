@@ -1,0 +1,21 @@
+[
+  {
+    "out": "art/map/sheets/portraits-b.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 312,
+    "prompt": "a sheet of nine: a young witch with brown hair, a tall pointed purple witch's hat and a purple dress; an old crone with long grey hair and a hooked nose, a tall pointed green witch's hat and a green robe; a young huntsman with a fur hat with ear flaps and a sheepskin coat, a bow over his shoulder; an elderly friar with a tonsure of white hair, white stubble and a brown habit; a kindly old woman with round brass spectacles and rosy cheeks, a red headscarf with white spots and a plum shawl; a dwarf with a great ginger beard, a plain round steel helm and mail; a white goose wearing a small gold crown, a blue ribbon tied in a bow round her neck; an old kindly king with a great white beard, a gold crown with red jewels, a red royal robe with a white ermine collar; a portly baron with a round ruddy face and a brown moustache, a wide black hat with a big white ostrich plume, a red and gold doublet, a white goose peering over his shoulder, each a head-and-shoulders portrait bust facing the viewer, a little turned, drawn in exactly the art style of the reference 1996 DOS fantasy strategy game battle screens and of the reference figures, whose faces these are: charming, friendly, clearly readable, bright colours, painted shading reduced to 256 colours, soft dithering, a little character in every face, three rows of three portraits, each separate and not touching, on a plain flat grey background",
+    "reference_images": [
+      "~/.config/retro-diffusion/refs/battle_hero.png",
+      "~/.config/retro-diffusion/refs/battle_troops.png",
+      "~/.config/retro-diffusion/refs/battle_wide.png",
+      "~/.config/retro-diffusion/refs/r1.png",
+      "art/map/sheets/units-b.png",
+      "art/map/sheets/units-c.png",
+      "art/map/sheets/units-d.png",
+      "art/map/sheets/units-f.png"
+    ]
+  }
+]

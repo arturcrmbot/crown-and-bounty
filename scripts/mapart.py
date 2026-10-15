@@ -116,7 +116,9 @@ _widths = {
     'lily': 12, 'wetRock': 18, 'wetRocks': 22, 'wetRocks2': 22, 'bedYellow': 26, 'bedYellow2': 26, 'driftLog': 40,
     'hillSmall': 36, 'hill': 70, 'outcrop': 44, 'hillWide': 76, 'hillBig': 100, 'outcrop2': 52, 'outcrop3': 54, 'rock': 24, 'mound': 50, 'mound2': 46, 'peak': 50,
     'chestShut': 24, 'chestGold': 26, 'chestOpen': 24, 'goldHeap': 28, 'goldSmall': 20, 'wood': 28, 'ore': 26, 'gems': 26, 'crystals': 24, 'lamp': 20, 'cauldron': 24, 'fire': 24, 'bones': 30,
-    'bOak': 74, 'bOak2': 74, 'bOak3': 70, 'bOak4': 66, 'bFir': 42, 'bFir2': 42, 'bRock': 58, 'bRock2': 56, 'bRock3': 56, 'bRock4': 56, 'bRock5': 50, 'bBramble': 56, 'bLog': 110, 'bStump': 52, 'bPond': 66,
+    # The battle's rocks, bramble, log and pond at the size they were painted (#311): enlarged, their pixels doubled unevenly.
+    # Its trees are still enlarged, to stand taller than a man, until a sheet paints them bigger.
+    'bOak': 74, 'bOak2': 74, 'bOak3': 70, 'bOak4': 66, 'bFir': 42, 'bFir2': 42, 'bRock': 50, 'bRock2': 48, 'bRock3': 48, 'bRock4': 48, 'bRock5': 44, 'bBramble': 49, 'bLog': 107, 'bStump': 52, 'bPond': 60,
 }
 for _sheet, _names in _more.items():
     for _name, _box in zip(_names, _boxes[_sheet]):
@@ -161,6 +163,9 @@ FIGURES = {
     'pike': ('units-f', (16, 128, 82, 256), 76), 'picketCaptain': ('units-f', (97, 136, 154, 256), 71), 'foreman': ('units-f', (185, 128, 255, 256), 76),
 }
 FIGURES['hero'] = FIGURES['heroKnight']
+# Figures drawn bigger in battle than their standing painting (#310): their battle poses are cut from the sheet at
+# that size (#311), never enlarged pixel by pixel as the game runs. Their standing painting keeps its size for the UI.
+BATTLE_SIZE = {'heroWizard': 1.3}
 TROOPS_OUT = os.path.join(ROOT, 'public/assets/troops')
 # One scale for the whole body, not one fitted to each pose's weapon bounds. Boxes and feet are
 # absolute sheet pixels; the cutter gives every frame of an animation the same canvas and anchor.
@@ -907,6 +912,29 @@ for _name in ('witch', 'bramble'):
 # (feast-1 to feast-4), cut at the size they were drawn, a little closer than the battle's (a person sitting is about
 # 60 px), and with no shadow of their own: the feast lays its shadows away from its fire. Each troop's figure is named
 # for the troop; a troop with none stands at the feast in its battle figure.
+# The faces on the cards (#311), painted as the figures they stand for: each one's box on its sheet and its scale,
+# cut into the portrait's 64 px square, standing on its bottom edge. The rest are still drawn in `render/portraits.ts`.
+PORTRAITS = {
+    'king': ('portraits-a', (5, 12, 81, 84), 0.8), 'knight': ('portraits-a', (91, 4, 161, 84), 0.8), 'wizard': ('portraits-a', (177, 4, 247, 84), 0.8),
+    'ranger': ('portraits-a', (7, 96, 76, 167), 0.8), 'courtier': ('portraits-a', (90, 89, 166, 167), 0.8), 'grimsby': ('portraits-a', (172, 89, 251, 167), 0.8),
+    'sergeant': ('portraits-a', (9, 177, 75, 250), 0.8), 'warren': ('portraits-a', (88, 179, 157, 250), 0.8), 'foreman': ('portraits-a', (172, 182, 247, 250), 0.8),
+    'goose': ('units-d', (87, 145, 167, 253), 0.6),
+}
+PORTRAIT_SIZE = 64
+PORTRAITS_OUT = os.path.join(ROOT, 'public/assets/portraits')
+
+
+def cut_portrait(sheet, box, scale):
+    px = cut(sheet, box, 0, scale=scale, figure=True)
+    px[px[..., 3] == 128] = 0
+    ys, xs = np.nonzero(px[..., 3])
+    px = px[ys.min():ys.max() + 1, xs.min():xs.max() + 1][-PORTRAIT_SIZE:, :PORTRAIT_SIZE]
+    out = np.zeros((PORTRAIT_SIZE, PORTRAIT_SIZE, 4), 'uint8')
+    x = (PORTRAIT_SIZE - px.shape[1]) // 2
+    out[PORTRAIT_SIZE - px.shape[0]:, x:x + px.shape[1]] = px
+    return out
+
+
 FEAST = {
     'heroKnight': ('feast-3', (110, 9, 159, 85)), 'heroWizard': ('feast-2', (6, 11, 87, 88)),
     'heroRanger': ('feast-2', (95, 10, 168, 90)), 'heroCourtier': ('feast-2', (192, 6, 245, 94)),
@@ -988,7 +1016,27 @@ def layers(sheet):
 CACHE = {}
 
 
-def cut(sheet, box, width, name='', height=None, alone=False, cool=False, scale=None):
+def figure_mask(rgb, solid, sh):
+    """A figure's own pixels (#311): steel greys as light as the sheet's ground were taken for it, leaving
+    holes in armour, and the soft edge of a painted shadow was left as grey specks round the feet."""
+    holes = nd.binary_fill_holes(solid) & ~solid
+    lab, _ = nd.label(holes)
+    small = np.bincount(lab.ravel()) <= 12
+    small[0] = False
+    solid = solid | small[lab]
+    lab, n = nd.label(solid, structure=np.ones((3, 3)))
+    sizes = np.bincount(lab.ravel())
+    grey = rgb.max(2) - rgb.min(2) < 18
+    rows = np.nonzero(solid.any(1))[0]
+    ground = rows.max() - (rows.max() - rows.min()) * 0.15 if len(rows) else 0
+    for i in range(1, n + 1):
+        part = lab == i
+        if grey[part].all() and (sizes[i] < 16 or (sizes[i] < 60 and np.nonzero(part)[0].min() >= ground)):
+            solid = solid & ~part
+    return solid, sh & ~solid
+
+
+def cut(sheet, box, width, name='', height=None, alone=False, cool=False, scale=None, figure=False):
     """RGBA of one piece at `width` pixels across: painted pixels opaque, shadow at alpha 128."""
     if sheet not in CACHE:
         CACHE[sheet] = layers(sheet)
@@ -1050,6 +1098,8 @@ def cut(sheet, box, width, name='', height=None, alone=False, cool=False, scale=
         lab, _ = nd.label(sh, structure=np.ones((3, 3)))
         touching = np.unique(lab[nd.binary_dilation(solid, iterations=2) & sh])
         sh = np.isin(lab, touching[touching > 0])
+    if figure:
+        solid, sh = figure_mask(rgb, solid, sh)
     # Keep only what's joined to the piece's biggest part, so a neighbour's edge doesn't come along.
     lab, _ = nd.label(solid | sh, structure=np.ones((3, 3)))
     sizes = np.bincount(lab.ravel()); sizes[0] = 0
@@ -1063,6 +1113,7 @@ def cut(sheet, box, width, name='', height=None, alone=False, cool=False, scale=
     k = scale if scale is not None else width / rgb.shape[1] if height is None else height / (np.ptp(np.nonzero(solid.any(1))[0]) + 1)
     w, h = max(1, round(rgb.shape[1] * k)), max(1, round(rgb.shape[0] * k))
     if k != 1:
+        solid_src = solid
         own = np.unique(rgb[solid].reshape(-1, 3), axis=0).astype(float)
         weight = Image.fromarray((solid * 255).astype('uint8')).resize((w, h), Image.BOX)
         premult = Image.fromarray((rgb * solid[..., None]).astype('uint8')).resize((w, h), Image.BOX)
@@ -1073,6 +1124,11 @@ def cut(sheet, box, width, name='', height=None, alone=False, cool=False, scale=
         rgb = own[idx]
         shade = np.asarray(Image.fromarray((sh * 255).astype('uint8')).resize((w, h), Image.BOX)).astype(float) / 255
         solid = cover > 0.5
+        if figure and k < 1:
+            # A shaft or a bowstring one pixel wide covers under half of any pixel it crosses: keep it whole.
+            thin = solid_src & ~nd.binary_opening(solid_src, structure=np.ones((2, 2)))
+            line = np.asarray(Image.fromarray((thin * 255).astype('uint8')).resize((w, h), Image.BOX)).astype(float) / 255
+            solid |= line > 0.3
         sh = ~solid & (shade + cover > 0.5)
     out = np.zeros(rgb.shape[:2] + (4,), 'uint8')
     out[solid, :3] = snap(rgb)[solid]
@@ -1097,10 +1153,10 @@ def cut_animation(name, anim, spec):
     frames = [{'name': f'{name}-{anim}-{i}', 'ms': ms} for i, (_, _, ms) in enumerate(spec['frames'])]
     feet = {}
     for size in spec['sizes']:
-        scale = spec['scale'] * (1 if size == 'battle' else 2 / 3 if name.startswith('hero') else 0.6)
+        scale = spec['scale'] * (BATTLE_SIZE.get(name, 1) if size == 'battle' else 2 / 3 if name.startswith('hero') else 0.6)
         images = []
         for box, anchor, _ in spec['frames']:
-            px = cut(spec['sheet'], box, 0, scale=scale)
+            px = cut(spec['sheet'], box, 0, scale=scale, figure=True)
             px[px[..., 3] == 128] = 0
             foot = (round((anchor[0] - box[0]) * scale), round((anchor[1] - box[1]) * scale))
             images.append((px, foot))
@@ -1114,7 +1170,7 @@ def cut_animation(name, anim, spec):
             x, y = -foot[0] - left, -foot[1] - top
             out[y:y + px.shape[0], x:x + px.shape[1]] = px
             Image.fromarray(out).save(os.path.join(TROOPS_OUT, f"{frame['name']}-{size}.png"))
-    launch = {'launch': [round(n * spec['scale']) for n in spec['launch']]} if 'launch' in spec else {}
+    launch = {'launch': [round(n * spec['scale'] * BATTLE_SIZE.get(name, 1)) for n in spec['launch']]} if 'launch' in spec else {}
     return {'frames': frames, 'feet': feet, **{key: spec[key] for key in ('hit', 'stride', 'footfalls') if key in spec}, **launch}
 
 
@@ -1217,7 +1273,7 @@ def pick_colours(n=8):
     os.makedirs(TROOPS_OUT, exist_ok=True)
     for name, (sheet, box, tall) in FIGURES.items():
         for size, k in (('battle', 1), ('map', 2 / 3 if name.startswith('hero') else 0.6)):
-            px = cut(sheet, box, 0, name, height=round(tall * k))
+            px = cut(sheet, box, 0, name, height=round(tall * k), figure=True)
             Image.fromarray(px).save(os.path.join(TROOPS_OUT, f'{name}-{size}.png'))
     for name, (x0, y0, x1, y1) in GROUND.items():
         pixels.append(np.asarray(Image.open(os.path.join(SHEETS, name + '.png')).convert('RGB')).astype(int)[y0:y1, x0:x1].reshape(-1, 3))
@@ -1274,10 +1330,13 @@ def main():
     os.makedirs(TROOPS_OUT, exist_ok=True)
     for name, (sheet, box, tall) in FIGURES.items():
         for size, k in (('battle', 1), ('map', 2 / 3 if name.startswith('hero') else 0.6)):
-            px = cut(sheet, box, 0, name, height=round(tall * k))
+            px = cut(sheet, box, 0, name, height=round(tall * k), figure=True)
             Image.fromarray(px).save(os.path.join(TROOPS_OUT, f'{name}-{size}.png'))
     animations = {name: {anim: cut_animation(name, anim, spec) for anim, spec in poses.items()} for name, poses in FIGURE_ANIMATIONS.items()}
     os.makedirs(FEAST_OUT, exist_ok=True)
+    os.makedirs(PORTRAITS_OUT, exist_ok=True)
+    for name, (sheet, box, scale) in PORTRAITS.items():
+        Image.fromarray(cut_portrait(sheet, box, scale)).save(os.path.join(PORTRAITS_OUT, name + '.png'))
     for name, (sheet, box) in FEAST.items():
         Image.fromarray(cut_feast(name, sheet, box)).save(os.path.join(FEAST_OUT, name + '.png'))
     for name, (x0, y0, x1, y1) in GROUND.items():
@@ -1310,6 +1369,7 @@ def main():
         f.write(f"/** The troops and Aldric's figures, painted: in public/assets/troops/, each at battle and map size. */\nexport const FIGURES = {json.dumps(list(FIGURES))} as const;\n")
         f.write("export type FigureAnimation = {\n  frames: readonly { name: string; ms: number }[];\n  feet: Partial<Record<'battle' | 'map', readonly [number, number]>>;\n  hit?: number;\n  launch?: readonly [number, number];\n  stride?: number;\n  footfalls?: readonly number[];\n};\n")
         f.write("export const FIGURE_ANIMATIONS: Record<string, Partial<Record<import('./battleSprites').AnimName, FigureAnimation>>> = " + json.dumps(animations) + ";\n")
+        f.write(f"/** The faces on the cards that are painted (#311), in public/assets/portraits/. */\nexport const PAINTED_PORTRAITS = {json.dumps(list(PORTRAITS))} as const;\n")
         f.write(f"/** The payday feast's pieces (#191), in public/assets/feast/: Aldric as each background, a figure for each troop that has one, and the camp's things. */\nexport const FEAST_PIECES = {json.dumps(list(FEAST))} as const;\n")
         f.write("export type FeastPieceName = (typeof FEAST_PIECES)[number];\n")
         f.write("export type GroundName = (typeof GROUNDS)[number];\n")
