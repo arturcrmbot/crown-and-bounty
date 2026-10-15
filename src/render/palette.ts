@@ -153,11 +153,18 @@ export const GRAIN_LUT = new Uint8Array(256).map((_, i) => {
  * evening, a blue night, fen mist and a shower's grey. Water and flames keep turning: a night's
  * shallows turn to the deep water's colours, and torches stay bright.
  */
-function tint(f: (r: number, g: number, b: number) => [number, number, number], water: (i: number) => number = (i) => i) {
+function tint(f: (r: number, g: number, b: number) => [number, number, number], water: (i: number) => number = (i) => i, chroma = Infinity) {
   return new Uint8Array(256).map((_, i) => {
     if (i >= COLORS.length) return i;
     if (cycling.has(i)) return water(i);
-    const [r, g, b] = f(...COLORS[i]);
+    let [r, g, b] = f(...COLORS[i]);
+    // A light that colours greys (the night's blue) gives them at most `chroma` more than they had, so stone doesn't glow.
+    const most = Math.max(...COLORS[i]) - Math.min(...COLORS[i]) + chroma;
+    const spread = Math.max(r, g, b) - Math.min(r, g, b);
+    if (spread > most) {
+      const luma = 0.3 * r + 0.59 * g + 0.11 * b;
+      [r, g, b] = [r, g, b].map((v) => luma + ((v - luma) * most) / spread);
+    }
     const [cr, cg, cb] = [Math.max(0, Math.min(255, r)), Math.max(0, Math.min(255, g)), Math.max(0, Math.min(255, b))];
     // Plum (the heather on the heath, a witch's smoke) stays plum in any light: at night it darkens rather than turning blue.
     return PLUM.includes(i) ? nearestIn(PLUM, cr, cg, cb) : nearest(cr, cg, cb, excluded);
@@ -176,7 +183,7 @@ export const DANGER_LUT = tint((r, g, b) => [r * 0.6 + 110, g * 0.4, b * 0.35]);
 /** Evening: warm and golden, the light low. */
 export const EVENING_LUT = tint((r, g, b) => [r * 1.12 + 22, g * 0.9 + 2, b * 0.52]);
 /** Night: dark and blue, still readable. */
-export const NIGHT_LUT = tint((r, g, b) => [r * 0.42, g * 0.5 + 2, b * 0.72 + 22], toDeep);
+export const NIGHT_LUT = tint((r, g, b) => [r * 0.42, g * 0.5 + 2, b * 0.72 + 22], toDeep, 12);
 /** Mist: paler, greyer and a little blue, as if seen through it. */
 export const MIST_LUT = tint((r, g, b) => {
   const luma = 0.3 * r + 0.59 * g + 0.11 * b;

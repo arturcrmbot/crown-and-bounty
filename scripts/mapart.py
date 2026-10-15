@@ -29,7 +29,8 @@ PIECES = {
     'hut': ('village', (182, 13, 242, 71), 36),
     'washing': ('village', (3, 88, 83, 163), 58),
     'fold': ('village', (93, 105, 162, 155), 56),
-    'hayrick': ('village', (179, 95, 239, 157), 40),
+    # The village sheet's rick is fine pale straw with no outline, and shrinking it turned it to mush (#311): the farm sheet's, crisp and outlined.
+    'hayrick': ('farm', (5, 60, 63, 109), 38),
     'skeps': ('village', (9, 171, 72, 218), 44),
     'kiln': ('village', (93, 171, 159, 246), 50),
     'boat': ('village', (185, 176, 235, 207), 48),
@@ -38,8 +39,8 @@ PIECES = {
     'mews': ('wild', (103, 26, 165, 75), 50),
     'butts': ('wild', (179, 31, 242, 73), 50),
     'stones': ('wild', (14, 99, 82, 158), 56),
-    # One of the Grey Wethers on its own, a little bigger than it was drawn, to be seen from afar: the scroll stones' stone (#240).
-    'menhir': ('wild', (30, 128, 47, 155), 24),
+    # One of the Grey Wethers on its own, at the size it was drawn: blown up, its pixels came out uneven (#311). The scroll stones' stone (#240).
+    'menhir': ('wild', (30, 128, 47, 155), 16),
     'tents': ('wild', (174, 99, 248, 159), 60),
     'cart': ('wild', (15, 174, 88, 244), 60),
     'pack': ('wild', (104, 190, 154, 239), 28),

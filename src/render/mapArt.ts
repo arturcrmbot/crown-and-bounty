@@ -1,5 +1,5 @@
 import { Bitmap, SHADOW } from './bitmap';
-import { COLORS, CYCLING, GRAIN_LUT, SILHOUETTE } from './palette';
+import { COLORS, CYCLING, GRAIN_LUT, PLUM, SILHOUETTE } from './palette';
 import { decodePng, type Rgba } from './png';
 import { FEAST_PIECES, FIGURE_ANIMATIONS, FIGURES, GROUNDS, PAINTED_PORTRAITS, PIECE_FEET, type FeastPieceName, type FigureAnimation, type GroundName, type PieceName } from './mapPieces';
 import type { AnimName } from './battleSprites';
@@ -140,7 +140,8 @@ export function subduedPiece(name: PieceName): { sprite: Bitmap; foot: number } 
   let sprite = subdued.get(name);
   if (!sprite) {
     sprite = new Bitmap(original.sprite.width, original.sprite.height);
-    sprite.data.set(original.sprite.data.map((c) => (c === 0 || c === SHADOW ? c : GRAIN_LUT[c])));
+    // Purple flowers keep their purple a shade darker: the grain has no purples and turned them to grey rubble (#311).
+    sprite.data.set(original.sprite.data.map((c) => (c === 0 || c === SHADOW ? c : PLUM.includes(c) ? PLUM[Math.max(0, PLUM.indexOf(c) - 1)] : GRAIN_LUT[c])));
     subdued.set(name, sprite);
   }
   return { sprite, foot: original.foot };
