@@ -1,7 +1,7 @@
 import { Bitmap, SHADOW } from './bitmap';
 import { COLORS, CYCLING, GRAIN_LUT, PLUM, SILHOUETTE } from './palette';
 import { decodePng, type Rgba } from './png';
-import { FEAST_PIECES, FIGURE_ANIMATIONS, FIGURES, GROUNDS, PAINTED_PORTRAITS, PIECE_FEET, type FeastPieceName, type FigureAnimation, type GroundName, type PieceName } from './mapPieces';
+import { COURT_PIECES, FEAST_PIECES, FIGURE_ANIMATIONS, FIGURES, GROUNDS, PAINTED_PORTRAITS, PIECE_FEET, TITLE_PIECES, type CourtPieceName, type FeastPieceName, type TitlePieceName, type FigureAnimation, type GroundName, type PieceName } from './mapPieces';
 import type { AnimName } from './battleSprites';
 import type { Size } from './scale';
 
@@ -183,3 +183,28 @@ export const feastPiece = (name: FeastPieceName): Bitmap | null => feast.get(nam
 
 /** Whether every piece of the feast is in: until then, payday's card opens over the map as it always did. */
 export const feastArtReady = () => feast.size === FEAST_PIECES.length;
+
+const scenes = new Map<string, Bitmap>();
+let scenesLoading: Promise<void> | null = null;
+
+/**
+ * The title's riders and the court's people (#311), painted in the spirit of HoMM1's title: a few small pictures,
+ * loaded before the title shows, so neither scene ever stands in code.
+ */
+export function loadSceneArt(read: (file: string) => Promise<Uint8Array> = fetchPiece): Promise<void> {
+  scenesLoading ??= Promise.all(
+    [...TITLE_PIECES.map((name) => `title/${name}`), ...COURT_PIECES.map((name) => `court/${name}`)].map(async (name) => {
+      try {
+        scenes.set(name, toBitmap(await decodePng(await read(`${name}.png`))));
+      } catch (error) {
+        console.warn(error);
+      }
+    }),
+  ).then(() => undefined);
+  return scenesLoading;
+}
+
+/** One of the title's painted riders, facing right as drawn, if it's loaded. */
+export const titlePiece = (name: TitlePieceName): Bitmap | null => scenes.get(`title/${name}`) ?? null;
+/** One of the court's painted people, if it's loaded. */
+export const courtPiece = (name: CourtPieceName): Bitmap | null => scenes.get(`court/${name}`) ?? null;

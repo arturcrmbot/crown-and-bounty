@@ -1,0 +1,21 @@
+[
+  {
+    "out": "art/map/sheets/court.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 311,
+    "prompt": "a sheet of six: a portly, kindly old king with a great white beard and rosy cheeks, a gold crown, a red robe with a white ermine collar, holding a gold sceptre, sitting on a gilded throne with blue velvet, facing the viewer; the same kindly old king on the same gilded throne, raising one hand in welcome and smiling; a knight in full steel plate with a white plume on his helm and a blue tabard, kneeling on one knee with his head bowed, his sword point down before him; a wizard with a long white beard, a tall blue pointed hat and a blue robe, kneeling on one knee with his head bowed, holding his gnarled wooden staff; a ranger in a green hooded cloak and brown leathers with a quiver of arrows, kneeling on one knee with his head bowed, holding his longbow; a courtier with long brown hair, a broad red hat with a great yellow plume and a red coat trimmed with gold, kneeling on one knee with his head bowed, his rapier at his side, each a full-body figure, the four kneeling men facing left, drawn in exactly the art style of the reference 1996 DOS fantasy strategy game battle screens: charming, friendly, clearly readable, bright colours, painted shading reduced to 256 colours, soft dithering, a little character in every face, two rows of three figures, each separate and not touching, on a plain flat grey background",
+    "reference_images": [
+      "~/.config/retro-diffusion/refs/battle_hero.png",
+      "~/.config/retro-diffusion/refs/battle_troops.png",
+      "~/.config/retro-diffusion/refs/battle_wide.png",
+      "~/.config/retro-diffusion/refs/r1.png",
+      "art/map/sheets/units-a.png",
+      "art/map/sheets/units-b.png",
+      "art/map/sheets/units-c.png",
+      "art/map/sheets/units-d.png"
+    ]
+  }
+]

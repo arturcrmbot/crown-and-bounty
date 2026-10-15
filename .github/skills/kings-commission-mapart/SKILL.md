@@ -101,6 +101,10 @@ trees along the top cut by the frame, clumps in the corners, and obstacles at ba
 - **The payday feast** (#191) has its own sheets (`feast-1` to `feast-4`): `FEAST` in mapart.py cuts them at the
   size they were drawn, with no shadow (the feast lays its own, away from its fire), into `public/assets/feast/`, and
   lists them as `FEAST_PIECES`. Its fire is cut without its painted flames: the feast draws its own, behind the logs.
+- **The title and the court** (#311) are cute and chunky, as HoMM1's and King's Bounty's titles are, never realistic
+  (Artur turned down a realistic court). Their people are `SCENES` in mapart.py, cut at drawn size from `title-rider` and
+  `court-cute` into `public/assets/title/` and `public/assets/court/`, and `loadSceneArt` loads them before the title shows.
+  The land, the castle, its flags and the room stay drawn in code.
 
 ## A new troop or captain (#255)
 

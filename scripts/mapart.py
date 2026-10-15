@@ -955,8 +955,27 @@ FEAST = {
     'horseWhite': ('feast-1', (13, 107, 85, 165)), 'horseBrown': ('feast-1', (95, 107, 167, 165)),
     'barrel': ('feast-3', (185, 97, 242, 160)), 'chest': ('feast-3', (19, 184, 70, 241)), 'food': ('feast-3', (87, 188, 174, 241)),
     'banner': ('feast-3', (189, 176, 248, 247)),
+    # Quieter poses (#311), so the troops beside Aldric's toast don't all raise a cup: a knight warming his hands (cut
+    # short of his little fire) and an archer with his bow across his knees.
+    'knightsRest': ('feast-1', (96, 16, 139, 81)), 'archersRest': ('feast-1', (177, 15, 249, 85)),
 }
 FEAST_OUT = os.path.join(ROOT, 'public/assets/feast')
+# The title's riders and the King's court (#311), cut at the size they were drawn like the feast's, from two cute sheets
+# drawn in the spirit of HoMM1's and King's Bounty's title screens: Aldric riding out with his banner (resting, a step,
+# and his banner raised) and his little company, and the King on his throne, Aldric kneeling as each background and
+# the royal guard.
+SCENES = {
+    'title': {
+        'rider': ('title-rider', (5, 2, 86, 131)), 'riderStep': ('title-rider', (90, 2, 171, 132)),
+        'riderWave': ('title-rider', (173, 1, 253, 131)), 'squire': ('title-rider', (13, 147, 82, 252)),
+        'archer': ('title-rider', (104, 170, 156, 253)), 'peasant': ('title-rider', (193, 168, 242, 253)),
+    },
+    'court': {
+        'king': ('court-cute', (11, 7, 97, 124)), 'kneelKnight': ('court-cute', (107, 16, 180, 123)),
+        'kneelWizard': ('court-cute', (181, 16, 248, 122)), 'kneelRanger': ('court-cute', (13, 151, 95, 247)),
+        'kneelCourtier': ('court-cute', (93, 141, 165, 247)), 'guard': ('court-cute', (168, 129, 245, 248)),
+    },
+}
 # Ground: the seamless square inside each ground sheet's frame.
 GROUND = {'heather': (14, 34, 114, 114), 'water': (36, 36, 92, 92), 'grass': (33, 33, 95, 95), 'dirt': (33, 33, 95, 95), 'wheat': (33, 36, 95, 95), 'heath': (14, 34, 114, 114), 'plough': (33, 33, 95, 95)}
 
@@ -1231,14 +1250,19 @@ def foot(px):
     return int(rows.max() - max(2, round(len(rows) * 0.08)))
 
 
-def cut_feast(name, sheet, box):
-    """A piece of the payday feast at the size it was drawn: its painted pixels, in the palette, and no shadow."""
+def cut_feast(name, sheet, box, holes=0):
+    """A piece of the payday feast at the size it was drawn: its painted pixels, in the palette, and no shadow.
+    `holes` fills enclosed specks up to that many pixels, where a pale highlight matched the sheet's grey."""
     if sheet not in CACHE:
         CACHE[sheet] = layers(sheet)
     a, back, shadow = CACHE[sheet]
     x0, y0, x1, y1 = box
     rgb = a[y0:y1, x0:x1].copy()
     solid = ~back[y0:y1, x0:x1] & ~shadow[y0:y1, x0:x1]
+    if holes:
+        gaps, _ = nd.label(nd.binary_fill_holes(solid) & ~solid)
+        sizes = np.bincount(gaps.ravel()); sizes[0] = 0
+        solid |= (gaps > 0) & (sizes <= holes)[gaps]
     hsv = np.asarray(Image.fromarray(rgb.astype('uint8')).convert('HSV')).astype(float)
     if name == 'fire':
         # Its painted flames go, and the sparks over them: the feast draws its own flames each frame, behind the logs.
@@ -1348,6 +1372,10 @@ def main():
         Image.fromarray(cut_portrait(sheet, box, scale)).save(os.path.join(PORTRAITS_OUT, name + '.png'))
     for name, (sheet, box) in FEAST.items():
         Image.fromarray(cut_feast(name, sheet, box)).save(os.path.join(FEAST_OUT, name + '.png'))
+    for scene, cuts in SCENES.items():
+        os.makedirs(os.path.join(ROOT, 'public/assets', scene), exist_ok=True)
+        for name, (sheet, box) in cuts.items():
+            Image.fromarray(cut_feast(name, sheet, box, holes=150)).save(os.path.join(ROOT, 'public/assets', scene, name + '.png'))
     for name, (x0, y0, x1, y1) in GROUND.items():
         rgb = np.asarray(Image.open(os.path.join(SHEETS, name + '.png')).convert('RGB')).astype(float)[y0:y1, x0:x1]
         # HoMM2's ground is bright and clean: lift the grass and the rest out of the murk the sheets came in.
@@ -1381,6 +1409,8 @@ def main():
         f.write(f"/** The faces on the cards that are painted (#311), in public/assets/portraits/. */\nexport const PAINTED_PORTRAITS = {json.dumps(list(PORTRAITS))} as const;\n")
         f.write(f"/** The payday feast's pieces (#191), in public/assets/feast/: Aldric as each background, a figure for each troop that has one, and the camp's things. */\nexport const FEAST_PIECES = {json.dumps(list(FEAST))} as const;\n")
         f.write("export type FeastPieceName = (typeof FEAST_PIECES)[number];\n")
+        f.write(f"/** The title's riders and the court's people (#311), in public/assets/title/ and public/assets/court/. */\nexport const TITLE_PIECES = {json.dumps(list(SCENES['title']))} as const;\nexport const COURT_PIECES = {json.dumps(list(SCENES['court']))} as const;\n")
+        f.write("export type TitlePieceName = (typeof TITLE_PIECES)[number];\nexport type CourtPieceName = (typeof COURT_PIECES)[number];\n")
         f.write("export type GroundName = (typeof GROUNDS)[number];\n")
     print(f'{len(feet)} pieces and {len(GROUND)} grounds in {OUT}')
 

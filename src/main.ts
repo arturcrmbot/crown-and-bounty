@@ -10,6 +10,7 @@ import { startCounter } from './game/counter';
 import { SCREEN } from './render/frame';
 import { paletteWords } from './render/palette';
 import { loadLettering, setLettering } from './render/text';
+import { loadSceneArt } from './render/mapArt';
 import { loadUnitArt } from './render/wesnoth';
 import { toggleMute, wakeAudio } from './audio/context';
 import { MuteButton } from './ui/mute';
@@ -102,8 +103,9 @@ function debugStart(): GameState {
 // The troops are Battle for Wesnoth's units: their images load while the title shows, and a
 // debug start (straight onto the map or into a fight) waits for them.
 const unitArt = loadUnitArt();
-// The lettering comes with the game (#148), and nothing paints a word before it's here.
-await loadLettering();
+// The lettering comes with the game (#148), and nothing paints a word before it's here; nor the title and the court
+// before their painted people (#311).
+await Promise.all([loadLettering(), loadSceneArt()]);
 // By touch the picture shrinks to fit a phone, so the words on its bars and ribbon are drawn bigger (#155).
 const letter = () => setLettering(touch() ? 1.3 : 1);
 letter();

@@ -1,0 +1,21 @@
+[
+  {
+    "out": "art/map/sheets/title-rider.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 3113,
+    "prompt": "a sheet of six: a cheerful knight in shining steel armour with a red plume on his helmet and a red cape, riding a white horse at a walk, holding upright a lance with a blue swallow-tailed banner bearing a gold star, the horse with a blue and gold caparison; the same knight on the same white horse in the next step of its walk; the same knight on the same white horse, raising his banner high; a young squire in a blue tunic riding a little brown pony, carrying a small blue pennant; a cheerful archer in a green hood walking with his bow over his shoulder; a cheerful peasant walking with a pitchfork over his shoulder, each a full-body figure facing right, drawn in the cute, chunky, charming style of the 1995 Heroes of Might and Magic and 1990 King's Bounty title screens: friendly storybook characters with slightly big heads, simple bold shapes, dark outlines, bright warm saturated colours, painted shading reduced to 256 colours, a little character in every face, never realistic, matching the reference figures and the cute painted feast party, two rows of three figures, each separate and not touching, on a plain flat grey background",
+    "reference_images": [
+      "~/.config/retro-diffusion/refs/battle_hero.png",
+      "~/.config/retro-diffusion/refs/battle_troops.png",
+      "~/.config/retro-diffusion/refs/battle_wide.png",
+      "~/.config/retro-diffusion/refs/r1.png",
+      "art/map/sheets/feast-2.png",
+      "art/map/sheets/feast-3.png",
+      "art/map/sheets/units-a.png",
+      "art/map/references/title-code.png"
+    ]
+  }
+]
