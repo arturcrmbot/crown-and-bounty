@@ -603,7 +603,7 @@ export class BattleController implements Screen {
     const scale = battleFigureScale('battle', caster.troop);
     const { look, shout } = SPELLS[spell];
     const hands: [number, number] = painted?.launch
-      ? [x + painted.launch[0] * scale * this.facingOf(caster), y + 12 + painted.launch[1] * scale]
+      ? [x + painted.launch[0] * this.facingOf(caster), y + 12 + painted.launch[1]]
       : [x + 4 * scale * this.facingOf(caster), y + 12 - bodyHeight(caster.troop, 'battle') * 0.5];
     const glow: Shot = { from: hands, to: hands, t: 0, kind: 'gather', color: look.colour === 'blue' ? BLUE[6] : look.colour === 'red' ? RED[5] : GOLD[6] };
     const frames = painted ? animLength(caster.troop, 'cast') : art.cast ? art.cast.reduce((t, f) => t + f.ms, 0) : 300;
@@ -757,7 +757,7 @@ export class BattleController implements Screen {
     if (missile) {
       // The release frame holds while the shot flies, however far.
       const origin: [number, number] = painted?.launch
-        ? [ax + painted.launch[0] * battleFigureScale('battle', attacker.troop) * (tx >= ax ? 1 : -1), ay + 12 + painted.launch[1] * battleFigureScale('battle', attacker.troop)]
+        ? [ax + painted.launch[0] * (tx >= ax ? 1 : -1), ay + 12 + painted.launch[1]]
         : [ax + ux * 12, ay - bodyHeight(attacker.troop, 'battle') * 0.55];
       const shot: Shot = { from: origin, to: [tx, ty + 12 - bodyHeight(target.troop, 'battle') * 0.5], t: 0, kind: missile };
       const flight = 0.16 + len / 1500;
@@ -1015,7 +1015,7 @@ export class BattleController implements Screen {
               const f = fighterById(this.battle, caster);
               const launch = paintedAnimation(f.troop, 'battle', 'cast')?.launch;
               const scale = battleFigureScale('battle', f.troop);
-              const origin: [number, number] = launch ? [cx + launch[0] * scale * this.facingOf(f), cy + 12 + launch[1] * scale] : [cx, cy - 20 * scale];
+              const origin: [number, number] = launch ? [cx + launch[0] * this.facingOf(f), cy + 12 + launch[1]] : [cx, cy - 20 * scale];
               return { from: origin, to: [tx, ty - 10] as [number, number], t: 0, kind: 'magic' as const, color: colour };
             }
             return { from: [tx, 0] as [number, number], to: [tx, ty - 10] as [number, number], t: 0, kind: look.kind === 'missile' ? ('bolt' as const) : look.kind, color: colour };

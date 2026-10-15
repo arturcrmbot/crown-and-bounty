@@ -40,7 +40,7 @@ trees along the top cut by the frame, clumps in the corners, and obstacles at ba
 | --- | --- | --- |
 | Tile / hex | 32 px | 64 px across, rows 44 apart |
 | Tree | 34-46 px tall (`TREE_HEIGHT`) | edge trees 66-74 px wide, firs 42 |
-| Bush, tuft, flower | 9-26 px | the map's at 2× |
+| Bush, tuft, flower | 9-26 px | the map's, at their painted size (#311) |
 | Flower bed | 26-50 px wide | same as the map |
 | Cottage / hut | 36-52 px (1-1.5 tiles) | |
 | Tower, mill | 28-62 px (2-3 tiles tall) | |
@@ -63,6 +63,11 @@ trees along the top cut by the frame, clumps in the corners, and obstacles at ba
   Everything snaps to the 256-colour palette (`src/render/palette.ts`); the ground only to the land's
   ramps, so evening light never turns a road red. **The palette is full**: a colour it hasn't got (teal)
   is turned to one it has before snapping (`cool`), never added.
+- **Never enlarge a piece** (#311): cut it from its sheet at its final size or smaller, never `scaleBitmap` it larger
+  at run time and never give it a width wider than it was painted. A figure bigger in battle than in the UI is
+  `BATTLE_SIZE` in mapart.py. Figures are cut with `figure=True`, which fills steel keyed out with the grey ground,
+  drops the shadow's specks and keeps one-pixel shafts whole. The cards' faces are `PORTRAITS`, painted busts cut
+  into the 64 px square (`portraits-a`, `portraits-b`), cute and chunky like the figures, never realistic.
 - **It writes** `public/assets/map/*.png`, `public/assets/troops/*-{battle,map}.png` and
   `src/render/mapPieces.ts` (`PIECE_FEET`, `GROVE_TREES`). `src/render/mapArt.ts` loads them.
 - **Optional painted poses** (#278) are `FIGURE_ANIMATIONS` in `scripts/mapart.py`. Each animation names its

@@ -1,7 +1,7 @@
 import { Bitmap, SHADOW } from './bitmap';
 import { COLORS, CYCLING, GRAIN_LUT, SILHOUETTE } from './palette';
 import { decodePng, type Rgba } from './png';
-import { FEAST_PIECES, FIGURE_ANIMATIONS, FIGURES, GROUNDS, PIECE_FEET, type FeastPieceName, type FigureAnimation, type GroundName, type PieceName } from './mapPieces';
+import { FEAST_PIECES, FIGURE_ANIMATIONS, FIGURES, GROUNDS, PAINTED_PORTRAITS, PIECE_FEET, type FeastPieceName, type FigureAnimation, type GroundName, type PieceName } from './mapPieces';
 import type { AnimName } from './battleSprites';
 import type { Size } from './scale';
 
@@ -17,6 +17,7 @@ const subdued = new Map<PieceName, Bitmap>();
 const grounds = new Map<GroundName, Bitmap>();
 const figures = new Map<string, Bitmap>();
 const feast = new Map<FeastPieceName, Bitmap>();
+const portraits = new Map<string, Bitmap>();
 export type PaintedAnimation = Omit<FigureAnimation, 'frames' | 'feet'> & {
   frames: readonly { name: string; ms: number; sprite: Bitmap }[];
   foot: readonly [number, number];
@@ -106,6 +107,14 @@ export function loadMapArt(read: (file: string) => Promise<Uint8Array> = fetchPi
         ) : [],
       ),
     ),
+    // The painted faces for the cards (#311).
+    ...PAINTED_PORTRAITS.map(async (name) => {
+      try {
+        portraits.set(name, toBitmap(await decodePng(await read(`portraits/${name}.png`))));
+      } catch (error) {
+        console.warn(error);
+      }
+    }),
     // The payday feast's pieces (#191), small enough to come with the rest.
     ...FEAST_PIECES.map(async (name) => {
       try {
@@ -142,6 +151,9 @@ export const ground = (name: GroundName): Bitmap | null => grounds.get(name) ?? 
 
 /** Whether the whole painted map is in: every piece and every ground. */
 export const mapArtReady = () => pieces.size === Object.keys(PIECE_FEET).length && grounds.size === GROUNDS.length;
+
+/** A face for the cards, painted (#311), if it's one of those painted and it's loaded. */
+export const paintedPortrait = (id: string): Bitmap | null => portraits.get(id) ?? null;
 
 /** A troop's (or Aldric's) painted figure (#178), facing right, at battle or map size, if it's loaded. */
 export const paintedFigure = (id: string, size: 'battle' | 'map'): Bitmap | null => figures.get(`${id}-${size}`) ?? null;

@@ -5,6 +5,7 @@
  * crooked hat.
  */
 import { Bitmap, outline } from './bitmap';
+import { paintedPortrait } from './mapArt';
 import { hash, shade } from './noise';
 import { BLUE, EARTH, FOG, GOLD, INK, LEAF, NEUTRAL, PLUM, RED, ROCK, SKIN, SLATE, STONE } from './palette';
 
@@ -307,9 +308,11 @@ export function portrait(id: PortraitId): Bitmap {
   return outline(b, INK);
 }
 
-/** Every portrait, drawn once. */
+/** Every portrait: painted (#311) once it's loaded, else drawn here once. */
 const drawn = new Map<PortraitId, Bitmap>();
 export function portraitOf(id: PortraitId): Bitmap {
+  const painted = paintedPortrait(id);
+  if (painted) return painted;
   let p = drawn.get(id);
   if (!p) {
     p = portrait(id);

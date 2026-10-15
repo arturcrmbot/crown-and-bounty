@@ -83,8 +83,8 @@ describe('painted walking figures', () => {
   it.each([
     ['archers', 'ranged', [24, -43]],
     ['heroRanger', 'ranged', [26, -43]],
-    ['heroWizard', 'ranged', [28, -69]],
-    ['heroWizard', 'cast', [28, -69]],
+    ['heroWizard', 'ranged', [37, -90]],
+    ['heroWizard', 'cast', [37, -90]],
     ['heroCourtier', 'cast', [31, -50]],
   ] as const)('launches %s %s from its visible bow, staff or hand', (id, anim, launch) => {
     expect(paintedAnimation(id, 'battle', anim)?.launch).toEqual(launch);

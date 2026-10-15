@@ -149,7 +149,8 @@ function paintedPose(troop: ArtId, facing: 1 | -1, { anim, ms }: Pose, size: Siz
     made = { sprite, foot: animation ? animation.foot[1] + HEADROOM : rows(sprite)[1] + 1, x: facing > 0 ? -anchor : anchor - sprite.width };
     paintedSprites.set(key, made);
   }
-  if (frame) return atBattleScale(troop, size, facing, { sprite: made.sprite, x: made.x, y: -made.foot });
+  // Painted poses are cut at their battle size (`BATTLE_SIZE` in mapart.py), so only the standing painting is enlarged.
+  if (frame) return { sprite: made.sprite, x: made.x, y: -made.foot };
   const reach = size === 'battle' ? 10 : 4;
   let [dx, dy] = [0, 0];
   if (anim === 'idle') dy = Math.floor(ms / 400) % 2 ? -1 : 0;

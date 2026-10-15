@@ -6,7 +6,11 @@ import { loadMapArt, paintedAnimation, paintedFigure } from '../src/render/mapAr
 describe('the approved battle-only Wizard scale', () => {
   beforeAll(() => loadMapArt(async file => new Uint8Array(readFileSync(`public/assets/${file.includes('/') ? file : `map/${file}`}`))));
 
-  it('enlarges every painted battle pose by one fixed factor around its original ground anchor', () => {
+  it('cuts every painted battle pose at the larger size from its sheet, never enlarging it as the game runs (#311)', () => {
+    const standing = paintedAnimation('heroWizard', 'battle', 'stand')!.frames[0].sprite;
+    const rows = [...Array(standing.height).keys()].filter((y) => standing.data.subarray(y * standing.width, (y + 1) * standing.width).some((v) => v !== 0));
+    // His standing painting is 72 px; his battle poses are 1.3 times that, as tall as the old enlargement.
+    expect(Math.abs(rows[rows.length - 1] + 1 - rows[0] - 94)).toBeLessThanOrEqual(2);
     for (const anim of ['stand', 'idle', 'move', 'ranged', 'cast'] as const) {
       const sequence = paintedAnimation('heroWizard', 'battle', anim)!;
       expect(sequence).not.toBeNull();
@@ -14,10 +18,10 @@ describe('the approved battle-only Wizard scale', () => {
       for (const frame of sequence.frames) {
         const right = troopFigure('heroWizard', 'blue', 1, { anim, ms }, 'battle');
         const left = troopFigure('heroWizard', 'blue', -1, { anim, ms }, 'battle');
-        expect(right.sprite.width).toBe(Math.round((frame.sprite.width + 2) * 1.30));
-        expect(right.sprite.height).toBe(Math.round((frame.sprite.height + 6) * 1.30));
-        expect(right.x).toBe(-Math.round((sequence.foot[0] + 1) * 1.30));
-        expect(right.y).toBe(-Math.round((sequence.foot[1] + 6) * 1.30));
+        expect(right.sprite.width).toBe(frame.sprite.width + 2);
+        expect(right.sprite.height).toBe(frame.sprite.height + 6);
+        expect(right.x).toBe(-(sequence.foot[0] + 1));
+        expect(right.y).toBe(-(sequence.foot[1] + 6));
         expect(left.x + left.sprite.width).toBe(-right.x);
         expect(left.y).toBe(right.y);
         expect(troopFigure('heroWizard', 'blue', 1, { anim, ms }, 'battle').sprite).toBe(right.sprite);

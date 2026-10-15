@@ -1,0 +1,21 @@
+[
+  {
+    "out": "art/map/sheets/portraits-b.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 312,
+    "prompt": "a sheet of nine: a cute chubby old king with a round rosy face, bushy white eyebrows, small kind eyes and a huge round fluffy white beard, a tall gold crown with blue jewels, a red robe with a white ermine collar; a cute chubby old king with a round rosy face, bushy white eyebrows, small kind eyes and a huge round fluffy white beard, a tall gold crown with blue jewels, a red robe with a white ermine collar; a cute young witch with brown hair, a tall pointed purple witch's hat and a purple dress; a cute old crone with long grey hair and a hooked nose, a tall pointed green witch's hat and a green robe; a cute young huntsman with a brown fur hat with ear flaps and a sheepskin coat, a bow over his shoulder; a cute plump old friar with a tonsure of white hair, white stubble and a brown habit; a cute kindly old woman with round brass spectacles and rosy cheeks, a red headscarf with white spots and a plum shawl; a cute stout dwarf with a great bushy ginger beard, a plain round steel helm and mail; a cute white goose wearing a small gold crown, a blue ribbon tied in a bow round her neck, each a head-and-shoulders portrait bust facing the viewer, a little turned, cute and chunky with simple bold shapes, never realistic, drawn in exactly the art style of the reference 1996 DOS fantasy strategy game battle screens and of the reference figures and portraits, whose faces these are: charming, friendly, clearly readable, bright colours, painted shading reduced to 256 colours, soft dithering, a little character in every face, three rows of three portraits, each separate and not touching, on a plain flat grey background",
+    "reference_images": [
+      "~/.config/retro-diffusion/refs/battle_hero.png",
+      "~/.config/retro-diffusion/refs/battle_troops.png",
+      "~/.config/retro-diffusion/refs/battle_wide.png",
+      "~/.config/retro-diffusion/refs/r1.png",
+      "art/map/references/king-cute.png",
+      "art/map/sheets/portraits-a.png",
+      "art/map/sheets/units-b.png",
+      "art/map/sheets/units-d.png"
+    ]
+  }
+]

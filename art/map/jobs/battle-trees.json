@@ -1,0 +1,20 @@
+[
+  {
+    "out": "art/map/sheets/battle-trees.png",
+    "prompt_style": "rd_pro__spritesheet",
+    "width": 256,
+    "height": 256,
+    "num_images": 1,
+    "seed": 313,
+    "prompt": "a sheet of six: a big round leafy green oak with a thick brown trunk; another big round green oak, its crown a little lopsided; a big round oak with a darker green crown; a tall dark green fir; another tall fir, a little narrower; a big round oak with a lighter green crown, each a whole tree standing on the ground with its trunk and roots, cute and chunky with simple bold shapes, never realistic, drawn in exactly the art style of the reference 1996 DOS fantasy strategy game battle screens and of the reference trees: charming, clearly readable, bright colours, painted shading reduced to 256 colours, soft dithering, two rows of three trees, each separate and not touching, on a plain flat grey background",
+    "reference_images": [
+      "~/.config/retro-diffusion/refs/battle_hero.png",
+      "~/.config/retro-diffusion/refs/battle_troops.png",
+      "~/.config/retro-diffusion/refs/battle_wide.png",
+      "~/.config/retro-diffusion/refs/r1.png",
+      "art/map/sheets/battle.png",
+      "art/map/sheets/groves.png",
+      "art/map/sheets/conifers.png"
+    ]
+  }
+]
