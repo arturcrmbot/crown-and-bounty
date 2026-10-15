@@ -55,6 +55,8 @@ const PAINTED_LOOKS: Partial<Record<string, PieceName>> = {
   nest: 'nest',
   purse: 'goldSmall',
   oats: 'haystack',
+  hamper: 'hamper',
+  letter: 'letter',
   crystals: 'crystals',
   lonePine: 'bFir',
   stand: 'gazebo',
@@ -213,8 +215,8 @@ const SEALS = [RED[3], BLUE[4], GOLD[5]] as const;
 function withScroll(stone: Bitmap, circle: number): Bitmap {
   const out = new Bitmap(stone.width, stone.height);
   out.data.set(stone.data);
-  const w = 18;
-  const [x0, y0] = [Math.floor((stone.width - w) / 2), 13];
+  const w = Math.round(stone.width * 0.75);
+  const [x0, y0] = [Math.floor((stone.width - w) / 2), Math.round(stone.height / 3)];
   const body = [PARCHMENT[6], PARCHMENT[5], PARCHMENT[5], PARCHMENT[4], PARCHMENT[2]];
   const roll = [PARCHMENT[4], PARCHMENT[3], PARCHMENT[2], PARCHMENT[1], PARCHMENT[0]];
   for (let x = x0; x < x0 + w; x++) {
@@ -272,6 +274,15 @@ function landmark(l: Location, home = 0): { frames: Bitmap[]; foot: number; anim
       const [hill, fire] = [piece('hill'), piece('fire')];
       if (hill && fire) return stacked(hill, fire, [Math.round(hill.sprite.width / 2), 9]);
     }
+    // The cairn: three painted stones piled up, not the code-drawn blob that stood out among them (#311).
+    if (l.look === 'cairn') {
+      const [base, mid, top] = [piece('boulder2'), piece('boulder3'), piece('boulder1')];
+      if (base && mid && top) {
+        const pile = stacked(base, mid, [Math.floor(base.sprite.width / 2) + 1, 7]);
+        const lift = pile.frames[0].height - base.sprite.height;
+        return stacked({ sprite: pile.frames[0], foot: pile.foot }, top, [Math.floor(base.sprite.width / 2) - 1, lift - 2]);
+      }
+    }
     // A scroll stone (#240): one standing stone, with a scroll bound across its face under a seal of its circle's colour.
     if (l.look === 'stone1' || l.look === 'stone2' || l.look === 'stone3') {
       const stone = piece('menhir');
@@ -289,7 +300,7 @@ function landmark(l: Location, home = 0): { frames: Bitmap[]; foot: number; anim
 }
 
 /** Looks that stand for a place on the map in their own drawing, even on the painted map. */
-const LOOKS_DRAWN = { cart: 1, hamper: 1, abbey: 1, peathut: 1, stilthut: 1, cairn: 1 } as const;
+const LOOKS_DRAWN = { cart: 1, abbey: 1, peathut: 1, stilthut: 1, cairn: 1 } as const;
 
 /** A place as it's drawn in code. */
 function drawn(l: Location): ReturnType<typeof landmark> {

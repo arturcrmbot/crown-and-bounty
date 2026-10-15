@@ -30,6 +30,10 @@ court's own King, `art/map/references/king-cute.png`, as the reference), Mirrow,
 Nan, the dwarf and the royal goose (`portraits-b.png`). The battle's oaks and firs were painted bigger the same day,
 with the battle's own sheet and the map's trees as the reference (`battle-trees.png`). Each sheet cost $0.18.
 
+The Baron's wicker hamper and the lost letters on the map (#311) were made with Retro Diffusion on 15 October 2026,
+with HoMM2's map screen and our own `treasure.png`, `farm.png`, `wild.png` and `places.png` as the reference. They
+came from one sheet, `finds.png`, drawn once for $0.18, and its request is `art/map/jobs/map-finds.json`.
+
 The Hedge Wizard's six walking poses (#278) were made with Retro Diffusion on 12 October 2026, with his
 original figure from `units-d.png` and the same HoMM2 screens as references. `wizard-walk-2.png` supplies the
 poses in `public/assets/troops/heroWizard-move-*-map.png`. The first attempt, `wizard-walk.png`, was inspected

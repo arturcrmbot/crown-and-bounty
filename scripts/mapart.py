@@ -29,7 +29,8 @@ PIECES = {
     'hut': ('village', (182, 13, 242, 71), 36),
     'washing': ('village', (3, 88, 83, 163), 58),
     'fold': ('village', (93, 105, 162, 155), 56),
-    'hayrick': ('village', (179, 95, 239, 157), 40),
+    # The village sheet's rick is fine pale straw with no outline, and shrinking it turned it to mush (#311): the farm sheet's, crisp and outlined.
+    'hayrick': ('farm', (5, 60, 63, 109), 38),
     'skeps': ('village', (9, 171, 72, 218), 44),
     'kiln': ('village', (93, 171, 159, 246), 50),
     'boat': ('village', (185, 176, 235, 207), 48),
@@ -38,8 +39,8 @@ PIECES = {
     'mews': ('wild', (103, 26, 165, 75), 50),
     'butts': ('wild', (179, 31, 242, 73), 50),
     'stones': ('wild', (14, 99, 82, 158), 56),
-    # One of the Grey Wethers on its own, a little bigger than it was drawn, to be seen from afar: the scroll stones' stone (#240).
-    'menhir': ('wild', (30, 128, 47, 155), 24),
+    # One of the Grey Wethers on its own, at the size it was drawn: blown up, its pixels came out uneven (#311). The scroll stones' stone (#240).
+    'menhir': ('wild', (30, 128, 47, 155), 16),
     'tents': ('wild', (174, 99, 248, 159), 60),
     'cart': ('wild', (15, 174, 88, 244), 60),
     'pack': ('wild', (104, 190, 154, 239), 28),
@@ -92,6 +93,9 @@ PIECES = {
     'chest': ('places', (158, 161, 200, 199), 26),
     'gold': ('places', (205, 162, 255, 200), 32),
     'shrine': ('places', (212, 207, 248, 255), 30),
+    # The Baron's hamper and a lost letter, painted (#311): they were drawn in code, flat beside the paintings.
+    'hamper': ('finds', (8, 20, 84, 84), 26),
+    'letter': ('finds', (9, 106, 78, 155), 16),
 }
 # The second batch (1 Oct, after Artur put the map beside HoMM2's): what makes each place a little scene.
 # Farm things, waterside beds and reeds, rolling hills and outcrops, treasure, and the battle's own obstacles.
@@ -1003,7 +1007,8 @@ def layers(sheet):
     bg = np.array(Counter(map(tuple, a.reshape(-1, 3))).most_common(1)[0][0])
     back = np.abs(a - bg).sum(2) <= 8
     rim = nd.binary_dilation(back) & ~back
-    grey = (a.max(2) - a.min(2) < 12) & (a.sum(2) > 120) & (a.sum(2) < bg.sum() - 20)
+    # The finds sheet (#311) laid its shadow in a bluish grey.
+    grey = (a.max(2) - a.min(2) < (24 if sheet == 'finds' else 12)) & (a.sum(2) > 120) & (a.sum(2) < bg.sum() - 20)
     if sheet == 'heath':
         # A ground sheet: nothing is background, nothing is shadow; its pieces are cut by colour.
         return a, np.zeros(a.shape[:2], bool), np.zeros(a.shape[:2], bool)
