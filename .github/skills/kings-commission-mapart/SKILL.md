@@ -70,6 +70,12 @@ trees along the top cut by the frame, clumps in the corners, and obstacles at ba
   into the 64 px square (`portraits-a`, `portraits-b`), cute and chunky like the figures, never realistic.
 - **It writes** `public/assets/map/*.png`, `public/assets/troops/*-{battle,map}.png` and
   `src/render/mapPieces.ts` (`PIECE_FEET`, `GROVE_TREES`). `src/render/mapArt.ts` loads them.
+- **Whole scenes** (the title's land and sky, the court's hall) are repainted locally with `kcpix`, an SDXL style
+  model trained on our sheets and HoMM1 and HoMM2 screens, which lives on Artur's Mac in `~/.local/share/kc-imagegen`
+  (never the repo). `scripts/backdrop.py <name>` repaints the scene as the code draws it with nobody in it, so
+  nothing moves; pick a take, save it indexed in `public/assets/backdrops/`, and the game draws its figures over it
+  (`backdrop` in `mapArt.ts`). It costs nothing, but its troop sheets aren't as crisp as Retro Diffusion's, so
+  figures still come from sheets.
 - **Optional painted poses** (#278) are `FIGURE_ANIMATIONS` in `scripts/mapart.py`. Each animation names its
   `sheet`, one fixed source-to-battle `scale`, its `sizes`, and `frames` of `(box, foot, ms)`. The box and foot
   are absolute sheet pixels. Calibrate the body against the standing figure once, never fit each frame to its

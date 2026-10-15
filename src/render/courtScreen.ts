@@ -1,7 +1,7 @@
 import type { BackgroundId } from '../content/backgrounds';
 import { FRIENDS, type FriendId } from '../content/friends';
 import { Bitmap, blit, outline, scaleBitmap, SHADOW } from './bitmap';
-import { courtPiece } from './mapArt';
+import { backdrop, courtPiece } from './mapArt';
 import type { CourtPieceName } from './mapPieces';
 import { mirror } from './sprites';
 import { BAR, MAP_VIEW, paintFrame, SCREEN } from './frame';
@@ -319,6 +319,9 @@ export class CourtScreen {
       }
     }
     const b = room.bitmap;
+    // The hall painted whole, over the code's own, once it has loaded.
+    const hall = backdrop('court');
+    if (hall) blit(b, hall, MAP_VIEW.x, MAP_VIEW.y);
     // The royal guard stands either side of the dais, facing the carpet.
     stand(b, courtPiece('guard'), 92, 312);
     stand(b, courtPiece('guard'), 334, 312, true);

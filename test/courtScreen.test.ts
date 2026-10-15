@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { CourtScreen } from '../src/render/courtScreen';
 import { MAP_VIEW, SCREEN } from '../src/render/frame';
-import { courtPiece, loadSceneArt } from '../src/render/mapArt';
+import { backdrop, courtPiece, loadSceneArt } from '../src/render/mapArt';
+import { SHADOW } from '../src/render/bitmap';
 import { COURT_PIECES } from '../src/render/mapPieces';
 
 // Lettering is checked in the browser; these frames have no caption.
@@ -21,6 +22,18 @@ describe('the people at court', () => {
 
   it('paints everyone at court from the court sheet, none of them in code (#311)', () => {
     for (const name of COURT_PIECES) expect(courtPiece(name), name).not.toBeNull();
+  });
+
+  it('lays the painted hall and the title land at the view size, in the palette alone', () => {
+    for (const name of ['court', 'title'] as const) {
+      const picture = backdrop(name);
+      expect(picture, name).not.toBeNull();
+      expect([picture!.width, picture!.height], name).toEqual([MAP_VIEW.width, MAP_VIEW.height]);
+      // Opaque all over: nothing in it is clear or shadow.
+      expect(picture!.data.every((c) => c > 0 && c !== SHADOW), name).toBe(true);
+    }
+    const hall = new CourtScreen().draw(0).data;
+    expect(hall[(MAP_VIEW.y + 40) * SCREEN.width + MAP_VIEW.x + 600]).toBe(backdrop('court')!.data[40 * MAP_VIEW.width + 600]);
   });
 
   it('keeps all four backgrounds distinct when Aldric changes who he was', () => {

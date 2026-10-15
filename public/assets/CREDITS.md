@@ -40,6 +40,13 @@ screens, with HoMM2's screens, our feast and unit sheets and our own title and c
 with his squire, an archer and a peasant (`title-rider.png`), and King Osric on his throne, Aldric kneeling as each
 background and the royal guard (`court-cute.png`).
 
+The title's land and sky and the court's hall (`public/assets/backdrops/`) were painted on 15 October 2026 on Artur's
+Mac, with no image service: Stable Diffusion XL (stabilityai/stable-diffusion-xl-base-1.0, CreativeML Open RAIL++-M)
+with `kcpix`, a style model trained there on our own sheets and on screens from Heroes of Might and Magic I and II.
+Each repaints the game's own scene as the code drew it (`scripts/backdrop.py`), so everything stays where it stood, and
+the game's figures, castle and name are drawn over it. The style model and its training pictures stay on that Mac and
+never go in the repo.
+
 The Hedge Wizard's six walking poses (#278) were made with Retro Diffusion on 12 October 2026, with his
 original figure from `units-d.png` and the same HoMM2 screens as references. `wizard-walk-2.png` supplies the
 poses in `public/assets/troops/heroWizard-move-*-map.png`. The first attempt, `wizard-walk.png`, was inspected

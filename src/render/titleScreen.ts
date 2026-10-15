@@ -2,7 +2,7 @@ import { Bitmap, blit, scaleBitmap, SHADOW } from './bitmap';
 import { BAR, MAP_VIEW, paintFrame, SCREEN, type Rect } from './frame';
 import { fbm, hash, noise, shade } from './noise';
 import { BLUE, DIRT, GOLD, GRASS, INK, LEAF, PARCHMENT, PINE, PLUM, RED, REED, STONE, WOOD } from './palette';
-import { titlePiece } from './mapArt';
+import { backdrop, titlePiece } from './mapArt';
 import type { TitlePieceName } from './mapPieces';
 import { castle, CASTLE_TIPS, kingsPennant, mirror, oak, pine, PENNANT_FOOT } from './sprites';
 
@@ -404,6 +404,14 @@ export class TitleScreen {
       this.paintLogo(textMask('THE OLD KING\u2019S TREASURE', 18, 1)),
     ], 1);
     drawText(b, 'This game is a tribute to King\u2019s Bounty (1990) and Heroes of Might and Magic II, and its figures are painted over Wesnoth\u2019s units (GPL, CC BY-SA).', BAR.x + 12, BAR.y + 5, PARCHMENT[6], INK);
+    // The land and sky painted whole, over the code's own, once they have loaded: their clouds and river are in the
+    // painting, so the code's stop drifting and shimmering over it.
+    const painted = backdrop('title');
+    if (painted) {
+      blit(b, painted, MAP_VIEW.x, MAP_VIEW.y);
+      this.sky.fill(0);
+      this.water = [];
+    }
     this.base = b;
   }
 

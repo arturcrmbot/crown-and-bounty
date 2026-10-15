@@ -193,7 +193,7 @@ let scenesLoading: Promise<void> | null = null;
  */
 export function loadSceneArt(read: (file: string) => Promise<Uint8Array> = fetchPiece): Promise<void> {
   scenesLoading ??= Promise.all(
-    [...TITLE_PIECES.map((name) => `title/${name}`), ...COURT_PIECES.map((name) => `court/${name}`)].map(async (name) => {
+    [...TITLE_PIECES.map((name) => `title/${name}`), ...COURT_PIECES.map((name) => `court/${name}`), ...BACKDROPS.map((name) => `backdrops/${name}`)].map(async (name) => {
       try {
         scenes.set(name, toBitmap(await decodePng(await read(`${name}.png`))));
       } catch (error) {
@@ -208,3 +208,11 @@ export function loadSceneArt(read: (file: string) => Promise<Uint8Array> = fetch
 export const titlePiece = (name: TitlePieceName): Bitmap | null => scenes.get(`title/${name}`) ?? null;
 /** One of the court's painted people, if it's loaded. */
 export const courtPiece = (name: CourtPieceName): Bitmap | null => scenes.get(`court/${name}`) ?? null;
+
+/**
+ * The title's land and sky, and the court's hall, painted whole at the view's size: the code's own scenes repainted
+ * with a style model trained on our sheets (`scripts/backdrop.py`). The figures, the castle and the name are
+ * drawn over them; until they load, or if one never comes, the scene is drawn in code as before.
+ */
+const BACKDROPS = ['title', 'court'] as const;
+export const backdrop = (name: (typeof BACKDROPS)[number]): Bitmap | null => scenes.get(`backdrops/${name}`) ?? null;
