@@ -210,9 +210,9 @@ export const titlePiece = (name: TitlePieceName): Bitmap | null => scenes.get(`t
 export const courtPiece = (name: CourtPieceName): Bitmap | null => scenes.get(`court/${name}`) ?? null;
 
 /**
- * The title's land and sky, and the court's hall, painted whole at the view's size: the code's own scenes repainted
- * with a style model trained on our sheets (`scripts/backdrop.py`). The figures, the castle and the name are
- * drawn over them; until they load, or if one never comes, the scene is drawn in code as before.
+ * The court's hall, painted whole at the view's size: the code's own room repainted with a style model trained on our
+ * sheets (`scripts/backdrop.py`). The court's people are drawn over it; until it loads, or if it never comes, the
+ * room is drawn in code as before.
  */
-const BACKDROPS = ['title', 'court'] as const;
+const BACKDROPS = ['court'] as const;
 export const backdrop = (name: (typeof BACKDROPS)[number]): Bitmap | null => scenes.get(`backdrops/${name}`) ?? null;

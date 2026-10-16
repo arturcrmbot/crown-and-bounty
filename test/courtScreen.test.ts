@@ -24,8 +24,8 @@ describe('the people at court', () => {
     for (const name of COURT_PIECES) expect(courtPiece(name), name).not.toBeNull();
   });
 
-  it('lays the painted hall and the title land at the view size, in the palette alone', () => {
-    for (const name of ['court', 'title'] as const) {
+  it('lays the painted hall at the view size, opaque all over', () => {
+    for (const name of ['court'] as const) {
       const picture = backdrop(name);
       expect(picture, name).not.toBeNull();
       expect([picture!.width, picture!.height], name).toEqual([MAP_VIEW.width, MAP_VIEW.height]);
